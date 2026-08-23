@@ -96,7 +96,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         
         var outSession: OpaquePointer?
         let status = CUnsafeBufferAdapter.withCString(archivePath) { cPath in
-            ttzip_rust_inplace_session_begin(cPath, 1, &outSession)
+            ttzip_rust_inplace_session_begin(cPath, 0, &outSession)
         }
         
         guard status == TTZIP_STATUS_OK, let session = outSession else {
@@ -139,7 +139,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         
         var outSession: OpaquePointer?
         let status = CUnsafeBufferAdapter.withCString(archivePath) { cPath in
-            ttzip_rust_inplace_session_begin(cPath, 1, &outSession)
+            ttzip_rust_inplace_session_begin(cPath, 0, &outSession)
         }
         
         if status == TTZIP_STATUS_OK, let session = outSession {

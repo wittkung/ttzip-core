@@ -168,7 +168,7 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
                             var opt = TTZipExtractOptions(
                                 destination_path: dPtr,
                                 password: pPtr,
-                                thread_budget: 0,
+                                thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
                                 overwrite_existing: true,
                                 preserve_permissions: true,
                                 dry_run: false,
@@ -245,7 +245,7 @@ extension ArchiveExtractor {
                     var opt = TTZipExtractOptions(
                         destination_path: dPtr,
                         password: pPtr,
-                        thread_budget: 0,
+                        thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
                         overwrite_existing: true,
                         preserve_permissions: true,
                         dry_run: false,
@@ -314,7 +314,7 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
                         var opt = TTZipExtractOptions(
                             destination_path: dPtr,
                             password: pPtr,
-                            thread_budget: 0,
+                            thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
                             overwrite_existing: true,
                             preserve_permissions: true,
                             dry_run: false,

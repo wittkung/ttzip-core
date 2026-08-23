@@ -79,6 +79,19 @@ impl TTZipStatus {
     }
 }
 
+/// Resolves effective thread budget: expands 0 (auto) to available hardware parallelism.
+#[inline]
+pub fn resolve_thread_budget(budget: u32) -> usize {
+    if budget == 0 {
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4)
+            .clamp(1, 64)
+    } else {
+        (budget as usize).clamp(1, 64)
+    }
+}
+
 impl core::fmt::Display for TTZipStatus {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
@@ -199,6 +212,49 @@ pub struct TTZipAes256Context {
     pub iv_or_counter: [u8; 16],
     pub round_keys_enc: [u8; 240], // 15 rounds * 16 bytes
     pub round_keys_dec: [u8; 240],
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TTZipErrorInfo {
+    pub status: TTZipStatus,
+    pub error_code: i32,
+    pub message: [c_char; 512],
+    pub entry_path: [c_char; 256],
+    pub offset: u64,
+}
+
+impl TTZipErrorInfo {
+    pub const fn empty() -> Self {
+        Self {
+            status: TTZipStatus::Ok,
+            error_code: 0,
+            message: [0; 512],
+            entry_path: [0; 256],
+            offset: 0,
+        }
+    }
+
+    pub fn populate(&mut self, status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64) {
+        self.status = status;
+        self.error_code = status as i32;
+        self.offset = offset;
+        self.message.fill(0);
+        let msg_bytes = msg.as_bytes();
+        let copy_len = msg_bytes.len().min(511);
+        for i in 0..copy_len {
+            self.message[i] = msg_bytes[i] as c_char;
+        }
+
+        self.entry_path.fill(0);
+        if let Some(e) = entry {
+            let e_bytes = e.as_bytes();
+            let e_len = e_bytes.len().min(255);
+            for i in 0..e_len {
+                self.entry_path[i] = e_bytes[i] as c_char;
+            }
+        }
+    }
 }
 
 #[repr(C)]

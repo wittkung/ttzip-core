@@ -16,6 +16,19 @@ use crate::types::TTZipStatus;
 use std::collections::HashMap;
 use std::io::Write;
 
+#[inline]
+fn truncate_to_char_boundary(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        s
+    } else {
+        let mut end = max_bytes;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        &s[..end]
+    }
+}
+
 /// Streaming PAX format TAR Archive Writer.
 pub struct TarWriter<W: Write> {
     inner: W,
@@ -151,20 +164,9 @@ impl<W: Write> TarWriter<W> {
         }
 
         // Standard ustar Header
-        let short_name = if normalized_path.len() > 100 {
-            normalized_path[..100].to_string()
-        } else {
-            normalized_path.clone()
-        };
-
+        let short_name = truncate_to_char_boundary(&normalized_path, 100).to_string();
         let short_link = link_target
-            .map(|s| {
-                if s.len() > 100 {
-                    s[..100].to_string()
-                } else {
-                    s.to_string()
-                }
-            })
+            .map(|s| truncate_to_char_boundary(s, 100).to_string())
             .unwrap_or_default();
 
         let header = TarHeader {

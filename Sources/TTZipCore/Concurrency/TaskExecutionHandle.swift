@@ -29,6 +29,20 @@ public final class TaskExecutionHandle: @unchecked Sendable {
     public var tokenPointer: OpaquePointer? {
         rawToken
     }
+
+    /// Increments the reference count of the underlying native CancellationToken.
+    public func retainToken() {
+        if let token = rawToken {
+            ttzip_rust_cancellation_token_retain(token)
+        }
+    }
+
+    /// Decrements the reference count of the underlying native CancellationToken.
+    public func releaseToken() {
+        if let token = rawToken {
+            ttzip_rust_cancellation_token_free(token)
+        }
+    }
     
     /// Cancels execution with specific reason code (0 = user requested, 1 = timeout, 2 = error abort).
     public func cancel(reason: UInt8 = 0) {

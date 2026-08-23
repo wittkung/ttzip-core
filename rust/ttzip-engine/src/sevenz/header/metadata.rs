@@ -10,6 +10,7 @@
 use super::models::SevenZHeaderInfo;
 use super::stream::parse_7z_header_stream;
 use crate::crypto::crc32::crc32_fast;
+use crate::sevenz::decoder::payload::decode_7z_solid_payload;
 use crate::sevenz::format::*;
 use crate::types::TTZipStatus;
 
@@ -52,15 +53,11 @@ pub fn parse_7z_metadata(mapped: &[u8]) -> Result<SevenZHeaderInfo, TTZipStatus>
     if !header_bytes.is_empty() {
         if header_bytes[0] == K_ENCODED_HEADER {
             let mut sub_info = SevenZHeaderInfo::default();
-            let _ = parse_7z_header_stream(&header_bytes[1..], &mut sub_info);
-            info.primary_method_id = sub_info.primary_method_id;
-            info.coder_props = sub_info.coder_props;
-            info.folders = sub_info.folders;
-            info.files = sub_info.files;
-            info.stream_sizes = sub_info.stream_sizes;
-            info.stream_crcs = sub_info.stream_crcs;
+            parse_7z_header_stream(&header_bytes[1..], &mut sub_info)?;
+            let uncompressed_header = decode_7z_solid_payload(mapped, &sub_info, None, 1)?;
+            parse_7z_header_stream(&uncompressed_header, &mut info)?;
         } else {
-            let _ = parse_7z_header_stream(header_bytes, &mut info);
+            parse_7z_header_stream(header_bytes, &mut info)?;
         }
     }
 

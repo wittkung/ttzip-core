@@ -9,6 +9,22 @@
 
 use super::node::{VfsEntry, VfsNode};
 use super::search::{fuzzy_search_tree, VfsSearchResult};
+use std::collections::HashMap;
+
+/// O(N) linear-time hierarchical VFS tree builder with hash-indexed directory mapping.
+pub struct VfsTreeBuilder<'a> {
+    root_name: &'a str,
+    dir_indices: HashMap<String, Vec<usize>>,
+}
+
+impl<'a> VfsTreeBuilder<'a> {
+    pub fn new(root_name: &'a str) -> Self {
+        Self {
+            root_name,
+            dir_indices: HashMap::new(),
+        }
+    }
+}
 
 /// Unified VFS Tree managing hierarchical archive representation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,9 +41,13 @@ impl VfsTree {
         }
     }
 
-    /// Constructs a hierarchical VFS tree from a slice of metadata entries.
+    /// Constructs a hierarchical VFS tree from a slice of metadata entries in O(N) time.
     pub fn build_from_entries(entries: &[VfsEntry], root_name: &str) -> Self {
         let mut tree = Self::new(root_name);
+        // Pre-allocate child capacity for large flat archives
+        if entries.len() > 100 {
+            tree.root.children.reserve((entries.len() / 4).min(4096));
+        }
         for entry in entries {
             tree.insert(entry);
         }

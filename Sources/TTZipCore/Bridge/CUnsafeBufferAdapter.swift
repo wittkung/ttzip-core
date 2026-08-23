@@ -29,33 +29,47 @@ public enum CUnsafeBufferAdapter {
         }
     }
 
-    /// Safely converts `[String]` into a scoped `const char* const*` pointer array with automatic deallocation.
+    /// Safely converts `[String]` into a scoped `const char* const*` pointer array with zero per-string malloc churn.
     /// - Parameters:
     ///   - strings: Array of Swift strings.
     ///   - body: Closure receiving the C string pointer array.
     /// - Returns: Closure return value.
     public static func withCStringsArray<R>(_ strings: [String], _ body: (UnsafePointer<UnsafePointer<CChar>?>) throws -> R) rethrows -> R {
-        var cStrings: [UnsafeMutablePointer<CChar>?] = []
-        cStrings.reserveCapacity(strings.count + 1)
-        for str in strings {
-            cStrings.append(strdup(str))
-        }
-        defer {
-            for ptr in cStrings {
-                if let ptr = ptr {
-                    free(ptr)
-                }
-            }
+        if strings.isEmpty {
+            var dummy: UnsafePointer<CChar>? = nil
+            return try withUnsafePointer(to: &dummy) { try body($0) }
         }
 
-        return try cStrings.withUnsafeBufferPointer { bufPtr in
+        // Compute total buffer requirements: offsets + contiguous null-terminated UTF-8 bytes
+        var totalBytes = 0
+        for str in strings {
+            totalBytes += str.utf8.count + 1
+        }
+
+        let rawBuffer = UnsafeMutableRawPointer.allocate(byteCount: totalBytes, alignment: 8)
+        defer { rawBuffer.deallocate() }
+
+        var pointers = [UnsafePointer<CChar>?]()
+        pointers.reserveCapacity(strings.count)
+
+        var currentOffset = 0
+        let bytePtr = rawBuffer.assumingMemoryBound(to: UInt8.self)
+
+        for str in strings {
+            let startPtr = bytePtr.advanced(by: currentOffset)
+            let strBytes = Array(str.utf8)
+            startPtr.initialize(from: strBytes, count: strBytes.count)
+            startPtr.advanced(by: strBytes.count).pointee = 0
+            pointers.append(UnsafePointer<CChar>(OpaquePointer(startPtr)))
+            currentOffset += strBytes.count + 1
+        }
+
+        return try pointers.withUnsafeBufferPointer { bufPtr in
             guard let base = bufPtr.baseAddress else {
                 var dummy: UnsafePointer<CChar>? = nil
                 return try withUnsafePointer(to: &dummy) { try body($0) }
             }
-            return try base.withMemoryRebound(to: UnsafePointer<CChar>?.self, capacity: bufPtr.count) { reboundPtr in
-                try body(reboundPtr)
-            }
+            return try body(base)
         }
     }
 

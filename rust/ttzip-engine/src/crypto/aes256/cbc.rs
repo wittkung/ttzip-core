@@ -44,11 +44,11 @@ pub fn aes256_cbc_decrypt(
     {
         use aes::cipher::{BlockDecryptMut, KeyIvInit};
         type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
-        let decryptor = Aes256CbcDec::new(key.into(), iv.into());
+        let mut decryptor = Aes256CbcDec::new(key.into(), iv.into());
         dst[..src.len()].copy_from_slice(src);
         for chunk in dst[..src.len()].chunks_exact_mut(16) {
             let block = aes::cipher::generic_array::GenericArray::from_mut_slice(chunk);
-            decryptor.clone().decrypt_block_mut(block);
+            decryptor.decrypt_block_mut(block);
         }
         Ok(())
     }
@@ -89,11 +89,11 @@ pub fn aes256_cbc_encrypt(
     {
         use aes::cipher::{BlockEncryptMut, KeyIvInit};
         type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
-        let encryptor = Aes256CbcEnc::new(key.into(), iv.into());
+        let mut encryptor = Aes256CbcEnc::new(key.into(), iv.into());
         dst[..src.len()].copy_from_slice(src);
         for chunk in dst[..src.len()].chunks_exact_mut(16) {
             let block = aes::cipher::generic_array::GenericArray::from_mut_slice(chunk);
-            encryptor.clone().encrypt_block_mut(block);
+            encryptor.encrypt_block_mut(block);
         }
         Ok(())
     }

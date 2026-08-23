@@ -39,14 +39,16 @@ unsafe fn write_out_string(result: Option<String>, out_buf: *mut c_char, capacit
         if !out_buf.is_null() && capacity > 0 {
             if let Ok(c_str) = CString::new(pwd) {
                 let bytes = c_str.as_bytes_with_nul();
-                let copy_len = bytes.len().min(capacity);
-                std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, out_buf, copy_len);
-                if copy_len > 0 {
-                    *out_buf.add(copy_len - 1) = 0;
+                if bytes.len() > capacity {
+                    // Buffer too small to hold complete password with null terminator: fail safely
+                    *out_buf = 0;
+                    return false;
                 }
+                std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, out_buf, bytes.len());
+                return true;
             }
         }
-        true
+        false
     } else {
         if !out_buf.is_null() && capacity > 0 {
             *out_buf = 0;

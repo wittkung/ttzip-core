@@ -385,6 +385,13 @@ pub fn in_place_edit_sevenz(
     };
 
     if let Ok(archive) = SevenZArchive::open_slice(mapped) {
+        // Pre-decode solid payload once into contiguous memory to avoid N-times redundant LZMA decompression
+        let solid_buf = if archive.info().payload_len > 0 {
+            crate::sevenz::decoder::payload::decode_7z_solid_payload(mapped, archive.info(), None, 1).ok()
+        } else {
+            None
+        };
+
         for i in 0..archive.len() {
             let meta = &archive.files()[i];
             let key = meta.rel_path.trim_start_matches('/').to_string();
@@ -416,6 +423,14 @@ pub fn in_place_edit_sevenz(
             } else {
                 let data = if meta.is_directory {
                     Vec::new()
+                } else if let (Some(buf), Some(loc)) = (&solid_buf, archive.seek_index().get_by_index(i)) {
+                    let offset = loc.offset_in_folder as usize;
+                    let end = (offset + loc.uncompressed_size as usize).min(buf.len());
+                    if offset <= end {
+                        buf[offset..end].to_vec()
+                    } else {
+                        Vec::new()
+                    }
                 } else {
                     archive.extract_entry_bytes_stream(i, None).unwrap_or_default()
                 };

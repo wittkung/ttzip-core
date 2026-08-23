@@ -34,6 +34,8 @@ public final class VFSLz4CachePool: @unchecked Sendable {
     private let spillDirectory: URL
     private let lock = NSLock()
     private var rawSizeCache: [String: Int] = [:]
+    private var rawSizeKeys: [String] = []
+    private static let maxRawSizeEntries = 2048
     
     public init(maxRamBytes: Int = 128 * 1024 * 1024) {
         self.maxRamBytes = maxRamBytes
@@ -59,6 +61,13 @@ public final class VFSLz4CachePool: @unchecked Sendable {
         guard !rawData.isEmpty else { return }
         let key = "\(sessionId):\(chunkIndex)"
         lock.withLock {
+            if rawSizeCache[key] == nil {
+                if rawSizeKeys.count >= Self.maxRawSizeEntries {
+                    let oldest = rawSizeKeys.removeFirst()
+                    rawSizeCache.removeValue(forKey: oldest)
+                }
+                rawSizeKeys.append(key)
+            }
             rawSizeCache[key] = rawData.count
         }
         
@@ -184,6 +193,7 @@ public final class VFSLz4CachePool: @unchecked Sendable {
         let prefix = "\(sessionId):"
         lock.withLock {
             rawSizeCache = rawSizeCache.filter { !$0.key.hasPrefix(prefix) }
+            rawSizeKeys.removeAll(where: { $0.hasPrefix(prefix) })
         }
         
         if let handle = nativeHandle {

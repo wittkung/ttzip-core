@@ -296,7 +296,7 @@ extension ArchiveWriter {
                         level: lvlMap,
                         encryption: enc,
                         password: cPassword,
-                        thread_budget: 0,
+                        thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
                         solid_block_size_mb: 0,
                         progress_callback: ttzipProgressCallbackBridge,
                         user_data: ctxPtr
@@ -348,7 +348,7 @@ extension ArchiveWriter {
             include_hidden: true,
             skip_mac_junk: false,
             max_depth: 0,
-            thread_budget: 0
+            thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount)
         )
         
         _ = path.withCString { cPath in

@@ -64,16 +64,26 @@ impl StreamingCauchyAccumulator {
     pub fn new(
         payload_len: u64,
         redundancy_percent: f64,
-        mut slice_size: usize,
+        slice_size: usize,
     ) -> Result<Self, TTZipStatus> {
         if payload_len == 0 {
             return Err(TTZipStatus::ErrInvalidParam);
         }
-        if slice_size == 0 {
-            slice_size = DEFAULT_SLICE_SIZE;
-        }
 
-        let total_k = payload_len.div_ceil(slice_size as u64) as usize;
+        // Dynamic Slice Scaling: Max K = 200 ensures K + M <= 256 in GF(2^8)
+        const MAX_DATA_SLICES: usize = 200;
+        const SLICE_ALIGNMENT: usize = 4096;
+
+        let base_slice = if slice_size == 0 {
+            DEFAULT_SLICE_SIZE
+        } else {
+            slice_size
+        };
+        let min_slice = payload_len.div_ceil(MAX_DATA_SLICES as u64) as usize;
+        let mut effective_slice_size = base_slice.max(min_slice);
+        effective_slice_size = effective_slice_size.div_ceil(SLICE_ALIGNMENT) * SLICE_ALIGNMENT;
+
+        let total_k = payload_len.div_ceil(effective_slice_size as u64) as usize;
         if total_k == 0 || total_k > 200 {
             return Err(TTZipStatus::ErrInvalidParam);
         }
@@ -82,12 +92,12 @@ impl StreamingCauchyAccumulator {
         let total_m = raw_m.clamp(1, total_k.min(256 - total_k));
 
         let cauchy_matrix = create_cauchy_matrix(total_m, total_k);
-        let parity_slices = vec![vec![0u8; slice_size]; total_m];
+        let parity_slices = vec![vec![0u8; effective_slice_size]; total_m];
         let data_crcs = Vec::with_capacity(total_k);
         let hasher = FastSha256::new();
 
         Ok(Self {
-            slice_size,
+            slice_size: effective_slice_size,
             total_k,
             total_m,
             payload_len,

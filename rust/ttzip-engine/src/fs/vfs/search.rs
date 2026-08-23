@@ -68,13 +68,28 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
             score += char_score;
             prev_matched_idx = Some(t_idx);
 
+#[inline]
+fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
+    let mut s_chars = s.chars().flat_map(|c| c.to_lowercase());
+    let mut p_chars = prefix.chars().flat_map(|c| c.to_lowercase());
+    loop {
+        match p_chars.next() {
+            Some(pc) => match s_chars.next() {
+                Some(sc) if sc == pc => continue,
+                _ => return false,
+            },
+            None => return true,
+        }
+    }
+}
+
             match pat_chars.next() {
                 Some(next_c) => current_pat_char = next_c,
                 None => {
                     // Pattern completely matched!
                     if target.eq_ignore_ascii_case(pat) {
                         score += 500;
-                    } else if target.to_lowercase().starts_with(&pat.to_lowercase()) {
+                    } else if starts_with_ignore_case(target, pat) {
                         score += 200;
                     }
                     return Some((score, indices));

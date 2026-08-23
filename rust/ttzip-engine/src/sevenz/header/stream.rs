@@ -25,10 +25,12 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
         }
 
         if tag == K_PACK_INFO {
-            let (_, rd1) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+            let (pack_pos, rd1) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
             hpos += rd1;
             let (num_pack_streams, rd2) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
             hpos += rd2;
+            out_info.payload_offset = 32 + (pack_pos as usize);
+            let mut total_pack_size = 0u64;
 
             while hpos < hlen {
                 let ptag = hp[hpos];
@@ -38,8 +40,9 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                 }
                 if ptag == K_SIZE {
                     for _ in 0..num_pack_streams {
-                        let (_, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                        let (sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                         hpos += rd;
+                        total_pack_size = total_pack_size.saturating_add(sz);
                     }
                 } else if ptag == K_CRC {
                     let all_defined = hp[hpos];
@@ -52,6 +55,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     hpos += rd + (sz as usize);
                 }
             }
+            out_info.payload_len = total_pack_size as usize;
         } else if tag == K_UNPACK_INFO {
             while hpos < hlen {
                 let utag = hp[hpos];

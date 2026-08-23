@@ -65,11 +65,17 @@ pub unsafe extern "C" fn ttzip_rust_archive_create_unified(
             split_volume_size_bytes,
         ) {
             Ok(()) => TTZipStatus::Ok,
-            Err(status) => status,
+            Err(status) => {
+                crate::types::set_last_error(status, status.as_str(), dest_path.to_str(), 0);
+                status
+            }
         }
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|_| {
+        crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive creation FFI boundary", None, 0);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// C-ABI unified archive extraction endpoint.
@@ -81,6 +87,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
 ) -> TTZipStatus {
     let result = catch_unwind(|| {
         if archive_path.is_null() {
+            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
             return TTZipStatus::ErrInvalidParam;
         }
 
@@ -89,16 +96,23 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
         } else if !options.is_null() && !(*options).destination_path.is_null() {
             (*options).destination_path
         } else {
+            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
             return TTZipStatus::ErrInvalidParam;
         };
 
         let archive_str = match CStr::from_ptr(archive_path).to_str() {
             Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
+            Err(_) => {
+                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
+                return TTZipStatus::ErrInvalidParam;
+            }
         };
         let dest_str = match CStr::from_ptr(dest_c).to_str() {
             Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
+            Err(_) => {
+                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
+                return TTZipStatus::ErrInvalidParam;
+            }
         };
 
         let archive_p = Path::new(archive_str);
@@ -123,11 +137,17 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
 
         match UnifiedArchiveOrchestrator::extract_archive(archive_p, dest_p, opt_ref) {
             Ok(()) => TTZipStatus::Ok,
-            Err(status) => status,
+            Err(status) => {
+                crate::types::set_last_error(status, status.as_str(), archive_p.to_str(), 0);
+                status
+            }
         }
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|_| {
+        crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// C-ABI unified archive inspection endpoint.

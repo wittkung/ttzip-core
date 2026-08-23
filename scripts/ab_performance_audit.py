@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path("/Users/kevintung/Documents/dev/TTZip/core")
-BASELINE_DIR = Path("/tmp/ttzip_base_worktree")
+BASELINE_DIR = Path("/tmp/ttzip_baseline_ab")
 ROUNDS = 5
 
 def run_cmd(cmd, cwd=None):

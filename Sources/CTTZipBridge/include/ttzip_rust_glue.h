@@ -120,6 +120,21 @@ typedef struct TTZipAes256Context {
     uint8_t round_keys_dec[240];
 } TTZipAes256Context;
 
+typedef struct TTZipErrorInfo {
+    TTZipStatus status;
+    int32_t error_code;
+    char message[512];
+    char entry_path[256];
+    uint64_t offset;
+} TTZipErrorInfo;
+
+typedef struct TTZipPackedStringArray {
+    const char *contiguous_utf8;
+    const size_t *offsets;
+    size_t count;
+    size_t total_bytes;
+} TTZipPackedStringArray;
+
 // Lifecycle & SIMD / Checksums
 const char *ttzip_rust_version(void);
 TTZipStatus ttzip_rust_init(void);
@@ -294,9 +309,10 @@ void ttzip_rust_path_filter_free(TTZipPathFilterHandle *handle);
 // Runtime & Logging
 typedef struct TTZipCancellationToken TTZipCancellationToken;
 TTZipCancellationToken *ttzip_rust_cancellation_token_new(void);
+void ttzip_rust_cancellation_token_retain(const TTZipCancellationToken *token);
 void ttzip_rust_cancellation_token_cancel(TTZipCancellationToken *token, uint8_t reason);
 bool ttzip_rust_cancellation_token_is_cancelled(const TTZipCancellationToken *token);
-void ttzip_rust_cancellation_token_free(TTZipCancellationToken *token);
+void ttzip_rust_cancellation_token_free(const TTZipCancellationToken *token);
 typedef void (*TTZipLogCallback)(TTZipLogLevel level, const char *target_module, const char *message, const char *file, int32_t line, void *user_data);
 TTZipStatus ttzip_rust_set_logger(TTZipLogCallback callback, TTZipLogLevel min_level, void *user_data);
 void ttzip_rust_log(TTZipLogLevel level, const char *target, const char *message, const char *file, int32_t line);

@@ -86,6 +86,24 @@ impl VfsNode {
         }
     }
 
+/// Zero-allocation case-insensitive string comparator avoiding String allocation churn.
+#[inline]
+pub fn cmp_case_insensitive(a: &str, b: &str) -> Ordering {
+    let mut it_a = a.chars().flat_map(|c| c.to_lowercase());
+    let mut it_b = b.chars().flat_map(|c| c.to_lowercase());
+    loop {
+        match (it_a.next(), it_b.next()) {
+            (Some(x), Some(y)) => match x.cmp(&y) {
+                Ordering::Equal => continue,
+                ord => return ord,
+            },
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+        }
+    }
+}
+
     /// Sorts children: directories first, then alphabetical by name.
     pub fn sort_recursive(&mut self) {
         for child in &mut self.children {
@@ -94,7 +112,7 @@ impl VfsNode {
         self.children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            _ => Self::cmp_case_insensitive(&a.name, &b.name),
         });
     }
 

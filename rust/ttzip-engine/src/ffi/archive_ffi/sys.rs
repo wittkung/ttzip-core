@@ -54,6 +54,14 @@ extern "C" {
     pub(crate) fn archive_write_set_passphrase(a: *mut c_void, passphrase: *const c_char) -> c_int;
     pub(crate) fn archive_write_set_options(a: *mut c_void, opts: *const c_char) -> c_int;
     pub(crate) fn archive_write_open_filename(a: *mut c_void, filename: *const c_char) -> c_int;
+    pub(crate) fn archive_write_open2(
+        a: *mut c_void,
+        client_data: *mut c_void,
+        opener: Option<unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void) -> c_int>,
+        writer: Option<unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void, buffer: *const c_void, length: size_t) -> ssize_t>,
+        closer: Option<unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void) -> c_int>,
+        freer: Option<unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void) -> c_int>,
+    ) -> c_int;
     pub(crate) fn archive_write_header(a: *mut c_void, entry: *mut c_void) -> c_int;
     pub(crate) fn archive_write_data(a: *mut c_void, buff: *const c_void, len: size_t) -> ssize_t;
     pub(crate) fn archive_write_finish_entry(a: *mut c_void) -> c_int;

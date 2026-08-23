@@ -105,7 +105,8 @@ impl LruShard {
         self.push_front(idx);
     }
 
-    fn evict_to_disk(&mut self, spill_dir: &Path, needed_bytes: usize, max_ram: usize) {
+    fn plan_evictions(&mut self, spill_dir: &Path, needed_bytes: usize, max_ram: usize) -> Vec<(PathBuf, Vec<u8>)> {
+        let mut evictions = Vec::new();
         let mut curr = self.tail;
         while let Some(idx) = curr {
             if self.ram_bytes + needed_bytes <= max_ram {
@@ -116,17 +117,15 @@ impl LruShard {
                 if let Some(data) = self.nodes[idx].ram_data.take() {
                     let safe_filename = format!("{}.lz4", self.nodes[idx].key.replace(':', "_"));
                     let spill_file = spill_dir.join(safe_filename);
-                    if fs::write(&spill_file, &data).is_ok() {
-                        self.nodes[idx].in_ram = false;
-                        self.nodes[idx].disk_path = Some(spill_file);
-                        self.ram_bytes = self.ram_bytes.saturating_sub(data.len());
-                    } else {
-                        self.nodes[idx].ram_data = Some(data);
-                    }
+                    self.nodes[idx].in_ram = false;
+                    self.nodes[idx].disk_path = Some(spill_file.clone());
+                    self.ram_bytes = self.ram_bytes.saturating_sub(data.len());
+                    evictions.push((spill_file, data));
                 }
             }
             curr = prev;
         }
+        evictions
     }
 
     fn remove_node(&mut self, idx: usize) {
@@ -211,71 +210,81 @@ impl VFSLz4CachePool {
         let key = format!("{}:{}", session_id, chunk_index);
         let s_idx = self.shard_idx(&key);
         let now = self.current_timestamp();
-        let mut shard = self.shards[s_idx].write();
 
-        if shard.ram_bytes + comp_len > self.per_shard_max_ram {
-            shard.evict_to_disk(&self.spill_dir, comp_len, self.per_shard_max_ram);
-        }
+        let (evictions, direct_spill) = {
+            let mut shard = self.shards[s_idx].write();
 
-        if let Some(&node_idx) = shard.map.get(&key) {
-            let old_data_len = shard.nodes[node_idx].ram_data.as_ref().map(|d| d.len()).unwrap_or(0);
-            shard.ram_bytes = shard.ram_bytes.saturating_sub(old_data_len);
-            if let Some(ref path) = shard.nodes[node_idx].disk_path {
-                let _ = fs::remove_file(path);
-            }
-
-            shard.nodes[node_idx].raw_size = raw_data.len();
-            shard.nodes[node_idx].compressed_size = comp_len;
-            shard.nodes[node_idx].access_time = now;
-
-            if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
-                shard.nodes[node_idx].in_ram = true;
-                shard.nodes[node_idx].ram_data = Some(compressed);
-                shard.nodes[node_idx].disk_path = None;
-                shard.ram_bytes += comp_len;
+            let evictions = if shard.ram_bytes + comp_len > self.per_shard_max_ram {
+                shard.plan_evictions(&self.spill_dir, comp_len, self.per_shard_max_ram)
             } else {
-                let safe_filename = format!("{}.lz4", key.replace(':', "_"));
-                let spill_file = self.spill_dir.join(safe_filename);
-                let _ = fs::write(&spill_file, &compressed);
-                shard.nodes[node_idx].in_ram = false;
-                shard.nodes[node_idx].ram_data = None;
-                shard.nodes[node_idx].disk_path = Some(spill_file);
-            }
-            shard.move_to_front(node_idx);
-        } else {
-            let (in_ram, ram_data, disk_path) = if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
-                shard.ram_bytes += comp_len;
-                (true, Some(compressed), None)
-            } else {
-                let safe_filename = format!("{}.lz4", key.replace(':', "_"));
-                let spill_file = self.spill_dir.join(safe_filename);
-                let _ = fs::write(&spill_file, &compressed);
-                (false, None, Some(spill_file))
+                Vec::new()
             };
 
-            let new_node = LruNode {
-                key: key.clone(),
-                raw_size: raw_data.len(),
-                compressed_size: comp_len,
-                in_ram,
-                ram_data,
-                disk_path,
-                access_time: now,
-                prev: None,
-                next: None,
-                active: true,
-            };
+            let mut direct_spill = None;
 
-            let node_idx = if let Some(free_idx) = shard.free_indices.pop() {
-                shard.nodes[free_idx] = new_node;
-                free_idx
+            if let Some(&node_idx) = shard.map.get(&key) {
+                let old_data_len = shard.nodes[node_idx].ram_data.as_ref().map(|d| d.len()).unwrap_or(0);
+                shard.ram_bytes = shard.ram_bytes.saturating_sub(old_data_len);
+                if let Some(ref path) = shard.nodes[node_idx].disk_path {
+                    let _ = fs::remove_file(path);
+                }
+
+                shard.nodes[node_idx].raw_size = raw_data.len();
+                shard.nodes[node_idx].compressed_size = comp_len;
+                shard.nodes[node_idx].access_time = now;
+
+                if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
+                    shard.nodes[node_idx].in_ram = true;
+                    shard.nodes[node_idx].ram_data = Some(compressed);
+                    shard.nodes[node_idx].disk_path = None;
+                    shard.ram_bytes += comp_len;
+                } else {
+                    let safe_filename = format!("{}.lz4", key.replace(':', "_"));
+                    let spill_file = self.spill_dir.join(safe_filename);
+                    shard.nodes[node_idx].in_ram = false;
+                    shard.nodes[node_idx].ram_data = None;
+                    shard.nodes[node_idx].disk_path = Some(spill_file.clone());
+                    direct_spill = Some((spill_file, compressed));
+                }
+                shard.move_to_front(node_idx);
             } else {
+                let (in_ram, ram_data, disk_path) = if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
+                    shard.ram_bytes += comp_len;
+                    (true, Some(compressed), None)
+                } else {
+                    let safe_filename = format!("{}.lz4", key.replace(':', "_"));
+                    let spill_file = self.spill_dir.join(safe_filename);
+                    direct_spill = Some((spill_file.clone(), compressed));
+                    (false, None, Some(spill_file))
+                };
+
+                let new_node = LruNode {
+                    key: key.clone(),
+                    raw_size: raw_data.len(),
+                    compressed_size: comp_len,
+                    in_ram,
+                    ram_data,
+                    disk_path,
+                    access_time: now,
+                    prev: None,
+                    next: None,
+                    active: true,
+                };
+
+                let node_idx = shard.nodes.len();
                 shard.nodes.push(new_node);
-                shard.nodes.len() - 1
-            };
+                shard.map.insert(key, node_idx);
+                shard.push_front(node_idx);
+            }
 
-            shard.push_front(node_idx);
-            shard.map.insert(key, node_idx);
+            (evictions, direct_spill)
+        };
+
+        for (path, data) in evictions {
+            let _ = fs::write(path, data);
+        }
+        if let Some((path, data)) = direct_spill {
+            let _ = fs::write(path, data);
         }
 
         Ok(())

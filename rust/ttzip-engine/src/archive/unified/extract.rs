@@ -75,11 +75,13 @@ pub fn extract_archive(
 
         let open_rc = archive_read_open_filename(a, arch_c.as_ptr(), 65536);
         if open_rc != 0 {
-            // Fallback to pure SevenZ decoder
-            if let Ok(mapped) = fs::read(archive_path) {
-                if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                    if let Ok(_report) = sevenz.extract_all(destination_path, options) {
-                        return Ok(());
+            // Fallback to pure SevenZ decoder via zero-copy mmap
+            if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
+                if let Some(mapped) = source.as_slice() {
+                    if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
+                        if let Ok(_report) = sevenz.extract_all(destination_path, options) {
+                            return Ok(());
+                        }
                     }
                 }
             }
@@ -157,6 +159,16 @@ unsafe fn extract_from_archive_handle(
             let symlink_raw = archive_entry_symlink(entry);
             if !symlink_raw.is_null() {
                 if let Ok(symlink_target) = CStr::from_ptr(symlink_raw).to_str() {
+                    // Reject absolute symlink targets and targets resolving outside destination
+                    if symlink_target.starts_with('/') || symlink_target.starts_with('\\') {
+                        return Err(TTZipStatus::ErrSecurityViolation);
+                    }
+                    let parent_dir = target_path.parent().unwrap_or(destination_path);
+                    let resolved_target = parent_dir.join(symlink_target);
+                    if sanitize_and_validate_path(destination_path, &resolved_target.to_string_lossy()).is_err() {
+                        return Err(TTZipStatus::ErrSecurityViolation);
+                    }
+                    crate::fs::safe_extract::validate_no_intermediate_symlinks(destination_path, &target_path)?;
                     if target_path.exists() || fs::symlink_metadata(&target_path).is_ok() {
                         let _ = fs::remove_file(&target_path);
                     }
@@ -190,38 +202,37 @@ unsafe fn extract_from_archive_handle(
                 let _ = apfs_preallocate(file.as_raw_fd(), size as i64);
             }
 
-            loop {
-                let r = archive_read_data(a, buf.as_mut_ptr() as *mut c_void, buf.len());
-                if r < 0 {
-                    drop(file);
-                    let _ = fs::remove_file(&target_path);
-                    return Err(TTZipStatus::ErrInvalidPassword);
-                }
-                if r == 0 {
-                    break;
-                }
-                let n = r as usize;
-                if file.write_all(&buf[..n]).is_err() {
-                    drop(file);
-                    let _ = fs::remove_file(&target_path);
+            let mut remaining = size;
+            while remaining > 0 {
+                let to_read = buf.len().min(remaining as usize);
+                let bytes_read = archive_read_data(a, buf.as_mut_ptr() as *mut c_void, to_read);
+                if bytes_read < 0 {
                     return Err(TTZipStatus::ErrExtractionFailed);
                 }
-                total_processed = total_processed.saturating_add(n as u64);
-            }
-        }
-
-        if let Some(cb) = options.progress_callback {
-            if !cb(total_processed, total_processed, raw_path, options.user_data) {
-                return Err(TTZipStatus::Cancelled);
+                if bytes_read == 0 {
+                    break;
+                }
+                if file.write_all(&buf[..bytes_read as usize]).is_err() {
+                    return Err(TTZipStatus::ErrExtractionFailed);
+                }
+                remaining = remaining.saturating_sub(bytes_read as u64);
+                total_processed = total_processed.saturating_add(bytes_read as u64);
+                if let Some(cb) = options.progress_callback {
+                    if !cb(total_processed, total_processed, raw_path, options.user_data) {
+                        return Err(TTZipStatus::Cancelled);
+                    }
+                }
             }
         }
     }
 
     if total_processed == 0 && !options.dry_run {
-        if let Ok(mapped) = fs::read(archive_path) {
-            if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                if let Ok(_report) = sevenz.extract_all(destination_path, options) {
-                    return Ok(());
+        if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
+            if let Some(mapped) = source.as_slice() {
+                if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
+                    if let Ok(_report) = sevenz.extract_all(destination_path, options) {
+                        return Ok(());
+                    }
                 }
             }
         }

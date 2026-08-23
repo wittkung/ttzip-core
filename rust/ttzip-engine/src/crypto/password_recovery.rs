@@ -190,16 +190,24 @@ pub fn recover_dictionary_rayon(
         if cancel_token.is_some_and(|t| t.is_cancelled()) {
             return None;
         }
+        let mut local_attempts = 0u64;
         for (idx, &pwd) in chunk.iter().enumerate() {
             if idx % 64 == 0 && cancel_token.is_some_and(|t| t.is_cancelled()) {
+                if let Some(counter) = attempts {
+                    counter.fetch_add(local_attempts, Ordering::Relaxed);
+                }
                 return None;
             }
-            if let Some(counter) = attempts {
-                counter.fetch_add(1, Ordering::Relaxed);
-            }
+            local_attempts += 1;
             if target.verify(pwd) {
+                if let Some(counter) = attempts {
+                    counter.fetch_add(local_attempts, Ordering::Relaxed);
+                }
                 return Some(pwd.to_string());
             }
+        }
+        if let Some(counter) = attempts {
+            counter.fetch_add(local_attempts, Ordering::Relaxed);
         }
         None
     })
@@ -234,22 +242,32 @@ pub fn recover_brute_force_rayon(
             if found.is_some() {
                 return found;
             }
-        } else {
+        } else if len == 2 || chars.len() >= 64 {
             let found = chars.par_iter().find_map_any(|&first_char| {
                 let mut candidate = String::with_capacity(len);
                 candidate.push(first_char);
                 let mut indices = vec![0usize; len - 1];
                 let num_chars = chars.len();
+                let mut local_attempts = 0u64;
                 loop {
-                    if cancel_token.is_some_and(|t| t.is_cancelled()) {
-                        return None;
+                    if local_attempts % 1024 == 0 {
+                        if let Some(cnt) = attempts {
+                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                            local_attempts = 0;
+                        }
+                        if cancel_token.is_some_and(|t| t.is_cancelled()) {
+                            return None;
+                        }
                     }
                     candidate.truncate(1);
                     for &idx in &indices {
                         candidate.push(chars[idx]);
                     }
-                    attempts.map(|cnt| cnt.fetch_add(1, Ordering::Relaxed));
+                    local_attempts += 1;
                     if target.verify(&candidate) {
+                        if let Some(cnt) = attempts {
+                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                        }
                         return Some(candidate);
                     }
                     let mut pos = len - 2;
@@ -260,6 +278,71 @@ pub fn recover_brute_force_rayon(
                         }
                         indices[pos] = 0;
                         if pos == 0 {
+                            if let Some(cnt) = attempts {
+                                cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                            }
+                            return None;
+                        }
+                        pos -= 1;
+                    }
+                }
+            });
+            if found.is_some() {
+                return found;
+            }
+        } else {
+            // 2-level prefix Cartesian product decomposition for small charsets to saturate multi-core CPUs
+            let mut prefixes = Vec::with_capacity(chars.len() * chars.len());
+            for &c1 in &chars {
+                for &c2 in &chars {
+                    prefixes.push((c1, c2));
+                }
+            }
+            let found = prefixes.par_iter().find_map_any(|&(c1, c2)| {
+                let mut candidate = String::with_capacity(len);
+                candidate.push(c1);
+                candidate.push(c2);
+                let mut indices = vec![0usize; len - 2];
+                let num_chars = chars.len();
+                let mut local_attempts = 0u64;
+                loop {
+                    if local_attempts % 1024 == 0 {
+                        if let Some(cnt) = attempts {
+                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                            local_attempts = 0;
+                        }
+                        if cancel_token.is_some_and(|t| t.is_cancelled()) {
+                            return None;
+                        }
+                    }
+                    candidate.truncate(2);
+                    for &idx in &indices {
+                        candidate.push(chars[idx]);
+                    }
+                    local_attempts += 1;
+                    if target.verify(&candidate) {
+                        if let Some(cnt) = attempts {
+                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                        }
+                        return Some(candidate);
+                    }
+                    if indices.is_empty() {
+                        if let Some(cnt) = attempts {
+                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                        }
+                        return None;
+                    }
+                    let mut pos = len - 3;
+                    loop {
+                        indices[pos] += 1;
+                        if indices[pos] < num_chars {
+                            break;
+                        }
+                        indices[pos] = 0;
+                        if pos == 0 {
+                            if let Some(cnt) = attempts {
+                                cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                            }
                             return None;
                         }
                         pos -= 1;

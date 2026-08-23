@@ -112,6 +112,45 @@ impl Aes256Context {
 
         w.zeroize();
 
+#[cfg(not(target_arch = "aarch64"))]
+#[inline(always)]
+fn xtime(b: u8) -> u8 {
+    if (b & 0x80) != 0 { (b << 1) ^ 0x1b } else { b << 1 }
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline(always)]
+fn inv_mix_column(c: [u8; 4]) -> [u8; 4] {
+    let mul = |b: u8| -> (u8, u8, u8, u8) {
+        let x2 = xtime(b);
+        let x4 = xtime(x2);
+        let x8 = xtime(x4);
+        (x8 ^ b, x8 ^ x2 ^ b, x8 ^ x4 ^ b, x8 ^ x4 ^ x2) // (9, 11, 13, 14)
+    };
+    let (m9_0, m11_0, m13_0, m14_0) = mul(c[0]);
+    let (m9_1, m11_1, m13_1, m14_1) = mul(c[1]);
+    let (m9_2, m11_2, m13_2, m14_2) = mul(c[2]);
+    let (m9_3, m11_3, m13_3, m14_3) = mul(c[3]);
+
+    [
+        m14_0 ^ m11_1 ^ m13_2 ^ m9_3,
+        m9_0 ^ m14_1 ^ m11_2 ^ m13_3,
+        m13_0 ^ m9_1 ^ m14_2 ^ m11_3,
+        m11_0 ^ m13_1 ^ m9_2 ^ m14_3,
+    ]
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+fn inv_mix_columns_block(block: &[u8; 16]) -> [u8; 16] {
+    let mut out = [0u8; 16];
+    for col in 0..4 {
+        let c = [block[col * 4], block[col * 4 + 1], block[col * 4 + 2], block[col * 4 + 3]];
+        let res = inv_mix_column(c);
+        out[col * 4..col * 4 + 4].copy_from_slice(&res);
+    }
+    out
+}
+
         // Generate Decryption Round Keys
         #[cfg(target_arch = "aarch64")]
         {
@@ -129,7 +168,11 @@ impl Aes256Context {
 
         #[cfg(not(target_arch = "aarch64"))]
         {
-            self.round_keys_dec = self.round_keys_enc;
+            self.round_keys_dec[0] = self.round_keys_enc[14];
+            for r in 1..14 {
+                self.round_keys_dec[r] = inv_mix_columns_block(&self.round_keys_enc[14 - r]);
+            }
+            self.round_keys_dec[14] = self.round_keys_enc[0];
         }
     }
 }

@@ -242,6 +242,7 @@ fn main() {
     // System libraries & frameworks required on macOS
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
+        println!("cargo:rustc-link-lib=archive");
         println!("cargo:rustc-link-lib=bz2");
         println!("cargo:rustc-link-lib=iconv");
         println!("cargo:rustc-link-lib=xml2");

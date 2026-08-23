@@ -51,28 +51,46 @@ pub fn create_archive(
             .map(|_| ());
     }
 
-    // If split volume is requested, write to temporary file first
-    let temp_archive_path = if split_volume_size_bytes > 0 {
-        let temp_dir = std::env::temp_dir();
-        let rand_name = format!(
-            "ttzip_split_tmp_{}_{}.tmp",
-            std::process::id(),
-            destination_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("archive")
-        );
-        temp_dir.join(rand_name)
-    } else {
-        destination_path.to_path_buf()
-    };
+unsafe extern "C" fn split_write_cb(
+    _a: *mut c_void,
+    client_data: *mut c_void,
+    buffer: *const c_void,
+    length: libc::size_t,
+) -> libc::ssize_t {
+    if client_data.is_null() || buffer.is_null() {
+        return -1;
+    }
+    let writer = &mut *(client_data as *mut SplitVolumeWriter);
+    let slice = std::slice::from_raw_parts(buffer as *const u8, length);
+    match writer.write_all(slice) {
+        Ok(()) => length as libc::ssize_t,
+        Err(_) => -1,
+    }
+}
 
-    let dest_c = CString::new(
-        temp_archive_path
-            .to_str()
-            .ok_or(TTZipStatus::ErrInvalidParam)?,
-    )
-    .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+unsafe extern "C" fn split_close_cb(
+    _a: *mut c_void,
+    client_data: *mut c_void,
+) -> libc::c_int {
+    if client_data.is_null() {
+        return 0;
+    }
+    let writer = &mut *(client_data as *mut SplitVolumeWriter);
+    match writer.close() {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+
+unsafe extern "C" fn split_free_cb(
+    _a: *mut c_void,
+    client_data: *mut c_void,
+) -> libc::c_int {
+    if !client_data.is_null() {
+        drop(Box::from_raw(client_data as *mut SplitVolumeWriter));
+    }
+    0
+}
 
     unsafe {
         let a = archive_write_new();
@@ -133,7 +151,40 @@ pub fn create_archive(
             }
         }
 
-        let open_rc = archive_write_open_filename(a, dest_c.as_ptr());
+        let open_rc = if split_volume_size_bytes > 0 {
+            let is_zip = resolved_format == TTZipArchiveFormat::Zip;
+            let scheme = if is_zip {
+                VolumeNamingScheme::PkzipSpanned
+            } else {
+                VolumeNamingScheme::NumberedExtension
+            };
+
+            let split_writer = SplitVolumeWriter::new(
+                destination_path,
+                split_volume_size_bytes,
+                scheme,
+            )
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+            let split_box = Box::into_raw(Box::new(split_writer));
+            archive_write_open2(
+                a,
+                split_box as *mut c_void,
+                None,
+                Some(split_write_cb),
+                Some(split_close_cb),
+                Some(split_free_cb),
+            )
+        } else {
+            let dest_c = CString::new(
+                destination_path
+                    .to_str()
+                    .ok_or(TTZipStatus::ErrInvalidParam)?,
+            )
+            .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+            archive_write_open_filename(a, dest_c.as_ptr())
+        };
+
         if open_rc != 0 {
             return Err(TTZipStatus::ErrOpenFailed);
         }
@@ -170,53 +221,53 @@ pub fn create_archive(
             };
 
             archive_entry_set_pathname(entry, rel_c.as_ptr());
-            archive_entry_set_perm(entry, (meta.permissions().mode() & 0o7777) as mode_t);
+            archive_entry_set_mtime(
+                entry,
+                meta.modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs() as time_t)
+                    .unwrap_or(0),
+                0,
+            );
 
-            let mtime = meta
-                .modified()
-                .ok()
-                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                .map(|d| d.as_secs() as time_t)
-                .unwrap_or(0);
-            archive_entry_set_mtime(entry, mtime, 0);
-
-            if meta.file_type().is_symlink() {
+            let filetype = meta.file_type();
+            if filetype.is_symlink() {
                 archive_entry_set_filetype(entry, libc::S_IFLNK as u32);
+                archive_entry_set_perm(entry, 0o777 as mode_t);
                 archive_entry_set_size(entry, 0);
-                if let Ok(link_target) = fs::read_link(&abs_path) {
-                    if let Ok(link_c) = CString::new(link_target.to_string_lossy().as_bytes()) {
-                        archive_entry_set_symlink(entry, link_c.as_ptr());
+                if let Ok(target) = fs::read_link(&abs_path) {
+                    if let Ok(target_c) = CString::new(target.to_string_lossy().as_bytes()) {
+                        archive_entry_set_symlink(entry, target_c.as_ptr());
                     }
                 }
-                let r_hdr = archive_write_header(a, entry);
-                if r_hdr != 0 {
-                    return Err(TTZipStatus::ErrCompressionFailed);
-                }
+                archive_write_header(a, entry);
                 archive_write_finish_entry(a);
-            } else if meta.is_dir() {
+            } else if filetype.is_dir() {
                 archive_entry_set_filetype(entry, libc::S_IFDIR as u32);
+                archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
                 archive_entry_set_size(entry, 0);
-                let r_hdr = archive_write_header(a, entry);
-                if r_hdr != 0 {
-                    return Err(TTZipStatus::ErrCompressionFailed);
-                }
+                archive_write_header(a, entry);
                 archive_write_finish_entry(a);
             } else {
+                let size = meta.len();
                 archive_entry_set_filetype(entry, libc::S_IFREG as u32);
-                archive_entry_set_size(entry, meta.len() as i64);
-                let r_hdr = archive_write_header(a, entry);
-                if r_hdr != 0 {
+                archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
+                archive_entry_set_size(entry, size as i64);
+
+                let header_rc = archive_write_header(a, entry);
+                if header_rc != 0 {
                     return Err(TTZipStatus::ErrCompressionFailed);
                 }
 
                 let mut file = File::open(&abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
                 loop {
-                    let n = match file.read(&mut buf) {
-                        Ok(0) => break,
-                        Ok(n) => n,
-                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-                        Err(_) => return Err(TTZipStatus::ErrCompressionFailed),
-                    };
+                    let n = file
+                        .read(&mut buf)
+                        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                    if n == 0 {
+                        break;
+                    }
 
                     let written = archive_write_data(a, buf.as_ptr() as *const c_void, n);
                     if written < 0 {
@@ -232,47 +283,6 @@ pub fn create_archive(
                     return Err(TTZipStatus::Cancelled);
                 }
             }
-        }
-    }
-
-    // Handle Split Volume Slicing
-    if split_volume_size_bytes > 0 {
-        let total_file_len = fs::metadata(&temp_archive_path)
-            .map_err(|_| TTZipStatus::ErrOpenFailed)?
-            .len();
-
-        if total_file_len > split_volume_size_bytes {
-            let is_zip = resolved_format == TTZipArchiveFormat::Zip;
-            let scheme = if is_zip {
-                VolumeNamingScheme::PkzipSpanned
-            } else {
-                VolumeNamingScheme::NumberedExtension
-            };
-
-            let mut split_writer = SplitVolumeWriter::new(
-                destination_path,
-                split_volume_size_bytes,
-                scheme,
-            )
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-            let mut temp_file = File::open(&temp_archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-            let mut copy_buf = vec![0u8; 64 * 1024];
-            loop {
-                let n = temp_file
-                    .read(&mut copy_buf)
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                if n == 0 {
-                    break;
-                }
-                split_writer
-                    .write_all(&copy_buf[..n])
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            }
-            split_writer.close().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            let _ = fs::remove_file(&temp_archive_path);
-        } else {
-            let _ = fs::rename(&temp_archive_path, destination_path);
         }
     }
 

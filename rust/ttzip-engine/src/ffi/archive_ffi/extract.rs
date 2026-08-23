@@ -181,6 +181,17 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
                 let symlink_raw = archive_entry_symlink(entry);
                 if !symlink_raw.is_null() {
                     if let Ok(symlink_target) = CStr::from_ptr(symlink_raw).to_str() {
+                        if symlink_target.starts_with('/') || symlink_target.starts_with('\\') {
+                            return TTZipStatus::ErrSecurityViolation;
+                        }
+                        let parent_dir = target_path.parent().unwrap_or(dest_p);
+                        let resolved_target = parent_dir.join(symlink_target);
+                        if sanitize_and_validate_path(dest_p, &resolved_target.to_string_lossy()).is_err() {
+                            return TTZipStatus::ErrSecurityViolation;
+                        }
+                        if crate::fs::safe_extract::validate_no_intermediate_symlinks(dest_p, &target_path).is_err() {
+                            return TTZipStatus::ErrSecurityViolation;
+                        }
                         if target_path.exists() || fs::symlink_metadata(&target_path).is_ok() {
                             let _ = fs::remove_file(&target_path);
                         }
@@ -222,10 +233,12 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
                     if r < 0 {
                         drop(file);
                         let _ = fs::remove_file(&target_path);
-                        if let Ok(mapped) = fs::read(archive_p) {
-                            if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                                if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
-                                    return TTZipStatus::Ok;
+                        if let Ok(source) = crate::archive::source::open_archive_source(archive_p) {
+                            if let Some(mapped) = source.as_slice() {
+                                if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
+                                    if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
+                                        return TTZipStatus::Ok;
+                                    }
                                 }
                             }
                         }

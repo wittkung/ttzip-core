@@ -13,19 +13,22 @@ use crate::fs::filter::{
 };
 use libc::c_char;
 use std::ffi::CStr;
+use std::mem::ManuallyDrop;
 use std::panic::catch_unwind;
 
 // MARK: - Archive Filter DSL FFI
 
 pub struct TTZipDslFilterHandle {
-    expr: FilterExpr<'static>,
+    expr: ManuallyDrop<FilterExpr<'static>>,
     raw_query: *mut str,
 }
 
 impl Drop for TTZipDslFilterHandle {
     fn drop(&mut self) {
-        if !self.raw_query.is_null() {
-            unsafe {
+        unsafe {
+            // Drop expression AST first before freeing the underlying query string memory
+            ManuallyDrop::drop(&mut self.expr);
+            if !self.raw_query.is_null() {
                 let _ = Box::from_raw(self.raw_query);
             }
         }
@@ -49,7 +52,7 @@ pub unsafe extern "C" fn ttzip_rust_dsl_filter_new(
         let leaked_raw = Box::into_raw(query_str.to_string().into_boxed_str());
         let expr = DslParser::parse_or_fallback(unsafe { &*leaked_raw });
         Box::into_raw(Box::new(TTZipDslFilterHandle {
-            expr,
+            expr: ManuallyDrop::new(expr),
             raw_query: leaked_raw,
         }))
     });

@@ -12,6 +12,19 @@ use crate::crypto::aes256::aes256_ctr_crypt;
 use crate::types::TTZipStatus;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+/// Constant-time byte slice comparison to prevent timing side-channel leaks.
+#[inline]
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
 /// Derived WinZip AES-256 key material.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct WinZipAes256Keys {
@@ -65,13 +78,13 @@ pub fn winzip_aes256_decrypt_and_verify(
     let keys = winzip_aes256_derive_keys(password, &salt)?;
 
     // 1. Password verification check
-    if keys.pvv != stored_pvv {
+    if !constant_time_eq(&keys.pvv, &stored_pvv) {
         return Err(TTZipStatus::ErrInvalidPassword);
     }
 
     // 2. Authentication check
     let computed_mac = hmac_sha1_10(&keys.auth_key, ciphertext);
-    if computed_mac != stored_mac {
+    if !constant_time_eq(&computed_mac, stored_mac) {
         return Err(TTZipStatus::ErrInvalidPassword);
     }
 

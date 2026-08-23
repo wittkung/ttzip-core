@@ -14,6 +14,30 @@ use std::fs::{self, File};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
 
+/// Strictly validates that no intermediate ancestor directory between dest_dir and target is a symlink.
+pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Result<(), TTZipStatus> {
+    let mut current = dest_dir.to_path_buf();
+    let relative = match target.strip_prefix(dest_dir) {
+        Ok(rel) => rel,
+        Err(_) => return Err(TTZipStatus::ErrSecurityViolation),
+    };
+
+    let mut components = relative.components().peekable();
+    while let Some(comp) = components.next() {
+        // If this is the leaf component, stop intermediate check
+        if components.peek().is_none() {
+            break;
+        }
+        current.push(comp);
+        if let Ok(meta) = fs::symlink_metadata(&current) {
+            if meta.file_type().is_symlink() {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Sanitizes a relative entry path and strictly validates that it does not escape `dest_dir`.
 ///
 /// Defends against:
@@ -138,6 +162,10 @@ impl SafeExtractEngine {
 
     /// Creates directory hierarchy with temporary restricted `0700` POSIX permissions.
     pub fn create_dir_all_secure(&mut self, path: &Path, mode: u32, mtime_secs: i64) -> std::io::Result<()> {
+        let parent = path.parent().unwrap_or(path);
+        validate_no_intermediate_symlinks(parent, path)
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
+
         let mut builder = fs::DirBuilder::new();
         builder.recursive(true);
         builder.mode(0o700); // Stage 1: Temporary restricted permissions
@@ -163,6 +191,10 @@ impl SafeExtractEngine {
         mtime_secs: i64,
         overwrite_existing: bool,
     ) -> std::io::Result<File> {
+        let parent = path.parent().unwrap_or(path);
+        validate_no_intermediate_symlinks(parent, path)
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
+
         let mut options = fs::OpenOptions::new();
         options.write(true).create(true);
 
