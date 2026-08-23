@@ -116,15 +116,13 @@ echo "--> [INFO] Packaging static library directly into ${XCFRAMEWORK_MAC_DIR}/l
 mkdir -p "${XCFRAMEWORK_MAC_DIR}"
 
 NATIVE_CODECS_LIBS=()
-for nlib in $(find "${RUST_DIR}/target" -name "libttzip_native_codecs.a" 2>/dev/null); do
-    NATIVE_CODECS_LIBS+=("${nlib}")
-done
+NEWEST_CODEC_LIB="$(find "${RUST_DIR}/target" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
+if [ -n "${NEWEST_CODEC_LIB}" ] && [ -f "${NEWEST_CODEC_LIB}" ]; then
+    NATIVE_CODECS_LIBS+=("${NEWEST_CODEC_LIB}")
+fi
 
-if [ -f "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" ]; then
-    echo "--> [INFO] Merging with existing libTTZipVendor.a..."
-    libtool -static -no_warning_for_no_symbols -o "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${BUILT_LIBS[@]}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${NATIVE_CODECS_LIBS[@]}"
-elif [ ${#NATIVE_CODECS_LIBS[@]} -gt 0 ]; then
-    echo "--> Merging native codecs archives: ${NATIVE_CODECS_LIBS[*]}"
+if [ ${#NATIVE_CODECS_LIBS[@]} -gt 0 ]; then
+    echo "--> Merging glue library with native codecs: ${NATIVE_CODECS_LIBS[*]}"
     libtool -static -no_warning_for_no_symbols -o "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${BUILT_LIBS[@]}" "${NATIVE_CODECS_LIBS[@]}"
 elif [ ${#BUILT_LIBS[@]} -eq 1 ]; then
     cp "${BUILT_LIBS[0]}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"

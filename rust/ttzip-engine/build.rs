@@ -12,7 +12,6 @@ use std::process::Command;
 fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
     let fast_lzma2_dir = repo_root.join("Vendor/turbobench/fast-lzma2");
     let lzfse_dir = repo_root.join("Vendor/turbobench/lzfse/src");
-    let snappy_dir = repo_root.join("Vendor/snappy-upstream");
 
     let mut obj_files = Vec::new();
 

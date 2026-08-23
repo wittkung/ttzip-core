@@ -26,8 +26,12 @@ panic = "unwind"
 strip = true
 
 [profile.test]
-opt-level = 3
+opt-level = 1
 debug = 1
+codegen-units = 16
+
+[profile.test.package.ttzip-engine]
+opt-level = 2
 
 [workspace.lints.rust]
 unsafe_code = "allow"

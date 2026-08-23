@@ -42,6 +42,8 @@ if [[ $# -eq 0 ]]; then
     RUN_ALL=true
 fi
 
+USE_RELEASE=false
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --unit)
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
             RUN_BENCH=true
             shift
             ;;
+        --release)
+            USE_RELEASE=true
+            shift
+            ;;
         --all)
             RUN_ALL=true
             shift
@@ -74,11 +80,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ "${RUN_ALL}" = true ]; then
+if [ "${RUN_ALL}" = true ] || ([ "${RUN_UNIT}" = false ] && [ "${RUN_PROPS}" = false ] && [ "${RUN_FUZZ}" = false ] && [ "${RUN_BENCH}" = false ]); then
     RUN_UNIT=true
     RUN_PROPS=true
     RUN_FUZZ=true
-    RUN_BENCH=true
 fi
 
 cd "${RUST_DIR}"
@@ -86,42 +91,23 @@ cd "${RUST_DIR}"
 echo "================================================================"
 echo "🦀 TTZip Rust Industrial Test Suite Runner"
 echo "   Working Directory: ${RUST_DIR}"
+echo "   Release Mode:      ${USE_RELEASE}"
 echo "================================================================"
 
-# 1. Unit & Integration Tests
-if [ "${RUN_UNIT}" = true ]; then
-    echo "--> [1/4] Running Unit & Integration Tests (release mode)..."
-    cargo test --release -p ttzip-engine --lib \
-        --test codecs_integration_tests \
-        --test crypto_integration_tests \
-        --test differential_oracle \
-        --test phase4_integration_tests \
-        --test phase5_archive_ffi_integration_tests \
-        --test phase5_containers_integration_tests
-    cargo test --release -p ttzip-tui
-    echo "✅ [PASS] Unit & Integration Tests completed successfully."
+CARGO_FLAGS=()
+if [ "${USE_RELEASE}" = true ]; then
+    CARGO_FLAGS+=("--release")
 fi
 
-# 2. Property-Based Invariant Tests (proptest)
-if [ "${RUN_PROPS}" = true ]; then
-    echo "--> [2/4] Running Property-Based Invariant Tests (release mode)..."
-    cargo test --release -p ttzip-engine --test property_tests -- --nocapture
-    echo "✅ [PASS] Property-Based Tests completed successfully."
+if [ "${RUN_UNIT}" = true ] || [ "${RUN_PROPS}" = true ] || [ "${RUN_FUZZ}" = true ]; then
+    echo "--> [1/2] Executing Unified Workspace Test Matrix..."
+    cargo test "${CARGO_FLAGS[@]}" --workspace --all-targets -- --nocapture
+    echo "✅ [PASS] Unified Workspace Tests completed successfully."
 fi
 
-# 3. Fuzzing Harness Targets
-if [ "${RUN_FUZZ}" = true ]; then
-    echo "--> [3/4] Running Mutation Fuzzing Harness Targets (release mode)..."
-    if cargo test --release -p ttzip-engine --test fuzz_harness -- --nocapture 2>/dev/null; then
-        echo "✅ [PASS] Fuzzing Harness completed successfully."
-    else
-        echo "⚠️  [INFO] fuzz_harness test not yet built or skipped."
-    fi
-fi
-
-# 4. Criterion Micro-benchmarks
+# Micro-benchmarks
 if [ "${RUN_BENCH}" = true ]; then
-    echo "--> [4/4] Running Criterion Micro-benchmarks (release mode)..."
+    echo "--> [2/2] Running Criterion Micro-benchmarks..."
     cargo bench -p ttzip-engine || true
     echo "✅ [PASS] Criterion Benchmarks executed."
 fi
