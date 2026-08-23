@@ -17,7 +17,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
 
 export PATH="$HOME/.cargo/bin:$PATH"
-export RUST_TEST_THREADS=1
+NCPU="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+export RUST_TEST_THREADS="${NCPU}"
 
 RUN_UNIT=false
 RUN_PROPS=false
