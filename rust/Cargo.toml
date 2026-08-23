@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "ttzip-engine",
-    "ttzip-glue",
     "ttzip-tui",
     "ttzip-python",
 ]

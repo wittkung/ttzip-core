@@ -1646,27 +1646,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ttzip-glue"
-version = "1.0.0"
-dependencies = [
- "adler2",
- "aes",
- "cbc",
- "crc32fast",
- "ctr",
- "flate2",
- "hex",
- "libc",
- "log",
- "proptest",
- "sha2",
- "tar",
- "tempfile",
- "ttzip-engine",
- "zeroize",
-]
-
-[[package]]
 name = "ttzip-python"
 version = "1.0.0"
 dependencies = [

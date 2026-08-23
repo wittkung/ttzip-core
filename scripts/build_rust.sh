@@ -99,10 +99,10 @@ echo "--> Target architectures: ${TARGETS[*]}"
 BUILT_LIBS=()
 
 for target in "${TARGETS[@]}"; do
-    echo "--> [INFO] Building ttzip-glue for ${target} (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-glue --target "${target}" ${CARGO_FLAGS}
+    echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${target}" ${CARGO_FLAGS}
     
-    TARGET_LIB="${RUST_DIR}/target/${target}/${BUILD_MODE}/libttzip_glue.a"
+    TARGET_LIB="${RUST_DIR}/target/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
         BUILT_LIBS+=("${TARGET_LIB}")
     else
