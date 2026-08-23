@@ -1,0 +1,20 @@
+[package]
+name = "ttzip-python"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-throughput, SIMD-accelerated archive and compression engine for Python"
+
+[lib]
+name = "_ttzip"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ttzip-glue = { path = "../ttzip-glue", version = "1.0.0" }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+libc = "0.2"
+miniz_oxide = "0.8"
+
+[lints]
+workspace = true

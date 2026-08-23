@@ -56,7 +56,10 @@ let package = Package(
         .testTarget(
             name: "TTZipTests",
             dependencies: ["TTZipCore", "CTTZipBridge"],
-            path: "Tests/TTZipTests"
+            path: "Tests/TTZipTests",
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )

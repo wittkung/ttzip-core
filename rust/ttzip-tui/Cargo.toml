@@ -17,7 +17,7 @@ name = "ttzip_tui"
 path = "src/lib.rs"
 
 [dependencies]
-ttzip-glue = { path = "../ttzip-glue" }
+ttzip-glue = { path = "../ttzip-glue", version = "1.0.0" }
 ratatui = { version = "0.28", features = ["all-widgets"] }
 crossterm = { version = "0.28", features = ["event-stream"] }
 clap = { version = "4.5", features = ["derive", "cargo"] }

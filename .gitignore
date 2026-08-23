@@ -6,3 +6,13 @@ target/
 xcuserdata/
 *.swp
 *.orig
+
+# Python build artifacts
+*.so
+*.dylib
+*.egg-info/
+dist/
+wheels/
+__pycache__/
+.pytest_cache/
+.coverage
