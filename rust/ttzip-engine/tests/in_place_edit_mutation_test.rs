@@ -7,7 +7,7 @@
 
 use std::fs;
 use tempfile::tempdir;
-use ttzip_engine::archive::in_place_edit::{InPlaceAction, InPlaceArchiveSession};
+use ttzip_engine::archive::in_place_edit::InPlaceArchiveSession;
 use ttzip_engine::types::{TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod};
 use ttzip_engine::zip::create_zip_archive;
 use ttzip_engine::zip::reader::ZipArchive;

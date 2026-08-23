@@ -222,7 +222,7 @@ impl DiagnosticErrorContext {
 }
 
 thread_local! {
-    static LAST_ERROR: RefCell<DiagnosticErrorContext> = RefCell::new(DiagnosticErrorContext::empty());
+    static LAST_ERROR: RefCell<DiagnosticErrorContext> = const { RefCell::new(DiagnosticErrorContext::empty()) };
 }
 
 pub fn set_last_error(status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64) {

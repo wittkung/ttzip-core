@@ -223,7 +223,7 @@ pub fn in_place_edit_zip(
         } else {
             // Untouched entry: zero recompression, preserve raw compressed payload
             let (payload_offset, _header_size) =
-                parse_local_file_header(&mapped, entry.lfh_offset as usize)?;
+                parse_local_file_header(mapped, entry.lfh_offset as usize)?;
             let payload_start = payload_offset;
             let payload_end = payload_start + entry.compressed_size as usize;
             if payload_end > mapped.len() {
@@ -384,7 +384,7 @@ pub fn in_place_edit_sevenz(
         ek == tg || ek.ends_with(&format!("/{}", tg)) || tg.ends_with(&format!("/{}", ek))
     };
 
-    if let Ok(archive) = SevenZArchive::open_slice(&mapped) {
+    if let Ok(archive) = SevenZArchive::open_slice(mapped) {
         for i in 0..archive.len() {
             let meta = &archive.files()[i];
             let key = meta.rel_path.trim_start_matches('/').to_string();

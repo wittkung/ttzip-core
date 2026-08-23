@@ -16,3 +16,8 @@ wheels/
 __pycache__/
 .pytest_cache/
 .coverage
+
+# Ephemeral benchmark telemetry logs
+docs/benchmarks/benchmark_report_*.json
+docs/benchmarks/benchmark_report_*.md
+

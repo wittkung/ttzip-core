@@ -50,9 +50,7 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
             }
 
             // Word boundary bonus
-            if t_idx == 0 {
-                char_score += 30;
-            } else if prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
+            if t_idx == 0 || prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
                 char_score += 30;
             } else if prev_c.is_lowercase() && tc.is_uppercase() {
                 char_score += 25; // CamelCase boundary
