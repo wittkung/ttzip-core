@@ -146,6 +146,27 @@ cargo build --manifest-path rust/Cargo.toml --release
 
 ---
 
+## 🌐 Multi-Language Native SDK Matrix (9 Ecosystems)
+
+`ttzip-core` provides first-class native bindings and zero-copy FFI wrappers across all major programming environments:
+
+| Language / Framework | Integration / Package | Quickstart Snippet |
+| :--- | :--- | :--- |
+| **Rust** | `Cargo.toml`: `ttzip-engine = "1.0.0"` | `ttzip_engine::zip::compress(&src, &dst, 6)` |
+| **Swift 6** | `Package.swift`: `.package(url: "...", branch: "main")` | `let engine = TTZipCoreEngine()` |
+| **Python 3** | `pip install ttzip` | `import ttzip; ttzip.compress(["file.txt"], "out.zip")` |
+| **Node.js / TS** | `npm install ttzip` | `import { createArchive } from "ttzip";` |
+| **C11 Native** | `find_package(TTZip REQUIRED)` | `#include <ttzip.h>` &rarr; `ttzip_create_archive(...)` |
+| **Modern C++20** | `find_package(TTZip REQUIRED)` | `#include <ttzip.hpp>` &rarr; `ttzip::compress_files(...)` |
+| **Java 21+ (FFM)** | `com.ttzip:ttzip:1.0.0` | `TTZip.compress(List.of("src"), "out.zip");` |
+| **Kotlin** | `com.ttzip:ttzip:1.0.0` | `file.ttzipCompress(destinationFile)` |
+| **C# / .NET 8** | `TTZip.dll` / NuGet | `TTZipEngine.CreateArchive(sources, "out.zip");` |
+| **Dart / Flutter** | `ttzip: ^1.0.0` | `await TTZip.compress(sources: ["src"], destination: "out.zip");` |
+
+See the [`examples/`](examples/) directory for complete, executable sample projects for every ecosystem.
+
+---
+
 ## 💻 CLI Usage Guide (`ttzip-cli`)
 
 `ttzip-cli` provides dedicated POSIX subcommands with pipeline and streaming support:
