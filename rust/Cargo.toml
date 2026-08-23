@@ -2,6 +2,7 @@
 members = [
     "ttzip-glue",
     "ttzip-tui",
+    "ttzip-python",
 ]
 resolver = "2"
 
@@ -9,8 +10,12 @@ resolver = "2"
 version = "1.0.0"
 authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause OR Apache-2.0"
-repository = "https://github.com/wittkung/ttzip"
+repository = "https://github.com/wittkung/ttzip-core"
+homepage = "https://github.com/wittkung/ttzip-core"
+documentation = "https://github.com/wittkung/ttzip-core"
 edition = "2021"
+keywords = ["compression", "zip", "7z", "simd", "archive"]
+categories = ["compression", "command-line-utilities", "filesystem"]
 
 [profile.release]
 opt-level = 3
