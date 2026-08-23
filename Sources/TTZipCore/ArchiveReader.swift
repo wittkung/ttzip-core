@@ -20,9 +20,27 @@ public enum ArchiveError: Error, LocalizedError, Equatable {
     case corruptedData(archivePath: String, entryPath: String)
     case cancelled
     case invalidState
+    case engineFailure(code: Int32, message: String)
+    
+    public static var lastRustErrorMessage: String? {
+        if let ptr = ttzip_rust_last_error_message() {
+            return String(cString: ptr)
+        }
+        return nil
+    }
     
     public var errorDescription: String? {
-        return localizedDescription()
+        switch self {
+        case .engineFailure(let code, let msg):
+            return "Engine failure (\(code)): \(msg)"
+        case .readFailed(let code):
+            if let lastMsg = ArchiveError.lastRustErrorMessage {
+                return "Read failed (\(code)): \(lastMsg)"
+            }
+            return "Read failed with code: \(code)"
+        default:
+            return String(describing: self)
+        }
     }
 }
 
@@ -92,8 +110,8 @@ public final class ArchiveReader: ArchiveReading, @unchecked Sendable {
                                 guard let cPathname = meta.path else { return true }
                                 let rawLen = strlen(cPathname)
                                 let pathData = Data(bytes: cPathname, count: rawLen)
-                                let sanitizedPath = CharsetDetector.sanitizeFilename(bytes: pathData)
-                                let detectedCharset = CharsetDetector.detectCharset(data: pathData)
+                                let detectedCharset = meta.detected_encoding.map { String(cString: $0) }
+                                let sanitizedPath = String(data: pathData, encoding: .utf8) ?? CharsetDetector.sanitizeFilename(bytes: pathData)
                                 let lastComp = (sanitizedPath as NSString).lastPathComponent
                                 if lastComp.hasPrefix("._") || lastComp == ".DS_Store" || sanitizedPath.hasPrefix("PaxHeader") || sanitizedPath.contains("/PaxHeader") {
                                     return true
@@ -102,7 +120,7 @@ public final class ArchiveReader: ArchiveReading, @unchecked Sendable {
                                     path: sanitizedPath,
                                     uncompressedSize: Int64(meta.uncompressed_size),
                                     isDirectory: meta.is_directory,
-                                    detectedEncoding: detectedCharset,
+                                    detectedEncoding: detectedCharset ?? "UTF-8",
                                     isEncrypted: meta.is_encrypted,
                                     isDataEncrypted: meta.is_encrypted,
                                     isMetadataEncrypted: false

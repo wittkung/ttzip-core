@@ -7,6 +7,7 @@
 
 //! Core types, error codes, and shared data structures for TTZip Rust Glue.
 
+use std::cell::RefCell;
 use libc::{c_char, c_void};
 use zeroize::Zeroize;
 
@@ -145,6 +146,7 @@ pub struct TTZipEntryMetadata {
     pub is_directory: bool,
     pub is_encrypted: bool,
     pub compression_method: u16,
+    pub detected_encoding: *const c_char,
 }
 
 pub type TTZipProgressCallback = Option<
@@ -197,4 +199,64 @@ pub struct TTZipAes256Context {
     pub iv_or_counter: [u8; 16],
     pub round_keys_enc: [u8; 240], // 15 rounds * 16 bytes
     pub round_keys_dec: [u8; 240],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct DiagnosticErrorContext {
+    pub status: TTZipStatus,
+    pub message: [u8; 512],
+    pub entry_path: [u8; 256],
+    pub offset: u64,
+}
+
+impl DiagnosticErrorContext {
+    pub const fn empty() -> Self {
+        Self {
+            status: TTZipStatus::Ok,
+            message: [0u8; 512],
+            entry_path: [0u8; 256],
+            offset: 0,
+        }
+    }
+}
+
+thread_local! {
+    static LAST_ERROR: RefCell<DiagnosticErrorContext> = RefCell::new(DiagnosticErrorContext::empty());
+}
+
+pub fn set_last_error(status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64) {
+    LAST_ERROR.with(|cell| {
+        let mut err = cell.borrow_mut();
+        err.status = status;
+        err.offset = offset;
+        err.message.fill(0);
+        let msg_bytes = msg.as_bytes();
+        let copy_len = msg_bytes.len().min(511);
+        err.message[..copy_len].copy_from_slice(&msg_bytes[..copy_len]);
+
+        err.entry_path.fill(0);
+        if let Some(e) = entry {
+            let e_bytes = e.as_bytes();
+            let e_len = e_bytes.len().min(255);
+            err.entry_path[..e_len].copy_from_slice(&e_bytes[..e_len]);
+        }
+    });
+}
+
+pub fn get_last_error_message() -> *const c_char {
+    LAST_ERROR.with(|cell| {
+        let err = cell.borrow();
+        if err.status == TTZipStatus::Ok || err.message[0] == 0 {
+            std::ptr::null()
+        } else {
+            err.message.as_ptr() as *const c_char
+        }
+    })
+}
+
+pub fn clear_last_error() {
+    LAST_ERROR.with(|cell| {
+        *cell.borrow_mut() = DiagnosticErrorContext::empty();
+    });
 }

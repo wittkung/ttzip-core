@@ -10,6 +10,7 @@ import Foundation
 /// Character encoding detection and filename sanitization interface.
 public enum CharsetDetector {
     /// Detects charset encoding name (e.g. GB18030, UTF-8, Shift-JIS) from raw byte sequence.
+    @available(*, deprecated, message: "Use Rust microkernel detectedEncoding from TTZipEntryMetadata instead.")
     public static func detectCharset(data: Data) -> String {
         if data.isEmpty { return "UTF-8" }
         if String(data: data, encoding: .utf8) != nil {

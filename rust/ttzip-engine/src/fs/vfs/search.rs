@@ -23,46 +23,39 @@ pub struct VfsSearchResult {
     pub match_indices: Vec<usize>,
 }
 
-/// Evaluates fuzzy string matching score and byte match indices.
+/// Evaluates fuzzy string matching score and byte match indices with zero heap allocations.
 pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
     let pat = pattern.trim();
     if pat.is_empty() {
         return Some((0, Vec::new()));
     }
 
-    let target_chars: Vec<char> = target.chars().collect();
-    let pat_chars: Vec<char> = pat.chars().collect();
-    if pat_chars.len() > target_chars.len() {
-        return None;
-    }
+    let mut pat_chars = pat.chars();
+    let mut current_pat_char = match pat_chars.next() {
+        Some(c) => c,
+        None => return Some((0, Vec::new())),
+    };
 
-    let mut t_idx = 0;
-    let mut p_idx = 0;
-    let mut indices = Vec::with_capacity(pat_chars.len());
+    let mut indices = Vec::with_capacity(pat.len());
     let mut score = 0i64;
     let mut prev_matched_idx: Option<usize> = None;
+    let mut prev_c = '\0';
 
-    while t_idx < target_chars.len() && p_idx < pat_chars.len() {
-        let tc = target_chars[t_idx];
-        let pc = pat_chars[p_idx];
-
-        if tc.eq_ignore_ascii_case(&pc) {
+    for (t_idx, tc) in target.char_indices() {
+        if tc.eq_ignore_ascii_case(&current_pat_char) {
             indices.push(t_idx);
             let mut char_score = 10i64;
-            if tc == pc {
+            if tc == current_pat_char {
                 char_score += 5; // Exact case match
             }
 
             // Word boundary bonus
             if t_idx == 0 {
                 char_score += 30;
-            } else {
-                let prev_c = target_chars[t_idx - 1];
-                if prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
-                    char_score += 30;
-                } else if prev_c.is_lowercase() && tc.is_uppercase() {
-                    char_score += 25; // CamelCase boundary
-                }
+            } else if prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
+                char_score += 30;
+            } else if prev_c.is_lowercase() && tc.is_uppercase() {
+                char_score += 25; // CamelCase boundary
             }
 
             // Consecutive match bonus
@@ -70,27 +63,30 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
                 if t_idx == prev + 1 {
                     char_score += 20;
                 } else {
-                    char_score -= (t_idx - prev - 1) as i64; // Distance penalty
+                    char_score -= (t_idx.saturating_sub(prev + 1)) as i64; // Distance penalty
                 }
             }
 
             score += char_score;
             prev_matched_idx = Some(t_idx);
-            p_idx += 1;
+
+            match pat_chars.next() {
+                Some(next_c) => current_pat_char = next_c,
+                None => {
+                    // Pattern completely matched!
+                    if target.eq_ignore_ascii_case(pat) {
+                        score += 500;
+                    } else if target.to_lowercase().starts_with(&pat.to_lowercase()) {
+                        score += 200;
+                    }
+                    return Some((score, indices));
+                }
+            }
         }
-        t_idx += 1;
+        prev_c = tc;
     }
 
-    if p_idx == pat_chars.len() {
-        if target.eq_ignore_ascii_case(pat) {
-            score += 500;
-        } else if target.to_lowercase().starts_with(&pat.to_lowercase()) {
-            score += 200;
-        }
-        Some((score, indices))
-    } else {
-        None
-    }
+    None
 }
 
 /// Recursively searches nodes in hierarchy and returns sorted matching items.

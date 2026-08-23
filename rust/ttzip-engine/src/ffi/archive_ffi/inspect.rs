@@ -12,7 +12,7 @@ use super::sys::*;
 use crate::ffi::helpers::safe_cstr;
 use crate::types::{TTZipEntryMetadata, TTZipInspectCallback, TTZipStatus};
 use libc::{c_char, c_void, mode_t};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::panic::catch_unwind;
 use std::path::Path;
 
@@ -83,10 +83,13 @@ pub unsafe extern "C" fn ttzip_rust_inspect_archive(
                 continue;
             }
 
+            let mut detected_c_str: Option<CString> = None;
             if detect_encoding {
                 let has_non_ascii = path_bytes.iter().any(|&b| b >= 0x80);
                 if has_non_ascii {
-                    let _ = crate::codecs::chardet::detect_charset(path_bytes);
+                    if let Some(charset) = crate::codecs::chardet::detect_charset(path_bytes) {
+                        detected_c_str = CString::new(charset.as_str()).ok();
+                    }
                 }
             }
 
@@ -110,6 +113,7 @@ pub unsafe extern "C" fn ttzip_rust_inspect_archive(
                 is_directory: is_dir,
                 is_encrypted: is_data_enc || is_meta_enc,
                 compression_method: 0,
+                detected_encoding: detected_c_str.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
             };
 
             let should_continue = cb(&meta, user_data);

@@ -9,13 +9,9 @@
 
 pub mod cancellation_ffi;
 pub mod logging_ffi;
-pub mod ring_buffer_ffi;
-pub mod worker_pool_ffi;
 
 pub use cancellation_ffi::*;
 pub use logging_ffi::*;
-pub use ring_buffer_ffi::*;
-pub use worker_pool_ffi::*;
 
 use std::ffi::c_char;
 use std::panic::catch_unwind;

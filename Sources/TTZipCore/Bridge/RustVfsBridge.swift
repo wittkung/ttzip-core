@@ -34,7 +34,8 @@ public enum RustVfsBridge {
                 mode: entry.isDirectory ? 0o755 : 0o644,
                 is_directory: entry.isDirectory,
                 is_encrypted: entry.isEncrypted,
-                compression_method: 0
+                compression_method: 0,
+                detected_encoding: nil
             ))
         }
         
@@ -65,32 +66,8 @@ public enum RustVfsBridge {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return entries
         }
-        
-        let entryMap = Dictionary(entries.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
-        
-        return withTreeHandle(entries: entries, rootName: "") { handle -> [ArchiveEntry] in
-            final class SearchAccumulator {
-                var matchedPaths: [String] = []
-            }
-            let acc = SearchAccumulator()
-            let accPtr = Unmanaged.passUnretained(acc).toOpaque()
-            
-            let queryCStr = query.utf8CString
-            _ = queryCStr.withUnsafeBufferPointer { qPtr in
-                ttzip_rust_vfs_fuzzy_search(handle, qPtr.baseAddress, { resultPtr, ctx in
-                    guard let resultPtr = resultPtr, let ctx = ctx else { return false }
-                    let raw = resultPtr.pointee
-                    if let pathC = raw.path {
-                        let path = String(cString: pathC)
-                        let accumulator = Unmanaged<SearchAccumulator>.fromOpaque(ctx).takeUnretainedValue()
-                        accumulator.matchedPaths.append(path)
-                    }
-                    return true
-                }, accPtr)
-            }
-            
-            return acc.matchedPaths.compactMap { entryMap[$0] }
-        } ?? []
+        guard let session = RustVfsSession(entries: entries) else { return entries }
+        return session.fuzzySearch(query: query)
     }
     
     /// Retrieves aggregated VFS statistics (total files, directories, uncompressed size).

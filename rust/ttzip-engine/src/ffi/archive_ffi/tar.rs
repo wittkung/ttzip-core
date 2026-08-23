@@ -68,6 +68,7 @@ pub unsafe extern "C" fn ttzip_rust_tar_scan_entries(
                 is_directory: entry.is_directory,
                 is_encrypted: false,
                 compression_method: 0,
+                detected_encoding: std::ptr::null(),
             };
 
             let should_continue = cb(&meta, user_data);

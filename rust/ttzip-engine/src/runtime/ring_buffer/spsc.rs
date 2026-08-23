@@ -7,10 +7,11 @@
 
 //! Single-Producer Single-Consumer (SPSC) lock-free bounded ring buffer.
 //!
-//! Features:
+//! Soundness Guaranteed:
+//! - Producer and Consumer endpoints are strictly separated via `split()`.
+//! - Thread-local shadow caches are held in `Cell<usize>` inside `SpscProducer` / `SpscConsumer`,
+//!   completely eliminating unsafe internal mutability data races.
 //! - Hardware cache line separation via `CachePadded<AtomicUsize>` preventing false sharing.
-//! - Shadow caching on both producer and consumer sides avoiding L1/L2 coherence invalidation.
-//! - Power-of-two bitmask indexing.
 
 use crossbeam_utils::CachePadded;
 use std::cell::{Cell, UnsafeCell};
@@ -24,8 +25,6 @@ struct SpscInner<T> {
     mask: usize,
     head: CachePadded<AtomicUsize>, // Written by producer
     tail: CachePadded<AtomicUsize>, // Written by consumer
-    shadow_tail: CachePadded<UnsafeCell<usize>>, // Cached tail for producer
-    shadow_head: CachePadded<UnsafeCell<usize>>, // Cached head for consumer
 }
 
 unsafe impl<T: Send> Send for SpscInner<T> {}
@@ -45,7 +44,7 @@ impl<T> Drop for SpscInner<T> {
     }
 }
 
-/// SPSC Lock-Free Ring Buffer.
+/// SPSC Lock-Free Ring Buffer container.
 pub struct SpscRingBuffer<T> {
     inner: Arc<SpscInner<T>>,
 }
@@ -64,12 +63,6 @@ pub struct SpscConsumer<T> {
 
 unsafe impl<T: Send> Send for SpscProducer<T> {}
 unsafe impl<T: Send> Send for SpscConsumer<T> {}
-impl<T> std::panic::UnwindSafe for SpscRingBuffer<T> {}
-impl<T> std::panic::RefUnwindSafe for SpscRingBuffer<T> {}
-impl<T> std::panic::UnwindSafe for SpscProducer<T> {}
-impl<T> std::panic::RefUnwindSafe for SpscProducer<T> {}
-impl<T> std::panic::UnwindSafe for SpscConsumer<T> {}
-impl<T> std::panic::RefUnwindSafe for SpscConsumer<T> {}
 
 impl<T> SpscRingBuffer<T> {
     /// Creates a new SPSC ring buffer with at least the requested capacity.
@@ -89,14 +82,12 @@ impl<T> SpscRingBuffer<T> {
             mask,
             head: CachePadded::new(AtomicUsize::new(0)),
             tail: CachePadded::new(AtomicUsize::new(0)),
-            shadow_tail: CachePadded::new(UnsafeCell::new(0)),
-            shadow_head: CachePadded::new(UnsafeCell::new(0)),
         });
 
         Self { inner }
     }
 
-    /// Splits the buffer into distinct producer and consumer endpoints with local shadow caches.
+    /// Splits the buffer into distinct producer and consumer endpoints.
     pub fn split(self) -> (SpscProducer<T>, SpscConsumer<T>) {
         let producer = SpscProducer {
             inner: Arc::clone(&self.inner),
@@ -107,58 +98,6 @@ impl<T> SpscRingBuffer<T> {
             cached_head: Cell::new(0),
         };
         (producer, consumer)
-    }
-
-    /// Pushes an item into the ring buffer.
-    #[inline]
-    pub fn push(&self, item: T) -> Result<(), T> {
-        let head = self.inner.head.load(Ordering::Relaxed);
-        let shadow_tail_ptr = self.inner.shadow_tail.get();
-        // SAFETY: Only the single producer accesses shadow_tail
-        let cached_tail = unsafe { *shadow_tail_ptr };
-
-        if head.wrapping_sub(cached_tail) >= self.inner.capacity {
-            let tail = self.inner.tail.load(Ordering::Acquire);
-            // SAFETY: Only the single producer updates shadow_tail
-            unsafe { *shadow_tail_ptr = tail };
-            if head.wrapping_sub(tail) >= self.inner.capacity {
-                return Err(item);
-            }
-        }
-
-        // SAFETY: Slot is free as verified by head/tail bounds check, head index is masked to power-of-two buffer length
-        unsafe {
-            let slot = self.inner.buffer[head & self.inner.mask].get();
-            (*slot).write(item);
-        }
-        self.inner.head.store(head.wrapping_add(1), Ordering::Release);
-        Ok(())
-    }
-
-    /// Pops an item from the ring buffer.
-    #[inline]
-    pub fn pop(&self) -> Option<T> {
-        let tail = self.inner.tail.load(Ordering::Relaxed);
-        let shadow_head_ptr = self.inner.shadow_head.get();
-        // SAFETY: Only the single consumer accesses shadow_head
-        let cached_head = unsafe { *shadow_head_ptr };
-
-        if tail == cached_head {
-            let head = self.inner.head.load(Ordering::Acquire);
-            // SAFETY: Only the single consumer updates shadow_head
-            unsafe { *shadow_head_ptr = head };
-            if tail == head {
-                return None;
-            }
-        }
-
-        // SAFETY: Slot contains initialized value as verified by head/tail bounds check
-        let item = unsafe {
-            let slot = self.inner.buffer[tail & self.inner.mask].get();
-            (*slot).assume_init_read()
-        };
-        self.inner.tail.store(tail.wrapping_add(1), Ordering::Release);
-        Some(item)
     }
 
     /// Returns the buffer capacity.
@@ -180,16 +119,10 @@ impl<T> SpscRingBuffer<T> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    /// Returns true if the buffer is full.
-    #[inline]
-    pub fn is_full(&self) -> bool {
-        self.len() >= self.inner.capacity
-    }
 }
 
 impl<T> SpscProducer<T> {
-    /// Pushes an item via dedicated producer handle using local shadow cache.
+    /// Pushes an item into the ring buffer.
     #[inline]
     pub fn push(&self, item: T) -> Result<(), T> {
         let head = self.inner.head.load(Ordering::Relaxed);
@@ -211,21 +144,15 @@ impl<T> SpscProducer<T> {
         Ok(())
     }
 
+    /// Returns the buffer capacity.
     #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity
     }
-
-    #[inline]
-    pub fn is_full(&self) -> bool {
-        let head = self.inner.head.load(Ordering::Relaxed);
-        let tail = self.inner.tail.load(Ordering::Acquire);
-        head.wrapping_sub(tail) >= self.inner.capacity
-    }
 }
 
 impl<T> SpscConsumer<T> {
-    /// Pops an item via dedicated consumer handle using local shadow cache.
+    /// Pops an item from the ring buffer.
     #[inline]
     pub fn pop(&self) -> Option<T> {
         let tail = self.inner.tail.load(Ordering::Relaxed);
@@ -247,10 +174,9 @@ impl<T> SpscConsumer<T> {
         Some(item)
     }
 
+    /// Returns the buffer capacity.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        let head = self.inner.head.load(Ordering::Acquire);
-        let tail = self.inner.tail.load(Ordering::Relaxed);
-        head == tail
+    pub fn capacity(&self) -> usize {
+        self.inner.capacity
     }
 }

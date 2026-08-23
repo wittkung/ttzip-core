@@ -34,62 +34,67 @@ pub fn extract_single_entry_memory(
         .unwrap_or("")
         .to_lowercase();
 
+    let source = crate::archive::source::open_archive_source(archive_path)?;
+
     // 1. Fast Path: ZIP Random Seek Table
     if ext == "zip" || ext == "cbz" || ext == "jar" || ext == "apk" {
-        let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let zip = ZipArchive::open_slice(&mapped)?;
+        if let Some(mapped) = source.as_slice() {
+            let zip = ZipArchive::open_slice(mapped)?;
 
-        let target_idx = if entry_index >= 0 {
-            entry_index as usize
-        } else if let Some(target_p) = entry_path {
-            zip.entries()
-                .iter()
-                .position(|e| e.rel_path == target_p || e.rel_path.trim_start_matches("./") == target_p)
-                .ok_or(TTZipStatus::ErrFileNotFound)?
-        } else {
-            return Err(TTZipStatus::ErrInvalidParam);
-        };
+            let target_idx = if entry_index >= 0 {
+                entry_index as usize
+            } else if let Some(target_p) = entry_path {
+                zip.entries()
+                    .iter()
+                    .position(|e| e.rel_path == target_p || e.rel_path.trim_start_matches("./") == target_p)
+                    .ok_or(TTZipStatus::ErrFileNotFound)?
+            } else {
+                return Err(TTZipStatus::ErrInvalidParam);
+            };
 
-        return zip.extract_entry_bytes(target_idx, password);
+            return zip.extract_entry_bytes(target_idx, password);
+        }
     }
 
     // 2. Fast Path: 7z Solid Stream Random Seek Table
     if ext == "7z" || ext == "cb7" {
-        let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let sevenz = SevenZArchive::open_slice(&mapped)?;
+        if let Some(mapped) = source.as_slice() {
+            let sevenz = SevenZArchive::open_slice(mapped)?;
 
-        let target_idx = if entry_index >= 0 {
-            entry_index as usize
-        } else if let Some(target_p) = entry_path {
-            sevenz
-                .seek_index()
-                .get_by_path(target_p)
-                .map(|loc| loc.file_index)
-                .ok_or(TTZipStatus::ErrFileNotFound)?
-        } else {
-            return Err(TTZipStatus::ErrInvalidParam);
-        };
+            let target_idx = if entry_index >= 0 {
+                entry_index as usize
+            } else if let Some(target_p) = entry_path {
+                sevenz
+                    .seek_index()
+                    .get_by_path(target_p)
+                    .map(|loc| loc.file_index)
+                    .ok_or(TTZipStatus::ErrFileNotFound)?
+            } else {
+                return Err(TTZipStatus::ErrInvalidParam);
+            };
 
-        return sevenz.extract_entry_bytes_stream(target_idx, password);
+            return sevenz.extract_entry_bytes_stream(target_idx, password);
+        }
     }
 
     // 3. Fast Path: Pure Rust Uncompressed TAR Subslice
     if ext == "tar" || ext == "cbt" {
-        let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let tar = TarArchive::open_slice(&mapped)?;
+        if let Some(mapped) = source.as_slice() {
+            let tar = TarArchive::open_slice(mapped)?;
 
-        let target_idx = if entry_index >= 0 {
-            entry_index as usize
-        } else if let Some(target_p) = entry_path {
-            tar.entries()
-                .iter()
-                .position(|e| e.path.as_ref() == target_p || e.path.as_ref().trim_start_matches("./") == target_p)
-                .ok_or(TTZipStatus::ErrFileNotFound)?
-        } else {
-            return Err(TTZipStatus::ErrInvalidParam);
-        };
+            let target_idx = if entry_index >= 0 {
+                entry_index as usize
+            } else if let Some(target_p) = entry_path {
+                tar.entries()
+                    .iter()
+                    .position(|e| e.path.as_ref() == target_p || e.path.as_ref().trim_start_matches("./") == target_p)
+                    .ok_or(TTZipStatus::ErrFileNotFound)?
+            } else {
+                return Err(TTZipStatus::ErrInvalidParam);
+            };
 
-        return tar.extract_entry_bytes(target_idx).map(|slice| slice.to_vec());
+            return tar.extract_entry_bytes(target_idx).map(|slice| slice.to_vec());
+        }
     }
 
     // 4. General Streaming Path: TAR.GZ / TAR.XZ / TAR.ZST / RAR / ISO (Libarchive Stream-Discarding)

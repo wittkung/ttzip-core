@@ -253,6 +253,9 @@ extension ArchiveWriter {
             return
         }
 
+        if let msg = ArchiveError.lastRustErrorMessage {
+            throw ArchiveError.engineFailure(code: -1, message: msg)
+        }
         throw ArchiveError.readFailed(code: -1)
     }
 

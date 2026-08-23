@@ -17,30 +17,34 @@ TTZip Pro is an enterprise-grade, high-performance macOS archive management syst
 │   - Strict Concurrency (Sendable, TaskGroup, Actor Isolation)                     │
 │   - Domain Pipelines: CompressCommand · ExtractCommand · RepairCommand            │
 │   - Ultra-Thin Facades: ArchiveReader · ArchiveWriter · ArchiveExtractor          │
-│   - Security & Keychain: PasswordVaultManager · SecurityScanner Path Sanitizer    │
+│   - Security & Keychain: PasswordVaultManager (Apple CryptoKit AES-GCM)           │
+│   - Interactive VFS: RustVfsSession (Persistent Tree Handles & Zero-Alloc Search) │
 │   - Dynamic Scheduling: AppleSiliconTuner (P-core / E-core Topology Sensing)      │
 └────────────────────────────────────────┬──────────────────────────────────────────┘
                                          │ module.modulemap Pure C-ABI FFI
 ┌────────────────────────────────────────▼──────────────────────────────────────────┐
 │ Layer 1: C Bridge & Interop ABI Layer (CTTZipBridge)                             │
 │   - CTTZipBridge.h & ttzip_rust_glue.h: Standardized C11 ABI Header Contracts     │
+│   - Thread-Local Diagnostic Context: ttzip_rust_last_error_message()              │
 │   - Zero-overhead FFI: Zero-copy pointer exchange, buffer views, progress sinks   │
 │   - Uniform status codes (TTZipStatus) & panic containment boundary               │
 └────────────────────────────────────────┬──────────────────────────────────────────┘
                                          │ Binary Target Linkage
 ┌────────────────────────────────────────▼──────────────────────────────────────────┐
 │ Layer 0: Safe Rust Core Engine & Hardware Acceleration (Vendor/TTZipVendor)       │
-│   - rust/ttzip-glue: Safe Rust format kernels (ZIP, 7z, TAR, GZ, BZ2, XZ, ZSTD)   │
-│   - Rayon Work-Stealing Parallelism & Lock-Free Thread Pool Distribution          │
+│   - ArchiveSource Abstraction: Filesystem Probing (APFS Mmap vs Remote Stream)    │
+│   - Streaming Parallel ZIP Writer: Rayon + libdeflate + pwrite + APFS Prealloc   │
+│   - Formats: Native ZIP / 7z / TAR Streamers & In-Place Mutation Engine          │
+│   - Charset Pipeline: CSM + Bigram chardetng metadata propagation                │
+│   - Concurrency Soundness: SPSC split() endpoints with Cell<usize> shadow caches │
 │   - Apple Silicon NEON SIMD Vectorization & ARM64 PMULL/CRC32 (>48 GB/s checksum) │
-│   - APFS clonefile / fstore_t preallocation & mmap zero-copy micro-buffering      │
 │   - Memory safety: Zero raw pointer dereference vulnerabilities & catch_unwind    │
 └───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Layered Architecture & Subsystem Responsibilities
+## 2. Layered Architecture & Reconstructed Pillars
 
 ```mermaid
 graph TD
@@ -53,16 +57,23 @@ graph TD
     subgraph CORE ["Layer 2: TTZipCore (Swift 6)"]
         CMD["Commands & Pipelines"]
         FACADE["Archive Facades & VFS Store"]
-        SEC["Security & Password Vault"]
+        VFS_SESS["RustVfsSession (Persistent Tree)"]
+        SEC["PasswordVaultManager (CryptoKit + Keychain)"]
         TUNER["AppleSiliconTuner"]
     end
 
     subgraph BRIDGE ["Layer 1: CTTZipBridge (C-ABI)"]
         FFI["ttzip_rust_glue.h (C11 FFI)"]
+        DIAG["Thread-Local Last Error Diagnostics"]
     end
 
     subgraph RUST ["Layer 0: Safe Rust Core (Vendor/TTZipVendor.xcframework)"]
+        SRC["ArchiveSource Dispatch (Mmap vs Stream)"]
+        STREAM_ZIP["Streaming Parallel ZIP Writer (pwrite)"]
         FORMATS["Native ZIP / 7z / TAR Streamers"]
+        CHARSET["Chardetng CSM + Bigram Detector"]
+        INPLACE["In-Place Mutation Transaction Engine"]
+        SPSC["Sound SPSC Lock-Free Ring Buffer"]
         CODECS["Libdeflate / Zstd / LZ4 / Snappy / Brotli / LZMA"]
         RAYON["Rayon Work-Stealing Parallel Scheduler"]
         HW["ARM64 NEON SIMD & PMULL / CRC32 Intrinsics"]
@@ -73,61 +84,49 @@ graph TD
     BENCH --> CORE
     CORE --> BRIDGE
     BRIDGE --> RUST
+    RUST --> SRC
+    RUST --> STREAM_ZIP
+    RUST --> CHARSET
+    RUST --> INPLACE
+    RUST --> SPSC
 ```
 
-### 2.1 Layer 3: Presentation & User Experience
+### 2.1 Reconstructed Architectural Pillars
 
-- **TTZipApp (macOS Application)**:
-  - **Architecture**: MVVM-C with strict `@MainActor` UI state isolation (`AppViewState`, partitioned into modular sub-states: `AppSubStates`, `AppViewState+ArchiveOperations`, `AppViewState+Commands`, `AppViewState+Tasks`).
-  - **Native Finder Integration**: `NativeArchiveOutlineView` bridging AppKit `NSOutlineView` via `NSViewRepresentable` providing 0ms instant directory tree expansion and fluid native collapse animations.
-  - **Multi-Tab & Workspace Management**: Tab persistence and state caching via `KeepAliveTabContainer` and `WorkspaceTab`.
-  - **QuickLook & Media Previews**: `QuickLookPreviewCoordinator`, `MediaPreviewFactory`, and `EphemeralPreviewCacheManager` for in-archive media previewing and automatic scratch file life-cycle cleanup.
-  - **System Services**: `FinderFavoritesReader`, `ArchiveFilePromiseProvider` for file dragging, `AppKitMenuSynchronizer`, and `DockProgressManager`.
+1. **ArchiveSource & Storage Medium Dispatch**:
+   - Proactive filesystem probing via `statfs(2)` dynamically identifies whether the archive resides on local NVMe APFS, standard local disk, or remote network / removable mounts (SMB, NFS, Cloud).
+   - Local NVMe disks use `MmapSource` (`libc::mmap` + `libc::madvise(MADV_SEQUENTIAL)`) for zero-copy random access.
+   - Remote or virtual filesystems seamlessly route to `StreamSource` using positional `pread` with 64KB buffers, completely eliminating kernel `SIGBUS` panics.
 
-- **TTZipCLI (POSIX Command-Line Interface)**:
-  - **Modular Command Routing**: `CLICommandRouter` dispatching `compress`, `extract`, `inspect`, `benchmark`, `test`, `diagnostics`, and `maintenance` commands.
-  - **POSIX Conformance**: Robust short/long option parsing (`POSIXCLIArgumentParser`), automated shell completion generators (Bash, Zsh, Fish, Nu), and man page generators.
-  - **Terminal Presentation**: ANSI colored tree formatting (`ArchiveVisualTreeRenderer`), interactive paging (`TerminalPagerEngine`), and JUnit XML telemetry report generation.
+2. **Streaming Multi-Core Parallel ZIP Writer**:
+   - Combines Rayon work-stealing parallel file compression with hardware-accelerated `libdeflate` (levels 1-12) and positional atomic disk writes (`pwrite`).
+   - Preallocates APFS disk extents via `fstore_t` to prevent fragmentation on Apple Silicon SSDs.
+   - Automatically promotes to Zip64 when uncompressed/compressed sizes exceed 4GB or entry counts exceed 65,535.
+   - Strictly bounds memory peak to `< 64MB` RSS.
 
-- **TTZipBench (Microbenchmarking Suite)**:
-  - High-precision in-memory benchmarking runner comparing throughput (MB/s), compression ratios, and latency with TurboBench and lzbench metric parity.
+3. **Instant & Memory-Safe Single Entry Preview**:
+   - Single entry extraction and thumbnail previews decode target entries directly from `ArchiveSource` without loading the full archive into heap memory.
 
-### 2.2 Layer 2: Swift 6 Core Engine (TTZipCore)
+4. **VFS Session & Zero-Allocation Interactive Search**:
+   - `RustVfsSession` holds persistent VFS tree handles in memory, avoiding tree reallocations on search keystrokes.
+   - `fuzzy_match` utilizes UTF-8 `char_indices()` iterators with **zero heap string allocations**, returning matches in `< 5ms` for 100,000+ files.
 
-- **Strict Concurrency**: 100% Swift 6 compliant with `Sendable` domain structures, structured concurrency (`TaskGroup`, `AsyncStream`), and actor isolation.
-- **Domain Command Hierarchy**: Encapsulated pipeline operations via `CompressCommand`, `ExtractCommand`, `RepairCommand`, and `MacroArchiveCommand`.
-- **Ultra-Thin Facades**:
-  - `ArchiveReader`: Inspects and enumerates archive structures into immutable `ArchiveEntry` and `ArchiveTreeNode` hierarchies.
-  - `ArchiveWriter`: Dispatches parallel multi-file compression pipelines.
-  - `ArchiveExtractor`: Coordinates safe extraction pipelines with progress reporting and cancellation.
-  - `ArchiveSelectiveExtractor`: Low-latency targeted extraction of single archive entries.
-  - `ArchiveRepairEngine`: Recovers damaged ZIP/TAR archive headers and truncated streams.
-- **Bridge Delegation**: Facades (`ArchiveEngineBridge`, `RustVfsBridge`, `NativeMicrokernelBridge`, `CUnsafeBufferAdapter`) delegate heavy compute and format processing directly to the Rust core via C-ABI.
-- **Security & Integrity**:
-  - `PasswordVaultManager`: Secure credential storage backed by macOS Keychain with memory-wiping on deallocation.
-  - `SecurityScanner`: Zip-slip path traversal prevention, symlink boundary checks, and malicious payload sanitization.
-- **Hardware Sensing**: `AppleSiliconTuner` dynamically inspects P-core/E-core distributions to configure optimal parallel concurrency limits.
+5. **Cross-Language Thread-Local Error Diagnostics**:
+   - `LAST_ERROR` context records failure status, descriptive string, faulty entry path, and file offset without heap allocation.
+   - Exported via `ttzip_rust_last_error_message()` and consumed by Swift's `ArchiveError.engineFailure` for clear UI and CLI diagnostics.
 
-### 2.3 Layer 1: C Bridge & Interop ABI (CTTZipBridge)
+6. **End-to-End Charset Detection Pipeline**:
+   - High-precision CSM + Bigram encoding detector (`chardetng`) automatically detects Asian and legacy character sets (GB18030, Shift-JIS, Big5, Windows-1252) during archive inspection.
+   - Populates `TTZipEntryMetadata.detected_encoding` across the C-ABI boundary into Swift `ArchiveEntry.detectedEncoding`.
 
-- **Pure C ABI Boundary**: Zero C++ symbol dependencies, defined cleanly in `Sources/CTTZipBridge/include/` (`CTTZipBridge.h`, `ttzip_rust_glue.h`, `module.modulemap`).
-- **Data Exchange Contract**: Standardized scalar types, C-style string slices (`const char*`, `size_t`), and memory buffer pointers avoiding unneeded memory copies.
-- **Uniform Error Handling**: Negative integer status codes (`TTZipStatus`) map deterministic failure conditions across languages without exceptions.
-- **Asynchronous Callback Sinks**: Function pointers (`TTZipProgressCallback`, cancellation token pointers) allowing real-time progress events and responsive operation cancellation.
+7. **Safe In-Place Mutation Engine**:
+   - Atomic transactional append, replace, and delete operations on ZIP and 7z archives.
+   - Untouched entries have their raw compressed bitstreams copied directly without decompression or recompression.
+   - Writes mutations through transactional APFS shadow files with automatic rollback on error or cancellation.
 
-### 2.4 Layer 0: Safe Rust Core Engine (Vendor/TTZipVendor.xcframework)
-
-- **Memory Safety & Invariants**: Safe Rust eliminates data races, use-after-free, buffer overflows, and null-pointer dereferences. Panic containment boundaries (`catch_unwind`) prevent host crashes across the FFI boundary.
-- **Format Engines (`rust/ttzip-glue/src/`)**:
-  - `zip`: Native Zip32/Zip64 container writer and reader, PKWare standard decryption, WinZip AES-128/AES-256 hardware decryption.
-  - `sevenz`: Native 7z header parsing, solid LZMA/LZMA2 payload decoders, and AES-256 encrypted volume support.
-  - `archive`: POSIX TAR streaming, damaged header salvaging, and split volume reassembly (`detect_volume_chain`, `SplitVolumeWriter`).
-  - `vfs`: High-performance in-memory virtual filesystem tree indexer with regex/fuzzy path searching.
-- **Codecs & Accelerators**:
-  - `libdeflate`, `zstd`, `lz4`, `snappy`, `brotli`, `lzfse`, and `lzma` integrated natively.
-- **Hardware Acceleration**:
-  - ARM64 NEON SIMD vectorization and PMULL / CRC32 assembly instructions yielding >48 GB/s checksum verification throughput.
-  - APFS `clonefile` / `fstore_t` preallocation routines for instant zero-copy file duplication on Apple Silicon SSDs.
+8. **Crypto Convergence & Concurrency Soundness**:
+   - Password Vault security is centered on Apple `CryptoKit.AES.GCM`, `Keychain Services`, and `SecureBytes` memory locking (`mlock`/`zeroize`).
+   - SPSC lock-free ring buffer enforces strict `split()` producer-consumer separation with thread-local `Cell<usize>` shadow caches, preventing data races.
 
 ---
 
@@ -164,7 +163,7 @@ graph TD
 ## 4. Engineering Standards & Quality Gates
 
 1. **Zero Warnings Policy**:
-   All Swift modules (`TTZipApp`, `TTZipCLI`, `TTZipCore`, `TTZipBench`) and Rust crates (`ttzip-glue`, `ttzip-tui`) must compile cleanly with zero compiler warnings under strict flags (`-warnings-as-errors`).
+   All Swift modules (`TTZipApp`, `TTZipCLI`, `TTZipCore`, `TTZipBench`) and Rust crates (`ttzip-engine`, `ttzip-tui`) must compile cleanly with zero compiler warnings under strict flags (`-warnings-as-errors`).
 
 2. **Single Responsibility Principle & Line Count Gate**:
    Monolithic files are prohibited. Source files must adhere to the hard threshold enforced by `scripts/lint_loc_gate.py` ($\le 800\text{ LOC}$ per file, target $< 350\text{ LOC}$).
@@ -173,5 +172,3 @@ graph TD
    - `swift test`: 100% pass rate across unit, integration, and UI mock suites.
    - `cargo test`: 100% pass rate across format conformance, cryptographic property tests, and C-ABI regression suites.
    - `scripts/run_local_ci_gate.sh`: Automated pre-commit verification enforcing formatting, licensing, invariants, and tests.
-
-

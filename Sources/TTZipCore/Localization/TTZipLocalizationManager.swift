@@ -238,6 +238,8 @@ extension ArchiveError {
             return manager.string(for: L10n.Errors.operationCancelled, language: language)
         case .invalidState:
             return manager.string(for: L10n.Common.error, language: language)
+        case .engineFailure(let code, let message):
+            return "Engine failure (\(code)): \(message)"
         }
     }
 }

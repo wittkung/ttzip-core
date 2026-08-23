@@ -393,3 +393,15 @@ pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
         drop(std::ffi::CString::from_raw(ptr));
     }
 }
+
+/// Returns thread-local diagnostic error message or NULL if previous operation succeeded.
+#[no_mangle]
+pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
+    crate::types::get_last_error_message()
+}
+
+/// Clears thread-local diagnostic error message.
+#[no_mangle]
+pub extern "C" fn ttzip_rust_clear_last_error() {
+    crate::types::clear_last_error();
+}

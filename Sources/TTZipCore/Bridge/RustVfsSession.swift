@@ -47,7 +47,8 @@ public final class RustVfsSession: @unchecked Sendable {
                 mode: entry.isDirectory ? 0o755 : 0o644,
                 is_directory: entry.isDirectory,
                 is_encrypted: entry.isEncrypted,
-                compression_method: 0
+                compression_method: 0,
+                detected_encoding: nil
             ))
         }
         

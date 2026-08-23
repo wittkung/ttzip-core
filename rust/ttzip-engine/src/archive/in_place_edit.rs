@@ -187,8 +187,9 @@ pub fn in_place_edit_zip(
     shadow_path: &Path,
     actions: &[InPlaceAction],
 ) -> Result<(), TTZipStatus> {
-    let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-    let entries = parse_all_entries(&mapped)?;
+    let source = crate::archive::source::open_archive_source(archive_path)?;
+    let mapped = source.as_slice().ok_or(TTZipStatus::ErrOpenFailed)?;
+    let entries = parse_all_entries(mapped)?;
 
     let mut deleted = HashSet::new();
     let mut replaced = HashMap::new();
@@ -353,7 +354,8 @@ pub fn in_place_edit_sevenz(
     shadow_path: &Path,
     actions: &[InPlaceAction],
 ) -> Result<(), TTZipStatus> {
-    let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let source = crate::archive::source::open_archive_source(archive_path)?;
+    let mapped = source.as_slice().ok_or(TTZipStatus::ErrOpenFailed)?;
 
     let mut deleted = HashSet::new();
     let mut replaced = HashMap::new();

@@ -42,6 +42,15 @@ pub fn create_archive(
 
     let resolved_format = resolve_create_format(options.format, destination_path);
 
+    // 1. High-Performance Streaming Multi-Core Parallel ZIP Fast Path
+    if (resolved_format == TTZipArchiveFormat::Zip || resolved_format == TTZipArchiveFormat::Auto)
+        && split_volume_size_bytes == 0
+        && options.encryption == crate::types::TTZipEncryptionMethod::None
+    {
+        return crate::zip::writer::create_zip_streaming_parallel(destination_path, source_paths, options)
+            .map(|_| ());
+    }
+
     // If split volume is requested, write to temporary file first
     let temp_archive_path = if split_volume_size_bytes > 0 {
         let temp_dir = std::env::temp_dir();

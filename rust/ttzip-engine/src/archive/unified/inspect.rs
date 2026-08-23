@@ -123,6 +123,7 @@ unsafe fn inspect_from_handle(
             is_directory: is_dir,
             is_encrypted: is_data_enc || is_meta_enc,
             compression_method: 0,
+            detected_encoding: std::ptr::null(),
         };
 
         count += 1;

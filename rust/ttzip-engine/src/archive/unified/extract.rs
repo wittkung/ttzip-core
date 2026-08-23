@@ -8,7 +8,7 @@
 //! Archive extraction lifecycle submodule for Unified Orchestrator.
 
 use std::ffi::{CStr, CString};
-use std::fs::{self, File};
+use std::fs;
 use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
@@ -38,26 +38,18 @@ pub fn extract_archive(
     // Multi-Volume detection
     let volume_chain = detect_volume_chain(archive_path).unwrap_or_else(|_| vec![archive_path.to_path_buf()]);
     if volume_chain.len() > 1 {
-        let temp_dir = std::env::temp_dir();
-        let joined_tmp = temp_dir.join(format!(
-            "ttzip_joined_{}_{}.tmp",
-            std::process::id(),
-            archive_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("vol")
-        ));
-        {
-            let mut virtual_reader = VirtualMultiVolumeReader::from_volumes(volume_chain)
-                .map_err(|_| TTZipStatus::ErrOpenFailed)?;
-            let mut out_file = File::create(&joined_tmp).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            std::io::copy(&mut virtual_reader, &mut out_file)
-                .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            out_file.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        let virtual_reader = VirtualMultiVolumeReader::from_volumes(volume_chain)
+            .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_seekable(virtual_reader, 65536)?;
+        let raw_a = reader.as_raw_archive();
+        if !options.password.is_null() {
+            if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
+                if !p_str.is_empty() {
+                    unsafe { archive_read_add_passphrase(raw_a, options.password); }
+                }
+            }
         }
-        let res = extract_archive(&joined_tmp, destination_path, options);
-        let _ = fs::remove_file(&joined_tmp);
-        return res;
+        return unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options) };
     }
 
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)

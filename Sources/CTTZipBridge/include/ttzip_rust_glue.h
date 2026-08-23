@@ -85,6 +85,7 @@ typedef struct TTZipEntryMetadata {
     bool is_directory;
     bool is_encrypted;
     uint16_t compression_method;
+    const char *detected_encoding;
 } TTZipEntryMetadata;
 
 typedef bool (*TTZipProgressCallback)(uint64_t processed_bytes, uint64_t total_bytes, const char *current_entry, void *user_data);
@@ -123,6 +124,8 @@ typedef struct TTZipAes256Context {
 const char *ttzip_rust_version(void);
 TTZipStatus ttzip_rust_init(void);
 const char *ttzip_rust_status_string(TTZipStatus status);
+const char *ttzip_rust_last_error_message(void);
+void ttzip_rust_clear_last_error(void);
 bool ttzip_rust_is_hardware_accelerated(void);
 uint32_t ttzip_rust_crc32(uint32_t crc, const uint8_t *data, size_t len);
 uint32_t ttzip_rust_adler32(uint32_t adler, const uint8_t *data, size_t len);
@@ -297,49 +300,6 @@ void ttzip_rust_cancellation_token_free(TTZipCancellationToken *token);
 typedef void (*TTZipLogCallback)(TTZipLogLevel level, const char *target_module, const char *message, const char *file, int32_t line, void *user_data);
 TTZipStatus ttzip_rust_set_logger(TTZipLogCallback callback, TTZipLogLevel min_level, void *user_data);
 void ttzip_rust_log(TTZipLogLevel level, const char *target, const char *message, const char *file, int32_t line);
-
-// Lock-Free Ring Buffers & Worker Pool
-typedef struct TTZipSpscRingBufferHandle TTZipSpscRingBufferHandle;
-typedef struct TTZipMpmcRingBufferHandle TTZipMpmcRingBufferHandle;
-TTZipSpscRingBufferHandle *ttzip_rust_spsc_ring_buffer_new(size_t capacity);
-bool ttzip_rust_spsc_ring_buffer_push(TTZipSpscRingBufferHandle *handle, void *item);
-void *ttzip_rust_spsc_ring_buffer_pop(TTZipSpscRingBufferHandle *handle);
-size_t ttzip_rust_spsc_ring_buffer_count(const TTZipSpscRingBufferHandle *handle);
-size_t ttzip_rust_spsc_ring_buffer_capacity(const TTZipSpscRingBufferHandle *handle);
-bool ttzip_rust_spsc_ring_buffer_is_empty(const TTZipSpscRingBufferHandle *handle);
-bool ttzip_rust_spsc_ring_buffer_is_full(const TTZipSpscRingBufferHandle *handle);
-void ttzip_rust_spsc_ring_buffer_free(TTZipSpscRingBufferHandle *handle);
-TTZipMpmcRingBufferHandle *ttzip_rust_mpmc_ring_buffer_new(size_t capacity);
-bool ttzip_rust_mpmc_ring_buffer_push(TTZipMpmcRingBufferHandle *handle, void *item);
-void *ttzip_rust_mpmc_ring_buffer_pop(TTZipMpmcRingBufferHandle *handle);
-size_t ttzip_rust_mpmc_ring_buffer_count(const TTZipMpmcRingBufferHandle *handle);
-size_t ttzip_rust_mpmc_ring_buffer_capacity(const TTZipMpmcRingBufferHandle *handle);
-bool ttzip_rust_mpmc_ring_buffer_is_empty(const TTZipMpmcRingBufferHandle *handle);
-bool ttzip_rust_mpmc_ring_buffer_is_full(const TTZipMpmcRingBufferHandle *handle);
-void ttzip_rust_mpmc_ring_buffer_free(TTZipMpmcRingBufferHandle *handle);
-
-typedef enum TTZipWorkerPoolState {
-    TTZIP_WORKER_POOL_IDLE = 0,
-    TTZIP_WORKER_POOL_RUNNING = 1,
-    TTZIP_WORKER_POOL_PAUSED = 2,
-    TTZIP_WORKER_POOL_DRAINING = 3,
-    TTZIP_WORKER_POOL_SHUTDOWN = 4
-} TTZipWorkerPoolState;
-typedef struct TTZipWorkerPoolHandle TTZipWorkerPoolHandle;
-typedef void (*TTZipWorkerTaskFn)(void *context);
-TTZipWorkerPoolHandle *ttzip_rust_worker_pool_new(uint32_t worker_count);
-bool ttzip_rust_worker_pool_submit(TTZipWorkerPoolHandle *handle, TTZipWorkerTaskFn task_fn, void *context);
-void ttzip_rust_worker_pool_set_workers(TTZipWorkerPoolHandle *handle, uint32_t count);
-void ttzip_rust_worker_pool_pause(TTZipWorkerPoolHandle *handle);
-void ttzip_rust_worker_pool_resume(TTZipWorkerPoolHandle *handle);
-void ttzip_rust_worker_pool_drain(TTZipWorkerPoolHandle *handle);
-void ttzip_rust_worker_pool_shutdown(TTZipWorkerPoolHandle *handle);
-uint32_t ttzip_rust_worker_pool_get_active_workers(const TTZipWorkerPoolHandle *handle);
-uint32_t ttzip_rust_worker_pool_get_pending_tasks(const TTZipWorkerPoolHandle *handle);
-uint64_t ttzip_rust_worker_pool_get_completed_tasks(const TTZipWorkerPoolHandle *handle);
-uint64_t ttzip_rust_worker_pool_get_failed_tasks(const TTZipWorkerPoolHandle *handle);
-TTZipWorkerPoolState ttzip_rust_worker_pool_get_state(const TTZipWorkerPoolHandle *handle);
-void ttzip_rust_worker_pool_free(TTZipWorkerPoolHandle *handle);
 
 // Unified Archive Operations
 TTZipStatus ttzip_rust_archive_create_unified(const char *const *source_paths, size_t source_count, const char *destination_path, const TTZipCreateOptions *options, uint64_t split_volume_size_bytes);

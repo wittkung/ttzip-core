@@ -32,6 +32,9 @@ fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
         "util.c",
         "xxhash.c",
     ];
+    let min_ver = env::var("MACOSX_DEPLOYMENT_TARGET").unwrap_or_else(|_| "14.0".to_string());
+    let min_ver_flag = format!("-mmacosx-version-min={}", min_ver);
+
     for src in fl2_sources {
         let src_path = fast_lzma2_dir.join(src);
         if !src_path.exists() {
@@ -39,7 +42,7 @@ fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
         }
         let obj_path = out_dir.join(format!("fl2_{}.o", src));
         let status = Command::new("clang")
-            .args(["-O3", "-c", "-target", target, "-mmacosx-version-min=14.0", "-I", fast_lzma2_dir.to_str().unwrap()])
+            .args(["-O3", "-c", "-target", target, &min_ver_flag, "-I", fast_lzma2_dir.to_str().unwrap()])
             .arg(&src_path)
             .arg("-o")
             .arg(&obj_path)
@@ -66,7 +69,7 @@ fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
         }
         let obj_path = out_dir.join(format!("lzfse_{}.o", src));
         let status = Command::new("clang")
-            .args(["-O3", "-c", "-target", target, "-mmacosx-version-min=14.0", "-I", lzfse_dir.to_str().unwrap()])
+            .args(["-O3", "-c", "-target", target, &min_ver_flag, "-I", lzfse_dir.to_str().unwrap()])
             .arg(&src_path)
             .arg("-o")
             .arg(&obj_path)

@@ -215,6 +215,8 @@ impl<R: Read + Seek + 'static> ArchiveStreamReader<R> {
             archive_read_support_filter_all(a);
 
             let state_raw: *mut StreamReaderState<R> = Pin::get_unchecked_mut(state.as_mut());
+            archive_read_set_seek_callback(a, Some(archive_seek_callback_trampoline::<R>));
+
             let ret = archive_read_open2(
                 a,
                 state_raw as *mut libc::c_void,
@@ -228,8 +230,6 @@ impl<R: Read + Seek + 'static> ArchiveStreamReader<R> {
                 archive_read_free(a);
                 return Err(TTZipStatus::ErrOpenFailed);
             }
-
-            archive_read_set_seek_callback(a, Some(archive_seek_callback_trampoline::<R>));
 
             Ok(Self {
                 archive_ptr: a,

@@ -28,7 +28,6 @@ use ttzip_engine::crypto::vault::{
 use ttzip_engine::ffi::*;
 use ttzip_engine::fs::vfs::{fuzzy_match, VfsEntry, VfsTree};
 use ttzip_engine::runtime::ring_buffer::{MpmcRingBuffer, SpscRingBuffer};
-use ttzip_engine::runtime::worker_pool::{EventDrivenWorkerPool, WorkerPoolState};
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZArchive};
 use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipEncryptionMethod, TTZipEntryMetadata, TTZipStatus,
@@ -136,100 +135,7 @@ fn test_rayon_producer_consumer_streaming_pipeline() {
     );
 }
 
-#[test]
-fn test_event_driven_work_stealing_task_dispatcher() {
-    let pool = EventDrivenWorkerPool::new(4);
-    assert_eq!(pool.worker_count(), 4);
-    assert_eq!(pool.state(), WorkerPoolState::Idle);
 
-    // 1. Submit single task and verify execution
-    let counter = Arc::new(AtomicUsize::new(0));
-    let c_clone = Arc::clone(&counter);
-    assert!(pool.submit(move || {
-        c_clone.fetch_add(10, Ordering::SeqCst);
-    }));
-    pool.drain();
-    assert_eq!(counter.load(Ordering::SeqCst), 10);
-    assert_eq!(pool.completed_tasks(), 1);
-
-    // 2. Submit batch tasks
-    let batch_counter = Arc::new(AtomicUsize::new(0));
-    let jobs: Vec<_> = (0..20)
-        .map(|_| {
-            let bc = Arc::clone(&batch_counter);
-            move || {
-                bc.fetch_add(1, Ordering::SeqCst);
-            }
-        })
-        .collect();
-
-    assert!(pool.submit_batch(jobs));
-    pool.drain();
-    assert_eq!(batch_counter.load(Ordering::SeqCst), 20);
-    assert_eq!(pool.completed_tasks(), 21);
-
-    // 3. Dynamic scaling: scale up to 8, scale down to 2
-    pool.set_worker_count(8);
-    assert_eq!(pool.worker_count(), 8);
-
-    let scale_counter = Arc::new(AtomicUsize::new(0));
-    for _ in 0..16 {
-        let sc = Arc::clone(&scale_counter);
-        pool.submit(move || {
-            sc.fetch_add(1, Ordering::SeqCst);
-        });
-    }
-    pool.drain();
-    assert_eq!(scale_counter.load(Ordering::SeqCst), 16);
-
-    pool.set_worker_count(2);
-    assert_eq!(pool.worker_count(), 2);
-
-    // 4. Pause and Resume lifecycle
-    pool.pause();
-    assert_eq!(pool.state(), WorkerPoolState::Paused);
-    let paused_flag = Arc::new(AtomicBool::new(false));
-    let pf = Arc::clone(&paused_flag);
-    pool.submit(move || {
-        pf.store(true, Ordering::SeqCst);
-    });
-
-    thread::sleep(std::time::Duration::from_millis(20));
-    assert!(!paused_flag.load(Ordering::SeqCst));
-
-    pool.resume();
-    pool.drain();
-    assert!(paused_flag.load(Ordering::SeqCst));
-
-    // 5. Panic isolation: failing tasks increment failed_tasks without crashing pool
-    let initial_failed = pool.failed_tasks();
-    pool.submit(|| {
-        panic!("Intentional test panic to verify worker pool isolation");
-    });
-    pool.drain();
-    assert_eq!(pool.failed_tasks(), initial_failed + 1);
-
-    // Ensure pool remains fully operational after panic
-    let post_panic_check = Arc::new(AtomicBool::new(false));
-    let ppc = Arc::clone(&post_panic_check);
-    pool.submit(move || {
-        ppc.store(true, Ordering::SeqCst);
-    });
-    pool.drain();
-    assert!(post_panic_check.load(Ordering::SeqCst));
-
-    // 6. Rayon task execution interop
-    let rayon_executed = Arc::new(AtomicBool::new(false));
-    let re = Arc::clone(&rayon_executed);
-    pool.execute_rayon(move || {
-        re.store(true, Ordering::SeqCst);
-    });
-    thread::sleep(std::time::Duration::from_millis(50));
-    assert!(rayon_executed.load(Ordering::SeqCst));
-
-    pool.shutdown();
-    assert_eq!(pool.state(), WorkerPoolState::Shutdown);
-}
 
 #[test]
 fn test_in_place_editing_transaction_rollback_and_commit() {
@@ -500,6 +406,7 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
         is_directory: false,
         is_encrypted: false,
         compression_method: 8,
+        detected_encoding: std::ptr::null(),
     });
     raw_entries.push(TTZipEntryMetadata {
         path: c_p2.as_ptr(),
@@ -511,6 +418,7 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
         is_directory: false,
         is_encrypted: false,
         compression_method: 8,
+        detected_encoding: std::ptr::null(),
     });
 
     let c_root = CString::new("TTZipCore").unwrap();

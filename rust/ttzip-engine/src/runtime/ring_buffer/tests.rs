@@ -18,19 +18,19 @@ use std::thread;
         assert!(rb.is_empty());
         assert_eq!(rb.len(), 0);
 
-        assert!(rb.push(10).is_ok());
-        assert!(rb.push(20).is_ok());
-        assert!(rb.push(30).is_ok());
-        assert!(rb.push(40).is_ok());
-        assert!(rb.is_full());
-        assert_eq!(rb.push(50), Err(50));
+        let (producer, consumer) = rb.split();
 
-        assert_eq!(rb.pop(), Some(10));
-        assert_eq!(rb.pop(), Some(20));
-        assert_eq!(rb.pop(), Some(30));
-        assert_eq!(rb.pop(), Some(40));
-        assert_eq!(rb.pop(), None);
-        assert!(rb.is_empty());
+        assert!(producer.push(10).is_ok());
+        assert!(producer.push(20).is_ok());
+        assert!(producer.push(30).is_ok());
+        assert!(producer.push(40).is_ok());
+        assert_eq!(producer.push(50), Err(50));
+
+        assert_eq!(consumer.pop(), Some(10));
+        assert_eq!(consumer.pop(), Some(20));
+        assert_eq!(consumer.pop(), Some(30));
+        assert_eq!(consumer.pop(), Some(40));
+        assert_eq!(consumer.pop(), None);
     }
 
     #[test]
