@@ -12,7 +12,7 @@ use crate::crypto::aes256::aes256_ctr_crypt;
 use crate::types::TTZipStatus;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-/// Constant-time byte slice comparison to prevent timing side-channel leaks.
+/// Constant-time byte slice comparison to prevent timing side-channel leaks with compiler barrier.
 #[inline]
 pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
@@ -22,7 +22,7 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     for (x, y) in a.iter().zip(b.iter()) {
         diff |= x ^ y;
     }
-    diff == 0
+    std::hint::black_box(diff) == 0
 }
 
 /// Derived WinZip AES-256 key material.

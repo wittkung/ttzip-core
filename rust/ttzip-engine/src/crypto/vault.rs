@@ -160,14 +160,14 @@ impl GHash {
     }
 }
 
-/// Constant-time 16-byte slice comparison to prevent timing side-channel leaks.
+/// Constant-time 16-byte slice comparison to prevent timing side-channel leaks with compiler barrier.
 #[inline]
 pub fn constant_time_eq_16(a: &[u8; 16], b: &[u8; 16]) -> bool {
     let mut diff = 0u8;
     for i in 0..16 {
         diff |= a[i] ^ b[i];
     }
-    diff == 0
+    std::hint::black_box(diff) == 0
 }
 
 /// Dead-Store Elimination immune memory sanitization with SeqCst compiler fence.

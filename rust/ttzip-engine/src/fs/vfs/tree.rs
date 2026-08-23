@@ -12,12 +12,14 @@ use super::search::{fuzzy_search_tree, VfsSearchResult};
 use std::collections::HashMap;
 
 /// O(N) linear-time hierarchical VFS tree builder with hash-indexed directory mapping.
+#[allow(dead_code)]
 pub struct VfsTreeBuilder<'a> {
     root_name: &'a str,
     dir_indices: HashMap<String, Vec<usize>>,
 }
 
 impl<'a> VfsTreeBuilder<'a> {
+    #[allow(dead_code)]
     pub fn new(root_name: &'a str) -> Self {
         Self {
             root_name,

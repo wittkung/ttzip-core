@@ -10,7 +10,7 @@ import Foundation
 /// A thread-safe, heap-allocated reference wrapper for bridging Swift closures
 /// across C-ABI void* context pointers without triggering pointer decay, stack escape,
 /// or undefined behavior due to Swift closure memory layouts.
-public final class ClosureBox<T>: @unchecked Sendable {
+public final class ClosureBox<T: Sendable>: @unchecked Sendable {
     public let closure: T
 
     @inline(__always)
