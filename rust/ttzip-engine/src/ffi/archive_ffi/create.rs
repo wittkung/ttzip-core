@@ -27,8 +27,11 @@ fn collect_entries_recursive(
     current: &Path,
     out: &mut Vec<(PathBuf, String)>,
 ) -> std::io::Result<()> {
-    let rel_prefix = current.strip_prefix(root).unwrap_or(current);
-    let rel_str = rel_prefix.to_string_lossy().to_string();
+    let rel_str = if current == root {
+        current.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()
+    } else {
+        current.strip_prefix(root).unwrap_or(current).to_string_lossy().to_string()
+    };
 
     if !rel_str.is_empty() {
         out.push((current.to_path_buf(), rel_str));

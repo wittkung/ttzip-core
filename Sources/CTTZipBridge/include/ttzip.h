@@ -115,6 +115,18 @@ static inline TTZipStatus ttzip_zstd_decompress(
 }
 
 /* ========================================================================== */
+/* Checksums and Cryptography                                                 */
+/* ========================================================================== */
+
+static inline uint32_t ttzip_crc32(const uint8_t *data, size_t len) {
+    return ttzip_rust_crc32(0, data, len);
+}
+
+static inline uint64_t ttzip_crc64(const uint8_t *data, size_t len) {
+    return ttzip_rust_crc64(0, data, len);
+}
+
+/* ========================================================================== */
 /* System & Version Information                                               */
 /* ========================================================================== */
 
