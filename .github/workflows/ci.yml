@@ -1,0 +1,97 @@
+name: TTZip Core CI & Multi-Architecture Matrix
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance-gate:
+    name: Single-File LOC & C-ABI Symbol Governance
+    runs-on: macos-14
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Run LOC Threshold Defense Gate
+        run: |
+          python3 scripts/lint_loc_gate.py
+
+      - name: Run C-ABI Symbol Alignment Gate
+        run: |
+          bash scripts/verify_cabi_symbols.sh
+
+      - name: Run Contract Schema Linter
+        if: hashFiles('../.specify/scripts/bash/lint-contracts.sh') != ''
+        run: |
+          bash ../.specify/scripts/bash/lint-contracts.sh ../specs/002-systemic-architecture-and-governance/contracts
+
+  matrix-build-test:
+    name: ${{ matrix.name }} (${{ matrix.target }})
+    needs: governance-gate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "macOS ARM64 (Apple Silicon Hardware Crypto)"
+            os: macos-14
+            target: aarch64-apple-darwin
+            rust_flags: ""
+            run_swift: true
+          - name: "macOS x86_64 (Intel Fallback & SSE)"
+            os: macos-13
+            target: x86_64-apple-darwin
+            rust_flags: ""
+            run_swift: true
+          - name: "Linux x86_64 (GNU Toolchain & C-ABI)"
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            rust_flags: ""
+            run_swift: false
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            rust/target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Cargo Clippy & Lints
+        run: |
+          cd rust
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Execute Full Rust Industrial Suite
+        env:
+          RUSTFLAGS: ${{ matrix.rust_flags }}
+          RUST_BACKTRACE: 1
+        run: |
+          cd rust
+          cargo test --workspace --all-targets -- --nocapture
+
+      - name: Swift Facade & Bench Gate (macOS Only)
+        if: matrix.run_swift
+        run: |
+          swift test --parallel
+          swift run ttzip-bench gate
