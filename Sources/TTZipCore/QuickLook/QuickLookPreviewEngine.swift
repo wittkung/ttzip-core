@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -251,8 +251,23 @@ public enum QuickLookPreviewEngine: Sendable {
         let formattedCompressed = ByteCountFormatter.string(fromByteCount: data.compressedSizeBytes, countStyle: .file)
         
         var rowsHTML = ""
+        var renderedCount = 0
+        let maxRenderCount = 500
+        
         func renderNodes(_ nodes: [PreviewTreeNode], depth: Int) {
             for node in nodes {
+                if renderedCount >= maxRenderCount {
+                    rowsHTML += """
+                    <tr>
+                        <td colspan="2" class="name-col" style="text-align: center; color: var(--sub-color); padding: 12px;">
+                            ... Showing first \(maxRenderCount) items (\(data.totalEntriesCount - maxRenderCount) more entries omitted in QuickLook) ...
+                        </td>
+                    </tr>
+                    """
+                    return
+                }
+                
+                renderedCount += 1
                 let indent = String(repeating: "&nbsp;&nbsp;&nbsp;&nbsp;", count: depth)
                 let icon = node.isDirectory ? "📁" : fileIconEmoji(for: node.name)
                 let sizeStr = node.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: node.uncompressedSizeBytes, countStyle: .file)

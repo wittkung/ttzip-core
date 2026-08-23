@@ -16,10 +16,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Instant;
-use ttzip_glue::fs::safe_extract::sanitize_and_validate_path;
-use ttzip_glue::runtime::cancellation::CancellationToken;
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::fs::safe_extract::sanitize_and_validate_path;
+use ttzip_engine::runtime::cancellation::CancellationToken;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::ZipArchive;
 
 impl AppState {
     /// Triggers extraction of either marked entries or the selected entry to `./` or target dir.

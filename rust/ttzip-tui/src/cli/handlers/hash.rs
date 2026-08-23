@@ -11,10 +11,10 @@ use crate::cli::args::HashResultDto;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use ttzip_glue::crypto::adler32::adler32_fast;
-use ttzip_glue::crypto::crc32::crc32_fast;
-use ttzip_glue::crypto::crc64::crc64_fast;
-use ttzip_glue::crypto::sha256::FastSha256;
+use ttzip_engine::crypto::adler32::adler32_fast;
+use ttzip_engine::crypto::crc32::crc32_fast;
+use ttzip_engine::crypto::crc64::crc64_fast;
+use ttzip_engine::crypto::sha256::FastSha256;
 
 /// Executes headless `hash` subcommand.
 pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), String> {

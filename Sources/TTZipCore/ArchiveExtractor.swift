@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -35,9 +35,13 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
             throw ArchiveError.fileNotFound
         }
 
-        if !fileManager.fileExists(atPath: destinationDir) {
+        let dirExistedBefore = fileManager.fileExists(atPath: destinationDir)
+        if !dirExistedBefore {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
+
+        // 记录解压前的既有文件集合快照
+        let preExistingSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
 
         Self.preventSpotlightIndexing(at: destinationDir)
         defer { Self.cleanupQuarantineAttributes(at: destinationDir) }
@@ -68,9 +72,22 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
             }
         }
 
-        if let items = try? fileManager.contentsOfDirectory(atPath: destinationDir) {
-            for item in items {
-                try? fileManager.removeItem(atPath: (destinationDir as NSString).appendingPathComponent(item))
+        // 安全差集回滚：严格仅删除本次产生的新增文件，严禁删除既有文件
+        let currentSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
+        let newlyCreated = currentSubpaths.subtracting(preExistingSubpaths)
+        let sortedToClean = newlyCreated.sorted {
+            $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count
+        }
+
+        for relPath in sortedToClean {
+            let fullPath = (destinationDir as NSString).appendingPathComponent(relPath)
+            try? fileManager.removeItem(atPath: fullPath)
+        }
+
+        if !dirExistedBefore {
+            let remaining = (try? fileManager.contentsOfDirectory(atPath: destinationDir)) ?? []
+            if remaining.isEmpty || remaining == [".noindex"] {
+                try? fileManager.removeItem(atPath: destinationDir)
             }
         }
 
@@ -144,19 +161,26 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
             let pwd = (password != nil && !password!.isEmpty) ? password : nil
             let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
                 CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
-                    CUnsafeBufferAdapter.withCString(pwd) { pPtr in
-                        guard let aPtr = aPtr, let dPtr = dPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                        var opt = TTZipExtractOptions(
-                            destination_path: dPtr,
-                            password: pPtr,
-                            thread_budget: 0,
-                            overwrite_existing: true,
-                            preserve_permissions: true,
-                            dry_run: false,
-                            progress_callback: nil,
-                            user_data: nil
-                        )
-                        return ttzip_rust_archive_extract_unified(aPtr, dPtr, &opt)
+                    CUnsafeBufferAdapter.withCString(entryPath) { ePtr in
+                        CUnsafeBufferAdapter.withCString(pwd) { pPtr in
+                            guard let aPtr = aPtr, let dPtr = dPtr, let ePtr = ePtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                            var targets: [UnsafePointer<CChar>?] = [ePtr]
+                            var opt = TTZipExtractOptions(
+                                destination_path: dPtr,
+                                password: pPtr,
+                                thread_budget: 0,
+                                overwrite_existing: true,
+                                preserve_permissions: true,
+                                dry_run: false,
+                                progress_callback: nil,
+                                user_data: nil
+                            )
+                            var extractedCount: Int = 0
+                            return targets.withUnsafeMutableBufferPointer { tPtr in
+                                guard let base = tPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                                return ttzip_rust_archive_extract_selected(aPtr, base, 1, dPtr, &opt, &extractedCount)
+                            }
+                        }
                     }
                 }
             }
@@ -233,8 +257,7 @@ extension ArchiveExtractor {
             }
         }
 
-        let items = ((try? FileManager.default.contentsOfDirectory(atPath: destinationDir)) ?? []).filter { $0 != ".noindex" && $0 != ".DS_Store" && !$0.hasPrefix("._") }
-        if status == TTZIP_STATUS_OK && !items.isEmpty {
+        if status == TTZIP_STATUS_OK {
             Self.cleanupQuarantineAttributes(at: destinationDir)
             return true
         }
@@ -257,7 +280,7 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
     
     private init() {}
     
-    /// Selectively extracts a subset of files matching targetEntryPaths into destinationDir.
+    /// Selectively extracts a subset of files matching targetEntryPaths into destinationDir via single-pass C-ABI stream.
     public func extractSelected(
         archivePath: String,
         targetEntryPaths: Set<String>,
@@ -271,33 +294,48 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
             try fm.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
         
-        let tempExtractionDir = fm.temporaryDirectory.appendingPathComponent("ttzip_selective_\(UUID().uuidString)").path
-        defer { try? fm.removeItem(atPath: tempExtractionDir) }
+        let targetsArray = Array(targetEntryPaths)
+        let pwd = (password != nil && !password!.isEmpty) ? password : nil
         
-        let extractor = ArchiveExtractor()
-        try await extractor.extract(
-            archivePath: archivePath,
-            destinationDir: tempExtractionDir,
-            options: .defaultClean,
-            password: password
-        )
-        
-        var movedCount = 0
-        for targetPath in targetEntryPaths {
-            let srcPath = (tempExtractionDir as NSString).appendingPathComponent(targetPath)
-            if fm.fileExists(atPath: srcPath) {
-                let destPath = (destinationDir as NSString).appendingPathComponent(targetPath)
-                let parentDir = (destPath as NSString).deletingLastPathComponent
-                try? fm.createDirectory(atPath: parentDir, withIntermediateDirectories: true)
-                if fm.fileExists(atPath: destPath) {
-                    try? fm.removeItem(atPath: destPath)
+        return try await Task.detached(priority: .userInitiated) {
+            let (code, count) = CUnsafeBufferAdapter.withCString(archivePath) { aPtr -> (CTTZipBridge.TTZipStatus, Int) in
+                CUnsafeBufferAdapter.withCString(destinationDir) { dPtr -> (CTTZipBridge.TTZipStatus, Int) in
+                    CUnsafeBufferAdapter.withCString(pwd) { pPtr -> (CTTZipBridge.TTZipStatus, Int) in
+                        guard let aPtr = aPtr, let dPtr = dPtr else { return (TTZIP_STATUS_ERR_INVALID_PARAM, 0) }
+                        
+                        let cPointers = targetsArray.map { strdup($0) }
+                        defer {
+                            for ptr in cPointers {
+                                if let ptr = ptr { free(ptr) }
+                            }
+                        }
+                        
+                        var targets: [UnsafePointer<CChar>?] = cPointers.map { $0.map { UnsafePointer($0) } }
+                        var opt = TTZipExtractOptions(
+                            destination_path: dPtr,
+                            password: pPtr,
+                            thread_budget: 0,
+                            overwrite_existing: true,
+                            preserve_permissions: true,
+                            dry_run: false,
+                            progress_callback: nil,
+                            user_data: nil
+                        )
+                        var extractedCount: Int = 0
+                        let code = targets.withUnsafeMutableBufferPointer { tPtr -> CTTZipBridge.TTZipStatus in
+                            guard let base = tPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                            return ttzip_rust_archive_extract_selected(aPtr, base, targetsArray.count, dPtr, &opt, &extractedCount)
+                        }
+                        return (code, extractedCount)
+                    }
                 }
-                try fm.moveItem(atPath: srcPath, toPath: destPath)
-                movedCount += 1
             }
-        }
-        
-        return movedCount
+            
+            if code != TTZIP_STATUS_OK {
+                throw ArchiveError.readFailed(code: code.rawValue)
+            }
+            return count
+        }.value
     }
     
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
@@ -311,57 +349,36 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
             return cached
         }
         
-        // 1. Safe Rust Microkernel In-Memory Fast Path (7z archives)
-        let ext = (archivePath as NSString).pathExtension.lowercased()
-        if ext == "7z" || ext == "cb7" {
-            let maxBufSize = 32 * 1024 * 1024 // 32MB single entry in-memory window
-            var memBuffer = [UInt8](repeating: 0, count: maxBufSize)
-            var extractedLen: Int = 0
-            
-            let status = archivePath.withCString { cArch in
-                entryPath.withCString { cEntry in
-                    CUnsafeBufferAdapter.withCString(password) { cPwd in
-                        memBuffer.withUnsafeMutableBufferPointer { bPtr in
-                            guard let base = bPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                            return ttzip_rust_7z_extract_entry_memory(
-                                cArch,
-                                cEntry,
-                                -1,
-                                cPwd,
-                                base,
-                                maxBufSize,
-                                &extractedLen
-                            )
-                        }
+        // 1. Rust Microkernel In-Memory Fast Path (All formats: ZIP, 7z, TAR, GZ, XZ, ZST)
+        let maxBufSize = 32 * 1024 * 1024 // 32MB single entry in-memory window
+        var memBuffer = [UInt8](repeating: 0, count: maxBufSize)
+        var extractedLen: Int = 0
+        
+        let status = archivePath.withCString { cArch in
+            entryPath.withCString { cEntry in
+                CUnsafeBufferAdapter.withCString(password) { cPwd in
+                    memBuffer.withUnsafeMutableBufferPointer { bPtr in
+                        guard let base = bPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                        return ttzip_rust_archive_extract_single_entry_memory(
+                            cArch,
+                            cEntry,
+                            -1,
+                            cPwd,
+                            base,
+                            maxBufSize,
+                            &extractedLen
+                        )
                     }
                 }
             }
-            
-            if status == TTZIP_STATUS_OK && extractedLen > 0 && extractedLen <= maxBufSize {
-                let data = Data(memBuffer.prefix(extractedLen))
-                VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
-                return data
-            }
         }
         
-        // 2. General Streaming Path: Extract single entry to ephemeral temp directory
-        let fm = FileManager.default
-        let tempDir = fm.temporaryDirectory.appendingPathComponent("ttzip_preview_\(UUID().uuidString)").path
-        defer { try? fm.removeItem(atPath: tempDir) }
-        
-        let count = try await extractSelected(
-            archivePath: archivePath,
-            targetEntryPaths: [entryPath],
-            destinationDir: tempDir,
-            password: password
-        )
-        
-        guard count > 0 else { return nil }
-        let outPath = (tempDir as NSString).appendingPathComponent(entryPath)
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: outPath)) {
+        if status == TTZIP_STATUS_OK && extractedLen > 0 && extractedLen <= maxBufSize {
+            let data = Data(memBuffer.prefix(extractedLen))
             VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
             return data
         }
+        
         return nil
     }
 }

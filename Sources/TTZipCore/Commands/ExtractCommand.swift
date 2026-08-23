@@ -1,5 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-// TTZip
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
 
 import Foundation
 
@@ -59,13 +63,24 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
         let fm = FileManager.default
         
         let dirExistedBefore = fm.fileExists(atPath: destinationDir)
-        let preExistingPaths = scanDirectorySet(dirPath: destinationDir)
+        let preExistingPaths = dirExistedBefore ? scanDirectorySet(dirPath: destinationDir) : Set<String>()
         
-        var backupMade: String? = nil
+        var backupDirectory: String? = nil
         if dirExistedBefore && !preExistingPaths.isEmpty {
-            let tempBackup = "\(destinationDir).bak_\(UUID().uuidString)"
-            try? fm.copyItem(atPath: destinationDir, toPath: tempBackup)
-            backupMade = tempBackup
+            let tmpBackup = NSTemporaryDirectory() + "ttzip_extract_backup_" + UUID().uuidString
+            if (try? fm.createDirectory(atPath: tmpBackup, withIntermediateDirectories: true)) != nil {
+                for p in preExistingPaths {
+                    var isDir: ObjCBool = false
+                    if fm.fileExists(atPath: p, isDirectory: &isDir), !isDir.boolValue {
+                        let rel = String(p.dropFirst(destinationDir.count).trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+                        let targetBackup = (tmpBackup as NSString).appendingPathComponent(rel)
+                        let parentDir = (targetBackup as NSString).deletingLastPathComponent
+                        try? fm.createDirectory(atPath: parentDir, withIntermediateDirectories: true)
+                        try? fm.copyItem(atPath: p, toPath: targetBackup)
+                    }
+                }
+                backupDirectory = tmpBackup
+            }
         }
         
         let extractResult = try await {
@@ -78,8 +93,20 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
                     progress: progress
                 )
             } catch {
-                if let bDir = backupMade, fm.fileExists(atPath: bDir) {
-                    try? fm.removeItem(atPath: bDir)
+                // 精确增量回滚：仅清理本次解压新增的文件/目录，绝不删除用户既有文件
+                if dirExistedBefore {
+                    let dirtyPaths = self.scanDirectorySet(dirPath: destinationDir).subtracting(preExistingPaths)
+                    let sortedDirty = dirtyPaths.sorted {
+                        $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count
+                    }
+                    for p in sortedDirty {
+                        try? fm.removeItem(atPath: p)
+                    }
+                    if let backupDir = backupDirectory, fm.fileExists(atPath: backupDir) {
+                        try? fm.removeItem(atPath: backupDir)
+                    }
+                } else if fm.fileExists(atPath: destinationDir) {
+                    try? fm.removeItem(atPath: destinationDir)
                 }
                 throw error
             }
@@ -92,15 +119,12 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
             $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count
         }
         
-        saveExecutionState(created: sortedCreated, preExisted: dirExistedBefore, backupDir: backupMade)
+        saveExecutionState(created: sortedCreated, preExisted: dirExistedBefore, backupDir: backupDirectory)
         
         let endTime = CFAbsoluteTimeGetCurrent()
         let duration = endTime - startTime
         
-        var backupDict: [String: String] = [:]
-        if let b = backupMade {
-            backupDict[destinationDir] = b
-        }
+        let backupDict: [String: String] = [:]
         
         return CommandResult(
             commandId: commandId,

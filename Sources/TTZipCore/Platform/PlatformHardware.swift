@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -101,10 +101,9 @@ public enum PlatformHardware {
     
     /// Boosts current thread scheduling QoS priority to user interactive on Darwin.
     @inlinable
+    @available(*, deprecated, message: "Use Task(priority:) or NativeComputeDispatcher to avoid mutating cooperative thread pool worker threads.")
     public static func boostCurrentThreadPriority() {
-        #if os(macOS)
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)
-        #endif
+        // Safe no-op in Swift 6 concurrency
     }
 }
 
@@ -578,11 +577,8 @@ public final class AppleSiliconTuner: @unchecked Sendable {
     }
     
     /// Elevates current thread QoS priority to `QOS_CLASS_USER_INTERACTIVE`.
+    @available(*, deprecated, message: "Use Task(priority:) or NativeComputeDispatcher to avoid mutating cooperative thread pool worker threads.")
     public func boostCurrentThreadPriority() {
-        let dict = Thread.current.threadDictionary
-        if dict["_tt_boosted"] == nil {
-            dict["_tt_boosted"] = true
-            pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)
-        }
+        // Safe no-op to prevent thread pool contamination in Swift 6 concurrency
     }
 }

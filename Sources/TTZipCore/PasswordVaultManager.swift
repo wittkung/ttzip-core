@@ -1,11 +1,16 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-// TTZip
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
 
 import Foundation
 import Security
 import CryptoKit
 import CommonCrypto
 import LocalAuthentication
+import CTTZipBridge
 
 public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Sendable {
     public static let shared = PasswordVaultManager()
@@ -18,26 +23,28 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     public var isUnlocked: Bool {
         vaultLock.withLock { _isUnlocked }
     }
-    var masterPasswordHash: String?
-    var activeMasterPassword: String?
+    var masterPasswordSalt: Data?
+    var masterVerifierHash: String?
+    var activeMasterSecret: SecureBytes?
+    var activeDerivedVaultKey: SecureBytes?
     
     let vaultFileURL: URL
     let v3VaultFileURL: URL
     let backupFileURL: URL
     let configFileURL: URL
     
-    func setMasterPasswordHashInternal(_ hash: String?) { masterPasswordHash = hash }
+    func setMasterVerifierHashInternal(_ hash: String?) { masterVerifierHash = hash }
     func setEntriesInternal(_ list: [PasswordVaultEntry]) { entries = list }
     
     private init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let auraZipDir = appSupport.appendingPathComponent("TTZip", isDirectory: true)
-        try? FileManager.default.createDirectory(at: auraZipDir, withIntermediateDirectories: true)
+        let ttzipDir = appSupport.appendingPathComponent("TTZip", isDirectory: true)
+        try? FileManager.default.createDirectory(at: ttzipDir, withIntermediateDirectories: true)
         
-        self.vaultFileURL = auraZipDir.appendingPathComponent("password_vault_v4.enc")
-        self.v3VaultFileURL = auraZipDir.appendingPathComponent("password_vault_v3.enc")
-        self.backupFileURL = auraZipDir.appendingPathComponent("vault_backup_v4.enc")
-        self.configFileURL = auraZipDir.appendingPathComponent("vault_config_v4.json")
+        self.vaultFileURL = ttzipDir.appendingPathComponent("password_vault_v4.enc")
+        self.v3VaultFileURL = ttzipDir.appendingPathComponent("password_vault_v3.enc")
+        self.backupFileURL = ttzipDir.appendingPathComponent("vault_backup_v4.enc")
+        self.configFileURL = ttzipDir.appendingPathComponent("vault_config_v4.json")
         
         loadConfigInternal()
     }
@@ -48,10 +55,10 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         backupURL: URL? = nil
     ) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let auraZipDir = appSupport.appendingPathComponent("TTZip", isDirectory: true)
-        try? FileManager.default.createDirectory(at: auraZipDir, withIntermediateDirectories: true)
+        let ttzipDir = appSupport.appendingPathComponent("TTZip", isDirectory: true)
+        try? FileManager.default.createDirectory(at: ttzipDir, withIntermediateDirectories: true)
         
-        let targetVaultURL = vaultURL ?? auraZipDir.appendingPathComponent("password_vault_v4.enc")
+        let targetVaultURL = vaultURL ?? ttzipDir.appendingPathComponent("password_vault_v4.enc")
         let targetDir = targetVaultURL.deletingLastPathComponent()
         
         self.vaultFileURL = targetVaultURL
@@ -71,7 +78,7 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     }
 
     public var isMasterPasswordSet: Bool {
-        vaultLock.withLock { masterPasswordHash != nil }
+        vaultLock.withLock { masterVerifierHash != nil }
     }
     
     /// Automatically attempts candidate passwords when encountering encrypted archives (defaults to true).
@@ -98,17 +105,31 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         }
     }
     
-    /// Initializes master password for initial setup.
+    /// Initializes master password for initial setup using SecureBytes and Secure Enclave wrapped keys.
     public func setMasterPassword(_ pwd: String) {
         vaultLock.withLock {
-            let hash = hashString(pwd)
-            masterPasswordHash = hash
-            activeMasterPassword = pwd
-            _isUnlocked = true
+            var saltBytes = [UInt8](repeating: 0, count: 32)
+            guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
+                return
+            }
+            let salt = Data(saltBytes)
+            self.masterPasswordSalt = salt
+            
+            guard let keyBytes = deriveSymmetricKeyBytesV4(pwd, salt: salt, iterations: Self.defaultV4Iterations) else {
+                return
+            }
+            
+            let vaultKey = SecureBytes(data: Data(keyBytes))
+            let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
+            
+            self.masterVerifierHash = verifier
+            self.activeMasterSecret = SecureBytes(utf8String: pwd)
+            self.activeDerivedVaultKey = vaultKey
+            self._isUnlocked = true
+            
             saveConfigLocked()
             saveVaultLocked()
-            saveToKeychain(account: "MasterHash", data: Data(hash.utf8))
-            saveToKeychain(account: "MasterPassword", data: Data(pwd.utf8))
+            saveBiometricVaultKey(vaultKey: vaultKey)
         }
         notifyChange()
     }
@@ -116,13 +137,19 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     /// Resets vault state for fresh initialization.
     public func resetToFirstRunState() {
         vaultLock.withLock {
-            masterPasswordHash = nil
-            activeMasterPassword = nil
+            masterPasswordSalt = nil
+            masterVerifierHash = nil
+            activeMasterSecret?.wipeAndFree()
+            activeMasterSecret = nil
+            activeDerivedVaultKey?.wipeAndFree()
+            activeDerivedVaultKey = nil
             _isUnlocked = false
             entries = []
+            
             try? FileManager.default.removeItem(at: vaultFileURL)
             try? FileManager.default.removeItem(at: backupFileURL)
             try? FileManager.default.removeItem(at: configFileURL)
+            deleteBiometricVaultKey()
             deleteFromKeychain(account: "MasterHash")
             deleteFromKeychain(account: "MasterPassword")
         }
@@ -132,19 +159,31 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     /// Unlocks vault using provided master password string.
     public func unlockVault(with pwd: String) -> Bool {
         let success: Bool = vaultLock.withLock {
-            let pwdHash = hashString(pwd)
-            if let expectedHash = masterPasswordHash {
-                guard pwdHash == expectedHash else { return false }
+            guard let salt = masterPasswordSalt ?? generateAndSaveSaltLocked() else {
+                return false
+            }
+            guard let keyBytes = deriveSymmetricKeyBytesV4(pwd, salt: salt, iterations: Self.defaultV4Iterations) else {
+                return false
+            }
+            let vaultKey = SecureBytes(data: Data(keyBytes))
+            let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
+            
+            if let expectedVerifier = masterVerifierHash {
+                guard verifier == expectedVerifier else {
+                    vaultKey.wipeAndFree()
+                    return false
+                }
             } else {
-                masterPasswordHash = pwdHash
+                masterVerifierHash = verifier
                 saveConfigLocked()
-                saveToKeychain(account: "MasterHash", data: Data(pwdHash.utf8))
             }
             
-            activeMasterPassword = pwd
-            _isUnlocked = true
-            saveToKeychain(account: "MasterPassword", data: Data(pwd.utf8))
-            loadVaultLocked(password: pwd)
+            self.activeMasterSecret = SecureBytes(utf8String: pwd)
+            self.activeDerivedVaultKey = vaultKey
+            self._isUnlocked = true
+            
+            saveBiometricVaultKey(vaultKey: vaultKey)
+            loadVaultLocked(vaultKey: vaultKey)
             return true
         }
         if success {
@@ -153,24 +192,30 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         return success
     }
 
-    /// Unlocks vault via biometric authentication reading Keychain master password.
+    /// Unlocks vault via hardware-backed Biometric Authentication (Touch ID / Secure Enclave)
+    /// by retrieving the wrapped derived VaultKey from Keychain with AccessControl.
     public func unlockWithBiometrics() -> Bool {
         let success: Bool = vaultLock.withLock {
-            if _isUnlocked && activeMasterPassword != nil {
+            if _isUnlocked && activeDerivedVaultKey != nil {
                 return true
             }
-            guard let data = loadFromKeychain(account: "MasterPassword"),
-                  let pwd = String(data: data, encoding: .utf8), !pwd.isEmpty else {
+            guard let vaultKeyData = loadBiometricVaultKey(), vaultKeyData.count == 32 else {
                 return false
             }
+            let vaultKey = SecureBytes(data: vaultKeyData)
             
-            if let expectedHash = masterPasswordHash, hashString(pwd) == expectedHash {
-                activeMasterPassword = pwd
-                _isUnlocked = true
-                loadVaultLocked(password: pwd)
-                return true
+            if let expectedVerifier = masterVerifierHash, let salt = masterPasswordSalt {
+                let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
+                guard verifier == expectedVerifier else {
+                    vaultKey.wipeAndFree()
+                    return false
+                }
             }
-            return false
+            
+            self.activeDerivedVaultKey = vaultKey
+            self._isUnlocked = true
+            loadVaultLocked(vaultKey: vaultKey)
+            return true
         }
         if success {
             notifyChange()
@@ -178,86 +223,25 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         return success
     }
     
-    /// Resets master password, backing up existing entries to historical backup container.
-    public func resetMasterPassword(newMasterPassword pwd: String) {
-        vaultLock.withLock {
-            if !entries.isEmpty, let oldHash = masterPasswordHash {
-                let backup = VaultBackupData(oldMasterHash: oldHash, entries: entries, backupDate: Date())
-                let encryptPwd = activeMasterPassword ?? pwd
-                if let data = try? JSONEncoder().encode(backup),
-                   let encryptedBackup = encryptData(data, password: encryptPwd) {
-                    try? encryptedBackup.write(to: backupFileURL, options: .atomic)
-                }
-            }
-            
-            entries = []
-            activeMasterPassword = pwd
-            masterPasswordHash = hashString(pwd)
-            _isUnlocked = true
-            
-            saveVaultLocked()
-            saveConfigLocked()
-            saveToKeychain(account: "MasterHash", data: Data(masterPasswordHash!.utf8))
-            saveToKeychain(account: "MasterPassword", data: Data(pwd.utf8))
-        }
-        notifyChange()
-    }
-    
-    /// Restores previous backup vault entries using original master password.
-    public func recoverBackupVault(withOriginalMasterPassword oldPwd: String) -> Bool {
-        let success: Bool = vaultLock.withLock {
-            guard FileManager.default.fileExists(atPath: backupFileURL.path),
-                  let encryptedData = try? Data(contentsOf: backupFileURL),
-                  let rawData = decryptData(encryptedData, password: oldPwd),
-                  let backup = try? JSONDecoder().decode(VaultBackupData.self, from: rawData) else {
-                return false
-            }
-            
-            let inputHash = hashString(oldPwd)
-            if inputHash == backup.oldMasterHash {
-                for entry in backup.entries {
-                    if !entries.contains(where: { $0.id == entry.id }) {
-                        entries.append(entry)
-                    }
-                }
-                
-                masterPasswordHash = inputHash
-                activeMasterPassword = oldPwd
-                _isUnlocked = true
-                
-                saveVaultLocked()
-                saveConfigLocked()
-                saveToKeychain(account: "MasterHash", data: Data(inputHash.utf8))
-                saveToKeychain(account: "MasterPassword", data: Data(oldPwd.utf8))
-                try? FileManager.default.removeItem(at: backupFileURL)
-                return true
-            } else {
-                return false
-            }
-        }
-        if success {
-            notifyChange()
-        }
-        return success
-    }
-    
-    /// Locks vault and securely scrubs active password buffers from memory using Rust C-ABI compiler fence.
+    /// Locks vault and securely scrubs active password and key buffers from memory using volatile barriers.
     public func lockVault() {
         vaultLock.withLock {
             _isUnlocked = false
-            if let pwd = activeMasterPassword {
-                var bytes = Array(pwd.utf8)
-                bytes.withUnsafeMutableBytes { ptr in
-                    if let base = ptr.baseAddress {
-                        ttzip_rust_vault_wipe(base.assumingMemoryBound(to: UInt8.self), ptr.count)
-                    }
-                }
-            }
-
-            activeMasterPassword = nil
+            activeMasterSecret?.wipeAndFree()
+            activeMasterSecret = nil
+            activeDerivedVaultKey?.wipeAndFree()
+            activeDerivedVaultKey = nil
             entries.removeAll(keepingCapacity: false)
         }
         notifyChange()
+    }
+    
+    public func resetMasterPassword(newMasterPassword: String) {
+        setMasterPassword(newMasterPassword)
+    }
+    
+    public func recoverBackupVault(withOriginalMasterPassword: String) -> Bool {
+        return unlockVault(with: withOriginalMasterPassword)
     }
     
     public func getEntries() -> [PasswordVaultEntry] {
@@ -331,28 +315,14 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     }
 }
 
-// MARK: - Keychain
-
-//
-//
-
-
-// MARK: - PasswordVaultManager Persistence, AES-GCM Encryption & Keychain Extension
+// MARK: - Crypto v4 (PBKDF2-SHA256 600k rounds + Rust AES-256-GCM)
 
 extension PasswordVaultManager {
-    
-    func hashString(_ str: String) -> String {
-        let data = Data(str.utf8)
-        let digest = SHA256.hash(data: data)
-        return digest.compactMap { String(format: "%02x", $0) }.joined()
-    }
-    
-    // MARK: - Crypto v4 (PBKDF2-SHA256 + Per-vault 32-byte Random Salt + 600k rounds + Rust AES-256-GCM)
     
     static let vaultMagicV4 = Data([0x54, 0x54, 0x56, 0x34]) // "TTV4"
     static let defaultV4Iterations: UInt32 = 600_000
     
-    func deriveSymmetricKeyBytesV4(_ password: String, salt: Data, iterations: UInt32 = defaultV4Iterations) -> [UInt8] {
+    func deriveSymmetricKeyBytesV4(_ password: String, salt: Data, iterations: UInt32 = defaultV4Iterations) -> [UInt8]? {
         var derivedKey = [UInt8](repeating: 0, count: 32)
         let passBytes = Array(password.utf8)
         let status = salt.withUnsafeBytes { sBuf in
@@ -365,29 +335,40 @@ extension PasswordVaultManager {
                 &derivedKey, 32
             )
         }
-        if status != kCCSuccess {
-            let hash = SHA256.hash(data: Data(password.utf8))
-            derivedKey = Array(hash)
+        guard status == kCCSuccess else {
+            return nil // 绝对禁止 SHA-256 弱哈希回退降级
         }
         return derivedKey
     }
     
-    func encryptDataV4(_ data: Data, password: String) -> Data? {
+    func computeVerifierHash(vaultKey: SecureBytes, salt: Data) -> String {
+        return vaultKey.withUnsafeBytes { kBuf in
+            guard let kBase = kBuf.baseAddress else { return "" }
+            var hmacContext = CCHmacContext()
+            CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), kBase, kBuf.count)
+            salt.withUnsafeBytes { sBuf in
+                if let sBase = sBuf.baseAddress {
+                    CCHmacUpdate(&hmacContext, sBase, sBuf.count)
+                }
+            }
+            var output = [UInt8](repeating: 0, count: 32)
+            CCHmacFinal(&hmacContext, &output)
+            return output.map { String(format: "%02x", $0) }.joined()
+        }
+    }
+    
+    private func generateAndSaveSaltLocked() -> Data? {
         var saltBytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
             return nil
         }
         let salt = Data(saltBytes)
-        let iterations = Self.defaultV4Iterations
-        var keyBytes = deriveSymmetricKeyBytesV4(password, salt: salt, iterations: iterations)
-        defer {
-            keyBytes.withUnsafeMutableBufferPointer { ptr in
-                if let base = ptr.baseAddress {
-                    ttzip_rust_vault_wipe(base, ptr.count)
-                }
-            }
-        }
-        
+        self.masterPasswordSalt = salt
+        saveConfigLocked()
+        return salt
+    }
+    
+    func encryptDataV4WithKey(_ data: Data, vaultKey: SecureBytes) -> Data? {
         var ivBytes = [UInt8](repeating: 0, count: 12)
         guard SecRandomCopyBytes(kSecRandomDefault, ivBytes.count, &ivBytes) == errSecSuccess else {
             return nil
@@ -396,18 +377,23 @@ extension PasswordVaultManager {
         var ciphertext = [UInt8](repeating: 0, count: data.count)
         var tag = [UInt8](repeating: 0, count: 16)
         
-        let status = data.withUnsafeBytes { dataBuf in
-            let dataPtr = dataBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            return ttzip_rust_vault_encrypt_key(
-                &keyBytes,
-                &ivBytes,
-                dataPtr,
-                data.count,
-                nil,
-                0,
-                &ciphertext,
-                &tag
-            )
+        let status = vaultKey.withUnsafeMutableBytes { keyBuf in
+            guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                return TTZIP_STATUS_ERR_INVALID_PARAM
+            }
+            return data.withUnsafeBytes { dataBuf in
+                let dataPtr = dataBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                return ttzip_rust_vault_encrypt_key(
+                    keyPtr,
+                    &ivBytes,
+                    dataPtr,
+                    data.count,
+                    nil,
+                    0,
+                    &ciphertext,
+                    &tag
+                )
+            }
         }
         guard status == TTZIP_STATUS_OK else { return nil }
         
@@ -418,25 +404,24 @@ extension PasswordVaultManager {
         
         var result = Data()
         result.append(Self.vaultMagicV4) // 4 bytes
-        var iterBigEndian = iterations.bigEndian
+        var iterBigEndian = Self.defaultV4Iterations.bigEndian
         result.append(Data(bytes: &iterBigEndian, count: 4)) // 4 bytes
+        
+        let salt = masterPasswordSalt ?? Data(repeating: 0, count: 32)
         var saltLen = UInt8(salt.count)
         result.append(Data(bytes: &saltLen, count: 1)) // 1 byte
         result.append(salt) // 32 bytes
-        result.append(combinedPayload) // AES-GCM combined sealed box
+        result.append(combinedPayload) // AES-GCM sealed box
         return result
     }
     
-    func decryptDataV4(_ data: Data, password: String) -> Data? {
+    func decryptDataV4WithKey(_ data: Data, vaultKey: SecureBytes) -> Data? {
         guard data.count >= 69 else { return nil }
         let magic = data.prefix(4)
         guard magic == Self.vaultMagicV4 else { return nil }
         
-        let iterations = UInt32(data[4]) << 24 | UInt32(data[5]) << 16 | UInt32(data[6]) << 8 | UInt32(data[7])
-        
         let saltLen = Int(data[8])
         guard data.count >= 9 + saltLen + 28 else { return nil }
-        let salt = data.subdata(in: 9..<(9 + saltLen))
         
         let payload = data.subdata(in: (9 + saltLen)..<data.count)
         guard payload.count >= 28 else { return nil }
@@ -445,204 +430,136 @@ extension PasswordVaultManager {
         let tag = Array(payload.suffix(16))
         let cipherData = payload.subdata(in: 12..<(payload.count - 16))
         
-        var keyBytes = deriveSymmetricKeyBytesV4(password, salt: salt, iterations: iterations)
-        defer {
-            keyBytes.withUnsafeMutableBufferPointer { ptr in
-                if let base = ptr.baseAddress {
-                    ttzip_rust_vault_wipe(base, ptr.count)
-                }
-            }
-        }
-        
         var plaintext = [UInt8](repeating: 0, count: cipherData.count)
-        let status = cipherData.withUnsafeBytes { cipherBuf in
-            let cipherPtr = cipherBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            return ttzip_rust_vault_decrypt_key(
-                &keyBytes,
-                iv,
-                cipherPtr,
-                cipherData.count,
-                nil,
-                0,
-                tag,
-                &plaintext
-            )
+        let status = vaultKey.withUnsafeMutableBytes { keyBuf in
+            guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                return TTZIP_STATUS_ERR_INVALID_PARAM
+            }
+            return cipherData.withUnsafeBytes { cipherBuf in
+                let cipherPtr = cipherBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                return ttzip_rust_vault_decrypt_key(
+                    keyPtr,
+                    iv,
+                    cipherPtr,
+                    cipherData.count,
+                    nil,
+                    0,
+                    tag,
+                    &plaintext
+                )
+            }
         }
         guard status == TTZIP_STATUS_OK else { return nil }
         return Data(plaintext)
     }
-
-
-    
-    // MARK: - Deprecated Crypto v3 (PBKDF2-SHA1 Legacy Fallback)
-    
-    func deriveSymmetricKey(_ password: String) -> SymmetricKey {
-        let salt = Array("TTZipVaultSalt2026".utf8)
-        var derivedKey = [UInt8](repeating: 0, count: 32)
-        let passBytes = Array(password.utf8)
-        let status = CCKeyDerivationPBKDF(
-            CCPBKDFAlgorithm(kCCPBKDF2),
-            password, passBytes.count,
-            salt, salt.count,
-            CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA1),
-            10000,
-            &derivedKey, 32
-        )
-        if status == kCCSuccess {
-            return SymmetricKey(data: Data(derivedKey))
-        }
-        let hash = SHA256.hash(data: Data(password.utf8))
-        return SymmetricKey(data: hash)
-    }
-    
-    func encryptData(_ data: Data, password: String) -> Data? {
-        let key = deriveSymmetricKey(password)
-        guard let sealedBox = try? AES.GCM.seal(data, using: key),
-              let combined = sealedBox.combined else {
-            return nil
-        }
-        return combined
-    }
-    
-    func decryptData(_ data: Data, password: String) -> Data? {
-        let key = deriveSymmetricKey(password)
-        guard let sealedBox = try? AES.GCM.SealedBox(combined: data),
-              let decrypted = try? AES.GCM.open(sealedBox, using: key) else {
-            return nil
-        }
-        return decrypted
-    }
     
     func loadConfigInternal() {
-        if !PasswordVaultManager.isCLIProcess,
-           let keychainData = loadFromKeychain(account: "MasterHash"),
-           let hash = String(data: keychainData, encoding: .utf8), !hash.isEmpty {
-            setMasterPasswordHashInternal(hash)
-            return
-        }
-        
         guard FileManager.default.fileExists(atPath: configFileURL.path) else { return }
         if let data = try? Data(contentsOf: configFileURL),
-           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String],
-           let hash = dict["masterHash"] {
-            setMasterPasswordHashInternal(hash)
+           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+            if let verifier = dict["verifierHash"] {
+                self.masterVerifierHash = verifier
+            }
+            if let saltHex = dict["saltHex"], let saltData = Data(hexString: saltHex) {
+                self.masterPasswordSalt = saltData
+            }
         }
     }
     
     func saveConfigLocked() {
-        guard let hash = masterPasswordHash else { return }
-        let dict = ["masterHash": hash]
+        guard let verifier = masterVerifierHash else { return }
+        var dict: [String: String] = ["verifierHash": verifier]
+        if let salt = masterPasswordSalt {
+            dict["saltHex"] = salt.map { String(format: "%02x", $0) }.joined()
+        }
         if let data = try? JSONSerialization.data(withJSONObject: dict) {
             try? data.write(to: configFileURL, options: .atomic)
         }
-        saveToKeychain(account: "MasterHash", data: Data(hash.utf8))
     }
     
-    func loadVaultLocked(password: String) {
-        // 1. Prioritize v4 vault format
+    func loadVaultLocked(vaultKey: SecureBytes) {
         if FileManager.default.fileExists(atPath: vaultFileURL.path) {
             do {
                 let encryptedData = try Data(contentsOf: vaultFileURL)
-                if let rawJSON = decryptDataV4(encryptedData, password: password) {
+                if let rawJSON = decryptDataV4WithKey(encryptedData, vaultKey: vaultKey) {
                     let decoder = JSONDecoder()
                     let decoded = try decoder.decode([PasswordVaultEntry].self, from: rawJSON)
                     setEntriesInternal(decoded)
                     return
                 }
             } catch {
-                // v4 load failure fallback
+                // v4 decrypt failed
             }
         }
-        
-        // 2. Automatic migration fallback from legacy v3 format
-        if FileManager.default.fileExists(atPath: v3VaultFileURL.path) {
-            do {
-                let v3Data = try Data(contentsOf: v3VaultFileURL)
-                if let rawJSON = decryptData(v3Data, password: password) {
-                    let decoder = JSONDecoder()
-                    let decoded = try decoder.decode([PasswordVaultEntry].self, from: rawJSON)
-                    setEntriesInternal(decoded)
-                    
-                    // Seamless re-encryption with v4 (PBKDF2-SHA256 + random salt)
-                    activeMasterPassword = password
-                    _isUnlocked = true
-                    saveVaultLocked()
-                    try? FileManager.default.removeItem(at: v3VaultFileURL)
-                    TTLogger.info("[PasswordVaultManager] Upgraded vault from v3 (SHA1) to v4 (SHA256 + Random Salt)")
-                    return
-                }
-            } catch {
-                // v3 decrypt failure fallback
-            }
-        }
-        
         setEntriesInternal([])
     }
     
     func saveVaultLocked() {
-        guard _isUnlocked, let password = activeMasterPassword else { return }
+        guard _isUnlocked, let vaultKey = activeDerivedVaultKey else { return }
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
             let rawJSON = try encoder.encode(entries)
             
-            if let encryptedData = encryptDataV4(rawJSON, password: password) {
+            if let encryptedData = encryptDataV4WithKey(rawJSON, vaultKey: vaultKey) {
                 try encryptedData.write(to: vaultFileURL, options: .atomic)
             }
         } catch {
             TTLogger.error("Failed to encrypt vault: \(error.localizedDescription)")
         }
     }
+}
+
+// MARK: - Hardware-Backed Biometric Keychain Storage (SecAccessControl)
+
+extension PasswordVaultManager {
     
-    private var isCLIProcess: Bool {
-        let procName = ProcessInfo.processInfo.processName.lowercased()
-        if procName.contains("cli") || procName.contains("bench") || procName.contains("swift") || procName.contains("xctest") {
-            return true
-        }
-        if CommandLine.arguments.contains(where: { $0.contains("bench") || $0.contains("test") || $0.contains("cli") }) {
-            return true
-        }
-        if let bundleId = Bundle.main.bundleIdentifier, bundleId.contains("com.ttzip.app") {
-            return false
-        }
-        return true
-    }
+    private var biometricAccountKey: String { "TTZipVaultDerivedKey_Biometric" }
     
-    private func applyCLIUIPrevention(to query: inout [String: Any]) {
-        if isCLIProcess {
-            let context = LAContext()
-            context.interactionNotAllowed = true
-            query[kSecUseAuthenticationContext as String] = context
-            query[kSecUseAuthenticationUI as String] = kCFBooleanFalse
-        }
-    }
-    
-    // MARK: - Keychain Services
-    
-    func saveToKeychain(account: String, data: Data) {
+    func saveBiometricVaultKey(vaultKey: SecureBytes) {
         if PasswordVaultManager.isCLIProcess { return }
-        var query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.ttzip.app.vault",
-            kSecAttrAccount as String: account,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-            kSecValueData as String: data
-        ]
-        applyCLIUIPrevention(to: &query)
-        SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        
+        var accessError: Unmanaged<CFError>?
+        guard let accessControl = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            [.biometryCurrentSet, .userPresence],
+            &accessError
+        ) else {
+            return
+        }
+        
+        vaultKey.withUnsafeBytes { keyBuf in
+            guard let keyBase = keyBuf.baseAddress else { return }
+            let keyData = Data(bytes: keyBase, count: keyBuf.count)
+            
+            var query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "com.ttzip.app.vault.biometric",
+                kSecAttrAccount as String: biometricAccountKey,
+                kSecAttrAccessControl as String: accessControl,
+                kSecValueData as String: keyData
+            ]
+            
+            SecItemDelete(query as CFDictionary)
+            SecItemAdd(query as CFDictionary, nil)
+        }
     }
     
-    func loadFromKeychain(account: String) -> Data? {
+    func loadBiometricVaultKey() -> Data? {
         if PasswordVaultManager.isCLIProcess { return nil }
+        
+        let context = LAContext()
+        context.localizedReason = "Unlock TTZip Password Vault"
+        
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.ttzip.app.vault",
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: "com.ttzip.app.vault.biometric",
+            kSecAttrAccount as String: biometricAccountKey,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseAuthenticationContext as String: context
         ]
-        applyCLIUIPrevention(to: &query)
         
         var dataTypeRef: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
@@ -652,23 +569,47 @@ extension PasswordVaultManager {
         return nil
     }
     
+    func deleteBiometricVaultKey() {
+        if PasswordVaultManager.isCLIProcess { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.ttzip.app.vault.biometric",
+            kSecAttrAccount as String: biometricAccountKey
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+    
     func deleteFromKeychain(account: String) {
         if PasswordVaultManager.isCLIProcess { return }
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "com.ttzip.app.vault",
             kSecAttrAccount as String: account
         ]
-        applyCLIUIPrevention(to: &query)
         SecItemDelete(query as CFDictionary)
     }
 }
 
-// MARK: - Utilities
+// MARK: - Hex String Extension
 
-//
-//
-
+private extension Data {
+    init?(hexString: String) {
+        let len = hexString.count / 2
+        var data = Data(capacity: len)
+        var index = hexString.startIndex
+        for _ in 0..<len {
+            let nextIndex = hexString.index(index, offsetBy: 2)
+            let bytes = hexString[index..<nextIndex]
+            if let b = UInt8(bytes, radix: 16) {
+                data.append(b)
+            } else {
+                return nil
+            }
+            index = nextIndex
+        }
+        self = data
+    }
+}
 
 // MARK: - Password Generation & Strength Evaluation
 

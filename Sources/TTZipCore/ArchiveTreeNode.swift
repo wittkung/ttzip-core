@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -113,8 +113,7 @@ extension ArchiveTreeNode: ArchiveComponentProtocol {
 /// Builds a hierarchical list of `ArchiveTreeNode` objects from flat `ArchiveEntry` lists.
 public final class ArchiveTreeBuilder: @unchecked Sendable {
     public static func buildTree(from entries: [ArchiveEntry]) -> [ArchiveTreeNode] {
-        let rootComponent = ArchiveComponentTreeBuilder.buildTree(from: entries)
-        return rootComponent.getChildren().map { ArchiveTreeNode(component: $0) }
+        return FastArchiveTreeBuilder.buildTree(from: entries)
     }
 }
 

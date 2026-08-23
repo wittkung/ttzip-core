@@ -9,7 +9,6 @@
 
 pub mod analytics_ffi;
 pub mod archive_ffi;
-pub mod bench_ffi;
 pub mod benchmark_ffi;
 pub mod codecs_ffi;
 pub mod crypto_ffi;

@@ -11,9 +11,9 @@ use crate::cli::format::{detect_archive_format, read_archive_data_auto, Containe
 use std::ffi::CString;
 use std::io::Write;
 use std::path::Path;
-use ttzip_glue::archive::tar::TarArchive;
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::archive::tar::TarArchive;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::ZipArchive;
 
 /// Executes headless `cat` subcommand, writing entry payload to stdout.
 pub fn execute_cat(

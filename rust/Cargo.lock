@@ -1651,31 +1651,18 @@ version = "1.0.0"
 dependencies = [
  "adler2",
  "aes",
- "brotli",
  "cbc",
- "cfg-if",
- "chardetng",
  "crc32fast",
- "criterion",
- "crossbeam-utils",
  "ctr",
- "encoding_rs",
  "flate2",
- "globset",
  "hex",
  "libc",
  "log",
- "parking_lot",
  "proptest",
- "rayon",
- "serde",
- "serde_json",
  "sha2",
- "snap",
  "tar",
  "tempfile",
  "ttzip-engine",
- "unicode-normalization",
  "zeroize",
 ]
 
@@ -1687,7 +1674,6 @@ dependencies = [
  "miniz_oxide",
  "pyo3",
  "ttzip-engine",
- "ttzip-glue",
 ]
 
 [[package]]
@@ -1705,7 +1691,7 @@ dependencies = [
  "serde_json",
  "syntect",
  "tempfile",
- "ttzip-glue",
+ "ttzip-engine",
 ]
 
 [[package]]

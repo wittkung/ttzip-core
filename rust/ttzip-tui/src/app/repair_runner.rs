@@ -10,9 +10,9 @@
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use ttzip_glue::archive::repair::find_next_pk_signature;
-use ttzip_glue::types::TTZipStatus;
-use ttzip_glue::zip::writer::{assemble_zip_archive, ZipCompressedItem};
+use ttzip_engine::archive::repair::find_next_pk_signature;
+use ttzip_engine::types::TTZipStatus;
+use ttzip_engine::zip::writer::{assemble_zip_archive, ZipCompressedItem};
 
 /// Salvaged archive entry descriptor extracted by SIMD stream scanner.
 #[derive(Debug, Clone, PartialEq, Eq)]

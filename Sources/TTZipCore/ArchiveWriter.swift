@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -276,6 +276,14 @@ extension ArchiveWriter {
         let pwd = (password != nil && !password!.isEmpty) ? password : nil
         let splitSize = UInt64(max(0, splitVolumeSizeBytes ?? 0))
 
+        let bridgeCtx = ProgressBridgeContext(
+            progressHandler: progressHandler,
+            handle: nil,
+            totalExpectedBytes: totalBytes
+        )
+        let ctxPtr = Unmanaged.passRetained(bridgeCtx).toOpaque()
+        defer { Unmanaged<ProgressBridgeContext>.fromOpaque(ctxPtr).release() }
+
         let status = CUnsafeBufferAdapter.withCString(outputPath) { cOutputPath in
             CUnsafeBufferAdapter.withCStringsArray(inputPaths) { cInputPaths in
                 CUnsafeBufferAdapter.withCString(pwd) { cPassword in
@@ -287,8 +295,8 @@ extension ArchiveWriter {
                         password: cPassword,
                         thread_budget: 0,
                         solid_block_size_mb: 0,
-                        progress_callback: nil,
-                        user_data: nil
+                        progress_callback: ttzipProgressCallbackBridge,
+                        user_data: ctxPtr
                     )
                     return ttzip_rust_archive_create_unified(cInputPaths, inputPaths.count, cOutputPath, &opt, splitSize)
                 }

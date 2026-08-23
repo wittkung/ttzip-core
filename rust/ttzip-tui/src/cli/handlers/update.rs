@@ -10,7 +10,7 @@
 use crate::cli::args::GenericResultDto;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use ttzip_glue::archive::in_place_edit::InPlaceArchiveSession;
+use ttzip_engine::archive::in_place_edit::InPlaceArchiveSession;
 
 /// Executes headless `update` subcommand.
 pub fn execute_update(

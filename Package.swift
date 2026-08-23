@@ -47,6 +47,7 @@ let package = Package(
                 .headerSearchPath("include")
             ],
             linkerSettings: [
+                .linkedLibrary("archive"),
                 .linkedLibrary("bz2"),
                 .linkedLibrary("iconv"),
                 .linkedLibrary("c++"),

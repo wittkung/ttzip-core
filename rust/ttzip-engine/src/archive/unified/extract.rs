@@ -233,6 +233,9 @@ unsafe fn extract_from_archive_handle(
                 }
             }
         }
+        if archive_path.metadata().map(|m| m.len() > 0).unwrap_or(false) {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
     }
 
     if !options.dry_run {

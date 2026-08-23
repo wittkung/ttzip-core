@@ -16,7 +16,7 @@ public actor EphemeralPreviewCacheManager {
     private var stagedFiles: [String: URL] = [:]
     
     public init() {
-        let uniqueSession = "ttzip_previews_\(ProcessInfo.processInfo.processIdentifier)_\(UUID().uuidString)"
+        let uniqueSession = "ttzip_ephemeral_previews_\(ProcessInfo.processInfo.processIdentifier)_\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(uniqueSession, isDirectory: true)
         self.sessionRootDirectory = tempDir
         

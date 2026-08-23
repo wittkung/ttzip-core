@@ -73,19 +73,16 @@ pub fn decode_7z_solid_payload(
             unpack_buf[..copy_len].copy_from_slice(&raw_payload[..copy_len]);
         }
         METHOD_DEFLATE => {
-            if let Ok(decomp_len) = deflate_decompress(raw_payload, &mut unpack_buf) {
-                unpack_buf.truncate(decomp_len);
-            }
+            let decomp_len = deflate_decompress(raw_payload, &mut unpack_buf)?;
+            unpack_buf.truncate(decomp_len);
         }
         METHOD_LZMA | METHOD_LZMA2 => {
-            if let Ok(decomp_len) = fl2_decompress(raw_payload, &mut unpack_buf, threads) {
-                unpack_buf.truncate(decomp_len);
-            }
+            let decomp_len = fl2_decompress(raw_payload, &mut unpack_buf, threads)?;
+            unpack_buf.truncate(decomp_len);
         }
         _ => {
-            if let Ok(decomp_len) = fl2_decompress(raw_payload, &mut unpack_buf, threads) {
-                unpack_buf.truncate(decomp_len);
-            }
+            let decomp_len = fl2_decompress(raw_payload, &mut unpack_buf, threads)?;
+            unpack_buf.truncate(decomp_len);
         }
     }
 

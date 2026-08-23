@@ -12,20 +12,25 @@ extension AppViewState {
     // MARK: - Task State Control
     
     public func pauseCurrentTask() {
+        taskState.currentTaskHandle?.pause()
         self.canPauseTask = false
         self.canResumeTask = true
         self.taskStateName = "Paused"
     }
     
     public func resumeCurrentTask() {
+        taskState.currentTaskHandle?.resume()
         self.canPauseTask = true
         self.canResumeTask = false
         self.taskStateName = "Processing"
     }
     
     public func cancelCurrentTask() {
+        taskState.currentTaskHandle?.cancel(reason: 0)
+        taskState.currentTask?.cancel()
         self.canPauseTask = false
         self.canResumeTask = false
+        self.canCancelTask = false
         self.taskStateName = "Cancelled"
     }
     
@@ -34,5 +39,7 @@ extension AppViewState {
         self.canPauseTask = false
         self.canResumeTask = false
         self.canCancelTask = false
+        taskState.currentTaskHandle = nil
+        taskState.currentTask = nil
     }
 }

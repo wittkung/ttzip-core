@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -26,17 +26,22 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
     public let isMetadataEncrypted: Bool
     public let encryptionMethod: String?
     
-    // Flyweight Attributes
+    // Computed Attributes (Zero Lock)
+    @inlinable
     public var extensionName: String {
-        ArchiveEntryFlyweightFactory.shared.internExtension((name as NSString).pathExtension)
+        guard let dotIndex = name.lastIndex(of: ".") else { return "" }
+        return String(name[name.index(after: dotIndex)...]).lowercased()
     }
     
+    @inlinable
     public var mimeType: String {
-        ArchiveEntryFlyweightFactory.shared.detectMimeType(forPath: path)
+        ArchiveMimeMapper.mimeType(forExtension: extensionName)
     }
     
+    @inlinable
     public var directoryPrefix: String {
-        ArchiveEntryFlyweightFactory.shared.extractAndInternDirectoryPrefix(fromPath: path)
+        guard let slashIndex = path.lastIndex(of: "/") else { return "" }
+        return String(path[...slashIndex])
     }
     
     public var formattedSize: String {
@@ -54,13 +59,15 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
         isMetadataEncrypted: Bool = false,
         encryptionMethod: String? = nil
     ) {
-        let factory = ArchiveEntryFlyweightFactory.shared
-        self.path = factory.internPath(path)
-        let rawName = (path as NSString).lastPathComponent
-        self.name = factory.internPath(rawName)
+        self.path = path
+        if let lastSlash = path.lastIndex(of: "/") {
+            self.name = String(path[path.index(after: lastSlash)...])
+        } else {
+            self.name = path
+        }
         self.uncompressedSize = uncompressedSize
         self.isDirectory = isDirectory
-        self.detectedEncoding = factory.internPath(detectedEncoding)
+        self.detectedEncoding = detectedEncoding
         self.modificationDate = modificationDate
         self.isEncrypted = isEncrypted || isDataEncrypted || isMetadataEncrypted
         self.isDataEncrypted = isDataEncrypted || (isEncrypted && !isMetadataEncrypted)

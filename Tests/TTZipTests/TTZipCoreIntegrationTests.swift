@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -250,56 +250,42 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         XCTAssertEqual(safeChunkIdx, 0)
     }
 
-    // MARK: - 7. VirtualMultiBlockArena Multi-Threaded Concurrency Safety
+    // MARK: - 7. ConcurrencyBridge Parallel Iteration Safety
 
-    func testVirtualMultiBlockArenaConcurrentThreadSafety() {
-        guard let arena = VirtualMultiBlockArena(capacity: 16 * 1024 * 1024) else {
-            XCTFail("Failed to allocate VirtualMultiBlockArena")
-            return
-        }
-
-        let testPayload: [UInt8] = Array(repeating: 0x42, count: 1024)
-        let threadCount = 8
-        let iterationsPerThread = 100
-        let group = DispatchGroup()
-
-        for t in 0..<threadCount {
-            group.enter()
-            DispatchQueue.global().async {
-                for i in 0..<iterationsPerThread {
-                    testPayload.withUnsafeBufferPointer { ptr in
-                        guard let base = ptr.baseAddress else { return }
-                        _ = arena.appendBlock(name: "file_\(t)_\(i)", data: base, length: 1024)
-                    }
-                }
-                group.leave()
-            }
-        }
-
-        group.wait()
-        XCTAssertEqual(arena.blocks.count, threadCount * iterationsPerThread)
-        XCTAssertEqual(arena.currentOffset, threadCount * iterationsPerThread * 1024)
+    func testConcurrencyBridgeParallelIteration() {
+        let iterations = 1000
+        let counter = LockedCounter()
         
-        arena.reset()
-        XCTAssertEqual(arena.blocks.count, 0)
-        XCTAssertEqual(arena.currentOffset, 0)
+        ConcurrencyBridge.parallelFor(count: iterations) { _ in
+            counter.increment()
+        }
+        
+        XCTAssertEqual(counter.value, iterations)
     }
 
-    // MARK: - 8. MemoryPageBufferPool Borrow & Return Lifecycle
+    // MARK: - 8. NativeComputeDispatcher Execution
 
-    func testMemoryPageBufferPoolLifecycle() {
-        let pool = MemoryPageBufferPool.shared
-        let buf4k = pool.borrowBuffer(size: .page4K)
-        XCTAssertEqual(buf4k.capacity, 4096)
-        
-        let buf16k = pool.borrowBuffer(size: .page16K)
-        XCTAssertEqual(buf16k.capacity, 16384)
-        
-        let buf64k = pool.borrowBuffer(size: .page64K)
-        XCTAssertEqual(buf64k.capacity, 65536)
-        
-        pool.returnBuffer(buf4k)
-        pool.returnBuffer(buf16k)
-        pool.returnBuffer(buf64k)
+    func testNativeComputeDispatcherExecution() async throws {
+        let result = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+            return (1...100).reduce(0, +)
+        }
+        XCTAssertEqual(result, 5050)
+    }
+}
+
+private final class LockedCounter: @unchecked Sendable {
+    private var count = 0
+    private let lock = NSLock()
+    
+    func increment() {
+        lock.lock()
+        count += 1
+        lock.unlock()
+    }
+    
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
     }
 }

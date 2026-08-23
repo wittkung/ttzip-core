@@ -73,14 +73,20 @@ pub fn compress_items_parallel(
                 let (compression_method, aes_strength, is_encrypted, final_payload) =
                     if encryption == TTZipEncryptionMethod::Aes256 {
                         let pass = pwd_cloned.as_deref().ok_or(TTZipStatus::ErrInvalidPassword)?;
-                        let salt = [0x5au8; 16]; // Deterministic fixed or pseudo-random salt
+                        let mut salt = [0u8; 16];
+                        unsafe {
+                            libc::arc4random_buf(salt.as_mut_ptr() as *mut libc::c_void, salt.len());
+                        }
                         let mut enc_payload = Vec::new();
                         winzip_aes256_encrypt_and_tag(pass, &salt, &raw_payload, &mut enc_payload)?;
                         (99u16, 3u8, true, enc_payload)
                     } else if encryption == TTZipEncryptionMethod::ZipCrypto {
                         let pass = pwd_cloned.as_deref().ok_or(TTZipStatus::ErrInvalidPassword)?;
                         let mut enc_payload = Vec::with_capacity(12 + raw_payload.len());
-                        let mut header = [0x42u8; 12];
+                        let mut header = [0u8; 12];
+                        unsafe {
+                            libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11);
+                        }
                         header[11] = (crc32 >> 24) as u8;
                         let mut keys = crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
                         keys.encrypt_slice(&mut header);

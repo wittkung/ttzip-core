@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -27,14 +27,19 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
             .appendingPathComponent("TTZip_Edit_\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
-        let sanitizedEntryName = (entryPath as NSString).lastPathComponent
-        let stagedFile = tempDir.appendingPathComponent(sanitizedEntryName)
+        let fm = FileManager.default
+        let stagedFile = tempDir.appendingPathComponent(entryPath)
+        let parentDir = stagedFile.deletingLastPathComponent()
+        try? fm.createDirectory(at: parentDir, withIntermediateDirectories: true)
         
-        _ = try await TTZipEngineFacade.shared.quickExtract(
+        guard let data = try await ArchiveSelectiveExtractor.shared.extractSingleEntryData(
             archivePath: archivePath,
-            destinationDir: tempDir.path,
+            entryPath: entryPath,
             password: password
-        )
+        ) else {
+            throw ArchiveError.fileNotFound
+        }
+        try data.write(to: stagedFile, options: .atomic)
         
         let session = InPlaceEditSession(
             archivePath: archivePath,
@@ -43,7 +48,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
             stagedDirectoryPath: tempDir.path,
             state: .active,
             initialHash: HashCalculator.calculateSHA256(filePath: stagedFile.path) ?? "",
-            lastKnownMtime: (try? FileManager.default.attributesOfItem(atPath: stagedFile.path)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+            lastKnownMtime: (try? fm.attributesOfItem(atPath: stagedFile.path)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         )
         
         setSession(session)
@@ -94,17 +99,33 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
             ttzip_rust_inplace_session_begin(cPath, 1, &outSession)
         }
         
-        if status == TTZIP_STATUS_OK, let session = outSession {
-            defer { ttzip_rust_inplace_session_free(session) }
-            for src in sourceFilePaths {
-                let entryName = (src as NSString).lastPathComponent
-                _ = CUnsafeBufferAdapter.withCString(src) { cSrc in
-                    CUnsafeBufferAdapter.withCString(entryName) { cEntry in
-                        ttzip_rust_inplace_session_append(session, cEntry, cSrc)
-                    }
+        guard status == TTZIP_STATUS_OK, let session = outSession else {
+            throw ArchiveError.readFailed(code: status.rawValue)
+        }
+        
+        defer { ttzip_rust_inplace_session_free(session) }
+        for src in sourceFilePaths {
+            let baseName = (src as NSString).lastPathComponent
+            let entryPath: String
+            if let destFolder = destinationVirtualFolder, !destFolder.isEmpty, destFolder != "." {
+                entryPath = (destFolder as NSString).appendingPathComponent(baseName)
+            } else {
+                entryPath = baseName
+            }
+            
+            let appendStatus = CUnsafeBufferAdapter.withCString(src) { cSrc in
+                CUnsafeBufferAdapter.withCString(entryPath) { cEntry in
+                    ttzip_rust_inplace_session_replace(session, cEntry, cSrc)
                 }
             }
-            _ = ttzip_rust_inplace_session_commit(session)
+            guard appendStatus == TTZIP_STATUS_OK else {
+                throw ArchiveError.readFailed(code: appendStatus.rawValue)
+            }
+        }
+        
+        let commitStatus = ttzip_rust_inplace_session_commit(session)
+        guard commitStatus == TTZIP_STATUS_OK else {
+            throw ArchiveError.readFailed(code: commitStatus.rawValue)
         }
     }
     

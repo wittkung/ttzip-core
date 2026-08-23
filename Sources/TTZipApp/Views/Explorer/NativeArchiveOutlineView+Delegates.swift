@@ -12,27 +12,27 @@ import TTZipCore
 extension NativeArchiveOutlineView.Coordinator {
     public func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         if item == nil {
-            return parent.nodes.count
+            return rootItems.count
         }
-        if let node = item as? ArchiveTreeNode {
-            return node.children?.count ?? 0
+        if let outlineItem = item as? ArchiveOutlineItem {
+            return outlineItem.children.count
         }
         return 0
     }
     
     public func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         if item == nil {
-            return parent.nodes[index]
+            return rootItems[index]
         }
-        if let node = item as? ArchiveTreeNode, let children = node.children {
-            return children[index]
+        if let outlineItem = item as? ArchiveOutlineItem {
+            return outlineItem.children[index]
         }
         fatalError("Invalid item index")
     }
     
     public func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        if let node = item as? ArchiveTreeNode {
-            return node.isDirectory
+        if let outlineItem = item as? ArchiveOutlineItem {
+            return outlineItem.isDirectory
         }
         return false
     }
@@ -46,7 +46,7 @@ extension NativeArchiveOutlineView.Coordinator {
     }
     
     public func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
-        guard let node = item as? ArchiveTreeNode else { return nil }
+        guard let outlineItem = item as? ArchiveOutlineItem else { return nil }
         let identifier = tableColumn?.identifier.rawValue ?? ""
         
         if identifier == "name" {
@@ -55,21 +55,35 @@ extension NativeArchiveOutlineView.Coordinator {
                 ?? ArchiveNodeTableCellView(frame: .zero)
             cell.identifier = cellIdentifier
             
-            let iconName = fileIconName(isDirectory: node.isDirectory, name: node.name)
-            cell.configure(name: node.name, isDirectory: node.isDirectory, iconName: iconName)
+            let iconName = fileIconName(isDirectory: outlineItem.isDirectory, name: outlineItem.name)
+            cell.configure(name: outlineItem.name, isDirectory: outlineItem.isDirectory, iconName: iconName)
             
             return cell
         } else if identifier == "size" {
-            let tf = NSTextField(labelWithString: node.isDirectory ? "--" : formatBytes(node.uncompressedSize))
-            tf.font = .systemFont(ofSize: 12)
-            tf.textColor = .secondaryLabelColor
-            tf.alignment = .right
+            let cellIdentifier = NSUserInterfaceItemIdentifier("ArchiveSizeCell")
+            let tf = outlineView.makeView(withIdentifier: cellIdentifier, owner: nil) as? NSTextField
+                ?? {
+                    let field = NSTextField(labelWithString: "")
+                    field.identifier = cellIdentifier
+                    field.font = .systemFont(ofSize: 12)
+                    field.textColor = .secondaryLabelColor
+                    field.alignment = .right
+                    return field
+                }()
+            tf.stringValue = outlineItem.isDirectory ? "--" : formatBytes(outlineItem.uncompressedSize)
             return tf
         } else if identifier == "encoding" {
-            let tf = NSTextField(labelWithString: node.detectedEncoding)
-            tf.font = .systemFont(ofSize: 11, weight: .medium)
-            tf.textColor = .systemBlue
-            tf.alignment = .center
+            let cellIdentifier = NSUserInterfaceItemIdentifier("ArchiveEncodingCell")
+            let tf = outlineView.makeView(withIdentifier: cellIdentifier, owner: nil) as? NSTextField
+                ?? {
+                    let field = NSTextField(labelWithString: "")
+                    field.identifier = cellIdentifier
+                    field.font = .systemFont(ofSize: 11, weight: .medium)
+                    field.textColor = .systemBlue
+                    field.alignment = .center
+                    return field
+                }()
+            tf.stringValue = outlineItem.detectedEncoding
             return tf
         }
         
@@ -79,10 +93,10 @@ extension NativeArchiveOutlineView.Coordinator {
     public func outlineViewSelectionDidChange(_ notification: Notification) {
         guard let outlineView = notification.object as? NSOutlineView else { return }
         let selectedRow = outlineView.selectedRow
-        guard selectedRow >= 0, let node = outlineView.item(atRow: selectedRow) as? ArchiveTreeNode else { return }
+        guard selectedRow >= 0, let outlineItem = outlineView.item(atRow: selectedRow) as? ArchiveOutlineItem else { return }
         DispatchQueue.main.async {
-            self.parent.selectedPath = node.id
-            self.parent.onSelectFile(node)
+            self.parent.selectedPath = outlineItem.node.id
+            self.parent.onSelectFile(outlineItem.node)
         }
     }
     

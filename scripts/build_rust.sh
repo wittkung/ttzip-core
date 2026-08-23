@@ -104,8 +104,6 @@ for target in "${TARGETS[@]}"; do
     
     TARGET_LIB="${RUST_DIR}/target/${target}/${BUILD_MODE}/libttzip_glue.a"
     if [ -f "${TARGET_LIB}" ]; then
-        # Strip DWARF debug sections to optimize staticlib size
-        strip -S "${TARGET_LIB}" 2>/dev/null || true
         BUILT_LIBS+=("${TARGET_LIB}")
     else
         echo "❌ Error: Expected static library not found at ${TARGET_LIB}"
@@ -117,25 +115,35 @@ done
 echo "--> [INFO] Packaging static library directly into ${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a..."
 mkdir -p "${XCFRAMEWORK_MAC_DIR}"
 
-if [ ${#BUILT_LIBS[@]} -eq 1 ]; then
+NATIVE_CODECS_LIBS=()
+for nlib in $(find "${RUST_DIR}/target" -name "libttzip_native_codecs.a" 2>/dev/null); do
+    NATIVE_CODECS_LIBS+=("${nlib}")
+done
+
+if [ -f "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" ]; then
+    echo "--> [INFO] Merging with existing libTTZipVendor.a..."
+    libtool -static -no_warning_for_no_symbols -o "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${BUILT_LIBS[@]}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${NATIVE_CODECS_LIBS[@]}"
+elif [ ${#NATIVE_CODECS_LIBS[@]} -gt 0 ]; then
+    echo "--> Merging native codecs archives: ${NATIVE_CODECS_LIBS[*]}"
+    libtool -static -no_warning_for_no_symbols -o "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${BUILT_LIBS[@]}" "${NATIVE_CODECS_LIBS[@]}"
+elif [ ${#BUILT_LIBS[@]} -eq 1 ]; then
     cp "${BUILT_LIBS[0]}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"
 else
     echo "--> Combining slices via lipo: ${BUILT_LIBS[*]}"
     lipo -create "${BUILT_LIBS[@]}" -output "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"
 fi
 
-if lipo -info "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | grep -q "arm64"; then
-    lipo "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" -extract arm64 -output "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
-fi
-strip -S -x "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
+# In-place strip DWARF debug info to optimize static library size
+strip -S "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
 
 echo "    libTTZipVendor.a architecture: $(lipo -info "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a")"
+echo "    libTTZipVendor.a size: $(ls -lh "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | awk '{print $5}')"
 
 # 3. 生成或维护 C-ABI 头文件
 echo "--> [INFO] Generating C headers: Sources/CTTZipBridge/include/ttzip_rust_glue.h..."
 if command -v cbindgen &>/dev/null; then
     echo "--> Running cbindgen..."
-    cbindgen --config "${RUST_DIR}/ttzip-glue/cbindgen.toml" "${RUST_DIR}/ttzip-glue" --output "${HEADER_OUT}" || true
+    cbindgen --config "${RUST_DIR}/ttzip-engine/cbindgen.toml" "${RUST_DIR}/ttzip-engine" --output "${HEADER_OUT}" 2>/dev/null || true
 fi
 
 # 同步头文件至 XCFramework Headers

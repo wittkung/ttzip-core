@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -310,20 +310,28 @@ public final class SplitVolumeConcatenator: @unchecked Sendable {
         outputPath: String,
         progressHandler: (@Sendable (Double) -> Bool)? = nil
     ) throws {
-        let status = firstVolumePath.withCString { cFirst in
-            outputPath.withCString { cOut in
-                if let progressHandler = progressHandler {
-                    return withUnsafePointer(to: progressHandler) { ptr in
-                        let callback: TTZipProgressCallback = { current, total, _, userData in
-                            guard let userData = userData else { return true }
-                            let handler = userData.assumingMemoryBound(to: (@Sendable (Double) -> Bool).self).pointee
-                            let fraction = total > 0 ? Double(current) / Double(total) : 0.0
-                            return handler(fraction)
-                        }
-                        return ttzip_rust_join_split_volumes(cFirst, cOut, callback, UnsafeMutableRawPointer(mutating: ptr))
-                    }
-                } else {
-                    return ttzip_rust_join_split_volumes(cFirst, cOut, nil, nil)
+        let status: CTTZipBridge.TTZipStatus
+        if let progressHandler = progressHandler {
+            let box = ClosureBox(progressHandler)
+            let unmanaged = Unmanaged.passRetained(box)
+            defer { unmanaged.release() }
+            
+            let callback: TTZipProgressCallback = { current, total, _, userData in
+                guard let userData = userData else { return true }
+                let box = Unmanaged<ClosureBox<@Sendable (Double) -> Bool>>.fromOpaque(userData).takeUnretainedValue()
+                let fraction = total > 0 ? Double(current) / Double(total) : 0.0
+                return box.closure(fraction)
+            }
+            
+            status = firstVolumePath.withCString { cFirst in
+                outputPath.withCString { cOut in
+                    ttzip_rust_join_split_volumes(cFirst, cOut, callback, unmanaged.toOpaque())
+                }
+            }
+        } else {
+            status = firstVolumePath.withCString { cFirst in
+                outputPath.withCString { cOut in
+                    ttzip_rust_join_split_volumes(cFirst, cOut, nil, nil)
                 }
             }
         }

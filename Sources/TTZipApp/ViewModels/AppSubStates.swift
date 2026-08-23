@@ -51,6 +51,9 @@ public final class TaskExecutionState: ObservableObject {
     @Published public var canPauseTask: Bool = false
     @Published public var canResumeTask: Bool = false
     @Published public var canCancelTask: Bool = false
+    // Active Concurrency Handles
+    public var currentTaskHandle: TaskExecutionHandle?
+    public var currentTask: Task<Void, Never>?
     
     // Command History (Undo / Redo)
     @Published public var canUndo: Bool = false

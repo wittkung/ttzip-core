@@ -259,11 +259,11 @@ impl SplitModalState {
         self.active_preset().byte_size(&self.custom_size_str)
     }
 
-    pub fn naming_scheme(&self) -> ttzip_glue::archive::split::VolumeNamingScheme {
+    pub fn naming_scheme(&self) -> ttzip_engine::archive::split::VolumeNamingScheme {
         match self.naming_scheme_idx % 3 {
-            0 => ttzip_glue::archive::split::VolumeNamingScheme::NumberedExtension,
-            1 => ttzip_glue::archive::split::VolumeNamingScheme::PkzipSpanned,
-            _ => ttzip_glue::archive::split::VolumeNamingScheme::RawSplit,
+            0 => ttzip_engine::archive::split::VolumeNamingScheme::NumberedExtension,
+            1 => ttzip_engine::archive::split::VolumeNamingScheme::PkzipSpanned,
+            _ => ttzip_engine::archive::split::VolumeNamingScheme::RawSplit,
         }
     }
 }

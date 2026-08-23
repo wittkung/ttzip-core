@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -71,42 +71,25 @@ public final class PasswordRecoveryEngine: @unchecked Sendable {
     
     /// Probes archive header and stream password in-process without full extraction.
     public static func testArchivePassword(archivePath: String, password: String) async -> Bool {
-        if let bin7z = SevenZipBinaryResolver.resolveBinaryPath(), archivePath.lowercased().contains(".7z") {
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: bin7z)
-            proc.arguments = ["t", "-p\(password)", "-y", archivePath]
-            proc.standardInput = FileHandle.nullDevice
-            proc.standardOutput = FileHandle.nullDevice
-            proc.standardError = FileHandle.nullDevice
-            if (try? proc.run()) != nil {
-                proc.waitUntilExit()
-                return proc.terminationStatus == 0
-            }
-        }
-        if !archivePath.lowercased().contains(".7z"), let fast = recoverFastInMemory(passwords: [password], archivePath: archivePath) {
+        if let fast = recoverFastInMemory(passwords: [password], archivePath: archivePath) {
             return fast == password
         }
 
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("probe_\(UUID().uuidString)").path
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-
         return CUnsafeBufferAdapter.withCString(archivePath) { cPath in
-            CUnsafeBufferAdapter.withCString(tempDir) { cDest in
-                CUnsafeBufferAdapter.withCString(password) { cPwd in
-                    guard let cPath = cPath, let cDest = cDest else { return false }
-                    var opt = TTZipExtractOptions(
-                        destination_path: cDest,
-                        password: cPwd,
-                        thread_budget: 1,
-                        overwrite_existing: true,
-                        preserve_permissions: false,
-                        dry_run: true,
-                        progress_callback: nil,
-                        user_data: nil
-                    )
-                    return ttzip_rust_archive_extract_unified(cPath, cDest, &opt) == TTZIP_STATUS_OK
-                }
+            CUnsafeBufferAdapter.withCString(password) { cPwd in
+                guard let cPath = cPath, let cPwd = cPwd else { return false }
+                var outBuffer = [UInt8](repeating: 0, count: 4096)
+                var extractedLen: Int = 0
+                let status = ttzip_rust_archive_extract_single_entry_memory(
+                    cPath,
+                    nil,
+                    0,
+                    cPwd,
+                    &outBuffer,
+                    outBuffer.count,
+                    &extractedLen
+                )
+                return status == TTZIP_STATUS_OK
             }
         }
     }

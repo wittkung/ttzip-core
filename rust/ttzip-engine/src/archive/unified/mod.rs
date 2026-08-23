@@ -17,8 +17,10 @@
 pub mod create;
 pub mod detect;
 pub mod extract;
+pub mod extract_single;
 pub mod inspect;
 pub mod repair;
+pub mod verify;
 #[cfg(test)]
 pub mod tests_detection;
 #[cfg(test)]
@@ -88,5 +90,16 @@ impl UnifiedArchiveOrchestrator {
         repaired_path: &Path,
     ) -> Result<usize, TTZipStatus> {
         repair::repair_archive(damaged_path, repaired_path)
+    }
+
+    /// Batch selective extraction to destination directory.
+    #[inline]
+    pub fn extract_selected(
+        archive_path: &Path,
+        target_paths: &[String],
+        destination_dir: &Path,
+        options: &TTZipExtractOptions,
+    ) -> Result<usize, TTZipStatus> {
+        extract_single::extract_selected_entries(archive_path, target_paths, destination_dir, options)
     }
 }

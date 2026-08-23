@@ -9,8 +9,8 @@
 
 use super::state::AppState;
 use crate::preview::{generate_preview, PreviewData};
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::ZipArchive;
 
 impl AppState {
     /// Updates preview buffer for the currently selected item.

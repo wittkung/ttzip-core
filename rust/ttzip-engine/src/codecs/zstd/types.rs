@@ -104,6 +104,21 @@ extern "C" {
         input: *mut ZstdInBuffer,
     ) -> libc::size_t;
 
+    pub fn ZSTD_compress(
+        dst: *mut libc::c_void,
+        dst_capacity: libc::size_t,
+        src: *const libc::c_void,
+        src_size: libc::size_t,
+        compression_level: libc::c_int,
+    ) -> libc::size_t;
+
+    pub fn ZSTD_decompress(
+        dst: *mut libc::c_void,
+        dst_capacity: libc::size_t,
+        src: *const libc::c_void,
+        src_size: libc::size_t,
+    ) -> libc::size_t;
+
     pub fn ZSTD_getFrameContentSize(
         src: *const libc::c_void,
         src_size: libc::size_t,

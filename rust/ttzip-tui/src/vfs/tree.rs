@@ -101,7 +101,7 @@ impl VfsTree {
     /// Builds a VfsTree from raw C-ABI `TTZipEntryMetadata` slice.
     pub fn from_c_metadata_slice(
         root_path: &str,
-        entries: &[ttzip_glue::TTZipEntryMetadata],
+        entries: &[ttzip_engine::TTZipEntryMetadata],
     ) -> Self {
         let metas: Vec<VfsEntryMeta> = entries.iter().map(VfsEntryMeta::from).collect();
         Self::from_metadata_list(root_path, &metas)

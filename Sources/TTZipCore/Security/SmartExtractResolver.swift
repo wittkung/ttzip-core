@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -478,6 +478,44 @@ public struct ArchiveIntegrityReport: Sendable, Codable, Equatable, Hashable {
         self.verificationDurationSeconds = verificationDurationSeconds
         self.averageThroughputMBs = averageThroughputMBs
         self.corruptedEntries = corruptedEntries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case archivePath
+        case totalEntriesCount
+        case verifiedEntriesCount
+        case corruptedEntriesCount
+        case overallStatus
+        case verificationDurationSeconds
+        case averageThroughputMBs
+        case averageThroughputMbs
+        case corruptedEntries
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.archivePath = try container.decode(String.self, forKey: .archivePath)
+        self.totalEntriesCount = try container.decode(Int.self, forKey: .totalEntriesCount)
+        self.verifiedEntriesCount = try container.decode(Int.self, forKey: .verifiedEntriesCount)
+        self.corruptedEntriesCount = try container.decode(Int.self, forKey: .corruptedEntriesCount)
+        self.overallStatus = try container.decode(IntegrityStatus.self, forKey: .overallStatus)
+        self.verificationDurationSeconds = try container.decode(Double.self, forKey: .verificationDurationSeconds)
+        self.averageThroughputMBs = try container.decodeIfPresent(Double.self, forKey: .averageThroughputMBs)
+            ?? container.decodeIfPresent(Double.self, forKey: .averageThroughputMbs)
+            ?? 0.0
+        self.corruptedEntries = try container.decodeIfPresent([CorruptedEntryDetail].self, forKey: .corruptedEntries) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(archivePath, forKey: .archivePath)
+        try container.encode(totalEntriesCount, forKey: .totalEntriesCount)
+        try container.encode(verifiedEntriesCount, forKey: .verifiedEntriesCount)
+        try container.encode(corruptedEntriesCount, forKey: .corruptedEntriesCount)
+        try container.encode(overallStatus, forKey: .overallStatus)
+        try container.encode(verificationDurationSeconds, forKey: .verificationDurationSeconds)
+        try container.encode(averageThroughputMBs, forKey: .averageThroughputMBs)
+        try container.encode(corruptedEntries, forKey: .corruptedEntries)
     }
 
     /// Returns `true` if all entries were successfully verified with zero corruptions.

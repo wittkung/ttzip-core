@@ -16,7 +16,7 @@ workspace = true
 
 [lib]
 name = "ttzip_engine"
-crate-type = ["rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 libc = "0.2"

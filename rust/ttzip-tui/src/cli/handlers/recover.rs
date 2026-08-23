@@ -12,12 +12,12 @@ use crate::cli::format::{detect_archive_format, read_archive_data_auto, Containe
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use ttzip_glue::crypto::recovery::{
+use ttzip_engine::crypto::recovery::{
     recover_7z_aes_rayon, recover_winzip_aes_rayon, recover_zipcrypto_rayon,
 };
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::parser::parse_local_file_header;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::parser::parse_local_file_header;
+use ttzip_engine::zip::ZipArchive;
 
 /// Executes headless `recover` subcommand.
 pub fn execute_recover(

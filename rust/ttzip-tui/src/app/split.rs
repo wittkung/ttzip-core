@@ -18,8 +18,8 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Instant;
-use ttzip_glue::archive::split::SplitVolumeWriter;
-use ttzip_glue::runtime::cancellation::CancellationToken;
+use ttzip_engine::archive::split::SplitVolumeWriter;
+use ttzip_engine::runtime::cancellation::CancellationToken;
 
 impl AppState {
     /// Triggers asynchronous multi-volume splitting of the active archive.

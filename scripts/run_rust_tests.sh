@@ -91,7 +91,7 @@ echo "================================================================"
 # 1. Unit & Integration Tests
 if [ "${RUN_UNIT}" = true ]; then
     echo "--> [1/4] Running Unit & Integration Tests (release mode)..."
-    cargo test --release -p ttzip-glue --lib \
+    cargo test --release -p ttzip-engine --lib \
         --test codecs_integration_tests \
         --test crypto_integration_tests \
         --test differential_oracle \
@@ -105,14 +105,14 @@ fi
 # 2. Property-Based Invariant Tests (proptest)
 if [ "${RUN_PROPS}" = true ]; then
     echo "--> [2/4] Running Property-Based Invariant Tests (release mode)..."
-    cargo test --release -p ttzip-glue --test property_tests -- --nocapture
+    cargo test --release -p ttzip-engine --test property_tests -- --nocapture
     echo "✅ [PASS] Property-Based Tests completed successfully."
 fi
 
 # 3. Fuzzing Harness Targets
 if [ "${RUN_FUZZ}" = true ]; then
     echo "--> [3/4] Running Mutation Fuzzing Harness Targets (release mode)..."
-    if cargo test --release -p ttzip-glue --test fuzz_harness -- --nocapture 2>/dev/null; then
+    if cargo test --release -p ttzip-engine --test fuzz_harness -- --nocapture 2>/dev/null; then
         echo "✅ [PASS] Fuzzing Harness completed successfully."
     else
         echo "⚠️  [INFO] fuzz_harness test not yet built or skipped."
@@ -122,7 +122,7 @@ fi
 # 4. Criterion Micro-benchmarks
 if [ "${RUN_BENCH}" = true ]; then
     echo "--> [4/4] Running Criterion Micro-benchmarks (release mode)..."
-    cargo bench -p ttzip-glue || true
+    cargo bench -p ttzip-engine || true
     echo "✅ [PASS] Criterion Benchmarks executed."
 fi
 

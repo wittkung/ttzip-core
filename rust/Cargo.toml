@@ -20,10 +20,10 @@ categories = ["compression", "command-line-utilities", "filesystem"]
 
 [profile.release]
 opt-level = 3
-lto = false
+lto = "thin"
 codegen-units = 1
 panic = "unwind"
-strip = false
+strip = true
 
 [profile.test]
 opt-level = 3
@@ -36,4 +36,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("gil-refs"
 [workspace.lints.clippy]
 not_unsafe_ptr_arg_deref = "allow"
 needless_range_loop = "allow"
-

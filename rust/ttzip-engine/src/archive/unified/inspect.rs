@@ -23,7 +23,9 @@ pub fn inspect_archive(
     callback: TTZipInspectCallback,
     user_data: *mut c_void,
 ) -> Result<usize, TTZipStatus> {
-    let cb = callback.ok_or(TTZipStatus::ErrInvalidParam)?;
+    if callback.is_none() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
     if !archive_path.exists() {
         return Err(TTZipStatus::ErrFileNotFound);
     }
@@ -31,6 +33,20 @@ pub fn inspect_archive(
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
         .map_err(|_| TTZipStatus::ErrInvalidParam)?;
     let pwd_c = password.and_then(|p| CString::new(p).ok());
+
+    let volume_chain = crate::archive::split::detect_volume_chain(archive_path)
+        .unwrap_or_else(|_| vec![archive_path.to_path_buf()]);
+
+    if volume_chain.len() > 1 {
+        let virtual_reader = crate::archive::split::VirtualMultiVolumeReader::from_volumes(volume_chain)
+            .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let stream_reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_seekable(virtual_reader, 65536)?;
+        let a = stream_reader.as_raw_archive();
+        if let Some(ref p) = pwd_c {
+            unsafe { archive_read_add_passphrase(a, p.as_ptr()); }
+        }
+        return unsafe { inspect_from_handle(a, detect_encoding, callback, user_data) };
+    }
 
     unsafe {
         let a = archive_read_new();
@@ -51,63 +67,76 @@ pub fn inspect_archive(
             return Err(TTZipStatus::ErrOpenFailed);
         }
 
-        let mut entry: *mut c_void = std::ptr::null_mut();
-        let mut count = 0;
+        inspect_from_handle(a, detect_encoding, callback, user_data)
+    }
+}
 
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if entry.is_null() {
-                break;
-            }
-            let raw_path = archive_entry_pathname(entry);
-            if raw_path.is_null() {
-                archive_read_data_skip(a);
-                continue;
-            }
+unsafe fn inspect_from_handle(
+    a: *mut c_void,
+    detect_encoding: bool,
+    cb: TTZipInspectCallback,
+    user_data: *mut c_void,
+) -> Result<usize, TTZipStatus> {
+    let mut entry: *mut c_void = std::ptr::null_mut();
+    let mut count = 0;
 
-            let path_bytes = CStr::from_ptr(raw_path).to_bytes();
-            if path_bytes.is_empty() {
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            if detect_encoding {
-                let has_non_ascii = path_bytes.iter().any(|&b| b >= 0x80);
-                if has_non_ascii {
-                    let _ = crate::codecs::chardet::detect_charset(path_bytes);
-                }
-            }
-
-            let uncompressed_size = archive_entry_size(entry).max(0) as u64;
-            let mode = archive_entry_mode(entry) as u32;
-            let filetype = archive_entry_filetype(entry);
-            let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-                || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-                || path_bytes.ends_with(b"/");
-            let mtime = archive_entry_mtime(entry) as i64;
-            let is_data_enc = archive_entry_is_data_encrypted(entry) != 0;
-            let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
-
-            let meta = TTZipEntryMetadata {
-                path: raw_path,
-                uncompressed_size,
-                compressed_size: 0,
-                crc32: 0,
-                mtime_epoch_secs: mtime,
-                mode,
-                is_directory: is_dir,
-                is_encrypted: is_data_enc || is_meta_enc,
-                compression_method: 0,
-            };
-
-            count += 1;
-            let should_continue = cb(&meta, user_data);
+    while archive_read_next_header(a, &mut entry) == 0 {
+        if entry.is_null() {
+            break;
+        }
+        let raw_path = archive_entry_pathname(entry);
+        if raw_path.is_null() {
             archive_read_data_skip(a);
+            continue;
+        }
 
-            if !should_continue {
-                break;
+        let path_bytes = CStr::from_ptr(raw_path).to_bytes();
+        if path_bytes.is_empty() {
+            archive_read_data_skip(a);
+            continue;
+        }
+
+        if detect_encoding {
+            let has_non_ascii = path_bytes.iter().any(|&b| b >= 0x80);
+            if has_non_ascii {
+                let _ = crate::codecs::chardet::detect_charset(path_bytes);
             }
         }
 
-        Ok(count)
+        let uncompressed_size = archive_entry_size(entry).max(0) as u64;
+        let mode = archive_entry_mode(entry) as u32;
+        let filetype = archive_entry_filetype(entry);
+        let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
+            || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
+            || path_bytes.ends_with(b"/");
+        let mtime = archive_entry_mtime(entry) as i64;
+        let is_data_enc = archive_entry_is_data_encrypted(entry) != 0;
+        let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
+
+        let meta = TTZipEntryMetadata {
+            path: raw_path,
+            uncompressed_size,
+            compressed_size: 0,
+            crc32: 0,
+            mtime_epoch_secs: mtime,
+            mode,
+            is_directory: is_dir,
+            is_encrypted: is_data_enc || is_meta_enc,
+            compression_method: 0,
+        };
+
+        count += 1;
+        let should_continue = if let Some(callback) = cb {
+            callback(&meta, user_data)
+        } else {
+            true
+        };
+        archive_read_data_skip(a);
+
+        if !should_continue {
+            break;
+        }
     }
+
+    Ok(count)
 }

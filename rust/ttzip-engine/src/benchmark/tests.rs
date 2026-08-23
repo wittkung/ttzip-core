@@ -39,6 +39,7 @@ fn test_matrix_codecs_roundtrip_all_families() {
     ];
 
     for cfg in &test_configs {
+        println!("--> Testing codec: {}", cfg.display_name);
         let comp = MatrixCodecDriver::compress(cfg, &corpus)
             .unwrap_or_else(|_| panic!("Compression failed for {}", cfg.display_name));
         assert!(!comp.is_empty());

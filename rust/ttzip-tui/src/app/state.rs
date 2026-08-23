@@ -17,10 +17,10 @@ use crossbeam_channel::Sender;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use ttzip_glue::runtime::cancellation::{CancellationReason, CancellationToken};
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::types::TTZipStatus;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::runtime::cancellation::{CancellationReason, CancellationToken};
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::types::TTZipStatus;
+use ttzip_engine::zip::ZipArchive;
 
 use super::modal_state::*;
 

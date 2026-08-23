@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -137,17 +137,20 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
         }
         
         let bufSize = hardwareTuner.optimalAlignedBufferSize
-        let pageSize: MemoryPageSize = bufSize >= 65536 ? .page64K : .page4K
-        let pageBuffer = MemoryPageFlyweightPool.shared.borrowBuffer(size: pageSize)
-        defer { MemoryPageFlyweightPool.shared.returnBuffer(pageBuffer) }
-        let buffer = pageBuffer.pointer.assumingMemoryBound(to: UInt8.self)
+        var pageBuffer = [UInt8](repeating: 0, count: bufSize)
         
         var hasher = createHasher()
-        var bytesRead = read(fd, buffer, pageBuffer.capacity)
+        var bytesRead = pageBuffer.withUnsafeMutableBufferPointer { bPtr -> Int in
+            guard let base = bPtr.baseAddress else { return 0 }
+            return read(fd, base, bufSize)
+        }
         while bytesRead > 0 {
-            let chunk = UnsafeRawBufferPointer(start: buffer, count: bytesRead)
+            let chunk = UnsafeRawBufferPointer(start: pageBuffer, count: bytesRead)
             hasher.update(bufferPointer: chunk)
-            bytesRead = read(fd, buffer, pageBuffer.capacity)
+            bytesRead = pageBuffer.withUnsafeMutableBufferPointer { bPtr -> Int in
+                guard let base = bPtr.baseAddress else { return 0 }
+                return read(fd, base, bufSize)
+            }
         }
         let digest = hasher.finalize()
         return digest.map { String(format: "%02x", $0) }.joined()
@@ -315,50 +318,28 @@ public final class LibdeflateAccelerator: @unchecked Sendable {
     public func compressData(_ data: Data, level: Int = 6) -> Data? {
         guard !data.isEmpty else { return Data() }
         let maxBound = ttzip_rust_deflate_compress_bound(data.count, Int32(level))
-        let pageSize: MemoryPageSize = maxBound > 4096 ? .page64K : .page4K
-        
-        return MemoryPageFlyweightPool.shared.withBuffer(size: pageSize) { dstPtr, capacity in
-            guard capacity >= maxBound else {
-                let uninitPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: maxBound)
-                let written = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                    self.compress(src: srcPtr, srcSize: count, dst: uninitPtr, dstCapacity: maxBound, level: level)
-                }
-                guard written > 0 else {
-                    uninitPtr.deallocate()
-                    return nil
-                }
-                return Data(bytesNoCopy: uninitPtr, count: written, deallocator: .custom({ ptr, _ in ptr.deallocate() }))
+        var dstBuffer = [UInt8](repeating: 0, count: maxBound)
+        let written = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
+            guard let base = dstPtr.baseAddress else { return 0 }
+            return CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
+                self.compress(src: srcPtr, srcSize: count, dst: base, dstCapacity: maxBound, level: level)
             }
-            let written = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                self.compress(src: srcPtr, srcSize: count, dst: dstPtr, dstCapacity: capacity, level: level)
-            }
-            guard written > 0 else { return nil }
-            return Data(bytes: dstPtr, count: written)
         }
+        guard written > 0 else { return nil }
+        return Data(dstBuffer.prefix(written))
     }
     
     /// Convenience helper decompressing Swift `Data` buffers.
     public func decompressData(_ data: Data, originalSize: Int) -> Data? {
         guard !data.isEmpty else { return Data() }
-        let pageSize: MemoryPageSize = originalSize > 4096 ? .page64K : .page4K
-        
-        return MemoryPageFlyweightPool.shared.withBuffer(size: pageSize) { dstPtr, capacity in
-            guard capacity >= originalSize else {
-                let uninitPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: originalSize)
-                let actual = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                    self.decompress(src: srcPtr, srcSize: count, dst: uninitPtr, dstCapacity: originalSize)
-                }
-                guard actual == originalSize else {
-                    uninitPtr.deallocate()
-                    return nil
-                }
-                return Data(bytesNoCopy: uninitPtr, count: actual, deallocator: .custom({ ptr, _ in ptr.deallocate() }))
+        var dstBuffer = [UInt8](repeating: 0, count: originalSize)
+        let actual = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
+            guard let base = dstPtr.baseAddress else { return 0 }
+            return CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
+                self.decompress(src: srcPtr, srcSize: count, dst: base, dstCapacity: originalSize)
             }
-            let actual = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                self.decompress(src: srcPtr, srcSize: count, dst: dstPtr, dstCapacity: capacity)
-            }
-            guard actual == originalSize else { return nil }
-            return Data(bytes: dstPtr, count: actual)
         }
+        guard actual == originalSize else { return nil }
+        return Data(dstBuffer)
     }
 }

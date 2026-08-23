@@ -13,7 +13,7 @@ use crate::app::types::AppMode;
 use crate::event::AppEvent;
 use crossbeam_channel::Sender;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ttzip_glue::runtime::cancellation::CancellationReason;
+use ttzip_engine::runtime::cancellation::CancellationReason;
 
 impl AppState {
     /// Handles keyboard events when in Password Recovery mode.

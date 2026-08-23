@@ -120,8 +120,8 @@ impl MatrixCodecDriver {
             configs.push(MatrixCodecConfig::new("Libdeflate", lvl, format!("Libdeflate L{}", lvl)));
         }
 
-        // 2. Zstd: Levels 1..=22 (22 points)
-        for lvl in 1..=22 {
+        // 2. Zstd: Levels 1..=19 (19 points)
+        for lvl in 1..=19 {
             configs.push(MatrixCodecConfig::new("Zstd", lvl, format!("Zstd L{}", lvl)));
         }
 

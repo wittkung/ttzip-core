@@ -11,13 +11,13 @@
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use ttzip_glue::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};
-use ttzip_glue::archive::tar::TarArchive;
-use ttzip_glue::codecs::brotli::brotli_decompress_to_vec;
-use ttzip_glue::codecs::snappy::snappy_frame_decode_to_vec;
-use ttzip_glue::crypto::crc32::crc32_fast;
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};
+use ttzip_engine::archive::tar::TarArchive;
+use ttzip_engine::codecs::brotli::brotli_decompress_to_vec;
+use ttzip_engine::codecs::snappy::snappy_frame_decode_to_vec;
+use ttzip_engine::crypto::crc32::crc32_fast;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::ZipArchive;
 
 /// Unified entry metadata extracted from any supported archive format.
 #[derive(Debug, Clone)]

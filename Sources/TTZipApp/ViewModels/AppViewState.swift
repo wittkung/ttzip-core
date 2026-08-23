@@ -160,10 +160,8 @@ public final class AppViewState: ObservableObject {
         self.historyManager = historyManager
         self.passwordVaultManager = passwordVaultManager
 
-        navigationState.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        explorerState.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        taskState.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
-        overlayState.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        // Sub-states are observed directly by their dedicated subviews;
+        // avoiding unconditional parent forwarding prevents 60Hz full-tree invalidation during compression.
         
         loadRecentArchivesFromStorage()
         RootFolderAccessManager.shared.restoreBookmarks()

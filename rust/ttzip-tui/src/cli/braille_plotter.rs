@@ -7,7 +7,7 @@
 
 //! Terminal 2D Braille Pareto Frontier Canvas & MIPS Benchmark Plotter.
 
-use ttzip_glue::bench::{compute_pareto_frontier_raw, MIPSHardwareBenchmarkEngine, ParetoPointRaw};
+use ttzip_engine::bench::{compute_pareto_frontier_raw, MIPSHardwareBenchmarkEngine, ParetoPointRaw};
 
 /// Single Braille cell representing a 2x4 subpixel dot matrix (U+2800..U+28FF).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

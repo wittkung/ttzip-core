@@ -11,7 +11,7 @@ import TTZipCore
 public final class EPUBArchiveUnpacker {
     public static func unpackAndParseEPUB(at epubURL: URL) -> EPUBBookModel? {
         let fileManager = FileManager.default
-        let tempDir = fileManager.temporaryDirectory.appendingPathComponent("ttzip_epub_\(UUID().uuidString)", isDirectory: true)
+        let tempDir = fileManager.temporaryDirectory.appendingPathComponent("ttzip_ephemeral_\(UUID().uuidString)", isDirectory: true)
         try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
         try? ArchiveExtractor().extractSync(archivePath: epubURL.path, destinationDir: tempDir.path)

@@ -17,7 +17,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear, Paragraph, Row, Table, TableState};
 use ratatui::Frame;
 use std::path::Path;
-use ttzip_glue::archive::split::{compute_volume_path, VolumeNamingScheme};
+use ttzip_engine::archive::split::{compute_volume_path, VolumeNamingScheme};
 
 /// Derived volume breakdown entry for real-time split projection.
 #[derive(Debug, Clone, PartialEq)]

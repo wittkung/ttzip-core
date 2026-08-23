@@ -16,8 +16,8 @@
 
 pub mod analytics;
 pub mod archive;
-pub mod bench;
 pub mod benchmark;
+pub use benchmark as bench;
 pub mod charset;
 pub mod codecs;
 pub mod crypto;

@@ -55,20 +55,28 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
         }
         let dest_p = Path::new(dest_str);
 
-        let (password, overwrite, preserve_perm, dry_run, progress_cb, user_data) =
-            if !options.is_null() {
-                let opt = &*options;
-                (
-                    opt.password,
-                    opt.overwrite_existing,
-                    opt.preserve_permissions,
-                    opt.dry_run,
-                    opt.progress_callback,
-                    opt.user_data,
-                )
-            } else {
-                (std::ptr::null(), true, true, false, None, std::ptr::null_mut())
-            };
+        let default_opt = TTZipExtractOptions {
+            destination_path: dest_c,
+            password: std::ptr::null(),
+            thread_budget: 0,
+            overwrite_existing: true,
+            preserve_permissions: true,
+            dry_run: false,
+            progress_callback: None,
+            user_data: std::ptr::null_mut(),
+        };
+        let opt_ref = if !options.is_null() {
+            unsafe { &*options }
+        } else {
+            &default_opt
+        };
+
+        let password = opt_ref.password;
+        let overwrite = opt_ref.overwrite_existing;
+        let preserve_perm = opt_ref.preserve_permissions;
+        let dry_run = opt_ref.dry_run;
+        let progress_cb = opt_ref.progress_callback;
+        let user_data = opt_ref.user_data;
 
         if !dry_run
             && fs::create_dir_all(dest_p).is_err() {
@@ -96,7 +104,7 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
         if open_rc != 0 {
             if let Ok(mapped) = fs::read(archive_p) {
                 if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                    if let Ok(_report) = sevenz.extract_all(dest_p, &*options) {
+                    if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
                         return TTZipStatus::Ok;
                     }
                 }
@@ -216,7 +224,7 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
                         let _ = fs::remove_file(&target_path);
                         if let Ok(mapped) = fs::read(archive_p) {
                             if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                                if let Ok(_report) = sevenz.extract_all(dest_p, &*options) {
+                                if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
                                     return TTZipStatus::Ok;
                                 }
                             }
@@ -250,10 +258,13 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
         if total_processed == 0 && !dry_run {
             if let Ok(mapped) = fs::read(archive_p) {
                 if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                    if let Ok(_report) = sevenz.extract_all(dest_p, &*options) {
+                    if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
                         return TTZipStatus::Ok;
                     }
                 }
+            }
+            if archive_p.metadata().map(|m| m.len() > 0).unwrap_or(false) {
+                return TTZipStatus::ErrCorruptHeader;
             }
         }
 

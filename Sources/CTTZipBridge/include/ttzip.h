@@ -1,17 +1,18 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine.
-// Minimal Public C11 SDK Header Interface.
+// TTZip: High-performance native archiving and compression engine for macOS.
 
 #ifndef TTZIP_H
 #define TTZIP_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
+
+#include "ttzip_rust_glue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,9 +27,6 @@ extern "C" {
 #else
   #define TTZIP_API __attribute__((visibility("default")))
 #endif
-
-// Import foundational types from bridge
-#include "ttzip_rust_glue.h"
 
 /* ========================================================================== */
 /* Public High-Level Archive APIs                                             */

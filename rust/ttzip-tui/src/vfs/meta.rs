@@ -25,8 +25,8 @@ pub struct VfsEntryMeta {
     pub entry_idx: Option<usize>,
 }
 
-impl From<&ttzip_glue::TTZipEntryMetadata> for VfsEntryMeta {
-    fn from(m: &ttzip_glue::TTZipEntryMetadata) -> Self {
+impl From<&ttzip_engine::TTZipEntryMetadata> for VfsEntryMeta {
+    fn from(m: &ttzip_engine::TTZipEntryMetadata) -> Self {
         let path = if !m.path.is_null() {
             unsafe { std::ffi::CStr::from_ptr(m.path) }
                 .to_str()

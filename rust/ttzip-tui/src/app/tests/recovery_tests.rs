@@ -18,9 +18,9 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::io::Write;
-use ttzip_glue::runtime::cancellation::CancellationToken;
-use ttzip_glue::types::TTZipEncryptionMethod;
-use ttzip_glue::zip::writer::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
+use ttzip_engine::runtime::cancellation::CancellationToken;
+use ttzip_engine::types::TTZipEncryptionMethod;
+use ttzip_engine::zip::writer::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
 
 fn create_encrypted_zip_file(password: &str) -> tempfile::NamedTempFile {
     let items = vec![ZipInputItem {
@@ -162,7 +162,7 @@ fn test_recovery_runner_generator_and_cancellation() {
     spawn_recovery_worker(target, pins, 2, token.clone(), tx);
 
     // Cancel immediately (< 5ms)
-    token.cancel(ttzip_glue::runtime::cancellation::CancellationReason::UserRequested);
+    token.cancel(ttzip_engine::runtime::cancellation::CancellationReason::UserRequested);
 
     let start = std::time::Instant::now();
     let mut cancelled = false;

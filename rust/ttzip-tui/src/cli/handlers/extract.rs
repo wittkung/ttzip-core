@@ -13,12 +13,12 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
-use ttzip_glue::archive::tar::TarArchive;
-use ttzip_glue::codecs::brotli::brotli_decompress_to_vec;
-use ttzip_glue::codecs::snappy::snappy_frame_decode_to_vec;
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::types::TTZipExtractOptions;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::archive::tar::TarArchive;
+use ttzip_engine::codecs::brotli::brotli_decompress_to_vec;
+use ttzip_engine::codecs::snappy::snappy_frame_decode_to_vec;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::types::TTZipExtractOptions;
+use ttzip_engine::zip::ZipArchive;
 
 /// Executes headless `extract` subcommand.
 pub fn execute_extract(

@@ -191,7 +191,7 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_decrypt_stream(
         if len == 0 {
             return TTZipStatus::Ok.to_i32();
         }
-        let src_slice = match unsafe { safe_slice(src, len) } {
+        let _src_slice = match unsafe { safe_slice(src, len) } {
             Ok(s) => s,
             Err(st) => return st.to_i32(),
         };
@@ -201,7 +201,9 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_decrypt_stream(
         };
 
         if !std::ptr::eq(src, dst) {
-            dst_slice.copy_from_slice(src_slice);
+            unsafe {
+                std::ptr::copy(src, dst, len);
+            }
         }
 
         // SAFETY: key pointers are non-null and valid for mutation
@@ -236,17 +238,15 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_encrypt_stream(
         if len == 0 {
             return TTZipStatus::Ok.to_i32();
         }
-        let src_slice = match unsafe { safe_slice(src, len) } {
-            Ok(s) => s,
-            Err(st) => return st.to_i32(),
-        };
         let dst_slice = match unsafe { safe_slice_mut(dst, len) } {
             Ok(s) => s,
             Err(st) => return st.to_i32(),
         };
 
         if !std::ptr::eq(src, dst) {
-            dst_slice.copy_from_slice(src_slice);
+            unsafe {
+                std::ptr::copy(src, dst, len);
+            }
         }
 
         // SAFETY: key pointers are non-null and valid for mutation

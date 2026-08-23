@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SdkTestMatrixReport",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "totalSdks",
+    "passedCount",
+    "failedCount",
+    "skippedCount",
+    "results"
+  ],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "totalSdks": { "type": "integer", "minimum": 1 },
+    "passedCount": { "type": "integer", "minimum": 0 },
+    "failedCount": { "type": "integer", "minimum": 0 },
+    "skippedCount": { "type": "integer", "minimum": 0 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language", "toolchainAvailable", "status", "durationMs"],
+        "properties": {
+          "language": { "type": "string" },
+          "toolchainAvailable": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

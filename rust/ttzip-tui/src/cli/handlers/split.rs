@@ -13,7 +13,7 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::time::Instant;
-use ttzip_glue::archive::split::{SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme};
+use ttzip_engine::archive::split::{SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme};
 
 /// Parses human-readable size string (e.g. "10M", "500KB", "1G", "1048576") into byte count.
 pub fn parse_size_bytes(s: &str) -> Result<u64, String> {

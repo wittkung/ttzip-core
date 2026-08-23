@@ -16,9 +16,9 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::io::Write;
-use ttzip_glue::types::TTZipEncryptionMethod;
-use ttzip_glue::zip::writer::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::types::TTZipEncryptionMethod;
+use ttzip_engine::zip::writer::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
+use ttzip_engine::zip::ZipArchive;
 
 pub fn create_corrupt_truncated_zip() -> (tempfile::NamedTempFile, Vec<u8>) {
     let items = vec![

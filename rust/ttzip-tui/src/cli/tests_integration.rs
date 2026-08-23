@@ -8,11 +8,11 @@
 use super::*;
 use std::fs;
 use tempfile::tempdir;
-use ttzip_glue::archive::tar::writer::TarWriter;
-use ttzip_glue::codecs::brotli::brotli_compress_to_vec;
-use ttzip_glue::codecs::snappy::snappy_frame_encode_to_vec;
-use ttzip_glue::crypto::zipcrypto::ZipCryptoKeys;
-use ttzip_glue::zip::writer::{assemble_zip_archive, ZipCompressedItem};
+use ttzip_engine::archive::tar::writer::TarWriter;
+use ttzip_engine::codecs::brotli::brotli_compress_to_vec;
+use ttzip_engine::codecs::snappy::snappy_frame_encode_to_vec;
+use ttzip_engine::crypto::zipcrypto::ZipCryptoKeys;
+use ttzip_engine::zip::writer::{assemble_zip_archive, ZipCompressedItem};
 
 #[test]
 fn test_headless_split_and_join_roundtrip() {

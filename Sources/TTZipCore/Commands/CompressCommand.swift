@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -81,8 +81,17 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
                     let fullPath = (outputDir as NSString).appendingPathComponent(item)
                     if item == baseName || isSplitVolumeMatch(fileName: item, baseName: baseName, baseStem: baseStem) {
                         let backupPathCandidate = "\(fullPath).bak_\(UUID().uuidString)"
+                        #if os(macOS)
+                        if clonefile(fullPath, backupPathCandidate, 0) == 0 {
+                            backupDict[fullPath] = backupPathCandidate
+                        } else {
+                            try? fm.copyItem(atPath: fullPath, toPath: backupPathCandidate)
+                            backupDict[fullPath] = backupPathCandidate
+                        }
+                        #else
                         try? fm.copyItem(atPath: fullPath, toPath: backupPathCandidate)
                         backupDict[fullPath] = backupPathCandidate
+                        #endif
                     }
                 }
             }
@@ -102,9 +111,13 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
                     progress: progress
                 )
             } catch {
-                for (_, backupPath) in backupDict {
+                // 原子回滚：清理损坏的未完成输出文件，使用备份无损还原原始文件
+                for (originalPath, backupPath) in backupDict {
+                    if fm.fileExists(atPath: originalPath) {
+                        try? fm.removeItem(atPath: originalPath)
+                    }
                     if fm.fileExists(atPath: backupPath) {
-                        try? fm.removeItem(atPath: backupPath)
+                        try? fm.moveItem(atPath: backupPath, toPath: originalPath)
                     }
                 }
                 throw error

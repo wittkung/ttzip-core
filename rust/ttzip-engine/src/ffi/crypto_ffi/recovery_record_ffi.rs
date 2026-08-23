@@ -39,12 +39,10 @@ pub unsafe extern "C" fn ttzip_rust_rs_create_recovery_record(
 
         let payload_slice = slice::from_raw_parts(payload, payload_len);
         match rs_fec::create_recovery_record(payload_slice, redundancy_percent, slice_size) {
-            Ok(mut block) => {
-                block.shrink_to_fit();
-                *out_record_len = block.len();
-                let ptr = block.as_mut_ptr();
-                std::mem::forget(block);
-                *out_record = ptr;
+            Ok(block) => {
+                let boxed = block.into_boxed_slice();
+                *out_record_len = boxed.len();
+                *out_record = Box::into_raw(boxed) as *mut u8;
                 TTZipStatus::Ok.to_i32()
             }
             Err(e) => e.to_i32(),
@@ -228,6 +226,7 @@ pub unsafe extern "C" fn ttzip_rust_rs_repair_archive(
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_rs_free_buffer(ptr: *mut u8, len: usize) {
     if !ptr.is_null() && len > 0 {
-        let _ = Vec::from_raw_parts(ptr, len, len);
+        let slice_ptr = std::ptr::slice_from_raw_parts_mut(ptr, len);
+        let _ = Box::from_raw(slice_ptr);
     }
 }

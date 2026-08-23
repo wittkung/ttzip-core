@@ -123,4 +123,18 @@ public final class RootFolderAccessManager {
         }
         return false
     }
+    
+    /// Releases all active security-scoped resource handles.
+    public func stopAccessingAll() {
+        for url in accessingURLs {
+            url.stopAccessingSecurityScopedResource()
+        }
+        accessingURLs.removeAll()
+    }
+    
+    deinit {
+        for url in accessingURLs {
+            url.stopAccessingSecurityScopedResource()
+        }
+    }
 }

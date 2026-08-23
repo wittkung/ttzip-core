@@ -27,7 +27,7 @@ public enum ArchiveDragItemProviderFactory {
             fileOptions: [],
             visibility: .all
         ) { completion in
-            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_drag_\(UUID().uuidString)")
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_ephemeral_drag_\(UUID().uuidString)")
             try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
             let tempURL = tempDir.appendingPathComponent(suggestedFileName)
             

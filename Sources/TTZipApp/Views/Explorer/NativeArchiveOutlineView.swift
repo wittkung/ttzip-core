@@ -108,6 +108,7 @@ public struct NativeArchiveOutlineView: NSViewRepresentable {
         var parent: NativeArchiveOutlineView
         var lastNodesCount: Int = -1
         var lastRootNodesIDs: [String] = []
+        var rootItems: [ArchiveOutlineItem] = []
         nonisolated(unsafe) var moveUpObserver: NSObjectProtocol?
         nonisolated(unsafe) var moveDownObserver: NSObjectProtocol?
         nonisolated(unsafe) var moveLeftObserver: NSObjectProtocol?
@@ -249,23 +250,30 @@ public struct NativeArchiveOutlineView: NSViewRepresentable {
         }
         if let outlineView = nsView.documentView as? NSOutlineView {
             let currentIDs = nodes.map { $0.id }
-            if context.coordinator.lastRootNodesIDs != currentIDs {
+            let needsReload = context.coordinator.lastRootNodesIDs != currentIDs
+            if needsReload {
                 context.coordinator.lastRootNodesIDs = currentIDs
                 context.coordinator.lastNodesCount = nodes.count
+                context.coordinator.rootItems = nodes.map { ArchiveOutlineItem(node: $0) }
                 outlineView.reloadData()
             }
             
             if let selectedPath = selectedPath {
-                var foundRow = -1
-                for i in 0..<outlineView.numberOfRows {
-                    if let node = outlineView.item(atRow: i) as? ArchiveTreeNode, node.id == selectedPath {
-                        foundRow = i
-                        break
+                let currentRow = outlineView.selectedRow
+                let currentItem = currentRow >= 0 ? outlineView.item(atRow: currentRow) as? ArchiveOutlineItem : nil
+                if currentItem?.node.id != selectedPath {
+                    // Fast look-up: Search only within visible rows first, then fall back
+                    var foundRow = -1
+                    for i in 0..<min(outlineView.numberOfRows, 1000) {
+                        if let item = outlineView.item(atRow: i) as? ArchiveOutlineItem, item.node.id == selectedPath {
+                            foundRow = i
+                            break
+                        }
                     }
-                }
-                if foundRow >= 0, outlineView.selectedRow != foundRow {
-                    outlineView.selectRowIndexes(IndexSet(integer: foundRow), byExtendingSelection: false)
-                    outlineView.scrollRowToVisible(foundRow)
+                    if foundRow >= 0, outlineView.selectedRow != foundRow {
+                        outlineView.selectRowIndexes(IndexSet(integer: foundRow), byExtendingSelection: false)
+                        outlineView.scrollRowToVisible(foundRow)
+                    }
                 }
             } else {
                 if outlineView.selectedRow != -1 {

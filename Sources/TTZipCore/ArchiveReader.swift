@@ -1,5 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-// TTZip
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
 
 import Foundation
 import CryptoKit
@@ -71,22 +75,7 @@ public final class ArchiveReader: ArchiveReading, @unchecked Sendable {
         return try await Task.detached(priority: .userInitiated) {
             let lower = archivePath.lowercased()
             
-            // Handle split multi-volume archives (.001)
-            var targetInspectPath = archivePath
-            var cleanupTempPath: String? = nil
-            if lower.hasSuffix(".001") {
-                let ext = lower.contains(".7z") ? "7z" : (lower.contains(".zip") ? "zip" : "tmp")
-                let joinedTemp = FileManager.default.temporaryDirectory.appendingPathComponent("joined_inspect_\(UUID().uuidString).\(ext)").path
-                if ArchiveExtractor().joinSplitVolumes(firstVolumePath: archivePath, outputPath: joinedTemp) {
-                    targetInspectPath = joinedTemp
-                    cleanupTempPath = joinedTemp
-                }
-            }
-            defer {
-                if let tmp = cleanupTempPath {
-                    try? FileManager.default.removeItem(atPath: tmp)
-                }
-            }
+            let targetInspectPath = archivePath
             
             let performInspect: (String?) -> [ArchiveEntry]? = { pwd in
                 let accumulator = EntryAccumulator()
@@ -297,10 +286,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
         return digest.map { String(format: "%02x", $0) }.joined()
     }
     
-    /// Performs pure in-memory stream-discarding archive verification without disk writes.
-    ///
-    /// Verifies all internal compression blocks and per-file checksums, generating a structured
-    /// `ArchiveIntegrityReport` conforming to the Draft-07 JSON schema.
+    /// Directly inspects data blocks and verifies cryptographic CRCs/checksums across archive entries in memory.
     public func checkArchiveIntegrity(
         archivePath: String,
         password: String? = nil,
@@ -310,96 +296,55 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
         guard fileManager.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
         }
-        
-        let startTime = CFAbsoluteTimeGetCurrent()
-        var corruptedEntries: [CorruptedEntryDetail] = []
-        var totalEntries = 0
-        var verifiedEntries = 0
-        var totalBytesDecompressed: Int64 = 0
-        
-        // 1. Read entries list
-        let reader = ArchiveReader()
-        let entries: [ArchiveEntry]
-        do {
-            entries = try await reader.inspect(archivePath: archivePath, password: password)
-        } catch {
-            let duration = max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
-            let isPasswordError = (error as? ArchiveError) == .passwordRequired
-            let status: IntegrityStatus = isPasswordError ? .encryptedMissingKey : .unreadable
+
+        return try await Task.detached(priority: .userInitiated) {
+            var reportJsonPtr: UnsafeMutablePointer<CChar>? = nil
             
-            return ArchiveIntegrityReport(
-                archivePath: archivePath,
-                totalEntriesCount: 0,
-                verifiedEntriesCount: 0,
-                corruptedEntriesCount: 1,
-                overallStatus: status,
-                verificationDurationSeconds: duration,
-                averageThroughputMBs: 0.0,
-                corruptedEntries: [
-                    CorruptedEntryDetail(
-                        entryPath: (archivePath as NSString).lastPathComponent,
-                        errorType: .headerDamaged,
-                        expectedChecksum: "",
-                        actualChecksum: "",
-                        diagnosticMessage: error.localizedDescription
+            final class ProgressBox {
+                let handler: (@Sendable (Double, String) -> Void)?
+                init(handler: (@Sendable (Double, String) -> Void)?) { self.handler = handler }
+            }
+            let box = ProgressBox(handler: progressHandler)
+            let boxPtr = Unmanaged.passUnretained(box).toOpaque()
+
+            let status = CUnsafeBufferAdapter.withCString(archivePath) { cArch in
+                CUnsafeBufferAdapter.withCString(password) { cPwd in
+                    guard let cArch = cArch else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                    return ttzip_rust_archive_verify_stream(
+                        cArch,
+                        cPwd,
+                        { current, total, entryName, ctx in
+                            guard let ctx = ctx else { return true }
+                            let innerBox = Unmanaged<ProgressBox>.fromOpaque(ctx).takeUnretainedValue()
+                            let fraction = total > 0 ? Double(current) / Double(total) : 0.0
+                            let nameStr = entryName != nil ? String(cString: entryName!) : ""
+                            innerBox.handler?(fraction, nameStr)
+                            return true
+                        },
+                        boxPtr,
+                        &reportJsonPtr
                     )
-                ]
-            )
-        }
-        
-        totalEntries = entries.count
-        
-        // 2. Perform verification for each non-directory entry
-        for (index, entry) in entries.enumerated() {
-            let progress = totalEntries > 0 ? Double(index) / Double(totalEntries) : 0.0
-            progressHandler?(progress, entry.path)
-            
-            if entry.isDirectory {
-                verifiedEntries += 1
-                continue
+                }
             }
-            
-            totalBytesDecompressed += entry.uncompressedSize
-            
-            // Check CRC / stream test
-            if entry.isEncrypted && password == nil {
-                corruptedEntries.append(CorruptedEntryDetail(
-                    entryPath: entry.path,
-                    errorType: .invalidDictionary,
-                    expectedChecksum: "",
-                    actualChecksum: "",
-                    diagnosticMessage: "Encrypted stream cannot be verified without password"
-                ))
-            } else {
-                verifiedEntries += 1
+
+            defer {
+                if let ptr = reportJsonPtr {
+                    ttzip_rust_free_string(ptr)
+                }
             }
-        }
-        
-        let endTime = CFAbsoluteTimeGetCurrent()
-        let duration = max(0.001, endTime - startTime)
-        let throughput = (Double(totalBytesDecompressed) / (1024.0 * 1024.0)) / duration
-        
-        let status: IntegrityStatus
-        if corruptedEntries.isEmpty {
-            status = .passed
-        } else if entries.allSatisfy({ $0.isEncrypted }) && password == nil {
-            status = .encryptedMissingKey
-        } else {
-            status = .corrupted
-        }
-        
-        progressHandler?(1.0, "Completed")
-        
-        return ArchiveIntegrityReport(
-            archivePath: archivePath,
-            totalEntriesCount: totalEntries,
-            verifiedEntriesCount: verifiedEntries,
-            corruptedEntriesCount: corruptedEntries.count,
-            overallStatus: status,
-            verificationDurationSeconds: duration,
-            averageThroughputMBs: throughput,
-            corruptedEntries: corruptedEntries
-        )
+
+            guard status == TTZIP_STATUS_OK, let jsonPtr = reportJsonPtr else {
+                throw ArchiveError.readFailed(code: status.rawValue)
+            }
+
+            let jsonString = String(cString: jsonPtr)
+            guard let jsonData = jsonString.data(using: .utf8) else {
+                throw ArchiveError.corruptedData(archivePath: archivePath, entryPath: "")
+            }
+
+            let decoder = JSONDecoder()
+            return try decoder.decode(ArchiveIntegrityReport.self, from: jsonData)
+        }.value
     }
 
     /// Verifies extracted directory contents: asserts byte totals and CRC32 digests against expectations.

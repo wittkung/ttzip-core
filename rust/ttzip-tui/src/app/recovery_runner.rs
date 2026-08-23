@@ -12,13 +12,13 @@ use crossbeam_channel::Sender;
 use std::fs;
 use std::thread;
 use std::time::Instant;
-use ttzip_glue::crypto::recovery::{
+use ttzip_engine::crypto::recovery::{
     recover_7z_aes_rayon, recover_winzip_aes_rayon, recover_zipcrypto_rayon,
 };
-use ttzip_glue::runtime::cancellation::CancellationToken;
-use ttzip_glue::sevenz::SevenZArchive;
-use ttzip_glue::zip::parser::parse_local_file_header;
-use ttzip_glue::zip::ZipArchive;
+use ttzip_engine::runtime::cancellation::CancellationToken;
+use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::zip::parser::parse_local_file_header;
+use ttzip_engine::zip::ZipArchive;
 
 /// High-frequency dictionary base word list for built-in attacks.
 const BASE_DICTIONARY: &[&str] = &[

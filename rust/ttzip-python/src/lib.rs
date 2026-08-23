@@ -13,9 +13,9 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use std::ffi::{CStr, CString};
 use std::sync::Mutex;
-use ttzip_glue::ffi::*;
-use ttzip_glue::platform::CpuCapabilities;
-use ttzip_glue::types::*;
+use ttzip_engine::ffi::*;
+use ttzip_engine::platform::CpuCapabilities;
+use ttzip_engine::types::*;
 
 pyo3::create_exception!(_ttzip, TTZipError, PyException);
 pyo3::create_exception!(_ttzip, AuthenticationError, TTZipError);
@@ -421,8 +421,8 @@ fn benchmark_matrix(
     corpus_size: usize,
     iterations: usize,
 ) -> PyResult<PyBenchmarkMatrixReport> {
-    use ttzip_glue::benchmark::corpus::BenchmarkCorpusType;
-    use ttzip_glue::benchmark::runner::BenchmarkMatrixRunner;
+    use ttzip_engine::benchmark::corpus::BenchmarkCorpusType;
+    use ttzip_engine::benchmark::runner::BenchmarkMatrixRunner;
 
     let c_type = match corpus_type.to_lowercase().as_str() {
         "calgary" | "text" => BenchmarkCorpusType::Calgary,

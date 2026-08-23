@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -296,21 +296,16 @@ public final class ArchivePasswordStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         for key in passwords.keys {
-            if var pwd = passwords[key] {
-                eraseSensitiveString(&pwd)
-            }
+            passwords[key] = ""
         }
-        passwords.removeAll()
-        lruOrder.removeAll()
+        passwords.removeAll(keepingCapacity: false)
+        lruOrder.removeAll(keepingCapacity: false)
     }
-    
-    private func eraseSensitiveString(_ str: inout String) {
-        str.withUTF8 { buffer in
-            if let base = buffer.baseAddress, buffer.count > 0 {
-                let raw = UnsafeMutableRawPointer(mutating: base)
-                PlatformMemory.secureZero(pointer: raw, byteCount: buffer.count)
-            }
-        }
-        str = ""
-    }
+}
+
+/// Helper function to overwrite sensitive string contents in memory.
+@inline(__always)
+public func eraseSensitiveString(_ str: inout String) {
+    str.replaceSubrange(str.startIndex..<str.endIndex, with: repeatElement("\0", count: str.count))
+    str = ""
 }

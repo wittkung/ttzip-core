@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
@@ -147,20 +147,5 @@ public enum CUnsafeBufferAdapter {
     @inline(__always)
     public static func deallocateAlignedBuffer(_ pointer: UnsafeMutableRawPointer) {
         pointer.deallocate()
-    }
-
-    /// Flyweight Pattern: Borrows a 4KB or 64KB page-aligned buffer from the shared flyweight pool.
-    /// - Parameter size: Target page size enum (`.page4K` or `.page64K`).
-    /// - Returns: Active `MemoryPageBufferFlyweight` handle.
-    @inline(__always)
-    public static func borrowPageBuffer(size: MemoryPageSize = .page64K) -> MemoryPageBufferFlyweight {
-        return MemoryPageFlyweightPool.shared.borrowBuffer(size: size)
-    }
-
-    /// Returns a borrowed page buffer flyweight back to the shared pool.
-    /// - Parameter buffer: Buffer handle to return.
-    @inline(__always)
-    public static func returnPageBuffer(_ buffer: MemoryPageBufferFlyweight) {
-        MemoryPageFlyweightPool.shared.returnBuffer(buffer)
     }
 }

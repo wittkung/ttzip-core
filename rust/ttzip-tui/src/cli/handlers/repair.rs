@@ -11,7 +11,7 @@ use crate::cli::args::RepairResultDto;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use ttzip_glue::archive::repair::{repair_damaged_tar, repair_damaged_zip};
+use ttzip_engine::archive::repair::{repair_damaged_tar, repair_damaged_zip};
 
 /// Executes headless `repair` subcommand for self-healing corrupt archives.
 pub fn execute_repair(

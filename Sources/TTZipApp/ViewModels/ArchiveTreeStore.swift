@@ -21,6 +21,7 @@ public final class ArchiveTreeStore: ObservableObject {
     @Published public private(set) var currentSearchQuery: String = ""
     
     private var cachedSourceEntries: [ArchiveEntry] = []
+    private var vfsSession: RustVfsSession?
     private var activeBuildTask: Task<[ArchiveTreeNode], Never>?
     private var activeFilterTask: Task<[ArchiveEntry], Never>?
     private var buildGeneration: UInt64 = 0
@@ -40,6 +41,7 @@ public final class ArchiveTreeStore: ObservableObject {
         
         cachedSourceEntries = entries
         filteredEntries = entries
+        vfsSession = RustVfsSession(entries: entries)
         
         activeBuildTask?.cancel()
         activeBuildTask = nil
@@ -91,6 +93,7 @@ public final class ArchiveTreeStore: ObservableObject {
         
         isFiltering = true
         let source = cachedSourceEntries
+        let session = vfsSession
         let currentFilterGen = filterGeneration &+ 1
         filterGeneration = currentFilterGen
         
@@ -100,11 +103,14 @@ public final class ArchiveTreeStore: ObservableObject {
             }
             guard !Task.isCancelled else { return [ArchiveEntry]() }
             
-            let lowerQuery = trimmed.lowercased()
-            let matched = source.filter { entry in
-                entry.name.lowercased().contains(lowerQuery) || entry.path.lowercased().contains(lowerQuery)
+            if let session = session {
+                return session.fuzzySearch(query: trimmed)
+            } else {
+                let lowerQuery = trimmed.lowercased()
+                return source.filter { entry in
+                    entry.name.lowercased().contains(lowerQuery) || entry.path.lowercased().contains(lowerQuery)
+                }
             }
-            return matched
         }
         activeFilterTask = filterTask
         
@@ -125,6 +131,7 @@ public final class ArchiveTreeStore: ObservableObject {
         activeFilterTask?.cancel()
         activeFilterTask = nil
         
+        vfsSession = nil
         cachedSourceEntries = []
         rootNodes = []
         filteredEntries = []

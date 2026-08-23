@@ -14,12 +14,12 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use ttzip_glue::archive::split::{SplitVolumeWriter, VolumeNamingScheme};
-use ttzip_glue::sevenz::create_7z_archive;
-use ttzip_glue::types::{
+use ttzip_engine::archive::split::{SplitVolumeWriter, VolumeNamingScheme};
+use ttzip_engine::sevenz::create_7z_archive;
+use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
 };
-use ttzip_glue::zip::create_zip_archive;
+use ttzip_engine::zip::create_zip_archive;
 
 /// Executes headless `create` subcommand with optional multi-volume chunk splitting.
 pub fn execute_create(
