@@ -99,7 +99,7 @@ The following files are fully frozen (refer to `.agents/rules/zip-engine-freeze.
 
 ## 6. Upstream Open-Source Contribution & Hardware Grounding Protocol
 
-> **Applicability**: Mandatory whenever modifying or proposing patches to upstream vendor libraries (`Vendor/worktrees/*`, `zlib-ng`, `libdeflate`, `libarchive`, `zstd`, `lz4`, `bzip2`).
+> **Applicability**: Mandatory whenever modifying or proposing patches to upstream vendor libraries (`../ttzip-upstream/*`, `zlib-ng`, `libdeflate`, `libarchive`, `zstd`, `lz4`, `bzip2`).
 
 ### Invariant 1: Hardware Grounding & Microarchitectural Proof (硬件机理确界律)
 - **Zero Blind AI Submissions**: It is strictly forbidden to propose upstream PRs based purely on automated AI generation without verifying the physical instruction pipeline, register file domain crossings (FPR vs GPR), and load-to-use latencies.
