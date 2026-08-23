@@ -6,6 +6,8 @@
 // TTZip: High-performance native archiving and compression engine.
 // PyO3 native Python C-extension binding module.
 
+#![allow(clippy::useless_conversion)]
+
 use pyo3::exceptions::{PyException, PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
