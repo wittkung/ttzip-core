@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransferSpeedSheetReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceSizeBytes",
+    "algorithm",
+    "level",
+    "tiers",
+    "overallBestTierCount"
+  ],
+  "properties": {
+    "sourceSizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "algorithm": {
+      "type": "string",
+      "minLength": 1
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 22
+    },
+    "tiers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/TransferSpeedTier"
+      }
+    },
+    "overallBestTierCount": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "definitions": {
+    "TransferSpeedTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tierName",
+        "bandwidthMBs",
+        "rawTransferSeconds",
+        "compressionSeconds",
+        "compressedTransferSeconds",
+        "decompressionSeconds",
+        "totalTurnaroundSeconds",
+        "speedupRatio",
+        "isParetoWinner"
+      ],
+      "properties": {
+        "tierName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bandwidthMBs": {
+          "type": "number",
+          "minimum": 0.001
+        },
+        "rawTransferSeconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "compressionSeconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "compressedTransferSeconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "decompressionSeconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "totalTurnaroundSeconds": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "speedupRatio": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "isParetoWinner": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

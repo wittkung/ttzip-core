@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PreFlightAuditReport",
+  "type": "object",
+  "required": [
+    "flag_parity_verified",
+    "cross_over_completed",
+    "tests_passed",
+    "warnings_count",
+    "user_authorized"
+  ],
+  "properties": {
+    "flag_parity_verified": {
+      "type": "boolean"
+    },
+    "cross_over_completed": {
+      "type": "boolean"
+    },
+    "tests_passed": {
+      "type": "boolean"
+    },
+    "warnings_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "user_authorized": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

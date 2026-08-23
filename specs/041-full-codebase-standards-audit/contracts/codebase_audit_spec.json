@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodebaseAuditReportSpec",
+  "type": "object",
+  "required": [
+    "reportVersion",
+    "auditDate",
+    "totalFilesScanned",
+    "summary",
+    "defects",
+    "roadmapPhases"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "reportVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "auditDate": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "totalFilesScanned": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalDefects",
+        "p0Count",
+        "p1Count",
+        "p2Count",
+        "p3Count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "totalDefects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p0Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p1Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p2Count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p3Count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "category",
+          "modulePath",
+          "startLine",
+          "endLine",
+          "title",
+          "impactDescription",
+          "remediationPlan",
+          "frozenFile"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(P0|P1|P2|P3)-[0-9]{2}$"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["P0", "P1", "P2", "P3"]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "StreamFirst",
+              "InvariantFirst",
+              "BoundsFirst",
+              "OracleFirst",
+              "DesignPattern",
+              "LayerIsolation"
+            ]
+          },
+          "modulePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "impactDescription": {
+            "type": "string",
+            "minLength": 1
+          },
+          "remediationPlan": {
+            "type": "string",
+            "minLength": 1
+          },
+          "frozenFile": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "roadmapPhases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "phaseIndex",
+          "phaseTitle",
+          "targetDefectIds",
+          "priority"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "phaseIndex": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "phaseTitle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetDefectIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(P0|P1|P2|P3)-[0-9]{2}$"
+            }
+          },
+          "priority": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CPUFeatureSet",
+  "description": "Cross-platform hardware capabilities and SIMD feature mask schema",
+  "type": "object",
+  "required": [
+    "architecture",
+    "logicalCores",
+    "physicalPageSize",
+    "hasARMNeon",
+    "hasARMCrypto",
+    "hasAESNI",
+    "hasAVX2",
+    "hasAVX512",
+    "hasHardwareCRC32"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "architecture": {
+      "type": "string",
+      "enum": ["arm64", "x86_64", "unknown"]
+    },
+    "logicalCores": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "physicalPageSize": {
+      "type": "integer",
+      "minimum": 4096
+    },
+    "hasARMNeon": {
+      "type": "boolean"
+    },
+    "hasARMCrypto": {
+      "type": "boolean"
+    },
+    "hasAESNI": {
+      "type": "boolean"
+    },
+    "hasAVX2": {
+      "type": "boolean"
+    },
+    "hasAVX512": {
+      "type": "boolean"
+    },
+    "hasHardwareCRC32": {
+      "type": "boolean"
+    }
+  }
+}

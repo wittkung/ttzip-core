@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipQuickLookFinderIntegrationContractSchema",
+  "description": "Strict JSON schema for macOS Quick Look preview requests and Finder drag-and-drop file promise payloads.",
+  "type": "object",
+  "required": [
+    "quicklook",
+    "finder_drag"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "quicklook": {
+      "type": "object",
+      "required": [
+        "trigger_event",
+        "supported_sources",
+        "ephemeral_sandbox_permission",
+        "max_preview_timeout_ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "trigger_event": {
+          "type": "string",
+          "enum": [
+            "SPACE_KEY",
+            "CONTEXT_MENU_CLICK",
+            "DOUBLE_CLICK"
+          ]
+        },
+        "supported_sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "DISK_FILE",
+              "ARCHIVE_VIRTUAL_ENTRY"
+            ]
+          }
+        },
+        "ephemeral_sandbox_permission": {
+          "type": "string",
+          "enum": [
+            "0700_USER_ONLY"
+          ]
+        },
+        "max_preview_timeout_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000
+        }
+      }
+    },
+    "finder_drag": {
+      "type": "object",
+      "required": [
+        "provider_class",
+        "execution_mode",
+        "atomic_write_guarantee"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider_class": {
+          "type": "string",
+          "enum": [
+            "NSFilePromiseProvider",
+            "NSItemProvider"
+          ]
+        },
+        "execution_mode": {
+          "type": "string",
+          "enum": [
+            "LAZY_EXTRACTION_ON_DROP",
+            "EAGER_EXTRACTION"
+          ]
+        },
+        "atomic_write_guarantee": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,421 @@
+# Blosc - Blocked Shuffling and Compression Library
+#
+# Copyright (c) 2021  Blosc Development Team <blosc@blosc.org>
+# https://blosc.org
+# License: BSD 3-Clause (see LICENSE.txt)
+#
+# See LICENSE.txt for details about copyright and rights to use.
+
+# A simple way to detect that we are using CMAKE
+add_definitions(-DUSING_CMAKE)
+
+set(version_string ${BLOSC2_VERSION_MAJOR}.${BLOSC2_VERSION_MINOR}.${BLOSC2_VERSION_PATCH})
+
+# targets
+if(BUILD_SHARED)
+    add_library(blosc2_shared SHARED)
+    # ALIAS for superbuilds that use Blosc2 as sub-project
+    # must be the same as the NAMESPACE in Blosc2Targets
+    add_library(Blosc2::blosc2_shared ALIAS blosc2_shared)
+    set_target_properties(blosc2_shared PROPERTIES
+        OUTPUT_NAME blosc2
+        # Hide symbols by default unless they're specifically exported.
+        # This makes it easier to keep the set of exported symbols the
+        # same across all compilers/platforms.
+        C_VISIBILITY_PRESET hidden
+    )
+    if(MSVC OR MINGW)
+        set_target_properties(blosc2_shared PROPERTIES PREFIX lib)
+    endif()
+    set_target_properties(blosc2_shared PROPERTIES
+        VERSION ${version_string}
+        SOVERSION 9  # Change this when an ABI change happens
+    )
+    target_compile_definitions(blosc2_shared PRIVATE BLOSC_SHARED_LIBRARY)
+    target_include_directories(blosc2_shared PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(blosc2_shared PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+endif()
+if(BUILD_STATIC)
+    add_compile_definitions(BUILD_STATIC)
+    add_library(blosc2_static STATIC)
+    # ALIAS for superbuilds that use Blosc2 as sub-project
+    # must be the same as the NAMESPACE in Blosc2Targets
+    add_library(Blosc2::blosc2_static ALIAS blosc2_static)
+    set_target_properties(blosc2_static PROPERTIES
+        OUTPUT_NAME blosc2
+        POSITION_INDEPENDENT_CODE ON
+        # Hide symbols by default unless they're specifically exported.
+        # This makes it easier to keep the set of exported symbols the
+        # same across all compilers/platforms.
+        C_VISIBILITY_PRESET hidden
+    )
+    if(MSVC OR MINGW)
+        set_target_properties(blosc2_static PROPERTIES PREFIX lib)
+    endif()
+    target_include_directories(blosc2_static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(blosc2_static PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+endif()
+# Add unified target
+add_library(Blosc2::blosc2 ALIAS ${UNIFIED_TARGET_ALIAS})
+# When the option has been selected to compile the test suite,
+# compile an additional version of blosc2_static which exports
+# some normally-hidden symbols (to facilitate unit testing).
+if(BUILD_TESTS)
+    add_library(blosc_testing STATIC)
+    set_target_properties(blosc_testing PROPERTIES OUTPUT_NAME blosc_testing)
+    if(MSVC OR MINGW)
+        set_target_properties(blosc_testing PROPERTIES PREFIX lib)
+    endif()
+    target_compile_definitions(blosc_testing PUBLIC
+        BLOSC_TESTING
+        BLOSC_SHARED_LIBRARY  # for EXPORT macro
+    )
+    target_include_directories(blosc_testing PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+endif()
+
+set(INTERNAL_LIBS ${PROJECT_SOURCE_DIR}/internal-complibs)
+
+# Threads
+if(HAVE_THREADS)
+    if(CMAKE_VERSION VERSION_LESS 3.1)
+        set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
+    else()
+        set(LIBS ${LIBS} Threads::Threads)
+    endif()
+else()
+    message(FATAL_ERROR "Threads required but not found.")
+endif()
+if(WIN32)
+    list(APPEND SOURCES blosc/win32/threading.c)
+endif()
+
+# dlopen/dlclose
+if(NOT WIN32)
+    set(LIBS ${LIBS} ${CMAKE_DL_LIBS})
+endif()
+
+# link dependencies
+#   "link" dependent targets via target_link_libraries (preferred) and
+#   manually add includes / libs for others
+if(LZ4_FOUND)
+    if(TARGET LZ4::lz4)
+        list(APPEND LIBS LZ4::lz4)
+    elseif(TARGET lz4_static)
+        list(APPEND LIBS lz4_static)
+    elseif(TARGET lz4)
+        list(APPEND LIBS lz4)
+    else()
+        list(APPEND LIBS ${LZ4_LIBRARY})
+        list(APPEND BLOSC_INCLUDE_DIRS ${LZ4_INCLUDE_DIRS})
+    endif()
+else()
+    message(FATAL_ERROR "LZ4 support enabled, but neither external lz4 nor FetchContent lz4 is available.")
+endif()
+
+if(NOT DEACTIVATE_ZLIB)
+    if(ZLIB_NG_FOUND)
+        if(TARGET zlib-ng::zlibstatic)
+            list(APPEND LIBS zlib-ng::zlibstatic)
+        elseif(TARGET zlib-ng::zlib)
+            list(APPEND LIBS zlib-ng::zlib)
+        else()
+            list(APPEND LIBS ${ZLIB_NG_LIBRARIES})
+            list(APPEND BLOSC_INCLUDE_DIRS ${ZLIB_NG_INCLUDE_DIR})
+        endif()
+    elseif(ZLIB_FOUND)
+        list(APPEND LIBS ZLIB::ZLIB)
+    else()
+        message(FATAL_ERROR "ZLIB support enabled, but neither external zlib nor FetchContent zlib-ng is available.")
+    endif()
+endif()
+
+if(NOT DEACTIVATE_ZSTD)
+    if(ZSTD_FOUND)
+        if(TARGET zstd::libzstd_shared)
+            list(APPEND LIBS zstd::libzstd_shared)
+        elseif(TARGET zstd::libzstd_static)
+            list(APPEND LIBS zstd::libzstd_static)
+        elseif(TARGET zstd::libzstd)
+            list(APPEND LIBS zstd::libzstd)
+        elseif(TARGET libzstd_static)
+            list(APPEND LIBS libzstd_static)
+        elseif(TARGET libzstd_shared)
+            list(APPEND LIBS libzstd_shared)
+        else()
+            list(APPEND LIBS ${ZSTD_LIBRARY})
+            list(APPEND BLOSC_INCLUDE_DIRS ${ZSTD_INCLUDE_DIR})
+        endif()
+    else()
+        message(FATAL_ERROR "ZSTD support enabled, but neither external zstd nor FetchContent zstd is available.")
+    endif()
+endif()
+
+if(BUILD_PLUGINS AND TARGET zfp)
+    list(APPEND LIBS zfp)
+endif()
+
+if(UNIX AND NOT APPLE)
+    set(LIBS ${LIBS} "rt")
+    set(LIBS ${LIBS} "m")
+    # set(LIBS ${LIBS} "profiler")
+endif()
+
+
+# Blosc2 library source files
+list(APPEND SOURCES
+    blosc/blosc2.c
+    blosc/blosclz.c
+    blosc/fastcopy.c
+    blosc/fastcopy.h
+    blosc/schunk.c
+    blosc/frame.c
+    blosc/stune.c
+    blosc/stune.h
+    blosc/context.h
+    blosc/delta.c
+    blosc/delta.h
+    blosc/shuffle-generic.c
+    blosc/bitshuffle-generic.c
+    blosc/trunc-prec.c
+    blosc/trunc-prec.h
+    blosc/timestamp.c
+    blosc/sframe.c
+    blosc/directories.c
+    blosc/blosc2-stdio.c
+    blosc/b2nd.c
+    blosc/b2nd_utils.c
+)
+if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL arm64)
+    if(COMPILER_SUPPORT_SSE2)
+        message(STATUS "Adding run-time support for SSE2")
+        list(APPEND SOURCES blosc/shuffle-sse2.c blosc/bitshuffle-sse2.c)
+    endif()
+    if(COMPILER_SUPPORT_AVX2)
+        message(STATUS "Adding run-time support for AVX2")
+        list(APPEND SOURCES blosc/shuffle-avx2.c blosc/bitshuffle-avx2.c)
+    endif()
+    if(COMPILER_SUPPORT_AVX512)
+        message(STATUS "Adding run-time support for AVX512")
+        list(APPEND SOURCES blosc/bitshuffle-avx512.c)
+    endif()
+endif()
+if(COMPILER_SUPPORT_NEON)
+    message(STATUS "Adding run-time support for NEON")
+    # bitshuffle-neon.c does not offer better speed than generic on arm64 (Mac M1).
+    # Besides, it does not compile on raspberry pi (armv7l), so disable it.
+    list(APPEND SOURCES blosc/shuffle-neon.c)  # blosc/bitshuffle-neon.c)
+endif()
+if(COMPILER_SUPPORT_ALTIVEC)
+    message(STATUS "Adding run-time support for ALTIVEC")
+    list(APPEND SOURCES blosc/shuffle-altivec.c blosc/bitshuffle-altivec.c)
+endif()
+list(APPEND SOURCES blosc/shuffle.c)
+
+# Based on the target architecture and hardware features supported
+# by the C compiler, set hardware architecture optimization flags
+# for specific shuffle implementations.
+if(COMPILER_SUPPORT_SSE2)
+    include(CheckCCompilerFlag)
+    # Probe for SSSE3 flags for various compilers
+    check_c_compiler_flag("-mssse3" COMPILER_HAS_mssse3) 
+    check_c_compiler_flag("/arch:SSSE3" COMPILER_HAS_arch_SSSE3)
+    if(COMPILER_HAS_mssse3) 
+        set(SSSE3_FLAG "-mssse3") 
+    elseif(COMPILER_HAS_arch_SSSE3) 
+        set(SSSE3_FLAG "/arch:SSSE3") 
+    else() 
+        set(SSSE3_FLAG "") 
+    endif()
+    if(MSVC)
+        # MSVC targets SSE2 by default on 64-bit configurations, but not 32-bit configurations.
+        if(${CMAKE_SIZEOF_VOID_P} EQUAL 4)
+            set_source_files_properties(
+                    shuffle-sse2.c bitshuffle-sse2.c blosclz.c fastcopy.c
+                    PROPERTIES COMPILE_OPTIONS "/arch:SSE2")
+        endif()
+    else()
+        set_source_files_properties(
+                shuffle-sse2.c bitshuffle-sse2.c blosclz.c fastcopy.c
+                PROPERTIES COMPILE_OPTIONS -msse2)
+    endif()
+    if(SSSE3_FLAG) 
+        set_source_files_properties( ${PROJECT_SOURCE_DIR}/plugins/filters/bytedelta/bytedelta.c PROPERTIES COMPILE_OPTIONS "${SSSE3_FLAG}" COMPILE_DEFINITIONS "HAVE_SSSE3=1" ) 
+    endif()
+
+    # Define a symbol for the shuffle-dispatch implementation
+    # so it knows SSE2 is supported even though that file is
+    # compiled without SSE2 support (for portability).
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_DEFINITIONS SHUFFLE_SSE2_ENABLED)
+
+endif()
+
+if(COMPILER_SUPPORT_AVX2)
+    if(MSVC)
+        set_source_files_properties(
+                shuffle-avx2.c bitshuffle-avx2.c
+                PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+    else()
+        set_source_files_properties(
+                shuffle-avx2.c bitshuffle-avx2.c
+                PROPERTIES COMPILE_OPTIONS -mavx2)
+    endif()
+
+    # Define a symbol for the shuffle-dispatch implementation
+    # so it knows AVX2 is supported even though that file is
+    # compiled without AVX2 support (for portability).
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_DEFINITIONS SHUFFLE_AVX2_ENABLED)
+endif()
+if(COMPILER_SUPPORT_AVX512)
+    if(MSVC)
+        set_source_files_properties(
+                bitshuffle-avx512.c
+		PROPERTIES COMPILE_OPTIONS "/arch:AVX512")
+    else()
+        set_source_files_properties(
+                bitshuffle-avx512.c
+                PROPERTIES COMPILE_OPTIONS "-mavx512f;-mavx512bw")
+    endif()
+
+    # Define a symbol for the shuffle-dispatch implementation
+    # so it knows AVX512 is supported even though that file is
+    # compiled without AVX512 support (for portability).
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_DEFINITIONS SHUFFLE_AVX512_ENABLED)
+endif()
+if(COMPILER_SUPPORT_NEON)
+    set_source_files_properties(
+            shuffle-neon.c bitshuffle-neon.c
+            PROPERTIES COMPILE_OPTIONS "-flax-vector-conversions")
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL armv7l)
+        # Only armv7l needs special -mfpu=neon flag; aarch64 doesn't.
+      set_source_files_properties(
+            shuffle-neon.c bitshuffle-neon.c
+            PROPERTIES COMPILE_OPTIONS "-mfpu=neon;-flax-vector-conversions")
+    endif()
+    # Define a symbol for the shuffle-dispatch implementation
+    # so it knows NEON is supported even though that file is
+    # compiled without NEON support (for portability).
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_DEFINITIONS SHUFFLE_NEON_ENABLED)
+endif()
+if(COMPILER_SUPPORT_ALTIVEC)
+    set_source_files_properties(
+            shuffle-altivec.c bitshuffle-altivec.c
+            PROPERTIES COMPILE_OPTIONS -DNO_WARN_X86_INTRINSICS)
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_OPTIONS -DNO_WARN_X86_INTRINSICS)
+
+    # Define a symbol for the shuffle-dispatch implementation
+    # so it knows ALTIVEC is supported even though that file is
+    # compiled without ALTIVEC support (for portability).
+    set_property(
+            SOURCE shuffle.c
+            APPEND PROPERTY COMPILE_DEFINITIONS SHUFFLE_ALTIVEC_ENABLED)
+endif()
+
+# add libraries for dependencies that are not CMake targets
+if(BUILD_SHARED)
+    target_link_libraries(blosc2_shared PRIVATE ${LIBS})
+    target_include_directories(blosc2_shared PRIVATE ${BLOSC_INCLUDE_DIRS})
+endif()
+
+if(BUILD_STATIC)
+    target_link_libraries(blosc2_static PRIVATE ${LIBS})
+    target_include_directories(blosc2_static PRIVATE ${BLOSC_INCLUDE_DIRS})
+endif()
+
+if(BUILD_TESTS)
+    target_link_libraries(blosc_testing PRIVATE ${LIBS})
+    target_include_directories(blosc_testing PRIVATE ${BLOSC_INCLUDE_DIRS})
+endif()
+
+# When using fetched dependencies, make the installed static library self-contained
+# by folding the private bundled dependency archives into libblosc2.a.  This keeps
+# bundled dependencies out of the public install layout and lets consumers link the
+# wheel-provided static library without chasing private dependency archives.
+set(BLOSC_BUNDLED_STATIC_TARGETS)
+if(BUILD_STATIC)
+    if(LZ4_FETCHED AND TARGET lz4_static)
+        list(APPEND BLOSC_BUNDLED_STATIC_TARGETS lz4_static)
+    endif()
+    if(ZLIB_NG_FETCHED AND ZLIB_NG_INSTALL_TARGET AND TARGET ${ZLIB_NG_INSTALL_TARGET})
+        list(APPEND BLOSC_BUNDLED_STATIC_TARGETS ${ZLIB_NG_INSTALL_TARGET})
+    endif()
+    if(ZSTD_FETCHED AND TARGET libzstd_static)
+        list(APPEND BLOSC_BUNDLED_STATIC_TARGETS libzstd_static)
+    endif()
+    if(ZFP_FETCHED AND TARGET zfp)
+        list(APPEND BLOSC_BUNDLED_STATIC_TARGETS zfp)
+    endif()
+endif()
+
+if(BLOSC_BUNDLED_STATIC_TARGETS)
+    set(BLOSC_STATIC_MERGE_INPUTS "$<TARGET_FILE:blosc2_static>")
+    foreach(BLOSC_BUNDLED_STATIC_TARGET IN LISTS BLOSC_BUNDLED_STATIC_TARGETS)
+        list(APPEND BLOSC_STATIC_MERGE_INPUTS "$<TARGET_FILE:${BLOSC_BUNDLED_STATIC_TARGET}>")
+    endforeach()
+    string(JOIN "|" BLOSC_STATIC_MERGE_INPUTS_ARG ${BLOSC_STATIC_MERGE_INPUTS})
+    set(BLOSC_STATIC_MERGE_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/merge_blosc2_static_$<CONFIG>.cmake")
+    file(GENERATE OUTPUT "${BLOSC_STATIC_MERGE_SCRIPT}" CONTENT
+"set(OUTPUT [=[$<TARGET_FILE:blosc2_static>]=])
+set(INPUTS [=[${BLOSC_STATIC_MERGE_INPUTS_ARG}]=])
+set(AR [=[${CMAKE_AR}]=])
+set(RANLIB [=[${CMAKE_RANLIB}]=])
+set(SYSTEM_NAME [=[${CMAKE_SYSTEM_NAME}]=])
+set(MSVC [=[$<BOOL:${MSVC}>]=])
+include([=[${PROJECT_SOURCE_DIR}/cmake/merge_static_libs.cmake]=])
+")
+    set(BLOSC_CMAKE_COMMAND "${CMAKE_COMMAND}")
+    if(WIN32)
+        # Avoid nested cmd.exe quoting problems with full paths such as
+        # "C:\Program Files\CMake\bin\cmake.exe" in Ninja post-build rules.
+        set(BLOSC_CMAKE_COMMAND cmake)
+    endif()
+    add_custom_command(TARGET blosc2_static POST_BUILD
+        COMMAND "${BLOSC_CMAKE_COMMAND}" -P "${BLOSC_STATIC_MERGE_SCRIPT}"
+        COMMENT "Merging bundled dependency archives into libblosc2.a"
+        VERBATIM)
+
+    # The bundled dependency objects are now inside libblosc2.a, so do not make
+    # installed CMake consumers depend on the private dependency targets.
+    get_target_property(BLOSC_STATIC_INTERFACE_LINK_LIBRARIES blosc2_static INTERFACE_LINK_LIBRARIES)
+    if(BLOSC_STATIC_INTERFACE_LINK_LIBRARIES)
+        set(BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS ${BLOSC_BUNDLED_STATIC_TARGETS})
+        if(LZ4_FETCHED)
+            list(APPEND BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS lz4_static LZ4::lz4)
+        endif()
+        if(ZLIB_NG_FETCHED)
+            list(APPEND BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS
+                zlib-ng-static zlib-ng zlib zlibstatic zlib-ng::zlibstatic zlib-ng::zlib)
+        endif()
+        if(ZSTD_FETCHED)
+            list(APPEND BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS
+                libzstd_static libzstd_shared zstd::libzstd_static zstd::libzstd_shared zstd::libzstd)
+        endif()
+        if(ZFP_FETCHED)
+            list(APPEND BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS zfp ZFP::zfp zfp::zfp ZFP::ZFP)
+        endif()
+        list(REMOVE_DUPLICATES BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS)
+        foreach(BLOSC_BUNDLED_STATIC_TARGET IN LISTS BLOSC_BUNDLED_STATIC_INTERFACE_TARGETS)
+            list(REMOVE_ITEM BLOSC_STATIC_INTERFACE_LINK_LIBRARIES "$<LINK_ONLY:${BLOSC_BUNDLED_STATIC_TARGET}>")
+        endforeach()
+        set_target_properties(blosc2_static PROPERTIES
+            INTERFACE_LINK_LIBRARIES "${BLOSC_STATIC_INTERFACE_LINK_LIBRARIES}")
+    endif()
+endif()
+
+# we use this variable in the CMake file one directory above ours
+set(SOURCES ${SOURCES} PARENT_SCOPE)

@@ -18,6 +18,7 @@ name = "ttzip_glue"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
+ttzip-engine = { path = "../ttzip-engine", version = "1.0.0" }
 libc = "0.2"
 zeroize = { version = "1.8", features = ["zeroize_derive", "alloc"] }
 cfg-if = "1.0"

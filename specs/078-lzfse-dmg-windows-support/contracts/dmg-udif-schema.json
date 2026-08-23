@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DMGUDIFSchema",
+  "description": "Strict JSON Schema contract for Apple UDIF Disk Image (koly trailer, blkx chunk table, and partition descriptors).",
+  "type": "object",
+  "required": [
+    "descriptor",
+    "partitions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "descriptor": {
+      "type": "object",
+      "required": [
+        "signature",
+        "version",
+        "headerSize",
+        "flags",
+        "dataForkOffset",
+        "dataForkLength",
+        "xmlOffset",
+        "xmlLength",
+        "sectorCount",
+        "segmentNumber",
+        "segmentCount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "signature": {
+          "type": "string",
+          "enum": ["koly"]
+        },
+        "version": {
+          "type": "integer",
+          "enum": [4]
+        },
+        "headerSize": {
+          "type": "integer",
+          "enum": [512]
+        },
+        "flags": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dataForkOffset": {
+          "type": "integer",
+          "enum": [0]
+        },
+        "dataForkLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xmlOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xmlLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sectorCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "segmentNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "segmentCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "partitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "partitionId",
+          "partitionName",
+          "volumeName",
+          "startSector",
+          "sectorCount",
+          "chunks"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "partitionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "partitionName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "volumeName": {
+            "type": "string"
+          },
+          "startSector": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sectorCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "entryType",
+                "entryTypeName",
+                "sectorNumber",
+                "sectorCount",
+                "compressedOffset",
+                "compressedLength"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "entryType": {
+                  "type": "integer"
+                },
+                "entryTypeName": {
+                  "type": "string",
+                  "enum": [
+                    "ZERO",
+                    "RAW",
+                    "IGNORE",
+                    "ZLIB",
+                    "BZIP2",
+                    "LZFSE",
+                    "LZMA",
+                    "TERMINATOR"
+                  ]
+                },
+                "sectorNumber": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sectorCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "compressedOffset": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "compressedLength": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

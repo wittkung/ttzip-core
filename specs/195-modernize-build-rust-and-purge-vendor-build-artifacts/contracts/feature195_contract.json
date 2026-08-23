@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature195Contract",
+  "description": "Contract for Feature 195 build_rust modernization and upstream artifact purge.",
+  "type": "object",
+  "required": [
+    "build_rust_modernized",
+    "redundant_staticlib_purged",
+    "upstream_cmake_debris_purged",
+    "zero_regression"
+  ],
+  "properties": {
+    "build_rust_modernized": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "redundant_staticlib_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "upstream_cmake_debris_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

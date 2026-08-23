@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArchiveErrorContract",
+  "description": "JSON schema for TTZip archive domain failure events and localized messages",
+  "type": "object",
+  "required": [
+    "error_code",
+    "domain",
+    "error_name",
+    "localized_key",
+    "localized_message",
+    "context_details"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "error_code": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 9999
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "io",
+        "format",
+        "crypto",
+        "bounds",
+        "operation"
+      ]
+    },
+    "error_name": {
+      "type": "string",
+      "enum": [
+        "fileNotFound",
+        "readFailed",
+        "invalidFormat",
+        "passwordRequired",
+        "wrongPassword",
+        "corruptedData",
+        "cancelled",
+        "invalidState"
+      ]
+    },
+    "localized_key": {
+      "type": "string",
+      "pattern": "^error\\.[a-z0-9_]+$"
+    },
+    "localized_message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "context_details": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "os_error_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "encryption_method": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

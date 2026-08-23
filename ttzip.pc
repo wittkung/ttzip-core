@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ttzip
+Description: High-performance native archiving and compression engine
+Version: 1.0.0
+Libs: -L${libdir} -lttzip_glue -lpthread -lm
+Cflags: -I${includedir}

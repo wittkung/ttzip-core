@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature196Contract",
+  "description": "Contract for Feature 196 legacy C test harness and obsolete CLI purge.",
+  "type": "object",
+  "required": [
+    "obsolete_c_cli_purged",
+    "legacy_c_tests_purged",
+    "root_build_debris_purged",
+    "architecture_doc_aligned",
+    "zero_regression"
+  ],
+  "properties": {
+    "obsolete_c_cli_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "legacy_c_tests_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "root_build_debris_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "architecture_doc_aligned": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

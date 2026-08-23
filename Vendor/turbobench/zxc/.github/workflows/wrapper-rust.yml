@@ -1,0 +1,121 @@
+name: Wrapper Rust
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+          - os: macos-26
+            arch: x86_64 arm64
+          - os: windows-latest
+            arch: AMD64
+          - os: windows-11-arm
+            arch: ARM64
+    defaults:
+      run:
+        working-directory: ./wrappers/rust
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Latest Compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "CC=gcc-14" >> $GITHUB_ENV
+          echo "CXX=g++-14" >> $GITHUB_ENV
+          gcc-14 --version
+
+      - name: Select Latest Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.4.app
+          clang --version
+
+      - name: Install Rust Toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+          cache-workspaces: "wrappers/rust -> target"
+
+      - name: Run Tests
+        run: cargo test --workspace
+
+  publish:
+    name: Publish to crates.io
+    needs: [test]
+    runs-on: ubuntu-slim
+    if: github.event_name == 'release'
+    defaults:
+      run:
+        working-directory: ./wrappers/rust
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust Toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+          cache-workspaces: "wrappers/rust -> target"
+
+      - name: Verify Version Matches Release Tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # Remove 'v' prefix if present
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          
+          if [ "$RELEASE_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Version mismatch: Release tag is $RELEASE_VERSION but Cargo.toml has $CARGO_VERSION"
+            exit 1
+          fi
+          
+          echo "Version matches: $RELEASE_VERSION"
+
+      - name: Publish zxc-compress-sys (FFI bindings)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cd zxc-sys
+          cargo publish
+        continue-on-error: false
+
+      # Wait for zxc-compress-sys to be available on crates.io before publishing zxc-compress
+      - name: Wait for zxc-compress-sys to propagate
+        run: sleep 30
+
+      - name: Publish zxc-compress (safe wrapper)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cd zxc
+          cargo publish
+        continue-on-error: false
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "Successfully published:"
+          echo "- zxc-compress-sys (FFI bindings)"
+          echo "- zxc-compress (safe wrapper)"
+          echo ""
+          echo "Crates are now available on crates.io!"

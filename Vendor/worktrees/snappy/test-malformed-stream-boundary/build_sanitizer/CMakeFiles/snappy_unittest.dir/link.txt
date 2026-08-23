@@ -1,0 +1,1 @@
+/usr/bin/c++ -fsanitize=address,undefined -Wall -Wextra -Werror -Wno-sign-compare -fno-exceptions -fno-rtti -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/snappy_unittest.dir/snappy_unittest.cc.o -o snappy_unittest  libsnappy_test_support.a lib/libgmock_main.a lib/libgtest.a libsnappy.a -lz lib/libgmock.a lib/libgtest.a

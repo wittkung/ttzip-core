@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipMatrixTelemetryReport",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "osVersion",
+    "architecture",
+    "totalPoints",
+    "passedPoints",
+    "totalDurationSeconds",
+    "medianCvPercentage",
+    "gateVerdict",
+    "points"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "integer"
+    },
+    "osVersion": {
+      "type": "string"
+    },
+    "architecture": {
+      "type": "string"
+    },
+    "totalPoints": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "passedPoints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "medianCvPercentage": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "gateVerdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ]
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "engine",
+          "corpus",
+          "sizeBytes",
+          "level",
+          "compressionTimeMicros",
+          "compressionSpeedMBs",
+          "decompressionTimeMicros",
+          "decompressionSpeedMBs",
+          "ratioPercentage",
+          "integrityPassed",
+          "cvPercentage"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "engine": {
+            "type": "string"
+          },
+          "corpus": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "level": {
+            "type": "integer"
+          },
+          "compressionTimeMicros": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "compressionSpeedMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "decompressionTimeMicros": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "decompressionSpeedMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "ratioPercentage": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "integrityPassed": {
+            "type": "boolean"
+          },
+          "cvPercentage": {
+            "type": "number",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

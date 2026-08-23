@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SwarGlobalAccelerationContract",
+  "description": "Strong-typed schema definition for global SWAR and pattern acceleration interfaces",
+  "type": "object",
+  "required": ["encoding_detection", "format_detection", "performance_expectations"],
+  "properties": {
+    "encoding_detection": {
+      "type": "object",
+      "required": ["symbol_name", "output_values"],
+      "properties": {
+        "symbol_name": {
+          "type": "string",
+          "enum": ["ttzip_detect_encoding_fast", "ttzip_detect_charset"]
+        },
+        "output_values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["UTF-8", "GB18030"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "format_detection": {
+      "type": "object",
+      "required": ["symbol_name", "recognized_formats_count"],
+      "properties": {
+        "symbol_name": {
+          "type": "string",
+          "enum": ["ttzip_detect_format_from_header"]
+        },
+        "recognized_formats_count": {
+          "type": "integer",
+          "minimum": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "performance_expectations": {
+      "type": "object",
+      "required": ["ascii_detection_speedup_ratio_min", "magic_detection_speedup_ratio_min"],
+      "properties": {
+        "ascii_detection_speedup_ratio_min": {
+          "type": "number",
+          "minimum": 2.0
+        },
+        "magic_detection_speedup_ratio_min": {
+          "type": "number",
+          "minimum": 1.5
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

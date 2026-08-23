@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRC64BenchmarkGateContract",
+  "description": "Validation and performance floor gate contract for CRC64 hardware acceleration",
+  "type": "object",
+  "required": [
+    "golden_vector_test",
+    "differential_oracle_test",
+    "throughput_floor_mbps"
+  ],
+  "properties": {
+    "golden_vector_test": {
+      "type": "object",
+      "required": [
+        "input_ascii",
+        "expected_crc64_hex"
+      ],
+      "properties": {
+        "input_ascii": {
+          "type": "string",
+          "const": "123456789"
+        },
+        "expected_crc64_hex": {
+          "type": "string",
+          "const": "0x6C40DF5F0B497347"
+        }
+      },
+      "additionalProperties": false
+    },
+    "differential_oracle_test": {
+      "type": "object",
+      "required": [
+        "min_byte_length",
+        "max_byte_length",
+        "require_bit_exact_match"
+      ],
+      "properties": {
+        "min_byte_length": {
+          "type": "integer",
+          "const": 0
+        },
+        "max_byte_length": {
+          "type": "integer",
+          "const": 256
+        },
+        "require_bit_exact_match": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "throughput_floor_mbps": {
+      "type": "number",
+      "minimum": 30000.0,
+      "description": "Minimum acceptable throughput in MB/s on Apple Silicon hardware"
+    }
+  },
+  "additionalProperties": false
+}

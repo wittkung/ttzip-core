@@ -1,0 +1,2014 @@
+/*
+ * ZXC - High-performance lossless compression
+ *
+ * Copyright (c) 2025-2026 Bertrand Lebonnois and contributors.
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+/**
+ * @file main.c
+ * @brief Command Line Interface (CLI) entry point for the ZXC compression tool.
+ *
+ * This file handles argument parsing, file I/O setup, platform-specific
+ * compatibility layers (specifically for Windows), and the execution of
+ * compression, decompression, or benchmarking modes.
+ */
+
+#include <errno.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../../include/zxc_buffer.h"
+#include "../../include/zxc_constants.h"
+#include "../../include/zxc_dict.h"
+#include "../../include/zxc_error.h"
+#include "../../include/zxc_stream.h"
+
+#define ZXC_STDIO_BUFFER_SIZE (1024 * 1024)
+
+#ifdef _WIN32
+// Windows Implementation
+#include <direct.h>
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+
+// Map POSIX macros to MSVC equivalents
+#define F_OK 0
+#define access _access
+#define isatty _isatty
+#define fileno _fileno
+#define unlink _unlink
+#define fseeko _fseeki64
+#define ftello _ftelli64
+
+/**
+ * @brief Returns the current monotonic time in seconds using Windows
+ * Performance Counter.
+ * @return double Time in seconds.
+ */
+static double zxc_now(void) {
+    LARGE_INTEGER frequency;
+    LARGE_INTEGER count;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&count);
+    return (double)count.QuadPart / frequency.QuadPart;
+}
+
+struct option {
+    const char* name;
+    int has_arg;
+    int* flag;
+    int val;
+};
+#define no_argument 0
+#define required_argument 1
+#define optional_argument 2
+
+char* optarg = NULL;
+int optind = 1;
+int optopt = 0;
+
+/**
+ * @brief Minimal implementation of getopt_long for Windows.
+ * Handles long options (--option[=value]), grouped short options (-dcf),
+ * attached or separate option arguments (-T4 / -T 4), the "--" end-of-options
+ * marker, and a bare "-" left as a positional argument.
+ */
+static int getopt_long(int argc, char* const argv[], const char* optstring,
+                       const struct option* longopts, const int* longindex) {
+    (void)longindex;
+    static int shortpos = 0;  // >0: position within a grouped short-option argv element
+
+    optarg = NULL;
+    if (optind >= argc) return -1;
+    char* const curr = argv[optind];
+
+    if (shortpos == 0) {
+        if (curr[0] != '-' || curr[1] == '\0') return -1;  // positional (including "-")
+        if (curr[1] == '-') {
+            if (curr[2] == '\0') {  // "--": end of options
+                optind++;
+                return -1;
+            }
+            char* const name_end = strchr(curr + 2, '=');
+            const size_t name_len = name_end ? (size_t)(name_end - (curr + 2)) : strlen(curr + 2);
+            for (const struct option* p = longopts; p && p->name; p++) {
+                if (name_len != strlen(p->name) || strncmp(curr + 2, p->name, name_len) != 0)
+                    continue;
+                optind++;
+                if (p->has_arg == required_argument) {
+                    if (name_end)
+                        optarg = name_end + 1;
+                    else if (optind < argc)
+                        optarg = argv[optind++];
+                    else
+                        return '?';
+                } else if (p->has_arg == optional_argument && name_end) {
+                    optarg = name_end + 1;
+                }
+                if (p->flag) {
+                    *p->flag = p->val;
+                    return 0;
+                }
+                return p->val;
+            }
+            optind++;
+            return '?';
+        }
+        shortpos = 1;
+    }
+
+    const char c = curr[shortpos];
+    const char* const os = (c != ':') ? strchr(optstring, c) : NULL;
+    if (!os) {
+        optopt = c;
+        if (curr[shortpos + 1] != '\0') {
+            shortpos++;
+        } else {
+            shortpos = 0;
+            optind++;
+        }
+        return '?';
+    }
+    if (os[1] == ':') {
+        // Option takes an argument: the rest of this element, or (if required)
+        // the next argv element. Optional (::) never consumes a separate element.
+        char* const attached = (curr[shortpos + 1] != '\0') ? curr + shortpos + 1 : NULL;
+        shortpos = 0;
+        optind++;
+        if (attached) {
+            optarg = attached;
+        } else if (os[2] != ':') {
+            if (optind < argc) {
+                optarg = argv[optind++];
+            } else {
+                optopt = c;
+                return '?';
+            }
+        }
+        return c;
+    }
+    // Flag option: continue within the cluster if more characters follow
+    if (curr[shortpos + 1] != '\0') {
+        shortpos++;
+    } else {
+        shortpos = 0;
+        optind++;
+    }
+    return c;
+}
+#else
+// POSIX / Linux / macOS Implementation
+#include <dirent.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+
+/**
+ * @brief Returns the current monotonic time in seconds using clock_gettime.
+ * @return double Time in seconds.
+ */
+static double zxc_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+#endif
+
+/**
+ * @brief Validates and resolves the input file path to prevent directory traversal
+ * and ensure it is a regular file.
+ *
+ * @param[in] path The raw input path from command line.
+ * @param[out] resolved_buffer Buffer to store resolved path (needs sufficient size).
+ * @param[in] buffer_size Size of the resolved_buffer.
+ * @return 0 on success, -1 on error.
+ *
+ * Security note (CWE-23): paths come from the CLI at the user's own privileges,
+ * not from archive content, so traversal is intended (suppressed in .snyk).
+ * True only while the format stores no path; an archive mode restoring embedded paths
+ * would be a real zip slip risk: re-evaluate the ignore then.
+ */
+static int zxc_validate_input_path(const char* path, char* resolved_buffer, size_t buffer_size) {
+#ifdef _WIN32
+    if (!_fullpath(resolved_buffer, path, buffer_size)) {
+        return -1;
+    }
+    DWORD attr = GetFileAttributesA(resolved_buffer);
+    if (attr == INVALID_FILE_ATTRIBUTES || (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        // Not a valid file or is a directory
+        errno = (attr == INVALID_FILE_ATTRIBUTES) ? ENOENT : EISDIR;
+        return -1;
+    }
+    return 0;
+#else
+    char* const res = realpath(path, NULL);
+    if (!res) {
+        // realpath failed (e.g. file does not exist)
+        return -1;
+    }
+    struct stat st;
+    if (stat(res, &st) != 0) {
+        free(res);
+        return -1;
+    }
+    if (!S_ISREG(st.st_mode)) {
+        free(res);
+        errno = EISDIR;  // Generic error for non-regular file
+        return -1;
+    }
+
+    const size_t len = strlen(res);
+    if (len >= buffer_size) {
+        free(res);
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(resolved_buffer, res, len + 1);
+    free(res);
+    return 0;
+#endif
+}
+
+/**
+ * @brief Validates and resolves the output file path.
+ *
+ * @param[in] path The raw output path.
+ * @param[out] resolved_buffer Buffer to store resolved path.
+ * @param[in] buffer_size Size of the resolved_buffer.
+ * @return 0 on success, -1 on error.
+ */
+static int zxc_validate_output_path(const char* path, char* resolved_buffer, size_t buffer_size) {
+#ifdef _WIN32
+    if (!_fullpath(resolved_buffer, path, buffer_size)) return -1;
+    DWORD attr = GetFileAttributesA(resolved_buffer);
+    if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        errno = EISDIR;
+        return -1;
+    }
+    return 0;
+#else
+    // POSIX output path validation
+    char* const temp_path = strdup(path);
+    if (!temp_path) return -1;
+
+    char* const temp_path2 = strdup(path);
+    if (!temp_path2) {
+        free(temp_path);
+        return -1;
+    }
+
+    // Split into dir and base
+    char* const dir = dirname(temp_path);  // Note: dirname may modify string or return static
+    const char* const base = basename(temp_path2);
+
+    char* const resolved_dir = realpath(dir, NULL);
+    if (!resolved_dir) {
+        // Parent directory must exist
+        free(temp_path);
+        free(temp_path2);
+        return -1;
+    }
+
+    struct stat st;
+    if (stat(resolved_dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        free(resolved_dir);
+        free(temp_path);
+        free(temp_path2);
+        errno = EISDIR;
+        return -1;
+    }
+
+    // Reconstruct valid path: resolved_dir / base
+    // Ensure we don't overflow buffer
+    const int written = snprintf(resolved_buffer, buffer_size, "%s/%s", resolved_dir, base);
+    free(resolved_dir);
+    free(temp_path);
+    free(temp_path2);
+
+    if (written < 0 || (size_t)written >= buffer_size) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    return 0;
+#endif
+}
+
+// CLI Logging Helpers
+static int g_quiet = 0;
+static int g_verbose = 0;
+/* Progress display policy (--progress): auto = tty-only heuristic, always =
+ * force (one line per update off-tty), never = disable. -q suppresses all. */
+enum { ZXC_PROGRESS_AUTO = 0, ZXC_PROGRESS_ALWAYS, ZXC_PROGRESS_NEVER };
+static int g_progress_mode = ZXC_PROGRESS_AUTO;
+/* Shared literal Huffman table from the -D .zxd file (malloc'd copy), passed
+ * through the compress/decompress opts. NULL when the dict carries none. */
+static void* g_dict_huf = NULL;
+
+/* Enables printf-style format/argument checking by the compiler on GCC/Clang
+ * (catches format-vs-argument mismatches at every call site); no-op on MSVC. */
+#if defined(__GNUC__) || defined(__clang__)
+#define ZXC_PRINTF_FORMAT(fmt_idx, args_idx) __attribute__((format(printf, fmt_idx, args_idx)))
+#else
+#define ZXC_PRINTF_FORMAT(fmt_idx, args_idx)
+#endif
+
+/**
+ * @brief Standard logging function. Respects the global quiet flag.
+ */
+static void zxc_log(const char* fmt, ...) ZXC_PRINTF_FORMAT(1, 2);
+static void zxc_log(const char* fmt, ...) {
+    if (g_quiet) return;
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
+/**
+ * @brief Verbose logging function. Only prints if verbose is enabled and quiet
+ * is disabled.
+ */
+static void zxc_log_v(const char* fmt, ...) ZXC_PRINTF_FORMAT(1, 2);
+static void zxc_log_v(const char* fmt, ...) {
+    if (!g_verbose || g_quiet) return;
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
+// OS-specific helpers for directory checks
+#ifdef _WIN32
+static int zxc_is_directory(const char* path) {
+    DWORD attr = GetFileAttributesA(path);
+    return (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY));
+}
+#else
+static int zxc_is_directory(const char* path) {
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        return S_ISDIR(st.st_mode);
+    }
+    return 0;
+}
+#endif
+
+typedef enum {
+    MODE_COMPRESS,
+    MODE_DECOMPRESS,
+    MODE_BENCHMARK,
+    MODE_INTEGRITY,
+    MODE_LIST,
+    MODE_TRAIN_DICT
+} zxc_mode_t;
+
+enum { OPT_VERSION = 1000, OPT_HELP, OPT_TRAIN_DICT, OPT_PROGRESS };
+
+// Forward declaration for recursive mode
+static int process_single_file(const char* in_path, const char* out_path_override, zxc_mode_t mode,
+                               int num_threads, int keep_input, int force, int to_stdout,
+                               int checksum, int level, size_t block_size, int json_output,
+                               int seekable, const void* dict, size_t dict_size);
+
+// Forward declaration for processing directory
+static int process_directory(const char* dir_path, zxc_mode_t mode, int num_threads, int keep_input,
+                             int force, int to_stdout, int checksum, int level, size_t block_size,
+                             int json_output, int seekable, const void* dict, size_t dict_size);
+
+// OS-specific implementation of directory processing
+static int process_directory(const char* dir_path, zxc_mode_t mode, int num_threads, int keep_input,
+                             int force, int to_stdout, int checksum, int level, size_t block_size,
+                             int json_output, int seekable, const void* dict, size_t dict_size) {
+    int overall_ret = 0;
+#ifdef _WIN32
+    char search_path[MAX_PATH];
+    snprintf(search_path, sizeof(search_path), "%s\\*", dir_path);
+
+    WIN32_FIND_DATAA find_data;
+    HANDLE hFind = FindFirstFileA(search_path, &find_data);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        zxc_log("Error opening directory '%s'\n", dir_path);
+        return 1;
+    }
+
+    do {
+        if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
+            continue;
+        }
+
+        char full_path[MAX_PATH];
+        snprintf(full_path, sizeof(full_path), "%s\\%s", dir_path, find_data.cFileName);
+
+        if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            overall_ret |= process_directory(full_path, mode, num_threads, keep_input, force,
+                                             to_stdout, checksum, level, block_size, json_output,
+                                             seekable, dict, dict_size);
+        } else {
+            // Check if it ends with .zxc to skip if compressing to avoid double compression
+            if (mode == MODE_COMPRESS) {
+                const size_t len = strlen(full_path);
+                if (len >= 4 && strcmp(full_path + len - 4, ".zxc") == 0) {
+                    continue;  // Skip already compressed files in recursive compression
+                }
+            }
+            overall_ret |= process_single_file(full_path, NULL, mode, num_threads, keep_input,
+                                               force, to_stdout, checksum, level, block_size,
+                                               json_output, seekable, dict, dict_size);
+        }
+    } while (FindNextFileA(hFind, &find_data) != 0);
+
+    FindClose(hFind);
+#else
+    DIR* const dir = opendir(dir_path);
+    if (!dir) {
+        zxc_log("Error opening directory '%s': %s\n", dir_path, strerror(errno));
+        return 1;
+    }
+
+    const struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        const size_t path_len = strlen(dir_path) + 1 + strlen(entry->d_name) + 1;
+        char* const full_path = malloc(path_len);
+        if (!full_path) {
+            zxc_log("Error allocating memory for path in directory '%s'\n", dir_path);
+            continue;
+        }
+
+        const int n = snprintf(full_path, path_len, "%s/%s", dir_path, entry->d_name);
+        if (n < 0 || (size_t)n >= path_len) {
+            zxc_log("Error: path too long in directory '%s'\n", dir_path);
+            free(full_path);
+            continue;
+        }
+
+        struct stat st;
+        if (stat(full_path, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                overall_ret |= process_directory(full_path, mode, num_threads, keep_input, force,
+                                                 to_stdout, checksum, level, block_size,
+                                                 json_output, seekable, dict, dict_size);
+            } else if (S_ISREG(st.st_mode)) {
+                // Check if it ends with .zxc to skip if compressing to avoid double compression
+                if (mode == MODE_COMPRESS) {
+                    const size_t len = strlen(full_path);
+                    if (len >= 4 && strcmp(full_path + len - 4, ".zxc") == 0) {
+                        free(full_path);
+                        continue;  // Skip already compressed files in recursive compression
+                    }
+                }
+                overall_ret |= process_single_file(full_path, NULL, mode, num_threads, keep_input,
+                                                   force, to_stdout, checksum, level, block_size,
+                                                   json_output, seekable, dict, dict_size);
+            }
+        }
+        free(full_path);
+    }
+    closedir(dir);
+#endif
+    return overall_ret;
+}
+
+void print_help(const char* app) {
+    printf("Usage: %s [<options>] [<argument>]...\n\n", app);
+    printf(
+        "Standard Modes:\n"
+        "  -z, --compress    Compress FILE {default}\n"
+        "  -d, --decompress  Decompress FILE (or stdin -> stdout)\n"
+        "  -l, --list        List archive or dictionary info\n"
+        "  -t, --test        Test compressed FILE integrity\n"
+        "  -b, --bench [N]   Benchmark in-memory (N=seconds, default 5)\n"
+        "  --train           Train a dictionary from input FILEs (training samples).\n"
+        "                    Output via -o (default: ./dictionary_<dict_id>.zxd)\n\n"
+        "Batch Processing:\n"
+        "  -m, --multiple    Multiple input files\n"
+        "  -r, --recursive   Operate recursively on directories\n\n"
+        "Special Options:\n"
+        "  -V, --version     Show version information\n"
+        "  -h, --help        Show this help message\n\n"
+        "Options:\n"
+        "  -1..-7            Compression level {3}\n"
+        "  -B, --block-size  Block size: 4K..2M, power of 2 {512K}\n"
+        "  -T, --threads N   Number of threads (0=auto)\n"
+        "  -C, --checksum    Enable checksum {default}\n"
+        "  -N, --no-checksum Disable checksum\n"
+        "  -D, --dict FILE   Use pre-trained dictionary (.zxd). Required to decompress\n"
+        "                    an archive that was compressed with a dictionary\n"
+        "  -S, --seekable    Append seek table for random-access decompression\n"
+        "  -o, --output FILE Write output to FILE (else derived from input;\n"
+        "                    for --train: ./dictionary_<dict_id>.zxd, or a directory)\n"
+        "  -k, --keep        Keep input file\n"
+        "  -f, --force       Force overwrite\n"
+        "  -c, --stdout      Write to stdout\n"
+        "  -v, --verbose     Verbose mode\n"
+        "  -q, --quiet       Quiet mode\n"
+        "  -j, --json        JSON output (benchmark mode)\n"
+        "  --progress MODE   Progress display: auto, always, never {auto}\n");
+}
+
+void print_version(void) {
+    printf("ZXC CLI (%zu-bit) v%s, by Bertrand Lebonnois\nBSD 3-Clause License\n",
+           sizeof(void*) * CHAR_BIT, ZXC_LIB_VERSION_STR);
+}
+
+/**
+ * @brief Formats a byte size into human-readable TB/GB/MB/KB/B format (Base 1000).
+ */
+static void format_size_decimal(uint64_t bytes, char* buf, size_t buf_size) {
+    const double TB = 1000.0 * 1000.0 * 1000.0 * 1000.0;
+    const double GB = 1000.0 * 1000.0 * 1000.0;
+    const double MB = 1000.0 * 1000.0;
+    const double KB = 1000.0;
+
+    if ((double)bytes >= TB)
+        snprintf(buf, buf_size, "%.1f TB", (double)bytes / TB);
+    else if ((double)bytes >= GB)
+        snprintf(buf, buf_size, "%.1f GB", (double)bytes / GB);
+    else if ((double)bytes >= MB)
+        snprintf(buf, buf_size, "%.1f MB", (double)bytes / MB);
+    else if ((double)bytes >= KB)
+        snprintf(buf, buf_size, "%.1f KB", (double)bytes / KB);
+    else
+        snprintf(buf, buf_size, "%llu B", (unsigned long long)bytes);
+}
+
+/**
+ * @brief Progress context for CLI progress bar display.
+ */
+typedef struct {
+    double start_time;
+    const char* operation;  // "Compressing", "Decompressing" or "Testing"
+    uint64_t total_size;    // Pre-determined total size (0 if unknown)
+    int to_tty;             // stderr is a terminal: rewrite in place; else one line per update
+    double last_draw;       // Timestamp of the last repaint (0 = nothing drawn yet)
+    size_t last_len;        // Visible length of the last in-place line (for erasing)
+} progress_ctx_t;
+
+/**
+ * @brief Erases an in-place progress line without ANSI escapes.
+ *
+ * Plain "\r" + spaces works on every terminal, including legacy Windows
+ * consoles where "\033[K" prints garbage unless VT processing is enabled.
+ */
+static void zxc_progress_clear(size_t len) {
+    fprintf(stderr, "\r%*s\r", (int)len, "");
+    fflush(stderr);
+}
+
+/**
+ * @brief Progress callback for CLI progress bar.
+ *
+ * The library fires this once per block -- at multi-GB/s rates that is far
+ * more often than a terminal can display, so frames are throttled (100 ms on
+ * a tty, 1 s otherwise) and each frame is emitted as a single write (stderr
+ * is unbuffered: per-character output would be one syscall per character).
+ *
+ * Format: Compressing [=====>     ] 45% | 4.5 GB/10.0 GB | 156.0 MB/s | ETA 0:35
+ */
+static void cli_progress_callback(uint64_t bytes_processed, uint64_t bytes_total,
+                                  const void* user_data) {
+    (void)bytes_total; /* required by zxc_progress_callback_t */
+    progress_ctx_t* const pctx = (progress_ctx_t*)(uintptr_t)user_data;
+
+    if (!pctx) return;
+
+    const double now = zxc_now();
+    const double interval = pctx->to_tty ? 0.1 : 1.0;
+    if (pctx->last_draw != 0.0 && now - pctx->last_draw < interval) return;
+    pctx->last_draw = now;
+
+    // Use pre-determined total size from context (not the parameter)
+    const uint64_t total = pctx->total_size;
+    const double elapsed = now - pctx->start_time;
+
+    // Cumulative throughput
+    double speed_mbps = 0.0;
+    if (elapsed > 0.1)  // Avoid division by zero for very fast operations
+        speed_mbps = (double)bytes_processed / (1000.0 * 1000.0) / elapsed;
+
+    char proc_str[32];
+    format_size_decimal(bytes_processed, proc_str, sizeof(proc_str));
+
+    char text[160];
+    int n;
+    if (total > 0) {
+        // Known size: percentage bar
+        int percent = (int)((bytes_processed * 100) / total);
+        if (percent > 100) percent = 100;
+
+        enum { BAR_WIDTH = 20 };
+        char bar[BAR_WIDTH + 1];
+        const int filled = (percent * BAR_WIDTH) / 100;
+        for (int i = 0; i < BAR_WIDTH; i++) {
+            if (i < filled)
+                bar[i] = '=';
+            else if (i == filled)
+                bar[i] = '>';
+            else
+                bar[i] = ' ';
+        }
+        bar[BAR_WIDTH] = '\0';
+
+        // Estimated time to completion, from the cumulative throughput
+        char eta[40] = "";
+        if (speed_mbps > 0.0 && total > bytes_processed) {
+            const long secs = (long)((double)(total - bytes_processed) / (speed_mbps * 1e6));
+            if (secs >= 3600)
+                snprintf(eta, sizeof(eta), " | ETA %ld:%02ld:%02ld", secs / 3600, (secs / 60) % 60,
+                         secs % 60);
+            else
+                snprintf(eta, sizeof(eta), " | ETA %ld:%02ld", secs / 60, secs % 60);
+        }
+
+        char total_str[32];
+        format_size_decimal(total, total_str, sizeof(total_str));
+        n = snprintf(text, sizeof(text), "%s [%s] %d%% | %s/%s | %.1f MB/s%s", pctx->operation, bar,
+                     percent, proc_str, total_str, speed_mbps, eta);
+    } else {
+        // Unknown size (stdin): just show bytes processed
+        n = snprintf(text, sizeof(text), "%s %s | %.1f MB/s", pctx->operation, proc_str,
+                     speed_mbps);
+    }
+    if (n < 0) return;
+    const size_t tlen = ((size_t)n < sizeof(text)) ? (size_t)n : sizeof(text) - 1;
+
+    char frame[352];
+    size_t flen = 0;
+    if (pctx->to_tty) {
+        frame[flen++] = '\r';
+        memcpy(frame + flen, text, tlen);
+        flen += tlen;
+        // Pad with spaces to erase any residue from a longer previous line
+        size_t visible = tlen;
+        while (visible < pctx->last_len && flen < sizeof(frame)) {
+            frame[flen++] = ' ';
+            visible++;
+        }
+        pctx->last_len = tlen;
+    } else {
+        // Off-tty (--progress=always): plain newline-terminated updates
+        memcpy(frame, text, tlen);
+        flen = tlen;
+        frame[flen++] = '\n';
+    }
+    fwrite(frame, 1, flen, stderr);
+    fflush(stderr);
+}
+
+/**
+ * @brief Lists the contents of a ZXC archive.
+ *
+ * Reads the file header and footer to display:
+ * - Compressed size
+ * - Uncompressed size
+ * - Compression ratio
+ * - Checksum method
+ * - Filename
+ *
+ * In verbose mode, displays additional header information.
+ *
+ * @param[in] path Path to the ZXC archive file.
+ * @param[in] json_output If 1, output JSON format.
+ * @return 0 on success, 1 on error.
+ */
+// Report a .zxd dictionary file: its dict_id (to match against a .zxc's
+// "Dict ID") and content size. `buf` holds the whole .zxd file.
+static int zxc_list_dict(const char* path, const uint8_t* buf, size_t buf_size, long long file_size,
+                         int json_output) {
+    const void* content = NULL;
+    size_t content_size = 0;
+    uint32_t id = 0;
+    const int rc = zxc_dict_load(buf, buf_size, &content, &content_size, NULL, &id);
+    if (rc != ZXC_OK) {
+        fprintf(stderr, "Error: invalid dictionary '%s': %s\n", path, zxc_error_name(rc));
+        return 1;
+    }
+    if (json_output) {
+        printf(
+            "{\n"
+            "  \"type\": \"dictionary\",\n"
+            "  \"filename\": \"%s\",\n"
+            "  \"dict_id\": \"0x%08X\",\n"
+            "  \"content_size_bytes\": %zu,\n"
+            "  \"file_size_bytes\": %lld\n"
+            "}\n",
+            path, id, content_size, file_size);
+    } else {
+        printf(
+            "\n  Dictionary file (.zxd)\n"
+            "  Dict ID:       0x%08X\n"
+            "  Content size:  %zu bytes\n"
+            "  File:          %s\n",
+            id, content_size, path);
+    }
+    return 0;
+}
+
+static int zxc_list_archive(const char* path, int json_output) {
+    char resolved_path[4096];
+    if (zxc_validate_input_path(path, resolved_path, sizeof(resolved_path)) != 0) {
+        fprintf(stderr, "Error: Invalid input file '%s': %s\n", path, strerror(errno));
+        return 1;
+    }
+
+    FILE* f = fopen(resolved_path, "rb");
+    if (!f) {
+        fprintf(stderr, "Error: Cannot open '%s': %s\n", path, strerror(errno));
+        return 1;
+    }
+
+    // Get file size
+    if (fseeko(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        fprintf(stderr, "Error: Cannot seek in file\n");
+        return 1;
+    }
+    const long long file_size = ftello(f);
+
+    // A .zxd dictionary file has its own magic word; recognise it and report
+    // its dict_id (for matching against a .zxc's "Dict ID") instead of failing
+    // as a non-archive. The upper bound is the largest possible .zxd file.
+    if (file_size >= (long long)ZXC_DICT_HEADER_SIZE &&
+        file_size <= (long long)zxc_dict_save_bound(ZXC_DICT_SIZE_MAX)) {
+        uint8_t probe[ZXC_DICT_HEADER_SIZE];
+        if (fseeko(f, 0, SEEK_SET) == 0 &&
+            fread(probe, 1, ZXC_DICT_HEADER_SIZE, f) == ZXC_DICT_HEADER_SIZE &&
+            zxc_dict_get_id(probe, ZXC_DICT_HEADER_SIZE) != 0) {
+            uint8_t* dbuf = (uint8_t*)malloc((size_t)file_size);
+            int r = 1;
+            if (dbuf && fseeko(f, 0, SEEK_SET) == 0 &&
+                fread(dbuf, 1, (size_t)file_size, f) == (size_t)file_size)
+                r = zxc_list_dict(path, dbuf, (size_t)file_size, file_size, json_output);
+            else
+                fprintf(stderr, "Error: Cannot read '%s'\n", path);
+            free(dbuf);
+            fclose(f);
+            return r;
+        }
+        fseeko(f, 0, SEEK_SET);
+    }
+
+    // Use public API to get decompressed size
+    const int64_t uncompressed_size = zxc_stream_get_decompressed_size(f);
+    if (uncompressed_size < 0) {
+        fclose(f);
+        fprintf(stderr, "Error: Not a valid ZXC archive\n");
+        return 1;
+    }
+
+    // Read header for format info (rewind after API call)
+    uint8_t header[ZXC_FILE_HEADER_SIZE];
+    if (fseeko(f, 0, SEEK_SET) != 0 ||
+        fread(header, 1, ZXC_FILE_HEADER_SIZE, f) != ZXC_FILE_HEADER_SIZE) {
+        fclose(f);
+        fprintf(stderr, "Error: Cannot read file header\n");
+        return 1;
+    }
+
+    // Extract header fields
+    const uint8_t format_version = header[4];
+    // Block size is stored at offset 5 as a log2 exponent (codes 12..21 = 2^code,
+    // i.e. 4 KB..2 MB). Convert to KB.
+    const uint8_t chunk_code = header[5];
+    size_t block_size_kb;
+    if (chunk_code >= ZXC_BLOCK_SIZE_MIN_LOG2 && chunk_code <= ZXC_BLOCK_SIZE_MAX_LOG2) {
+        block_size_kb = ((size_t)1U << chunk_code) / 1024;
+    } else {
+        block_size_kb = 0;  // unknown / unsupported code
+    }
+
+    // Read footer for checksum info
+    uint8_t footer[ZXC_FILE_FOOTER_SIZE];
+    if (fseeko(f, file_size - ZXC_FILE_FOOTER_SIZE, SEEK_SET) != 0 ||
+        fread(footer, 1, ZXC_FILE_FOOTER_SIZE, f) != ZXC_FILE_FOOTER_SIZE) {
+        fclose(f);
+        fprintf(stderr, "Error: Cannot read file footer\n");
+        return 1;
+    }
+    fclose(f);
+
+    // Parse checksum (if non-zero, checksum was enabled)
+    const uint32_t stored_checksum = footer[8] | ((uint32_t)footer[9] << 8) |
+                                     ((uint32_t)footer[10] << 16) | ((uint32_t)footer[11] << 24);
+    const char* checksum_method = (stored_checksum != 0) ? "RapidHash" : "-";
+
+    // Dictionary ID (from header flag bit 6 + bytes 7-10)
+    const uint32_t dict_id = zxc_get_dict_id(header, ZXC_FILE_HEADER_SIZE);
+
+    // Calculate ratio (uncompressed / compressed, e.g., 2.5 means 2.5x compression)
+    const double ratio = (file_size > 0) ? ((double)uncompressed_size / (double)file_size) : 0.0;
+
+    // Format sizes
+    char comp_str[32];
+    char uncomp_str[32];
+    char dict_id_str[16];
+
+    format_size_decimal((uint64_t)file_size, comp_str, sizeof(comp_str));
+    format_size_decimal((uint64_t)uncompressed_size, uncomp_str, sizeof(uncomp_str));
+
+    if (dict_id)
+        snprintf(dict_id_str, sizeof(dict_id_str), "0x%08X", dict_id);
+    else
+        snprintf(dict_id_str, sizeof(dict_id_str), "-");
+
+    if (json_output) {
+        printf(
+            "{\n"
+            "  \"filename\": \"%s\",\n"
+            "  \"compressed_size_bytes\": %lld,\n"
+            "  \"uncompressed_size_bytes\": %lld,\n"
+            "  \"compression_ratio\": %.3f,\n"
+            "  \"format_version\": %u,\n"
+            "  \"block_size_kb\": %zu,\n"
+            "  \"checksum_method\": \"%s\",\n"
+            "  \"checksum_value\": \"0x%08X\",\n"
+            "  \"dict_id\": %s%s%s\n"
+            "}\n",
+            path, file_size, (long long)uncompressed_size, ratio, format_version, block_size_kb,
+            (stored_checksum != 0) ? "RapidHash" : "none", stored_checksum, dict_id ? "\"" : "",
+            dict_id ? dict_id_str : "null", dict_id ? "\"" : "");
+    } else if (g_verbose) {
+        // Verbose mode: detailed vertical layout
+        printf(
+            "\nFile: %s\n"
+            "-----------------------\n"
+            "Block Format: %u\n"
+            "Block Size:   %zu KB\n"
+            "Checksum Method: %s\n",
+            path, format_version, block_size_kb, (stored_checksum != 0) ? "RapidHash" : "None");
+
+        if (stored_checksum != 0) printf("Checksum Value:  0x%08X\n", stored_checksum);
+        if (dict_id) printf("Dictionary ID:   %s\n", dict_id_str);
+
+        printf(
+            "-----------------------\n"
+            "Comp. Size:   %s\n"
+            "Uncomp. Size: %s\n"
+            "Ratio:        %.2f\n",
+            comp_str, uncomp_str, ratio);
+    } else {
+        // Normal mode: table format
+        printf("\n  %12s   %12s   %5s   %-10s   %-10s   %s\n", "Compressed", "Uncompressed",
+               "Ratio", "Checksum", "Dict ID", "Filename");
+        printf("  %12s   %12s   %5.2f   %-10s   %-10s   %s\n", comp_str, uncomp_str, ratio,
+               checksum_method, dict_id_str, path);
+    }
+
+    return 0;
+}
+
+static int process_single_file(const char* in_path, const char* out_path_override, zxc_mode_t mode,
+                               int num_threads, int keep_input, int force, int to_stdout,
+                               int checksum_enabled, int level, size_t block_size, int json_output,
+                               int seekable, const void* dict, size_t dict_size) {
+    FILE* f_in = stdin;
+    FILE* f_out = stdout;
+    char resolved_in_path[4096] = {0};
+    char out_path[4096] = {0};
+    char resolved_out_path[4096] = {0};
+    int use_stdin = 1;
+    int use_stdout = 0;
+    int created_out_file = 0;
+    int overall_ret = 0;
+
+    if (in_path && strcmp(in_path, "-") != 0) {
+        if (zxc_validate_input_path(in_path, resolved_in_path, sizeof(resolved_in_path)) != 0) {
+            zxc_log("Error: Invalid input file '%s': %s\n", in_path, strerror(errno));
+            return 1;
+        }
+
+        f_in = fopen(resolved_in_path, "rb");
+        if (!f_in) {
+            zxc_log("Error open input %s: %s\n", resolved_in_path, strerror(errno));
+            return 1;
+        }
+        use_stdin = 0;
+    } else {
+        use_stdin = 1;
+        use_stdout = 1;  // Default to stdout if reading from stdin
+        in_path = NULL;
+    }
+
+    if (mode == MODE_INTEGRITY) {
+        use_stdout = 0;
+        f_out = NULL;
+    } else if (to_stdout) {
+        use_stdout = 1;
+    } else if (out_path_override) {
+        // Explicit -o / positional output: honored for file and stdin input alike
+        const int n = snprintf(out_path, sizeof(out_path), "%s", out_path_override);
+        if (n < 0 || (size_t)n >= sizeof(out_path)) {
+            zxc_log("Error: Output path too long\n");
+            if (!use_stdin) fclose(f_in);
+            return 1;
+        }
+        use_stdout = 0;
+    } else if (!use_stdin) {
+        // Auto-generate output filename from the input filename
+        if (mode == MODE_COMPRESS) {
+            const int n = snprintf(out_path, sizeof(out_path), "%s.zxc", in_path);
+            if (n < 0 || (size_t)n >= sizeof(out_path)) {
+                zxc_log("Error: Output path too long\n");
+                fclose(f_in);
+                return 1;
+            }
+        } else {
+            const size_t len = strlen(in_path);
+            if (len > 4 && !strcmp(in_path + len - 4, ".zxc")) {
+                const size_t base_len = len - 4;
+                if (base_len >= sizeof(out_path)) {
+                    zxc_log("Error: Output path too long\n");
+                    fclose(f_in);
+                    return 1;
+                }
+                memcpy(out_path, in_path, base_len);
+                out_path[base_len] = '\0';
+            } else {
+                zxc_log("Error: Cannot determine output filename: '%s' does not end with .zxc\n",
+                        in_path);
+                fclose(f_in);
+                return 1;
+            }
+        }
+    }
+
+    // Open output file if not writing to stdout
+    if (!use_stdout && mode != MODE_INTEGRITY) {
+        if (zxc_validate_output_path(out_path, resolved_out_path, sizeof(resolved_out_path)) != 0) {
+            zxc_log("Error: Invalid output path '%s': %s\n", out_path, strerror(errno));
+            if (!use_stdin) fclose(f_in);
+            return 1;
+        }
+
+        // Safety check on resolved paths: opening the output with O_TRUNC would
+        // destroy the input if both names refer to the same file
+        if (!use_stdin && strcmp(resolved_in_path, resolved_out_path) == 0) {
+            zxc_log("Error: Input and output files are identical for '%s'.\n", in_path);
+            fclose(f_in);
+            return 1;
+        }
+
+        if (!force && access(resolved_out_path, F_OK) == 0) {
+            zxc_log("Output exists. Use -f to overwrite '%s'.\n", resolved_out_path);
+            if (!use_stdin) fclose(f_in);
+            return 1;
+        }
+
+#ifdef _WIN32
+        f_out = fopen(resolved_out_path, "wb");
+#else
+        // Restrict permissions to 0644
+        const int fd = open(resolved_out_path, O_CREAT | O_WRONLY | O_TRUNC,
+                            S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if (fd == -1) {
+            zxc_log("Error creating output %s: %s\n", resolved_out_path, strerror(errno));
+            if (!use_stdin) fclose(f_in);
+            return 1;
+        }
+        f_out = fdopen(fd, "wb");
+#endif
+
+        if (!f_out) {
+            zxc_log("Error open output %s: %s\n", resolved_out_path, strerror(errno));
+            if (!use_stdin) fclose(f_in);
+#ifndef _WIN32
+            if (fd != -1) close(fd);
+#endif
+            return 1;
+        }
+        created_out_file = 1;
+    }
+
+    // Prevent writing binary data to the terminal unless forced
+    if (use_stdout && isatty(fileno(stdout)) && mode == MODE_COMPRESS && !force) {
+        zxc_log(
+            "Refusing to write compressed data to terminal.\n"
+            "For help, type: zxc -h\n");
+        if (!use_stdin) fclose(f_in);
+        return 1;
+    }
+
+    // Set stdin/stdout to binary mode if using them
+#ifdef _WIN32
+    if (use_stdin) _setmode(_fileno(stdin), _O_BINARY);
+    if (use_stdout) _setmode(_fileno(stdout), _O_BINARY);
+
+#else
+    // On POSIX systems, there's no text/binary distinction, but we ensure
+    // no buffering issues occur by using freopen if needed
+    if (use_stdin) {
+        if (!freopen(NULL, "rb", stdin))
+            zxc_log("Warning: Failed to reopen stdin in binary mode\n");
+    }
+    if (use_stdout) {
+        if (!freopen(NULL, "wb", stdout))
+            zxc_log("Warning: Failed to reopen stdout in binary mode\n");
+    }
+#endif
+
+    // Determine if we should show progress bar and get file size
+    // IMPORTANT: This must be done BEFORE setting large buffers with setvbuf
+    // to avoid buffer inconsistency issues when reading the footer
+    int show_progress = 0;
+    uint64_t total_size = 0;
+    const int stderr_tty = isatty(fileno(stderr)) != 0;
+
+    if (!g_quiet && g_progress_mode != ZXC_PROGRESS_NEVER &&
+        (g_progress_mode == ZXC_PROGRESS_ALWAYS || (!use_stdout && !use_stdin && stderr_tty))) {
+        // Get the total size based on mode (only knowable for seekable file input)
+        if (!use_stdin) {
+            if (mode == MODE_COMPRESS) {
+                // Compression: get input file size
+                const long long saved_pos = ftello(f_in);
+                if (saved_pos >= 0 && fseeko(f_in, 0, SEEK_END) == 0) {
+                    const long long size = ftello(f_in);
+                    if (size > 0) total_size = (uint64_t)size;
+                    fseeko(f_in, saved_pos, SEEK_SET);
+                }
+            } else {
+                // Decompression: get decompressed size from footer (BEFORE starting decompression)
+                const int64_t decomp_size = zxc_stream_get_decompressed_size(f_in);
+                if (decomp_size > 0) total_size = (uint64_t)decomp_size;
+            }
+        }
+
+        // auto: only show progress for files > 1MB; always: unconditionally
+        if (g_progress_mode == ZXC_PROGRESS_ALWAYS || total_size > ZXC_STDIO_BUFFER_SIZE)
+            show_progress = 1;
+    }
+
+    // Set large buffers for I/O performance (AFTER file size detection)
+    char* b1 = malloc(ZXC_STDIO_BUFFER_SIZE);
+    char* b2 = malloc(ZXC_STDIO_BUFFER_SIZE);
+    if (b1) setvbuf(f_in, b1, _IOFBF, ZXC_STDIO_BUFFER_SIZE);
+    if (f_out && b2) setvbuf(f_out, b2, _IOFBF, ZXC_STDIO_BUFFER_SIZE);
+
+    if (mode == MODE_COMPRESS)
+        zxc_log_v("Processing %s... (Compression Level %d)\n", in_path ? in_path : "<stdin>",
+                  level);
+    else
+        zxc_log_v("Processing %s...\n", in_path ? in_path : "<stdin>");
+    if (g_verbose) zxc_log("Checksum: %s\n", checksum_enabled ? "enabled" : "disabled");
+    if (g_verbose && seekable) zxc_log("Seekable: enabled\n");
+
+    // Prepare progress context
+    progress_ctx_t pctx = {.start_time = zxc_now(),
+                           .operation = (mode == MODE_COMPRESS)    ? "Compressing"
+                                        : (mode == MODE_INTEGRITY) ? "Testing"
+                                                                   : "Decompressing",
+                           .total_size = total_size,
+                           .to_tty = stderr_tty,
+                           .last_draw = 0.0,
+                           .last_len = 0};
+
+    const double t0 = zxc_now();
+    int64_t bytes;
+    if (mode == MODE_COMPRESS) {
+        zxc_compress_opts_t copts = {
+            .n_threads = num_threads,
+            .level = level,
+            .block_size = block_size,
+            .checksum_enabled = checksum_enabled,
+            .seekable = seekable,
+            .dict = dict,
+            .dict_size = dict_size,
+            .dict_huf = g_dict_huf,
+            .progress_cb = show_progress ? &cli_progress_callback : NULL,
+            .user_data = &pctx,
+        };
+        bytes = zxc_stream_compress(f_in, f_out, &copts);
+    } else {
+        zxc_decompress_opts_t dopts = {
+            .n_threads = num_threads,
+            .checksum_enabled = checksum_enabled,
+            .dict = dict,
+            .dict_size = dict_size,
+            .dict_huf = g_dict_huf,
+            .progress_cb = show_progress ? &cli_progress_callback : NULL,
+            .user_data = &pctx,
+        };
+        bytes = zxc_stream_decompress(f_in, f_out, &dopts);
+    }
+    const double dt = zxc_now() - t0;
+
+    // Clear the in-place progress line on completion (off-tty lines end in '\n')
+    if (show_progress && pctx.to_tty) zxc_progress_clear(pctx.last_len);
+
+    if (!use_stdin)
+        fclose(f_in);
+    else
+        setvbuf(stdin, NULL, _IONBF, 0);
+
+    // stdio defers write errors to flush/close: a failure here means the
+    // output is truncated even though the codec reported success
+    int write_error = 0;
+    if (created_out_file) {
+        write_error = (fclose(f_out) != 0);
+    } else if (use_stdout) {
+        write_error = (fflush(stdout) != 0);
+        setvbuf(stdout, NULL, _IONBF, 0);
+    }
+
+    free(b1);
+    free(b2);
+
+    if (bytes >= 0 && write_error) {
+        zxc_log("Error: %s: write failed: %s\n", created_out_file ? resolved_out_path : "<stdout>",
+                strerror(errno));
+        if (created_out_file) unlink(resolved_out_path);
+        return 1;
+    }
+
+    if (bytes >= 0) {
+        if (mode == MODE_INTEGRITY) {
+            // Test mode: show result
+            if (json_output) {
+                printf(
+                    "{\n"
+                    "  \"filename\": \"%s\",\n"
+                    "  \"status\": \"ok\",\n"
+                    "  \"checksum_verified\": %s,\n"
+                    "  \"time_seconds\": %.6f\n"
+                    "}\n",
+                    in_path ? in_path : "<stdin>", checksum_enabled ? "true" : "false", dt);
+            } else if (g_verbose) {
+                printf(
+                    "%s: OK\n"
+                    "  Checksum:     %s\n"
+                    "  Time:         %.3fs\n",
+                    in_path ? in_path : "<stdin>",
+                    checksum_enabled ? "verified (RapidHash)" : "not verified", dt);
+            } else {
+                printf("%s: OK\n", in_path ? in_path : "<stdin>");
+            }
+        } else {
+            zxc_log_v("Processed %lld bytes in %.3fs\n", (long long)bytes, dt);
+        }
+        if (!use_stdin && !use_stdout && !keep_input && !out_path_override &&
+            mode != MODE_INTEGRITY)
+            unlink(resolved_in_path);
+    } else {
+        if (mode == MODE_INTEGRITY) {
+            const int err_code = (int)bytes;
+            const char* reason = zxc_error_name(err_code);
+            const int needs_dict =
+                (err_code == ZXC_ERROR_DICT_REQUIRED || err_code == ZXC_ERROR_DICT_MISMATCH);
+            if (json_output) {
+                printf(
+                    "{\n"
+                    "  \"filename\": \"%s\",\n"
+                    "  \"status\": \"failed\",\n"
+                    "  \"error\": \"%s\"\n"
+                    "}\n",
+                    in_path ? in_path : "<stdin>", reason);
+            } else {
+                fprintf(stderr, "%s: FAILED (%s)\n", in_path ? in_path : "<stdin>", reason);
+                if (needs_dict)
+                    fprintf(stderr,
+                            "  This archive was compressed with a dictionary; pass it with -D.\n");
+            }
+        } else {
+            zxc_log("Error: %s: %s\n", in_path ? in_path : "<stdin>", zxc_error_name((int)bytes));
+            if (created_out_file) unlink(resolved_out_path);
+        }
+        overall_ret = 1;
+    }
+
+    return overall_ret;
+}
+
+/**
+ * @brief Main entry point.
+ * Parses arguments and dispatches execution to Benchmark, Compress, or
+ * Decompress modes.
+ */
+int main(int argc, char** argv) {
+    zxc_mode_t mode = MODE_COMPRESS;
+
+    /* When invoked as "unzxc" (typically a symlink to zxc), default to
+     * decompression -- like unzstd / gunzip. An explicit -z/-d/-l/-t/-b below
+     * still overrides this default. */
+    {
+        const char* prog = (argc > 0 && argv[0]) ? argv[0] : "zxc";
+        const char* slash = strrchr(prog, '/');
+#ifdef _WIN32
+        const char* bslash = strrchr(prog, '\\');
+        if (bslash && (!slash || bslash > slash)) slash = bslash;
+#endif
+        const char* base = slash ? slash + 1 : prog;
+        if (strstr(base, "unzxc")) mode = MODE_DECOMPRESS;
+    }
+
+    int num_threads = 0;
+    int keep_input = 0;
+    int force = 0;
+    int to_stdout = 0;
+    int bench_seconds = 5;
+    int checksum = -1;
+    int level = 3;
+    int json_output = 0;
+    size_t block_size = 0;
+    int seekable = 0;
+    const char* dict_path = NULL;
+    const char* output_path = NULL;
+
+    static const struct option long_options[] = {{"train", no_argument, 0, OPT_TRAIN_DICT},
+                                                 {"progress", required_argument, 0, OPT_PROGRESS},
+                                                 {"output", required_argument, 0, 'o'},
+                                                 {"dict", required_argument, 0, 'D'},
+                                                 {"compress", no_argument, 0, 'z'},
+                                                 {"decompress", no_argument, 0, 'd'},
+                                                 {"list", no_argument, 0, 'l'},
+                                                 {"test", no_argument, 0, 't'},
+                                                 {"bench", optional_argument, 0, 'b'},
+                                                 {"threads", required_argument, 0, 'T'},
+                                                 {"keep", no_argument, 0, 'k'},
+                                                 {"force", no_argument, 0, 'f'},
+                                                 {"stdout", no_argument, 0, 'c'},
+                                                 {"verbose", no_argument, 0, 'v'},
+                                                 {"quiet", no_argument, 0, 'q'},
+                                                 {"checksum", no_argument, 0, 'C'},
+                                                 {"no-checksum", no_argument, 0, 'N'},
+                                                 {"json", no_argument, 0, 'j'},
+                                                 {"version", no_argument, 0, 'V'},
+                                                 {"help", no_argument, 0, 'h'},
+                                                 {"multiple", no_argument, 0, 'm'},
+                                                 {"recursive", no_argument, 0, 'r'},
+                                                 {"block-size", required_argument, 0, 'B'},
+                                                 {"seekable", no_argument, 0, 'S'},
+                                                 {0, 0, 0, 0}};
+
+    int opt;
+    int multiple_mode = 0;
+    int recursive_mode = 0;
+    while ((opt = getopt_long(argc, argv, "1234567b::B:cCdD:fho:jklmrNqST:tvVz", long_options,
+                              NULL)) != -1) {
+        switch (opt) {
+            case 'z':
+                mode = MODE_COMPRESS;
+                break;
+            case 'd':
+                mode = MODE_DECOMPRESS;
+                break;
+            case 'l':
+                mode = MODE_LIST;
+                break;
+            case 't':
+                mode = MODE_INTEGRITY;
+                break;
+            case 'b': {
+                mode = MODE_BENCHMARK;
+                const char* bench_arg = optarg;
+                if (!bench_arg && optind < argc && argv[optind][0] >= '1' &&
+                    argv[optind][0] <= '9') {
+                    // Consume the next argument as a duration only if it is all
+                    // digits, so a filename like "5samples.bin" is left alone
+                    const char* p = argv[optind] + 1;
+                    while (*p >= '0' && *p <= '9') p++;
+                    if (*p == '\0') bench_arg = argv[optind++];
+                }
+                if (bench_arg) {
+                    char* end = NULL;
+                    const long secs = strtol(bench_arg, &end, 10);
+                    if (end == bench_arg || *end != '\0' || secs < 1 || secs > 3600) {
+                        fprintf(stderr, "Error: duration must be between 1 and 3600 seconds\n");
+                        return 1;
+                    }
+                    bench_seconds = (int)secs;
+                }
+                break;
+            }
+            case '1':
+                level = 1;
+                break;
+            case '2':
+                level = 2;
+                break;
+            case '3':
+                level = 3;
+                break;
+            case '4':
+                level = 4;
+                break;
+            case '5':
+                level = 5;
+                break;
+            case '6':
+                level = 6;
+                break;
+            case '7':
+                level = 7;
+                break;
+            case 'T': {
+                char* end = NULL;
+                const long threads = strtol(optarg, &end, 10);
+                if (end == optarg || *end != '\0' || threads < 0 || threads > ZXC_MAX_THREADS) {
+                    fprintf(stderr, "Error: num_threads must be between 0 and %d\n",
+                            ZXC_MAX_THREADS);
+                    return 1;
+                }
+                num_threads = (int)threads;
+                break;
+            }
+            case 'k':
+                keep_input = 1;
+                break;
+            case 'f':
+                force = 1;
+                break;
+            case 'c':
+                to_stdout = 1;
+                break;
+            case 'v':
+                g_verbose = 1;
+                break;
+            case 'q':
+                g_quiet = 1;
+                break;
+            case 'C':
+                checksum = 1;
+                break;
+            case 'N':
+                checksum = 0;
+                break;
+            case 'j':
+                json_output = 1;
+                break;
+            case 'm':
+                multiple_mode = 1;
+                break;
+            case 'S':
+                seekable = 1;
+                break;
+            case 'D':
+                dict_path = optarg;
+                break;
+            case OPT_TRAIN_DICT:
+                mode = MODE_TRAIN_DICT;
+                break;
+            case OPT_PROGRESS:
+                if (optarg != NULL && strcmp(optarg, "auto") == 0)
+                    g_progress_mode = ZXC_PROGRESS_AUTO;
+                else if (optarg != NULL && strcmp(optarg, "always") == 0)
+                    g_progress_mode = ZXC_PROGRESS_ALWAYS;
+                else if (optarg != NULL && strcmp(optarg, "never") == 0)
+                    g_progress_mode = ZXC_PROGRESS_NEVER;
+                else {
+                    fprintf(stderr, "Error: --progress must be 'auto', 'always' or 'never'\n");
+                    return 1;
+                }
+                break;
+            case 'o':
+                output_path = optarg;
+                break;
+            case 'r':
+                recursive_mode = 1;
+                multiple_mode = 1;  // Recursive implies multiple mode for files processing
+                break;
+            case 'B': {
+                char* end = NULL;
+                const long long bs_val = strtoll(optarg, &end, 10);
+                long long multiplier = 1;
+                if (*end == 'k' || *end == 'K') {
+                    multiplier = 1024;
+                    end++;
+                    if (*end == 'b' || *end == 'B') end++;  // optional "B" in "KB"
+                } else if (*end == 'm' || *end == 'M') {
+                    multiplier = 1024 * 1024;
+                    end++;
+                    if (*end == 'b' || *end == 'B') end++;  // optional "B" in "MB"
+                }
+                // Bound the value before multiplying to avoid signed overflow
+                const long long bs =
+                    (bs_val > 0 && bs_val <= (long long)ZXC_BLOCK_SIZE_MAX / multiplier)
+                        ? bs_val * multiplier
+                        : 0;
+                if (end == optarg || *end != '\0' || bs < ZXC_BLOCK_SIZE_MIN ||
+                    (bs & (bs - 1)) != 0) {
+                    fprintf(stderr,
+                            "Error: block-size must be a power of 2 between 4K and 2M\n"
+                            "  Examples: -B 4K, -B 128K, -B 1M, -B 2M\n");
+                    return 1;
+                }
+                block_size = (size_t)bs;
+                break;
+            }
+            case '?':
+                print_help(argv[0]);
+                return 1;
+            case 'V':
+                print_version();
+                return 0;
+            case 'h':
+                print_help(argv[0]);
+                return 0;
+            default:
+                return 1;
+        }
+    }
+
+    // Handle positional arguments for mode selection (e.g., "zxc z file")
+    if (optind < argc && mode != MODE_BENCHMARK) {
+        if (strcmp(argv[optind], "z") == 0) {
+            mode = MODE_COMPRESS;
+            optind++;
+        } else if (strcmp(argv[optind], "d") == 0) {
+            mode = MODE_DECOMPRESS;
+            optind++;
+        } else if (strcmp(argv[optind], "l") == 0 || strcmp(argv[optind], "list") == 0) {
+            mode = MODE_LIST;
+            optind++;
+        } else if (strcmp(argv[optind], "t") == 0 || strcmp(argv[optind], "test") == 0) {
+            mode = MODE_INTEGRITY;
+            optind++;
+        } else if (strcmp(argv[optind], "b") == 0) {
+            mode = MODE_BENCHMARK;
+            optind++;
+        }
+    }
+
+    if (checksum == -1) {
+        checksum = (mode == MODE_BENCHMARK) ? 0 : 1;
+    }
+
+    /* Load dictionary file (.zxd) if requested */
+    void* dict = NULL;
+    size_t dict_size = 0;
+    if (dict_path) {
+        char resolved_dict[4096];
+        if (zxc_validate_input_path(dict_path, resolved_dict, sizeof(resolved_dict)) != 0) {
+            fprintf(stderr, "Error: invalid dictionary path '%s': %s\n", dict_path,
+                    strerror(errno));
+            return 1;
+        }
+        FILE* f_dict = fopen(resolved_dict, "rb");
+        if (!f_dict) {
+            fprintf(stderr, "Error: cannot open dictionary '%s': %s\n", dict_path, strerror(errno));
+            return 1;
+        }
+        fseeko(f_dict, 0, SEEK_END);
+        const long long fsize = ftello(f_dict);
+        fseeko(f_dict, 0, SEEK_SET);
+        if (fsize <= 0 ||
+            (size_t)fsize > ZXC_DICT_SIZE_MAX + ZXC_DICT_HEADER_SIZE + ZXC_HUF_TABLE_SIZE) {
+            fprintf(stderr, "Error: dictionary file '%s' has invalid size\n", dict_path);
+            fclose(f_dict);
+            return 1;
+        }
+        uint8_t* zxd_buf = (uint8_t*)malloc((size_t)fsize);
+        if (!zxd_buf || fread(zxd_buf, 1, (size_t)fsize, f_dict) != (size_t)fsize) {
+            fprintf(stderr, "Error: failed to read dictionary '%s'\n", dict_path);
+            free(zxd_buf);
+            fclose(f_dict);
+            return 1;
+        }
+        fclose(f_dict);
+
+        const void* content = NULL;
+        size_t content_size = 0;
+        const void* huf = NULL;
+        const int rc = zxc_dict_load(zxd_buf, (size_t)fsize, &content, &content_size, &huf, NULL);
+        if (rc != ZXC_OK) {
+            fprintf(stderr, "Error: invalid dictionary '%s': %s\n", dict_path, zxc_error_name(rc));
+            free(zxd_buf);
+            return 1;
+        }
+        /* content_size is a file-derived length; zxc_dict_load already
+         * validates it, but re-check the untrusted size at the alloc/copy
+         * boundary so the bound governing memcpy is explicit at the sink. */
+        if (content_size == 0 || content_size > ZXC_DICT_SIZE_MAX) {
+            fprintf(stderr, "Error: invalid dictionary '%s'\n", dict_path);
+            free(zxd_buf);
+            return 1;
+        }
+        dict = malloc(content_size);
+        if (!dict) {
+            free(zxd_buf);
+            return 1;
+        }
+        memcpy(dict, content, content_size);
+        dict_size = content_size;
+
+        /* Shared literal Huffman table (zero-copy into zxd_buf; .zxd always
+         * carries one, so huf is non-NULL after a successful load). */
+        if (huf) {
+            g_dict_huf = malloc(ZXC_HUF_TABLE_SIZE);
+            if (!g_dict_huf) {
+                free(dict);
+                free(zxd_buf);
+                return 1;
+            }
+            memcpy(g_dict_huf, huf, ZXC_HUF_TABLE_SIZE);
+        }
+        free(zxd_buf);
+    }
+
+    /*
+     * Train Dictionary Mode
+     * Reads input files as samples, trains a dictionary, saves as .zxd.
+     */
+    if (mode == MODE_TRAIN_DICT) {
+        if (optind >= argc) {
+            fprintf(stderr, "Error: --train requires input files as training samples.\n");
+            free(dict);
+            return 1;
+        }
+        const int n_files = argc - optind;
+        void** samples = (void**)malloc((size_t)n_files * sizeof(void*));
+        size_t* sample_sizes = (size_t*)malloc((size_t)n_files * sizeof(size_t));
+        if (!samples || !sample_sizes) {
+            fprintf(stderr, "Error: memory allocation failed\n");
+            free(samples);
+            free(sample_sizes);
+            free(dict);
+            return 1;
+        }
+        int n_loaded = 0;
+        for (int i = optind; i < argc; i++) {
+            char resolved[4096];
+            if (zxc_validate_input_path(argv[i], resolved, sizeof(resolved)) != 0) {
+                fprintf(stderr, "Warning: invalid path '%s', skipping\n", argv[i]);
+                continue;
+            }
+            FILE* sf = fopen(resolved, "rb");
+            if (!sf) {
+                fprintf(stderr, "Warning: cannot open '%s', skipping\n", argv[i]);
+                continue;
+            }
+            fseeko(sf, 0, SEEK_END);
+            size_t sz = (size_t)ftello(sf);
+            fseeko(sf, 0, SEEK_SET);
+            if (sz == 0) {
+                fclose(sf);
+                continue;
+            }
+            uint8_t* buf = (uint8_t*)malloc(sz);
+            if (!buf) {
+                fclose(sf);
+                continue;
+            }
+            const size_t rd = fread(buf, 1, sz, sf);
+            fclose(sf);
+            if (rd != sz) {
+                fprintf(stderr, "Warning: short read on '%s', skipping\n", resolved);
+                free(buf);
+                continue;
+            }
+            samples[n_loaded] = buf;
+            sample_sizes[n_loaded] = sz;
+            n_loaded++;
+        }
+        if (n_loaded == 0) {
+            fprintf(stderr, "Error: no valid samples loaded\n");
+            free(samples);
+            free(sample_sizes);
+            free(dict);
+            return 1;
+        }
+
+        size_t dict_cap = ZXC_DICT_SIZE_MAX;
+        if (block_size > 0 && block_size < dict_cap) dict_cap = block_size;
+        uint8_t* dict_buf = (uint8_t*)malloc(dict_cap);
+        if (!dict_buf) {
+            fprintf(stderr, "Error: memory allocation failed\n");
+            for (int i = 0; i < n_loaded; i++) free(samples[i]);
+            free(samples);
+            free(sample_sizes);
+            free(dict);
+            return 1;
+        }
+
+        int64_t dict_sz = zxc_train_dict((const void* const*)samples, sample_sizes,
+                                         (size_t)n_loaded, dict_buf, dict_cap);
+
+        /* Train the shared literal Huffman table on the same samples (needs
+         * the trained dict for the post-LZ literal distribution). The .zxd
+         * format always carries the table, so a failure here is fatal. */
+        uint8_t huf_lengths[ZXC_HUF_TABLE_SIZE];
+        int huf_rc = ZXC_ERROR_NULL_INPUT;
+        if (dict_sz > 0) {
+            huf_rc = zxc_train_dict_huf((const void* const*)samples, sample_sizes, (size_t)n_loaded,
+                                        dict_buf, (size_t)dict_sz, huf_lengths);
+        }
+
+        for (int i = 0; i < n_loaded; i++) free(samples[i]);
+        free(samples);
+        free(sample_sizes);
+
+        if (dict_sz <= 0) {
+            fprintf(stderr, "Error: training failed: %s\n", zxc_error_name((int)dict_sz));
+            free(dict_buf);
+            free(dict);
+            return 1;
+        }
+        if (huf_rc != ZXC_OK) {
+            fprintf(stderr, "Error: literal table training failed: %s\n", zxc_error_name(huf_rc));
+            free(dict_buf);
+            free(dict);
+            return 1;
+        }
+
+        const size_t zxd_bound = zxc_dict_save_bound((size_t)dict_sz);
+        uint8_t* zxd = (uint8_t*)malloc(zxd_bound);
+        if (!zxd) {
+            fprintf(stderr, "Error: memory allocation failed\n");
+            free(dict_buf);
+            free(dict);
+            return 1;
+        }
+        const int64_t zxd_sz =
+            zxc_dict_save(dict_buf, (size_t)dict_sz, huf_lengths, zxd, zxd_bound);
+        free(dict_buf);
+        if (zxd_sz <= 0) {
+            fprintf(stderr, "Error: dict save failed: %s\n", zxc_error_name((int)zxd_sz));
+            free(zxd);
+            free(dict);
+            return 1;
+        }
+
+        /*
+         * Resolve the output path (from -o, optional). With no -o, write the
+         * content-addressable name dictionary_{dict_id:08x}.zxd in the current
+         * directory. If -o names a directory (or ends with a separator), use that
+         * name inside it; otherwise write to the -o path verbatim. The id must be
+         * computed before opening the file so it can name it.
+         */
+        const uint32_t trained_id = zxc_dict_get_id(zxd, (size_t)zxd_sz);
+        char final_path[4096];
+        if (!output_path) {
+            snprintf(final_path, sizeof(final_path), "dictionary_%08x.zxd", trained_id);
+        } else {
+            const size_t op_len = strlen(output_path);
+            const int is_dir_target =
+                zxc_is_directory(output_path) ||
+                (op_len > 0 && (output_path[op_len - 1] == '/' || output_path[op_len - 1] == '\\'));
+            if (is_dir_target) {
+                const int has_sep = op_len > 0 && (output_path[op_len - 1] == '/' ||
+                                                   output_path[op_len - 1] == '\\');
+                snprintf(final_path, sizeof(final_path), "%s%sdictionary_%08x.zxd", output_path,
+                         has_sep ? "" : "/", trained_id);
+            } else {
+                snprintf(final_path, sizeof(final_path), "%s", output_path);
+            }
+        }
+
+        FILE* out;
+#ifdef _WIN32
+        out = fopen(final_path, "wb");
+#else
+        {
+            const int fd = open(final_path, O_CREAT | O_WRONLY | O_TRUNC,
+                                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            out = (fd != -1) ? fdopen(fd, "wb") : NULL;
+        }
+#endif
+        if (!out) {
+            fprintf(stderr, "Error: cannot create '%s': %s\n", final_path, strerror(errno));
+            free(zxd);
+            free(dict);
+            return 1;
+        }
+        const size_t nwritten = fwrite(zxd, 1, (size_t)zxd_sz, out);
+        const int close_rc = fclose(out);
+        free(zxd);
+        if (nwritten != (size_t)zxd_sz || close_rc != 0) {
+            fprintf(stderr, "Error: failed to write '%s': %s\n", final_path, strerror(errno));
+            unlink(final_path);
+            free(dict);
+            return 1;
+        }
+
+        fprintf(stderr, "Trained dictionary: %lld bytes from %d samples -> %s (dict_id: 0x%08X)\n",
+                (long long)dict_sz, n_loaded, final_path, trained_id);
+
+        free(dict);
+        return 0;
+    }
+
+    /*
+     * Benchmark Mode
+     * Loads the entire input file into RAM to measure raw algorithm throughput
+     * without disk I/O bottlenecks.
+     */
+    if (mode == MODE_BENCHMARK) {
+        if (optind >= argc) {
+            zxc_log("Benchmark requires input file.\n");
+            free(dict);
+            return 1;
+        }
+        const char* in_path = argv[optind];
+        int ret = 1;
+        uint8_t* ram = NULL;
+        uint8_t* c_dat = NULL;
+        FILE* fm = NULL;
+
+        char resolved_path[4096];
+        if (zxc_validate_input_path(in_path, resolved_path, sizeof(resolved_path)) != 0) {
+            zxc_log("Error: Invalid input file '%s': %s\n", in_path, strerror(errno));
+            free(dict);
+            return 1;
+        }
+
+        const zxc_compress_opts_t bench_copts = {.n_threads = num_threads,
+                                                 .level = level,
+                                                 .block_size = block_size,
+                                                 .checksum_enabled = checksum,
+                                                 .dict = dict,
+                                                 .dict_size = dict_size,
+                                                 .dict_huf = g_dict_huf};
+        const zxc_decompress_opts_t bench_dopts = {.n_threads = num_threads,
+                                                   .checksum_enabled = checksum,
+                                                   .dict = dict,
+                                                   .dict_size = dict_size,
+                                                   .dict_huf = g_dict_huf};
+
+        FILE* f_in = fopen(resolved_path, "rb");
+        if (!f_in) goto bench_cleanup;
+
+        if (fseeko(f_in, 0, SEEK_END) != 0) goto bench_cleanup;
+        const long long fsize = ftello(f_in);
+        if (fsize <= 0) goto bench_cleanup;
+        const size_t in_size = (size_t)fsize;
+        if (fseeko(f_in, 0, SEEK_SET) != 0) goto bench_cleanup;
+
+        ram = malloc(in_size);
+        if (!ram) goto bench_cleanup;
+        if (fread(ram, 1, in_size, f_in) != in_size) goto bench_cleanup;
+        fclose(f_in);
+        f_in = NULL;
+
+        if (!json_output)
+            printf(
+                "Input: %s (%zu bytes)\n"
+                "Running for %d seconds (threads: %d)...\n",
+                in_path, in_size, bench_seconds, num_threads);
+
+#ifdef _WIN32
+        if (!json_output) printf("Note: Using tmpfile on Windows (slower than fmemopen).\n");
+        fm = tmpfile();
+        if (fm) {
+            fwrite(ram, 1, in_size, fm);
+            rewind(fm);
+        }
+#else
+        fm = fmemopen(ram, in_size, "rb");
+#endif
+        if (!fm) goto bench_cleanup;
+
+        double best_compress = 1e30;
+        int compress_iters = 0;
+        const double compress_deadline = zxc_now() + (double)bench_seconds;
+        const double compress_start = zxc_now();
+        while (zxc_now() < compress_deadline) {
+            rewind(fm);
+            const double t0 = zxc_now();
+            zxc_stream_compress(fm, NULL, &bench_copts);
+            const double dt = zxc_now() - t0;
+            if (dt < best_compress) best_compress = dt;
+            compress_iters++;
+            if (!json_output && !g_quiet)
+                fprintf(stderr, "\rCompressing... %d iters (%.1fs)", compress_iters,
+                        zxc_now() - compress_start);
+        }
+        if (!json_output && !g_quiet) zxc_progress_clear(64);
+        fclose(fm);
+        fm = NULL;
+
+        const uint64_t max_c = zxc_compress_bound(in_size);
+        c_dat = malloc((size_t)max_c);
+        if (!c_dat) goto bench_cleanup;
+
+#ifdef _WIN32
+        FILE* fm_in = tmpfile();
+        FILE* fm_out = tmpfile();
+        if (!fm_in || !fm_out) {
+            if (fm_in) fclose(fm_in);
+            if (fm_out) fclose(fm_out);
+            goto bench_cleanup;
+        }
+        fwrite(ram, 1, in_size, fm_in);
+        rewind(fm_in);
+#else
+        FILE* fm_in = fmemopen(ram, in_size, "rb");
+        FILE* fm_out = fmemopen(c_dat, max_c, "wb");
+        if (!fm_in || !fm_out) {
+            if (fm_in) fclose(fm_in);
+            if (fm_out) fclose(fm_out);
+            goto bench_cleanup;
+        }
+#endif
+
+        const int64_t c_sz = zxc_stream_compress(fm_in, fm_out, &bench_copts);
+        if (c_sz < 0) {
+            fclose(fm_in);
+            fclose(fm_out);
+            fm_in = NULL;
+            fm_out = NULL;
+            goto bench_cleanup;
+        }
+
+#ifdef _WIN32
+        rewind(fm_out);
+        if (fread(c_dat, 1, (size_t)c_sz, fm_out) != (size_t)c_sz) {
+            fclose(fm_in);
+            fclose(fm_out);
+            fm_in = NULL;
+            fm_out = NULL;
+            goto bench_cleanup;
+        }
+        fclose(fm_in);
+        fclose(fm_out);
+#else
+        fclose(fm_in);
+        fclose(fm_out);
+#endif
+
+#ifdef _WIN32
+        FILE* fc = tmpfile();
+        if (!fc) goto bench_cleanup;
+        fwrite(c_dat, 1, (size_t)c_sz, fc);
+        rewind(fc);
+#else
+        FILE* fc = fmemopen(c_dat, (size_t)c_sz, "rb");
+        if (!fc) goto bench_cleanup;
+#endif
+
+        double best_decompress = 1e30;
+        int decompress_iters = 0;
+        const double decompress_deadline = zxc_now() + (double)bench_seconds;
+        const double decompress_start = zxc_now();
+        while (zxc_now() < decompress_deadline) {
+            rewind(fc);
+            const double t0 = zxc_now();
+            zxc_stream_decompress(fc, NULL, &bench_dopts);
+            const double dt = zxc_now() - t0;
+            if (dt < best_decompress) best_decompress = dt;
+            decompress_iters++;
+            if (!json_output && !g_quiet)
+                fprintf(stderr, "\rDecompressing... %d iters (%.1fs)", decompress_iters,
+                        zxc_now() - decompress_start);
+        }
+        if (!json_output && !g_quiet) zxc_progress_clear(64);
+        fclose(fc);
+
+        const double compress_speed_mbps = (double)in_size / (1000.0 * 1000.0) / best_compress;
+        const double decompress_speed_mbps = (double)in_size / (1000.0 * 1000.0) / best_decompress;
+        const double ratio = (c_sz > 0) ? ((double)in_size / c_sz) : 0.0;
+
+        if (json_output)
+            printf(
+                "{\n"
+                "  \"input_file\": \"%s\",\n"
+                "  \"input_size_bytes\": %zu,\n"
+                "  \"compressed_size_bytes\": %lld,\n"
+                "  \"compression_ratio\": %.3f,\n"
+                "  \"duration_seconds\": %d,\n"
+                "  \"compress_iterations\": %d,\n"
+                "  \"decompress_iterations\": %d,\n"
+                "  \"threads\": %d,\n"
+                "  \"level\": %d,\n"
+                "  \"checksum_enabled\": %s,\n"
+                "  \"compress_speed_mbps\": %.3f,\n"
+                "  \"decompress_speed_mbps\": %.3f,\n"
+                "  \"compress_time_seconds\": %.6f,\n"
+                "  \"decompress_time_seconds\": %.6f\n"
+                "}\n",
+                in_path, in_size, (long long)c_sz, ratio, bench_seconds, compress_iters,
+                decompress_iters, num_threads, level, checksum ? "true" : "false",
+                compress_speed_mbps, decompress_speed_mbps, best_compress, best_decompress);
+        else
+            printf(
+                "Compressed: %lld bytes (ratio %.3f)\n"
+                "Compress  : %.3f MB/s (%d iters)\n"
+                "Decompress: %.3f MB/s (%d iters)\n",
+                (long long)c_sz, ratio, compress_speed_mbps, compress_iters, decompress_speed_mbps,
+                decompress_iters);
+        ret = 0;
+
+    bench_cleanup:
+        if (fm) fclose(fm);
+        if (f_in) fclose(f_in);
+        free(ram);
+        free(c_dat);
+        free(dict);
+        return ret;
+    }
+
+    /*
+     * List Mode
+     * Displays archive information (compressed size, uncompressed size, ratio).
+     */
+    if (mode == MODE_LIST) {
+        free(dict);
+        if (optind >= argc) {
+            zxc_log("List mode requires input file.\n");
+            return 1;
+        }
+        int ret = 0;
+        const int num_files = argc - optind;
+
+        if (json_output && num_files > 1) printf("[\n");
+
+        for (int i = optind; i < argc; i++) {
+            const int r = zxc_list_archive(argv[i], json_output);
+            // Keep the JSON array well-formed: a failed entry prints nothing,
+            // so emit an error object in its place
+            if (r != 0 && json_output)
+                printf("{\n  \"filename\": \"%s\",\n  \"error\": \"cannot list file\"\n}\n",
+                       argv[i]);
+            ret |= r;
+            if (json_output && num_files > 1 && i < argc - 1) {
+                printf(",\n");
+            }
+        }
+
+        if (json_output && num_files > 1) {
+            printf("]\n");
+        }
+
+        return ret;
+    }
+
+    if (multiple_mode && to_stdout) {
+        zxc_log("Error: cannot write to stdout when using multiple files mode (-m).\n");
+        free(dict);
+        return 1;
+    }
+
+    if (multiple_mode && output_path) {
+        zxc_log("Error: cannot use -o with multiple files mode (-m/-r).\n");
+        free(dict);
+        return 1;
+    }
+
+    /*
+     * File Processing Mode
+     * Loops over files and determines input/output paths.
+     */
+    int overall_ret = 0;
+    const int start_optind = optind;
+
+    // If no files passed but we aren't using stdin, or mode expects files:
+    if (optind >= argc && mode == MODE_INTEGRITY) {
+        zxc_log("Test mode requires at least one input file.\n");
+        free(dict);
+        return 1;
+    }
+
+    if (multiple_mode && optind >= argc) {
+        zxc_log("Multiple files mode requires at least one input file.\n");
+        free(dict);
+        return 1;
+    }
+
+    // Default to processing at least once (for stdin) if no files are passed and not in a mode that
+    // strictly needs files
+    const int num_files_to_process = (optind < argc) ? (argc - optind) : 1;
+
+    for (int file_idx = 0; file_idx < num_files_to_process; file_idx++) {
+        const char* current_arg = (optind < argc) ? argv[start_optind + file_idx] : NULL;
+
+        if (recursive_mode && current_arg && strcmp(current_arg, "-") != 0 &&
+            zxc_is_directory(current_arg)) {
+            overall_ret |= process_directory(current_arg, mode, num_threads, keep_input, force,
+                                             to_stdout, checksum, level, block_size, json_output,
+                                             seekable, dict, dict_size);
+        } else {
+            // -o takes precedence over a positional OUTPUT-FILE.
+            const char* explicit_out_path = NULL;
+            if (!multiple_mode && !to_stdout) {
+                if (output_path)
+                    explicit_out_path = output_path;
+                else if (optind + 1 < argc && current_arg && strcmp(current_arg, "-") != 0)
+                    explicit_out_path = argv[start_optind + 1];
+            }
+
+            overall_ret |= process_single_file(current_arg, explicit_out_path, mode, num_threads,
+                                               keep_input, force, to_stdout, checksum, level,
+                                               block_size, json_output, seekable, dict, dict_size);
+        }
+
+        if (!multiple_mode) {
+            break;  // Standard mode only does the first argument as input
+        }
+    }
+    free(dict);
+    return overall_ret;
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodecVTableContract",
+  "description": "Strongly-typed contract for Layer 0 single-core C ABI function pointer table.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "codecId",
+    "engineName",
+    "license",
+    "supportsDictionaryPriming",
+    "maxHistoryWindowBytes",
+    "singleCoreThroughputMBps"
+  ],
+  "properties": {
+    "codecId": {
+      "type": "string",
+      "enum": [
+        "deflate",
+        "zstd",
+        "lzma2",
+        "lz4",
+        "bzip2",
+        "brotli",
+        "lzfse",
+        "snappy",
+        "store"
+      ]
+    },
+    "engineName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "enum": [
+        "MIT",
+        "BSD-3-Clause",
+        "BSD-2-Clause",
+        "Apache-2.0",
+        "Public-Domain"
+      ]
+    },
+    "supportsDictionaryPriming": {
+      "type": "boolean"
+    },
+    "maxHistoryWindowBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "singleCoreThroughputMBps": {
+      "type": "number",
+      "minimum": 0.0
+    }
+  }
+}

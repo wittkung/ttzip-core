@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SingleCoreDeflateEngineContract",
+  "description": "Strongly typed JSON schema for TTZip single-core DEFLATE engine IPC, benchmark telemetry, and runtime operational contracts.",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "message_type",
+    "timestamp_ns"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "message_type": {
+      "type": "string",
+      "enum": ["request", "response", "event"]
+    },
+    "timestamp_ns": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "oneOf": [
+    {
+      "description": "Compression Request Message",
+      "properties": {
+        "message_type": { "const": "request" },
+        "action": { "const": "compress" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "data_size",
+            "compression_level",
+            "payload_type",
+            "checksum_type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "data_size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "compression_level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "payload_type": {
+              "type": "string",
+              "enum": ["text", "binary", "structured", "high_entropy", "auto"]
+            },
+            "checksum_type": {
+              "type": "string",
+              "enum": ["crc32", "adler32", "none"]
+            }
+          }
+        }
+      },
+      "required": ["action", "payload"]
+    },
+    {
+      "description": "Decompression Request Message",
+      "properties": {
+        "message_type": { "const": "request" },
+        "action": { "const": "decompress" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "compressed_size",
+            "expected_uncompressed_size",
+            "checksum_type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "compressed_size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "expected_uncompressed_size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "checksum_type": {
+              "type": "string",
+              "enum": ["crc32", "adler32", "none"]
+            }
+          }
+        }
+      },
+      "required": ["action", "payload"]
+    },
+    {
+      "description": "Compression Response Message",
+      "properties": {
+        "message_type": { "const": "response" },
+        "action": { "const": "compress_result" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "success",
+            "bytes_in",
+            "bytes_out",
+            "compression_ratio",
+            "throughput_mb_s",
+            "duration_ns",
+            "checksum",
+            "error_code"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "success": { "type": "boolean" },
+            "bytes_in": { "type": "integer", "minimum": 0 },
+            "bytes_out": { "type": "integer", "minimum": 0 },
+            "compression_ratio": { "type": "number", "minimum": 0.0 },
+            "throughput_mb_s": { "type": "number", "minimum": 0.0 },
+            "duration_ns": { "type": "integer", "minimum": 0 },
+            "checksum": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "error_code": {
+              "type": "string",
+              "enum": ["ok", "invalid_argument", "buffer_too_small", "out_of_memory", "internal_error"]
+            },
+            "error_message": { "type": ["string", "null"] }
+          }
+        }
+      },
+      "required": ["action", "payload"]
+    },
+    {
+      "description": "Decompression Response Message",
+      "properties": {
+        "message_type": { "const": "response" },
+        "action": { "const": "decompress_result" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "success",
+            "bytes_in",
+            "bytes_out",
+            "throughput_mb_s",
+            "duration_ns",
+            "checksum",
+            "error_code"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "success": { "type": "boolean" },
+            "bytes_in": { "type": "integer", "minimum": 0 },
+            "bytes_out": { "type": "integer", "minimum": 0 },
+            "throughput_mb_s": { "type": "number", "minimum": 0.0 },
+            "duration_ns": { "type": "integer", "minimum": 0 },
+            "checksum": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+            "error_code": {
+              "type": "string",
+              "enum": ["ok", "invalid_stream", "bad_checksum", "buffer_too_small", "truncated_data", "internal_error"]
+            },
+            "error_message": { "type": ["string", "null"] }
+          }
+        }
+      },
+      "required": ["action", "payload"]
+    },
+    {
+      "description": "Benchmark Metric Event Message",
+      "properties": {
+        "message_type": { "const": "event" },
+        "action": { "const": "benchmark_metric" },
+        "payload": {
+          "type": "object",
+          "required": [
+            "test_id",
+            "corpus_name",
+            "corpus_size_bytes",
+            "algorithm",
+            "level",
+            "compress_mb_s",
+            "decompress_mb_s",
+            "ratio",
+            "libdeflate_comp_ratio_delta",
+            "libdeflate_comp_speed_delta",
+            "libdeflate_decomp_speed_delta"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "test_id": { "type": "string" },
+            "corpus_name": { "type": "string" },
+            "corpus_size_bytes": { "type": "integer", "minimum": 0 },
+            "algorithm": {
+              "type": "string",
+              "enum": ["ttzip_single_core_deflate", "libdeflate", "zlib_ng"]
+            },
+            "level": { "type": "integer", "minimum": 1, "maximum": 9 },
+            "compress_mb_s": { "type": "number", "minimum": 0.0 },
+            "decompress_mb_s": { "type": "number", "minimum": 0.0 },
+            "ratio": { "type": "number", "minimum": 0.0 },
+            "libdeflate_comp_ratio_delta": { "type": "number" },
+            "libdeflate_comp_speed_delta": { "type": "number" },
+            "libdeflate_decomp_speed_delta": { "type": "number" }
+          }
+        }
+      },
+      "required": ["action", "payload"]
+    }
+  ]
+}

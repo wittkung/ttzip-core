@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContainerFramingResult",
+  "type": "object",
+  "required": [
+    "format",
+    "uncompressed_bytes",
+    "compressed_bytes",
+    "header_overhead_bytes",
+    "checksum",
+    "is_verified"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": ["gzip", "zlib"],
+      "description": "Container stream format"
+    },
+    "uncompressed_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Uncompressed input size in bytes"
+    },
+    "compressed_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total compressed container size in bytes"
+    },
+    "header_overhead_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Container framing overhead bytes (18 for GZIP, 6 for ZLIB)"
+    },
+    "checksum": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Container checksum (CRC-32 or Adler-32)"
+    },
+    "is_verified": {
+      "type": "boolean",
+      "description": "Checksum and length consensus assertion"
+    }
+  },
+  "additionalProperties": false
+}

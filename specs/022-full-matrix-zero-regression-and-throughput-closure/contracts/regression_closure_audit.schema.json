@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RegressionClosureAuditSchema",
+  "description": "Schema for TTZip full matrix 0-regression audit records and floor verification",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "baseline_commit",
+    "total_dimensions",
+    "total_regressions",
+    "records",
+    "floor_verifications"
+  ],
+  "properties": {
+    "timestamp": { "type": "string" },
+    "baseline_commit": { "type": "string" },
+    "total_dimensions": { "type": "integer", "minimum": 1 },
+    "total_regressions": { "type": "integer", "minimum": 0 },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "format_name",
+          "scenario_name",
+          "compression_level",
+          "encryption_type",
+          "operation",
+          "baseline_throughput_mbs",
+          "current_throughput_mbs",
+          "delta_percent",
+          "is_regression"
+        ],
+        "properties": {
+          "format_name": { "type": "string" },
+          "scenario_name": { "type": "string" },
+          "compression_level": { "type": "integer" },
+          "encryption_type": { "type": "string", "enum": ["NONE", "AES256"] },
+          "operation": { "type": "string", "enum": ["compress", "decompress"] },
+          "baseline_throughput_mbs": { "type": "number", "minimum": 0.0 },
+          "current_throughput_mbs": { "type": "number", "minimum": 0.0 },
+          "delta_percent": { "type": "number" },
+          "is_regression": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "floor_verifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "metric_name",
+          "payload_bytes",
+          "floor_mbs",
+          "measured_mbs",
+          "is_passed",
+          "margin_percent"
+        ],
+        "properties": {
+          "metric_name": { "type": "string" },
+          "payload_bytes": { "type": "integer", "minimum": 0 },
+          "floor_mbs": { "type": "number", "minimum": 0.0 },
+          "measured_mbs": { "type": "number", "minimum": 0.0 },
+          "is_passed": { "type": "boolean" },
+          "margin_percent": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

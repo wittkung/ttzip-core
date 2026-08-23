@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReadmeMultilingualContract",
+  "description": "JSON schema for TTZip Multilingual README documentation validation",
+  "type": "object",
+  "required": [
+    "languages",
+    "has_navigation_bar",
+    "total_languages",
+    "status"
+  ],
+  "properties": {
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["en", "zh", "ja", "ko"]
+      }
+    },
+    "has_navigation_bar": {
+      "type": "boolean"
+    },
+    "total_languages": {
+      "type": "integer",
+      "minimum": 4
+    },
+    "status": {
+      "type": "string",
+      "enum": ["VALID", "INVALID"]
+    }
+  },
+  "additionalProperties": false
+}

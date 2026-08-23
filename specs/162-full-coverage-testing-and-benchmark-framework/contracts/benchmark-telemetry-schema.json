@@ -1,0 +1,246 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipBenchmarkTelemetrySchema",
+  "description": "Strict JSON schema for TTZip full-coverage codec, container format, and zero-regression gate telemetry.",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "platform",
+    "total_gates",
+    "passed_gates",
+    "failed_gates",
+    "total_duration_sec",
+    "overall_verdict",
+    "stages",
+    "codec_matrix",
+    "format_matrix"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of execution."
+    },
+    "platform": {
+      "type": "string",
+      "description": "Hardware architecture and OS (e.g., arm64-apple-darwin23.4.0)."
+    },
+    "total_gates": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Total number of evaluation stages in the gate runner."
+    },
+    "passed_gates": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of successfully passed gate stages."
+    },
+    "failed_gates": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of failed gate stages."
+    },
+    "total_duration_sec": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Total elapsed seconds across all execution stages."
+    },
+    "overall_verdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL"
+      ],
+      "description": "Final gate verdict."
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "stage_index",
+          "name",
+          "command",
+          "status",
+          "duration_sec"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "stage_index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "skip"
+            ]
+          },
+          "duration_sec": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "diagnostic_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "codec_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "engine_name",
+          "corpus_type",
+          "payload_size_bytes",
+          "compression_level",
+          "compressed_size_bytes",
+          "compression_ratio_pct",
+          "compress_throughput_mbs",
+          "compress_cpb",
+          "decompress_throughput_mbs",
+          "decompress_cpb",
+          "integrity_verified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "engine_name": {
+            "type": "string"
+          },
+          "corpus_type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "short_match",
+              "dna",
+              "random",
+              "literals",
+              "mixed",
+              "realistic_rgb",
+              "striped_rgb"
+            ]
+          },
+          "payload_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compression_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 22
+          },
+          "compressed_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compression_ratio_pct": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "compress_throughput_mbs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "compress_cpb": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "decompress_throughput_mbs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "decompress_cpb": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "integrity_verified": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "format_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "format_name",
+          "file_count",
+          "uncompressed_total_bytes",
+          "archive_size_bytes",
+          "package_duration_ms",
+          "package_throughput_mbs",
+          "extract_duration_ms",
+          "extract_throughput_mbs",
+          "peak_rss_mb",
+          "lossless_verified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "format_name": {
+            "type": "string",
+            "enum": [
+              "zip_store",
+              "zip_deflate",
+              "tar_gz",
+              "tar_zst",
+              "tar_bz2",
+              "tar_xz",
+              "7z_solid",
+              "unrar"
+            ]
+          },
+          "file_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uncompressed_total_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "archive_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "package_duration_ms": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "package_throughput_mbs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "extract_duration_ms": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "extract_throughput_mbs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "peak_rss_mb": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "lossless_verified": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

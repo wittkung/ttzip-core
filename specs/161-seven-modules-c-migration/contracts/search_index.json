@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchIndexQueryPayload",
+  "type": "object",
+  "properties": {
+    "queryText": {
+      "type": "string"
+    },
+    "caseSensitive": {
+      "type": "boolean"
+    },
+    "minSizeBytes": {
+      "type": "integer",
+      "minimum": -1
+    },
+    "maxSizeBytes": {
+      "type": "integer",
+      "minimum": -1
+    },
+    "matchedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "matchedIndices": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "required": [
+    "queryText",
+    "caseSensitive",
+    "minSizeBytes",
+    "maxSizeBytes",
+    "matchedCount",
+    "matchedIndices"
+  ],
+  "additionalProperties": false
+}

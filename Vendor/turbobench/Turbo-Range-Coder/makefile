@@ -1,0 +1,293 @@
+# powturbo (c) Copyright 2013-2026
+# Download or clone TurboRC:
+# git clone git://github.com/powturbo/Turbo-Range-Coder.git
+
+# fsm predictor
+#SF=1
+# include BWT 
+BWT=1
+#BWTDIV=1
+LIBSAIS16=1
+#V8
+#BWTSATAN=1
+ANS=1
+#EXT=1
+#NOCOMP=1
+#AVX2=1
+#NZ=1
+#SF=1
+#TURBORLE=1
+TP=1
+#----------------------------------------------
+CC ?= gcc
+#CC ?= clang
+CXX ?= g++
+CX ?= clang
+#CX ?= gcc
+#CC = clang
+
+#DEBUG=-DDEBUG -g
+DEBUG=-DNDEBUG
+JAVA_HOME ?= /usr/lib/jvm/java-8-openjdk-amd64
+PREFIX ?= /usr/local
+DIRBIN ?= $(PREFIX)/bin
+DIRINC ?= $(PREFIX)/include
+DIRLIB ?= $(PREFIX)/lib
+SRC ?= lib/
+
+#------- OS/ARCH -------------------
+ifneq (,$(filter Windows%,$(OS)))
+  OS := Windows
+  CC=gcc
+# CC=clang
+# CX=gcc
+  CX=clang
+  CXX=g++
+  ARCH=x86_64
+else
+  OS := $(shell uname -s)
+  ARCH := $(shell uname -m)
+endif
+#$(info OS="$(OS)")
+
+ifndef CROSS
+else
+ifeq ($(OS), Windows)
+CP=$(CROSS)-unknown-elf
+else
+CP=$(CROSS)-linux-gnu
+endif
+
+CXX:=$(CP)-g++
+ifeq ($(CX),clang)
+CX=clang --target=$(CP) --sysroot=/usr/$(CP) -fuse-ld=lld
+ifeq ($(CC),clang)
+CC=$(CX)
+else
+CC:=$(CP)-gcc
+endif
+else
+CC:=$(CP)-gcc
+CX=$(CC)
+endif
+CROSS=$(CC)
+endif
+
+ifneq (,$(or $(findstring aarch64,$(CC) $(ARCH)),$(findstring arm64,$(CC) $(ARCH))))
+  ARCH = aarch64
+else ifneq (,$(findstring riscv64,$(CC) $(ARCH)))
+  ARCH = riscv64
+else ifneq (,$(findstring iPhone,$(ARCH)))
+  ARCH = aarch64
+  CFLAGS=-DHAVE_MALLOC_MALLOC
+else ifneq (,$(findstring powerpc64le,$(CC) $(ARCH)))
+  ARCH = ppc64le
+else ifneq (,$(findstring loongarch64,$(CC) $(ARCH)))
+  ARCH = loongarch64
+else ifneq (,$(findstring x86_64,$(CC) $(ARCH)))
+  ARCH = x86_64
+endif
+
+ifeq ($(ARCH),aarch64)
+  _SSE=-march=armv8-a
+  CFLAGS=$(_SSE)
+else ifeq ($(ARCH),riscv64)
+#  CFLAGS=-march=rv64gcv -mabi=lp64d
+  CFLAGS=-march=rv64gcv_zvbb -mabi=lp64d
+else ifeq ($(ARCH),ppc64le)
+  _SSE=-D__SSE4_1__
+  CFLAGS=-mcpu=power9 -mtune=power9 $(_SSE)
+else ifeq ($(ARCH),loongarch64)
+  _SSE=-mlsx
+  CFLAGS=$(_SSE)
+else ifeq ($(ARCH),x86_64)
+# _SSE=-mssse3 
+# _SSE+=-mno-avx -mno-aes
+# _SSE=-march=corei7-avx -mtune=corei7-avx
+# _SSE=-march=ivybridge -mavx
+  _SSE=-mavx -mpopcnt
+
+# _AVX2=-march=skylake-avx512 -mavx512vbmi -mavx512f -mavx512vl
+  _AVX2=-march=haswell
+endif
+
+ifeq ($(OS),Windows)
+  LDFLAGS=-Wl,--stack,33554432 -lpowrprof
+endif
+
+CFLAGS+=$(_SSE) -w -Wall $(DDEBUG) 
+CXXFLAGS+=$(DDEBUG) -w -Wall -fpermissive  -fno-rtti
+
+ifeq ($(OS),$(filter $(OS),Linux GNU/kFreeBSD GNU OpenBSD FreeBSD DragonFly NetBSD MSYS_NT Haiku))
+LDFLAGS+=-lrt -lpthread
+endif
+
+ifdef STATIC
+LDFLAGS+=-static
+endif
+
+#-pedantic
+ifeq ($(PGO), 1)
+CFLAGS+=-fprofile-generate 
+LDFLAGS+=-lgcov
+else ifeq ($(PGO), 2)
+CFLAGS+=-fprofile-use 
+endif
+
+ifeq ($(OS),$(filter $(OS),Darwin Linux GNU/kFreeBSD GNU OpenBSD FreeBSD DragonFly NetBSD MSYS_NT Haiku))
+#LDFLAGS+=-lrt
+LDFLAGS+=-lm 
+#-Wl,--stack_size -Wl,20971520
+endif
+
+all: turborc
+
+ifeq ($(EXTRC), 1)
+CFLAGS+=-DEXTRC
+endif
+#-------- bwt --------------------------
+ifeq ($(BWTSATAN), 1)
+CFLAGS+=-D_BWTSATAN
+BWT=1
+endif
+
+ifeq ($(BWT), 1)
+CFLAGS+=-D_BWT
+ifeq ($(BWTDIV), 1)
+CFLAGS+=-DPROJECT_VERSION_FULL="20137" -DINLINE=inline -Ilibdivsufsort/include -Ilibdivsufsort/build/include 
+CFLAGS+=-D_BWTDIV
+LIBBWT+=libdivsufsort/unbwt.o 
+ifeq ($(NOCOMP), 1)
+else
+LIBBWT+=libdivsufsort/lib/sssort.o libdivsufsort/lib/utils.o libdivsufsort/lib/daware.o 
+LIBBWT+=libdivsufsort/lib/divsufsort.o 
+endif
+else
+ifeq ($(BWTX), 1)
+LIBBWT =../bwt/sssort.o ../bwt/bwtxinv.o ../bwt/divsufsort.o ../bwt/trsort.o
+CFLAGS+=-D_BWTX
+else
+CFLAGS+=-D_LIBSAIS -Ilibsais/include
+LIBBWT+=$(B)libsais/src/libsais.o
+ifeq ($(LIBSAIS16), 1)
+CFLAGS+=-D_LIBSAIS16
+LIBBWT+=$(B)libsais/src/libsais16.o
+endif
+endif
+endif
+endif
+
+ifneq ($(NOCOMP), 1)
+LIB=rc_ss.o rc_s.o rccdf.o rcutil.o bec_b.o rccm_s.o rccm_ss.o rcqlfc_s.o rcqlfc_ss.o rcqlfc_sf.o cpu.o
+
+
+#ifeq ($(DELTA), 1)
+#CFLAGS+=-D_DELTA
+#LIB+=transform.o
+#endif
+
+ifeq ($(ANS), 1)
+CFLAGS+=-D_ANS
+L=./
+$(L)anscdf0.o: $(L)anscdf.c $(L)anscdf_.h
+	$(CC) -c -O3 $(CFLAGS) $(_SCALAR) -falign-loops=32 $(L)anscdf.c -o $(L)anscdf0.o  
+
+$(L)anscdfs.o: $(L)anscdf.c $(L)anscdf_.h
+	$(CC) -c -O3 $(CFLAGS) $(_SSE) -falign-loops=32 $(L)anscdf.c -o $(L)anscdfs.o  
+
+LIB+=$(L)anscdfs.o 
+ifeq ($(ARCH), x86_64)
+$(L)anscdfx.o: $(L)anscdf.c $(L)anscdf_.h
+	$(CC) -c -O3 $(CFLAGS) -march=haswell -falign-loops=32 $(L)anscdf.c -o $(L)anscdfx.o
+
+LIB+=$(L)anscdfx.o 
+#$(L)anscdf0.o
+else
+CFLAGS+=-D_NAVX2
+endif
+endif
+
+ifeq ($(TURBORLE), 1)
+CFLAGS+=-D_TURBORLE
+LIB+=trlec.o trled.o
+endif
+
+ifeq ($(TP), 1)
+ifeq ($(ARCH),x86_64)
+tp256.o: tp.c
+	$(CC) -O3 $(CFLAGS) $(_AVX2) -c tp.c -o tp256.o
+
+#tp_.c: tp_.c
+#	$(CC) -O3 $(CFLAGS) $(_SSE) -c tp_.c -o tp_.c
+	
+endif
+CFLAGS+=-D_TP -D_NCPUISA
+LIB+=tp.o tp_.o
+
+ifeq ($(ARCH), x86_64)
+LIB+=tp256.o
+endif
+endif
+
+ifeq ($(V8), 1)
+CFLAGS+=-D_V8
+LIB+=v8.o
+endif
+#trlec.o trled.o $(L)anscdfx.o $(L)anscdfs.o $(L)anscdf0.o 
+endif
+ifeq ($(BWT), 1)
+LIB+=rcbwt.o
+endif
+
+ifeq ($(SF), 1)
+CFLAGS+=-D_SF
+LIB+=rc_sf.o rccm_sf.o rcqlfc_sf.o
+endif
+
+ifeq ($(NZ), 1)
+LIB+=rc_nz.o rccm_nz.o rcqlfc_nz.o
+CFLAGS+=-D_NZ
+endif
+
+ifeq ($(SH), 1)
+LIB+=rc_sh.o
+CFLAGS+=-D_SH
+endif
+
+ifeq ($(EXT), 1)
+CFLAGS+=-D_EXT
+#LIB+=xrc.o
+ifeq ($(BWT), 1)
+#LIB+=xrcbwt_sf.o
+endif
+endif
+
+ifeq ($(NOCOMP), 1)
+CFLAGS+=-DNO_COMP
+endif
+
+#librc.a: $(LIB)
+#	ar cr $@ $+
+turborc.o: turborc.c
+	$(CC) -O3 $(CFLAGS) $(MARCH) -c turborc.c -o turborc.o
+
+turborc: $(LIB) $(LIBBWT) turborc.o
+	$(CC) $^ $(LDFLAGS) -o turborc
+
+reorder: $(LIBDIV) reorder.o
+	$(CC) $^ $(LDFLAGS) -o reorder
+
+.c.o:
+	$(CC) -O3 $(CFLAGS) $(MARCH) $< -c -o $@
+
+.cpp.o:
+	$(CXX) -O3 $(MARCH) $(CXXFLAGS) $< -c -o $@ 
+
+ifeq ($(OS),Windows_NT)
+clean:
+	del /S *.o
+	del /S *~
+else
+clean:
+	@find . -type f -name "*\.o" -delete -or -name "*\~" -delete -or -name "core" -delete -or -name "turborc" -delete -or -name "librc.a" -delete
+endif

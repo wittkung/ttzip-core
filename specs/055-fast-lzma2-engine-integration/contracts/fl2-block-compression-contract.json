@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FL2BlockCompressionContract",
+  "description": "Strongly-typed contract for block-based Fast-LZMA2 compression requests, responses, and error reporting.",
+  "type": "object",
+  "required": [
+    "request",
+    "response"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "request": {
+      "type": "object",
+      "required": [
+        "block_id",
+        "src_offset",
+        "src_length",
+        "dst_capacity",
+        "level",
+        "thread_budget",
+        "is_zero_block_hint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Zero-indexed sequential block identifier"
+        },
+        "src_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Byte offset of block in uncompressed stream"
+        },
+        "src_length": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 134217728,
+          "description": "Length of input block in bytes (up to 128MB)"
+        },
+        "dst_capacity": {
+          "type": "integer",
+          "minimum": 64,
+          "description": "Capacity of allocated destination output buffer"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "description": "Compression level"
+        },
+        "thread_budget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Allocated thread count for block compression"
+        },
+        "is_zero_block_hint": {
+          "type": "boolean",
+          "description": "Hint if pre-scanned as all-zero bytes"
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "block_id",
+        "status_code",
+        "compressed_size",
+        "out_dict_size",
+        "crc32_checksum",
+        "elapsed_nanoseconds",
+        "route_taken"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Corresponding block identifier"
+        },
+        "status_code": {
+          "type": "integer",
+          "description": "Status code: 0 for success, non-zero error code"
+        },
+        "compressed_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Actual compressed payload byte count written"
+        },
+        "out_dict_size": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 67108864,
+          "description": "Effective dictionary size written to LZMA2 chunk header"
+        },
+        "crc32_checksum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Computed IEEE 802.3 CRC-32 checksum of input data"
+        },
+        "elapsed_nanoseconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution time in nanoseconds"
+        },
+        "route_taken": {
+          "type": "string",
+          "enum": ["neonFastPath", "fastLZMA2Parallel", "zeroBlockBypass"],
+          "description": "Actual execution route chosen by dispatcher"
+        }
+      }
+    }
+  }
+}

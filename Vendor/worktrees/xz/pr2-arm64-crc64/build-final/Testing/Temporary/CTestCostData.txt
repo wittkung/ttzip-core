@@ -1,0 +1,21 @@
+test_bcj_exact_size 1 0.660381
+test_block_header 1 0.400483
+test_check 1 0.414519
+test_filter_flags 1 0.484585
+test_filter_str 1 0.381638
+test_hardware 1 0.456438
+test_index 1 0.428713
+test_index_hash 1 0.389463
+test_lzip_decoder 1 0.400273
+test_memlimit 1 0.375565
+test_stream_buffer_decode 1 0.44757
+test_stream_flags 1 0.390764
+test_vli 1 0.43127
+test_microlzma 1 0.431479
+test_scripts.sh 1 1.35987
+test_suffix.sh 1 0.0528451
+test_compress_generated_abc 1 0.942908
+test_compress_generated_text 1 0.461146
+test_compress_generated_random 1 0.690257
+test_files.sh 1 0.31286
+---

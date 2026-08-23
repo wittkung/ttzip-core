@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GodFilesDecompositionContract",
+  "description": "Schema verifying line count and modular decomposition invariants across TTZip codebase.",
+  "type": "object",
+  "required": ["max_loc_per_file", "first_party_files_audited", "zero_regression"],
+  "properties": {
+    "max_loc_per_file": {
+      "type": "integer",
+      "maximum": 500,
+      "description": "Hard limit on physical lines of code for any first-party source file"
+    },
+    "first_party_files_audited": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

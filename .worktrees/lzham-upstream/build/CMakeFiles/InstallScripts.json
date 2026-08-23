@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/kevintung/Documents/dev/TTZip/.worktrees/lzham-upstream/build/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/.worktrees/lzham-upstream/build/lzhamdecomp/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/.worktrees/lzham-upstream/build/lzhamcomp/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/.worktrees/lzham-upstream/build/lzhamdll/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/.worktrees/lzham-upstream/build/lzhamtest/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

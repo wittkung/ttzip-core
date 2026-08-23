@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZipCompressionPlanContract",
+  "description": "Strongly-typed contract for resolved ZIP compression task execution plan",
+  "type": "object",
+  "required": [
+    "taskID",
+    "mode",
+    "tierLevel",
+    "deflateLevel",
+    "targetChunkSizeBytes",
+    "enableHistoryWarmup",
+    "enableNeonVectorization",
+    "totalInputFiles",
+    "totalInputBytes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "taskID": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique task identifier"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "storeDirectIO",
+        "adaptiveStore",
+        "multiBlockExtreme",
+        "parallelBatchC",
+        "swiftParallelFallback"
+      ],
+      "description": "Selected architectural execution branch"
+    },
+    "tierLevel": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7,
+      "description": "TTZip compression tier level (0-7)"
+    },
+    "deflateLevel": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12,
+      "description": "Underlying raw Deflate level (0-12)"
+    },
+    "targetChunkSizeBytes": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 16777216,
+      "description": "Chunk partition size for multi-block parallel execution in bytes"
+    },
+    "enableHistoryWarmup": {
+      "type": "boolean",
+      "description": "Flag indicating if 32KB cross-block sliding dictionary warmup is active"
+    },
+    "enableNeonVectorization": {
+      "type": "boolean",
+      "description": "Flag indicating if ARM64 NEON hardware match-finding is active"
+    },
+    "totalInputFiles": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of files in the compression batch"
+    },
+    "totalInputBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed payload bytes"
+    }
+  }
+}

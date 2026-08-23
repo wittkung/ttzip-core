@@ -1,0 +1,57 @@
+version: 1.9.9.{build}
+image: Visual Studio 2022
+
+environment:
+  matrix:
+  - CONFIGURATION: "Debug"
+    ARCHIT: "x64"
+
+  - CONFIGURATION: "Debug"
+    ARCHIT: "Win32"
+
+  - CONFIGURATION: "Release"
+    ARCHIT: "x64"
+
+  - CONFIGURATION: "Release"
+    ARCHIT: "Win32"
+
+install:
+  - ECHO Installing %COMPILER% %ARCHIT% %CONFIGURATION%
+  - MKDIR bin
+  - if "%ARCHIT%"=="x64" set ARCHI=amd64
+  - if "%ARCHIT%"=="Win32" set ARCHI=x86
+  - echo ----- ARCHI=%ARCHI%
+  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCHI%
+
+build_script:
+  - ECHO ***
+  - ECHO Building %COMPILER% %ARCHIT% %CONFIGURATION%
+  - ECHO ***
+
+  - ECHO ***
+  - ECHO *** Building Visual Studio 2022 %ARCHIT%\%CONFIGURATION%
+  - ECHO ***
+  - msbuild "visual\VS2010\lizard.sln" /m /verbosity:minimal /property:PlatformToolset=v143 /t:Clean,Build /p:Platform=%ARCHIT% /p:Configuration=%CONFIGURATION% /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - ECHO ***
+  - ECHO *** Building Visual Studio 2019 %ARCHIT%\%CONFIGURATION%
+  - ECHO ***
+  - msbuild "visual\VS2010\lizard.sln" /m /verbosity:minimal /property:PlatformToolset=v142 /t:Clean,Build /p:Platform=%ARCHIT% /p:Configuration=%CONFIGURATION% /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - ECHO ***
+  - ECHO *** Building Visual Studio 2017 %ARCHIT%\%CONFIGURATION%
+  - ECHO ***
+  - msbuild "visual\VS2010\lizard.sln" /m /verbosity:minimal /property:PlatformToolset=v141 /t:Clean,Build /p:Platform=%ARCHIT% /p:Configuration=%CONFIGURATION% /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - COPY visual\VS2010\bin\%ARCHIT%_%CONFIGURATION%\*.exe programs\
+
+test_script:
+  - ECHO ***
+  - ECHO Testing %COMPILER% %ARCHIT% %CONFIGURATION%
+  - ECHO ***
+
+  - CD programs
+  - lizard -h
+  - lizard -i1b lizard.exe
+  - lizard -i1b5 lizard.exe
+  - lizard -i1b10 lizard.exe
+  - lizard -i1b15 lizard.exe
+  - echo ------- lizard tested -------
+  - fullbench.exe -i1 fullbench.exe

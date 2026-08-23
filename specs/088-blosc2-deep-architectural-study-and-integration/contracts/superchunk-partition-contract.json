@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SuperChunkPartitionContract",
+  "description": "Strict schema for Super-Chunk container geometry, cache-aware two-tier partitioning, and shared dictionary metadata",
+  "type": "object",
+  "required": ["containerHeader", "partitionGeometry", "sharedDictionary", "sparseIndex"],
+  "additionalProperties": false,
+  "properties": {
+    "containerHeader": {
+      "type": "object",
+      "required": ["magic", "version", "flags", "typesize", "uncompressedSizeBytes", "compressedSizeBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "magic": {
+          "type": "string",
+          "enum": ["TTZIP_SC", "b2frame"]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "flags": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "typesize": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16]
+        },
+        "uncompressedSizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compressedSizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "partitionGeometry": {
+      "type": "object",
+      "required": ["chunkSizeBytes", "blockSizeBytes", "totalChunks", "blocksPerChunk", "l1CacheAligned"],
+      "additionalProperties": false,
+      "properties": {
+        "chunkSizeBytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 67108864
+        },
+        "blockSizeBytes": {
+          "type": "integer",
+          "minimum": 32768,
+          "maximum": 524288
+        },
+        "totalChunks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocksPerChunk": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "l1CacheAligned": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sharedDictionary": {
+      "type": "object",
+      "required": ["enabled", "dictSizeBytes", "dictId", "algorithm"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "dictSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 131072
+        },
+        "dictId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "algorithm": {
+          "type": "string",
+          "enum": ["ZSTD_COVER", "ZSTD_FAST_COVER", "STATIC_SAMPLE", "NONE"]
+        }
+      }
+    },
+    "sparseIndex": {
+      "type": "object",
+      "required": ["entryCount", "sparseChunkCount", "specialZeroChunkCount", "offsetEncoding"],
+      "additionalProperties": false,
+      "properties": {
+        "entryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sparseChunkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "specialZeroChunkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offsetEncoding": {
+          "type": "string",
+          "enum": ["INT64_MSB_TAGGED", "COMPACT_DELTA_VARINT"]
+        }
+      }
+    }
+  }
+}

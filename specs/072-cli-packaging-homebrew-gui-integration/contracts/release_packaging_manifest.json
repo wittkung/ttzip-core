@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReleasePackagingManifest",
+  "description": "Output schema for CLI standalone release packaging and Homebrew artifact manifest",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+.*$"
+    },
+    "tarballName": {
+      "type": "string",
+      "minLength": 5
+    },
+    "tarballPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tarballByteSize": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sha256Checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "machOArchitectures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["arm64", "x86_64"]
+      },
+      "minItems": 1
+    },
+    "manPageIncluded": {
+      "type": "boolean"
+    },
+    "completionsIncluded": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["zsh", "bash", "fish", "nushell"]
+      },
+      "minItems": 1
+    },
+    "formulaPath": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "version",
+    "tarballName",
+    "tarballPath",
+    "tarballByteSize",
+    "sha256Checksum",
+    "machOArchitectures",
+    "manPageIncluded",
+    "completionsIncluded",
+    "formulaPath"
+  ],
+  "additionalProperties": false
+}

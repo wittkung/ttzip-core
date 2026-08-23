@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
+//! TTZip Pure Safe Rust High-Performance Archiving & Microkernel Engine.
+//!
+//! Provides hardware-accelerated crypto/checksum routines, safe codec wrappers,
+//! unified archive streaming, ZIP/7z archive engines, and VFS processing.
+
+#![allow(non_camel_case_types)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(ambiguous_glob_reexports)]
+
+pub mod analytics;
+pub mod archive;
+pub mod bench;
+pub mod benchmark;
+pub mod charset;
+pub mod codecs;
+pub mod crypto;
+pub mod ffi;
+pub mod fs;
+pub mod platform;
+pub mod runtime;
+pub mod security;
+pub mod sevenz;
+pub mod standards;
+pub mod testing;
+pub mod types;
+pub mod vfs;
+pub mod zip;
+
+pub use analytics::*;
+pub use archive::{
+    compute_volume_path, detect_volume_chain, find_next_pk_signature, repair_damaged_tar,
+    repair_damaged_zip, SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme,
+    VolumeSegment,
+};
+pub use benchmark::*;
+pub use charset::*;
+pub use codecs::*;
+pub use crypto::*;
+pub use ffi::*;
+pub use fs::*;
+pub use platform::*;
+pub use runtime::*;
+pub use security::*;
+pub use sevenz::{
+    create_7z_archive, decode_7z_solid_payload, parse_7z_metadata, SevenZArchive, SevenZFileMeta,
+    SevenZHeaderInfo,
+};
+pub use standards::*;
+pub use testing::*;
+pub use types::*;
+pub use vfs::*;
+pub use zip::{create_zip_archive, ZipArchive, ZipEntry, ZipInputItem};

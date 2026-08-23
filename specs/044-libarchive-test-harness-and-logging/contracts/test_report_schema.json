@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestExecutionSessionReport",
+  "description": "Schema for TTZip test execution sessions, suite results, and diagnostic evidence",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "startTime",
+    "endTime",
+    "durationMs",
+    "environment",
+    "options",
+    "summary",
+    "suites"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "startTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when test session started"
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when test session finished"
+    },
+    "durationMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total duration in milliseconds"
+    },
+    "environment": {
+      "type": "object",
+      "required": ["osVersion", "cpuArchitecture", "logicalCores", "swiftVersion"],
+      "additionalProperties": false,
+      "properties": {
+        "osVersion": { "type": "string" },
+        "cpuArchitecture": { "type": "string" },
+        "logicalCores": { "type": "integer", "minimum": 1 },
+        "swiftVersion": { "type": "string" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "required": ["verbosity", "keepTempFiles", "dumpOnFailure"],
+      "additionalProperties": false,
+      "properties": {
+        "filterPattern": { "type": "string" },
+        "verbosity": { "type": "integer", "enum": [-1, 0, 1, 2] },
+        "keepTempFiles": { "type": "boolean" },
+        "dumpOnFailure": { "type": "boolean" },
+        "jsonReportPath": { "type": "string" },
+        "markdownReportPath": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["totalSuites", "totalCases", "passedCases", "failedCases", "skippedCases", "totalAssertions", "passRate"],
+      "additionalProperties": false,
+      "properties": {
+        "totalSuites": { "type": "integer", "minimum": 0 },
+        "totalCases": { "type": "integer", "minimum": 0 },
+        "passedCases": { "type": "integer", "minimum": 0 },
+        "failedCases": { "type": "integer", "minimum": 0 },
+        "skippedCases": { "type": "integer", "minimum": 0 },
+        "totalAssertions": { "type": "integer", "minimum": 0 },
+        "passRate": { "type": "number", "minimum": 0.0, "maximum": 100.0 }
+      }
+    },
+    "suites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["suiteName", "passedCount", "failedCount", "skippedCount", "totalAssertions", "durationMs", "cases"],
+        "additionalProperties": false,
+        "properties": {
+          "suiteName": { "type": "string" },
+          "passedCount": { "type": "integer", "minimum": 0 },
+          "failedCount": { "type": "integer", "minimum": 0 },
+          "skippedCount": { "type": "integer", "minimum": 0 },
+          "totalAssertions": { "type": "integer", "minimum": 0 },
+          "durationMs": { "type": "number", "minimum": 0 },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["caseName", "status", "durationMs", "assertionCount"],
+              "additionalProperties": false,
+              "properties": {
+                "caseName": { "type": "string" },
+                "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+                "durationMs": { "type": "number", "minimum": 0 },
+                "assertionCount": { "type": "integer", "minimum": 0 },
+                "failure": {
+                  "type": "object",
+                  "required": ["file", "line", "expression"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "file": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 1 },
+                    "expression": { "type": "string" },
+                    "deferredMessage": { "type": "string" },
+                    "hexDiff": {
+                      "type": "object",
+                      "required": ["firstMismatchOffset", "firstMismatchOffsetHex", "expectedLength", "actualLength", "formattedDiffWindow"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "firstMismatchOffset": { "type": "integer", "minimum": 0 },
+                        "firstMismatchOffsetHex": { "type": "string" },
+                        "expectedLength": { "type": "integer", "minimum": 0 },
+                        "actualLength": { "type": "integer", "minimum": 0 },
+                        "formattedDiffWindow": { "type": "string" }
+                      }
+                    },
+                    "unicodeDiff": {
+                      "type": "object",
+                      "required": ["expectedString", "expectedScalars", "actualString", "actualScalars", "isNfdNfcMismatch"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "expectedString": { "type": "string" },
+                        "expectedScalars": { "type": "string" },
+                        "actualString": { "type": "string" },
+                        "actualScalars": { "type": "string" },
+                        "isNfdNfcMismatch": { "type": "boolean" }
+                      }
+                    },
+                    "underlyingError": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

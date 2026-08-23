@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArchiveFormatRegistryContract",
+  "description": "Strongly-typed contract for TTZip supported archive container formats and structural specifications.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatId",
+    "displayName",
+    "primaryExtension",
+    "compatibleExtensions",
+    "containerParadigm",
+    "directoryIndexLocation",
+    "defaultAlgorithm",
+    "allowedAlgorithms",
+    "supportedCompressionLevels",
+    "supportedEncryptionMethods",
+    "supportsSolidArchiving",
+    "supportsSplitVolumes",
+    "supportsHeaderEncryption",
+    "supportsUnixPermissions",
+    "supportsExtendedAttributes",
+    "nativeCEngine"
+  ],
+  "properties": {
+    "formatId": {
+      "type": "string",
+      "enum": [
+        "sevenZip",
+        "zip",
+        "tar",
+        "zst",
+        "gz",
+        "bz2",
+        "xz",
+        "lzip",
+        "lz4",
+        "brotli",
+        "lrzip",
+        "aar",
+        "snappy",
+        "wim",
+        "dmg",
+        "iso",
+        "rar",
+        "cab",
+        "cpio",
+        "xar"
+      ]
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "primaryExtension": {
+      "type": "string",
+      "pattern": "^\\.[a-z0-9.]+$"
+    },
+    "compatibleExtensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^\\.[a-z0-9.]+$"
+      },
+      "minItems": 1
+    },
+    "containerParadigm": {
+      "type": "string",
+      "enum": [
+        "randomAccessSeekable",
+        "sequentialStreaming",
+        "sectorIndexedDiskImage"
+      ]
+    },
+    "directoryIndexLocation": {
+      "type": "string",
+      "enum": [
+        "endOfFileTrailer",
+        "interleavedBlockHeaders",
+        "startHeaderOffset",
+        "xmlResourceTable",
+        "opticalVolumeDescriptors"
+      ]
+    },
+    "defaultAlgorithm": {
+      "type": "string",
+      "enum": [
+        "deflate",
+        "lzma",
+        "lzma2",
+        "zstd",
+        "bzip2",
+        "lz4",
+        "lz4hc",
+        "brotli",
+        "lzfse",
+        "snappy",
+        "lrzip",
+        "lzx",
+        "xpress",
+        "ppmd",
+        "store"
+      ]
+    },
+    "allowedAlgorithms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "deflate",
+          "lzma",
+          "lzma2",
+          "zstd",
+          "bzip2",
+          "lz4",
+          "lz4hc",
+          "brotli",
+          "lzfse",
+          "snappy",
+          "lrzip",
+          "lzx",
+          "xpress",
+          "ppmd",
+          "store"
+        ]
+      },
+      "minItems": 1
+    },
+    "supportedCompressionLevels": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -5,
+        "maximum": 22
+      },
+      "minItems": 1
+    },
+    "supportedEncryptionMethods": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "aes256Cbc",
+          "aes256CtrWinZip",
+          "aes128CtrWinZip",
+          "zipCrypto",
+          "dmgAppleEncrypted",
+          "none"
+        ]
+      },
+      "minItems": 1
+    },
+    "supportsSolidArchiving": {
+      "type": "boolean"
+    },
+    "supportsSplitVolumes": {
+      "type": "boolean"
+    },
+    "supportsHeaderEncryption": {
+      "type": "boolean"
+    },
+    "supportsUnixPermissions": {
+      "type": "boolean"
+    },
+    "supportsExtendedAttributes": {
+      "type": "boolean"
+    },
+    "nativeCEngine": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

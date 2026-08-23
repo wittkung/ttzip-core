@@ -1,0 +1,13 @@
+# mine
+local/
+
+build*/
+compile_commands.json
+
+CLAUDE.md
+AGENTS.md
+.claude/
+.codex/
+.agents/
+.cache/
+.vscode/

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipPluginRegistryContract",
+  "description": "Interface contract for registering and dispatching dynamic filter and codec plugins in TTZip",
+  "type": "object",
+  "properties": {
+    "plugin_type": {
+      "type": "string",
+      "enum": ["filter", "codec"]
+    },
+    "plugin_id": {
+      "type": "integer",
+      "minimum": 160,
+      "maximum": 255
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "has_forward_cb": {
+      "type": "boolean"
+    },
+    "has_backward_cb": {
+      "type": "boolean"
+    },
+    "is_thread_safe": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "plugin_type",
+    "plugin_id",
+    "name",
+    "has_forward_cb",
+    "has_backward_cb",
+    "is_thread_safe"
+  ],
+  "additionalProperties": false
+}

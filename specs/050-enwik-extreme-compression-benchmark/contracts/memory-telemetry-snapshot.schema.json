@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemoryCeilingSnapshot",
+  "type": "object",
+  "description": "Zero-overhead kernel memory snapshot capturing resident, high-water mark peak RSS, and virtual memory metrics.",
+  "additionalProperties": false,
+  "required": [
+    "currentRSSBytes",
+    "peakRSSBytes",
+    "virtualSizeBytes",
+    "sampledTimestampMs"
+  ],
+  "properties": {
+    "currentRSSBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Instantaneous physical resident set size (RSS) in bytes."
+    },
+    "peakRSSBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Lifetime peak resident set size (kernel high-water mark) in bytes."
+    },
+    "virtualSizeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total virtual address space size allocated by the process in bytes."
+    },
+    "sampledTimestampMs": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Epoch timestamp in milliseconds when telemetry was captured."
+    }
+  }
+}

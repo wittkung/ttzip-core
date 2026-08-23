@@ -1,0 +1,101 @@
+# GitHub Actions Workflows
+
+This directory contains CI/CD workflows for the ZXC compression library.
+
+## Core Workflows
+
+### build.yml - Build & Release
+**Triggers:** Push to main, tags, pull requests, manual dispatch
+
+Builds and tests ZXC across multiple platforms (Linux x86_64/ARM64, macOS ARM64, Windows x64). Generates release artifacts and uploads binaries when tags are pushed.
+
+### multiarch.yml - Multi-Architecture Build
+**Triggers:** Push to main, pull requests, manual dispatch
+
+Comprehensive build matrix testing across multiple architectures including 32-bit and 64-bit variants for Linux (x64, x86, ARM64, ARM) and Windows (x64, x86). Validates compilation compatibility across different platforms.
+
+### multicomp.yml - Compiler Compatibility
+**Triggers:** Push to main, pull requests, manual dispatch
+
+Tests the codebase against a wide range of compilers (various versions of GCC and Clang) to ensure compatibility and identify any compiler-specific issues or warnings.
+
+### benchmark.yml - Performance Benchmark
+**Triggers:** Push to main (src changes), pull requests, manual dispatch
+
+Runs performance benchmarks using LZbench on Ubuntu and macOS. Integrates ZXC into the LZbench framework and tests compression/decompression performance against the Silesia corpus.
+
+## Quality & Security
+
+### coverage.yml - Code Coverage
+**Triggers:** Push to main, pull requests, manual dispatch
+
+Builds the project with coverage instrumentation (`-DZXC_ENABLE_COVERAGE=ON`), runs unit and CLI tests, and generates a coverage report using `lcov`. The report is then uploaded to Codecov for analysis.
+
+### fuzzing.yml - Fuzz Testing
+**Triggers:** Pull requests, scheduled (every 3 days), manual dispatch
+
+Executes fuzz testing using ClusterFuzzLite with multiple sanitizers (address, undefined) on decompression and roundtrip fuzzers. Helps identify memory safety issues and edge cases.
+
+### quality.yml - Code Quality
+**Triggers:** Push to main, pull requests, manual dispatch
+
+Performs static analysis using Cppcheck and Clang Static Analyzer. Runs memory leak detection with Valgrind to ensure code quality and identify potential bugs.
+
+Also enforces formatting, one job per language, each running that ecosystem's canonical tool: `c-format` (clang-format, via `make format-check`), `rust-format` (`cargo fmt`), `go-format` (`gofmt`), `python-format` (`black`) and `nodejs-format` (`prettier`, covering both the Node.js and WASM wrappers). Formatter versions are pinned so a new release of one cannot turn CI red on a commit that touched nothing.
+
+### security.yml - Code Security
+**Triggers:** Push to main, pull requests
+
+Runs CodeQL security analysis to detect potential security vulnerabilities and coding errors in the C/C++ codebase.
+
+### abi-check.yml - ABI Stability Check
+**Triggers:** Pull requests (lib/header changes), push to main, manual dispatch
+
+Builds `libzxc.so` with debug info, generates an ABI XML via [`abidw`](https://sourceware.org/libabigail/), and compares it against the committed baseline at [`docs/abi/libzxc-linux-x86_64.abi.xml`](../../docs/abi/libzxc-linux-x86_64.abi.xml) using `abidiff --no-added-syms`. Adding new symbols passes (MINOR bump); removing or changing existing symbols fails (MAJOR bump required + regenerate baseline). Run with `mode=regenerate` to produce a fresh baseline as a downloadable artifact.
+
+### golden.yml - Golden Format Stability
+**Triggers:** Push to main, pull requests, manual dispatch
+
+Freezes the ZXC on-disk wire format. Runs `sha256sum -c` against the committed manifest [`tests/format/golden.sha256`](../../tests/format/golden.sha256), so the job fails if a single byte of any golden conformance file under [`tests/format/golden/`](../../tests/format/golden/) changes. Also verifies the golden file set and the manifest stay in sync (no file added or removed without updating the manifest). Any intentional format change requires regenerating the corpus with `zxc_golden_gen` and refreshing the manifest in the same commit (see [`tests/format/README.md`](../../tests/format/README.md)). The field-level structural validation runs separately as the `format_golden` ctest in `build.yml`.
+
+### scorecard.yml - OSSF Scorecard
+**Triggers:** Push to main, scheduled (weekly), manual dispatch
+
+Runs the [OSSF Scorecard](https://github.com/ossf/scorecard) analysis to evaluate the project against open source security best practices (branch protection, signed releases, dependency pinning, etc.). Results are published to the OpenSSF public dashboard and uploaded to GitHub's code scanning view as SARIF.
+
+### vendors.yml - Vendor Maintenance
+**Triggers:** Scheduled (weekly), manual dispatch
+
+Automatically checks for and updates third-party dependencies (like `rapidhash.h`) to ensure the project uses the latest stable versions of its vendors.
+
+### changelog.yml - Generate CHANGELOG
+**Triggers:** Push to `bump/**` or `release/**` branches, manual dispatch
+
+Regenerates [`CHANGELOG.md`](../../CHANGELOG.md) with [`git-cliff`](https://git-cliff.org/), grouping all commits under their respective tags. On `bump/vX.Y.Z` and `release/vX.Y.Z` branches the version tag is auto-detected from the branch name; manual dispatch accepts an explicit `tag` input (empty = `Unreleased`). The generated file is uploaded as a workflow artifact, it is **not** committed back to the repo. Configuration lives in [`cliff.toml`](../../cliff.toml).
+
+## Language Bindings
+
+### wrapper-rust.yml - Wrapper Rust
+**Triggers:** Release published, manual dispatch
+
+Tests and publishes Rust crates to crates.io. Verifies the version matches the release tag, runs tests across platforms, and publishes `zxc-compress-sys` (FFI bindings) followed by `zxc-compress` (safe wrapper).
+
+### wrapper-python.yml - Wrapper Python
+**Triggers:** Release published, manual dispatch
+
+Builds platform-specific wheels using `cibuildwheel` for Linux (x86_64, ARM64), macOS (ARM64, Intel), and Windows (AMD64, ARM64). Tests wheels against Python 3.12-3.13, then publishes to PyPI via trusted publishing.
+
+### wrapper-wasm.yml - Wrapper WASM
+**Triggers:** Release published, publish on main, manual dispatch
+
+Builds the WebAssembly target using Emscripten SDK. Compiles the library with SIMD disabled (scalar codepath) and no threading, then runs a Node.js roundtrip test suite covering all compression levels, reusable contexts, and error handling. Uploads `zxc.js` + `zxc.wasm` as build artifacts.
+
+### wrapper-nodejs.yml - Wrapper Node.js
+**Triggers:** Release published, manual dispatch
+
+Builds and publishes the Node.js package to npm. Handles the compilation of native bindings and ensures the package is correctly versioned and distributed.
+
+### wrapper-go.yml - Wrapper Go
+**Triggers:** Release published, manual dispatch
+
+Runs comprehensive tests for the Go bindings across various platforms and architectures to ensure the Go package is stable and functional.

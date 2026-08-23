@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UltimateAuditContract",
+  "description": "Schema for ultimate zero regression verification and adaptive benchmark state",
+  "type": "object",
+  "required": [
+    "payloadBytes",
+    "effectivePassCount",
+    "bestCompressSeconds",
+    "bestExtractSeconds",
+    "bufferSize",
+    "entropyValue",
+    "isHighEntropyBypass"
+  ],
+  "properties": {
+    "payloadBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "effectivePassCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "bestCompressSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bestExtractSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bufferSize": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "entropyValue": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "isHighEntropyBypass": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

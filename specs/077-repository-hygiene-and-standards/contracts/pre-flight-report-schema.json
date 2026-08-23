@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PreFlightReportModel",
+  "description": "JSON Schema contract for local pre-flight script execution results",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "overallStatus",
+    "totalDurationSeconds",
+    "stages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "overallStatus": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"]
+    },
+    "totalDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["stageNumber", "stageName", "status", "durationSeconds"],
+        "additionalProperties": false,
+        "properties": {
+          "stageNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "stageName": {
+            "type": "string",
+            "enum": [
+              "Repository Hygiene",
+              "Codebase Invariant Lint",
+              "Unit & Pattern Test Suite",
+              "Core Performance Floor Gate"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PASS", "FAIL"]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "errorMessage": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InMemoryBenchmarkResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reportId",
+    "timestamp",
+    "timerCalibration",
+    "totalInputBytes",
+    "totalWallDurationMs",
+    "results",
+    "allPassed"
+  ],
+  "properties": {
+    "reportId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timerCalibration": {
+      "$ref": "platform-timer-calibration.schema.json"
+    },
+    "totalInputBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalWallDurationMs": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm",
+          "level",
+          "uncompressedBytes",
+          "compressedBytes",
+          "ratio",
+          "spaceSavingsPct",
+          "compressionTimeNs",
+          "decompressionTimeNs",
+          "compressionSpeedMBs",
+          "decompressionSpeedMBs",
+          "iterationsCompleted",
+          "integrityVerified"
+        ],
+        "properties": {
+          "algorithm": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "uncompressedBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "compressedBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ratio": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "spaceSavingsPct": {
+            "type": "number"
+          },
+          "compressionTimeNs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "decompressionTimeNs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "compressionSpeedMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "decompressionSpeedMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "iterationsCompleted": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "integrityVerified": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "allPassed": {
+      "type": "boolean"
+    }
+  }
+}

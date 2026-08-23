@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PlatformBuildManifest",
+  "description": "Schema for cross-platform static library build outputs and architecture metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "targetPlatform",
+    "libdeflateVersion",
+    "compiler",
+    "simdExtensions",
+    "artifactPath"
+  ],
+  "properties": {
+    "targetPlatform": {
+      "type": "string",
+      "enum": [
+        "macos_universal2",
+        "windows_x86_64",
+        "windows_arm64"
+      ],
+      "description": "Target platform and binary slice architecture"
+    },
+    "libdeflateVersion": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+      "description": "Official Git tag version of integrated libdeflate upstream (e.g. v1.22)"
+    },
+    "compiler": {
+      "type": "string",
+      "enum": [
+        "apple_clang",
+        "msvc",
+        "clang_cl"
+      ],
+      "description": "Compiler toolchain used for compilation"
+    },
+    "simdExtensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "armv8.2-a+crypto",
+          "avx2",
+          "bmi2",
+          "neon"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Active hardware SIMD instruction set extensions enabled during compilation"
+    },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relative output path of compiled static archive (.a or .lib)"
+    }
+  }
+}

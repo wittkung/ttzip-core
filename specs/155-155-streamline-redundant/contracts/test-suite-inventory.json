@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DualEngineTestMatrix",
+  "description": "Schema for TTZip dual-engine test suite inventory and pruning audit records.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "total_c_suites",
+    "total_swift_suites",
+    "pruned_swift_suites",
+    "pruned_files"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "total_c_suites": {
+      "type": "integer",
+      "minimum": 8
+    },
+    "total_swift_suites": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "pruned_swift_suites": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "pruned_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "file_name",
+          "layer",
+          "action",
+          "justification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "microkernel_c",
+              "swift_bridge",
+              "swift_architecture",
+              "appkit_gui"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["prune", "retain"]
+          },
+          "c_equivalent_suite": {
+            "type": "string"
+          },
+          "justification": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

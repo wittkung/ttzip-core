@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_release/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_release/third_party/googletest/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_release/third_party/googletest/googlemock/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_release/third_party/googletest/googletest/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

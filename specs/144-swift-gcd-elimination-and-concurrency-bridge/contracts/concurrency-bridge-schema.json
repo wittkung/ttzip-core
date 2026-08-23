@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConcurrencyBridgeContract",
+  "description": "Interface contract for ConcurrencyBridge hardware topology, thread budget, and memory query primitives.",
+  "type": "object",
+  "required": ["cpu_topology", "memory_budget", "thread_budget"],
+  "additionalProperties": false,
+  "properties": {
+    "cpu_topology": {
+      "type": "object",
+      "required": ["total_logical_cores", "p_cores", "e_cores", "default_threads"],
+      "additionalProperties": false,
+      "properties": {
+        "total_logical_cores": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512,
+          "description": "Total logical processor core count."
+        },
+        "p_cores": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 512,
+          "description": "Number of high-performance cores detected."
+        },
+        "e_cores": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 512,
+          "description": "Number of efficiency cores detected."
+        },
+        "default_threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512,
+          "description": "Default thread allocation recommendation."
+        }
+      }
+    },
+    "memory_budget": {
+      "type": "object",
+      "required": ["total_physical_ram", "available_physical_ram", "safe_budget_bytes"],
+      "additionalProperties": false,
+      "properties": {
+        "total_physical_ram": {
+          "type": "integer",
+          "minimum": 1048576,
+          "description": "Total physical RAM in bytes."
+        },
+        "available_physical_ram": {
+          "type": "integer",
+          "minimum": 1048576,
+          "description": "Currently free or inactive physical RAM in bytes."
+        },
+        "safe_budget_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "description": "Safe heap allocation limit for the current process in bytes."
+        }
+      }
+    },
+    "thread_budget": {
+      "type": "object",
+      "required": ["requested_threads", "allocated_threads", "is_overridden"],
+      "additionalProperties": false,
+      "properties": {
+        "requested_threads": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 512,
+          "description": "User or caller requested thread count."
+        },
+        "allocated_threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256,
+          "description": "Actual allocated thread budget clamped by system topology."
+        },
+        "is_overridden": {
+          "type": "boolean",
+          "description": "Whether an explicit manual override is active."
+        }
+      }
+    }
+  }
+}

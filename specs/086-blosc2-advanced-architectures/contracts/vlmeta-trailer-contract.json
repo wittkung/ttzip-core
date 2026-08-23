@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VLMetaTrailerContract",
+  "type": "object",
+  "required": ["magic", "version", "layer_count", "uncompressed_size", "compressed_size", "codec"],
+  "properties": {
+    "magic": {
+      "type": "string",
+      "enum": ["TTZIPVLM"]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "layer_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "uncompressed_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compressed_size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "codec": {
+      "type": "string",
+      "enum": ["ZSTD", "LZ4"]
+    }
+  },
+  "additionalProperties": false
+}

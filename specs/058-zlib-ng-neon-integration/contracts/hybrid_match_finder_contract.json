@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HybridMatchFinderContract",
+  "description": "JSON Schema defining input, execution constraints, and output for hybrid SWAR/NEON longest-match comparison kernel",
+  "type": "object",
+  "required": ["input", "result"],
+  "additionalProperties": false,
+  "properties": {
+    "input": {
+      "type": "object",
+      "required": ["src0_offset", "src1_offset", "max_len", "nice_len"],
+      "additionalProperties": false,
+      "properties": {
+        "src0_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset in bytes from base pointer for search target"
+        },
+        "src1_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset in bytes from base pointer for match candidate"
+        },
+        "max_len": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 273,
+          "description": "Upper bound for match length comparison"
+        },
+        "nice_len": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 273,
+          "description": "Early-exit match length threshold"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": ["match_length", "dispatch_path"],
+      "additionalProperties": false,
+      "properties": {
+        "match_length": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 273,
+          "description": "Contiguous identical byte count found between src0 and src1"
+        },
+        "dispatch_path": {
+          "type": "string",
+          "enum": ["swar_gpr", "neon_vector", "scalar_tail"],
+          "description": "Exact internal execution path that resolved the comparison"
+        }
+      }
+    }
+  }
+}

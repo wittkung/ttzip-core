@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ttzip-engine",
     "ttzip-glue",
     "ttzip-tui",
     "ttzip-python",
@@ -30,6 +31,7 @@ debug = 1
 
 [workspace.lints.rust]
 unsafe_code = "allow"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("gil-refs"))'] }
 
 [workspace.lints.clippy]
 not_unsafe_ptr_arg_deref = "allow"

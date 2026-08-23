@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AllFormatsRegressionAuditRecord",
+  "description": "Schema for cross-format automated zero-regression performance audit results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "scenario",
+    "level",
+    "isEncrypted",
+    "operation",
+    "baselineMBs",
+    "currentMBs",
+    "deltaPercent",
+    "status"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2", "tar.xz",
+        "lzip", "lz4", "brotli", "lrzip", "aar", "snappy", "wim", "dmg", "iso"
+      ],
+      "description": "Archive format identifier"
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Test payload scenario description"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["L1", "L6", "Store"],
+      "description": "Compression level category"
+    },
+    "isEncrypted": {
+      "type": "boolean",
+      "description": "Whether encryption (AES-256) is active"
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["compress", "extract"],
+      "description": "Operation type being benchmarked"
+    },
+    "baselineMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Baseline throughput in MB/s"
+    },
+    "currentMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Current measured throughput in MB/s"
+    },
+    "deltaPercent": {
+      "type": "number",
+      "description": "Relative percentage delta compared to baseline"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["gain", "flat", "warning", "critical_regression"],
+      "description": "Audit outcome status tier"
+    }
+  }
+}

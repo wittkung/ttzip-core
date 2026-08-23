@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ttzip.dev/schemas/085/batch-compression-response-schema.json",
+  "title": "BatchCompressionResponse",
+  "description": "Standardized response payload returned after executing batch compression.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success", "timestampUtc"],
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Outcome status of the batch compression operation."
+    },
+    "timestampUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of execution completion."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outputArchivePath",
+        "format",
+        "totalFilesProcessed",
+        "totalUncompressedBytes",
+        "totalCompressedBytes",
+        "executionDurationSeconds",
+        "sustainedThroughputMBs",
+        "smallFileBatchCount"
+      ],
+      "properties": {
+        "outputArchivePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "Final verified path to the created archive."
+        },
+        "format": {
+          "type": "string",
+          "enum": ["zip", "7z", "tar.zst", "tar.gz"],
+          "description": "Output archive format."
+        },
+        "totalFilesProcessed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total count of files compressed."
+        },
+        "totalUncompressedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Aggregated uncompressed volume."
+        },
+        "totalCompressedBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Final archive file size in bytes."
+        },
+        "executionDurationSeconds": {
+          "type": "number",
+          "minimum": 0.0001,
+          "description": "Total execution wall time."
+        },
+        "sustainedThroughputMBs": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Throughput in megabytes per second."
+        },
+        "smallFileBatchCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of small-file batch units dispatched."
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errorCode", "errorMessage", "failingPath"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "description": "POSIX or internal engine error status code."
+        },
+        "errorMessage": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Detailed human-readable error diagnostics."
+        },
+        "failingPath": {
+          "type": "string",
+          "description": "Path of the file that triggered the failure."
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "success": { "enum": [true] }
+      },
+      "required": ["success", "timestampUtc", "result"]
+    },
+    {
+      "properties": {
+        "success": { "enum": [false] }
+      },
+      "required": ["success", "timestampUtc", "error"]
+    }
+  ]
+}

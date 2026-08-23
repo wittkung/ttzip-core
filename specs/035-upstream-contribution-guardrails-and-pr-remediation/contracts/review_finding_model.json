@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReviewFindingModel",
+  "description": "Schema for individual code review findings and remediation lifecycle",
+  "type": "object",
+  "required": [
+    "findingId",
+    "reviewer",
+    "reviewerRole",
+    "severity",
+    "category",
+    "reviewerComment",
+    "rootCause",
+    "resolutionStatus"
+  ],
+  "properties": {
+    "findingId": {
+      "type": "string",
+      "pattern": "^F-[0-9]{4}-[0-9]{3}$"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "reviewerRole": {
+      "type": "string",
+      "enum": ["founder", "collaborator", "contributor"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["BLOCKER", "HIGH", "MEDIUM", "LOW"]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "INTEGER_SAFETY",
+        "STREAM_DEFENSE",
+        "GIT_ISOLATION",
+        "TEST_ORACLE",
+        "COMMIT_GRANULARITY",
+        "COMMUNITY_PROCESS"
+      ]
+    },
+    "targetFile": {
+      "type": "string"
+    },
+    "lineRange": {
+      "type": "string"
+    },
+    "reviewerComment": {
+      "type": "string"
+    },
+    "rootCause": {
+      "type": "string"
+    },
+    "resolutionStatus": {
+      "type": "string",
+      "enum": ["OPEN", "IN_PROGRESS", "RESOLVED", "WITHDRAWN"]
+    },
+    "fixCommitIndex": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

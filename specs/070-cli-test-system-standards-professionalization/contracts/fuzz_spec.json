@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FuzzMutationSpecification",
+  "description": "Deterministic mutation fuzzing configuration and iteration result schema",
+  "type": "object",
+  "required": [
+    "seed",
+    "iterationCount",
+    "operators",
+    "targetFormat"
+  ],
+  "properties": {
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "iterationCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "operators": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "bit_flip",
+          "byte_replace",
+          "corrupt_magic",
+          "corrupt_crc",
+          "truncate_stream",
+          "zip_slip_path",
+          "oversize_header",
+          "invalid_dict_size"
+        ]
+      }
+    },
+    "targetFormat": {
+      "type": "string"
+    },
+    "crashDumpDirectory": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}

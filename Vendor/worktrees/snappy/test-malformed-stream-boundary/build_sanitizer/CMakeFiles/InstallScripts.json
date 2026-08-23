@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/test-malformed-stream-boundary/build_sanitizer/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/test-malformed-stream-boundary/build_sanitizer/third_party/googletest/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/test-malformed-stream-boundary/build_sanitizer/third_party/googletest/googlemock/cmake_install.cmake",
+		"/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/test-malformed-stream-boundary/build_sanitizer/third_party/googletest/googletest/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

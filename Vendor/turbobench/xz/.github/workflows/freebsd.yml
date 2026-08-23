@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: 0BSD
+
+name: FreeBSD
+
+on:
+  push:
+    branches: [ master, ci_run ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  FreeBSD:
+    strategy:
+      matrix:
+        include:
+          - host: ubuntu-latest
+            version: 12.4
+            arch: x86_64
+          - host: ubuntu-latest
+            version: 15.0
+            arch: x86_64
+          # NOTE: Comment in the repo says that aarch64 VM is faster
+          # on x86_64 host compared to ubuntu-24.04-arm.
+          # - host: ubuntu-24.04-arm
+          #   version: 15.0
+          #   arch: aarch64
+
+    runs-on: ${{ matrix.host }}
+    timeout-minutes: 10
+
+    name: FreeBSD
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Test in FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: ${{ matrix.release }}
+          arch: ${{ matrix.arch }}
+          usesh: true
+          prepare: >
+            pkg install -y
+            autoconf
+            automake
+            gettext-tools
+            libtool
+            m4
+            po4a
+          run: |
+            set -e
+            uname -a
+            ./autogen.sh
+            ./configure --disable-static --enable-debug --enable-werror
+            make -j4 check

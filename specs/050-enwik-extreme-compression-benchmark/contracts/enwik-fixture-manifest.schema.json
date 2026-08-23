@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnwikFixtureManifest",
+  "type": "object",
+  "description": "Manifest declaring available extreme compression corpus fixtures, local caches, and mirror sources.",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "cacheDirectoryPath",
+    "items",
+    "mirrors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"],
+      "description": "Manifest schema specification version."
+    },
+    "cacheDirectoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Base filesystem path where cached corpus items reside."
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fileName",
+          "uncompressedSizeBytes",
+          "expectedSha256",
+          "category"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique corpus identifier."
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Target filename."
+          },
+          "uncompressedSizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Uncompressed byte length."
+          },
+          "expectedSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Cryptographic SHA-256 fingerprint."
+          },
+          "category": {
+            "type": "string",
+            "enum": ["canonical-xml-wikipedia", "synthetic-structured-xml"],
+            "description": "Category of the corpus item."
+          },
+          "repeatDistanceBytes": {
+            "type": "integer",
+            "minimum": 1024,
+            "description": "Optional repeat interval in bytes for synthetic variations."
+          }
+        }
+      }
+    },
+    "mirrors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "priority",
+          "baseUrl"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable mirror identifier."
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Priority order (1 is highest)."
+          },
+          "baseUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL for downloading compressed fixture assets."
+          }
+        }
+      }
+    }
+  }
+}

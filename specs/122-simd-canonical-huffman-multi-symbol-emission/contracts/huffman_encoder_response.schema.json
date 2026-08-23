@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HuffmanBitstreamEncoderResponse",
+  "description": "Response model for multi-symbol Huffman bitstream encoding statistics",
+  "type": "object",
+  "properties": {
+    "compressed_bytes_written": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes written to destination bitstream"
+    },
+    "packed_token_writes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of 64-bit multi-symbol packed writes performed"
+    },
+    "elapsed_nanoseconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Encoding execution duration in nanoseconds"
+    }
+  },
+  "required": [
+    "compressed_bytes_written",
+    "packed_token_writes",
+    "elapsed_nanoseconds"
+  ],
+  "additionalProperties": false
+}

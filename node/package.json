@@ -1,0 +1,30 @@
+{
+  "name": "ttzip",
+  "version": "1.0.0",
+  "description": "High-throughput, SIMD-accelerated archiving and compression engine for Node.js and TypeScript",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "compression",
+    "zip",
+    "7z",
+    "tar",
+    "zstd",
+    "simd",
+    "archive",
+    "fast"
+  ],
+  "author": "Witt Kung <witt.w.kung@gmail.com>",
+  "license": "BSD-3-Clause OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wittkung/ttzip-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wittkung/ttzip-core/issues"
+  },
+  "homepage": "https://github.com/wittkung/ttzip-core#readme"
+}

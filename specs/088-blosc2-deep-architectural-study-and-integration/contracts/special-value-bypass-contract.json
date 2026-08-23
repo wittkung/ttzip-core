@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpecialValueBypassContract",
+  "description": "Strict schema for branchless special-value uniform block detection and zero-overhead memory fill bypass",
+  "type": "object",
+  "required": ["request", "detectionResult", "decompressionResult"],
+  "additionalProperties": false,
+  "properties": {
+    "request": {
+      "type": "object",
+      "required": ["bufferLengthBytes", "elementSize", "scanMode"],
+      "additionalProperties": false,
+      "properties": {
+        "bufferLengthBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "elementSize": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16]
+        },
+        "scanMode": {
+          "type": "string",
+          "enum": ["BRANCHLESS_NEON_SWAR", "EXHAUSTIVE_VALIDATION"]
+        }
+      }
+    },
+    "detectionResult": {
+      "type": "object",
+      "required": ["isUniform", "specialCode", "detectedPattern", "scanThroughputMBs"],
+      "additionalProperties": false,
+      "properties": {
+        "isUniform": {
+          "type": "boolean"
+        },
+        "specialCode": {
+          "type": "integer",
+          "enum": [0, 1, 2, 3, 4],
+          "description": "0: Standard, 1: SpecialZero, 2: SpecialNaN, 3: SpecialValue, 4: SpecialUninit"
+        },
+        "detectedPattern": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{1,16}$",
+          "description": "Hexadecimal representation of scalar repeat pattern"
+        },
+        "scanThroughputMBs": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      }
+    },
+    "decompressionResult": {
+      "type": "object",
+      "required": ["fillMethod", "outputBytes", "fillThroughputMBs", "verifiedZeroError"],
+      "additionalProperties": false,
+      "properties": {
+        "fillMethod": {
+          "type": "string",
+          "enum": ["DARWIN_DC_ZVA_MEMSET", "DARWIN_MEMSET_PATTERN8", "STANDARD_DECOMPRESS"]
+        },
+        "outputBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fillThroughputMBs": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "verifiedZeroError": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

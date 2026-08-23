@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CraftsmanshipEngineeringSpec",
+  "description": "JSON Schema defining TTZip Craftsmanship Engineering standards and AI Orchestration campaign metadata",
+  "type": "object",
+  "required": [
+    "specVersion",
+    "philosophy",
+    "securityStandards",
+    "performanceStandards",
+    "testingStandards",
+    "campaigns"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "specVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "philosophy": {
+      "type": "object",
+      "required": [
+        "zeroConfigurationCreep",
+        "decadeGradeLongevity",
+        "subtractiveRefactoring",
+        "pessimisticWorldModel"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "zeroConfigurationCreep": { "type": "boolean" },
+        "decadeGradeLongevity": { "type": "boolean" },
+        "subtractiveRefactoring": { "type": "boolean" },
+        "pessimisticWorldModel": { "type": "boolean" }
+      }
+    },
+    "securityStandards": {
+      "type": "object",
+      "required": [
+        "deadStoreImmunity",
+        "integerClampPolicy",
+        "streamInputValidation",
+        "structMagicLifecycle"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "deadStoreImmunity": {
+          "type": "string",
+          "enum": ["memset_s", "secure_zero_memory"]
+        },
+        "integerClampPolicy": {
+          "type": "string",
+          "enum": ["SSIZE_MAX_CLAMP"]
+        },
+        "streamInputValidation": {
+          "type": "string",
+          "enum": ["STRICT_BOUNDS_CHECK"]
+        },
+        "structMagicLifecycle": {
+          "type": "string",
+          "enum": ["MAGIC_INVAL_ON_FREE"]
+        }
+      }
+    },
+    "performanceStandards": {
+      "type": "object",
+      "required": [
+        "hotPathAllocationPolicy",
+        "pageAlignmentBytes",
+        "concurrencyLockPolicy",
+        "hardwareAcceleration"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "hotPathAllocationPolicy": {
+          "type": "string",
+          "enum": ["ZERO_HEAP_ALLOCATION"]
+        },
+        "pageAlignmentBytes": {
+          "type": "integer",
+          "enum": [16384]
+        },
+        "concurrencyLockPolicy": {
+          "type": "string",
+          "enum": ["LOCK_FREE_PER_WORKER"]
+        },
+        "hardwareAcceleration": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "testingStandards": {
+      "type": "object",
+      "required": [
+        "crc32Oracle",
+        "goldenCorpusDecoder",
+        "systemDifferential",
+        "regressionAuditor",
+        "hardRegressionThresholdPercent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "crc32Oracle": {
+          "type": "string",
+          "enum": ["BITWISE_BITCRC32"]
+        },
+        "goldenCorpusDecoder": {
+          "type": "string",
+          "enum": ["UUDECODER"]
+        },
+        "systemDifferential": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "regressionAuditor": {
+          "type": "string"
+        },
+        "hardRegressionThresholdPercent": {
+          "type": "number",
+          "enum": [-10.0]
+        }
+      }
+    },
+    "campaigns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "campaignId",
+          "phaseNumber",
+          "title",
+          "targetComponents",
+          "aiDirectives",
+          "physicalGateAssertions",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "campaignId": { "type": "string" },
+          "phaseNumber": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "title": { "type": "string" },
+          "targetComponents": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "aiDirectives": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "physicalGateAssertions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PLANNED", "IN_PROGRESS", "VERIFIED", "CONVERGED"]
+          }
+        }
+      },
+      "minItems": 4
+    }
+  }
+}

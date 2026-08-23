@@ -11,6 +11,7 @@ name = "_ttzip"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+ttzip-engine = { path = "../ttzip-engine", version = "1.0.0" }
 ttzip-glue = { path = "../ttzip-glue", version = "1.0.0" }
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
 libc = "0.2"

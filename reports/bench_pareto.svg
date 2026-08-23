@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="100%" height="100%" style="background:#0F172A;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;">
+<g stroke="#334155" stroke-width="1" stroke-dasharray="3,3" opacity="0.6">
+  <line x1="80.0" y1="415.0" x2="910.0" y2="415.0"/>
+  <text x="70.0" y="415.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">0%</text>
+  <line x1="80.0" y1="344.0" x2="910.0" y2="344.0"/>
+  <text x="70.0" y="344.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">20%</text>
+  <line x1="80.0" y1="273.0" x2="910.0" y2="273.0"/>
+  <text x="70.0" y="273.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">40%</text>
+  <line x1="80.0" y1="202.0" x2="910.0" y2="202.0"/>
+  <text x="70.0" y="202.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">60%</text>
+  <line x1="80.0" y1="131.0" x2="910.0" y2="131.0"/>
+  <text x="70.0" y="131.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">80%</text>
+  <line x1="80.0" y1="60.0" x2="910.0" y2="60.0"/>
+  <text x="70.0" y="60.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">100%</text>
+  <line x1="80.0" y1="60.0" x2="80.0" y2="415.0"/>
+  <text x="80.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">0</text>
+  <line x1="246.0" y1="60.0" x2="246.0" y2="415.0"/>
+  <text x="246.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">4858</text>
+  <line x1="412.0" y1="60.0" x2="412.0" y2="415.0"/>
+  <text x="412.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">9716</text>
+  <line x1="578.0" y1="60.0" x2="578.0" y2="415.0"/>
+  <text x="578.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">14574</text>
+  <line x1="744.0" y1="60.0" x2="744.0" y2="415.0"/>
+  <text x="744.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">19432</text>
+  <line x1="910.0" y1="60.0" x2="910.0" y2="415.0"/>
+  <text x="910.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">24290</text>
+</g>
+<text x="80.0" y="32" fill="#F8FAFC" font-size="16" font-weight="bold">TTZip Pareto Frontier: Calgary (English Text & Source)</text>
+<text x="495.0" y="465.0" fill="#94A3B8" font-size="12" text-anchor="middle">Compression Throughput (MB/s)</text>
+<text x="20" y="237.5" fill="#94A3B8" font-size="12" text-anchor="middle" transform="rotate(-90 20 237.5)">Space Savings (%)</text>
+<path d="M 81.27,61.49 C 86.50,61.97 91.72,62.59 96.95,62.94 C 105.12,63.48 113.30,63.95 121.47,63.95 C 122.75,63.95 124.04,63.95 125.32,63.95 C 133.75,63.95 142.17,64.01 150.60,64.08 C 177.31,64.29 204.03,68.64 230.75,66.36 C 234.91,66.01 239.07,62.03 243.24,62.03 C 244.30,62.03 245.36,62.03 246.42,62.03 C 342.15,62.03 437.88,79.20 533.62,79.20 C 622.99,79.20 712.36,69.33 801.74,64.39" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" opacity="0.9" filter="drop-shadow(0 0 6px #F59E0B88)"/>
+<circle cx="230.7" cy="66.4" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L1: 4411.7 MB/s, 98.2% savings (Rank 1)</title>
+</circle>
+<circle cx="150.6" cy="64.1" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L2: 2066.1 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="125.3" cy="64.0" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L3: 1326.3 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="125.8" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L4: 1339.3 MB/s, 98.9% savings (Rank 2)</title>
+</circle>
+<circle cx="121.5" cy="64.0" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L5: 1213.6 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="123.7" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L6: 1277.7 MB/s, 98.9% savings (Rank 2)</title>
+</circle>
+<circle cx="123.4" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L7: 1269.0 MB/s, 98.9% savings (Rank 3)</title>
+</circle>
+<circle cx="125.2" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L8: 1322.8 MB/s, 98.9% savings (Rank 3)</title>
+</circle>
+<circle cx="125.9" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L9: 1342.9 MB/s, 98.9% savings (Rank 4)</title>
+</circle>
+<circle cx="84.5" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L10: 130.6 MB/s, 98.9% savings (Rank 5)</title>
+</circle>
+<circle cx="84.4" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L11: 129.7 MB/s, 98.9% savings (Rank 6)</title>
+</circle>
+<circle cx="83.3" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L12: 95.8 MB/s, 98.9% savings (Rank 7)</title>
+</circle>
+<circle cx="388.8" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L1: 9035.7 MB/s, 99.4% savings (Rank 8)</title>
+</circle>
+<circle cx="438.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L2: 10490.1 MB/s, 99.4% savings (Rank 9)</title>
+</circle>
+<circle cx="433.5" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L3: 10344.3 MB/s, 99.4% savings (Rank 10)</title>
+</circle>
+<circle cx="419.5" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L4: 9934.8 MB/s, 99.4% savings (Rank 11)</title>
+</circle>
+<circle cx="311.9" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L5: 6787.6 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="265.7" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L6: 5434.8 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="243.2" cy="62.0" r="6.5" fill="#10B981" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Zstd L7: 4777.2 MB/s, 99.4% savings (Rank 1)</title>
+</circle>
+<circle cx="247.0" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L8: 4885.9 MB/s, 99.4% savings (Rank 2)</title>
+</circle>
+<circle cx="243.2" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L9: 4776.8 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="246.4" cy="62.0" r="6.5" fill="#10B981" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Zstd L10: 4870.3 MB/s, 99.4% savings (Rank 1)</title>
+</circle>
+<circle cx="325.2" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L11: 7176.5 MB/s, 99.4% savings (Rank 2)</title>
+</circle>
+<circle cx="332.5" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L12: 7388.6 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="145.0" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L13: 1903.5 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="143.6" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L14: 1861.1 MB/s, 99.4% savings (Rank 13)</title>
+</circle>
+<circle cx="145.0" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L15: 1903.6 MB/s, 99.4% savings (Rank 14)</title>
+</circle>
+<circle cx="133.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L16: 1562.5 MB/s, 99.4% savings (Rank 15)</title>
+</circle>
+<circle cx="133.3" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L17: 1560.9 MB/s, 99.4% savings (Rank 4)</title>
+</circle>
+<circle cx="135.9" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L18: 1635.8 MB/s, 99.4% savings (Rank 5)</title>
+</circle>
+<circle cx="124.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L19: 1298.7 MB/s, 99.4% savings (Rank 6)</title>
+</circle>
+<circle cx="124.7" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L20: 1308.9 MB/s, 99.4% savings (Rank 7)</title>
+</circle>
+<circle cx="123.8" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L21: 1283.2 MB/s, 99.4% savings (Rank 16)</title>
+</circle>
+<circle cx="124.8" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L22: 1312.3 MB/s, 99.4% savings (Rank 17)</title>
+</circle>
+<circle cx="705.0" cy="64.1" r="4.0" fill="#06B6D4" stroke="#1E293B" stroke-width="1.0">
+  <title>LZ4 Fast 1: 18290.9 MB/s, 98.8% savings (Rank 18)</title>
+</circle>
+<circle cx="782.0" cy="64.3" r="4.0" fill="#06B6D4" stroke="#1E293B" stroke-width="1.0">
+  <title>LZ4 Fast 3: 20545.7 MB/s, 98.8% savings (Rank 12)</title>
+</circle>
+<circle cx="801.7" cy="64.4" r="6.5" fill="#06B6D4" stroke="#FFFFFF" stroke-width="2.0">
+  <title>LZ4 Fast 9: 21122.0 MB/s, 98.8% savings (Rank 1)</title>
+</circle>
+<circle cx="96.9" cy="62.9" r="6.5" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Apple LZFSE: 496.0 MB/s, 99.2% savings (Rank 1)</title>
+</circle>
+<circle cx="533.6" cy="79.2" r="6.5" fill="#8B5CF6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Snappy: 13275.3 MB/s, 94.6% savings (Rank 1)</title>
+</circle>
+<circle cx="94.7" cy="96.3" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q0: 429.3 MB/s, 89.8% savings (Rank 19)</title>
+</circle>
+<circle cx="99.2" cy="93.9" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q1: 563.3 MB/s, 90.5% savings (Rank 2)</title>
+</circle>
+<circle cx="107.6" cy="62.1" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q2: 806.9 MB/s, 99.4% savings (Rank 13)</title>
+</circle>
+<circle cx="106.5" cy="62.0" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q3: 775.6 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="104.9" cy="61.9" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q4: 729.6 MB/s, 99.5% savings (Rank 20)</title>
+</circle>
+<circle cx="99.9" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q5: 583.7 MB/s, 99.5% savings (Rank 4)</title>
+</circle>
+<circle cx="98.3" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q6: 534.2 MB/s, 99.5% savings (Rank 5)</title>
+</circle>
+<circle cx="94.8" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q7: 433.7 MB/s, 99.5% savings (Rank 14)</title>
+</circle>
+<circle cx="91.2" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q8: 327.4 MB/s, 99.5% savings (Rank 14)</title>
+</circle>
+<circle cx="85.9" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q9: 172.9 MB/s, 99.5% savings (Rank 15)</title>
+</circle>
+<circle cx="81.3" cy="61.5" r="6.5" fill="#EC4899" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Brotli Q10: 37.3 MB/s, 99.6% savings (Rank 1)</title>
+</circle>
+<circle cx="81.0" cy="61.5" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q11: 30.4 MB/s, 99.6% savings (Rank 2)</title>
+</circle>
+<circle cx="80.3" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L1: 10.2 MB/s, 98.6% savings (Rank 19)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L2: 10.4 MB/s, 98.6% savings (Rank 20)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L3: 10.6 MB/s, 98.6% savings (Rank 21)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L4: 10.5 MB/s, 98.6% savings (Rank 22)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L5: 10.5 MB/s, 98.6% savings (Rank 23)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L6: 10.6 MB/s, 98.6% savings (Rank 24)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L7: 10.7 MB/s, 98.6% savings (Rank 25)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L8: 10.6 MB/s, 98.6% savings (Rank 26)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L9: 10.6 MB/s, 98.6% savings (Rank 27)</title>
+</circle>
+</svg>

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FastPathDispatchContract",
+  "type": "object",
+  "required": [
+    "jobId",
+    "action",
+    "format",
+    "sourcePath",
+    "targetPath",
+    "options",
+    "performanceFloorMBs"
+  ],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["compress", "extract", "inspect"]
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2", "tar.xz",
+        "lzip", "lz4", "brotli", "lrzip", "aar", "snappy", "wim", "dmg", "iso"
+      ]
+    },
+    "sourcePath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "options": {
+      "type": "object",
+      "required": ["level", "skipMacJunk", "isEncrypted"],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "skipMacJunk": {
+          "type": "boolean"
+        },
+        "isEncrypted": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "performanceFloorMBs": {
+      "type": "number",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

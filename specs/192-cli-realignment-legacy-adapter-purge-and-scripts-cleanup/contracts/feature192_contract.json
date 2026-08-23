@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature192Contract",
+  "description": "Contract for Feature 192 CLI realignment, legacy adapter purge, and scripts cleanup.",
+  "type": "object",
+  "required": [
+    "cli_domain_realigned",
+    "legacy_adapters_purged",
+    "scripts_consolidated",
+    "zero_regression"
+  ],
+  "properties": {
+    "cli_domain_realigned": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "legacy_adapters_purged": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "scripts_consolidated": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

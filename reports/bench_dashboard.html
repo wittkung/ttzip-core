@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTZip Native Codec Matrix Dashboard</title>
+<style>
+  body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; background: #0B0F19; color: #F1F5F9; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 16px; margin-bottom: 24px; }
+  .title-group h1 { margin: 0; font-size: 24px; color: #38BDF8; font-weight: 700; }
+  .title-group p { margin: 4px 0 0; font-size: 13px; color: #94A3B8; }
+  .badge { background: #10B98122; color: #10B981; border: 1px solid #10B98144; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { background: #1E293B; border-radius: 12px; padding: 18px; border: 1px solid #334155; box-shadow: 0 4px 12px #00000033; }
+  .card-label { font-size: 12px; color: #94A3B8; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+  .card-val { font-size: 24px; font-weight: 800; color: #F8FAFC; }
+  .chart-card { background: #1E293B; border-radius: 12px; padding: 16px; border: 1px solid #334155; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #334155; }
+  th { background: #0F172A; color: #94A3B8; font-weight: 600; }
+  tr:hover { background: #33415544; }
+  .pareto-tag { background: #F59E0B22; color: #F59E0B; border: 1px solid #F59E0B44; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title-group">
+      <h1>TTZip Multi-Codec Benchmark Dashboard</h1>
+      <p>Corpus: Calgary (English Text & Source) (64 KB) | 50-Point Matrix Gate</p>
+    </div>
+    <div><span class="badge">Gate Passed: 60 Points</span></div>
+  </div>
+  <div class="kpi-grid">
+    <div class="card"><div class="card-label">Evaluated Points</div><div class="card-val">60</div></div>
+    <div class="card"><div class="card-label">Pareto Optimal</div><div class="card-val" style="color:#F59E0B;">10</div></div>
+    <div class="card"><div class="card-label">Peak Comp Speed</div><div class="card-val" style="color:#38BDF8;">21426.1 MB/s</div></div>
+    <div class="card"><div class="card-label">Peak Decomp Speed</div><div class="card-val" style="color:#10B981;">24196.7 MB/s</div></div>
+    <div class="card"><div class="card-label">Max Space Savings</div><div class="card-val" style="color:#EC4899;">99.6%</div></div>
+  </div>
+  <div class="chart-card">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="100%" height="100%" style="background:#0F172A;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;">
+<g stroke="#334155" stroke-width="1" stroke-dasharray="3,3" opacity="0.6">
+  <line x1="80.0" y1="415.0" x2="910.0" y2="415.0"/>
+  <text x="70.0" y="415.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">0%</text>
+  <line x1="80.0" y1="344.0" x2="910.0" y2="344.0"/>
+  <text x="70.0" y="344.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">20%</text>
+  <line x1="80.0" y1="273.0" x2="910.0" y2="273.0"/>
+  <text x="70.0" y="273.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">40%</text>
+  <line x1="80.0" y1="202.0" x2="910.0" y2="202.0"/>
+  <text x="70.0" y="202.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">60%</text>
+  <line x1="80.0" y1="131.0" x2="910.0" y2="131.0"/>
+  <text x="70.0" y="131.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">80%</text>
+  <line x1="80.0" y1="60.0" x2="910.0" y2="60.0"/>
+  <text x="70.0" y="60.0" fill="#64748B" font-size="11" text-anchor="end" alignment-baseline="middle">100%</text>
+  <line x1="80.0" y1="60.0" x2="80.0" y2="415.0"/>
+  <text x="80.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">0</text>
+  <line x1="246.0" y1="60.0" x2="246.0" y2="415.0"/>
+  <text x="246.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">4928</text>
+  <line x1="412.0" y1="60.0" x2="412.0" y2="415.0"/>
+  <text x="412.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">9856</text>
+  <line x1="578.0" y1="60.0" x2="578.0" y2="415.0"/>
+  <text x="578.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">14784</text>
+  <line x1="744.0" y1="60.0" x2="744.0" y2="415.0"/>
+  <text x="744.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">19712</text>
+  <line x1="910.0" y1="60.0" x2="910.0" y2="415.0"/>
+  <text x="910.0" y="435.0" fill="#64748B" font-size="11" text-anchor="middle">24640</text>
+</g>
+<text x="80.0" y="32" fill="#F8FAFC" font-size="16" font-weight="bold">TTZip Pareto Frontier: Calgary (English Text & Source)</text>
+<text x="495.0" y="465.0" fill="#94A3B8" font-size="12" text-anchor="middle">Compression Throughput (MB/s)</text>
+<text x="20" y="237.5" fill="#94A3B8" font-size="12" text-anchor="middle" transform="rotate(-90 20 237.5)">Space Savings (%)</text>
+<path d="M 81.25,61.49 C 86.50,61.97 91.75,62.55 97.00,62.94 C 103.18,63.39 109.36,63.95 115.53,63.95 C 116.72,63.95 117.92,63.95 119.11,63.95 C 129.14,63.95 139.18,64.02 149.22,64.08 C 175.25,64.23 201.28,68.65 227.32,66.36 C 230.85,66.06 234.37,62.03 237.90,62.03 C 238.23,62.03 238.56,62.03 238.89,62.03 C 354.34,62.03 469.79,79.20 585.23,79.20 C 599.91,79.20 614.58,69.24 629.26,64.26" fill="none" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" opacity="0.9" filter="drop-shadow(0 0 6px #F59E0B88)"/>
+<circle cx="227.3" cy="66.4" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L1: 4373.4 MB/s, 98.2% savings (Rank 1)</title>
+</circle>
+<circle cx="149.2" cy="64.1" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L2: 2054.8 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="115.5" cy="64.0" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L3: 1054.9 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="120.5" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L4: 1201.0 MB/s, 98.9% savings (Rank 2)</title>
+</circle>
+<circle cx="119.1" cy="64.0" r="6.5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Libdeflate L5: 1161.0 MB/s, 98.9% savings (Rank 1)</title>
+</circle>
+<circle cx="124.6" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L6: 1325.1 MB/s, 98.9% savings (Rank 2)</title>
+</circle>
+<circle cx="124.9" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L7: 1332.2 MB/s, 98.9% savings (Rank 3)</title>
+</circle>
+<circle cx="125.1" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L8: 1338.1 MB/s, 98.9% savings (Rank 3)</title>
+</circle>
+<circle cx="125.4" cy="64.0" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L9: 1348.9 MB/s, 98.9% savings (Rank 4)</title>
+</circle>
+<circle cx="84.3" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L10: 127.3 MB/s, 98.9% savings (Rank 5)</title>
+</circle>
+<circle cx="84.3" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L11: 128.1 MB/s, 98.9% savings (Rank 6)</title>
+</circle>
+<circle cx="83.3" cy="63.9" r="4.0" fill="#3B82F6" stroke="#1E293B" stroke-width="1.0">
+  <title>Libdeflate L12: 99.0 MB/s, 98.9% savings (Rank 7)</title>
+</circle>
+<circle cx="388.1" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L1: 9146.8 MB/s, 99.4% savings (Rank 8)</title>
+</circle>
+<circle cx="438.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L2: 10638.3 MB/s, 99.4% savings (Rank 9)</title>
+</circle>
+<circle cx="430.9" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L3: 10416.7 MB/s, 99.4% savings (Rank 10)</title>
+</circle>
+<circle cx="426.0" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L4: 10272.8 MB/s, 99.4% savings (Rank 11)</title>
+</circle>
+<circle cx="294.1" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L5: 6356.1 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="246.2" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L6: 4934.5 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="238.9" cy="62.0" r="6.5" fill="#10B981" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Zstd L7: 4717.0 MB/s, 99.4% savings (Rank 1)</title>
+</circle>
+<circle cx="241.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L8: 4792.6 MB/s, 99.4% savings (Rank 2)</title>
+</circle>
+<circle cx="239.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L9: 4732.0 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="237.9" cy="62.0" r="6.5" fill="#10B981" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Zstd L10: 4687.6 MB/s, 99.4% savings (Rank 1)</title>
+</circle>
+<circle cx="320.6" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L11: 7142.9 MB/s, 99.4% savings (Rank 2)</title>
+</circle>
+<circle cx="330.1" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L12: 7425.4 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="145.6" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L13: 1948.1 MB/s, 99.4% savings (Rank 12)</title>
+</circle>
+<circle cx="137.5" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L14: 1708.4 MB/s, 99.4% savings (Rank 13)</title>
+</circle>
+<circle cx="144.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L15: 1910.8 MB/s, 99.4% savings (Rank 14)</title>
+</circle>
+<circle cx="129.1" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L16: 1457.7 MB/s, 99.4% savings (Rank 15)</title>
+</circle>
+<circle cx="133.9" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L17: 1600.8 MB/s, 99.4% savings (Rank 4)</title>
+</circle>
+<circle cx="134.2" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L18: 1609.4 MB/s, 99.4% savings (Rank 5)</title>
+</circle>
+<circle cx="123.4" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L19: 1288.7 MB/s, 99.4% savings (Rank 6)</title>
+</circle>
+<circle cx="123.7" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L20: 1297.6 MB/s, 99.4% savings (Rank 16)</title>
+</circle>
+<circle cx="120.0" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L21: 1187.6 MB/s, 99.4% savings (Rank 7)</title>
+</circle>
+<circle cx="123.5" cy="62.0" r="4.0" fill="#10B981" stroke="#1E293B" stroke-width="1.0">
+  <title>Zstd L22: 1290.9 MB/s, 99.4% savings (Rank 17)</title>
+</circle>
+<circle cx="590.4" cy="64.1" r="4.0" fill="#06B6D4" stroke="#1E293B" stroke-width="1.0">
+  <title>LZ4 Fast 1: 15151.5 MB/s, 98.8% savings (Rank 18)</title>
+</circle>
+<circle cx="629.3" cy="64.3" r="6.5" fill="#06B6D4" stroke="#FFFFFF" stroke-width="2.0">
+  <title>LZ4 Fast 3: 16305.8 MB/s, 98.8% savings (Rank 1)</title>
+</circle>
+<circle cx="801.7" cy="64.4" r="4.0" fill="#06B6D4" stroke="#1E293B" stroke-width="1.0">
+  <title>LZ4 Fast 9: 21426.1 MB/s, 98.8% savings (Rank 12)</title>
+</circle>
+<circle cx="97.0" cy="62.9" r="6.5" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Apple LZFSE: 504.7 MB/s, 99.2% savings (Rank 1)</title>
+</circle>
+<circle cx="585.2" cy="79.2" r="6.5" fill="#8B5CF6" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Snappy: 14998.8 MB/s, 94.6% savings (Rank 1)</title>
+</circle>
+<circle cx="93.3" cy="96.3" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q0: 394.9 MB/s, 89.8% savings (Rank 19)</title>
+</circle>
+<circle cx="99.1" cy="93.9" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q1: 568.4 MB/s, 90.5% savings (Rank 2)</title>
+</circle>
+<circle cx="106.4" cy="62.1" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q2: 784.9 MB/s, 99.4% savings (Rank 13)</title>
+</circle>
+<circle cx="106.9" cy="62.0" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q3: 800.0 MB/s, 99.4% savings (Rank 3)</title>
+</circle>
+<circle cx="105.5" cy="61.9" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q4: 757.2 MB/s, 99.5% savings (Rank 20)</title>
+</circle>
+<circle cx="100.1" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q5: 595.2 MB/s, 99.5% savings (Rank 4)</title>
+</circle>
+<circle cx="97.8" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q6: 529.7 MB/s, 99.5% savings (Rank 5)</title>
+</circle>
+<circle cx="93.9" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q7: 413.2 MB/s, 99.5% savings (Rank 14)</title>
+</circle>
+<circle cx="90.9" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q8: 324.0 MB/s, 99.5% savings (Rank 15)</title>
+</circle>
+<circle cx="86.1" cy="61.8" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q9: 179.7 MB/s, 99.5% savings (Rank 15)</title>
+</circle>
+<circle cx="81.3" cy="61.5" r="6.5" fill="#EC4899" stroke="#FFFFFF" stroke-width="2.0">
+  <title>Brotli Q10: 37.2 MB/s, 99.6% savings (Rank 1)</title>
+</circle>
+<circle cx="81.0" cy="61.5" r="4.0" fill="#EC4899" stroke="#1E293B" stroke-width="1.0">
+  <title>Brotli Q11: 30.9 MB/s, 99.6% savings (Rank 2)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L1: 10.5 MB/s, 98.6% savings (Rank 19)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L2: 10.7 MB/s, 98.6% savings (Rank 20)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L3: 10.6 MB/s, 98.6% savings (Rank 21)</title>
+</circle>
+<circle cx="80.3" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L4: 10.4 MB/s, 98.6% savings (Rank 22)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L5: 10.7 MB/s, 98.6% savings (Rank 23)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L6: 10.7 MB/s, 98.6% savings (Rank 24)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L7: 10.7 MB/s, 98.6% savings (Rank 25)</title>
+</circle>
+<circle cx="80.3" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L8: 9.7 MB/s, 98.6% savings (Rank 26)</title>
+</circle>
+<circle cx="80.4" cy="65.0" r="4.0" fill="#EF4444" stroke="#1E293B" stroke-width="1.0">
+  <title>Bzip2 L9: 10.8 MB/s, 98.6% savings (Rank 27)</title>
+</circle>
+</svg>  </div>
+  <div class="card">
+    <div class="card-label">Matrix Benchmark Points</div>
+    <table>
+      <thead><tr><th>Algorithm</th><th>Level</th><th>Original</th><th>Compressed</th><th>Savings (%)</th><th>Comp Speed</th><th>Decomp Speed</th><th>Pareto</th></tr></thead>
+      <tbody>
+        <tr><td><b>Libdeflate</b></td><td>1</td><td>65536 B</td><td>1175 B</td><td>98.2%</td><td>4373.4 MB/s</td><td>11998.5 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>2</td><td>65536 B</td><td>753 B</td><td>98.9%</td><td>2054.8 MB/s</td><td>15151.5 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>3</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1054.9 MB/s</td><td>15790.8 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>4</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1201.0 MB/s</td><td>16129.0 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>5</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1161.0 MB/s</td><td>16305.8 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>6</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1325.1 MB/s</td><td>16486.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>7</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1332.2 MB/s</td><td>16482.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>8</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1338.1 MB/s</td><td>16129.0 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>9</td><td>65536 B</td><td>730 B</td><td>98.9%</td><td>1348.9 MB/s</td><td>16486.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>10</td><td>65536 B</td><td>729 B</td><td>98.9%</td><td>127.3 MB/s</td><td>13157.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>11</td><td>65536 B</td><td>727 B</td><td>98.9%</td><td>128.1 MB/s</td><td>15151.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Libdeflate</b></td><td>12</td><td>65536 B</td><td>727 B</td><td>98.9%</td><td>99.0 MB/s</td><td>14852.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>1</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>9146.8 MB/s</td><td>18751.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>2</td><td>65536 B</td><td>373 B</td><td>99.4%</td><td>10638.3 MB/s</td><td>21426.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>3</td><td>65536 B</td><td>373 B</td><td>99.4%</td><td>10416.7 MB/s</td><td>21433.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>4</td><td>65536 B</td><td>377 B</td><td>99.4%</td><td>10272.8 MB/s</td><td>20833.3 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>5</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>6356.1 MB/s</td><td>12603.3 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>6</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>4934.5 MB/s</td><td>20545.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>7</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>4717.0 MB/s</td><td>20545.7 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>8</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>4792.6 MB/s</td><td>20545.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>9</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>4732.0 MB/s</td><td>20545.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>10</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>4687.6 MB/s</td><td>20000.0 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>11</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>7142.9 MB/s</td><td>20272.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>12</td><td>65536 B</td><td>375 B</td><td>99.4%</td><td>7425.4 MB/s</td><td>20000.0 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>13</td><td>65536 B</td><td>372 B</td><td>99.4%</td><td>1948.1 MB/s</td><td>20265.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>14</td><td>65536 B</td><td>372 B</td><td>99.4%</td><td>1708.4 MB/s</td><td>20552.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>15</td><td>65536 B</td><td>372 B</td><td>99.4%</td><td>1910.8 MB/s</td><td>20272.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>16</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1457.7 MB/s</td><td>21129.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>17</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1600.8 MB/s</td><td>21129.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>18</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1609.4 MB/s</td><td>21129.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>19</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1288.7 MB/s</td><td>20545.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>20</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1297.6 MB/s</td><td>19482.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>21</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1187.6 MB/s</td><td>19476.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Zstd</b></td><td>22</td><td>65536 B</td><td>371 B</td><td>99.4%</td><td>1290.9 MB/s</td><td>18985.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>LZ4</b></td><td>1</td><td>65536 B</td><td>756 B</td><td>98.8%</td><td>15151.5 MB/s</td><td>18751.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>LZ4</b></td><td>3</td><td>65536 B</td><td>787 B</td><td>98.8%</td><td>16305.8 MB/s</td><td>24196.7 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>LZ4</b></td><td>9</td><td>65536 B</td><td>810 B</td><td>98.8%</td><td>21426.1 MB/s</td><td>24187.3 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>LZFSE</b></td><td>1</td><td>65536 B</td><td>542 B</td><td>99.2%</td><td>504.7 MB/s</td><td>10790.7 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Snappy</b></td><td>1</td><td>65536 B</td><td>3545 B</td><td>94.6%</td><td>14998.8 MB/s</td><td>20552.4 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>0</td><td>65536 B</td><td>6699 B</td><td>89.8%</td><td>394.9 MB/s</td><td>531.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>1</td><td>65536 B</td><td>6250 B</td><td>90.5%</td><td>568.4 MB/s</td><td>513.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>2</td><td>65536 B</td><td>380 B</td><td>99.4%</td><td>784.9 MB/s</td><td>1356.2 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>3</td><td>65536 B</td><td>365 B</td><td>99.4%</td><td>800.0 MB/s</td><td>1424.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>4</td><td>65536 B</td><td>347 B</td><td>99.5%</td><td>757.2 MB/s</td><td>1390.2 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>5</td><td>65536 B</td><td>330 B</td><td>99.5%</td><td>595.2 MB/s</td><td>1329.8 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>6</td><td>65536 B</td><td>330 B</td><td>99.5%</td><td>529.7 MB/s</td><td>1394.0 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>7</td><td>65536 B</td><td>330 B</td><td>99.5%</td><td>413.2 MB/s</td><td>1350.2 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>8</td><td>65536 B</td><td>330 B</td><td>99.5%</td><td>324.0 MB/s</td><td>1399.2 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>9</td><td>65536 B</td><td>330 B</td><td>99.5%</td><td>179.7 MB/s</td><td>1342.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>10</td><td>65536 B</td><td>275 B</td><td>99.6%</td><td>37.2 MB/s</td><td>909.6 MB/s</td><td><span class="pareto-tag">Optimal (Rank 1)</span></td></tr>
+        <tr><td><b>Brotli</b></td><td>11</td><td>65536 B</td><td>278 B</td><td>99.6%</td><td>30.9 MB/s</td><td>1372.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>1</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.5 MB/s</td><td>243.6 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>2</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.7 MB/s</td><td>241.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>3</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.6 MB/s</td><td>238.7 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>4</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.4 MB/s</td><td>239.5 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>5</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.7 MB/s</td><td>244.6 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>6</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.7 MB/s</td><td>236.4 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>7</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.7 MB/s</td><td>243.9 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>8</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>9.7 MB/s</td><td>236.1 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+        <tr><td><b>Bzip2</b></td><td>9</td><td>65536 B</td><td>923 B</td><td>98.6%</td><td>10.8 MB/s</td><td>238.8 MB/s</td><td><span style="color:#64748B;">Dominated</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

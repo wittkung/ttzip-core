@@ -1,0 +1,95 @@
+name: Wrapper Go
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
+          - os: macos-26
+          - os: windows-latest
+          - os: windows-11-arm
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Latest Compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "CC=gcc-14" >> $GITHUB_ENV
+          echo "CXX=g++-14" >> $GITHUB_ENV
+          gcc-14 --version
+
+      - name: Select Latest Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.4.app
+          clang --version
+
+      - name: Install llvm-mingw (Windows ARM64)
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          $LLVM_MINGW_URL = "https://github.com/mstorsjo/llvm-mingw/releases/download/20260407/llvm-mingw-20260407-ucrt-aarch64.zip"
+          Invoke-WebRequest -Uri $LLVM_MINGW_URL -OutFile llvm-mingw.zip
+          Expand-Archive llvm-mingw.zip -DestinationPath C:\llvm-mingw
+          $MINGW_BIN = "C:\llvm-mingw\llvm-mingw-20260407-ucrt-aarch64\bin"
+          echo "$MINGW_BIN" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "CC=aarch64-w64-mingw32-gcc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.21'
+          cache: false
+
+      - name: Build ZXC Core Library (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DZXC_BUILD_CLI=OFF -DZXC_BUILD_TESTS=OFF
+          cmake --build build --parallel
+
+      - name: Build ZXC Core Library (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DZXC_BUILD_CLI=OFF -DZXC_BUILD_TESTS=OFF
+          cmake --build build --parallel
+
+      - name: Run Go Tests (Unix)
+        if: runner.os != 'Windows'
+        working-directory: ./wrappers/go
+        run: CGO_ENABLED=1 CGO_LDFLAGS="-L../../build -lzxc -lpthread" go test -v -count=1 ./...
+
+      - name: Run Go Tests (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ./wrappers/go
+        env:
+          CGO_ENABLED: "1"
+          CGO_LDFLAGS: "-L../../build -lzxc"
+        run: go test -v -count=1 ./...
+
+      - name: Run Go Benchmarks (Unix)
+        if: runner.os != 'Windows'
+        working-directory: ./wrappers/go
+        run: CGO_ENABLED=1 CGO_LDFLAGS="-L../../build -lzxc -lpthread" go test -bench=. -benchmem -count=1 ./...
+
+      - name: Run Go Benchmarks (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ./wrappers/go
+        env:
+          CGO_ENABLED: "1"
+          CGO_LDFLAGS: "-L../../build -lzxc"
+        run: go test -bench=. -benchmem -count=1 ./...

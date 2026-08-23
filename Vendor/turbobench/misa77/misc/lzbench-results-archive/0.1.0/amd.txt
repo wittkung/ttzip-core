@@ -1,0 +1,17 @@
+| Compressor name          | Compression | Decompress. | Ratio | Filename    |
+| ------------------------ | ----------- | ----------- | ----- | ----------- |
+| lz4 1.10.0               |    693 MB/s |   4455 MB/s | 47.59 | silesia.tar |
+| lz4hc 1.10.0 -12         |   12.8 MB/s |   4326 MB/s | 36.45 | silesia.tar |
+| misa77 0.1.0             |   71.3 MB/s |   6220 MB/s | 39.62 | silesia.tar |
+| misa77 0.1.0 yolo        |   13.7 MB/s |   7832 MB/s | 42.75 | silesia.tar |
+| lzsse4fast 2019-04-18    |    323 MB/s |   4195 MB/s | 45.26 | silesia.tar |
+| lzsse8fast 2019-04-18    |    311 MB/s |   4416 MB/s | 44.80 | silesia.tar |
+| snappy 1.2.2             |    691 MB/s |   1355 MB/s | 47.85 | silesia.tar |
+| lzav 5.9 -1              |    506 MB/s |   3208 MB/s | 39.93 | silesia.tar |
+| lzav 5.9 -2              |   92.4 MB/s |   3049 MB/s | 35.12 | silesia.tar |
+| zxc 0.12.0 -3            |    213 MB/s |   4935 MB/s | 45.99 | silesia.tar |
+| zxc 0.12.0 -4            |    151 MB/s |   4776 MB/s | 43.04 | silesia.tar |
+| zxc 0.12.0 -5            |   87.3 MB/s |   4570 MB/s | 40.29 | silesia.tar |
+| zstd 1.5.7 -1            |    491 MB/s |   1598 MB/s | 34.55 | silesia.tar |
+| zstd 1.5.7 -3            |    290 MB/s |   1428 MB/s | 31.20 | silesia.tar |
+| lizard 2.1 -10           |    573 MB/s |   2887 MB/s | 48.78 | silesia.tar |

@@ -1,0 +1,199 @@
+name: Fuzzing
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Fuzzing mode'
+        required: true
+        default: 'batch'
+        type: choice
+        options:
+        - code-change
+        - batch
+      fuzz_seconds:
+        description: 'Duration (seconds)'
+        required: true
+        default: '7200'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/fuzz_*.c'
+      - '.clusterfuzzlite/**'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzzing:
+    name: Run Fuzzing (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    # TODO: Remove this step once ClusterFuzzLite updates to support Docker 29+
+    - name: Downgrade Docker (Temporary Workaround)
+      run: |
+        # ClusterFuzzLite v1 uses Docker API 1.41 which is incompatible with Docker 29.0+
+        # Downgrade to Docker 28 until the action is updated
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update
+        # Install Docker 28.0.4 specifically
+        sudo apt-get install -y --allow-downgrades docker-ce=5:28.0.4-1~ubuntu.$(lsb_release -rs)~$(lsb_release -cs) docker-ce-cli=5:28.0.4-1~ubuntu.$(lsb_release -rs)~$(lsb_release -cs) containerd.io
+        sudo systemctl restart docker
+        docker version
+
+    - name: Build Fuzzers (${{ matrix.sanitizer }})
+      id: build
+      uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        language: c
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        sanitizer: ${{ matrix.sanitizer }}
+
+    - name: Run Fuzzers (${{ matrix.sanitizer }})
+      id: run
+      uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        mode: ${{ github.event_name == 'pull_request' && 'code-change' || inputs.mode || 'batch' }}
+        fuzz-seconds: ${{ github.event_name == 'pull_request' && 300 || inputs.fuzz_seconds || 7200 }}
+        sanitizer: ${{ matrix.sanitizer }}
+        output-sarif: true
+        storage-repo: https://${{ secrets.CFLITE_CORPUS_TOKEN }}@github.com/hellobertrand/zxc-fuzz-corpus.git
+        storage-repo-branch: main
+
+    - name: Upload SARIF to GitHub Security
+      if: success() || failure()
+      uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+      with:
+        sarif_file: .
+        category: clusterfuzzlite-${{ matrix.sanitizer }}
+
+  tsan:
+    name: Thread Sanitizer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build with TSan
+        run: |
+          cmake -B build -DCMAKE_C_FLAGS="-fsanitize=thread -g -fno-omit-frame-pointer" -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build
+      - name: Run Tests
+        run: ctest --test-dir build --output-on-failure
+
+  coverage:
+    name: Fuzz Coverage Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install LLVM Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq llvm
+
+      - name: Clone Fuzz Corpus
+        env:
+          CORPUS_TOKEN: ${{ secrets.CFLITE_CORPUS_TOKEN }}
+        run: |
+          git clone --depth=1 \
+            "https://${CORPUS_TOKEN}@github.com/hellobertrand/zxc-fuzz-corpus.git" \
+            corpus
+          echo "roundtrip inputs: $(find corpus/corpus/zxc_fuzzer_roundtrip -type f | wc -l)"
+          echo "decompress inputs: $(find corpus/corpus/zxc_fuzzer_decompress -type f | wc -l)"
+          echo "seekable inputs: $(find corpus/corpus/zxc_fuzzer_seekable -type f | wc -l)"
+          echo "pstream inputs: $(find corpus/corpus/zxc_fuzzer_pstream -type f | wc -l)"
+          echo "dict inputs: $(find corpus/corpus/zxc_fuzzer_dict -type f | wc -l)"
+
+      - name: Build Coverage Harnesses
+        run: |
+          mkdir -p build-cov
+          CFLAGS="-g -O1 -fprofile-instr-generate -fcoverage-mapping"
+          DEFS="-DZXC_FUNCTION_SUFFIX=_default -DZXC_ONLY_DEFAULT"
+          INCLUDES="-I include -I src/lib/vendors"
+          SOURCES="src/lib/zxc_common.c src/lib/zxc_compress.c src/lib/zxc_decompress.c src/lib/zxc_dict.c src/lib/zxc_driver.c src/lib/zxc_dispatch.c src/lib/zxc_huffman.c src/lib/zxc_pivco_tables.c src/lib/zxc_seekable.c src/lib/zxc_pstream.c"
+
+          clang $CFLAGS $INCLUDES $DEFS $SOURCES tests/fuzz_roundtrip.c \
+            -fsanitize=fuzzer -lm -lpthread -o build-cov/fuzz_roundtrip
+
+          clang $CFLAGS $INCLUDES $DEFS $SOURCES tests/fuzz_decompress.c \
+            -fsanitize=fuzzer -lm -lpthread -o build-cov/fuzz_decompress
+
+          clang $CFLAGS $INCLUDES $DEFS $SOURCES tests/fuzz_seekable.c \
+            -fsanitize=fuzzer -lm -lpthread -o build-cov/fuzz_seekable
+
+          clang $CFLAGS $INCLUDES $DEFS $SOURCES tests/fuzz_pstream.c \
+            -fsanitize=fuzzer -lm -lpthread -o build-cov/fuzz_pstream
+
+          clang $CFLAGS $INCLUDES $DEFS $SOURCES tests/fuzz_dict.c \
+            -fsanitize=fuzzer -lm -lpthread -o build-cov/fuzz_dict
+
+      - name: Replay Corpora
+        run: |
+          LLVM_PROFILE_FILE="build-cov/roundtrip.profraw" \
+            build-cov/fuzz_roundtrip corpus/corpus/zxc_fuzzer_roundtrip/ -runs=0 2>&1 | tail -1
+          LLVM_PROFILE_FILE="build-cov/decompress.profraw" \
+            build-cov/fuzz_decompress corpus/corpus/zxc_fuzzer_decompress/ -runs=0 2>&1 | tail -1
+          if [ -d corpus/corpus/zxc_fuzzer_seekable ]; then
+            LLVM_PROFILE_FILE="build-cov/seekable.profraw" \
+              build-cov/fuzz_seekable corpus/corpus/zxc_fuzzer_seekable/ -runs=0 2>&1 | tail -1
+          fi
+          if [ -d corpus/corpus/zxc_fuzzer_pstream ]; then
+            LLVM_PROFILE_FILE="build-cov/pstream.profraw" \
+              build-cov/fuzz_pstream corpus/corpus/zxc_fuzzer_pstream/ -runs=0 2>&1 | tail -1
+          fi
+          if [ -d corpus/corpus/zxc_fuzzer_dict ]; then
+            LLVM_PROFILE_FILE="build-cov/dict.profraw" \
+              build-cov/fuzz_dict corpus/corpus/zxc_fuzzer_dict/ -runs=0 2>&1 | tail -1
+          fi
+
+      - name: Generate Coverage Report
+        run: |
+          llvm-profdata merge \
+            build-cov/roundtrip.profraw build-cov/decompress.profraw \
+            $([ -f build-cov/seekable.profraw ] && echo build-cov/seekable.profraw) \
+            $([ -f build-cov/pstream.profraw ] && echo build-cov/pstream.profraw) \
+            $([ -f build-cov/dict.profraw ] && echo build-cov/dict.profraw) \
+            -o build-cov/fuzz.profdata
+
+          echo "=== COVERAGE SUMMARY ==="
+          llvm-cov report \
+            build-cov/fuzz_roundtrip -object build-cov/fuzz_decompress \
+            $([ -f build-cov/fuzz_seekable ] && echo "-object build-cov/fuzz_seekable") \
+            $([ -f build-cov/fuzz_pstream ] && echo "-object build-cov/fuzz_pstream") \
+            $([ -f build-cov/fuzz_dict ] && echo "-object build-cov/fuzz_dict") \
+            -instr-profile=build-cov/fuzz.profdata \
+            --ignore-filename-regex='(vendors/|tests/|fuzz_|zxc_driver)'
+
+          llvm-cov show \
+            build-cov/fuzz_roundtrip -object build-cov/fuzz_decompress \
+            $([ -f build-cov/fuzz_seekable ] && echo "-object build-cov/fuzz_seekable") \
+            $([ -f build-cov/fuzz_pstream ] && echo "-object build-cov/fuzz_pstream") \
+            $([ -f build-cov/fuzz_dict ] && echo "-object build-cov/fuzz_dict") \
+            -instr-profile=build-cov/fuzz.profdata \
+            --ignore-filename-regex='(vendors/|tests/|fuzz_|zxc_driver)' \
+            --format=html -output-dir=build-cov/coverage_html
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-coverage-report
+          path: build-cov/coverage_html/
+          retention-days: 30

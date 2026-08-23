@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HuffmanCostEvaluationResponse",
+  "description": "Response model for Huffman bit cost evaluation results",
+  "type": "object",
+  "properties": {
+    "static_bit_cost": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total estimated bits under static Huffman codes"
+    },
+    "dynamic_bit_cost": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total estimated bits under dynamic Huffman codes (including header)"
+    },
+    "selected_mode": {
+      "type": "string",
+      "enum": [
+        "static",
+        "dynamic"
+      ],
+      "description": "Chosen encoding mode"
+    }
+  },
+  "required": [
+    "static_bit_cost",
+    "dynamic_bit_cost",
+    "selected_mode"
+  ],
+  "additionalProperties": false
+}

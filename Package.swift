@@ -1,23 +1,39 @@
 // swift-tools-version: 6.0
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
 
 import PackageDescription
 
 let package = Package(
-    name: "TTZipCore",
+    name: "TTZip",
     platforms: [
-        .macOS(.v14),
-        .iOS(.v17),
-        .visionOS(.v1)
+        .macOS(.v14)
     ],
     products: [
-        .library(name: "TTZipCore", targets: ["TTZipCore"]),
-        .library(name: "CTTZipBridge", targets: ["CTTZipBridge"]),
-        .executable(name: "ttzip-bench", targets: ["ttzip-bench"])
+        .library(
+            name: "TTZipCore",
+            targets: ["TTZipCore"]
+        ),
+        .executable(
+            name: "TTZipApp",
+            targets: ["TTZipApp"]
+        ),
+        .library(
+            name: "TTZipQuickLook",
+            type: .dynamic,
+            targets: ["TTZipQuickLook"]
+        ),
+        .library(
+            name: "TTZipFinderSync",
+            type: .dynamic,
+            targets: ["TTZipFinderSync"]
+        ),
+        .executable(
+            name: "ttzip-bench",
+            targets: ["TTZipBench"]
+        )
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.6.0")
+    ],
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
@@ -26,11 +42,9 @@ let package = Package(
         .target(
             name: "CTTZipBridge",
             dependencies: ["TTZipVendor"],
-            path: "Sources/CTTZipBridge",
             publicHeadersPath: "include",
             cSettings: [
-                .headerSearchPath("include"),
-                .unsafeFlags(["-O3", "-fno-strict-aliasing"])
+                .headerSearchPath("include")
             ],
             linkerSettings: [
                 .linkedLibrary("bz2"),
@@ -42,24 +56,58 @@ let package = Package(
         ),
         .target(
             name: "TTZipCore",
-            dependencies: ["CTTZipBridge", "TTZipVendor"],
-            path: "Sources/TTZipCore",
+            dependencies: ["CTTZipBridge"],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
             ]
         ),
         .executableTarget(
-            name: "ttzip-bench",
-            dependencies: ["TTZipCore", "CTTZipBridge"],
-            path: "Sources/TTZipBench"
+            name: "TTZipApp",
+            dependencies: [
+                "TTZipCore",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
+            exclude: ["Info.plist", "TTZip.entitlements", "TTZip-Direct.entitlements"],
+            resources: [
+                .copy("Resources/AppIcon.icns"),
+                .process("Resources/Assets.xcassets")
+            ]
+        ),
+        .target(
+            name: "TTZipQuickLook",
+            dependencies: ["TTZipCore"],
+            exclude: ["Info.plist"]
+        ),
+        .target(
+            name: "TTZipFinderSync",
+            dependencies: ["TTZipCore"],
+            exclude: ["Info.plist"]
+        ),
+        .executableTarget(
+            name: "TTZipBench",
+            dependencies: [
+                "TTZipCore",
+                "CTTZipBridge"
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
+            ]
         ),
         .testTarget(
             name: "TTZipTests",
-            dependencies: ["TTZipCore", "CTTZipBridge"],
-            path: "Tests/TTZipTests",
+            dependencies: [
+                "TTZipCore"
+            ],
             resources: [
                 .copy("Fixtures")
+            ],
+            swiftSettings: [
+                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
             ]
+        ),
+        .testTarget(
+            name: "TTZipAppTests",
+            dependencies: ["TTZipCore", "TTZipApp"]
         )
     ]
 )

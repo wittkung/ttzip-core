@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature191Contract",
+  "description": "Contract for Feature 191 full benchmark engine sinking to Rust.",
+  "type": "object",
+  "required": [
+    "rust_benchmark_suite_implemented",
+    "swift_bench_thinned_to_single_file",
+    "zero_regression"
+  ],
+  "properties": {
+    "rust_benchmark_suite_implemented": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "swift_bench_thinned_to_single_file": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

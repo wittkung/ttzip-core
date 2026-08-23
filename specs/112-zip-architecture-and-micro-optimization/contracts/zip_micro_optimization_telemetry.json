@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZipMicroOptimizationTelemetry",
+  "description": "Schema for physical telemetry and micro-optimization performance regression data",
+  "type": "object",
+  "required": [
+    "taskID",
+    "heapAllocationsCount",
+    "pwriteSyscallsCount",
+    "totalDurationMs",
+    "throughputMBs",
+    "spaceSavingsPct",
+    "cacheHitRateEpoch",
+    "neonMatchCalls"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "taskID": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique task identifier"
+    },
+    "heapAllocationsCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of heap memory allocations during hot-path compression"
+    },
+    "pwriteSyscallsCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total count of physical write system calls executed"
+    },
+    "totalDurationMs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Total execution duration in milliseconds"
+    },
+    "throughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Physical throughput in megabytes per second"
+    },
+    "spaceSavingsPct": {
+      "type": "number",
+      "minimum": -10.0,
+      "maximum": 100.0,
+      "description": "Percentage of original uncompressed size saved"
+    },
+    "cacheHitRateEpoch": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Epoch-based hash table hit rate"
+    },
+    "neonMatchCalls": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of 128-bit ARM64 NEON vector match evaluations"
+    }
+  }
+}

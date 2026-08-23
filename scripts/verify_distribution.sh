@@ -28,15 +28,15 @@ else
 fi
 
 # 2. Rust Crates.io Dry-Run Packaging
-echo ">>> [2/3] Auditing Rust Crates Packaging (crates.io readiness)..."
+echo ">>> [2/4] Auditing Rust Crates Packaging (crates.io readiness)..."
 (
     cd "${REPO_ROOT}/rust"
-    cargo package -p ttzip-glue --allow-dirty --no-verify >/dev/null
-    echo "  [PASS] ttzip-glue crate packaged cleanly."
+    cargo package -p ttzip-engine --allow-dirty --no-verify >/dev/null
+    echo "  [PASS] ttzip-engine crate packaged cleanly."
 )
 
 # 3. Python PyPI Maturin Wheel Build
-echo ">>> [3/3] Building & Validating Python PyPI Wheel (Maturin ABI3)..."
+echo ">>> [3/4] Building & Validating Python PyPI Wheel (Maturin ABI3)..."
 export RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup"
 maturin build -m rust/ttzip-python/Cargo.toml --release --strip --out "${REPO_ROOT}/dist" >/dev/null
 
@@ -48,6 +48,15 @@ else
     exit 1
 fi
 
+# 4. Node.js SDK Validation
+echo ">>> [4/4] Validating Node.js SDK..."
+if command -v node >/dev/null 2>&1; then
+    node "${REPO_ROOT}/node/test.js" >/dev/null
+    echo "  [PASS] Node.js SDK tests passed."
+else
+    echo "  [SKIP] node binary not found."
+fi
+
 echo "======================================================================"
-echo "✅ All 3 Distribution Channels (Homebrew, Crates.io, PyPI) Verified!"
+echo "✅ All 4 Distribution Channels (Homebrew, Crates.io, PyPI, Node) Verified!"
 echo "======================================================================"

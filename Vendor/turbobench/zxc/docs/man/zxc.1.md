@@ -1,0 +1,173 @@
+# zxc(1)
+
+## NAME
+**zxc**, **unzxc** - Compress or decompress .zxc files
+
+## SYNOPSIS
+**zxc** [*OPTIONS*] [*INPUT-FILE*] [*OUTPUT-FILE*]
+
+**unzxc** is equivalent to **zxc -d**.
+
+## DESCRIPTION
+**zxc** is a command-line interface for the ZXC compression library, a high-performance lossless compression algorithm optimized for maximum decompression throughput.
+
+**zxc** is designed for the *"Write Once, Read Many"* paradigm. It trades compression speed to generate a bitstream specifically structured to maximize decompression speed, effectively offloading complexity from the decoder to the encoder. It aims to provide very high decompression speeds across modern architectures while maintaining competitive compression ratios.
+ZXC is particularly suited for scenarios such as Game Assets, Firmware or App Bundles where data is compressed once on a build server and decompressed millions of times on user devices.
+
+By default, **zxc** compresses a single *INPUT-FILE*. If no *OUTPUT-FILE* is provided, **zxc** will automatically append the `.zxc` extension to the input filename. If no *INPUT-FILE* is provided, **zxc** will read from standard input (`stdin`) and write to standard output (`stdout`).
+
+
+## STANDARD MODES
+
+**-z**, **--compress**
+: Compress FILE. This is the default mode if no mode is specified.
+
+**-d**, **--decompress**
+: Decompress FILE. This is the default mode when **zxc** is invoked under the name **unzxc** (typically an installed symlink). An explicit mode flag still takes precedence.
+
+**-l**, **--list**
+: List archive information, including compressed size, uncompressed size, compression ratio, checksum method, and dictionary ID (if any). Also accepts a `.zxd` dictionary file, in which case it prints the dictionary's `dict_id`.
+
+**--train**
+: Train a dictionary from the input *FILE*s given as training samples. The output path is set with **-o** (see **--output**); when **-o** is omitted, the dictionary is written to `dictionary_<dict_id>.zxd` in the current directory. See **DICTIONARIES**.
+
+**-t**, **--test**
+: Test the integrity of a compressed FILE. It decodes the file and verifies its checksum (if present) without writing any output.
+
+**-b**, **--bench** [*N*]
+: Benchmark in-memory performance. Loads the input file entirely into RAM and measures raw algorithm throughput (default duration is 5 seconds).
+
+## OPTIONS
+
+**-m**, **--multiple**
+: Process multiple files at once. When specified, all subsequent non-option arguments are treated as input files. For each input file, a corresponding `.zxc` file is created (or decompressed into its original name). Output cannot be written to standard output (`stdout`) when this mode is enabled.
+
+**-r**, **--recursive**
+: Recursively process directories. When specified, any directory listed as an argument will be traversed, and all regular files within it will be processed (compressed or decompressed). This option implicitly enables `--multiple` mode.
+
+**-1**..**-7**
+: Set the compression level from 1 (fastest compression) to 7 (maximum density).
+- **-1, -2 (Fast):** Optimized for real-time assets or when compression speed is a priority.
+- **-3 (Default):** Balanced middle-ground offering efficient compression and superior ratio to fast codecs.
+- **-4, -5 (Compact):** Better ratio than LZ4 with faster decoding than Zstd. Suited for embedded systems and firmware.
+- **-6 (Max):** Beats LZ4-HC on both axes — better ratio *and* faster decode — while staying in the multi-GB/s decode class. Best for archival and write-once / read-many workloads where compression time is amortized over many reads.
+- **-7 (Ultra):** Maximum density. A deep optimal parse plus Huffman-coded literals *and* tokens (11-bit codes, decoded via the SIMD-merge PivCo layout) push the ratio past `zstd -1` while still decoding several times faster than it. Choose it when storage or bandwidth dominates but decode must stay fast; compression is the slowest tier.
+
+**-T**, **--threads** *N*
+: Set the number of threads to use for compression and decompression. A value of `0` means auto-detection based on the number of available CPU cores.
+
+**-B**, **--block-size** *SIZE*
+: Set the compression block size. *SIZE* must be a power of two between **4K** and **2M** (e.g. `4K`, `64K`, `256K`, `512K`, `1M`). Smaller blocks reduce memory usage and improve random-access decompression; larger blocks generally yield better compression ratios. The default is **512K**, tuned for bulk/archival workloads where ratio and decompression throughput matter most. This option is only meaningful during compression; the block size is stored in the archive header and automatically used during decompression.
+
+**-C**, **--checksum**
+: Enable block hashing during compression using the rapidhash algorithm. Recommended for data integrity validation. Checksum verification is automatically performed during extraction when enabled.
+
+**-N**, **--no-checksum**
+: Explicitly disable checksum generation.
+
+**-D**, **--dict** *FILE*
+: Use a pre-trained dictionary (`.zxd`) for compression or decompression. On compression, the archive records the dictionary's `dict_id` in its header. On decompression, **-D** is **required** for any archive that was compressed with a dictionary — there is no auto-lookup; without it, decompression fails with a dictionary-required error (see **DICTIONARIES**).
+
+**-o**, **--output** *FILE*
+: Write output to *FILE*. For compression/decompression this overrides the positional *OUTPUT-FILE* (single-file mode only); when omitted the output name is derived from the input. For **--train** it sets the dictionary path: if *FILE* is a directory (or ends with a path separator) the dictionary is saved inside it as `dictionary_<dict_id>.zxd`, otherwise *FILE* is used verbatim; when omitted the dictionary is written to `dictionary_<dict_id>.zxd` in the current directory.
+
+**-S**, **--seekable**
+: Append a seek table to the archive during compression. This transforms the file into a random-access format (Seekable Archive), allowing the decoder to instantly locate and decompress specific blocks in `O(1)` time without reading the entire file. Ideal for compressed filesystems, game assets, and log analysis.
+
+**-k**, **--keep**
+: Keep the input file after an in-place compression or decompression. By default the input is removed **only** when its output name is auto-derived (e.g. `file` → `file.zxc`). When the output is named explicitly — with **-o** or a positional *OUTPUT-FILE* — the input is always kept, so this flag is only needed for the in-place case.
+
+**-f**, **--force**
+: Force overwrite of the *OUTPUT-FILE* if it already exists.
+
+**-c**, **--stdout**
+: Force writing to standard output (`stdout`), even if it is the console.
+
+**-v**, **--verbose**
+: Enable verbose logging mode. Outputs more detailed information during operations.
+
+**-q**, **--quiet**
+: Enable quiet mode, suppressing all non-error output (such as progress bars or real-time statistics).
+
+**-j**, **--json**
+: Output results in JSON format. This is particularly useful for scripting, benchmarking, and the `--list` mode.
+
+**--progress** *MODE*
+: Control the progress display: **auto** (default) shows a progress bar on the standard error stream when it is a terminal and the file is larger than 1 MB; **always** forces progress reporting even when standard error is not a terminal (updates are then printed one per line, at most once per second) or when the size is unknown (stdin input); **never** disables it. **-q** suppresses progress regardless of this option.
+
+## SPECIAL OPTIONS
+
+**-V**, **--version**
+: Display the version of the zxc library and the compiled architecture information, then exit.
+
+**-h**, **--help**
+: Display a help message and exit.
+
+## DICTIONARIES
+
+For workloads compressed in small blocks (4K–128K), a pre-trained dictionary can dramatically improve the compression ratio. The dictionary prefills the LZ77 window at the start of every block, so the benefit is per-block: the smaller the block, the more it relies on the dictionary for early matches.
+
+Dictionaries are external `.zxd` files referenced from the archive header by a 32-bit `dict_id` (a hash of the dictionary content). The `.zxd` extension is cosmetic; a `.zxd` file is identified by its magic word, not its name.
+
+When **--train**'s **-o** targets a directory (or is omitted, defaulting to the current directory), **zxc** names the file `dictionary_<dict_id>.zxd` (the `dict_id` is the lowercase 8-digit hex reported by `zxc -l`). On decompression the dictionary is **not** auto-located: an archive compressed with a dictionary must be decompressed by supplying that dictionary with **-D**, otherwise decompression fails with a dictionary-required error.
+
+If no matching dictionary can be found (or supplied), decompression fails with a dictionary-required error rather than producing corrupt output.
+
+## EXAMPLES
+
+**Compress a file:**
+  zxc data.txt
+
+**Compress a file with high density (Level 6, archival):**
+  zxc -6 data.bin
+
+**Compress a file with maximum density (Level 7, Ultra):**
+  zxc -7 data.bin
+
+**Decompress a file:**
+  zxc -d data.txt.zxc
+
+**Decompress a file using the unzxc alias:**
+  unzxc data.txt.zxc
+
+**Compress multiple files independently:**
+  zxc -m file1.txt file2.txt file3.txt
+
+**Compress all files in a directory recursively:**
+  zxc -r ./my_folder
+
+**Decompress all files in a directory recursively:**
+  zxc -d -r ./my_folder
+
+**Decompress a file to standard output:**
+  zxc -dc data.txt.zxc > data.txt
+
+**List archive information:**
+  zxc -l data.txt.zxc
+
+**Compress with a custom block size (64 KB):**
+  zxc -B 64K data.bin data.zxc
+
+**Compress with maximum block size (2 MB):**
+  zxc -6 -B 2M data.bin data.zxc
+
+**Run a benchmark for 10 seconds:**
+  zxc -b 10 data.txt
+
+**Train a dictionary into a directory (saved as `dictionary_<dict_id>.zxd`):**
+  zxc --train -o dicts/ samples/*.json
+
+**Compress with a dictionary using small blocks:**
+  zxc -B 4K -D dicts/dictionary_bc46eec1.zxd input.json
+
+**Decompress (the dictionary is required, pass it with -D):**
+  zxc -d -D dicts/dictionary_bc46eec1.zxd input.json.zxc
+
+## BUGS
+Report bugs at <https://github.com/hellobertrand/zxc/issues>.
+
+## AUTHORS
+Bertrand Lebonnois
+
+## LICENSE
+BSD 3-Clause License.

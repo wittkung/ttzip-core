@@ -1,0 +1,434 @@
+name: Multi-Architecture Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  # ===========================================================================
+  # Tier 1: Main architectures
+  # ===========================================================================
+  build-tier1:
+    name: "Tier 1: ${{ matrix.name }}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-latest
+            os: linux
+            arch_flags: ""
+          - name: Linux x86 (32-bit)
+            runner: ubuntu-latest
+            os: linux
+            install_32bit_x86: true
+            arch_flags: "-m32"
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            os: linux
+            arch_flags: ""
+          - name: Linux ARM (32-bit)
+            runner: ubuntu-latest
+            os: linux
+            install_32bit_arm: true
+            cross_compiler_c: arm-linux-gnueabihf-gcc
+            cross_compiler_cxx: arm-linux-gnueabihf-g++
+            cross_strip: arm-linux-gnueabihf-strip
+            cmake_system_name: "Linux"
+            cmake_system_processor: "arm"
+          - name: Windows x64
+            runner: windows-latest
+            os: windows
+            cmake_arch: "x64"
+          - name: Windows x86 (32-bit)
+            runner: windows-latest
+            os: windows
+            cmake_arch: "Win32"
+          - name: Windows ARM64
+            runner: windows-11-arm
+            os: windows
+            cmake_arch: "ARM64"
+          # Note: Windows ARM 32-bit removed - deprecated and unsupported by Windows SDK 10.0.26100+
+          - name: macOS Intel x64
+            runner: macos-26-intel
+            os: macos
+          - name: macOS ARM64
+            runner: macos-26
+            os: macos
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Case: Linux x86 (32-bit)
+      - name: Install x86 32-bit libs
+        if: matrix.install_32bit_x86
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+
+      # Case: Linux ARM (32-bit)
+      - name: Install ARM 32-bit toolchain
+        if: matrix.install_32bit_arm
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Configure, Build & Test (Static & Shared)
+        shell: bash
+        run: |
+          # Initialize variables
+          EXTRA_ARGS="-DZXC_NATIVE_ARCH=OFF" # Disable native arch detection (Runtime Dispatch enabled)
+          
+          # Setup Environment for Linux/Mac (Flags & Cross-compilation)
+          if [ "${{ matrix.os }}" != "windows" ]; then
+             # Handle C flags (e.g., -m32)
+             if [ ! -z "${{ matrix.arch_flags }}" ]; then
+                export CFLAGS="${{ matrix.arch_flags }}"
+                export CXXFLAGS="${{ matrix.arch_flags }}"
+             fi
+             
+             # Handle cross-compiler (e.g., ARM 32-bit on Linux)
+             if [ ! -z "${{ matrix.cross_compiler_c }}" ]; then
+                EXTRA_ARGS="$EXTRA_ARGS -DCMAKE_C_COMPILER=${{ matrix.cross_compiler_c }} -DCMAKE_CXX_COMPILER=${{ matrix.cross_compiler_cxx }}"
+             fi
+
+             # Handle explicit System Name/Processor (crucial for cross-compilation)
+             if [ ! -z "${{ matrix.cmake_system_name }}" ]; then
+                EXTRA_ARGS="$EXTRA_ARGS -DCMAKE_SYSTEM_NAME=${{ matrix.cmake_system_name }}"
+             fi
+             if [ ! -z "${{ matrix.cmake_system_processor }}" ]; then
+                EXTRA_ARGS="$EXTRA_ARGS -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.cmake_system_processor }}"
+             fi
+             
+             # Handle cross-strip tool (e.g., ARM 32-bit on Linux)
+             if [ ! -z "${{ matrix.cross_strip }}" ]; then
+                EXTRA_ARGS="$EXTRA_ARGS -DCMAKE_STRIP=/usr/bin/${{ matrix.cross_strip }}"
+             fi
+          fi
+
+          # Iterate over Library Types
+          for LIB_TYPE in "STATIC" "SHARED"; do
+              echo ">>> Starting Build: $LIB_TYPE"
+              BUILD_DIR="build_${LIB_TYPE}"
+              
+              SHARED_FLAG="OFF"
+              if [ "$LIB_TYPE" == "SHARED" ]; then SHARED_FLAG="ON"; fi
+              
+              CURRENT_ARGS="$EXTRA_ARGS -DBUILD_SHARED_LIBS=$SHARED_FLAG"
+
+              # 1. Configure
+              if [ "${{ matrix.os }}" = "windows" ]; then
+                  # Visual Studio Generator
+                  cmake -S . -B $BUILD_DIR -A ${{ matrix.cmake_arch }} $CURRENT_ARGS
+              else
+                  # Ninja/Makefiles
+                  cmake -S . -B $BUILD_DIR -DCMAKE_BUILD_TYPE=Release $CURRENT_ARGS
+              fi
+              
+              # 2. Build
+              cmake --build $BUILD_DIR --config Release --parallel
+              
+              # 3. Test (Skip if cross-compiling)
+              if [ -z "${{ matrix.cross_compiler_c }}" ]; then
+                  echo "Running Tests for $LIB_TYPE..."
+                  ctest --test-dir $BUILD_DIR -C Release --output-on-failure
+              else
+                  echo "Skipping tests for $LIB_TYPE (Cross-compilation)"
+              fi
+              echo ">>> Completed Build: $LIB_TYPE"
+              echo ""
+          done
+
+  # ===========================================================================
+  # Tier 2: Extended Linux architectures (cross-compiled, tested via QEMU)
+  # ===========================================================================
+  build-tier2:
+    name: "Tier 2: ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux arm64
+            cross_pkg: gcc-aarch64-linux-gnu
+            cross_prefix: aarch64-linux-gnu
+            cmake_processor: aarch64
+            qemu_binary: qemu-aarch64
+          - name: Linux arm64 (cortex-a53)
+            cross_pkg: gcc-aarch64-linux-gnu
+            cross_prefix: aarch64-linux-gnu
+            cmake_processor: aarch64
+            qemu_binary: qemu-aarch64
+            qemu_cpu: cortex-a53
+          - name: Linux i386
+            cross_pkg: gcc-i686-linux-gnu
+            cross_prefix: i686-linux-gnu
+            cmake_processor: i686
+            qemu_binary: qemu-i386
+          - name: Linux RISC-V 64
+            cross_pkg: gcc-riscv64-linux-gnu
+            cross_prefix: riscv64-linux-gnu
+            cmake_processor: riscv64
+            qemu_binary: qemu-riscv64
+          - name: Linux s390x
+            cross_pkg: gcc-s390x-linux-gnu
+            cross_prefix: s390x-linux-gnu
+            cmake_processor: s390x
+            qemu_binary: qemu-s390x
+          - name: Linux armhf
+            cross_pkg: gcc-arm-linux-gnueabihf
+            cross_prefix: arm-linux-gnueabihf
+            cmake_processor: arm
+            qemu_binary: qemu-arm
+            qemu_cpu: cortex-a15
+          - name: Linux ppc64el
+            cross_pkg: gcc-powerpc64le-linux-gnu
+            cross_prefix: powerpc64le-linux-gnu
+            cmake_processor: ppc64le
+            qemu_binary: qemu-ppc64le
+          - name: Linux mipsel
+            cross_pkg: gcc-mipsel-linux-gnu
+            cross_prefix: mipsel-linux-gnu
+            cmake_processor: mipsel
+            qemu_binary: qemu-mipsel
+          - name: Linux powerpc
+            cross_pkg: gcc-powerpc-linux-gnu
+            cross_prefix: powerpc-linux-gnu
+            cmake_processor: powerpc
+            qemu_binary: qemu-ppc
+          - name: Linux ppc64
+            cross_pkg: gcc-powerpc64-linux-gnu
+            cross_prefix: powerpc64-linux-gnu
+            cmake_processor: ppc64
+            qemu_binary: qemu-ppc64
+          - name: Linux sparc64
+            cross_pkg: gcc-sparc64-linux-gnu
+            cross_prefix: sparc64-linux-gnu
+            cmake_processor: sparc64
+            qemu_binary: qemu-sparc64
+          - name: Linux armel
+            cross_pkg: gcc-arm-linux-gnueabi
+            cross_prefix: arm-linux-gnueabi
+            cmake_processor: arm
+            qemu_binary: qemu-arm
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install cross-compiler
+        run: |
+          apt-get update
+          apt-get install -y cmake build-essential ${{ matrix.cross_pkg }} qemu-user
+
+      - name: Configure, Build & Test (Static & Shared)
+        shell: bash
+        run: |
+          CROSS_C=${{ matrix.cross_prefix }}-gcc
+          CROSS_CXX=${{ matrix.cross_prefix }}-g++
+          CROSS_STRIP=/usr/bin/${{ matrix.cross_prefix }}-strip
+          SYSROOT=/usr/${{ matrix.cross_prefix }}
+
+          for LIB_TYPE in "STATIC" "SHARED"; do
+              echo ">>> Starting Build: $LIB_TYPE"
+              BUILD_DIR="build_${LIB_TYPE}"
+
+              SHARED_FLAG="OFF"
+              if [ "$LIB_TYPE" == "SHARED" ]; then SHARED_FLAG="ON"; fi
+
+              cmake -S . -B $BUILD_DIR \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DCMAKE_C_COMPILER=$CROSS_C \
+                  -DCMAKE_CXX_COMPILER=$CROSS_CXX \
+                  -DCMAKE_STRIP=$CROSS_STRIP \
+                  -DCMAKE_SYSTEM_NAME=Linux \
+                  -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.cmake_processor }} \
+                  -DZXC_NATIVE_ARCH=OFF \
+                  -DBUILD_SHARED_LIBS=$SHARED_FLAG
+
+              cmake --build $BUILD_DIR --config Release --parallel
+
+              QEMU_CPU_ARG=""
+              if [ -n "${{ matrix.qemu_cpu }}" ]; then
+                  QEMU_CPU_ARG="-cpu ${{ matrix.qemu_cpu }}"
+              fi
+
+              echo "Running Tests for $LIB_TYPE via QEMU..."
+              ${{ matrix.qemu_binary }} $QEMU_CPU_ARG -L $SYSROOT ./$BUILD_DIR/zxc_test
+
+              echo "Running conformance + golden vectors for $LIB_TYPE via QEMU..."
+              ${{ matrix.qemu_binary }} $QEMU_CPU_ARG -L $SYSROOT \
+                  ./$BUILD_DIR/zxc_conformance_test ./conformance
+              ${{ matrix.qemu_binary }} $QEMU_CPU_ARG -L $SYSROOT \
+                  ./$BUILD_DIR/zxc_format_golden_test ./tests/format/golden
+
+              echo ">>> Completed Build: $LIB_TYPE"
+              echo ""
+          done
+
+  # ===========================================================================
+  # Tier 2 (amd64 SIMD tiers): each x86 dispatch tier runs as its own parallel
+  # job under Intel SDE. SDE runs host-native x86 directly (faster than QEMU's
+  # TCG re-translation) and, unlike QEMU's TCG, can execute AVX-512. One native
+  # build per job carries all per-ISA variants; the emulated CPU model makes the
+  # runtime dispatcher select that job's tier:
+  #   -mrm  Merom (Core 2)  -> SSE2 tier    (sub-AVX2 detection -> _default,
+  #                            which carries the SSE2 paths: x86-64 baseline)
+  #   -hsw  Haswell         -> AVX2 tier     (gate = AVX2+BMI1+BMI2+LZCNT,
+  #                            all present on Haswell; Merom has none)
+  #   -icx  Ice Lake Server -> AVX-512 tier  (F+BW+VBMI2 plus BMI1/BMI2/LZCNT;
+  #                            VBMI2 is required by ZXC's AVX-512 gate, which
+  #                            Skylake-Server lacks)
+  # ===========================================================================
+  build-tier2-amd64-sde:
+    name: "Tier 2: Linux amd64 (${{ matrix.tier }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tier: SSE2
+            sde_chip: mrm
+          - tier: AVX2
+            sde_chip: hsw
+          - tier: AVX-512
+            sde_chip: icx
+    env:
+      # Pinned + checksum-verified (Intel requires a license acceptance to
+      # download; the tarball itself is served from downloadmirror.intel.com).
+      SDE_URL: "https://downloadmirror.intel.com/915934/sde-external-10.8.0-2026-03-15-lin.tar.xz"
+      SDE_SHA256: "50b320cd226acef7a491f5b321fc1be3c3c7984f9e27a456e64894b5b0979dd3"
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install Intel SDE (pinned + checksum-verified)
+        run: |
+          curl -fsSL -o sde.tar.xz "$SDE_URL"
+          echo "${SDE_SHA256}  sde.tar.xz" | sha256sum -c -
+          mkdir -p "$HOME/sde"
+          tar -xf sde.tar.xz -C "$HOME/sde" --strip-components=1
+          echo "$HOME/sde" >> "$GITHUB_PATH"
+
+      - name: Configure, Build & Test (Static & Shared) under SDE
+        shell: bash
+        run: |
+          # ZXC_NATIVE_ARCH=OFF keeps the core library at the x86-64 baseline so
+          # nothing outside the explicit per-ISA variants emits an instruction the
+          # emulated model lacks.
+          SDE="sde64 -${{ matrix.sde_chip }} --"
+          echo "Emulated CPU: Intel SDE -${{ matrix.sde_chip }} (${{ matrix.tier }} tier)"
+
+          for LIB_TYPE in "STATIC" "SHARED"; do
+              echo ">>> Starting Build: $LIB_TYPE"
+              BUILD_DIR="build_${LIB_TYPE}"
+
+              SHARED_FLAG="OFF"
+              if [ "$LIB_TYPE" == "SHARED" ]; then SHARED_FLAG="ON"; fi
+
+              cmake -S . -B "$BUILD_DIR" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DZXC_NATIVE_ARCH=OFF \
+                  -DBUILD_SHARED_LIBS=$SHARED_FLAG
+
+              cmake --build "$BUILD_DIR" --config Release --parallel
+
+              # Shared build: let the loader find libzxc.so under the emulator.
+              export LD_LIBRARY_PATH="$PWD/$BUILD_DIR:${LD_LIBRARY_PATH:-}"
+
+              echo "Running Tests for $LIB_TYPE under Intel SDE (${{ matrix.tier }})..."
+              $SDE ./"$BUILD_DIR"/zxc_test
+              $SDE ./"$BUILD_DIR"/zxc_conformance_test ./conformance
+              $SDE ./"$BUILD_DIR"/zxc_format_golden_test ./tests/format/golden
+
+              echo ">>> Completed Build: $LIB_TYPE"
+              echo ""
+          done
+
+  # ===========================================================================
+  # Tier 3: Experimental Linux architectures (cross-compiled, tested via QEMU)
+  # ===========================================================================
+  build-tier3:
+    name: "Tier 3: ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux mips64el
+            cross_pkg: gcc-mips64el-linux-gnuabi64
+            cross_prefix: mips64el-linux-gnuabi64
+            cmake_processor: mips64
+            qemu_binary: qemu-mips64el
+          - name: Linux loong64
+            cross_pkg: gcc-loongarch64-linux-gnu
+            cross_prefix: loongarch64-linux-gnu
+            cmake_processor: loongarch64
+            qemu_binary: qemu-loongarch64
+          - name: Linux alpha
+            cross_pkg: gcc-alpha-linux-gnu
+            cross_prefix: alpha-linux-gnu
+            cmake_processor: alpha
+            qemu_binary: qemu-alpha
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install cross-compiler
+        run: |
+          apt-get update
+          apt-get install -y cmake build-essential ${{ matrix.cross_pkg }} qemu-user
+
+      - name: Configure, Build & Test (Static & Shared)
+        shell: bash
+        run: |
+          CROSS_C=${{ matrix.cross_prefix }}-gcc
+          CROSS_CXX=${{ matrix.cross_prefix }}-g++
+          CROSS_STRIP=/usr/bin/${{ matrix.cross_prefix }}-strip
+          SYSROOT=/usr/${{ matrix.cross_prefix }}
+
+          for LIB_TYPE in "STATIC" "SHARED"; do
+              echo ">>> Starting Build: $LIB_TYPE"
+              BUILD_DIR="build_${LIB_TYPE}"
+
+              SHARED_FLAG="OFF"
+              if [ "$LIB_TYPE" == "SHARED" ]; then SHARED_FLAG="ON"; fi
+
+              cmake -S . -B $BUILD_DIR \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DCMAKE_C_COMPILER=$CROSS_C \
+                  -DCMAKE_CXX_COMPILER=$CROSS_CXX \
+                  -DCMAKE_STRIP=$CROSS_STRIP \
+                  -DCMAKE_SYSTEM_NAME=Linux \
+                  -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.cmake_processor }} \
+                  -DZXC_NATIVE_ARCH=OFF \
+                  -DBUILD_SHARED_LIBS=$SHARED_FLAG
+
+              cmake --build $BUILD_DIR --config Release --parallel
+
+              echo "Running Tests for $LIB_TYPE via QEMU..."
+              ${{ matrix.qemu_binary }} -L $SYSROOT ./$BUILD_DIR/zxc_test
+
+              echo ">>> Completed Build: $LIB_TYPE"
+              echo ""
+          done

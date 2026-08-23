@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NearOptimalDPContract",
+  "description": "Strict contract for Near-Optimal DP acceleration and full-spectrum Pareto supremacy.",
+  "definitions": {
+    "NearOptimalDPOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_optim_passes",
+        "min_improvement_to_continue",
+        "use_slot_boundary_pruning",
+        "use_pareto_edge_filtering",
+        "target_throughput_mbs",
+        "target_compressed_size_mb"
+      ],
+      "properties": {
+        "max_optim_passes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum number of DP optimization passes"
+        },
+        "min_improvement_to_continue": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum bit improvement required to trigger next pass"
+        },
+        "use_slot_boundary_pruning": {
+          "type": "boolean",
+          "description": "True when evaluating transitions only at length slot endpoints"
+        },
+        "use_pareto_edge_filtering": {
+          "type": "boolean",
+          "description": "True when dominated short matches are pruned before DP"
+        },
+        "target_throughput_mbs": {
+          "type": "number",
+          "minimum": 35.0,
+          "description": "Minimum throughput floor in MB/s"
+        },
+        "target_compressed_size_mb": {
+          "type": "number",
+          "maximum": 3.05,
+          "description": "Maximum compressed size in MB for 100MB corpora"
+        }
+      }
+    },
+    "DualOrderSignatureProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window_relative_pos",
+        "secondary_signature",
+        "sibling_relative_pos",
+        "sibling_secondary_signature"
+      ],
+      "properties": {
+        "window_relative_pos": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767,
+          "description": "16-bit sliding window position"
+        },
+        "secondary_signature": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "16-bit composite hash3/byte4 signature"
+        },
+        "sibling_relative_pos": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32767,
+          "description": "16-bit 2-way sibling match position"
+        },
+        "sibling_secondary_signature": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "16-bit sibling composite signature"
+        }
+      }
+    },
+    "SpectrumTierProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier_index",
+        "name",
+        "deflate_level",
+        "expected_throughput_mbs",
+        "expected_compressed_size_mb",
+        "is_pareto_frontier_point"
+      ],
+      "properties": {
+        "tier_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7,
+          "description": "Tier index 0 to 7"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "User-facing preset name"
+        },
+        "deflate_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15,
+          "description": "Internal compressor engine level"
+        },
+        "expected_throughput_mbs": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Expected throughput floor"
+        },
+        "expected_compressed_size_mb": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Expected compressed size limit"
+        },
+        "is_pareto_frontier_point": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "True when mathematically verified on convex hull"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dp_options",
+    "signature_probe",
+    "tier_profile"
+  ],
+  "properties": {
+    "dp_options": {
+      "$ref": "#/definitions/NearOptimalDPOptions"
+    },
+    "signature_probe": {
+      "$ref": "#/definitions/DualOrderSignatureProbe"
+    },
+    "tier_profile": {
+      "$ref": "#/definitions/SpectrumTierProfile"
+    }
+  }
+}

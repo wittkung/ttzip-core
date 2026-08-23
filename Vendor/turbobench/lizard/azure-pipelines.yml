@@ -1,0 +1,471 @@
+pr:
+  branches:
+    include:
+    - '*'
+  paths:
+    exclude:
+    - doc
+
+trigger:
+  branches:
+    include:
+    - '*'
+  paths:
+    exclude:
+    - doc
+
+
+jobs:
+- job:
+  timeoutInMinutes: 240
+  pool:
+    vmImage: $(imageName)
+
+  variables:
+    USE_CCACHE: 1
+    CCACHE_DIR: $(Pipeline.Workspace)/ccache
+    CCACHE_COMPRESS: 1
+    CCACHE_COMPRESSLEVEL: 9
+    CCACHE_CPP2: 1
+    CCACHE_MAXSIZE: 2G
+    OS_NAME: $(Agent.OS)
+    PARENT_BRANCH: 1.1
+
+  strategy:
+    matrix:
+      clang [macOS 14]:
+        imageName: 'macOS-14'
+        SELECTED_CC: clang
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS="-Werror -Wconversion -Wno-sign-conversion"'
+
+      # clang-6 and newer compilers
+      clang-19 ASan [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-19 main'
+        SELECTED_CC: clang-19
+        PACKAGES: 'clang-19 llvm-19-dev libclang-common-19-dev libclang-rt-19-dev'
+        COMMAND_LINE: 'make asan'
+
+      clang-19 MSan [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-19 main'
+        SELECTED_CC: clang-19
+        PACKAGES: 'clang-19 llvm-19-dev libclang-common-19-dev libclang-rt-19-dev'
+        COMMAND_LINE: 'make msan'
+
+      clang-19 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-19 main'
+        SELECTED_CC: clang-19
+        PACKAGES: 'clang-19 llvm-19-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-18 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-18 main'
+        SELECTED_CC: clang-18
+        PACKAGES: 'clang-18 llvm-18-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-17 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-17 main'
+        SELECTED_CC: clang-17
+        PACKAGES: 'clang-17 llvm-17-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-16 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-16 main'
+        SELECTED_CC: clang-16
+        PACKAGES: 'clang-16 llvm-16-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-15 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-15 main'
+        SELECTED_CC: clang-15
+        PACKAGES: 'clang-15 llvm-15-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-14 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-14 main'
+        SELECTED_CC: clang-14
+        PACKAGES: 'clang-14 llvm-14-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-13 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        UBUNTU_CODE_NAME: jammy
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-13 main'
+        SELECTED_CC: clang-13
+        PACKAGES: 'clang-13 llvm-13-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-12 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-12 main'
+        SELECTED_CC: clang-12
+        PACKAGES: 'clang-12 llvm-12-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-11 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-11 main'
+        SELECTED_CC: clang-11
+        PACKAGES: 'clang-11 llvm-11-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-10 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-10 main'
+        SELECTED_CC: clang-10
+        PACKAGES: 'clang-10 llvm-10-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-9 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SOURCE_LINE: 'deb https://apt.llvm.org/$(UBUNTU_CODE_NAME)/ llvm-toolchain-$(UBUNTU_CODE_NAME)-9 main'
+        SELECTED_CC: clang-9
+        PACKAGES: 'clang-9 llvm-9-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-8 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SELECTED_CC: clang-8
+        PACKAGES: 'clang-8 llvm-8-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-7 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SELECTED_CC: clang-7
+        PACKAGES: 'clang-7 llvm-7-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      clang-6 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        UBUNTU_CODE_NAME: focal
+        SELECTED_CC: clang-6.0
+        PACKAGES: 'clang-6.0 llvm-6.0-dev'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+
+      # gcc-7 and newer compilers
+      gcc-14 x86 64-bit - misc tests [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: gcc-14
+        PACKAGES: 'gcc-14'
+        COMMAND_LINE: 'make c_standards && make gpptest-native && make clean && make examples && make clean && make cmake && make clean && make travis-install && make clean && make clangtest-native'
+
+      gcc-14 x86 64-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: gcc-14
+        PACKAGES: 'gcc-14'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-14 x86 32-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: gcc-14
+        PACKAGES: 'gcc-14 gcc-14-multilib gcc-multilib'
+        COMMAND_LINE: 'make -C tests test-lizardc32 test-fullbench32 test-frametest32 test-fuzzer32 MOREFLAGS=-Werror'
+
+      gcc-13 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        SELECTED_CC: gcc-13
+        PACKAGES: 'gcc-13'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-12 [Ubuntu 22.04 Jammy]:
+        imageName: 'ubuntu-22.04'
+        SELECTED_CC: gcc-12
+        PACKAGES: 'gcc-12'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-11 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        SELECTED_CC: gcc-11
+        PACKAGES: 'gcc-11'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-10 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        SELECTED_CC: gcc-10
+        PACKAGES: 'gcc-10'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-9 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        SELECTED_CC: gcc-9
+        PACKAGES: 'gcc-9'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-8 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        SELECTED_CC: gcc-8
+        PACKAGES: 'gcc-8'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc-7 [Ubuntu 20.04 Focal]:
+        imageName: 'ubuntu-20.04'
+        SELECTED_CC: gcc-7
+        PACKAGES: 'gcc-7'
+        COMMAND_LINE: 'make -C tests test-lizard test-fullbench test-frametest test-fuzzer MOREFLAGS=-Werror'
+
+      gcc ARM 64-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: aarch64-linux-gnu-gcc
+        PACKAGES: 'qemu-system-arm qemu-user-static gcc-aarch64-linux-gnu libc6-dev-arm64-cross'
+        QEMU_INTERPRETER: 'qemu-aarch64-static -L /usr/aarch64-linux-gnu'
+        COMMAND_LINE: 'make platformTest QEMU_SYS=qemu-aarch64-static'
+
+      gcc ARM 32-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: arm-linux-gnueabi-gcc
+        PACKAGES: 'qemu-system-arm qemu-user-static gcc-arm-linux-gnueabi libc6-dev-armel-cross'
+        QEMU_INTERPRETER: 'qemu-arm-static -L /usr/arm-linux-gnueabi'
+        COMMAND_LINE: 'make platformTest QEMU_SYS=qemu-arm-static'
+
+      gcc PowerPC 64-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: powerpc64-linux-gnu-gcc
+        PACKAGES: 'qemu-system-ppc64 qemu-user-static gcc-powerpc64-linux-gnu libc6-dev-ppc64-cross'
+        QEMU_INTERPRETER: 'qemu-ppc64-static -L /usr/powerpc64-linux-gnu'
+        COMMAND_LINE: 'make platformTest QEMU_SYS=qemu-ppc64-static'
+
+      gcc PowerPC 32-bit [Ubuntu 24.04 Noble]:
+        imageName: 'ubuntu-24.04'
+        SELECTED_CC: powerpc-linux-gnu-gcc
+        PACKAGES: 'qemu-system-ppc qemu-user-static gcc-powerpc-linux-gnu libc6-dev-powerpc-cross'
+        QEMU_INTERPRETER: 'qemu-ppc-static -L /usr/powerpc-linux-gnu'
+        COMMAND_LINE: 'make platformTest QEMU_SYS=qemu-ppc-static'
+
+  steps:
+  - script: |
+      uname -r
+      df -Th
+      ls -l ..
+      pwd
+      ls -l
+
+      echo SELECTED_CC=$SELECTED_CC imageName=$(imageName) OS_NAME=$OS_NAME SOURCE_LINE=$SOURCE_LINE
+      echo --- Configure required LLVM and Ubuntu Toolchain repositories
+      if [[ "$SOURCE_LINE" != "" ]]; then
+        curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | sudo -E apt-key add -
+        echo "$SOURCE_LINE" | sudo tee -a /etc/apt/sources.list > /dev/null
+      fi
+
+      echo --- Update list of packages and download dependencies
+      if [[ "$OS_NAME" == "Linux" ]]; then
+        sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
+        sudo -E apt-get -yq update >> ~/apt-get-update.log 2>&1
+
+        echo Instaling PACKAGES=$PACKAGES
+        PACKAGES="$(eval echo $PACKAGES)"
+        echo Instaling PACKAGES=$PACKAGES
+
+        sudo -E apt-get -yq --no-install-suggests --no-install-recommends --allow-unauthenticated install $PACKAGES ccache
+
+        if [[ "$(Compiler)" == "clang" ]]; then
+          REAL_COMPILER_VER=`$SELECTED_CC --version | grep -o "clang version.*" | awk '{print $3}'`
+        else
+          REAL_COMPILER_VER=`$SELECTED_CC --version | head -1 | awk '{print $4}'`
+        fi
+      else
+         REAL_COMPILER_VER=`$SELECTED_CC --version | grep -o "clang version.*" | awk '{print $3}'`
+         brew update
+         brew install ccache
+      fi
+
+      UPDATE_TIME=$SECONDS
+      echo --- Packages updated in $UPDATE_TIME seconds.
+
+      echo "##vso[task.setvariable variable=REAL_COMPILER_VER]${REAL_COMPILER_VER%%-*}"
+      echo "##vso[task.setvariable variable=UPDATE_TIME]$UPDATE_TIME"
+
+    displayName: '*** Install Build Dependencies'
+
+  - task: Cache@2
+    continueOnError: true
+    inputs:
+      key: '"ccache"| "$(PARENT_BRANCH)" | "$(imageName)-$(Compiler)-$(REAL_COMPILER_VER)" | "$(Build.SourceVersion)"'
+      restoreKeys: '"ccache" | "$(PARENT_BRANCH)" | "$(imageName)-$(Compiler)-$(REAL_COMPILER_VER)"'
+      path: $(CCACHE_DIR)
+    displayName: '*** Download/upload ccached files'
+
+  - checkout: self
+    fetchDepth: 32
+
+  - script: |
+      df -Th
+      git submodule sync
+      git submodule update --init --force --depth=256
+      git submodule
+    displayName: '*** Update git submodules'
+
+  - script: |
+      echo "SELECTED_CC=$SELECTED_CC (`which $SELECTED_CC`) REAL_COMPILER_VER=$REAL_COMPILER_VER"
+      $SELECTED_CC -v
+      ccache --version
+      ccache -p
+      ccache --zero-stats
+      df -Th
+      if [[ "$OS_NAME" == "Linux" ]]; then
+        cat /proc/cpuinfo
+      fi
+    displayName: '*** System and compiler info'
+
+  - script: |
+      echo SELECTED_CC=$SELECTED_CC REAL_COMPILER_VER=$REAL_COMPILER_VER imageName=$(imageName) OS_NAME=$OS_NAME
+      df -Th
+
+      make -j2 CC="ccache $SELECTED_CC" MOREFLAGS=-Werror || exit 1
+      ccache --show-stats
+      echo -------------------------------------
+      file ./programs/lizard
+      $QEMU_INTERPRETER ./programs/lizard --version
+      $QEMU_INTERPRETER ./programs/lizard -b1e4 ./programs/lizard || exit 1
+
+      df -Th
+      BUILD_TIME=$SECONDS
+      echo --- Build took $BUILD_TIME seconds. Packages updated in $UPDATE_TIME seconds.
+
+      echo '##vso[task.setvariable variable=BUILD_TIME]'$BUILD_TIME
+
+    displayName: '*** Build'
+
+  - script: |
+      echo COMMAND_LINE="$COMMAND_LINE"
+      export CC="ccache $SELECTED_CC"; sh -c "$COMMAND_LINE" || exit 1
+
+      RUN_TIME=$SECONDS
+      echo --- Total time $(($RUN_TIME + $UPDATE_TIME + $BUILD_TIME)) seconds. Run time $RUN_TIME seconds. Build took $BUILD_TIME seconds. Packages updated in $UPDATE_TIME seconds.
+      df -Th
+      rm -rf *
+      df -Th
+
+    displayName: '*** Run tests'
+
+
+- job:
+  pool:
+    vmImage: 'windows-latest'
+
+  strategy:
+    matrix:
+      mingw32-gcc x86 32-bit [Windows]:
+        toolchain: 'mingw32'
+        arch: '32-bit'
+        SELECTED_CC: gcc
+        ARCHIVE: https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev1/i686-14.2.0-release-posix-dwarf-ucrt-rt_v12-rev1.7z
+      mingw64-gcc x86 64-bit [Windows]:
+        toolchain: 'mingw64'
+        arch: '64-bit'
+        SELECTED_CC: gcc
+        ARCHIVE: https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev1/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z
+
+  steps:
+  - powershell: |
+      Invoke-WebRequest -Uri '$(ARCHIVE)' -OutFile '$(Build.ArtifactStagingDirectory)\mingw.7z'
+    displayName: 'Download MinGW'
+
+  - task: ExtractFiles@1
+    inputs:
+      archiveFilePatterns: '$(Build.ArtifactStagingDirectory)\mingw.7z'
+      destinationFolder: '$(Build.SourcesDirectory)\mingw'
+
+  - script: |
+      echo Building with $(toolchain) for $(arch) architecture
+      set PATH=$(Build.SourcesDirectory)\mingw\$(toolchain)\bin;%PATH%
+      where $(SELECTED_CC)
+      mingw32-make -j2 CC=$(SELECTED_CC) MOREFLAGS=-Werror || exit 1
+      mingw32-make -j2 CC=$(SELECTED_CC) MOREFLAGS=-Werror -C tests fullbench || exit 1
+      echo -------------------------------------
+      file programs\lizard.exe
+      programs\lizard.exe -h
+
+    displayName: 'Build with $(toolchain)'
+
+  - script: |
+      echo Running a build for $(toolchain) for $(arch) architecture
+      CD programs
+      lizard.exe --version
+      lizard.exe -b1e4 lizard.exe || exit 1
+      lizard.exe -i1b lizard.exe || exit 1
+      lizard.exe -i1b5 lizard.exe || exit 1
+      lizard.exe -i1b10 lizard.exe || exit 1
+      lizard.exe -i1b15 lizard.exe || exit 1
+      CD ..\tests
+      fullbench.exe -i1 fullbench.exe || exit 1
+
+    displayName: 'Run tests for $(arch) architecture'
+
+
+- job:
+  pool:
+    vmImage: 'windows-2022'
+
+  strategy:
+    matrix:
+      Visual Studio 2019 / 2022 Release 64-bit [Windows Server 2022]:
+        buildConfiguration: 'Release'
+        buildPlatform: 'x64'
+
+      Visual Studio 2019 / 2022 Release 32-bit [Windows Server 2022]:
+        buildConfiguration: 'Release'
+        buildPlatform: 'Win32'
+
+      Visual Studio 2019 / 2022 Debug 64-bit [Windows Server 2022]:
+        buildConfiguration: 'Debug'
+        buildPlatform: 'x64'
+
+      Visual Studio 2019 / 2022 Debug 32-bit [Windows Server 2022]:
+        buildConfiguration: 'Debug'
+        buildPlatform: 'Win32'
+
+  steps:
+  - task: VSBuild@1
+    inputs:
+      solution: 'visual\VS2010\lizard.sln'
+      platform: '$(buildPlatform)'
+      configuration: '$(buildConfiguration)'
+      msbuildArgs: '/t:Clean,Build /verbosity:minimal /p:PlatformToolset=v142'
+    displayName: 'Build for platformToolset=v142 for $(buildPlatform) $(buildConfiguration)'
+
+  - task: VSBuild@1
+    inputs:
+      solution: 'visual\VS2010\lizard.sln'
+      platform: '$(buildPlatform)'
+      configuration: '$(buildConfiguration)'
+      msbuildArgs: '/t:Clean,Build /verbosity:minimal /p:PlatformToolset=v143'
+    displayName: 'Build for platformToolset=v143 for $(buildPlatform) $(buildConfiguration)'
+
+  - script: |
+      echo Running a build for $(buildPlatform) $(buildConfiguration)
+      CD visual\VS2010\bin\%buildPlatform%_%buildConfiguration%
+      file lizard.exe
+      lizard.exe -h
+      lizard.exe --version
+      lizard.exe -b1e4 lizard.exe || exit 1
+      lizard.exe -i1b lizard.exe || exit 1
+      lizard.exe -i1b5 lizard.exe || exit 1
+      lizard.exe -i1b10 lizard.exe || exit 1
+      lizard.exe -i1b15 lizard.exe || exit 1
+      echo ------- lizard tested -------
+      fullbench.exe -i1 fullbench.exe || exit 1
+
+    displayName: 'Run tests for $(buildPlatform) $(buildConfiguration)'

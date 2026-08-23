@@ -1,0 +1,74 @@
+# ZXC - High-performance lossless compression
+#
+# Copyright (c) 2025-2026 Bertrand Lebonnois and contributors.
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: Wrapper WASM
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ published ]
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'wrappers/wasm/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/wrapper-wasm.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wasm-build:
+    name: Build & Test WASM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: 3.1.56
+
+      - name: Verify Emscripten
+        run: emcc --version
+
+      - name: Configure
+        run: emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-wasm --parallel
+
+      - name: Verify outputs
+        run: |
+          ls -lh build-wasm/zxc.js build-wasm/zxc.wasm
+          echo "--- WASM file size ---"
+          wc -c build-wasm/zxc.wasm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+
+      - name: Run Tests
+        run: BUILD_DIR=build-wasm node wrappers/wasm/test.mjs
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zxc-wasm
+          path: |
+            build-wasm/zxc.js
+            build-wasm/zxc.wasm
+            wrappers/wasm/zxc_wasm.js
+            wrappers/wasm/package.json
+            wrappers/wasm/README.md
+          retention-days: 30

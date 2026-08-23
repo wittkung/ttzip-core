@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpstreamPatchSchema",
+  "type": "object",
+  "description": "Schema for Upstream Pull Request Preparation Metadata",
+  "properties": {
+    "pr_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "PR branch identifier"
+    },
+    "target_repo": {
+      "type": "string",
+      "enum": ["facebook/zstd"],
+      "description": "Target upstream repository"
+    },
+    "target_branch": {
+      "type": "string",
+      "enum": ["dev", "release"],
+      "description": "Target upstream branch"
+    },
+    "worktree_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Local worktree workspace directory path"
+    },
+    "commit_series": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Ordered list of atomic commit messages"
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "PENDING"],
+      "description": "Validation status of the worktree patch"
+    }
+  },
+  "required": [
+    "pr_id",
+    "target_repo",
+    "target_branch",
+    "worktree_path",
+    "commit_series",
+    "validation_status"
+  ],
+  "additionalProperties": false
+}

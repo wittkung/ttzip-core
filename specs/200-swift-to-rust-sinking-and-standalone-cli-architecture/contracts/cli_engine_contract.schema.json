@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CliEngineContract",
+  "type": "object",
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": ["list", "extract", "create", "recover", "repair", "split", "join", "bench", "doctor"]
+    },
+    "archive": {
+      "type": "string"
+    },
+    "exitCode": {
+      "type": "integer"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "required": ["command", "exitCode", "success"]
+}

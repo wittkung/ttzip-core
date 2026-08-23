@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ttzip.dev/schemas/085/batch-compression-event-schema.json",
+  "title": "BatchCompressionProgressEvent",
+  "description": "Progress and state update event emitted during cache-aware batch compression.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventType",
+    "state",
+    "completedBatches",
+    "totalBatches",
+    "bytesProcessed",
+    "totalBytes",
+    "instantaneousThroughputMBs",
+    "timestampUtc"
+  ],
+  "properties": {
+    "eventType": {
+      "type": "string",
+      "enum": ["batch_progress_update", "batch_completed", "batch_failed"],
+      "description": "Discriminator for the event lifecycle stage."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["scanning", "clustering", "compressing", "writing_headers", "completed", "failed"],
+      "description": "Current pipeline execution phase."
+    },
+    "completedBatches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of batch work units completed."
+    },
+    "totalBatches": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of batch work units scheduled."
+    },
+    "bytesProcessed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Uncompressed bytes processed so far."
+    },
+    "totalBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed payload size."
+    },
+    "instantaneousThroughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Moving average compression throughput in MB/s."
+    },
+    "timestampUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC event generation timestamp."
+    }
+  }
+}

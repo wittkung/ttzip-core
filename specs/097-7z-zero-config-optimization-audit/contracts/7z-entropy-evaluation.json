@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SevenZipEntropyEvaluation",
+  "description": "Schema defining dynamic Shannon entropy evaluation and store downgrade decisions",
+  "type": "object",
+  "properties": {
+    "shannonEntropy": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 8.0,
+      "description": "Calculated Shannon entropy in bits per byte"
+    },
+    "sampledBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of bytes read across non-uniform sample points"
+    },
+    "totalBufferBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total input buffer size in bytes"
+    },
+    "recommendDirectStore": {
+      "type": "boolean",
+      "description": "Whether entropy > 7.90 warrants Store mode downgrade"
+    },
+    "evaluationDurationUs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Sampling execution duration in microseconds"
+    }
+  },
+  "required": [
+    "shannonEntropy",
+    "sampledBytes",
+    "totalBufferBytes",
+    "recommendDirectStore",
+    "evaluationDurationUs"
+  ],
+  "additionalProperties": false
+}

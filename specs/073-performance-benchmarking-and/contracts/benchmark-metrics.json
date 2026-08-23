@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkMetricsSchema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "environment",
+    "records",
+    "generatedAt"
+  ],
+  "properties": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "cpuTopology",
+        "memoryConfig",
+        "osVersion",
+        "compilerFlags"
+      ],
+      "properties": {
+        "architecture": {
+          "type": "string",
+          "enum": ["arm64", "x86_64", "universal2"]
+        },
+        "cpuTopology": {
+          "type": "string"
+        },
+        "memoryConfig": {
+          "type": "string"
+        },
+        "osVersion": {
+          "type": "string"
+        },
+        "compilerFlags": {
+          "type": "string"
+        }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "format",
+          "compressionLevel",
+          "encryptionMode",
+          "workloadType",
+          "inputSizeBytes",
+          "compressedSizeBytes",
+          "compressionRatioPercent",
+          "packingThroughputMBs",
+          "extractionThroughputMBs",
+          "competitorTool",
+          "competitorPackingMBs",
+          "competitorExtractionMBs",
+          "packingSpeedupMultiplier",
+          "extractionSpeedupMultiplier"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2",
+              "tar.xz", "wim", "dmg", "lz4", "lzip", "lrzip",
+              "aar", "iso", "brotli", "snappy"
+            ]
+          },
+          "compressionLevel": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "encryptionMode": {
+            "type": "string",
+            "enum": ["none", "aes256", "zipcrypto"]
+          },
+          "workloadType": {
+            "type": "string",
+            "enum": [
+              "massive_small_files",
+              "log_text",
+              "high_entropy_binary",
+              "large_block_stream"
+            ]
+          },
+          "inputSizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compressedSizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compressionRatioPercent": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1000.0
+          },
+          "packingThroughputMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "extractionThroughputMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "competitorTool": {
+            "type": "string"
+          },
+          "competitorPackingMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "competitorExtractionMBs": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "packingSpeedupMultiplier": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "extractionSpeedupMultiplier": {
+            "type": "number",
+            "minimum": 0.0
+          }
+        }
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

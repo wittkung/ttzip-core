@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%">
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; }
+      .grid-line { stroke: #F1F5F9; stroke-width: 1.2; }
+      .axis-text { font-size: 14px; fill: #64748B; }
+      .eff-text { font-size: 13px; font-weight: 500; fill: #94A3B8; }
+    </style>
+  </defs>
+
+  <!-- 极简纯白背景 -->
+  <rect width="1600" height="900" fill="#FFFFFF"/>
+
+  <!-- 顶部品牌标识与主标题 -->
+  <text x="800" y="65" text-anchor="middle" font-size="15" font-weight="600" fill="#2563EB">✦ TTZip Engine 2026</text>
+  <text x="800" y="108" text-anchor="middle" font-size="34" font-weight="700" fill="#0F172A">macOS Compression Pareto Benchmark (4-Tier Multi-Software Suite)</text>
+
+  <!-- 右上角 efficiency 提示 -->
+  <text x="1470" y="158" text-anchor="end" class="eff-text">most efficient ↗</text>
+  <line x1="130" y1="716.5" x2="1470" y2="716.5" class="grid-line"/>
+  <text x="114" y="720.5" text-anchor="end" class="axis-text">10 MB/s</text>
+  <line x1="130" y1="627.6" x2="1470" y2="627.6" class="grid-line"/>
+  <text x="114" y="631.6" text-anchor="end" class="axis-text">50 MB/s</text>
+  <line x1="130" y1="589.4" x2="1470" y2="589.4" class="grid-line"/>
+  <text x="114" y="593.4" text-anchor="end" class="axis-text">100 MB/s</text>
+  <line x1="130" y1="500.5" x2="1470" y2="500.5" class="grid-line"/>
+  <text x="114" y="504.5" text-anchor="end" class="axis-text">500 MB/s</text>
+  <line x1="130" y1="462.3" x2="1470" y2="462.3" class="grid-line"/>
+  <text x="114" y="466.3" text-anchor="end" class="axis-text">1,000 MB/s</text>
+  <line x1="130" y1="424.0" x2="1470" y2="424.0" class="grid-line"/>
+  <text x="114" y="428.0" text-anchor="end" class="axis-text">2,000 MB/s</text>
+  <line x1="130" y1="373.5" x2="1470" y2="373.5" class="grid-line"/>
+  <text x="114" y="377.5" text-anchor="end" class="axis-text">5,000 MB/s</text>
+  <line x1="130" y1="335.2" x2="1470" y2="335.2" class="grid-line"/>
+  <text x="114" y="339.2" text-anchor="end" class="axis-text">10,000 MB/s</text>
+  <text x="130.0" y="810" text-anchor="middle" class="axis-text">85%</text>
+  <text x="576.7" y="810" text-anchor="middle" class="axis-text">90%</text>
+  <text x="1023.3" y="810" text-anchor="middle" class="axis-text">95%</text>
+  <text x="1470.0" y="810" text-anchor="middle" class="axis-text">100%</text>
+  <path d="M 659.0 337.5 C 804.0 372.3, 949.1 425.9, 1094.2 442.0 C 1115.2 444.4, 1136.3 442.2, 1157.4 459.5 C 1157.4 459.5, 1157.4 459.6, 1157.4 459.7 C 1162.3 480.9, 1167.3 510.8, 1172.2 535.1 C 1177.1 559.5, 1182.1 877.0, 1187.1 706.9 C 1187.8 681.6, 1188.6 469.6, 1189.3 425.5 C 1190.7 345.2, 1192.0 352.2, 1193.3 344.9 C 1197.1 324.2, 1200.9 412.7, 1204.6 418.4 C 1266.1 510.8, 1327.5 340.3, 1388.9 324.6 " stroke="rgba(37, 99, 235, 0.18)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 659.0 337.5 C 804.0 372.3, 949.1 425.9, 1094.2 442.0 C 1115.2 444.4, 1136.3 442.2, 1157.4 459.5 C 1157.4 459.5, 1157.4 459.6, 1157.4 459.7 C 1162.3 480.9, 1167.3 510.8, 1172.2 535.1 C 1177.1 559.5, 1182.1 877.0, 1187.1 706.9 C 1187.8 681.6, 1188.6 469.6, 1189.3 425.5 C 1190.7 345.2, 1192.0 352.2, 1193.3 344.9 C 1197.1 324.2, 1200.9 412.7, 1204.6 418.4 C 1266.1 510.8, 1327.5 340.3, 1388.9 324.6 " stroke="#2563EB" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 1139.4 492.9 C 1139.4 492.5, 1139.4 491.7, 1139.4 491.7 C 1141.7 340.8, 1144.1 642.6, 1146.5 642.6 C 1156.8 642.6, 1167.1 642.6, 1177.5 697.8 C 1177.6 698.5, 1177.8 735.1, 1177.9 738.1 C 1192.2 1066.5, 1206.6 409.4, 1220.9 408.9 C 1302.7 406.0, 1384.5 408.9, 1466.3 641.9 C 1466.3 642.1, 1466.4 670.7, 1466.4 685.1 " stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 1030.1 518.4 C 1042.6 519.4, 1055.1 521.4, 1067.7 521.4 C 1100.1 521.4, 1132.5 517.0, 1165.0 519.2 C 1165.0 519.2, 1165.1 534.7, 1165.2 536.3 C 1166.2 561.6, 1167.2 557.5, 1168.3 562.0 " stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 929.6 395.1 C 964.1 397.9, 998.6 467.4, 1033.2 431.3 C 1034.9 429.5, 1036.6 384.3, 1038.2 384.1 C 1049.5 382.2, 1060.8 382.2, 1072.0 382.2 C 1102.5 382.2, 1133.1 382.2, 1163.6 394.7 C 1164.6 395.1, 1165.7 419.2, 1166.7 422.9 C 1176.7 457.5, 1186.7 363.1, 1196.7 363.0 C 1278.4 362.1, 1360.1 363.1, 1441.8 366.4 C 1450.2 366.7, 1458.6 487.2, 1467.0 547.7 " stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="1388.9" cy="324.6" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(1222.0, 288.6)">
+    <rect width="248" height="26" rx="13" fill="#2563EB"/>
+    <text x="124" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-tar.zst-l3 (12.1 GB/s)</text>
+  </g>
+  <circle cx="659.0" cy="337.5" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(547.0, 301.5)">
+    <rect width="224" height="26" rx="13" fill="#2563EB"/>
+    <text x="112" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-lz4-fast (9.6 GB/s)</text>
+  </g>
+  <circle cx="1193.3" cy="344.9" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(1073.3, 308.9)">
+    <rect width="240" height="26" rx="13" fill="#2563EB"/>
+    <text x="120" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-tar.zst-l1 (8.4 GB/s)</text>
+  </g>
+  <circle cx="1196.7" cy="363.0" r="4.5" fill="#059669"/>
+  <text x="1196.7" y="379.0" text-anchor="middle" font-size="11" fill="#059669">zstd-cli-l1--t0</text>
+  <circle cx="1441.8" cy="366.4" r="4.5" fill="#059669"/>
+  <text x="1441.8" y="382.4" text-anchor="middle" font-size="11" fill="#059669">zstd-cli-l3--t0</text>
+  <circle cx="1072.0" cy="382.2" r="4.5" fill="#059669"/>
+  <text x="1072.0" y="398.2" text-anchor="middle" font-size="11" fill="#059669">pigz-zip-fast2</text>
+  <circle cx="1038.2" cy="384.1" r="4.5" fill="#059669"/>
+  <text x="1038.2" y="400.1" text-anchor="middle" font-size="11" fill="#059669">pigz-zip-fast</text>
+  <circle cx="1163.6" cy="394.7" r="4.5" fill="#059669"/>
+  <text x="1163.6" y="410.7" text-anchor="middle" font-size="11" fill="#059669">pigz-zip-normal</text>
+  <circle cx="929.6" cy="395.1" r="4.5" fill="#059669"/>
+  <text x="929.6" y="411.1" text-anchor="middle" font-size="11" fill="#059669">lz4-cli-l1-fast</text>
+  <circle cx="1220.9" cy="408.9" r="4.5" fill="#D97706"/>
+  <text x="1220.9" y="424.9" text-anchor="middle" font-size="11" fill="#D97706">7-zip-7z-fast</text>
+  <circle cx="1204.6" cy="418.4" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(1096.6, 382.4)">
+    <rect width="216" height="26" rx="13" fill="#2563EB"/>
+    <text x="108" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-7z-fast (2.2 GB/s)</text>
+  </g>
+  <circle cx="1166.7" cy="422.9" r="4.5" fill="#059669"/>
+  <text x="1166.7" y="438.9" text-anchor="middle" font-size="11" fill="#059669">pigz-zip-ultra</text>
+  <circle cx="1189.3" cy="425.5" r="5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2"/>
+  <g transform="translate(1090.3, 395.5)">
+    <rect width="198" height="22" rx="6" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="99" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB">ttzip-7z-normal (1.9 GB/s)</text>
+  </g>
+  <circle cx="1033.2" cy="431.3" r="4.5" fill="#059669"/>
+  <text x="1033.2" y="447.3" text-anchor="middle" font-size="11" fill="#059669">lz4-cli-l9-hc</text>
+  <circle cx="1094.2" cy="442.0" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(982.2, 406.0)">
+    <rect width="224" height="26" rx="13" fill="#2563EB"/>
+    <text x="112" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-zip-fast (1.4 GB/s)</text>
+  </g>
+  <circle cx="1157.4" cy="459.5" r="6" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5"/>
+  <g transform="translate(1041.4, 423.5)">
+    <rect width="232" height="26" rx="13" fill="#2563EB"/>
+    <text x="116" y="17" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">ttzip-zip-fast2 (1.1 GB/s)</text>
+  </g>
+  <circle cx="1157.4" cy="459.7" r="5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2"/>
+  <g transform="translate(1054.9, 429.7)">
+    <rect width="205" height="22" rx="6" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="102" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB">ttzip-zip-normal (1.0 GB/s)</text>
+  </g>
+  <circle cx="1139.4" cy="491.7" r="4.5" fill="#D97706"/>
+  <text x="1139.4" y="507.7" text-anchor="middle" font-size="11" fill="#D97706">7-zip-zip-fast2</text>
+  <circle cx="1139.4" cy="492.9" r="4.5" fill="#D97706"/>
+  <text x="1139.4" y="508.9" text-anchor="middle" font-size="11" fill="#D97706">7-zip-zip-fast</text>
+  <circle cx="1030.1" cy="518.4" r="4.5" fill="#DC2626"/>
+  <text x="1030.1" y="534.4" text-anchor="middle" font-size="11" fill="#DC2626">apple-zip--1-fast</text>
+  <circle cx="1165.0" cy="519.2" r="4.5" fill="#DC2626"/>
+  <text x="1165.0" y="535.2" text-anchor="middle" font-size="11" fill="#DC2626">apple-ditto</text>
+  <circle cx="1067.7" cy="521.4" r="4.5" fill="#DC2626"/>
+  <text x="1067.7" y="537.4" text-anchor="middle" font-size="11" fill="#DC2626">apple-zip--3-medium</text>
+  <circle cx="1172.2" cy="535.1" r="5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2"/>
+  <g transform="translate(1080.2, 505.1)">
+    <rect width="184" height="22" rx="6" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="92" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB">ttzip-zip-max (268 MB/s)</text>
+  </g>
+  <circle cx="1165.2" cy="536.3" r="4.5" fill="#DC2626"/>
+  <text x="1165.2" y="552.3" text-anchor="middle" font-size="11" fill="#DC2626">apple-zip--6-normal</text>
+  <circle cx="1467.0" cy="547.7" r="4.5" fill="#059669"/>
+  <text x="1467.0" y="563.7" text-anchor="middle" font-size="11" fill="#059669">zstd-cli-l19--t0</text>
+  <circle cx="1168.3" cy="562.0" r="4.5" fill="#DC2626"/>
+  <text x="1168.3" y="578.0" text-anchor="middle" font-size="11" fill="#DC2626">apple-zip--9-ultra</text>
+  <circle cx="1466.3" cy="641.9" r="4.5" fill="#D97706"/>
+  <text x="1466.3" y="657.9" text-anchor="middle" font-size="11" fill="#D97706">7-zip-7z-normal</text>
+  <circle cx="1146.5" cy="642.6" r="4.5" fill="#D97706"/>
+  <text x="1146.5" y="658.6" text-anchor="middle" font-size="11" fill="#D97706">7-zip-zip-normal</text>
+  <circle cx="1466.4" cy="685.1" r="4.5" fill="#D97706"/>
+  <text x="1466.4" y="701.1" text-anchor="middle" font-size="11" fill="#D97706">7-zip-7z-ultra</text>
+  <circle cx="1177.5" cy="697.8" r="4.5" fill="#D97706"/>
+  <text x="1177.5" y="713.8" text-anchor="middle" font-size="11" fill="#D97706">7-zip-zip-max</text>
+  <circle cx="1187.1" cy="706.9" r="5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2"/>
+  <g transform="translate(1091.6, 676.9)">
+    <rect width="191" height="22" rx="6" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="95" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB">ttzip-zip-ultra (12 MB/s)</text>
+  </g>
+  <circle cx="1177.9" cy="738.1" r="4.5" fill="#D97706"/>
+  <text x="1177.9" y="754.1" text-anchor="middle" font-size="11" fill="#D97706">7-zip-zip-ultra</text>
+  <text x="800" y="845" text-anchor="middle" font-size="14" font-weight="500" fill="#475569">Space Savings Ratio (%, Higher is Better)</text>
+  <text x="800" y="875" text-anchor="middle" font-size="12" fill="#94A3B8">Source: TTZip Benchmark Engine · 100MB Wikipedia Corpus (enwik8) · Apple Silicon M-Series (mach_absolute_time)</text>
+</svg>

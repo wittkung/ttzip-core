@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CompatCAbiContract",
+  "description": "Schema validating exported legacy compatibility C-ABI symbols and their signatures",
+  "type": "object",
+  "required": ["symbolCategories", "totalExportedSymbols", "memorySafetyAssertion"],
+  "properties": {
+    "symbolCategories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["alignedMemory", "naturalStringSort", "magicSniffing", "canonicalHuffman", "fastCodecStreams"]
+      }
+    },
+    "totalExportedSymbols": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "memorySafetyAssertion": {
+      "type": "string",
+      "enum": ["allPanicsCaughtAtBoundaryAndZeroUninitLeaked"]
+    }
+  },
+  "additionalProperties": false
+}

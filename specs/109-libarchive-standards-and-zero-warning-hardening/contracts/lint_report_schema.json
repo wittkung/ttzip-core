@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LintStandardsReport",
+  "description": "Schema for TTZip codebase standards audit report",
+  "type": "object",
+  "required": [
+    "status",
+    "spdxHeadersVerified",
+    "spdxMissingCount",
+    "nonAsciiViolations",
+    "compilerWarningsCount",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"]
+    },
+    "spdxHeadersVerified": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spdxMissingCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonAsciiViolations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "compilerWarningsCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

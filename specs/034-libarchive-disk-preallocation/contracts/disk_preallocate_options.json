@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DiskPreallocateOptionsContract",
+  "description": "Schema defining libarchive extraction pre-allocation options and entry prerequisites",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "flags",
+    "preallocate_enabled",
+    "sparse_enabled",
+    "safe_writes_enabled"
+  ],
+  "properties": {
+    "flags": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bitwise OR combination of ARCHIVE_EXTRACT_* flags"
+    },
+    "preallocate_enabled": {
+      "type": "boolean",
+      "description": "Indicates if ARCHIVE_EXTRACT_PREALLOCATE (0x80000) is set"
+    },
+    "sparse_enabled": {
+      "type": "boolean",
+      "description": "Indicates if ARCHIVE_EXTRACT_SPARSE (0x1000) is set"
+    },
+    "safe_writes_enabled": {
+      "type": "boolean",
+      "description": "Indicates if ARCHIVE_EXTRACT_SAFE_WRITES (0x40000) is set"
+    }
+  }
+}

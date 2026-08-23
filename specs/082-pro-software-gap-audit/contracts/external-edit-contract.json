@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExternalEditContract",
+  "description": "JSON Schema for TTZip In-Place External Editor Bridge, Dual-Tier File Watching & Atomic Hot Patching",
+  "type": "object",
+  "required": [
+    "action",
+    "request",
+    "response"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "startSession",
+        "saveChangeToArchive",
+        "closeSession"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "sourceArchiveURL",
+        "archiveEntryPath"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "sourceArchiveURL": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archiveEntryPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "preferredEditorBundleId": {
+          "type": "string"
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": [
+        "success",
+        "sessionId",
+        "sessionState",
+        "stagedFileURL",
+        "contentHash"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "sessionState": {
+          "type": "string",
+          "enum": [
+            "staged",
+            "listening",
+            "detectedChange",
+            "synchronizing",
+            "synchronized",
+            "conflict",
+            "closed"
+          ]
+        },
+        "stagedFileURL": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contentHash": {
+          "type": "string",
+          "minLength": 32
+        },
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "eventType",
+        "timestamp"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "fileModified",
+            "atomicSwapCompleted",
+            "sessionTerminated"
+          ]
+        },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedHash": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

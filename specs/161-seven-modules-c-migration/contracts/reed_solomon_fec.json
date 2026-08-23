@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReedSolomonFECPayload",
+  "type": "object",
+  "properties": {
+    "dataSliceCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "paritySliceCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sliceSizeBytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "missingIndices": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "INVALID_ARGUMENT", "UNRECOVERABLE_ERASURE", "SINGULAR_MATRIX"]
+    }
+  },
+  "required": [
+    "dataSliceCount",
+    "paritySliceCount",
+    "sliceSizeBytes",
+    "missingIndices",
+    "status"
+  ],
+  "additionalProperties": false
+}

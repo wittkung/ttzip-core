@@ -1,0 +1,21 @@
+# binaries
+fse
+fse32
+fsex32
+probagen
+fullbench
+fullbench32
+fullbenchx32
+fuzzer
+fuzzer32
+fuzzerHuff0
+fuzzerHuff0_32
+fuzzerU16
+fuzzerU16_32
+
+# test artefacts
+*.bin
+*.fse
+
+# Apple Mac artefacts
+*.dSYM

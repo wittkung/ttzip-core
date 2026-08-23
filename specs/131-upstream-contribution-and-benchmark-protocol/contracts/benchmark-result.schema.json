@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkResult",
+  "type": "object",
+  "required": [
+    "run_id",
+    "binary_name",
+    "commit_sha",
+    "compiler_flags",
+    "order",
+    "repetition_count",
+    "measurements"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "binary_name": {
+      "type": "string"
+    },
+    "commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "compiler_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "order": {
+      "type": "string",
+      "enum": [
+        "candidate_first",
+        "baseline_first"
+      ]
+    },
+    "repetition_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "measurements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "level",
+          "mean_cpu_time_ns",
+          "stddev_cpu_time_ns",
+          "iterations"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "mean_cpu_time_ns": {
+            "type": "number",
+            "minimum": 0
+          },
+          "stddev_cpu_time_ns": {
+            "type": "number",
+            "minimum": 0
+          },
+          "iterations": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

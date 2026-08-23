@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LZFSECodecContract",
+  "description": "Strict JSON Schema contract for native in-process C LZFSE / LZVN block and streaming codec operations.",
+  "type": "object",
+  "required": [
+    "action",
+    "requestId",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "lzfse_decode_block",
+        "lzfse_encode_block",
+        "lzfse_query_scratch_size"
+      ]
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "LZFSEDecodeBlockPayload",
+          "type": "object",
+          "required": [
+            "sourceLength",
+            "destinationCapacity",
+            "isStreamingBlock"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "sourceLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483648
+            },
+            "destinationCapacity": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967296
+            },
+            "isStreamingBlock": {
+              "type": "boolean"
+            },
+            "expectedOutputSize": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "title": "LZFSEEncodeBlockPayload",
+          "type": "object",
+          "required": [
+            "sourceLength",
+            "destinationCapacity"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "sourceLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483648
+            },
+            "destinationCapacity": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967296
+            }
+          }
+        },
+        {
+          "title": "LZFSEQueryScratchSizePayload",
+          "type": "object",
+          "required": [
+            "direction"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": [
+                "encode",
+                "decode"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "LZFSECodecResponse": {
+      "type": "object",
+      "required": [
+        "requestId",
+        "success",
+        "status",
+        "bytesProcessed",
+        "bytesWritten",
+        "detectedCodec",
+        "scratchAllocatedBytes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "integer",
+          "enum": [0, -1, -2, -3]
+        },
+        "errorMessage": {
+          "type": "string"
+        },
+        "bytesProcessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytesWritten": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "detectedCodec": {
+          "type": "string",
+          "enum": [
+            "LZFSE",
+            "LZVN",
+            "RAW",
+            "UNKNOWN"
+          ]
+        },
+        "scratchAllocatedBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
