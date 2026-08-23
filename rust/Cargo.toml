@@ -1,0 +1,32 @@
+[workspace]
+members = [
+    "ttzip-glue",
+    "ttzip-tui",
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
+license = "BSD-3-Clause OR Apache-2.0"
+repository = "https://github.com/wittkung/ttzip"
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+lto = false
+codegen-units = 1
+panic = "unwind"
+strip = false
+
+[profile.test]
+opt-level = 3
+debug = 1
+
+[workspace.lints.rust]
+unsafe_code = "allow"
+
+[workspace.lints.clippy]
+not_unsafe_ptr_arg_deref = "allow"
+needless_range_loop = "allow"
+

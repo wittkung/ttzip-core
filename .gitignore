@@ -1,0 +1,8 @@
+.DS_Store
+.build/
+target/
+*.xcuserstate
+*.xcworkspace
+xcuserdata/
+*.swp
+*.orig

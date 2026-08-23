@@ -1,0 +1,292 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
+use super::*;
+use clap::Parser;
+use std::fs;
+use std::path::PathBuf;
+use tempfile::tempdir;
+
+#[test]
+fn test_format_bytes() {
+    assert_eq!(format_bytes(18), "18 B");
+    assert_eq!(format_bytes(1024), "1.0 KB");
+    assert_eq!(format_bytes(1024 * 1024), "1.0 MB");
+    assert_eq!(format_bytes(1024 * 1024 * 1024), "1.00 GB");
+}
+
+#[test]
+fn test_cli_parsing_subcommands() {
+    let cli = Cli::parse_from(["ttzip", "list", "test.zip"]);
+    match cli.command {
+        Some(Commands::List { archive, json, .. }) => {
+            assert_eq!(archive, PathBuf::from("test.zip"));
+            assert!(!json);
+        }
+        _ => panic!("Expected List subcommand"),
+    }
+
+    let cli_json = Cli::parse_from(["ttzip", "l", "test.7z", "--json"]);
+    match cli_json.command {
+        Some(Commands::List { archive, json, .. }) => {
+            assert_eq!(archive, PathBuf::from("test.7z"));
+            assert!(json);
+        }
+        _ => panic!("Expected List subcommand with alias l"),
+    }
+
+    let cli_extract = Cli::parse_from(["ttzip", "extract", "test.zip", "-o", "./out_dir", "-t", "8"]);
+    match cli_extract.command {
+        Some(Commands::Extract {
+            archive,
+            output,
+            threads,
+            ..
+        }) => {
+            assert_eq!(archive, PathBuf::from("test.zip"));
+            assert_eq!(output, Some(PathBuf::from("./out_dir")));
+            assert_eq!(threads, 8);
+        }
+        _ => panic!("Expected Extract subcommand"),
+    }
+
+    let cli_create = Cli::parse_from([
+        "ttzip",
+        "create",
+        "out.7z",
+        "file1.txt",
+        "dir2",
+        "-l",
+        "9",
+        "-f",
+        "7z",
+        "-v",
+        "10M",
+    ]);
+    match cli_create.command {
+        Some(Commands::Create {
+            archive,
+            sources,
+            level,
+            format,
+            volume_size,
+            ..
+        }) => {
+            assert_eq!(archive, PathBuf::from("out.7z"));
+            assert_eq!(sources, vec![PathBuf::from("file1.txt"), PathBuf::from("dir2")]);
+            assert_eq!(level, 9);
+            assert_eq!(format, Some("7z".to_string()));
+            assert_eq!(volume_size, Some("10M".to_string()));
+        }
+        _ => panic!("Expected Create subcommand"),
+    }
+
+    let cli_recover = Cli::parse_from([
+        "ttzip", "recover", "secret.zip", "-d", "passwords.txt", "-t", "16", "--json",
+    ]);
+    match cli_recover.command {
+        Some(Commands::Recover {
+            archive,
+            dictionary,
+            threads,
+            json,
+        }) => {
+            assert_eq!(archive, PathBuf::from("secret.zip"));
+            assert_eq!(dictionary, PathBuf::from("passwords.txt"));
+            assert_eq!(threads, Some(16));
+            assert!(json);
+        }
+        _ => panic!("Expected Recover subcommand"),
+    }
+
+    let cli_repair = Cli::parse_from([
+        "ttzip", "repair", "corrupted.zip", "-o", "fixed.zip", "-f", "zip", "--json",
+    ]);
+    match cli_repair.command {
+        Some(Commands::Repair {
+            damaged_archive,
+            output,
+            format,
+            json,
+        }) => {
+            assert_eq!(damaged_archive, PathBuf::from("corrupted.zip"));
+            assert_eq!(output, PathBuf::from("fixed.zip"));
+            assert_eq!(format, Some("zip".to_string()));
+            assert!(json);
+        }
+        _ => panic!("Expected Repair subcommand"),
+    }
+
+    let cli_split = Cli::parse_from([
+        "ttzip", "split", "huge.iso", "-v", "100M", "-o", "./parts", "-n", "numbered",
+    ]);
+    match cli_split.command {
+        Some(Commands::Split {
+            source_archive,
+            volume_size,
+            output_dir,
+            naming,
+        }) => {
+            assert_eq!(source_archive, PathBuf::from("huge.iso"));
+            assert_eq!(volume_size, "100M");
+            assert_eq!(output_dir, Some(PathBuf::from("./parts")));
+            assert_eq!(naming, Some("numbered".to_string()));
+        }
+        _ => panic!("Expected Split subcommand"),
+    }
+
+    let cli_join = Cli::parse_from([
+        "ttzip", "join", "huge.iso.001", "-o", "restored.iso", "--json",
+    ]);
+    match cli_join.command {
+        Some(Commands::Join {
+            first_volume,
+            output,
+            json,
+        }) => {
+            assert_eq!(first_volume, PathBuf::from("huge.iso.001"));
+            assert_eq!(output, PathBuf::from("restored.iso"));
+            assert!(json);
+        }
+        _ => panic!("Expected Join subcommand"),
+    }
+}
+
+#[test]
+fn test_headless_create_list_extract_roundtrip_zip() {
+    let temp_dir = tempdir().expect("tempdir failed");
+    let source_file = temp_dir.path().join("sample.txt");
+    fs::write(&source_file, b"Hello TTZip TUI headless test!").expect("write failed");
+
+    let archive_file = temp_dir.path().join("test_archive.zip");
+    let sources = vec![source_file.clone()];
+
+    // 1. Create ZIP
+    let create_res = execute_create(
+        &archive_file,
+        &sources,
+        Some("zip"),
+        6,
+        None,
+        2,
+        None,
+    );
+    assert!(create_res.is_ok(), "create_res: {:?}", create_res);
+    assert!(archive_file.exists());
+
+    // 2. List ZIP (text)
+    let list_res = execute_list(&archive_file, None, false);
+    assert!(list_res.is_ok(), "list_res: {:?}", list_res);
+
+    // 3. List ZIP (JSON conforming to TUIVfsTreeContract)
+    let data = fs::read(&archive_file).expect("read failed");
+    let (fmt, entries) = parse_archive_entries(&archive_file, &data).expect("parse failed");
+    assert_eq!(fmt, ContainerFormat::Zip);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].name, "sample.txt");
+    assert_eq!(entries[0].uncompressed_size, 30);
+
+    // 4. Extract ZIP
+    let out_dir = temp_dir.path().join("extracted");
+    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false);
+    assert!(extract_res.is_ok(), "extract_res: {:?}", extract_res);
+
+    let extracted_file = out_dir.join("sample.txt");
+    assert!(extracted_file.exists());
+    let extracted_bytes = fs::read(&extracted_file).expect("read extracted failed");
+    assert_eq!(extracted_bytes, b"Hello TTZip TUI headless test!");
+}
+
+#[test]
+fn test_headless_create_list_extract_roundtrip_7z() {
+    let temp_dir = tempdir().expect("tempdir failed");
+    let source_file = temp_dir.path().join("doc.md");
+    fs::write(&source_file, b"# 7z Compression Test in TTZip TUI").expect("write failed");
+
+    let archive_file = temp_dir.path().join("test_archive.7z");
+    let sources = vec![source_file.clone()];
+
+    // 1. Create 7z
+    let create_res = execute_create(
+        &archive_file,
+        &sources,
+        Some("7z"),
+        3,
+        None,
+        2,
+        None,
+    );
+    assert!(create_res.is_ok(), "create_res 7z: {:?}", create_res);
+    assert!(archive_file.exists());
+
+    // 2. List 7z
+    let list_res = execute_list(&archive_file, None, false);
+    assert!(list_res.is_ok(), "list_res 7z: {:?}", list_res);
+
+    // 3. Extract 7z
+    let out_dir = temp_dir.path().join("extracted_7z");
+    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false);
+    assert!(extract_res.is_ok(), "extract_res 7z: {:?}", extract_res);
+
+    let extracted_file = out_dir.join("doc.md");
+    assert!(extracted_file.exists());
+    let extracted_bytes = fs::read(&extracted_file).expect("read extracted 7z failed");
+    assert_eq!(extracted_bytes, b"# 7z Compression Test in TTZip TUI");
+}
+
+#[test]
+fn test_headless_new_subcommands_e2e() {
+    let temp_dir = tempdir().expect("tempdir failed");
+    let source_file = temp_dir.path().join("data.txt");
+    fs::write(&source_file, b"Sample test data for all TTZip CLI subcommands").expect("write failed");
+
+    let archive_file = temp_dir.path().join("suite_test.zip");
+    let sources = vec![source_file.clone()];
+
+    // Create archive
+    execute_create(&archive_file, &sources, Some("zip"), 6, None, 2, None).expect("create failed");
+
+    // 1. Info (text & json)
+    assert!(execute_info(&archive_file, false).is_ok());
+    assert!(execute_info(&archive_file, true).is_ok());
+
+    // 2. Check (text & json)
+    assert!(execute_check(&archive_file, None, false).is_ok());
+    assert!(execute_check(&archive_file, None, true).is_ok());
+
+    // 3. Hash (text & json)
+    assert!(execute_hash(&archive_file, "all", false).is_ok());
+    assert!(execute_hash(&archive_file, "crc32", true).is_ok());
+    assert!(execute_hash(&archive_file, "crc64", true).is_ok());
+
+    // 4. Tree (text & json)
+    assert!(execute_tree(&archive_file, None, false).is_ok());
+    assert!(execute_tree(&archive_file, Some(2), true).is_ok());
+
+    // 5. Doctor (text & json)
+    assert!(execute_doctor(false).is_ok());
+    assert!(execute_doctor(true).is_ok());
+
+    // 6. Comment & Lock (text & json)
+    assert!(execute_comment(&archive_file, Some("Test comment"), false).is_ok());
+    assert!(execute_comment(&archive_file, None, true).is_ok());
+    assert!(execute_lock(&archive_file, false).is_ok());
+    assert!(execute_lock(&archive_file, true).is_ok());
+
+    // 7. Cat
+    assert!(execute_cat(&archive_file, "data.txt", None).is_ok());
+
+    // 8. Diff
+    let archive_file2 = temp_dir.path().join("suite_test2.zip");
+    execute_create(&archive_file2, &sources, Some("zip"), 6, None, 2, None).expect("create failed");
+    assert!(execute_diff(&archive_file, &archive_file2, false).is_ok());
+    assert!(execute_diff(&archive_file, &archive_file2, true).is_ok());
+
+    // 9. Convert
+    let converted_tar = temp_dir.path().join("converted.zip");
+    assert!(execute_convert(&archive_file, &converted_tar, Some("zip"), 1).is_ok());
+}

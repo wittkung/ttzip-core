@@ -1,0 +1,25 @@
+TTZip Compression Engine & Multiplatform SDK
+Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+All rights reserved.
+
+This product includes software developed by the TTZip Project
+(https://github.com/wittkung/ttzip).
+
+==============================================================================
+Licensing Structure:
+------------------------------------------------------------------------------
+1. Core Engine & Multiplatform SDKs (ttzip-engine, ttzip-glue, ttzip-cli, TTZipCore):
+   Dual-licensed under either:
+   - The BSD 3-Clause License (see LICENSE-BSD)
+   - The Apache License, Version 2.0 (see LICENSE-APACHE)
+   at your option.
+
+2. Client Applications (ttzip-apple, TTZipApp, QuickLook, FinderSync):
+   Licensed under:
+   - The GNU General Public License, Version 3.0 or later (see LICENSE-GPL)
+
+3. Trademark & Brand Protection:
+   "TTZip", the official icons, and the Kintsugi Gold signature layout are
+   exclusive intellectual properties of Witt Kung. No license grants rights to
+   use project trademarks or redistribute unofficial builds on application stores.
+==============================================================================

@@ -1,0 +1,6 @@
+module CTTZipBridge {
+    header "CTTZipBridge.h"
+    header "ttzip_rust_glue.h"
+    header "ttzip.h"
+    export *
+}

@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
+//! Archive streaming and libarchive adapter module.
+
+pub mod in_place_edit;
+pub mod repair;
+pub mod split;
+pub mod stream_adapter;
+pub mod tar;
+pub mod unified;
+
+pub use in_place_edit::*;
+pub use repair::*;
+pub use split::{
+    compute_volume_path, detect_volume_chain, SplitVolumeWriter, VirtualMultiVolumeReader,
+    VolumeNamingScheme, VolumeSegment,
+};
+pub use stream_adapter::*;
+pub use tar::*;
+pub use unified::*;
+
+
