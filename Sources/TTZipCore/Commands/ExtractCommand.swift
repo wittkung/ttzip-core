@@ -566,3 +566,26 @@ public final class MacroArchiveCommand: ArchiveCommandProtocol, @unchecked Senda
         return (wasExecuted, list)
     }
 }
+
+/// Standalone Write-Ahead Journal transaction tracker for differential archive extractions.
+public struct DifferentialExtractTransaction: Sendable {
+    public let destinationPath: String
+    private(set) public var createdPaths: [String] = []
+    
+    public init(destinationPath: String) {
+        self.destinationPath = destinationPath
+    }
+    
+    public mutating func recordCreated(path: String, isDirectory: Bool) {
+        createdPaths.append(path)
+    }
+    
+    public func executeRollback(fileManager: FileManager = .default) {
+        let sorted = createdPaths.sorted {
+            $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count
+        }
+        for path in sorted {
+            try? fileManager.removeItem(atPath: path)
+        }
+    }
+}

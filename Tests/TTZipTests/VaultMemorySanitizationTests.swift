@@ -37,4 +37,23 @@ final class VaultMemorySanitizationTests: XCTestCase {
         }
         XCTAssertNil(secure.baseAddress)
     }
+
+    /// Tests that SecureBytes(utf8String:) creates locked memory without intermediary heap leaks.
+    func testSecureBytesDirectStringInitZeroHeapResidual() {
+        let password = "TopSecretMasterKey#2026"
+        let secure = SecureBytes(utf8String: password)
+        XCTAssertEqual(secure.count, password.utf8.count)
+
+        secure.withUnsafeBytes { buf in
+            guard let base = buf.baseAddress else {
+                XCTFail("Buffer pointer is null")
+                return
+            }
+            let readStr = String(bytes: UnsafeBufferPointer(start: base.assumingMemoryBound(to: UInt8.self), count: secure.count), encoding: .utf8)
+            XCTAssertEqual(readStr, password)
+        }
+
+        secure.wipeAndFree()
+        XCTAssertNil(secure.baseAddress)
+    }
 }
