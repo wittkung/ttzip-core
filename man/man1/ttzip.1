@@ -1,0 +1,76 @@
+.TH TTZIP 1 "2026-08-24" "1.0.0" "TTZip User Manual"
+.SH NAME
+ttzip \- ultra-high-performance native archiving, extraction, and compression engine
+.SH SYNOPSIS
+.B ttzip
+[\fB\-\-version\fR] [\fB\-h\fR|\fB\-\-help\fR]
+.br
+.B ttzip create
+[\fB\-l\fR \fILEVEL\fR] [\fB\-p\fR \fIPASSWORD\fR] [\fB\-s\fR \fISPLIT_SIZE\fR] \fIARCHIVE\fR \fISOURCES...\fR
+.br
+.B ttzip extract
+[\fB\-o\fR \fIDESTINATION\fR] [\fB\-p\fR \fIPASSWORD\fR] [\fB\-f\fR|\fB\-\-force\fR] \fIARCHIVE\fR
+.br
+.B ttzip list
+[\fB\-p\fR \fIPASSWORD\fR] [\fB\-\-json\fR] \fIARCHIVE\fR
+.br
+.B ttzip inspect
+[\fB\-p\fR \fIPASSWORD\fR] \fIARCHIVE\fR
+.br
+.B ttzip test
+[\fB\-p\fR \fIPASSWORD\fR] \fIARCHIVE\fR
+.br
+.B ttzip bench
+[\fBmatrix\fR|\fBgate\fR|\fBdeflate\fR|\fBzstd\fR|\fBsnappy\fR]
+.br
+.B ttzip salvage
+[\fB\-o\fR \fIDESTINATION\fR] \fICORRUPTED_ARCHIVE\fR
+.br
+.B ttzip doctor
+.SH DESCRIPTION
+\fBTTZip\fR is an ultra-high-performance archiving engine engineered with a pure Safe Rust microkernel and SOTA dual-ISA vector acceleration (ARM64 NEON/PMULL and x86_64 AVX2/CLMUL).
+.SH COMMANDS
+.TP
+\fBcreate\fR \fIARCHIVE\fR \fISOURCES...\fR
+Compress and pack specified source files or directories into the target archive.
+.TP
+\fBextract\fR \fIARCHIVE\fR [\fB\-o\fR \fIDESTINATION\fR]
+Extract an archive into the specified destination directory with ZipSlip security protection and APFS preallocation.
+.TP
+\fBlist\fR \fIARCHIVE\fR
+List entries in the archive with uncompressed sizes, compressed ratios, and modification timestamps.
+.TP
+\fBinspect\fR \fIARCHIVE\fR
+Perform deep structural inspection and metadata compliance analysis of archive headers.
+.TP
+\fBtest\fR \fIARCHIVE\fR
+Verify archive cryptographic integrity, CRC32/CRC64 checksums, and Reed-Solomon parity records without writing to disk.
+.TP
+\fBbench\fR [\fBmatrix\fR|\fBgate\fR]
+Run hardware SIMD micro-benchmarks and verify 50-point SOTA codec matrix throughput.
+.TP
+\fBsalvage\fR \fICORRUPTED_ARCHIVE\fR
+Attempt deep memory-mapped reconstruction and salvage readable file payloads from damaged archives.
+.TP
+\fBdoctor\fR
+Inspect host CPU capabilities, hardware vector extensions, and memory subsystem topology.
+.SH OPTIONS
+.TP
+\fB\-l\fR, \fB\-\-level\fR \fILEVEL\fR
+Compression level: 0 (Store), 1 (Fastest), 3 (Fast), 6 (Normal), 9 (Maximum), 12 (Ultra).
+.TP
+\fB\-p\fR, \fB\-\-password\fR \fIPASSWORD\fR
+Specify password for WinZip AES-256 or ZipCrypto encryption/decryption.
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fIDESTINATION\fR
+Destination directory for extraction or output path.
+.TP
+\fB\-f\fR, \fB\-\-force\fR
+Overwrite existing destination files without prompting.
+.TP
+\fB\-s\fR, \fB\-\-split\fR \fISIZE\fR
+Split output archive into volumes of specified size (e.g. 100M, 1G, 700M).
+.SH AUTHORS
+Written by Witt Kung <witt.w.kung@gmail.com> and the TTZip Open Source Community.
+.SH COPYRIGHT
+Copyright \(co 2026 Witt Kung. Dual licensed under BSD-3-Clause OR Apache-2.0.

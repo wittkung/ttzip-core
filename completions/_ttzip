@@ -1,0 +1,56 @@
+#compdef ttzip
+
+_ttzip() {
+    local -a commands
+    commands=(
+        'create:Compress and pack source files into archive'
+        'extract:Extract archive contents to destination directory'
+        'list:List entries and sizes in archive'
+        'inspect:Deep structural header analysis'
+        'test:Verify integrity and checksums'
+        'bench:Run hardware SIMD and codec benchmarks'
+        'salvage:Recover damaged archive payloads'
+        'doctor:Inspect CPU capabilities and SIMD ISA'
+    )
+
+    _arguments -C \
+        '(-h --help)'{-h,--help}'[Show help information]' \
+        '(-v --version)'{-v,--version}'[Show version information]' \
+        '1: :->command' \
+        '*:: :->args'
+
+    case $state in
+        command)
+            _describe -t commands 'ttzip subcommands' commands
+            ;;
+        args)
+            case $words[1] in
+                create)
+                    _arguments \
+                        '(-l --level)'{-l,--level}'[Compression level (0..12)]:level:(0 1 3 6 9 12)' \
+                        '(-p --password)'{-p,--password}'[Archive encryption password]:password:' \
+                        '(-s --split)'{-s,--split}'[Split volume size (e.g. 100M)]:size:' \
+                        '1:destination archive:_files' \
+                        '*:source files:_files'
+                    ;;
+                extract)
+                    _arguments \
+                        '(-o --output)'{-o,--output}'[Destination extraction directory]:directory:_files -/' \
+                        '(-p --password)'{-p,--password}'[Archive decryption password]:password:' \
+                        '(-f --force)'{-f,--force}'[Overwrite existing files]' \
+                        '1:archive file:_files'
+                    ;;
+                list|inspect|test|salvage)
+                    _arguments \
+                        '(-p --password)'{-p,--password}'[Password]:password:' \
+                        '1:archive file:_files'
+                    ;;
+                bench)
+                    _values 'bench target' 'matrix' 'gate' 'deflate' 'zstd' 'snappy'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_ttzip "$@"

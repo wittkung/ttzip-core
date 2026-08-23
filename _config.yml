@@ -1,0 +1,11 @@
+# GitHub Pages Configuration
+exclude:
+  - Vendor
+  - rust
+  - Sources
+  - Tests
+  - specs
+  - sdk
+  - scripts
+  - .build
+  - node_modules
