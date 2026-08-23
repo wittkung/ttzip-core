@@ -342,43 +342,67 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
     public func extractSingleEntryData(
         archivePath: String,
         entryPath: String,
-        password: String? = nil
+        password: String? = nil,
+        maxAllowedBytes: Int = 256 * 1024 * 1024
     ) async throws -> Data? {
         // 0. VFS LZ4 Cache Pool Fast Path
         if let cached = VFSLz4CachePool.shared.getCachedEntry(archivePath: archivePath, entryPath: entryPath) {
             return cached
         }
         
-        // 1. Rust Microkernel In-Memory Fast Path (All formats: ZIP, 7z, TAR, GZ, XZ, ZST)
-        let maxBufSize = 32 * 1024 * 1024 // 32MB single entry in-memory window
-        var memBuffer = [UInt8](repeating: 0, count: maxBufSize)
-        var extractedLen: Int = 0
-        
-        let status = archivePath.withCString { cArch in
-            entryPath.withCString { cEntry in
-                CUnsafeBufferAdapter.withCString(password) { cPwd in
-                    memBuffer.withUnsafeMutableBufferPointer { bPtr in
-                        guard let base = bPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                        return ttzip_rust_archive_extract_single_entry_memory(
+        return try await Task.detached(priority: .userInitiated) {
+            // Stage 1: Probe exact uncompressed size with NULL buffer
+            var probedLen: Int = 0
+            let probeStatus = archivePath.withCString { cArch in
+                entryPath.withCString { cEntry in
+                    CUnsafeBufferAdapter.withCString(password) { cPwd in
+                        ttzip_rust_archive_extract_single_entry_memory(
                             cArch,
                             cEntry,
                             -1,
                             cPwd,
-                            base,
-                            maxBufSize,
-                            &extractedLen
+                            nil,
+                            0,
+                            &probedLen
                         )
                     }
                 }
             }
-        }
-        
-        if status == TTZIP_STATUS_OK && extractedLen > 0 && extractedLen <= maxBufSize {
-            let data = Data(memBuffer.prefix(extractedLen))
-            VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
-            return data
-        }
-        
-        return nil
+            
+            guard probeStatus == TTZIP_STATUS_OK, probedLen > 0, probedLen <= maxAllowedBytes else {
+                return nil
+            }
+            
+            // Stage 2: Allocate EXACT buffer size (zero waste, zero truncation)
+            var memBuffer = [UInt8](repeating: 0, count: probedLen)
+            var actualExtractedLen: Int = 0
+            
+            let extractStatus = archivePath.withCString { cArch in
+                entryPath.withCString { cEntry in
+                    CUnsafeBufferAdapter.withCString(password) { cPwd in
+                        memBuffer.withUnsafeMutableBufferPointer { bPtr in
+                            guard let base = bPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                            return ttzip_rust_archive_extract_single_entry_memory(
+                                cArch,
+                                cEntry,
+                                -1,
+                                cPwd,
+                                base,
+                                probedLen,
+                                &actualExtractedLen
+                            )
+                        }
+                    }
+                }
+            }
+            
+            if extractStatus == TTZIP_STATUS_OK && actualExtractedLen == probedLen {
+                let data = Data(memBuffer)
+                VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
+                return data
+            }
+            
+            return nil
+        }.value
     }
 }

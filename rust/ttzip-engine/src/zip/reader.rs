@@ -228,15 +228,36 @@ impl<'a> ZipArchive<'a> {
                 .map_err(|_| TTZipStatus::ErrArchiveInitFailed)?;
 
             let pwd_owned = password_str.map(|s| s.to_string());
+            let cb_mutex = std::sync::Mutex::new(0u64);
+            let progress_cb = options.progress_callback;
+            let user_data_raw = options.user_data as usize;
+
             let par_res = pool.install(|| {
                 file_indices.par_iter().try_for_each(|&idx| -> Result<(), TTZipStatus> {
-                    if cancel_flag.load(Ordering::Relaxed) {
+                    if cancel_flag.load(Ordering::Acquire) {
                         return Err(TTZipStatus::Cancelled);
                     }
 
                     let entry = &self.entries[idx];
                     self.extract_single_file_to_disk(dest_dir, idx, entry, pwd_owned.as_deref())?;
-                    processed_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed);
+                    let current_done = processed_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed)
+                        + entry.uncompressed_size;
+
+                    if let Some(cb) = progress_cb {
+                        if let Ok(mut last_bytes) = cb_mutex.try_lock() {
+                            if current_done.saturating_sub(*last_bytes) >= 1024 * 1024 || current_done >= total_uncomp_bytes {
+                                *last_bytes = current_done;
+                                let c_path = CString::new(entry.rel_path.as_str()).unwrap_or_default();
+                                let should_continue = unsafe {
+                                    cb(current_done, total_uncomp_bytes, c_path.as_ptr(), user_data_raw as *mut std::ffi::c_void)
+                                };
+                                if !should_continue {
+                                    cancel_flag.store(true, Ordering::Release);
+                                    return Err(TTZipStatus::Cancelled);
+                                }
+                            }
+                        }
+                    }
                     Ok(())
                 })
             });

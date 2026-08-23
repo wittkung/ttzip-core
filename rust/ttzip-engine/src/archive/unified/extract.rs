@@ -27,6 +27,15 @@ pub fn extract_archive(
     destination_path: &Path,
     options: &TTZipExtractOptions,
 ) -> Result<(), TTZipStatus> {
+    extract_archive_with_metrics(archive_path, destination_path, options).map(|_| ())
+}
+
+/// Extracts an archive and returns total extracted uncompressed bytes.
+pub fn extract_archive_with_metrics(
+    archive_path: &Path,
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+) -> Result<u64, TTZipStatus> {
     if !archive_path.exists() {
         return Err(TTZipStatus::ErrFileNotFound);
     }
@@ -79,8 +88,8 @@ pub fn extract_archive(
             if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
                 if let Some(mapped) = source.as_slice() {
                     if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
-                        if let Ok(_report) = sevenz.extract_all(destination_path, options) {
-                            return Ok(());
+                        if let Ok(report) = sevenz.extract_all(destination_path, options) {
+                            return Ok(report.total_uncompressed_bytes);
                         }
                     }
                 }
@@ -97,7 +106,7 @@ unsafe fn extract_from_archive_handle(
     archive_path: &Path,
     destination_path: &Path,
     options: &TTZipExtractOptions,
-) -> Result<(), TTZipStatus> {
+) -> Result<u64, TTZipStatus> {
     let mut engine = SafeExtractEngine::new();
     let mut entry: *mut c_void = std::ptr::null_mut();
     let mut total_processed: u64 = 0;
@@ -230,8 +239,8 @@ unsafe fn extract_from_archive_handle(
         if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
             if let Some(mapped) = source.as_slice() {
                 if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
-                    if let Ok(_report) = sevenz.extract_all(destination_path, options) {
-                        return Ok(());
+                    if let Ok(report) = sevenz.extract_all(destination_path, options) {
+                        return Ok(report.total_uncompressed_bytes);
                     }
                 }
             }
@@ -245,5 +254,5 @@ unsafe fn extract_from_archive_handle(
         engine.apply_deferred_metadata(options.preserve_permissions)?;
     }
 
-    Ok(())
+    Ok(total_processed)
 }

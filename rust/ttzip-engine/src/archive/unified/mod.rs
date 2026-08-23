@@ -71,6 +71,16 @@ impl UnifiedArchiveOrchestrator {
         extract::extract_archive(archive_path, destination_path, options)
     }
 
+    /// Extracts an archive and returns total extracted uncompressed bytes.
+    #[inline]
+    pub fn extract_archive_with_metrics(
+        archive_path: &Path,
+        destination_path: &Path,
+        options: &TTZipExtractOptions,
+    ) -> Result<u64, TTZipStatus> {
+        extract::extract_archive_with_metrics(archive_path, destination_path, options)
+    }
+
     /// Inspects an archive and invokes the callback for every discovered entry metadata item.
     #[inline]
     pub fn inspect_archive(

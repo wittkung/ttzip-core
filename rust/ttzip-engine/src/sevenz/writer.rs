@@ -19,6 +19,17 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+#[inline]
+pub fn lzma2_level_to_dict_prop(level: i32) -> u8 {
+    match level {
+        1 => 14, // 256KB
+        2..=3 => 20, // 2MB
+        4..=6 => 26, // 16MB
+        7..=9 => 28, // 32MB
+        _ => 30, // 64MB
+    }
+}
+
 /// Constructs 7z Metadata Header bytes for a solid block of items.
 pub fn build_7z_metadata_header(
     items: &[ZipInputItem],
@@ -194,7 +205,7 @@ pub fn create_7z_solid_archive_bytes(
         match fl2_compress(&solid_buf, &mut comp_buf, level, threads) {
             Ok(actual_len) => {
                 comp_buf.truncate(actual_len);
-                let dict_prop = 20u8; // 2MB dictionary
+                let dict_prop = lzma2_level_to_dict_prop(level);
                 (METHOD_LZMA2, comp_buf, vec![dict_prop])
             }
             Err(_) => {

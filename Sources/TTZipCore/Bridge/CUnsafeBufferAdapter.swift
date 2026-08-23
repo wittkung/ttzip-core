@@ -40,28 +40,48 @@ public enum CUnsafeBufferAdapter {
             return try withUnsafePointer(to: &dummy) { try body($0) }
         }
 
-        // Compute total buffer requirements: offsets + contiguous null-terminated UTF-8 bytes
+        // 1. Compute total buffer requirements: contiguous null-terminated UTF-8 bytes
         var totalBytes = 0
         for str in strings {
             totalBytes += str.utf8.count + 1
         }
 
-        let rawBuffer = UnsafeMutableRawPointer.allocate(byteCount: totalBytes, alignment: 8)
-        defer { rawBuffer.deallocate() }
+        // 2. Allocate typed memory buffer and guarantee paired deinitialization
+        let byteBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: totalBytes)
+        defer {
+            byteBuffer.deinitialize(count: totalBytes)
+            byteBuffer.deallocate()
+        }
 
         var pointers = [UnsafePointer<CChar>?]()
         pointers.reserveCapacity(strings.count)
 
         var currentOffset = 0
-        let bytePtr = rawBuffer.assumingMemoryBound(to: UInt8.self)
 
         for str in strings {
-            let startPtr = bytePtr.advanced(by: currentOffset)
-            let strBytes = Array(str.utf8)
-            startPtr.initialize(from: strBytes, count: strBytes.count)
-            startPtr.advanced(by: strBytes.count).pointee = 0
-            pointers.append(UnsafePointer<CChar>(OpaquePointer(startPtr)))
-            currentOffset += strBytes.count + 1
+            let destPtr = byteBuffer.advanced(by: currentOffset)
+            let strLength = str.utf8.count
+            
+            // Direct contiguous memory copy to avoid Array intermediate heap churn
+            let copied = str.utf8.withContiguousStorageIfAvailable { srcBuf -> Bool in
+                guard let baseAddress = srcBuf.baseAddress else { return false }
+                destPtr.initialize(from: baseAddress, count: strLength)
+                return true
+            } ?? false
+
+            if !copied {
+                var offset = 0
+                for byte in str.utf8 {
+                    destPtr.advanced(by: offset).initialize(to: byte)
+                    offset += 1
+                }
+            }
+            
+            // Correct typed initialization of trailing null terminator (zero UB)
+            destPtr.advanced(by: strLength).initialize(to: 0)
+            
+            pointers.append(UnsafePointer<CChar>(OpaquePointer(destPtr)))
+            currentOffset += strLength + 1
         }
 
         return try pointers.withUnsafeBufferPointer { bufPtr in

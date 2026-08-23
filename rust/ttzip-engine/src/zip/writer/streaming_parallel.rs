@@ -121,66 +121,74 @@ pub fn create_zip_streaming_parallel(
     let user_data_usize = options.user_data as usize;
     let encryption_mode = options.encryption;
 
-    // 3. Compress entries in parallel with Rayon
-    let compress_results: Result<Vec<CompressedEntryResult>, TTZipStatus> = plan_items
-        .par_iter()
-        .map(|item| {
-            if is_cancelled.load(Ordering::Relaxed) {
-                return Err(TTZipStatus::Cancelled);
-            }
-
-            let res = compress_single_item(item, level_num, encryption_mode)?;
-
-            let n = processed_bytes.fetch_add(item.uncompressed_size, Ordering::Relaxed);
-            if let Some(cb) = progress_cb {
-                let rel_c = std::ffi::CString::new(item.rel_path.as_str()).unwrap_or_default();
-                let keep_going = unsafe {
-                    cb(n, total_uncompressed, rel_c.as_ptr(), user_data_usize as *mut libc::c_void)
-                };
-                if !keep_going {
-                    is_cancelled.store(true, Ordering::Relaxed);
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
-
-            Ok(res)
-        })
-        .collect();
-
-    let compressed_entries = compress_results?;
-
-    // 4. Stream write Local File Headers & Payloads with atomic positional offsets
+    // 3. Compress and stream write entries in bounded batches to limit peak RSS
     let mut current_offset: u64 = 0;
-    let mut cd_entries = Vec::with_capacity(compressed_entries.len());
+    let mut cd_entries = Vec::with_capacity(plan_items.len());
+    const BATCH_SIZE: usize = 64;
 
-    for entry in &compressed_entries {
-        let lfh_offset = current_offset;
-
-        // Write header
-        out_file
-            .write_all_at(&entry.header_bytes, current_offset)
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        current_offset += entry.header_bytes.len() as u64;
-
-        // Write payload
-        if !entry.payload_bytes.is_empty() {
-            out_file
-                .write_all_at(&entry.payload_bytes, current_offset)
-                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            current_offset += entry.payload_bytes.len() as u64;
+    for batch in plan_items.chunks(BATCH_SIZE) {
+        if is_cancelled.load(Ordering::Acquire) {
+            return Err(TTZipStatus::Cancelled);
         }
 
-        cd_entries.push(CentralDirectoryRecord {
-            rel_path: entry.rel_path.clone(),
-            lfh_offset,
-            uncompressed_size: entry.uncompressed_size,
-            compressed_size: entry.compressed_size,
-            crc32: entry.crc32,
-            compression_method: entry.compression_method,
-            mtime_secs: entry.mtime_secs,
-            mode: entry.mode,
-            is_directory: entry.is_directory,
-        });
+        let compress_results: Result<Vec<CompressedEntryResult>, TTZipStatus> = batch
+            .par_iter()
+            .map(|item| {
+                if is_cancelled.load(Ordering::Relaxed) {
+                    return Err(TTZipStatus::Cancelled);
+                }
+
+                let res = compress_single_item(item, level_num, encryption_mode)?;
+
+                let n = processed_bytes.fetch_add(item.uncompressed_size, Ordering::Relaxed);
+                if let Some(cb) = progress_cb {
+                    let rel_c = std::ffi::CString::new(item.rel_path.as_str()).unwrap_or_default();
+                    let keep_going = unsafe {
+                        cb(n, total_uncompressed, rel_c.as_ptr(), user_data_usize as *mut libc::c_void)
+                    };
+                    if !keep_going {
+                        is_cancelled.store(true, Ordering::Release);
+                        return Err(TTZipStatus::Cancelled);
+                    }
+                }
+
+                Ok(res)
+            })
+            .collect();
+
+        let compressed_entries = compress_results?;
+
+        // Immediately flush batch to disk and construct CD entries
+        for entry in compressed_entries {
+            let lfh_offset = current_offset;
+
+            // Write header
+            out_file
+                .write_all_at(&entry.header_bytes, current_offset)
+                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            current_offset += entry.header_bytes.len() as u64;
+
+            // Write payload
+            if !entry.payload_bytes.is_empty() {
+                out_file
+                    .write_all_at(&entry.payload_bytes, current_offset)
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                current_offset += entry.payload_bytes.len() as u64;
+            }
+
+            // Build CD record
+            cd_entries.push(CentralDirectoryRecord {
+                rel_path: entry.rel_path.clone(),
+                lfh_offset,
+                uncompressed_size: entry.uncompressed_size,
+                compressed_size: entry.compressed_size,
+                crc32: entry.crc32,
+                compression_method: entry.compression_method,
+                mtime_secs: entry.mtime_secs,
+                mode: entry.mode,
+                is_directory: entry.is_directory,
+            });
+        }
     }
 
     // 5. Write Central Directory and End of Central Directory structures

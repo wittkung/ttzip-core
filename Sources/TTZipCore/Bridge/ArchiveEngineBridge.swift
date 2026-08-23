@@ -356,47 +356,51 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         outputPath: String,
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
-        let rustFormat: TTZipArchiveFormat
-        switch supportedFormat {
-        case .zip: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
-        case .sevenZip: rustFormat = TTZIP_ARCHIVE_FORMAT_SEVEN_ZIP
-        case .tar: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR
-        case .tarGz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_GZ
-        case .tarBz2: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_BZ2
-        case .tarXz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_XZ
-        case .tarZst, .zst: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_ZSTD
-        default: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
-        }
-
-        var createOptions = TTZipCreateOptions(
-            format: rustFormat,
-            level: TTZIP_COMPRESSION_LEVEL_NORMAL,
-            encryption: TTZIP_ENCRYPTION_NONE,
-            password: nil,
-            thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
-            solid_block_size_mb: 0,
-            progress_callback: nil,
-            user_data: nil
-        )
-
-        let status = CUnsafeBufferAdapter.withCStringsArray(inputPaths) { cInputPaths in
-            CUnsafeBufferAdapter.withCString(outputPath) { outPtr in
-                guard let outPtr = outPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                return ttzip_rust_create_archive(
-                    cInputPaths,
-                    inputPaths.count,
-                    outPtr,
-                    &createOptions
-                )
+        try Task.checkCancellation()
+        
+        return try await Task.detached(priority: .userInitiated) {
+            let rustFormat: TTZipArchiveFormat
+            switch self.supportedFormat {
+            case .zip: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
+            case .sevenZip: rustFormat = TTZIP_ARCHIVE_FORMAT_SEVEN_ZIP
+            case .tar: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR
+            case .tarGz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_GZ
+            case .tarBz2: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_BZ2
+            case .tarXz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_XZ
+            case .tarZst, .zst: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_ZSTD
+            default: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
             }
-        }
 
-        guard status == TTZIP_STATUS_OK else {
-            throw ArchiveError.readFailed(code: status.rawValue)
-        }
+            var createOptions = TTZipCreateOptions(
+                format: rustFormat,
+                level: TTZIP_COMPRESSION_LEVEL_NORMAL,
+                encryption: TTZIP_ENCRYPTION_NONE,
+                password: nil,
+                thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
+                solid_block_size_mb: 0,
+                progress_callback: nil,
+                user_data: nil
+            )
 
-        let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-        return (attr?[.size] as? Int64) ?? 0
+            let status = CUnsafeBufferAdapter.withCStringsArray(inputPaths) { cInputPaths in
+                CUnsafeBufferAdapter.withCString(outputPath) { outPtr in
+                    guard let outPtr = outPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                    return ttzip_rust_create_archive(
+                        cInputPaths,
+                        inputPaths.count,
+                        outPtr,
+                        &createOptions
+                    )
+                }
+            }
+
+            guard status == TTZIP_STATUS_OK else {
+                throw ArchiveError.readFailed(code: status.rawValue)
+            }
+
+            let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
+            return (attr?[.size] as? Int64) ?? 0
+        }.value
     }
 
     public func extractStream(
@@ -404,34 +408,95 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         destinationDir: String,
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
-        var extractOptions = TTZipExtractOptions(
-            destination_path: nil,
-            password: nil,
-            thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
-            overwrite_existing: true,
-            preserve_permissions: true,
-            dry_run: false,
-            progress_callback: nil,
-            user_data: nil
-        )
+        try Task.checkCancellation()
 
-        let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
-            CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
-                guard let aPtr = aPtr, let dPtr = dPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                extractOptions.destination_path = dPtr
-                return ttzip_rust_extract_archive(
-                    aPtr,
-                    dPtr,
-                    &extractOptions
-                )
+        return try await Task.detached(priority: .userInitiated) {
+            var extractOptions = TTZipExtractOptions(
+                destination_path: nil,
+                password: nil,
+                thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
+                overwrite_existing: true,
+                preserve_permissions: true,
+                dry_run: false,
+                progress_callback: nil,
+                user_data: nil
+            )
+
+            var extractedBytes: UInt64 = 0
+            var errorInfo = TTZipErrorInfo(
+                status: TTZIP_STATUS_OK,
+                error_code: 0,
+                message: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                entry_path: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                offset: 0
+            )
+
+            let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
+                CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
+                    guard let aPtr = aPtr, let dPtr = dPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
+                    extractOptions.destination_path = dPtr
+                    return ttzip_rust_archive_extract_unified_v2(
+                        aPtr,
+                        dPtr,
+                        &extractOptions,
+                        &extractedBytes,
+                        &errorInfo
+                    )
+                }
             }
-        }
 
-        guard status == TTZIP_STATUS_OK else {
-            throw ArchiveError.readFailed(code: status.rawValue)
-        }
+            guard status == TTZIP_STATUS_OK else {
+                throw ArchiveError.readFailed(code: status.rawValue)
+            }
 
-        return calculateDirectorySize(at: destinationDir)
+            return Int64(extractedBytes)
+        }.value
     }
 }
 

@@ -13,6 +13,7 @@ import CTTZipBridge
 public final class ProgressBridgeContext: @unchecked Sendable {
     public let progressHandler: (@Sendable (ArchiveProgress) -> Void)?
     public let handle: TaskExecutionHandle?
+    public let cancellationCheck: (@Sendable () -> Bool)?
     public let startTime: CFAbsoluteTime
     public let totalExpectedBytes: Int64
     private var lastEmitTime: UInt64 = 0
@@ -21,13 +22,25 @@ public final class ProgressBridgeContext: @unchecked Sendable {
 
     public init(
         progressHandler: (@Sendable (ArchiveProgress) -> Void)?,
-        handle: TaskExecutionHandle?,
+        handle: TaskExecutionHandle? = nil,
+        cancellationCheck: (@Sendable () -> Bool)? = nil,
         totalExpectedBytes: Int64
     ) {
         self.progressHandler = progressHandler
         self.handle = handle
+        self.cancellationCheck = cancellationCheck
         self.totalExpectedBytes = max(1, totalExpectedBytes)
         self.startTime = CFAbsoluteTimeGetCurrent()
+    }
+
+    public func isCancelled() -> Bool {
+        if handle?.isCancelled == true {
+            return true
+        }
+        if let check = cancellationCheck, check() {
+            return true
+        }
+        return false
     }
 
     /// Evaluates monotonic time gate to determine if progress should be dispatched.
@@ -54,7 +67,7 @@ public func ttzipProgressCallbackBridge(
     let ctx = Unmanaged<ProgressBridgeContext>.fromOpaque(userData).takeUnretainedValue()
 
     // 1. Cancellation check: Returning false immediately signals Rust kernel loop to abort
-    if ctx.handle?.isCancelled == true || Task.isCancelled {
+    if ctx.isCancelled() {
         return false
     }
 

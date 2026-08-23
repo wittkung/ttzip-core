@@ -536,26 +536,35 @@ extension TTZipEngineFacade {
         
         if autoVaultUnlock {
             let vaultEntries = passwordVault.getEntries()
+            var matchedEntry: PasswordVaultEntry? = nil
+
             for entry in vaultEntries {
                 do {
-                    let elapsed = try await executePipelineExtract(
-                        archivePath: archivePath,
-                        destinationDir: destinationDir,
-                        password: entry.password,
-                        progress: combinedProgress
-                    )
-                    passwordVault.recordUsage(id: entry.id)
-                    ArchivePasswordStore.shared.setPassword(entry.password, for: archivePath)
-                    return ExtractResult(
-                        archivePath: archivePath,
-                        destinationDir: destinationDir,
-                        durationSeconds: elapsed,
-                        unlockedPassword: entry.password,
-                        isVaultUnlocked: true
-                    )
+                    // Non-destructive in-memory inspection probe before touching disk
+                    _ = try await reader.inspect(archivePath: archivePath, password: entry.password)
+                    matchedEntry = entry
+                    break
                 } catch {
-                    // Try next candidate password in vault
+                    // Password probe failed, try next candidate
                 }
+            }
+
+            if let entry = matchedEntry {
+                let elapsed = try await executePipelineExtract(
+                    archivePath: archivePath,
+                    destinationDir: destinationDir,
+                    password: entry.password,
+                    progress: combinedProgress
+                )
+                passwordVault.recordUsage(id: entry.id)
+                ArchivePasswordStore.shared.setPassword(entry.password, for: archivePath)
+                return ExtractResult(
+                    archivePath: archivePath,
+                    destinationDir: destinationDir,
+                    durationSeconds: elapsed,
+                    unlockedPassword: entry.password,
+                    isVaultUnlocked: true
+                )
             }
         }
         

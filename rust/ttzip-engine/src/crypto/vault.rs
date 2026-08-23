@@ -102,32 +102,34 @@ impl GHash {
         }
     }
 
-    /// GF(2^128) multiplication with irreducible polynomial x^128 + x^7 + x^2 + x + 1.
+    /// Constant-Time GF(2^128) multiplication with irreducible polynomial x^128 + x^7 + x^2 + x + 1.
     pub fn mul_h(x: &[u8; 16], h: &[u8; 16]) -> [u8; 16] {
-        let mut z = [0u64; 2];
-        let mut v = [
-            u64::from_be_bytes(h[0..8].try_into().unwrap()),
-            u64::from_be_bytes(h[8..16].try_into().unwrap()),
-        ];
+        let mut z0 = 0u64;
+        let mut z1 = 0u64;
+        let mut v0 = u64::from_be_bytes(h[0..8].try_into().unwrap());
+        let mut v1 = u64::from_be_bytes(h[8..16].try_into().unwrap());
 
         for i in 0..128 {
             let byte_idx = i / 8;
             let bit_idx = 7 - (i % 8);
-            if ((x[byte_idx] >> bit_idx) & 1) != 0 {
-                z[0] ^= v[0];
-                z[1] ^= v[1];
-            }
-            let lsb = v[1] & 1;
-            v[1] = (v[1] >> 1) | (v[0] << 63);
-            v[0] >>= 1;
-            if lsb != 0 {
-                v[0] ^= 0xe100_0000_0000_0000;
-            }
+            // Constant-time mask: 0xFFFFFFFFFFFFFFFF if bit is 1, 0x0 otherwise
+            let bit = ((x[byte_idx] >> bit_idx) & 1) as u64;
+            let mask = 0u64.wrapping_sub(bit);
+
+            z0 ^= v0 & mask;
+            z1 ^= v1 & mask;
+
+            let lsb = v1 & 1;
+            let lsb_mask = 0u64.wrapping_sub(lsb);
+
+            v1 = (v1 >> 1) | (v0 << 63);
+            v0 >>= 1;
+            v0 ^= 0xe100_0000_0000_0000 & lsb_mask;
         }
 
         let mut out = [0u8; 16];
-        out[0..8].copy_from_slice(&z[0].to_be_bytes());
-        out[8..16].copy_from_slice(&z[1].to_be_bytes());
+        out[0..8].copy_from_slice(&z0.to_be_bytes());
+        out[8..16].copy_from_slice(&z1.to_be_bytes());
         out
     }
 

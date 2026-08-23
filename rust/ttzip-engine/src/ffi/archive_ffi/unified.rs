@@ -85,8 +85,25 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
     destination_path: *const c_char,
     options: *const TTZipExtractOptions,
 ) -> TTZipStatus {
+    ttzip_rust_archive_extract_unified_v2(archive_path, destination_path, options, std::ptr::null_mut(), std::ptr::null_mut())
+}
+
+/// C-ABI unified archive extraction endpoint v2 with direct bytes count & structured error envelope.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
+    archive_path: *const c_char,
+    destination_path: *const c_char,
+    options: *const TTZipExtractOptions,
+    out_extracted_bytes: *mut u64,
+    out_error: *mut crate::types::TTZipErrorInfo,
+) -> TTZipStatus {
+    if !out_error.is_null() {
+        *out_error = crate::types::TTZipErrorInfo::empty();
+    }
+
     let result = catch_unwind(|| {
         if archive_path.is_null() {
+            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
             crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
             return TTZipStatus::ErrInvalidParam;
         }
@@ -96,6 +113,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
         } else if !options.is_null() && !(*options).destination_path.is_null() {
             (*options).destination_path
         } else {
+            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
             crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
             return TTZipStatus::ErrInvalidParam;
         };
@@ -103,6 +121,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
         let archive_str = match CStr::from_ptr(archive_path).to_str() {
             Ok(s) => s,
             Err(_) => {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
                 crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
                 return TTZipStatus::ErrInvalidParam;
             }
@@ -110,6 +129,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
         let dest_str = match CStr::from_ptr(dest_c).to_str() {
             Ok(s) => s,
             Err(_) => {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
                 crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
                 return TTZipStatus::ErrInvalidParam;
             }
@@ -135,9 +155,15 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
             &default_opt
         };
 
-        match UnifiedArchiveOrchestrator::extract_archive(archive_p, dest_p, opt_ref) {
-            Ok(()) => TTZipStatus::Ok,
+        match UnifiedArchiveOrchestrator::extract_archive_with_metrics(archive_p, dest_p, opt_ref) {
+            Ok(bytes) => {
+                if !out_extracted_bytes.is_null() {
+                    *out_extracted_bytes = bytes;
+                }
+                TTZipStatus::Ok
+            }
             Err(status) => {
+                crate::types::write_error_info(out_error, status, status.as_str(), archive_p.to_str(), 0);
                 crate::types::set_last_error(status, status.as_str(), archive_p.to_str(), 0);
                 status
             }
@@ -145,6 +171,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
     });
 
     result.unwrap_or_else(|_| {
+        crate::types::write_error_info(out_error, TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
         crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
         TTZipStatus::ErrPanicCaught
     })

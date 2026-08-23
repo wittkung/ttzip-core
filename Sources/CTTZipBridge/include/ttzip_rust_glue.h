@@ -320,6 +320,7 @@ void ttzip_rust_log(TTZipLogLevel level, const char *target, const char *message
 // Unified Archive Operations
 TTZipStatus ttzip_rust_archive_create_unified(const char *const *source_paths, size_t source_count, const char *destination_path, const TTZipCreateOptions *options, uint64_t split_volume_size_bytes);
 TTZipStatus ttzip_rust_archive_extract_unified(const char *archive_path, const char *destination_path, const TTZipExtractOptions *options);
+TTZipStatus ttzip_rust_archive_extract_unified_v2(const char *archive_path, const char *destination_path, const TTZipExtractOptions *options, uint64_t *out_extracted_bytes, TTZipErrorInfo *out_error);
 TTZipStatus ttzip_rust_archive_inspect_unified(const char *archive_path, const char *password, bool detect_encoding, TTZipInspectCallback callback, void *user_data);
 TTZipStatus ttzip_rust_archive_repair_unified(const char *damaged_path, const char *repaired_path, size_t *out_salvaged_count);
 TTZipStatus ttzip_rust_inspect_archive(const char *archive_path, const char *password, bool detect_encoding, TTZipInspectCallback callback, void *user_data);

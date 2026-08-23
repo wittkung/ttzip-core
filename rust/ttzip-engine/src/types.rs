@@ -257,6 +257,20 @@ impl TTZipErrorInfo {
     }
 }
 
+/// Helper function to safely populate out_error pointer if non-null
+#[inline]
+pub unsafe fn write_error_info(
+    out_error: *mut TTZipErrorInfo,
+    status: TTZipStatus,
+    msg: &str,
+    entry: Option<&str>,
+    offset: u64,
+) {
+    if !out_error.is_null() {
+        (*out_error).populate(status, msg, entry, offset);
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct DiagnosticErrorContext {
