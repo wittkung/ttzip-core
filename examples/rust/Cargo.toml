@@ -1,0 +1,8 @@
+[package]
+name = "ttzip-rust-example"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ttzip-engine = { path = "../../rust/ttzip-engine" }

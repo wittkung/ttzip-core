@@ -40,7 +40,12 @@ public final class TTZip {
         TAR_ZSTD(7),
         DMG(8),
         LZFSE(9),
-        SNAPPY(10);
+        SNAPPY(10),
+        GZ(11),
+        ZST(12),
+        BZ2(13),
+        XZ(14),
+        ISO(15);
 
         public final int code;
         ArchiveFormat(int code) { this.code = code; }
@@ -242,12 +247,25 @@ public final class TTZip {
         compress(sources, destination, ArchiveFormat.AUTO, CompressionLevel.NORMAL, null, 0, null);
     }
 
-    /** Full parameter archive creation using FFM Arena. */
+    /** Full parameter archive creation using FFM Arena with CompressionLevel enum. */
     public static void compress(
         List<String> sources,
         String destination,
         ArchiveFormat format,
         CompressionLevel level,
+        String password,
+        int threads,
+        ProgressListener listener
+    ) {
+        compress(sources, destination, format, level.level, password, threads, listener);
+    }
+
+    /** Full parameter archive creation using FFM Arena with integer compression level (1-22). */
+    public static void compress(
+        List<String> sources,
+        String destination,
+        ArchiveFormat format,
+        int level,
         String password,
         int threads,
         ProgressListener listener
@@ -274,7 +292,7 @@ public final class TTZip {
             optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("struct_size")), (int) CREATE_OPTIONS_LAYOUT.byteSize());
             optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("abi_version")), ABI_VERSION_2);
             optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("format")), format.code);
-            optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("level")), level.level);
+            optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("level")), level);
             optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("encryption")), pwdSeg.equals(MemorySegment.NULL) ? 0 : 4);
             optionsSeg.set(ValueLayout.ADDRESS, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("password")), pwdSeg);
             optionsSeg.set(ValueLayout.JAVA_INT, CREATE_OPTIONS_LAYOUT.byteOffset(MemoryLayout.PathElement.groupElement("thread_budget")), threads);

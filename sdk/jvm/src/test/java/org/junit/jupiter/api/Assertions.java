@@ -87,4 +87,21 @@ public final class Assertions {
             throw new AssertionError(message + " (unexpected exception: " + t.getMessage() + ")", t);
         }
     }
+
+    public static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable) {
+        return assertThrows(expectedType, executable, "Expected " + expectedType.getName() + " to be thrown");
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable, String message) {
+        try {
+            executable.execute();
+        } catch (Throwable actualException) {
+            if (expectedType.isInstance(actualException)) {
+                return (T) actualException;
+            }
+            throw new AssertionError(message + " (unexpected exception type: " + actualException.getClass().getName() + ")", actualException);
+        }
+        throw new AssertionError(message + " (no exception thrown, expected: " + expectedType.getName() + ")");
+    }
 }

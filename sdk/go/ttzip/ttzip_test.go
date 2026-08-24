@@ -241,7 +241,7 @@ func TestContextCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create pre-cancelled context
+	// 1. Pre-cancelled context on Compress
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -250,8 +250,25 @@ func TestContextCancellation(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error on cancelled context, got nil")
 	}
-	if !errors.Is(err, context.Canceled) && err.Error() != "ttzip: operation cancelled" {
-		t.Logf("Compress returned cancelled error: %v", err)
+
+	// 2. Pre-cancelled context on Extract
+	validZip := filepath.Join(tmpDir, "valid.zip")
+	if err := ttzip.Compress(context.Background(), []string{sample}, validZip); err != nil {
+		t.Fatalf("Failed to create valid archive: %v", err)
+	}
+
+	extDir := filepath.Join(tmpDir, "extracted_cancel")
+	err = ttzip.Extract(ctx, validZip, extDir)
+	if err == nil {
+		t.Fatal("Expected error on cancelled extract context, got nil")
+	}
+
+	// 3. Timeout context
+	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer timeoutCancel()
+	validExtDir := filepath.Join(tmpDir, "extracted_timeout")
+	if err := ttzip.Extract(timeoutCtx, validZip, validExtDir); err != nil {
+		t.Fatalf("Extract with valid timeout failed: %v", err)
 	}
 }
 
@@ -290,5 +307,176 @@ func TestStreamingProgressCallback(t *testing.T) {
 
 	if _, err := os.Stat(zipOut); err != nil {
 		t.Fatalf("Output zip was not created: %v", err)
+	}
+}
+
+// TestMultiFormatArchiveCreationAndExtraction verifies multi-format support.
+func TestMultiFormatArchiveCreationAndExtraction(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ttzip_go_multiformat_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	sampleFile := filepath.Join(tmpDir, "doc.txt")
+	content := bytes.Repeat([]byte("Go TTZip Multi-Format Compression & Extraction Verification 2026\n"), 100)
+	if err := os.WriteFile(sampleFile, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	formats := []struct {
+		format   ttzip.ArchiveFormat
+		filename string
+	}{
+		{ttzip.FormatZip, "archive.zip"},
+		{ttzip.FormatSevenZip, "archive.7z"},
+		{ttzip.FormatTar, "archive.tar"},
+		{ttzip.FormatTarGz, "archive.tar.gz"},
+		{ttzip.FormatTarBz2, "archive.tar.bz2"},
+		{ttzip.FormatTarXz, "archive.tar.xz"},
+		{ttzip.FormatTarZstd, "archive.tar.zst"},
+	}
+
+	ctx := context.Background()
+
+	for _, f := range formats {
+		arcPath := filepath.Join(tmpDir, f.filename)
+		extractPath := filepath.Join(tmpDir, "extracted_"+f.filename)
+
+		// 1. Compress
+		err := ttzip.Compress(ctx, []string{sampleFile}, arcPath,
+			ttzip.WithFormat(f.format),
+			ttzip.WithLevel(ttzip.LevelNormal),
+		)
+		if err != nil {
+			t.Fatalf("Compress failed for format %s: %v", f.filename, err)
+		}
+
+		if info, err := os.Stat(arcPath); err != nil || info.Size() == 0 {
+			t.Fatalf("Archive %s not created or empty", f.filename)
+		}
+
+		// 2. Inspect
+		entries, err := ttzip.Inspect(ctx, arcPath)
+		if err != nil {
+			t.Fatalf("Inspect failed for format %s: %v", f.filename, err)
+		}
+		if len(entries) == 0 {
+			t.Fatalf("Inspect returned 0 entries for format %s", f.filename)
+		}
+
+		// 3. Extract
+		if err := os.MkdirAll(extractPath, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := ttzip.Extract(ctx, arcPath, extractPath); err != nil {
+			t.Fatalf("Extract failed for format %s: %v", f.filename, err)
+		}
+
+		extractedFile := filepath.Join(extractPath, "doc.txt")
+		readBack, err := os.ReadFile(extractedFile)
+		if err != nil {
+			t.Fatalf("Failed to read extracted file for format %s: %v", f.filename, err)
+		}
+		if !bytes.Equal(readBack, content) {
+			t.Fatalf("Extracted payload mismatch for format %s", f.filename)
+		}
+	}
+}
+
+// TestPasswordProtectionAES256 tests archive encryption and invalid password handling.
+func TestPasswordProtectionAES256(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ttzip_go_pwd_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	secretFile := filepath.Join(tmpDir, "secret.txt")
+	secretContent := []byte("CONFIDENTIAL: Go SDK AES-256 Protected Archive Payload 2026")
+	if err := os.WriteFile(secretFile, secretContent, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	encryptedZip := filepath.Join(tmpDir, "encrypted.zip")
+	validExtract := filepath.Join(tmpDir, "extracted_valid")
+	invalidExtract := filepath.Join(tmpDir, "extracted_invalid")
+
+	correctPwd := "TTZipGoSecretKey2026!"
+	wrongPwd := "WrongPassword999!"
+
+	ctx := context.Background()
+
+	// 1. Create password-protected archive
+	err = ttzip.Compress(ctx, []string{secretFile}, encryptedZip,
+		ttzip.WithFormat(ttzip.FormatZip),
+		ttzip.WithPassword(correctPwd),
+	)
+	if err != nil {
+		t.Fatalf("Compress with password failed: %v", err)
+	}
+
+	// 2. Inspect with password
+	entries, err := ttzip.Inspect(ctx, encryptedZip, correctPwd)
+	if err != nil {
+		t.Fatalf("Inspect with password failed: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("Inspect returned 0 entries")
+	}
+
+	// 3. Extract with correct password -> should succeed
+	if err := os.MkdirAll(validExtract, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := ttzip.Extract(ctx, encryptedZip, validExtract, ttzip.WithPassword(correctPwd)); err != nil {
+		t.Fatalf("Extract with correct password failed: %v", err)
+	}
+
+	decrypted, err := os.ReadFile(filepath.Join(validExtract, "secret.txt"))
+	if err != nil {
+		t.Fatalf("Failed to read decrypted file: %v", err)
+	}
+	if !bytes.Equal(decrypted, secretContent) {
+		t.Fatalf("Decrypted content mismatch: got %s, want %s", string(decrypted), string(secretContent))
+	}
+
+	// 4. Extract with wrong password -> should fail
+	if err := os.MkdirAll(invalidExtract, 0755); err != nil {
+		t.Fatal(err)
+	}
+	err = ttzip.Extract(ctx, encryptedZip, invalidExtract, ttzip.WithPassword(wrongPwd))
+	if err == nil {
+		t.Fatal("Expected extract with invalid password to fail, but it succeeded")
+	}
+}
+
+// TestCorruptArchiveDetection verifies robust error handling on corrupt headers.
+func TestCorruptArchiveDetection(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "ttzip_go_corrupt_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	corruptFile := filepath.Join(tmpDir, "corrupt.zip")
+	garbage := []byte{0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x01, 0x02}
+	if err := os.WriteFile(corruptFile, garbage, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	extractDir := filepath.Join(tmpDir, "corrupt_out")
+
+	// Extracting corrupt archive should fail
+	err = ttzip.Extract(ctx, corruptFile, extractDir)
+	if err == nil {
+		t.Fatal("Expected extraction of corrupt archive to fail, got nil")
+	}
+
+	// Inspecting non-existent archive should fail
+	_, err = ttzip.Inspect(ctx, filepath.Join(tmpDir, "non_existent.zip"))
+	if err == nil {
+		t.Fatal("Expected inspection of non-existent archive to fail, got nil")
 	}
 }

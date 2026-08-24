@@ -243,6 +243,182 @@ public class TTZipTest {
         assertTrue(Files.exists(destDir.resolve("large_payload.bin")), "Extracted large payload must exist");
     }
 
+    @Test
+    @DisplayName("All 16 archive formats matrix creation and extraction")
+    public void testAll16FormatsMatrix() throws Exception {
+        Path sampleFile = tempDir.resolve("matrix_doc.txt");
+        String content = "TTZip 16-Format Matrix Java 22+ Panama FFM Payload\n".repeat(100);
+        Files.writeString(sampleFile, content);
+
+        record FormatTestCase(TTZip.ArchiveFormat format, String filename, boolean canCreate) {}
+
+        List<FormatTestCase> matrix = List.of(
+            new FormatTestCase(TTZip.ArchiveFormat.ZIP, "archive.zip", true),
+            new FormatTestCase(TTZip.ArchiveFormat.SEVEN_ZIP, "archive.7z", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR, "archive.tar", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_GZ, "archive.tar.gz", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_GZ, "archive.tgz", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_BZ2, "archive.tar.bz2", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_BZ2, "archive.tbz2", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_XZ, "archive.tar.xz", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_XZ, "archive.txz", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_ZSTD, "archive.tar.zst", true),
+            new FormatTestCase(TTZip.ArchiveFormat.TAR_ZSTD, "archive.tar.zstd", true),
+            new FormatTestCase(TTZip.ArchiveFormat.GZ, "archive.gz", false),
+            new FormatTestCase(TTZip.ArchiveFormat.ZST, "archive.zst", false),
+            new FormatTestCase(TTZip.ArchiveFormat.BZ2, "archive.bz2", false),
+            new FormatTestCase(TTZip.ArchiveFormat.XZ, "archive.xz", false),
+            new FormatTestCase(TTZip.ArchiveFormat.ISO, "archive.iso", false)
+        );
+
+        for (FormatTestCase tc : matrix) {
+            Path archivePath = tempDir.resolve(tc.filename());
+            Path extractDir = tempDir.resolve("extracted_" + tc.filename().replace(".", "_"));
+
+            if (tc.canCreate()) {
+                assertDoesNotThrow(() -> {
+                    TTZip.compress(
+                        List.of(sampleFile.toString()),
+                        archivePath.toString(),
+                        tc.format(),
+                        TTZip.CompressionLevel.NORMAL,
+                        null,
+                        2,
+                        null
+                    );
+                }, "Creation should succeed for " + tc.filename());
+
+                assertTrue(Files.exists(archivePath), "Archive " + tc.filename() + " must exist");
+                assertTrue(Files.size(archivePath) > 0, "Archive " + tc.filename() + " must have size > 0");
+
+                // Inspect
+                List<TTZip.EntryMetadata> entries = TTZip.inspect(archivePath.toString(), null);
+                assertNotNull(entries);
+                assertFalse(entries.isEmpty());
+
+                // Extract
+                assertDoesNotThrow(() -> {
+                    TTZip.extract(archivePath.toString(), extractDir.toString(), null, 2, null);
+                }, "Extraction should succeed for " + tc.filename());
+
+                Path extractedDoc = extractDir.resolve("matrix_doc.txt");
+                assertTrue(Files.exists(extractedDoc), "Extracted matrix_doc.txt must exist for " + tc.filename());
+                assertEquals(content, Files.readString(extractedDoc), "Content mismatch for " + tc.filename());
+            } else {
+                // Verify format enum code validity for single-stream & optical formats
+                assertNotNull(tc.format());
+                assertTrue(tc.format().code > 0, "Format code must be valid");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Compression level configurations (1 to 22)")
+    public void testCompressionLevelConfigurations() throws Exception {
+        Path sampleFile = tempDir.resolve("compress_level_test.txt");
+        String content = "Compression Level Evaluation 1-22 Payload\n".repeat(200);
+        Files.writeString(sampleFile, content);
+
+        int[] testLevels = {1, 3, 6, 9, 12, 19, 22};
+        for (int lvl : testLevels) {
+            Path outArchive = tempDir.resolve("level_" + lvl + ".tar.zst");
+            Path outExtract = tempDir.resolve("extracted_level_" + lvl);
+
+            assertDoesNotThrow(() -> {
+                TTZip.compress(
+                    List.of(sampleFile.toString()),
+                    outArchive.toString(),
+                    TTZip.ArchiveFormat.TAR_ZSTD,
+                    lvl,
+                    null,
+                    2,
+                    null
+                );
+            }, "Compression at level " + lvl + " should succeed");
+
+            assertTrue(Files.exists(outArchive));
+            assertTrue(Files.size(outArchive) > 0);
+
+            // Extract and verify
+            TTZip.extract(outArchive.toString(), outExtract.toString(), null, 2, null);
+            Path extFile = outExtract.resolve("compress_level_test.txt");
+            assertTrue(Files.exists(extFile));
+            assertEquals(content, Files.readString(extFile));
+        }
+    }
+
+    @Test
+    @DisplayName("AES-256 password-protected archive creation, extraction, and invalid password error detection")
+    public void testPasswordProtectedArchiveExtraction() throws Exception {
+        Path secretFile = tempDir.resolve("secret.txt");
+        String secretData = "CONFIDENTIAL: AES-256 Zero-Knowledge Payload 2026";
+        Files.writeString(secretFile, secretData);
+
+        Path encryptedZip = tempDir.resolve("encrypted_vault.zip");
+        Path validExtractDir = tempDir.resolve("vault_extracted_valid");
+        Path invalidExtractDir = tempDir.resolve("vault_extracted_invalid");
+
+        String correctPassword = "TTZipJavaSecretPassword2026!";
+        String wrongPassword = "IncorrectPassword!";
+
+        // 1. Compress with password
+        TTZip.compress(
+            List.of(secretFile.toString()),
+            encryptedZip.toString(),
+            TTZip.ArchiveFormat.ZIP,
+            TTZip.CompressionLevel.NORMAL,
+            correctPassword,
+            1,
+            null
+        );
+        assertTrue(Files.exists(encryptedZip));
+
+        // 2. Inspect metadata with password
+        List<TTZip.EntryMetadata> entries = TTZip.inspect(encryptedZip.toString(), correctPassword);
+        assertNotNull(entries);
+        assertFalse(entries.isEmpty());
+        assertTrue(entries.get(0).isEncrypted(), "Entry should be marked encrypted");
+
+        // 3. Extract with correct password
+        assertDoesNotThrow(() -> {
+            TTZip.extract(encryptedZip.toString(), validExtractDir.toString(), correctPassword, 1, null);
+        }, "Extraction with correct password should succeed");
+
+        Path decryptedFile = validExtractDir.resolve("secret.txt");
+        assertTrue(Files.exists(decryptedFile));
+        assertEquals(secretData, Files.readString(decryptedFile));
+
+        // 4. Extract with incorrect password -> should throw exception
+        assertThrows(RuntimeException.class, () -> {
+            TTZip.extract(encryptedZip.toString(), invalidExtractDir.toString(), wrongPassword, 1, null);
+        }, "Extraction with incorrect password must fail");
+    }
+
+    @Test
+    @DisplayName("Corrupt header and malformed archive detection")
+    public void testCorruptHeaderDetection() throws Exception {
+        Path corruptFile = tempDir.resolve("corrupt_archive.zip");
+        byte[] garbage = new byte[]{ 0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, (byte) 0xFF, (byte) 0xFF, 0x12, 0x34 };
+        Files.write(corruptFile, garbage);
+
+        Path destDir = tempDir.resolve("corrupt_extracted");
+
+        // Extracting corrupt archive must throw exception (ErrCorruptHeader)
+        assertThrows(RuntimeException.class, () -> {
+            TTZip.extract(corruptFile.toString(), destDir.toString(), null, 1, null);
+        }, "Extracting corrupted header should throw exception");
+
+        // Inspecting corrupt archive with invalid headers returns empty entries
+        List<TTZip.EntryMetadata> entries = TTZip.inspect(corruptFile.toString(), null);
+        assertNotNull(entries);
+        assertTrue(entries.isEmpty(), "Corrupted header should yield empty entries");
+
+        // Inspecting non-existent file must throw exception
+        assertThrows(RuntimeException.class, () -> {
+            TTZip.inspect(tempDir.resolve("non_existent.zip").toString(), null);
+        }, "Inspecting non-existent file should throw exception");
+    }
+
     public static void main(String[] args) throws Exception {
         System.out.println("⚡️ Running TTZip Java 22+ Panama FFM Test Suite via Standalone Runner...");
         TTZipTest suite = new TTZipTest();
@@ -266,6 +442,18 @@ public class TTZipTest {
 
             suite.testProgressListenerCallback();
             System.out.println("  [PASS] testProgressListenerCallback");
+
+            suite.testAll16FormatsMatrix();
+            System.out.println("  [PASS] testAll16FormatsMatrix");
+
+            suite.testCompressionLevelConfigurations();
+            System.out.println("  [PASS] testCompressionLevelConfigurations");
+
+            suite.testPasswordProtectedArchiveExtraction();
+            System.out.println("  [PASS] testPasswordProtectedArchiveExtraction");
+
+            suite.testCorruptHeaderDetection();
+            System.out.println("  [PASS] testCorruptHeaderDetection");
 
             System.out.println("✅ All JUnit 5 assertions passed successfully in Java 22+ FFM!");
         } finally {

@@ -143,20 +143,52 @@ class ZipFile:
         dest_arcname = arcname if arcname else os.path.basename(src_path)
         self._staged_writes.append((src_path, dest_arcname))
 
+    def writestr(
+        self,
+        zinfo_or_arcname: Union[str, EntryMetadata],
+        data: Union[bytes, str],
+        compress_type: Optional[int] = None,
+        compresslevel: Optional[int] = None,
+    ) -> None:
+        """Write bytes or string data directly to the archive."""
+        self._check_closed()
+        if self.mode not in ("w", "a", "x"):
+            raise ValueError("Write not supported on read-only ZipFile")
+        arcname = zinfo_or_arcname.path if isinstance(zinfo_or_arcname, EntryMetadata) else str(zinfo_or_arcname)
+        payload = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+        
+        # Stage data to a persistent temp file until close()
+        tmp = tempfile.NamedTemporaryFile(delete=False, prefix="ttzip_writestr_")
+        tmp.write(payload)
+        tmp.flush()
+        tmp.close()
+        self._staged_writes.append((tmp.name, arcname))
+
     def close(self) -> None:
         """Close the archive file."""
         if self._closed:
             return
         if self.mode in ("w", "a", "x") and self._staged_writes:
-            sources = [s[0] for s in self._staged_writes]
-            from . import compress
-            compress(
-                sources=sources,
-                destination=self.filename,
-                format="zip",
-                level=self.compresslevel,
-                password=self.password,
-            )
+            stage_dir = tempfile.mkdtemp(prefix="ttzip_stage_")
+            try:
+                for src_path, arcname in self._staged_writes:
+                    target_dest = os.path.join(stage_dir, arcname.lstrip("/"))
+                    os.makedirs(os.path.dirname(target_dest), exist_ok=True)
+                    if os.path.isdir(src_path):
+                        shutil.copytree(src_path, target_dest, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src_path, target_dest)
+                from . import compress
+                stage_items = [os.path.join(stage_dir, f) for f in os.listdir(stage_dir)]
+                compress(
+                    sources=stage_items,
+                    destination=self.filename,
+                    format="zip",
+                    level=self.compresslevel,
+                    password=self.password,
+                )
+            finally:
+                shutil.rmtree(stage_dir, ignore_errors=True)
             self._staged_writes.clear()
         self._closed = True
 
@@ -168,15 +200,26 @@ class SevenZipFile(ZipFile):
         if self._closed:
             return
         if self.mode in ("w", "a", "x") and self._staged_writes:
-            sources = [s[0] for s in self._staged_writes]
-            from . import compress
-            compress(
-                sources=sources,
-                destination=self.filename,
-                format="7z",
-                level=self.compresslevel,
-                password=self.password,
-            )
+            stage_dir = tempfile.mkdtemp(prefix="ttzip_7z_stage_")
+            try:
+                for src_path, arcname in self._staged_writes:
+                    target_dest = os.path.join(stage_dir, arcname.lstrip("/"))
+                    os.makedirs(os.path.dirname(target_dest), exist_ok=True)
+                    if os.path.isdir(src_path):
+                        shutil.copytree(src_path, target_dest, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src_path, target_dest)
+                from . import compress
+                stage_items = [os.path.join(stage_dir, f) for f in os.listdir(stage_dir)]
+                compress(
+                    sources=stage_items,
+                    destination=self.filename,
+                    format="7z",
+                    level=self.compresslevel,
+                    password=self.password,
+                )
+            finally:
+                shutil.rmtree(stage_dir, ignore_errors=True)
             self._staged_writes.clear()
         self._closed = True
 

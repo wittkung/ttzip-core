@@ -204,6 +204,144 @@ namespace TTZip.Tests
             Assert.Equal(content2, File.ReadAllText(ext2));
         }
 
+        [Fact]
+        public void TestAes256PasswordProtectedExtractionAndInvalidPassword()
+        {
+            string secretFile = Path.Combine(_tempDir, "secret.txt");
+            string secretPayload = "CONFIDENTIAL: C# .NET 8+ AES-256 Protected Archive Payload 2026";
+            File.WriteAllText(secretFile, secretPayload);
+
+            string encryptedZip = Path.Combine(_tempDir, "vault_encrypted.zip");
+            string validExtractDir = Path.Combine(_tempDir, "vault_extracted_valid");
+            string invalidExtractDir = Path.Combine(_tempDir, "vault_extracted_invalid");
+            Directory.CreateDirectory(validExtractDir);
+            Directory.CreateDirectory(invalidExtractDir);
+
+            string correctPassword = "TTZipDotNetSecret2026!";
+            string wrongPassword = "WrongPassword999!";
+
+            // 1. Create password-protected archive
+            TTZipEngine.CreateArchive(
+                new[] { secretFile },
+                encryptedZip,
+                ArchiveFormat.Zip,
+                CompressionLevel.Normal,
+                password: correctPassword
+            );
+            Assert.True(File.Exists(encryptedZip));
+
+            // 2. Inspect metadata with password
+            List<EntryMetadata> entries = TTZipEngine.InspectArchive(encryptedZip, correctPassword);
+            Assert.NotNull(entries);
+            Assert.NotEmpty(entries);
+            Assert.True(entries[0].IsEncrypted, "Entry should be marked encrypted");
+
+            // 3. Extract with correct password -> must succeed
+            TTZipEngine.ExtractArchive(encryptedZip, validExtractDir, password: correctPassword);
+            string decryptedFile = Path.Combine(validExtractDir, "secret.txt");
+            Assert.True(File.Exists(decryptedFile));
+            Assert.Equal(secretPayload, File.ReadAllText(decryptedFile));
+
+            // 4. Extract with incorrect password -> must throw InvalidOperationException
+            Assert.Throws<InvalidOperationException>(() =>
+            {
+                TTZipEngine.ExtractArchive(encryptedZip, invalidExtractDir, password: wrongPassword);
+            });
+        }
+
+        [Fact]
+        public void TestReadOnlySpanBufferSlicingExtensive()
+        {
+            byte[] buffer = new byte[1024];
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                buffer[i] = (byte)(i * 31 + 7);
+            }
+
+            ReadOnlySpan<byte> fullSpan = buffer.AsSpan();
+            uint fullCrc = TTZipEngine.ComputeCrc32(fullSpan);
+            ulong fullCrc64 = TTZipEngine.ComputeCrc64(fullSpan);
+
+            // 4-way sliced chained CRC-32 and CRC-64
+            int q1 = 256;
+            int q2 = 512;
+            int q3 = 768;
+
+            ReadOnlySpan<byte> s1 = fullSpan.Slice(0, q1);
+            ReadOnlySpan<byte> s2 = fullSpan.Slice(q1, q2 - q1);
+            ReadOnlySpan<byte> s3 = fullSpan.Slice(q2, q3 - q2);
+            ReadOnlySpan<byte> s4 = fullSpan.Slice(q3);
+
+            uint seed32 = TTZipEngine.ComputeCrc32(s1, 0);
+            seed32 = TTZipEngine.ComputeCrc32(s2, seed32);
+            seed32 = TTZipEngine.ComputeCrc32(s3, seed32);
+            uint chained32 = TTZipEngine.ComputeCrc32(s4, seed32);
+            Assert.Equal(fullCrc, chained32);
+
+            ulong seed64 = TTZipEngine.ComputeCrc64(s1, 0);
+            seed64 = TTZipEngine.ComputeCrc64(s2, seed64);
+            seed64 = TTZipEngine.ComputeCrc64(s3, seed64);
+            ulong chained64 = TTZipEngine.ComputeCrc64(s4, seed64);
+            Assert.Equal(fullCrc64, chained64);
+
+            // Empty span checks
+            Assert.Equal(0u, TTZipEngine.ComputeCrc32(ReadOnlySpan<byte>.Empty));
+            Assert.Equal(0UL, TTZipEngine.ComputeCrc64(ReadOnlySpan<byte>.Empty));
+        }
+
+        [Fact]
+        public void TestMultiFormatArchiveMatrix()
+        {
+            string srcFile = Path.Combine(_tempDir, "matrix_test.txt");
+            string payload = "TTZip C# .NET Multi-Format (ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, TAR.ZSTD) Test Payload\n";
+            File.WriteAllText(srcFile, payload);
+
+            var formats = new (ArchiveFormat format, string filename, CompressionLevel level)[]
+            {
+                (ArchiveFormat.Zip, "dotnet_matrix.zip", CompressionLevel.Fastest),
+                (ArchiveFormat.SevenZip, "dotnet_matrix.7z", CompressionLevel.Normal),
+                (ArchiveFormat.Tar, "dotnet_matrix.tar", CompressionLevel.Store),
+                (ArchiveFormat.TarGz, "dotnet_matrix.tar.gz", CompressionLevel.Fast),
+                (ArchiveFormat.TarBz2, "dotnet_matrix.tar.bz2", CompressionLevel.Normal),
+                (ArchiveFormat.TarXz, "dotnet_matrix.tar.xz", CompressionLevel.Maximum),
+                (ArchiveFormat.TarZstd, "dotnet_matrix.tar.zst", CompressionLevel.Ultra)
+            };
+
+            foreach (var (fmt, filename, level) in formats)
+            {
+                string arcPath = Path.Combine(_tempDir, filename);
+                string outDir = Path.Combine(_tempDir, "dest_" + filename);
+                Directory.CreateDirectory(outDir);
+
+                TTZipEngine.CreateArchive(new[] { srcFile }, arcPath, fmt, level);
+                Assert.True(File.Exists(arcPath));
+                Assert.True(new FileInfo(arcPath).Length > 0);
+
+                var entries = TTZipEngine.InspectArchive(arcPath);
+                Assert.NotEmpty(entries);
+
+                TTZipEngine.ExtractArchive(arcPath, outDir);
+                string extFile = Path.Combine(outDir, "matrix_test.txt");
+                Assert.True(File.Exists(extFile));
+                Assert.Equal(payload, File.ReadAllText(extFile));
+            }
+        }
+
+        [Fact]
+        public void TestCorruptArchiveHeaderDetection()
+        {
+            string corruptFile = Path.Combine(_tempDir, "corrupt_test.zip");
+            File.WriteAllBytes(corruptFile, new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x12, 0x34 });
+
+            string outDir = Path.Combine(_tempDir, "corrupt_extracted");
+            Directory.CreateDirectory(outDir);
+
+            Assert.Throws<InvalidOperationException>(() =>
+            {
+                TTZipEngine.ExtractArchive(corruptFile, outDir);
+            });
+        }
+
         public static async Task<int> Main(string[] args)
         {
             Console.WriteLine("⚡️ Running TTZip .NET 8+ SDK Test Suite via Standalone Runner...");
@@ -217,6 +355,9 @@ namespace TTZip.Tests
                 test.TestReadOnlySpanZeroCopySlicingAndCrc();
                 Console.WriteLine("  [PASS] TestReadOnlySpanZeroCopySlicingAndCrc");
 
+                test.TestReadOnlySpanBufferSlicingExtensive();
+                Console.WriteLine("  [PASS] TestReadOnlySpanBufferSlicingExtensive");
+
                 test.TestSafeHandleZeroAllocLifecycle();
                 Console.WriteLine("  [PASS] TestSafeHandleZeroAllocLifecycle");
 
@@ -225,6 +366,15 @@ namespace TTZip.Tests
 
                 test.TestSynchronousArchiveRoundtripAndMetadataInspection();
                 Console.WriteLine("  [PASS] TestSynchronousArchiveRoundtripAndMetadataInspection");
+
+                test.TestAes256PasswordProtectedExtractionAndInvalidPassword();
+                Console.WriteLine("  [PASS] TestAes256PasswordProtectedExtractionAndInvalidPassword");
+
+                test.TestMultiFormatArchiveMatrix();
+                Console.WriteLine("  [PASS] TestMultiFormatArchiveMatrix");
+
+                test.TestCorruptArchiveHeaderDetection();
+                Console.WriteLine("  [PASS] TestCorruptArchiveHeaderDetection");
 
                 Console.WriteLine("✅ All .NET 8+ test assertions passed successfully!");
                 return 0;

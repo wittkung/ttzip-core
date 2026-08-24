@@ -191,35 +191,125 @@ static void test_raii_archive_reader(const fs::path& temp_dir) {
     std::cout << "  [PASS] C++20 RAII ArchiveReader std::expected open & extract_all OK\n";
 }
 
-// 6. Test Multiple Formats (ZIP & TAR)
+// 6. Test Multiple Formats Matrix & Compression Levels
 static void test_multi_format_matrix(const fs::path& temp_dir) {
     fs::path src_file = temp_dir / "matrix_doc.txt";
-    std::string payload = "Multi-format validation (ZIP, TAR) C++20 test";
+    std::string payload = "Multi-format validation (ZIP, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, TAR.ZSTD) C++20 test\n";
     write_file(src_file, payload);
 
     struct FormatSpec {
         ttzip::ArchiveFormat format;
+        ttzip::CompressionLevel level;
         std::string filename;
     };
 
     std::vector<FormatSpec> formats = {
-        { ttzip::ArchiveFormat::Zip, "matrix.zip" },
-        { ttzip::ArchiveFormat::Tar, "matrix.tar" }
+        { ttzip::ArchiveFormat::Zip, ttzip::CompressionLevel::Fastest, "matrix.zip" },
+        { ttzip::ArchiveFormat::SevenZip, ttzip::CompressionLevel::Normal, "matrix.7z" },
+        { ttzip::ArchiveFormat::Tar, ttzip::CompressionLevel::Store, "matrix.tar" },
+        { ttzip::ArchiveFormat::TarGz, ttzip::CompressionLevel::Fast, "matrix.tar.gz" },
+        { ttzip::ArchiveFormat::TarBz2, ttzip::CompressionLevel::Normal, "matrix.tar.bz2" },
+        { ttzip::ArchiveFormat::TarXz, ttzip::CompressionLevel::Maximum, "matrix.tar.xz" },
+        { ttzip::ArchiveFormat::TarZstd, ttzip::CompressionLevel::Ultra, "matrix.tar.zst" }
     };
 
     for (const auto& spec : formats) {
         fs::path arc = temp_dir / spec.filename;
         fs::path out_dir = temp_dir / ("out_" + spec.filename);
 
-        ttzip::compress_files({src_file.string()}, arc.string(), 6, "", spec.format);
+        ttzip::compress_files({src_file.string()}, arc.string(), static_cast<int>(spec.level), "", spec.format);
         assert(fs::exists(arc));
+
+        auto entries = ttzip::inspect_archive(arc.string());
+        assert(!entries.empty());
 
         ttzip::extract_archive(arc.string(), out_dir.string());
         assert(fs::exists(out_dir / "matrix_doc.txt"));
         assert(read_file(out_dir / "matrix_doc.txt") == payload);
     }
 
-    std::cout << "  [PASS] C++ SDK multi-format matrix (ZIP, TAR) OK\n";
+    std::cout << "  [PASS] C++ SDK multi-format matrix & compression level configurations OK\n";
+}
+
+// 7. Test In-Memory Buffer Codecs (DEFLATE, ZSTD, LZ4, Snappy, LZFSE)
+static void test_memory_buffer_codecs() {
+    std::string text = "Modern C++20 Zero-Copy std::span In-Memory Buffer Codec Compression Verification 2026!\n";
+    std::span<const uint8_t> src_span(reinterpret_cast<const uint8_t*>(text.data()), text.size());
+
+    std::vector<uint8_t> comp_buf(4096);
+    std::vector<uint8_t> decomp_buf(4096);
+    size_t comp_len = 0;
+    size_t decomp_len = 0;
+
+    // DEFLATE
+    TTZipStatus st = ttzip_rust_deflate_compress(src_span.data(), src_span.size(), comp_buf.data(), comp_buf.size(), 6, &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_deflate_decompress(comp_buf.data(), comp_len, decomp_buf.data(), decomp_buf.size(), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == src_span.size());
+    assert(std::memcmp(decomp_buf.data(), src_span.data(), src_span.size()) == 0);
+
+    // ZSTD
+    st = ttzip_rust_zstd_compress(src_span.data(), src_span.size(), comp_buf.data(), comp_buf.size(), 3, &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_zstd_decompress(comp_buf.data(), comp_len, decomp_buf.data(), decomp_buf.size(), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == src_span.size());
+    assert(std::memcmp(decomp_buf.data(), src_span.data(), src_span.size()) == 0);
+
+    // LZ4
+    st = ttzip_rust_lz4_compress(src_span.data(), src_span.size(), comp_buf.data(), comp_buf.size(), &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_lz4_decompress(comp_buf.data(), comp_len, decomp_buf.data(), decomp_buf.size(), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == src_span.size());
+    assert(std::memcmp(decomp_buf.data(), src_span.data(), src_span.size()) == 0);
+
+    // Snappy
+    st = ttzip_rust_snappy_compress(src_span.data(), src_span.size(), comp_buf.data(), comp_buf.size(), &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_snappy_decompress(comp_buf.data(), comp_len, decomp_buf.data(), decomp_buf.size(), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == src_span.size());
+    assert(std::memcmp(decomp_buf.data(), src_span.data(), src_span.size()) == 0);
+
+    // LZFSE
+    st = ttzip_rust_lzfse_compress(src_span.data(), src_span.size(), comp_buf.data(), comp_buf.size(), &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_lzfse_decompress(comp_buf.data(), comp_len, decomp_buf.data(), decomp_buf.size(), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == src_span.size());
+    assert(std::memcmp(decomp_buf.data(), src_span.data(), src_span.size()) == 0);
+
+    std::cout << "  [PASS] C++20 in-memory buffer codecs (DEFLATE, ZSTD, LZ4, Snappy, LZFSE) OK\n";
+}
+
+// 8. Test AES-256 Password Protection
+static void test_password_protection(const fs::path& temp_dir) {
+    fs::path sec_file = temp_dir / "secret.txt";
+    std::string secret = "C++20 AES-256 Encrypted Archive Payload 2026";
+    write_file(sec_file, secret);
+
+    fs::path enc_zip = temp_dir / "encrypted_cpp.zip";
+    std::string correct_pwd = "CPPSecretPassword2026!";
+    std::string wrong_pwd = "WrongSecretPassword!";
+
+    // Create encrypted archive
+    ttzip::compress_files({sec_file.string()}, enc_zip.string(), 6, correct_pwd, ttzip::ArchiveFormat::Zip);
+    assert(fs::exists(enc_zip));
+
+    // Extract with correct password
+    fs::path valid_dest = temp_dir / "cpp_decrypted_valid";
+    ttzip::extract_archive(enc_zip.string(), valid_dest.string(), correct_pwd);
+    assert(fs::exists(valid_dest / "secret.txt"));
+    assert(read_file(valid_dest / "secret.txt") == secret);
+
+    // Extract with wrong password -> should throw
+    fs::path invalid_dest = temp_dir / "cpp_decrypted_invalid";
+    bool failed_as_expected = false;
+    try {
+        ttzip::extract_archive(enc_zip.string(), invalid_dest.string(), wrong_pwd);
+    } catch (const std::exception&) {
+        failed_as_expected = true;
+    }
+    assert(failed_as_expected);
+
+    std::cout << "  [PASS] C++ SDK AES-256 password protection & authentication error OK\n";
 }
 
 int main() {
@@ -232,6 +322,8 @@ int main() {
     test_raii_archive_writer(temp_dir.path());
     test_raii_archive_reader(temp_dir.path());
     test_multi_format_matrix(temp_dir.path());
+    test_memory_buffer_codecs();
+    test_password_protection(temp_dir.path());
 
     std::cout << "✅ All C++20 std::span / std::expected / RAII tests passed successfully!\n";
     return 0;

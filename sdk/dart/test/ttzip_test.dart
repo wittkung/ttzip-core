@@ -185,11 +185,16 @@ void main() {
       await item2.writeAsString('Item 2 Log Message');
 
       final formats = [
-        (TTZipFormat.zip, 'multi.zip'),
-        (TTZipFormat.tar, 'multi.tar'),
+        (TTZipFormat.zip, 'multi.zip', TTZipCompressionLevel.fastest),
+        (TTZipFormat.sevenZip, 'multi.7z', TTZipCompressionLevel.normal),
+        (TTZipFormat.tar, 'multi.tar', TTZipCompressionLevel.store),
+        (TTZipFormat.tarGz, 'multi.tar.gz', TTZipCompressionLevel.fast),
+        (TTZipFormat.tarBz2, 'multi.tar.bz2', TTZipCompressionLevel.normal),
+        (TTZipFormat.tarXz, 'multi.tar.xz', TTZipCompressionLevel.maximum),
+        (TTZipFormat.tarZstd, 'multi.tar.zst', TTZipCompressionLevel.ultra),
       ];
 
-      for (final (fmt, filename) in formats) {
+      for (final (fmt, filename, lvl) in formats) {
         final outPath = '${tempDir.path}/$filename';
         final destPath = '${tempDir.path}/dest_${fmt.name}';
         await Directory(destPath).create(recursive: true);
@@ -198,10 +203,11 @@ void main() {
           sources: [dirA.path],
           destination: outPath,
           format: fmt,
-          level: TTZipCompressionLevel.normal,
+          level: lvl,
         );
 
         expect(await File(outPath).exists(), isTrue);
+        expect(await File(outPath).length(), greaterThan(0));
 
         await TTZip.extract(
           archivePath: outPath,
@@ -213,6 +219,69 @@ void main() {
           expect(await read1.readAsString(), equals('Item 1 Content'));
         }
       }
+    });
+
+    test('validates AES-256 password-protected archive creation and extraction', () async {
+      final secretFile = File('${tempDir.path}/dart_secret.txt');
+      const secretPayload = 'Dart FFI AES-256 Protected Archive Secret Payload 2026';
+      await secretFile.writeAsString(secretPayload);
+
+      final encPath = '${tempDir.path}/dart_encrypted.zip';
+      final validDest = '${tempDir.path}/dart_decrypted_valid';
+      final invalidDest = '${tempDir.path}/dart_decrypted_invalid';
+      await Directory(validDest).create(recursive: true);
+      await Directory(invalidDest).create(recursive: true);
+
+      const correctPassword = 'DartSecretPassword2026!';
+      const wrongPassword = 'WrongDartPassword999!';
+
+      // 1. Compress with password
+      await TTZip.compress(
+        sources: [secretFile.path],
+        destination: encPath,
+        format: TTZipFormat.zip,
+        level: TTZipCompressionLevel.normal,
+        password: correctPassword,
+      );
+
+      expect(await File(encPath).exists(), isTrue);
+
+      // 2. Extract with correct password
+      await TTZip.extract(
+        archivePath: encPath,
+        destination: validDest,
+        password: correctPassword,
+      );
+
+      final decrypted = File('$validDest/dart_secret.txt');
+      expect(await decrypted.exists(), isTrue);
+      expect(await decrypted.readAsString(), equals(secretPayload));
+
+      // 3. Extract with wrong password -> must throw
+      expect(
+        () async => await TTZip.extract(
+          archivePath: encPath,
+          destination: invalidDest,
+          password: wrongPassword,
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('validates corrupted archive header detection', () async {
+      final corruptFile = File('${tempDir.path}/dart_corrupt.zip');
+      await corruptFile.writeAsBytes([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x11, 0x22]);
+
+      final corruptOut = '${tempDir.path}/dart_corrupt_out';
+      await Directory(corruptOut).create(recursive: true);
+
+      expect(
+        () async => await TTZip.extract(
+          archivePath: corruptFile.path,
+          destination: corruptOut,
+        ),
+        throwsA(isA<Exception>()),
+      );
     });
   });
 }

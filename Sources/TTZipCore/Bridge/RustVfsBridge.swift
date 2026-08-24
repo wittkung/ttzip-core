@@ -26,6 +26,8 @@ public enum RustVfsBridge {
         for (i, entry) in entries.enumerated() {
             let mtime = entry.modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
             rawEntries.append(TTZipEntryMetadata(
+                struct_size: UInt32(MemoryLayout<TTZipEntryMetadata>.size),
+                abi_version: 2,
                 path: cPathPointers[i].map { UnsafePointer($0) },
                 uncompressed_size: UInt64(max(0, entry.uncompressedSize)),
                 compressed_size: 0,
