@@ -7,7 +7,7 @@
 # TTZip: High-performance native archiving and compression engine for macOS.
 # ==============================================================================
 # scripts/verify_cabi_symbols.sh
-# 自动化 C-ABI 符号对齐防御门禁：校验头文件导出函数与静态库底层符号 100% 对应
+# 自动化 C-ABI 符号双向满射防御门禁：校验头文件导出函数与静态库 Mach-O 符号 100% 对应
 # ==============================================================================
 
 set -euo pipefail
@@ -29,23 +29,31 @@ if [ ! -f "${STATIC_LIB}" ]; then
 fi
 
 echo "======================================================================"
-echo "   TTZip C-ABI Symbol Alignment Gate                                 "
+echo "   TTZip C-ABI Symbol Alignment Gate (Bi-directional Parity)         "
 echo "======================================================================"
 echo "Header: ${HEADER_FILE}"
 echo "Binary: ${STATIC_LIB}"
 echo "----------------------------------------------------------------------"
 
-# 1. 从头文件中提取所有 ttzip_rust_* 函数声明
+# 1. 从头文件中提取所有 ttzip_rust_* 函数原型
 HEADER_SYMBOLS=$(grep -oE '\bttzip_rust_[A-Za-z0-9_]+\b' "${HEADER_FILE}" | sort -u)
 HEADER_COUNT=$(echo "${HEADER_SYMBOLS}" | grep -v '^$' | wc -l | tr -d ' ')
 echo "--> Extracted ${HEADER_COUNT} C-ABI function prototypes from header."
 
-# 2. 从静态库中提取所有导出的 C-ABI 符号 (使用 strings + regex 跨平台零版本依赖)
-LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)ttzip_rust_' | sed 's/^_//' | sort -u)
+# 2. 从静态库中提取所有导出的全局 Text 符号 (优先使用 nm -gU，回退至 strings)
+if command -v nm >/dev/null 2>&1; then
+    LIB_SYMBOLS=$(nm -gU "${STATIC_LIB}" 2>/dev/null | grep -E ' T _ttzip_rust_' | awk '{print $3}' | sed 's/^_//' | sort -u || true)
+    if [ -z "${LIB_SYMBOLS//[$'\t\r\n ']/}" ]; then
+        LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)ttzip_rust_' | sed 's/^_//' | sort -u)
+    fi
+else
+    LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)ttzip_rust_' | sed 's/^_//' | sort -u)
+fi
+
 LIB_COUNT=$(echo "${LIB_SYMBOLS}" | grep -v '^$' | wc -l | tr -d ' ')
 echo "--> Extracted ${LIB_COUNT} matching C-ABI symbol definitions from static library."
 
-# 3. 逐项核验头文件符号是否存在于静态库中
+# 3. 逐项核验头文件符号是否存在于静态库中 (Header -> Lib)
 HEADER_TMP=$(mktemp)
 LIB_TMP=$(mktemp)
 trap 'rm -f "${HEADER_TMP}" "${LIB_TMP}"' EXIT
