@@ -15,6 +15,7 @@ pub mod mips;
 pub mod pareto;
 pub mod plotter;
 pub mod runner;
+pub mod scenario_driver;
 pub mod spline;
 
 #[cfg(test)]
@@ -31,4 +32,5 @@ pub use pareto::{
 };
 pub use plotter::BenchmarkPlotter;
 pub use runner::{BenchmarkMatrixReport, BenchmarkMatrixRunner, BenchmarkPointResult};
+pub use scenario_driver::{ScenarioBenchmarkDriver, ScenarioBenchmarkPoint, ScenarioMatrixReport};
 pub use spline::{FritschCarlsonSpline, SplinePoint};

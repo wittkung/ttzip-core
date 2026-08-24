@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZip CABI Context Linter Rules Contract",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "type": "string", "enum": ["ERROR", "WARN"] },
+          "description": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        },
+        "required": ["id", "severity", "description", "blocking"]
+      }
+    }
+  },
+  "required": ["rules"]
+}

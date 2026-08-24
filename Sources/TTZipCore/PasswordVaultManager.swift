@@ -533,7 +533,7 @@ extension PasswordVaultManager {
             guard let keyBase = keyBuf.baseAddress else { return }
             let keyData = Data(bytes: keyBase, count: keyBuf.count)
             
-            var query: [String: Any] = [
+            let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: "com.ttzip.app.vault.biometric",
                 kSecAttrAccount as String: biometricAccountKey,
@@ -552,7 +552,7 @@ extension PasswordVaultManager {
         let context = LAContext()
         context.localizedReason = "Unlock TTZip Password Vault"
         
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "com.ttzip.app.vault.biometric",
             kSecAttrAccount as String: biometricAccountKey,

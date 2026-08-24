@@ -44,20 +44,31 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     
     private init() {}
     
-    /// Dispatches intensive C/Rust compute workload on an isolated GCD concurrent queue.
+    /// Dispatches intensive C/Rust compute workload on an isolated GCD concurrent queue with cancellation support.
     public func dispatchCompute<T: Sendable>(
         qos: ExecutionQoSProfile = .userInitiated,
+        cancellationHandle: TaskExecutionHandle? = nil,
         _ work: @escaping @Sendable () throws -> T
     ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            computeQueue.async(qos: qos.dispatchQoS) {
-                do {
-                    let val = try work()
-                    continuation.resume(returning: val)
-                } catch {
-                    continuation.resume(throwing: error)
+        try Task.checkCancellation()
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                computeQueue.async(qos: qos.dispatchQoS) {
+                    if Task.isCancelled || cancellationHandle?.isCancelled == true {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    do {
+                        let val = try work()
+                        continuation.resume(returning: val)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
+        } onCancel: {
+            cancellationHandle?.cancel()
         }
     }
 }

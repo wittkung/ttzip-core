@@ -14,8 +14,8 @@ use crate::sevenz::decoder::payload::decode_7z_solid_payload;
 use crate::sevenz::format::*;
 use crate::types::TTZipStatus;
 
-/// Parses 7z Header metadata from memory mapped archive.
-pub fn parse_7z_metadata(mapped: &[u8]) -> Result<SevenZHeaderInfo, TTZipStatus> {
+/// Parses 7z Header metadata from memory mapped archive, optionally decrypting encoded headers.
+pub fn parse_7z_metadata(mapped: &[u8], password: Option<&str>) -> Result<SevenZHeaderInfo, TTZipStatus> {
     let sig = SevenZSignatureHeader::parse(mapped)?;
     let header_start = 32 + (sig.next_header_offset as usize);
     let header_size = sig.next_header_size as usize;
@@ -54,7 +54,7 @@ pub fn parse_7z_metadata(mapped: &[u8]) -> Result<SevenZHeaderInfo, TTZipStatus>
         if header_bytes[0] == K_ENCODED_HEADER {
             let mut sub_info = SevenZHeaderInfo::default();
             parse_7z_header_stream(&header_bytes[1..], &mut sub_info)?;
-            let uncompressed_header = decode_7z_solid_payload(mapped, &sub_info, None, 1)?;
+            let uncompressed_header = decode_7z_solid_payload(mapped, &sub_info, password, 1)?;
             parse_7z_header_stream(&uncompressed_header, &mut info)?;
         } else {
             parse_7z_header_stream(header_bytes, &mut info)?;

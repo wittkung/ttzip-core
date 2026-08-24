@@ -7,80 +7,70 @@
 
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
-fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
+fn compile_native_codecs(repo_root: &Path) {
     let fast_lzma2_dir = repo_root.join("Vendor/turbobench/fast-lzma2");
     let lzfse_dir = repo_root.join("Vendor/turbobench/lzfse/src");
-
-    let mut obj_files = Vec::new();
-
-    // Compile fast-lzma2 C files
-    let fl2_sources = [
-        "dict_buffer.c",
-        "fl2_common.c",
-        "fl2_compress.c",
-        "fl2_decompress.c",
-        "fl2_pool.c",
-        "fl2_threading.c",
-        "lzma2_dec.c",
-        "lzma2_enc.c",
-        "radix_bitpack.c",
-        "radix_mf.c",
-        "radix_struct.c",
-        "range_enc.c",
-        "util.c",
-        "xxhash.c",
-    ];
-    let min_ver = env::var("MACOSX_DEPLOYMENT_TARGET").unwrap_or_else(|_| "14.0".to_string());
-    let min_ver_flag = format!("-mmacosx-version-min={}", min_ver);
-
-    for src in fl2_sources {
-        let src_path = fast_lzma2_dir.join(src);
-        if !src_path.exists() {
-            continue;
-        }
-        let obj_path = out_dir.join(format!("fl2_{}.o", src));
-        let status = Command::new("clang")
-            .args(["-O3", "-c", "-target", target, &min_ver_flag, "-I", fast_lzma2_dir.to_str().unwrap()])
-            .arg(&src_path)
-            .arg("-o")
-            .arg(&obj_path)
-            .status()
-            .expect("Failed to compile fast-lzma2 source");
-        assert!(status.success(), "Failed compiling {}", src);
-        obj_files.push(obj_path);
-    }
-
-    // Compile lzfse C files
-    let lzfse_sources = [
-        "lzfse_decode.c",
-        "lzfse_decode_base.c",
-        "lzfse_encode.c",
-        "lzfse_encode_base.c",
-        "lzfse_fse.c",
-        "lzvn_decode_base.c",
-        "lzvn_encode_base.c",
-    ];
-    for src in lzfse_sources {
-        let src_path = lzfse_dir.join(src);
-        if !src_path.exists() {
-            continue;
-        }
-        let obj_path = out_dir.join(format!("lzfse_{}.o", src));
-        let status = Command::new("clang")
-            .args(["-O3", "-c", "-target", target, &min_ver_flag, "-I", lzfse_dir.to_str().unwrap()])
-            .arg(&src_path)
-            .arg("-o")
-            .arg(&obj_path)
-            .status()
-            .expect("Failed to compile lzfse source");
-        assert!(status.success(), "Failed compiling {}", src);
-        obj_files.push(obj_path);
-    }
-
-    // Compile libdeflate C files (adler32, crc32, gzip, zlib, deflate)
     let libdeflate_dir = repo_root.join("Vendor/libdeflate-upstream");
+    let lz4_dir = repo_root.join("Vendor/lz4-upstream/lib");
+    let zstd_dir = repo_root.join("Vendor/zstd-upstream/lib");
+
+    let mut build = cc::Build::new();
+    build.opt_level(3);
+    build.warnings(false);
+    let target = env::var("TARGET").unwrap_or_default();
+    if target.contains("apple") {
+        build.flag("-mmacosx-version-min=14.0");
+    }
+
+    // 1. fast-lzma2
+    if fast_lzma2_dir.exists() {
+        let fl2_sources = [
+            "dict_buffer.c",
+            "fl2_common.c",
+            "fl2_compress.c",
+            "fl2_decompress.c",
+            "fl2_pool.c",
+            "fl2_threading.c",
+            "lzma2_dec.c",
+            "lzma2_enc.c",
+            "radix_bitpack.c",
+            "radix_mf.c",
+            "radix_struct.c",
+            "range_enc.c",
+            "util.c",
+            "xxhash.c",
+        ];
+        for src in fl2_sources {
+            let path = fast_lzma2_dir.join(src);
+            if path.exists() {
+                build.file(path);
+            }
+        }
+        build.include(&fast_lzma2_dir);
+    }
+
+    // 2. lzfse
+    if lzfse_dir.exists() {
+        let lzfse_sources = [
+            "lzfse_decode.c",
+            "lzfse_decode_base.c",
+            "lzfse_encode.c",
+            "lzfse_encode_base.c",
+            "lzfse_fse.c",
+            "lzvn_decode_base.c",
+            "lzvn_encode_base.c",
+        ];
+        for src in lzfse_sources {
+            let path = lzfse_dir.join(src);
+            if path.exists() {
+                build.file(path);
+            }
+        }
+        build.include(&lzfse_dir);
+    }
+
+    // 3. libdeflate
     if libdeflate_dir.exists() {
         let deflate_sources = [
             "lib/adler32.c",
@@ -95,48 +85,28 @@ fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
             "lib/arm/cpu_features.c",
         ];
         for src in deflate_sources {
-            let src_path = libdeflate_dir.join(src);
-            if !src_path.exists() {
-                continue;
+            let path = libdeflate_dir.join(src);
+            if path.exists() {
+                build.file(path);
             }
-            let safe_name = src.replace('/', "_");
-            let obj_path = out_dir.join(format!("deflate_{}.o", safe_name));
-            let status = Command::new("clang")
-                .args(["-O3", "-c", "-target", target, "-mmacosx-version-min=14.0", "-I", libdeflate_dir.join("lib").to_str().unwrap(), "-I", libdeflate_dir.to_str().unwrap()])
-                .arg(&src_path)
-                .arg("-o")
-                .arg(&obj_path)
-                .status()
-                .expect("Failed to compile libdeflate source");
-            assert!(status.success(), "Failed compiling {}", src);
-            obj_files.push(obj_path);
         }
+        build.include(libdeflate_dir.join("lib"));
+        build.include(&libdeflate_dir);
     }
 
-    // Compile LZ4 C files
-    let lz4_dir = repo_root.join("Vendor/lz4-upstream/lib");
+    // 4. lz4
     if lz4_dir.exists() {
         let lz4_sources = ["lz4.c", "lz4frame.c", "lz4hc.c"];
         for src in lz4_sources {
-            let src_path = lz4_dir.join(src);
-            if !src_path.exists() {
-                continue;
+            let path = lz4_dir.join(src);
+            if path.exists() {
+                build.file(path);
             }
-            let obj_path = out_dir.join(format!("lz4_{}.o", src));
-            let status = Command::new("clang")
-                .args(["-O3", "-c", "-target", target, "-mmacosx-version-min=14.0", "-I", lz4_dir.to_str().unwrap()])
-                .arg(&src_path)
-                .arg("-o")
-                .arg(&obj_path)
-                .status()
-                .expect("Failed to compile lz4 source");
-            assert!(status.success(), "Failed compiling {}", src);
-            obj_files.push(obj_path);
         }
+        build.include(&lz4_dir);
     }
 
-    // Compile Zstandard C files
-    let zstd_dir = repo_root.join("Vendor/zstd-upstream/lib");
+    // 5. zstd
     if zstd_dir.exists() {
         let zstd_sources = [
             "common/debug.c",
@@ -167,48 +137,17 @@ fn compile_native_codecs(repo_root: &Path, out_dir: &Path, target: &str) {
             "decompress/zstd_decompress_block.c",
         ];
         for src in zstd_sources {
-            let src_path = zstd_dir.join(src);
-            if !src_path.exists() {
-                continue;
+            let path = zstd_dir.join(src);
+            if path.exists() {
+                build.file(path);
             }
-            let safe_name = src.replace('/', "_");
-            let obj_path = out_dir.join(format!("zstd_{}.o", safe_name));
-            let status = Command::new("clang")
-                .args([
-                    "-O3",
-                    "-c",
-                    "-target",
-                    target,
-                    "-mmacosx-version-min=14.0",
-                    "-I",
-                    zstd_dir.to_str().unwrap(),
-                    "-I",
-                    zstd_dir.join("common").to_str().unwrap(),
-                    "-DZSTD_MULTITHREAD",
-                ])
-                .arg(&src_path)
-                .arg("-o")
-                .arg(&obj_path)
-                .status()
-                .expect("Failed to compile zstd source");
-            assert!(status.success(), "Failed compiling {}", src);
-            obj_files.push(obj_path);
         }
+        build.include(&zstd_dir);
+        build.include(zstd_dir.join("common"));
+        build.define("ZSTD_MULTITHREAD", None);
     }
 
-    if !obj_files.is_empty() {
-        let lib_path = out_dir.join("libttzip_native_codecs.a");
-        let mut libtool = Command::new("libtool");
-        libtool.arg("-static").arg("-no_warning_for_no_symbols").arg("-o").arg(&lib_path);
-        for obj in &obj_files {
-            libtool.arg(obj);
-        }
-        let status = libtool.status().expect("Failed to run libtool");
-        assert!(status.success(), "Failed creating libttzip_native_codecs.a");
-
-        println!("cargo:rustc-link-search=native={}", out_dir.display());
-        println!("cargo:rustc-link-lib=static=ttzip_native_codecs");
-    }
+    build.compile("ttzip_native_codecs");
 }
 
 fn main() {
@@ -218,10 +157,6 @@ fn main() {
         .and_then(|p| p.parent())
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest_dir.clone());
-
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let target = env::var("TARGET").unwrap_or_else(|_| "aarch64-apple-darwin".to_string());
-
     let vendor_dir = repo_root.join("Vendor");
     let vendor_lib_dir = vendor_dir.join("lib");
     if vendor_lib_dir.exists() {
@@ -236,8 +171,8 @@ fn main() {
         println!("cargo:rustc-link-lib=static=b2");
     }
 
-    // Compile and link in-tree native codecs (fast-lzma2, lzfse, snappy)
-    compile_native_codecs(&repo_root, &out_dir, &target);
+    // Compile and link in-tree native codecs (fast-lzma2, lzfse, snappy, etc.)
+    compile_native_codecs(&repo_root);
 
     // System libraries & frameworks required on macOS
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();

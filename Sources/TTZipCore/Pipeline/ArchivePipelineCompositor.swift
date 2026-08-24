@@ -380,16 +380,16 @@ public final class ArchiveOperationPipeline: Sendable {
     ) async throws -> ArchiveOperationResult {
         let startTime = Date()
 
-        try await extractor.extract(
+        let extractedBytes = try await extractor.extract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
-            advancedOptions: advancedOptions
+            advancedOptions: advancedOptions,
+            progressHandler: progress
         )
 
         let duration = max(0.001, Date().timeIntervalSince(startTime))
-        let extractedBytes = calculateDirectorySize(at: destinationDir)
         let throughput = Double(extractedBytes) / (1024.0 * 1024.0 * duration)
 
         return ArchiveOperationResult(

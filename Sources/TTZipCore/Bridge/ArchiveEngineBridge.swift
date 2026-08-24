@@ -213,13 +213,12 @@ public final class ZipEngineBridgeImplementor: ArchiveEngineImplementorProtocol,
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
         let extractor = ArchiveExtractor()
-        try extractor.extractSync(
+        return try extractor.extractSync(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: .defaultClean,
             advancedOptions: options
         )
-        return calculateDirectorySize(at: destinationDir)
     }
 }
 
@@ -253,13 +252,12 @@ public final class SevenZipEngineBridgeImplementor: ArchiveEngineImplementorProt
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
         let extractor = ArchiveExtractor()
-        try extractor.extractSync(
+        return try extractor.extractSync(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: .defaultClean,
             advancedOptions: options
         )
-        return calculateDirectorySize(at: destinationDir)
     }
 }
 
@@ -293,13 +291,12 @@ public final class ZstdEngineBridgeImplementor: ArchiveEngineImplementorProtocol
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
         let extractor = ArchiveExtractor()
-        try extractor.extractSync(
+        return try extractor.extractSync(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: .defaultClean,
             advancedOptions: options
         )
-        return calculateDirectorySize(at: destinationDir)
     }
 }
 
@@ -332,14 +329,13 @@ public final class TarEngineBridgeImplementor: ArchiveEngineImplementorProtocol,
         destinationDir: String,
         options: ArchiveAdvancedOptions
     ) async throws -> Int64 {
-        let extractor = ArchiveEngineFactory.makeExtractor(for: .tar)
-        try extractor.extractSync(
+        let extractor = ArchiveExtractor()
+        return try extractor.extractSync(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: .defaultClean,
             advancedOptions: options
         )
-        return calculateDirectorySize(at: destinationDir)
     }
 }
 

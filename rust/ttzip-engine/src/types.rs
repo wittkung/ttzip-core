@@ -9,6 +9,7 @@
 
 use std::cell::RefCell;
 use libc::{c_char, c_void};
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 #[repr(C)]
@@ -330,3 +331,75 @@ pub fn clear_last_error() {
         *cell.borrow_mut() = DiagnosticErrorContext::empty();
     });
 }
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TTZipEngineTag {
+    Unknown = 0,
+    RustRayonParallelZip = 1,
+    RustStreamingParallelZip = 2,
+    RustZeroCopy7zDecoder = 3,
+    RustPure7zEncoder = 4,
+    RustTarStreamEngine = 5,
+    RustInPlaceZip = 6,
+    RustInPlaceSevenZip = 7,
+    RustVfsParallelScanner = 8,
+    LibarchiveLegacy = 100,
+    Cli7zFallback = 101,
+    SystemTarFallback = 102,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct TTZipExecutionProvenance {
+    pub engine_tag: TTZipEngineTag,
+    pub thread_count: u32,
+    pub uncompressed_bytes: u64,
+    pub compressed_bytes: u64,
+    pub kernel_duration_nanos: u64,
+    pub is_fallback: bool,
+    pub fallback_reason: [c_char; 128],
+}
+
+impl Default for TTZipExecutionProvenance {
+    fn default() -> Self {
+        Self {
+            engine_tag: TTZipEngineTag::Unknown,
+            thread_count: 1,
+            uncompressed_bytes: 0,
+            compressed_bytes: 0,
+            kernel_duration_nanos: 0,
+            is_fallback: false,
+            fallback_reason: [0; 128],
+        }
+    }
+}
+
+thread_local! {
+    static LAST_PROVENANCE: RefCell<TTZipExecutionProvenance> = const { RefCell::new(TTZipExecutionProvenance {
+        engine_tag: TTZipEngineTag::Unknown,
+        thread_count: 1,
+        uncompressed_bytes: 0,
+        compressed_bytes: 0,
+        kernel_duration_nanos: 0,
+        is_fallback: false,
+        fallback_reason: [0; 128],
+    }) };
+}
+
+pub fn record_execution_provenance(prov: TTZipExecutionProvenance) {
+    LAST_PROVENANCE.with(|cell| {
+        *cell.borrow_mut() = prov;
+    });
+}
+
+pub fn get_execution_provenance(out: *mut TTZipExecutionProvenance) -> bool {
+    if out.is_null() {
+        return false;
+    }
+    LAST_PROVENANCE.with(|cell| unsafe {
+        *out = *cell.borrow();
+    });
+    true
+}
+

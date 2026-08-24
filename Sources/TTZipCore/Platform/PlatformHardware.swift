@@ -34,6 +34,8 @@ public enum PlatformHardware {
             return CPUFeatureSet(
                 architecture: archStr,
                 logicalCores: Int(rawCaps.logical_cores),
+                pCores: Int(rawCaps.p_cores),
+                eCores: Int(rawCaps.e_cores),
                 physicalPageSize: Int(rawCaps.physical_page_size),
                 hasARMNeon: rawCaps.has_arm_neon,
                 hasARMCrypto: rawCaps.has_arm_crypto,

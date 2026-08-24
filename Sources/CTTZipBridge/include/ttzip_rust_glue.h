@@ -75,6 +75,31 @@ typedef enum TTZipLogLevel {
     TTZIP_LOG_LEVEL_ERROR = 3
 } TTZipLogLevel;
 
+typedef enum TTZipEngineTag {
+    TTZIP_ENGINE_UNKNOWN = 0,
+    TTZIP_ENGINE_RUST_RAYON_PARALLEL_ZIP = 1,
+    TTZIP_ENGINE_RUST_STREAMING_PARALLEL_ZIP = 2,
+    TTZIP_ENGINE_RUST_ZERO_COPY_7Z_DECODER = 3,
+    TTZIP_ENGINE_RUST_PURE_7Z_ENCODER = 4,
+    TTZIP_ENGINE_RUST_TAR_STREAM = 5,
+    TTZIP_ENGINE_RUST_IN_PLACE_ZIP = 6,
+    TTZIP_ENGINE_RUST_IN_PLACE_7Z = 7,
+    TTZIP_ENGINE_RUST_VFS_PARALLEL_SCANNER = 8,
+    TTZIP_ENGINE_LIBARCHIVE_LEGACY = 100,
+    TTZIP_ENGINE_CLI_7Z_FALLBACK = 101,
+    TTZIP_ENGINE_SYSTEM_TAR_FALLBACK = 102
+} TTZipEngineTag;
+
+typedef struct TTZipExecutionProvenance {
+    TTZipEngineTag engine_tag;
+    uint32_t thread_count;
+    uint64_t uncompressed_bytes;
+    uint64_t compressed_bytes;
+    uint64_t kernel_duration_nanos;
+    bool is_fallback;
+    char fallback_reason[128];
+} TTZipExecutionProvenance;
+
 typedef struct TTZipEntryMetadata {
     const char *path;
     uint64_t uncompressed_size;
@@ -372,6 +397,7 @@ uint64_t ttzip_rust_bench_monotonic_nanos(void);
 double ttzip_rust_bench_calc_throughput_mbs(size_t bytes, double elapsed_secs);
 int32_t ttzip_rust_bench_run_gate(void);
 int32_t ttzip_rust_bench_run_matrix(int32_t corpus_type, char *out_json, size_t max_len);
+int32_t ttzip_rust_bench_run_scenario_matrix(char *out_json, size_t max_len);
 char *ttzip_rust_bench_generate_svg_pareto(int32_t corpus_type, uint32_t width, uint32_t height);
 char *ttzip_rust_bench_generate_html_dashboard(int32_t corpus_type);
 void ttzip_rust_bench_free_string(char *ptr);
@@ -538,6 +564,30 @@ TTZipStatus ttzip_rust_archive_verify_stream(
     char **out_report_json
 );
 
+typedef struct TTZipVfsMatchDto {
+    const char *name;
+    size_t name_len;
+    const char *path;
+    size_t path_len;
+    uint64_t uncompressed_size;
+    uint64_t compressed_size;
+    uint32_t crc32;
+    int64_t score;
+    bool is_directory;
+    bool is_encrypted;
+} TTZipVfsMatchDto;
+
+int32_t ttzip_rust_vfs_search_zero_alloc(
+    const TTZipVfsTreeHandle *handle,
+    const char *query,
+    TTZipVfsMatchDto *out_matches,
+    int32_t capacity
+);
+
+// Execution Provenance & Telemetry
+bool ttzip_rust_get_last_execution_provenance(TTZipExecutionProvenance *out_provenance);
+const char *ttzip_rust_engine_tag_name(TTZipEngineTag tag);
+
 void ttzip_rust_free_string(char *ptr);
 
 #ifdef __cplusplus
@@ -545,4 +595,5 @@ void ttzip_rust_free_string(char *ptr);
 #endif
 
 #endif /* TTZIP_RUST_GLUE_H */
+
 

@@ -104,6 +104,35 @@ public final class ArchiveWriter: ArchiveWriting, @unchecked Sendable {
         )
     }
 
+    /// Creates an archive and returns non-forgeable engine execution provenance telemetry.
+    @discardableResult
+    public func createArchiveWithReport(
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        inputPaths: [String],
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        splitVolumeSizeBytes: Int64? = nil,
+        advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) throws -> EngineDispatchProvenance {
+        let (_, provenance) = try EngineProvenanceCollector.capture {
+            try self.createArchiveSync(
+                outputPath: outputPath,
+                format: format,
+                level: level,
+                inputPaths: inputPaths,
+                options: options,
+                password: password,
+                splitVolumeSizeBytes: splitVolumeSizeBytes,
+                advancedOptions: advancedOptions,
+                progressHandler: progressHandler
+            )
+        }
+        return provenance
+    }
+
     // MARK: - Format Mappings
 
     internal static func mapFormat(_ format: ArchiveCompressionFormat) -> TTZipArchiveFormat {

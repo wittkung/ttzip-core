@@ -29,15 +29,20 @@ pub struct SevenZArchive<'a> {
 }
 
 impl<'a> SevenZArchive<'a> {
-    /// Opens and parses a 7z archive from in-memory slice.
-    pub fn open_slice(data: &'a [u8]) -> Result<Self, TTZipStatus> {
-        let info = parse_7z_metadata(data)?;
+    /// Opens and parses a 7z archive from in-memory slice with optional password.
+    pub fn open_slice_with_password(data: &'a [u8], password: Option<&str>) -> Result<Self, TTZipStatus> {
+        let info = parse_7z_metadata(data, password)?;
         let seek_index = SevenZSeekIndex::build(&info);
         Ok(Self {
             data,
             info,
             seek_index,
         })
+    }
+
+    /// Opens and parses a 7z archive from in-memory slice.
+    pub fn open_slice(data: &'a [u8]) -> Result<Self, TTZipStatus> {
+        Self::open_slice_with_password(data, None)
     }
 
     /// Returns reference to parsed 7z metadata header.

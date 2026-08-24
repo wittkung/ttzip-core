@@ -332,3 +332,29 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_get_stats(
         if !out_total_size.is_null() { *out_total_size = tree.root.uncompressed_size; }
     });
 }
+
+pub use crate::fs::vfs::search::TTZipVfsMatchDto;
+
+/// Performs zero-heap-allocation fuzzy search into caller-allocated buffer.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_vfs_search_zero_alloc(
+    handle: *const TTZipVfsTreeHandle,
+    query: *const c_char,
+    out_matches: *mut TTZipVfsMatchDto,
+    capacity: i32,
+) -> i32 {
+    catch_unwind(|| {
+        if handle.is_null() || out_matches.is_null() || capacity <= 0 {
+            return -1;
+        }
+        let q_str = match unsafe { safe_cstr(query) } {
+            Ok(s) => s,
+            Err(_) => return -1,
+        };
+        let tree = unsafe { &(*handle).inner };
+        let slice = unsafe { std::slice::from_raw_parts_mut(out_matches, capacity as usize) };
+        let count = crate::fs::vfs::search::search_vfs_tree_zero_alloc(&tree.root, q_str, slice);
+        count as i32
+    }).unwrap_or(-1)
+}
+

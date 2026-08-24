@@ -92,6 +92,21 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         destinationVirtualFolder: String? = nil,
         password: String? = nil
     ) async throws {
+        try addFilesToArchiveSync(
+            archivePath: archivePath,
+            sourceFilePaths: sourceFilePaths,
+            destinationVirtualFolder: destinationVirtualFolder,
+            password: password
+        )
+    }
+    
+    /// Synchronously adds files into an existing archive using in-place mutation.
+    public func addFilesToArchiveSync(
+        archivePath: String,
+        sourceFilePaths: [String],
+        destinationVirtualFolder: String? = nil,
+        password: String? = nil
+    ) throws {
         guard !sourceFilePaths.isEmpty else { return }
         
         var outSession: OpaquePointer?

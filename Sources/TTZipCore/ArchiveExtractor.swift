@@ -21,15 +21,17 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
         self.targetFormat = targetFormat
     }
 
-    /// Synchronously extracts an archive to the destination directory via Rust C-ABI.
+    /// Synchronously extracts an archive to the destination directory via Rust C-ABI, returning extracted byte count.
     @inline(__always)
+    @discardableResult
     public func extractSync(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
-    ) throws {
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) throws -> Int64 {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
@@ -48,14 +50,17 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
 
         hardwareTuner.boostCurrentThreadPriority()
 
+        var extractedBytes: UInt64 = 0
         if dispatchFastExtraction(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
-            advancedOptions: advancedOptions
+            advancedOptions: advancedOptions,
+            progressHandler: progressHandler,
+            outExtractedBytes: &extractedBytes
         ) {
-            return
+            return Int64(extractedBytes)
         }
 
         if password == nil || password?.isEmpty == true {
@@ -65,9 +70,11 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
                     destinationDir: destinationDir,
                     options: options,
                     password: vaultPwd,
-                    advancedOptions: advancedOptions
+                    advancedOptions: advancedOptions,
+                    progressHandler: progressHandler,
+                    outExtractedBytes: &extractedBytes
                 ) {
-                    return
+                    return Int64(extractedBytes)
                 }
             }
         }
@@ -94,14 +101,16 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
         throw ArchiveError.readFailed(code: -1)
     }
 
-    /// Asynchronously extracts an archive with Task cancellation support.
+    /// Asynchronously extracts an archive with Task cancellation support, returning extracted byte count.
+    @discardableResult
     public func extract(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
-    ) async throws {
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) async throws -> Int64 {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
@@ -114,34 +123,39 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
         Self.preventSpotlightIndexing(at: destinationDir)
         try Task.checkCancellation()
 
-        try await Task.detached(priority: .userInitiated) {
+        let bytes = try await Task.detached(priority: .userInitiated) {
             try self.extractSync(
                 archivePath: archivePath,
                 destinationDir: destinationDir,
                 options: options,
                 password: password,
-                advancedOptions: advancedOptions
+                advancedOptions: advancedOptions,
+                progressHandler: progressHandler
             )
         }.value
 
         Self.cleanupQuarantineAttributes(at: destinationDir)
+        return bytes
     }
 
     /// Unified facade method to extract an archive to the destination directory.
     @inline(__always)
+    @discardableResult
     public func extractArchive(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
-    ) async throws {
-        try await extract(
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) async throws -> Int64 {
+        return try await extract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
-            advancedOptions: advancedOptions
+            advancedOptions: advancedOptions,
+            progressHandler: progressHandler
         )
     }
 
@@ -235,9 +249,33 @@ extension ArchiveExtractor {
         destinationDir: String,
         options: ArchiveFilterOptions,
         password: String?,
-        advancedOptions: ArchiveAdvancedOptions? = nil
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        outExtractedBytes: UnsafeMutablePointer<UInt64>? = nil
     ) -> Bool {
         let pwd = (password != nil && !password!.isEmpty) ? password : nil
+        let threadBudget = (advancedOptions?.cpuThreads ?? 0) > 0 
+            ? UInt32(advancedOptions!.cpuThreads) 
+            : UInt32(ProcessInfo.processInfo.activeProcessorCount)
+        let preservePerms = advancedOptions?.preservePosixAttributes ?? true
+        let overwrite = true
+
+        let bridgeCtx: ProgressBridgeContext? = progressHandler != nil ? ProgressBridgeContext(
+            progressHandler: progressHandler,
+            handle: nil,
+            cancellationCheck: nil,
+            totalExpectedBytes: 0
+        ) : nil
+        let ctxPtr = bridgeCtx != nil ? Unmanaged.passRetained(bridgeCtx!).toOpaque() : nil
+        defer {
+            if let ctxPtr = ctxPtr {
+                Unmanaged<ProgressBridgeContext>.fromOpaque(ctxPtr).release()
+            }
+        }
+
+        var extractedBytes: UInt64 = 0
+        var errorInfo = TTZipErrorInfo()
+
         let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
             CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
                 CUnsafeBufferAdapter.withCString(pwd) { pPtr in
@@ -245,19 +283,20 @@ extension ArchiveExtractor {
                     var opt = TTZipExtractOptions(
                         destination_path: dPtr,
                         password: pPtr,
-                        thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
-                        overwrite_existing: true,
-                        preserve_permissions: true,
+                        thread_budget: threadBudget,
+                        overwrite_existing: overwrite,
+                        preserve_permissions: preservePerms,
                         dry_run: false,
-                        progress_callback: nil,
-                        user_data: nil
+                        progress_callback: ctxPtr != nil ? ttzipProgressCallbackBridge : nil,
+                        user_data: ctxPtr
                     )
-                    return ttzip_rust_archive_extract_unified(aPtr, dPtr, &opt)
+                    return ttzip_rust_archive_extract_unified_v2(aPtr, dPtr, &opt, &extractedBytes, &errorInfo)
                 }
             }
         }
 
         if status == TTZIP_STATUS_OK {
+            outExtractedBytes?.pointee = extractedBytes
             Self.cleanupQuarantineAttributes(at: destinationDir)
             return true
         }
@@ -350,7 +389,7 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
             return cached
         }
         
-        return try await Task.detached(priority: .userInitiated) {
+        return await Task.detached(priority: .userInitiated) {
             // Stage 1: Probe exact uncompressed size with NULL buffer
             var probedLen: Int = 0
             let probeStatus = archivePath.withCString { cArch in

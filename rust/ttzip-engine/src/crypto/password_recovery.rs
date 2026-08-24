@@ -153,7 +153,7 @@ pub fn inspect_archive_bytes(data: &[u8]) -> Result<RecoveryTarget, TTZipStatus>
         return Ok(RecoveryTarget::ZipCrypto { header, check_byte });
     }
     if data.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        if let Ok(info) = crate::sevenz::header::metadata::parse_7z_metadata(data) {
+        if let Ok(info) = crate::sevenz::header::metadata::parse_7z_metadata(data, None) {
             if info.is_encrypted {
                 let salt = if info.aes_salt_len > 0 {
                     info.aes_salt[..(info.aes_salt_len as usize).min(16)].to_vec()

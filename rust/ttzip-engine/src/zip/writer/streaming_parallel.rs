@@ -44,20 +44,6 @@ struct CompressionPlanItem {
     symlink_target: Option<String>,
 }
 
-/// Output of a compressed file entry.
-struct CompressedEntryResult {
-    rel_path: String,
-    uncompressed_size: u64,
-    compressed_size: u64,
-    crc32: u32,
-    compression_method: u16,
-    mtime_secs: u32,
-    mode: u32,
-    is_directory: bool,
-    header_bytes: Vec<u8>,
-    payload_bytes: Vec<u8>,
-}
-
 /// Creates a ZIP archive using the high-throughput multi-core streaming parallel engine.
 pub fn create_zip_streaming_parallel(
     dest_path: &Path,
@@ -120,6 +106,13 @@ pub fn create_zip_streaming_parallel(
     let progress_cb = options.progress_callback;
     let user_data_usize = options.user_data as usize;
     let encryption_mode = options.encryption;
+    let password_str = if !options.password.is_null() {
+        unsafe { std::ffi::CStr::from_ptr(options.password) }
+            .to_str()
+            .ok()
+    } else {
+        None
+    };
 
     // 3. Compress and stream write entries in bounded batches to limit peak RSS
     let mut current_offset: u64 = 0;
@@ -138,7 +131,7 @@ pub fn create_zip_streaming_parallel(
                     return Err(TTZipStatus::Cancelled);
                 }
 
-                let res = compress_single_item(item, level_num, encryption_mode)?;
+                let res = compress_single_item(item, level_num, encryption_mode, password_str)?;
 
                 let n = processed_bytes.fetch_add(item.uncompressed_size, Ordering::Relaxed);
                 if let Some(cb) = progress_cb {
@@ -184,6 +177,8 @@ pub fn create_zip_streaming_parallel(
                 compressed_size: entry.compressed_size,
                 crc32: entry.crc32,
                 compression_method: entry.compression_method,
+                actual_method: entry.actual_method,
+                is_encrypted: entry.is_encrypted,
                 mtime_secs: entry.mtime_secs,
                 mode: entry.mode,
                 is_directory: entry.is_directory,
@@ -233,7 +228,17 @@ pub fn create_zip_streaming_parallel(
         .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
     current_offset += eocd.len() as u64;
 
-    let elapsed_ms = start_time.elapsed().as_millis() as u64;
+    let elapsed_nanos = start_time.elapsed().as_nanos() as u64;
+    let elapsed_ms = elapsed_nanos / 1_000_000;
+
+    let mut prov = crate::types::TTZipExecutionProvenance::default();
+    prov.engine_tag = crate::types::TTZipEngineTag::RustStreamingParallelZip;
+    prov.thread_count = options.thread_budget;
+    prov.uncompressed_bytes = total_uncompressed;
+    prov.compressed_bytes = current_offset;
+    prov.kernel_duration_nanos = elapsed_nanos;
+    prov.is_fallback = false;
+    crate::types::record_execution_provenance(prov);
 
     Ok(ZipCreateReport {
         total_entries: cd_entries.len(),
@@ -243,6 +248,21 @@ pub fn create_zip_streaming_parallel(
     })
 }
 
+struct CompressedEntryResult {
+    rel_path: String,
+    uncompressed_size: u64,
+    compressed_size: u64,
+    crc32: u32,
+    compression_method: u16,
+    actual_method: u16,
+    is_encrypted: bool,
+    mtime_secs: u32,
+    mode: u32,
+    is_directory: bool,
+    header_bytes: Vec<u8>,
+    payload_bytes: Vec<u8>,
+}
+
 struct CentralDirectoryRecord {
     rel_path: String,
     lfh_offset: u64,
@@ -250,6 +270,8 @@ struct CentralDirectoryRecord {
     compressed_size: u64,
     crc32: u32,
     compression_method: u16,
+    actual_method: u16,
+    is_encrypted: bool,
     mtime_secs: u32,
     mode: u32,
     is_directory: bool,
@@ -258,7 +280,8 @@ struct CentralDirectoryRecord {
 fn compress_single_item(
     item: &CompressionPlanItem,
     level: i32,
-    _encryption: TTZipEncryptionMethod,
+    encryption: TTZipEncryptionMethod,
+    password: Option<&str>,
 ) -> Result<CompressedEntryResult, TTZipStatus> {
     if item.is_directory {
         let (dos_date, dos_time) = unix_to_dos_time(item.mtime_secs);
@@ -283,6 +306,8 @@ fn compress_single_item(
             compressed_size: 0,
             crc32: 0,
             compression_method: 0,
+            actual_method: 0,
+            is_encrypted: false,
             mtime_secs: item.mtime_secs,
             mode: item.mode,
             is_directory: true,
@@ -300,7 +325,7 @@ fn compress_single_item(
     let uncompressed_size = raw_data.len() as u64;
     let crc = crc32_fast(0, &raw_data);
 
-    let (comp_method, payload) = if level == 0 || raw_data.is_empty() {
+    let (actual_method, raw_payload) = if level == 0 || raw_data.is_empty() {
         (0u16, raw_data)
     } else {
         let max_bound = deflate_compress_bound(raw_data.len(), level.min(12));
@@ -314,25 +339,58 @@ fn compress_single_item(
         }
     };
 
-    let compressed_size = payload.len() as u64;
+    let (comp_method, is_encrypted, final_payload) = match encryption {
+        TTZipEncryptionMethod::Aes256 => {
+            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
+            let mut salt = [0u8; 16];
+            unsafe { libc::arc4random_buf(salt.as_mut_ptr() as *mut libc::c_void, 16); }
+            let mut enc_payload = Vec::new();
+            crate::crypto::sha1::winzip_aes256_encrypt_and_tag(pass, &salt, &raw_payload, &mut enc_payload)?;
+            (99u16, true, enc_payload)
+        }
+        TTZipEncryptionMethod::ZipCrypto => {
+            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
+            let mut enc_payload = Vec::with_capacity(12 + raw_payload.len());
+            let mut header = [0u8; 12];
+            unsafe { libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11); }
+            header[11] = (crc >> 24) as u8;
+            let mut keys = crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
+            keys.encrypt_slice(&mut header);
+            enc_payload.extend_from_slice(&header);
+            let mut body = raw_payload;
+            keys.encrypt_slice(&mut body);
+            enc_payload.extend_from_slice(&body);
+            (actual_method, true, enc_payload)
+        }
+        _ => (actual_method, false, raw_payload),
+    };
+
+    let compressed_size = final_payload.len() as u64;
     let (dos_date, dos_time) = unix_to_dos_time(item.mtime_secs);
     let name_bytes = item.rel_path.as_bytes();
 
     let is_zip64 = uncompressed_size >= 0xFFFF_FFFF || compressed_size >= 0xFFFF_FFFF;
-    let extra_fields = if is_zip64 {
-        ZipExtraFields::build_zip64_extra(Some(uncompressed_size), Some(compressed_size), None)
-    } else {
-        Vec::new()
-    };
+    let mut extra_fields = Vec::new();
+    if is_zip64 {
+        extra_fields.extend_from_slice(&ZipExtraFields::build_zip64_extra(
+            Some(uncompressed_size),
+            Some(compressed_size),
+            None,
+        ));
+    }
+    if is_encrypted && comp_method == 99 {
+        extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(actual_method));
+    }
 
+    let flag = if is_encrypted { 0x0801u16 } else { 0x0800u16 };
     let mut header = Vec::with_capacity(30 + name_bytes.len() + extra_fields.len());
     header.extend_from_slice(&MAGIC_LFH.to_le_bytes());
-    header.extend_from_slice(&(if is_zip64 { 45u16 } else { 20u16 }).to_le_bytes());
-    header.extend_from_slice(&0x0800u16.to_le_bytes()); // bit 11 UTF-8
+    header.extend_from_slice(&(if is_zip64 || is_encrypted { 45u16 } else { 20u16 }).to_le_bytes());
+    header.extend_from_slice(&flag.to_le_bytes());
     header.extend_from_slice(&comp_method.to_le_bytes());
     header.extend_from_slice(&dos_time.to_le_bytes());
     header.extend_from_slice(&dos_date.to_le_bytes());
-    header.extend_from_slice(&crc.to_le_bytes());
+    header.extend_from_slice(&(if is_encrypted && comp_method == 99 { 0u32 } else { crc }).to_le_bytes());
     header.extend_from_slice(&(if is_zip64 { 0xFFFF_FFFFu32 } else { compressed_size as u32 }).to_le_bytes());
     header.extend_from_slice(&(if is_zip64 { 0xFFFF_FFFFu32 } else { uncompressed_size as u32 }).to_le_bytes());
     header.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
@@ -346,11 +404,13 @@ fn compress_single_item(
         compressed_size,
         crc32: crc,
         compression_method: comp_method,
+        actual_method,
+        is_encrypted,
         mtime_secs: item.mtime_secs,
         mode: item.mode,
         is_directory: false,
         header_bytes: header,
-        payload_bytes: payload,
+        payload_bytes: final_payload,
     })
 }
 
@@ -415,7 +475,7 @@ fn build_cdfh_bytes(cd: &CentralDirectoryRecord) -> Vec<u8> {
         || cd.compressed_size >= 0xFFFF_FFFF
         || cd.lfh_offset >= 0xFFFF_FFFF;
 
-    let extra_fields = if is_zip64 {
+    let mut extra_fields = if is_zip64 {
         ZipExtraFields::build_zip64_extra(
             Some(cd.uncompressed_size),
             Some(cd.compressed_size),
@@ -425,15 +485,20 @@ fn build_cdfh_bytes(cd: &CentralDirectoryRecord) -> Vec<u8> {
         Vec::new()
     };
 
+    if cd.is_encrypted && cd.compression_method == 99 {
+        extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
+    }
+
+    let flag = if cd.is_encrypted { 0x0801u16 } else { 0x0800u16 };
     let mut buf = Vec::with_capacity(46 + name_bytes.len() + extra_fields.len());
     buf.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
     buf.extend_from_slice(&0x031Eu16.to_le_bytes()); // version made by (UNIX + spec 3.0)
-    buf.extend_from_slice(&(if is_zip64 { 45u16 } else { 20u16 }).to_le_bytes());
-    buf.extend_from_slice(&0x0800u16.to_le_bytes()); // bit 11 UTF-8
+    buf.extend_from_slice(&(if is_zip64 || cd.is_encrypted { 45u16 } else { 20u16 }).to_le_bytes());
+    buf.extend_from_slice(&flag.to_le_bytes());
     buf.extend_from_slice(&cd.compression_method.to_le_bytes());
     buf.extend_from_slice(&dos_time.to_le_bytes());
     buf.extend_from_slice(&dos_date.to_le_bytes());
-    buf.extend_from_slice(&cd.crc32.to_le_bytes());
+    buf.extend_from_slice(&(if cd.is_encrypted && cd.compression_method == 99 { 0u32 } else { cd.crc32 }).to_le_bytes());
     buf.extend_from_slice(&(if is_zip64 { 0xFFFF_FFFFu32 } else { cd.compressed_size as u32 }).to_le_bytes());
     buf.extend_from_slice(&(if is_zip64 { 0xFFFF_FFFFu32 } else { cd.uncompressed_size as u32 }).to_le_bytes());
     buf.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());

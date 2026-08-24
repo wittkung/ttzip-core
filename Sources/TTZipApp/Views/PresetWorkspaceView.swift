@@ -28,7 +28,7 @@ public struct PresetWorkspaceView: View {
                 onResetToDefaults: { viewModel.resetToDefaults() }
             )
             
-            if let _ = viewModel.presets.first(where: { $0.id == viewModel.selectedPresetID }) {
+            if viewModel.presets.contains(where: { $0.id == viewModel.selectedPresetID }) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {

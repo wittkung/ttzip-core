@@ -193,6 +193,37 @@ pub unsafe extern "C" fn ttzip_rust_bench_run_matrix(
     result.unwrap_or(-99)
 }
 
+/// Executes 24-point enterprise full-scenario benchmark matrix and writes JSON string into buffer.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_bench_run_scenario_matrix(
+    out_json: *mut c_char,
+    max_len: usize,
+) -> i32 {
+    if out_json.is_null() || max_len == 0 {
+        return -1;
+    }
+
+    let result = catch_unwind(|| {
+        match crate::benchmark::ScenarioBenchmarkDriver::run_all_scenarios() {
+            Ok(report) => match serde_json::to_string(&report) {
+                Ok(json) => {
+                    let bytes = json.as_bytes();
+                    let copy_len = bytes.len().min(max_len - 1);
+                    unsafe {
+                        ptr::copy_nonoverlapping(bytes.as_ptr() as *const c_char, out_json, copy_len);
+                        *out_json.add(copy_len) = 0;
+                    }
+                    copy_len as i32
+                }
+                Err(_) => -2,
+            },
+            Err(e) => e as i32,
+        }
+    });
+
+    result.unwrap_or(-99)
+}
+
 /// Generates SVG vector scatter plot with Fritsch-Carlson Pareto spline.
 /// Caller must free returned string via `ttzip_rust_bench_free_string`.
 #[no_mangle]

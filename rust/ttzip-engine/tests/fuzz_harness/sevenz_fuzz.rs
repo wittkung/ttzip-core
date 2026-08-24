@@ -90,7 +90,7 @@ fn test_fuzz_sevenz_header_and_varint() {
         }
 
         let res = catch_unwind(AssertUnwindSafe(|| {
-            let _ = parse_7z_metadata(&mutated);
+            let _ = parse_7z_metadata(&mutated, None);
             let open_res = SevenZArchive::open_slice(&mutated);
             if let Ok(archive) = &open_res {
                 for idx in 0..archive.len() {

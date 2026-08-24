@@ -96,6 +96,46 @@ public final class RustVfsSession: @unchecked Sendable {
         return acc.matchedPaths.compactMap { entryMap[$0] }
     }
     
+    /// Zero-heap allocation fuzzy search into fixed-capacity pre-allocated buffer.
+    public func searchZeroAlloc(query: String, maxResults: Int = 64) -> [ArchiveEntry] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return allEntries }
+        
+        var buffer = [TTZipVfsMatchDto](repeating: TTZipVfsMatchDto(
+            name: nil,
+            name_len: 0,
+            path: nil,
+            path_len: 0,
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            score: 0,
+            is_directory: false,
+            is_encrypted: false
+        ), count: maxResults)
+        
+        let count: Int32 = trimmed.withCString { qPtr in
+            buffer.withUnsafeMutableBufferPointer { bPtr in
+                ttzip_rust_vfs_search_zero_alloc(handle, qPtr, bPtr.baseAddress, Int32(bPtr.count))
+            }
+        }
+        guard count > 0 else { return [] }
+        
+        var matches: [ArchiveEntry] = []
+        matches.reserveCapacity(Int(count))
+        for i in 0..<Int(count) {
+            let item = buffer[i]
+            if let p = item.path, item.path_len > 0 {
+                let pathBytes = UnsafeRawBufferPointer(start: p, count: item.path_len)
+                let pathStr = String(decoding: pathBytes, as: UTF8.self)
+                if let entry = entryMap[pathStr] {
+                    matches.append(entry)
+                }
+            }
+        }
+        return matches
+    }
+    
     /// Renders ASCII/Unicode tree from persistent VFS session.
     public func renderTree() -> String {
         var outPtr: UnsafeMutablePointer<CChar>? = nil

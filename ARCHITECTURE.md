@@ -172,3 +172,33 @@ graph TD
    - `swift test`: 100% pass rate across unit, integration, and UI mock suites.
    - `cargo test`: 100% pass rate across format conformance, cryptographic property tests, and C-ABI regression suites.
    - `scripts/run_local_ci_gate.sh`: Automated pre-commit verification enforcing formatting, licensing, invariants, and tests.
+
+---
+
+## 5. Architectural Invariants & Testing Governance
+
+### 5.1 Resource Invariant Test Harnesses
+1. **APFS Sparse Virtual Fixture Invariant**:
+   - Creates 50GB+ virtual sparse Zip64 archives in `< 5ms` using APFS seek holes without consuming physical disk storage.
+   - Continuously samples Mach `task_info` RSS during archive operations and hard-fails if peak RSS exceeds 32.00 MB (`sparse_fixture_rss_test.rs`).
+2. **Zero-Allocation Interactive VFS Invariant**:
+   - Employs a custom `TrackingAllocator` implementing `std::alloc::GlobalAlloc` to count runtime allocations.
+   - Hard-fails if searching 100,000 VFS tree nodes incurs even 1 heap allocation (`zero_alloc_vfs_search_test.rs`, `ZeroAllocVfsBridgeTests.swift`).
+3. **Zero-Disk-IO Amplification Invariant**:
+   - Inspects Darwin `proc_pid_rusage(..., RUSAGE_INFO_V4)` for `ri_diskio_byteswritten` and sandbox `/tmp` monitors.
+   - Proves zero temporary file writes or unneeded scratch amplification during streaming extraction operations (`ZeroDiskIOLeakHarnessTests.swift`).
+
+### 5.2 Bidirectional C-ABI & Struct Field Static Linter
+- Implements `scripts/lint_cabi_context.py` using native Clang AST JSON analysis and Swift regex/AST consumption matching.
+- Detects orphaned C-ABI exports (`CABI_001_DEAD_CABI_EXPORT`), dropped struct fields (`CABI_003_STRUCT_FIELD_DROPPED`), and wildcards (`CABI_005_WILDCARD_IGNORE_DETECTED`).
+- Embedded directly into Stage 2 of `./scripts/verify_cabi_symbols.sh` and local CI gate.
+
+### 5.3 Non-Forgeable Execution Provenance & Anti-Fallback Assertions
+- Rust kernel records `TTZipExecutionProvenance` in thread-local storage on every compression, decompression, and in-place mutation.
+- Exported via `ttzip_rust_get_last_execution_provenance` and captured in Swift via `EngineProvenanceCollector.capture { ... }`.
+- `TTZipAssertions.assertEngineExecution` and `assertNoFallback` verify in unit and integration tests that zero operations silently fall back to legacy wrappers or CLI processes (`E2EEnginePathTracerTests.swift`).
+
+### 5.4 Full-Pipeline APFS Benchmarking & FFI Tax Quantification
+- CLI subcommand `ttzip-bench pipeline` measures real-world end-to-end throughput from Swift Facade through C-ABI into APFS I/O.
+- Computes `FFI Tax %` = `(Swift Overhead / Total Pipeline Time) * 100` and pipeline overhead relative to isolated in-memory kernels.
+

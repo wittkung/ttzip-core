@@ -79,5 +79,9 @@ if [ "${MISSING_COUNT}" -gt 0 ]; then
 fi
 
 echo "✅ [PASS] 100% C-ABI Symbol Parity (${HEADER_COUNT}/${HEADER_COUNT} symbols present in static library)."
+echo "----------------------------------------------------------------------"
+echo "--> [Stage 2/2] Running Bidirectional C-ABI & Struct Context Linter..."
+python3 "${REPO_ROOT}/scripts/lint_cabi_context.py" --strict
+
 echo "======================================================================"
 exit 0

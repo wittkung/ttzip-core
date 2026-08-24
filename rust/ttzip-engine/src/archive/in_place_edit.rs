@@ -254,7 +254,15 @@ pub fn in_place_edit_zip(
     }
 
     let assembled = assemble_zip_archive(&new_items)?;
+    let total_len = assembled.len() as u64;
     fs::write(shadow_path, assembled).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+    let mut prov = crate::types::TTZipExecutionProvenance::default();
+    prov.engine_tag = crate::types::TTZipEngineTag::RustInPlaceZip;
+    prov.compressed_bytes = total_len;
+    prov.is_fallback = false;
+    crate::types::record_execution_provenance(prov);
+
     Ok(())
 }
 
@@ -495,7 +503,15 @@ pub fn in_place_edit_sevenz(
     }
 
     let bytes = create_7z_solid_archive_bytes(&items, 3, 2)?;
+    let total_len = bytes.len() as u64;
     fs::write(shadow_path, bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+    let mut prov = crate::types::TTZipExecutionProvenance::default();
+    prov.engine_tag = crate::types::TTZipEngineTag::RustInPlaceSevenZip;
+    prov.compressed_bytes = total_len;
+    prov.is_fallback = false;
+    crate::types::record_execution_provenance(prov);
+
     Ok(())
 }
 

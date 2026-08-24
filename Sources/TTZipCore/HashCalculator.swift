@@ -145,8 +145,12 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
             return read(fd, base, bufSize)
         }
         while bytesRead > 0 {
-            let chunk = UnsafeRawBufferPointer(start: pageBuffer, count: bytesRead)
-            hasher.update(bufferPointer: chunk)
+            pageBuffer.withUnsafeBytes { rawPtr in
+                if let base = rawPtr.baseAddress {
+                    let chunk = UnsafeRawBufferPointer(start: base, count: bytesRead)
+                    hasher.update(bufferPointer: chunk)
+                }
+            }
             bytesRead = pageBuffer.withUnsafeMutableBufferPointer { bPtr -> Int in
                 guard let base = bPtr.baseAddress else { return 0 }
                 return read(fd, base, bufSize)

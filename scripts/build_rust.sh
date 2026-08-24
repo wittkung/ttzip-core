@@ -97,12 +97,13 @@ fi
 echo "--> Target architectures: ${TARGETS[*]}"
 
 BUILT_LIBS=()
+EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 
 for target in "${TARGETS[@]}"; do
     echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
     cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${target}" ${CARGO_FLAGS}
     
-    TARGET_LIB="${RUST_DIR}/target/${target}/${BUILD_MODE}/libttzip_engine.a"
+    TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
         BUILT_LIBS+=("${TARGET_LIB}")
     else
@@ -116,7 +117,7 @@ echo "--> [INFO] Packaging static library directly into ${XCFRAMEWORK_MAC_DIR}/l
 mkdir -p "${XCFRAMEWORK_MAC_DIR}"
 
 NATIVE_CODECS_LIBS=()
-NEWEST_CODEC_LIB="$(find "${RUST_DIR}/target" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
+NEWEST_CODEC_LIB="$(find "${EFFECTIVE_TARGET_DIR}" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
 if [ -n "${NEWEST_CODEC_LIB}" ] && [ -f "${NEWEST_CODEC_LIB}" ]; then
     NATIVE_CODECS_LIBS+=("${NEWEST_CODEC_LIB}")
 fi

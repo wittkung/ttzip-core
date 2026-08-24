@@ -71,13 +71,15 @@ public protocol ArchiveWriting: Sendable {
 
 /// Core archive decompression and extraction engine interface.
 public protocol ArchiveExtracting: Sendable {
+    @discardableResult
     func extract(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions,
         password: String?,
-        advancedOptions: ArchiveAdvancedOptions?
-    ) async throws
+        advancedOptions: ArchiveAdvancedOptions?,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> Int64
 
     func extractSingleFile(
         archivePath: String,
@@ -86,13 +88,15 @@ public protocol ArchiveExtracting: Sendable {
         password: String?
     ) async throws
     
+    @discardableResult
     func extractSync(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions,
         password: String?,
-        advancedOptions: ArchiveAdvancedOptions?
-    ) throws
+        advancedOptions: ArchiveAdvancedOptions?,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
+    ) throws -> Int64
 
     func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool
 }
@@ -100,19 +104,61 @@ public protocol ArchiveExtracting: Sendable {
 extension ArchiveExtracting {
     /// Convenience facade method to extract an archive.
     @inline(__always)
+    @discardableResult
+    public func extract(
+        archivePath: String,
+        destinationDir: String,
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions? = nil
+    ) async throws -> Int64 {
+        try await extract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            options: options,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: nil
+        )
+    }
+
+    /// Convenience facade method to synchronously extract an archive.
+    @inline(__always)
+    @discardableResult
+    public func extractSync(
+        archivePath: String,
+        destinationDir: String,
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions? = nil
+    ) throws -> Int64 {
+        try extractSync(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            options: options,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: nil
+        )
+    }
+
+    /// Convenience facade method to extract an archive.
+    @inline(__always)
+    @discardableResult
     public func extractArchive(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil
-    ) async throws {
+    ) async throws -> Int64 {
         try await extract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
-            advancedOptions: advancedOptions
+            advancedOptions: advancedOptions,
+            progressHandler: nil
         )
     }
 }
@@ -550,84 +596,6 @@ extension ArchiveWriting {
             advancedOptions: advancedOptions,
             progressHandler: progressHandler
         )
-    }
-}
-
-// MARK: - ArchiveExtracting Default Implementations & Extensions
-
-extension ArchiveExtracting {
-    public func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool {
-        if let extractor = self as? ArchiveExtractor {
-            return extractor.joinSplitVolumes(firstVolumePath: firstVolumePath, outputPath: outputPath)
-        }
-        return false
-    }
-
-    public func extract(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveFilterOptions = .defaultClean,
-        password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
-    ) async throws {
-        try await extract(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: options,
-            password: password,
-            advancedOptions: advancedOptions
-        )
-    }
-
-    public func extractSingleFile(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String? = nil
-    ) async throws {
-        if let extractor = self as? ArchiveExtractor {
-            try await extractor.extractSingleFile(
-                archivePath: archivePath,
-                entryPath: entryPath,
-                destinationDir: destinationDir,
-                password: password
-            )
-        } else {
-            try await extract(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                options: .defaultClean,
-                password: password,
-                advancedOptions: nil
-            )
-        }
-    }
-
-    public func extractSync(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveFilterOptions = .defaultClean,
-        password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
-    ) throws {
-        if let extractor = self as? ArchiveExtractor {
-            try extractor.extractSync(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                options: options,
-                password: password,
-                advancedOptions: advancedOptions
-            )
-        } else {
-            let extractor = ArchiveEngineFactory.makeExtractor()
-            try extractor.extractSync(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                options: options,
-                password: password,
-                advancedOptions: advancedOptions
-            )
-        }
     }
 }
 

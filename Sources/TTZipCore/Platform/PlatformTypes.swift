@@ -101,6 +101,8 @@ public struct PlatformMmapResult: @unchecked Sendable {
 public struct CPUFeatureSet: Sendable, Equatable {
     public let architecture: String
     public let logicalCores: Int
+    public let pCores: Int
+    public let eCores: Int
     public let physicalPageSize: Int
     public let hasARMNeon: Bool
     public let hasARMCrypto: Bool
@@ -112,6 +114,8 @@ public struct CPUFeatureSet: Sendable, Equatable {
     public init(
         architecture: String,
         logicalCores: Int,
+        pCores: Int = 0,
+        eCores: Int = 0,
         physicalPageSize: Int,
         hasARMNeon: Bool,
         hasARMCrypto: Bool,
@@ -122,6 +126,8 @@ public struct CPUFeatureSet: Sendable, Equatable {
     ) {
         self.architecture = architecture
         self.logicalCores = logicalCores
+        self.pCores = pCores
+        self.eCores = eCores
         self.physicalPageSize = physicalPageSize
         self.hasARMNeon = hasARMNeon
         self.hasARMCrypto = hasARMCrypto

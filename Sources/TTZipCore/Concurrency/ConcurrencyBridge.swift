@@ -132,7 +132,7 @@ public enum ConcurrencyBridge {
             state: ArchiveProgress.State = .processing,
             force: Bool = false
         ) {
-            let nowNanos = mach_absolute_time()
+            let nowNanos = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
             os_unfair_lock_lock(lock)
             if isCancelledFlag {
                 os_unfair_lock_unlock(lock)
@@ -141,7 +141,7 @@ public enum ConcurrencyBridge {
 
             // 16.6ms throttling window (~16_666_667 nanos) unless force is true or terminal state
             let elapsed = nowNanos > lastEmitNanos ? (nowNanos - lastEmitNanos) : 0
-            if !force && state == .processing && elapsed < 16_000_000 {
+            if !force && state == .processing && elapsed < 16_666_667 {
                 os_unfair_lock_unlock(lock)
                 return
             }

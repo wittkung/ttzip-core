@@ -135,11 +135,6 @@ public final class ArchiveReader: ArchiveReading, @unchecked Sendable {
                 if status == 0 && !accumulator.entries.isEmpty {
                     return accumulator.entries
                 }
-                if lower.contains(".7z") || lower.contains(".001") {
-                    if let cliEntries = Self.inspectWith7zCLI(archivePath: targetInspectPath, password: pwd) {
-                        return cliEntries
-                    }
-                }
                 return nil
             }
             
@@ -197,69 +192,6 @@ public final class ArchiveReader: ArchiveReading, @unchecked Sendable {
     public func fuzzySearch(archivePath: String, query: String, password: String? = nil) async throws -> [ArchiveEntry] {
         let entries = try await inspect(archivePath: archivePath, password: password, candidatePasswords: nil)
         return RustVfsBridge.fuzzySearch(in: entries, query: query)
-    }
-
-    internal static func inspectWith7zCLI(archivePath: String, password: String?) -> [ArchiveEntry]? {
-        guard let bin7z = SevenZipBinaryResolver.resolveBinaryPath() else { return nil }
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: bin7z)
-        var args = ["l", "-slt"]
-        if let p = password, !p.isEmpty {
-            args.append("-p\(p)")
-        } else {
-            args.append("-p-")
-        }
-        args.append(archivePath)
-        proc.arguments = args
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = FileHandle.nullDevice
-        guard (try? proc.run()) != nil else { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        proc.waitUntilExit()
-        guard proc.terminationStatus == 0, let text = String(data: data, encoding: .utf8) else { return nil }
-        
-        var entries: [ArchiveEntry] = []
-        guard let dashRange = text.range(of: "----------\n") ?? text.range(of: "----------\r\n") else { return nil }
-        let filesSection = String(text[dashRange.upperBound...])
-        let rawBlocks = filesSection.components(separatedBy: "\n\n")
-        
-        for block in rawBlocks {
-            var path: String?
-            var size: Int64 = 0
-            var isDir = false
-            var isEnc = false
-            for line in block.components(separatedBy: "\n") {
-                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                let parts = trimmed.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-                if parts.count == 2 {
-                    let key = parts[0]
-                    let val = parts[1]
-                    switch key {
-                    case "Path": path = val
-                    case "Size": size = Int64(val) ?? 0
-                    case "Folder": isDir = (val == "+")
-                    case "Encrypted": isEnc = (val == "+")
-                    default: break
-                    }
-                }
-            }
-            if let p = path, !p.isEmpty {
-                let lastComp = (p as NSString).lastPathComponent
-                if !lastComp.hasPrefix("._") && lastComp != ".DS_Store" {
-                    entries.append(ArchiveEntry(
-                        path: p,
-                        uncompressedSize: size,
-                        isDirectory: isDir,
-                        detectedEncoding: "UTF-8",
-                        isEncrypted: isEnc,
-                        isDataEncrypted: isEnc,
-                        isMetadataEncrypted: isEnc
-                    ))
-                }
-            }
-        }
-        return entries.isEmpty ? nil : entries
     }
 }
 

@@ -48,3 +48,6 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.12"
 flate2 = "1.0"
 tar = "0.4"
+
+[build-dependencies]
+cc = "1.0"
