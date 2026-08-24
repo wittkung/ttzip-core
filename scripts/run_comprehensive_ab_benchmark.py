@@ -28,13 +28,13 @@ def run_cmd(cmd, cwd=None, env=None):
         raise RuntimeError(f"Command failed ({res.returncode}): {cmd}\nStderr: {res.stderr}\nStdout: {res.stdout}")
     return res.stdout
 
-def setup_baseline_worktree():
-    print(f"--> [Setup] Preparing Baseline Git worktree at {BASELINE_WORKTREE}...")
+def setup_baseline_worktree(baseline_ref="HEAD~1"):
+    print(f"--> [Setup] Preparing Baseline Git worktree ({baseline_ref}) at {BASELINE_WORKTREE}...")
     if BASELINE_WORKTREE.exists():
         run_cmd(f"git -C {CORE_DIR} worktree remove -f {BASELINE_WORKTREE} || rm -rf {BASELINE_WORKTREE}")
     
-    # Check out HEAD commit as baseline (comparing clean commit vs working tree optimizations)
-    run_cmd(f"git -C {CORE_DIR} worktree add -f {BASELINE_WORKTREE} HEAD")
+    # Check out specified commit as baseline
+    run_cmd(f"git -C {CORE_DIR} worktree add -f {BASELINE_WORKTREE} {baseline_ref}")
     
     print("--> [Setup] Building Baseline Rust glue & universal static library...")
     run_cmd("bash scripts/build_rust.sh --release", cwd=str(BASELINE_WORKTREE))
