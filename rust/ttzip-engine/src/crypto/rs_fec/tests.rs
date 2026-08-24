@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 use crate::crypto::crc32::crc32_fast;
 use crate::crypto::rs_fec::cauchy::*;

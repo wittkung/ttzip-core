@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Hybrid Charset Sniffing Engine combining SIMD ASCII validation, strict UTF-8 parsing,
 //! Coding State Machine (CSM) pruning, and 2-byte CJK Bigram frequency statistics.

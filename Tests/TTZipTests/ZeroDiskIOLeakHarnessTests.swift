@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import XCTest
 import CoreServices
@@ -57,15 +50,12 @@ final class ZeroDiskIOLeakHarnessTests: XCTestCase {
         
         let zipPath = tempDestDir.appendingPathComponent("stream_test.zip").path
         let writer = ArchiveWriter()
-        let created = writer.createArchiveWithRust(
+        try writer.createArchiveSync(
             outputPath: zipPath,
             format: .zip,
-            inputPaths: [sourceFile.path],
             level: .fast,
-            password: nil,
-            totalBytes: Int64(fullData.count)
+            inputPaths: [sourceFile.path]
         )
-        XCTAssertTrue(created)
         
         let initialDiskBytes = getProcessDiskBytesWritten()
         

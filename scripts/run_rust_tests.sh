@@ -4,7 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
+
 # ==============================================================================
 # scripts/run_rust_tests.sh
 # 自动化执行 TTZip Rust 全域测试套件：单测、集成测试、属性测试、Fuzzing 与基准测试

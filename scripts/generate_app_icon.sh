@@ -4,9 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
-# SPDX-License-Identifier: BSD-3-Clause
-#
+# TTZip: High-performance native archiving and compression engine.
+
 # Generates multi-resolution Retina AppIcon.icns from logo/AppIcon.png
 
 set -e

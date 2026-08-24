@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 
@@ -383,26 +376,9 @@ public enum ArchiveMagicSignatureScanner {
         buffer: UnsafeRawBufferPointer,
         fileSize: Int64
     ) -> ArchiveCompressionFormat? {
-        guard !buffer.isEmpty, fileSize > 0, let base = buffer.baseAddress else { return nil }
+        guard !buffer.isEmpty, fileSize > 0, buffer.baseAddress != nil else { return nil }
 
-        var rawFormat: Int32 = 0
-        var isSfx: Bool = false
-        var sfxOffset: Int = 0
-
-        let status = ttzip_rust_detect_format_buffer(
-            base.assumingMemoryBound(to: UInt8.self),
-            buffer.count,
-            nil,
-            &rawFormat,
-            &isSfx,
-            &sfxOffset
-        )
-
-        if status == TTZIP_STATUS_OK, let format = mapDetectedFormat(rawFormat) {
-            return format
-        }
-
-        // Secondary fallback for extended formats (.wim, .lzip, .lrzip, .aar)
+        // Evaluation against format standard signatures
         let registry = ArchiveFormatStandardRegistry.shared
         for format in prioritizedFormats {
             guard let spec = registry.spec(for: format) else { continue }
@@ -424,8 +400,9 @@ public enum ArchiveMagicSignatureScanner {
         return nil
     }
 
-    public static func detectFormat(data: Data, fileSize: Int64? = nil) -> ArchiveCompressionFormat? {
-        let size = fileSize ?? Int64(data.count)
+    public static func detectFormat(data: Data) -> ArchiveCompressionFormat? {
+        let size = Int64(data.count)
+        guard size > 0 else { return nil }
         return data.withUnsafeBytes { rawBuffer in
             detectFormat(buffer: rawBuffer, fileSize: size)
         }
@@ -437,32 +414,23 @@ public enum ArchiveMagicSignatureScanner {
         let path = fileURL.path
         guard FileManager.default.fileExists(atPath: path) else { return nil }
 
-        var rawFormat: Int32 = 0
-        var isSfx: Bool = false
-        var sfxOffset: Int = 0
-
-        let status = path.withCString { cPath in
-            ttzip_rust_detect_format_file(cPath, &rawFormat, &isSfx, &sfxOffset)
-        }
-
-        if status == TTZIP_STATUS_OK, let format = mapDetectedFormat(rawFormat) {
-            return resolveCompoundFormat(detected: format, fileURL: fileURL)
-        }
-
-        // Fallback to FileHandle inspect or extension heuristic
-        let fileHandle = try FileHandle(forReadingFrom: fileURL)
-        defer { try? fileHandle.close() }
-
-        let fileSize = Int64(try fileHandle.seekToEnd())
-        if fileSize > 0 {
-            let registry = ArchiveFormatStandardRegistry.shared
-            for spec in registry.allSpecs() {
-                for signature in spec.magicSignatures {
-                    if try matchesSignature(signature, fileHandle: fileHandle, fileSize: fileSize) {
-                        return resolveCompoundFormat(detected: spec.format, fileURL: fileURL)
-                    }
-                }
+        if let uniffiFmt = try? detectArchiveFormat(path: path), uniffiFmt != .auto {
+            let format: ArchiveCompressionFormat
+            switch uniffiFmt {
+            case .zip: format = .zip
+            case .sevenZip: format = .sevenZip
+            case .tar: format = .tar
+            case .tarGz: format = .tarGz
+            case .tarBz2: format = .tarBz2
+            case .tarXz: format = .tarXz
+            case .tarZstd: format = .tarZst
+            case .dmg: format = .dmg
+            case .snappy: format = .snappy
+            case .lzfse: format = .aar
+            case .wim: format = .wim
+            case .auto: format = .zip
             }
+            return resolveCompoundFormat(detected: format, fileURL: fileURL)
         }
 
         return detectFormatFromExtension(fileURL: fileURL)

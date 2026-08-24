@@ -3,18 +3,11 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 import CryptoKit
-import CTTZipBridge
+import Compression
 import zlib
 
 /// Supported cryptographic and verification hash algorithms.
@@ -25,7 +18,7 @@ public enum HashType: String, Sendable {
     case sha1 = "SHA-1"
 }
 
-/// Multi-core parallel chunked hash and checksum calculator (6.0+ GB/s).
+/// Multi-core parallel chunked hash and checksum calculator.
 public final class HashCalculator: HashCalculating, @unchecked Sendable {
     internal let hardwareTuner: HardwareTunerProtocol
 
@@ -36,51 +29,19 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
     public func computeHashSync(filePath: String, type: HashType) throws -> String {
         switch type {
         case .crc32:
-            let fm = FileManager.default
-            let sz = (try? fm.attributesOfItem(atPath: filePath)[.size] as? Int64) ?? 0
-            if sz >= 4 * 1024 * 1024,
-               let fd = Optional(open(filePath, O_RDONLY)), fd >= 0 {
-                defer { close(fd) }
-                let totalFileSize = Int(sz)
-                if let mappedIn = mmap(nil, totalFileSize, PROT_READ, MAP_SHARED, fd, 0), mappedIn != MAP_FAILED {
-                    defer { munmap(mappedIn, totalFileSize) }
-                    posix_madvise(mappedIn, totalFileSize, POSIX_MADV_WILLNEED)
-                    let inBytePtr = mappedIn.assumingMemoryBound(to: UInt8.self)
-                    let rawInPtr = UInt(bitPattern: inBytePtr)
-                    let crcChunkSize = 64 * 1024 * 1024
-                    let numChunks = (totalFileSize + crcChunkSize - 1) / crcChunkSize
-                    var chunkCRCs = [UInt32](repeating: 0, count: numChunks)
-
-                    chunkCRCs.withUnsafeMutableBufferPointer { crcBuf in
-                        let rawCrcPtr = UInt(bitPattern: crcBuf.baseAddress)
-                        ConcurrencyBridge.parallelFor(iterations: numChunks) { idx in
-                            guard let basePtr = UnsafePointer<UInt8>(bitPattern: rawInPtr),
-                                  let outBufPtr = UnsafeMutablePointer<UInt32>(bitPattern: rawCrcPtr) else { return }
-                            let offset = idx * crcChunkSize
-                            let len = min(crcChunkSize, totalFileSize - offset)
-                            let chunkPtr = basePtr.advanced(by: offset)
-                            outBufPtr[idx] = ttzip_rust_crc32(0, chunkPtr, len)
-                        }
-                    }
-
-                    var finalCRC: UInt32 = 0
-                    for idx in 0..<numChunks {
-                        let len = min(crcChunkSize, totalFileSize - (idx * crcChunkSize))
-                        finalCRC = HardwareChecksumAdapter.combineCRC32(crc1: finalCRC, crc2: chunkCRCs[idx], len2: len)
-                    }
-                    return String(format: "%08X", finalCRC)
-                }
+            if let crc = try? computeFileCrc32(filePath: filePath) {
+                return String(format: "%08X", crc)
             }
             if let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
-                let crc = data.withUnsafeBytes { raw in
-                    guard let base = raw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return UInt32(0) }
-                    return ttzip_rust_crc32(0, base, raw.count)
-                }
+                let crc = HardwareChecksumAdapter.crc32(for: data)
                 return String(format: "%08X", crc)
             }
             return "00000000"
             
         case .sha256:
+            if let sha = try? computeFileSha256(filePath: filePath) {
+                return sha
+            }
             return try computeCryptoHashSync(filePath: filePath, createHasher: SHA256.init)
             
         case .md5:
@@ -98,7 +59,7 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
             
         case .sha256:
             return try await Task.detached(priority: .userInitiated) {
-                return try self.computeCryptoHashSync(filePath: filePath, createHasher: SHA256.init)
+                return try self.computeHashSync(filePath: filePath, type: .sha256)
             }.value
             
         case .md5:
@@ -179,25 +140,10 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
 
 // MARK: - Hardware Checksum Adapter
 
-//
-//
-
-
-/// Adapter Pattern: Hardware-accelerated Adler-32 and CRC-32 checksum computation adapter.
-///
-/// Direct passthrough to Apple Silicon ARM64 DotProd / NEON vector pipelines and libdeflate PMULL kernels.
+/// Hardware-accelerated Adler-32 and CRC-32 checksum computation adapter.
 public enum HardwareChecksumAdapter {
     
-    /// Computes 32-bit Adler-32 checksum with hardware DotProd / NEON acceleration.
-    ///
-    /// - Parameters:
-    ///   - data: Input data buffer.
-    ///   - initial: Initial Adler-32 state (default: 1).
-    /// - Returns: Computed 32-bit Adler-32 checksum.
-    /// - Precondition: `data` is accessible in current memory space.
-    /// - Postcondition: Returns identical checksum to RFC 1950 reference Adler-32.
-    /// - Complexity: O(N) time with ~64 GB/s peak throughput on Apple Silicon; O(1) space.
-    /// - Note: Thread Safety: 100% thread-safe and reentrant.
+    /// Computes 32-bit Adler-32 checksum with hardware acceleration.
     @inlinable
     public static func adler32(for data: Data, initial: UInt32 = 1) -> UInt32 {
         guard !data.isEmpty else { return initial }
@@ -205,35 +151,18 @@ public enum HardwareChecksumAdapter {
             guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
                 return initial
             }
-            return ttzip_rust_adler32(initial, baseAddress, rawBuffer.count)
+            return UInt32(zlib.adler32(uLong(initial), baseAddress, uInt(rawBuffer.count)))
         }
     }
     
     /// Computes 32-bit Adler-32 checksum via direct pointer access.
-    ///
-    /// - Parameters:
-    ///   - ptr: Memory pointer to byte buffer.
-    ///   - count: Byte count to scan.
-    ///   - initial: Initial Adler-32 state (default: 1).
-    /// - Returns: Computed 32-bit Adler-32 checksum.
-    /// - Precondition: `ptr` must point to at least `count` valid readable bytes.
-    /// - Complexity: O(N) time; O(1) space.
-    /// - Note: Thread Safety: Reentrant and thread-safe.
     @inlinable
     public static func adler32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 1) -> UInt32 {
         guard count > 0 else { return initial }
-        return ttzip_rust_adler32(initial, ptr, count)
+        return UInt32(zlib.adler32(uLong(initial), ptr, uInt(count)))
     }
 
-    /// Computes 32-bit CRC-32 checksum with PMULL hardware vector folding.
-    ///
-    /// - Parameters:
-    ///   - data: Input data buffer.
-    ///   - initial: Initial CRC-32 state (default: 0).
-    /// - Returns: Computed 32-bit CRC-32 checksum.
-    /// - Precondition: `data` is valid in memory.
-    /// - Complexity: O(N) time with ~30 GB/s peak throughput; O(1) space.
-    /// - Note: Thread Safety: Reentrant and thread-safe.
+    /// Computes 32-bit CRC-32 checksum.
     @inlinable
     public static func crc32(for data: Data, initial: UInt32 = 0) -> UInt32 {
         guard !data.isEmpty else { return initial }
@@ -241,24 +170,15 @@ public enum HardwareChecksumAdapter {
             guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
                 return initial
             }
-            return ttzip_rust_crc32(initial, baseAddress, rawBuffer.count)
+            return UInt32(zlib.crc32(uLong(initial), baseAddress, uInt(rawBuffer.count)))
         }
     }
 
     /// Computes 32-bit CRC-32 checksum via direct pointer access.
-    ///
-    /// - Parameters:
-    ///   - ptr: Memory pointer to byte buffer.
-    ///   - count: Byte count to scan.
-    ///   - initial: Initial CRC-32 state (default: 0).
-    /// - Returns: Computed 32-bit CRC-32 checksum.
-    /// - Precondition: `ptr` points to at least `count` readable bytes.
-    /// - Complexity: O(N) time; O(1) space.
-    /// - Note: Thread Safety: Reentrant and thread-safe.
     @inlinable
     public static func crc32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 0) -> UInt32 {
         guard count > 0 else { return initial }
-        return ttzip_rust_crc32(initial, ptr, count)
+        return UInt32(zlib.crc32(uLong(initial), ptr, uInt(count)))
     }
 
     @inlinable
@@ -274,17 +194,13 @@ public enum HardwareChecksumAdapter {
 
 // MARK: - Libdeflate Accelerator
 
-//
-//
-
-
 /// High-performance DEFLATE compression and decompression acceleration infrastructure.
 public final class LibdeflateAccelerator: @unchecked Sendable {
     public static let shared = LibdeflateAccelerator()
     
     private init() {}
     
-    /// Thread-local pooled DEFLATE compression with zero per-file allocations.
+    /// Compresses buffer via Apple Silicon Hardware Compression framework.
     public func compress(
         src: UnsafeRawPointer,
         srcSize: Int,
@@ -292,40 +208,39 @@ public final class LibdeflateAccelerator: @unchecked Sendable {
         dstCapacity: Int,
         level: Int = 6
     ) -> Int {
-        var outLen: Int = 0
-        let status = ttzip_rust_deflate_compress(
-            src.assumingMemoryBound(to: UInt8.self),
-            srcSize,
+        let written = compression_encode_buffer(
             dst.assumingMemoryBound(to: UInt8.self),
             dstCapacity,
-            Int32(level),
-            &outLen
+            src.assumingMemoryBound(to: UInt8.self),
+            srcSize,
+            nil,
+            COMPRESSION_ZLIB
         )
-        return status == TTZIP_STATUS_OK ? outLen : 0
+        return written
     }
     
-    /// Thread-local pooled DEFLATE decompression with zero per-file allocations.
+    /// Decompresses buffer via Apple Silicon Hardware Compression framework.
     public func decompress(
         src: UnsafeRawPointer,
         srcSize: Int,
         dst: UnsafeMutableRawPointer,
         dstCapacity: Int
     ) -> Int {
-        var outLen: Int = 0
-        let status = ttzip_rust_deflate_decompress(
-            src.assumingMemoryBound(to: UInt8.self),
-            srcSize,
+        let written = compression_decode_buffer(
             dst.assumingMemoryBound(to: UInt8.self),
             dstCapacity,
-            &outLen
+            src.assumingMemoryBound(to: UInt8.self),
+            srcSize,
+            nil,
+            COMPRESSION_ZLIB
         )
-        return status == TTZIP_STATUS_OK ? outLen : 0
+        return written
     }
     
     /// Convenience helper compressing Swift `Data` buffers.
     public func compressData(_ data: Data, level: Int = 6) -> Data? {
         guard !data.isEmpty else { return Data() }
-        let maxBound = ttzip_rust_deflate_compress_bound(data.count, Int32(level))
+        let maxBound = data.count + 512
         var dstBuffer = [UInt8](repeating: 0, count: maxBound)
         let written = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
             guard let base = dstPtr.baseAddress else { return 0 }

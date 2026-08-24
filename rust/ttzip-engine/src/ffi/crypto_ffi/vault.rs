@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! C-ABI / FFI export functions for Secure Password Vault with AES-256-GCM and memory zeroization.
 

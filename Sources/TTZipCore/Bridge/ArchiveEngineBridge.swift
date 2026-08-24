@@ -3,17 +3,26 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-@_exported import CTTZipBridge
+
+public enum TTZipFileKind: UInt32, Sendable {
+    case unknown = 0
+    case archive = 1
+    case image = 2
+    case audio = 3
+    case video = 4
+    case binary = 5
+}
+
+public typealias ttzip_file_kind_t = TTZipFileKind
+public let TTZIP_KIND_UNKNOWN = TTZipFileKind.unknown
+public let TTZIP_KIND_ARCHIVE = TTZipFileKind.archive
+public let TTZIP_KIND_IMAGE = TTZipFileKind.image
+public let TTZIP_KIND_AUDIO = TTZipFileKind.audio
+public let TTZIP_KIND_VIDEO = TTZipFileKind.video
+public let TTZIP_KIND_BINARY = TTZipFileKind.binary
 
 // MARK: - Native Microkernel Bridge
 
@@ -21,13 +30,13 @@ import Foundation
 public enum NativeMicrokernelBridge {
     
     /// Sniffs file format magic numbers in constant time (<1ns).
-    public static func sniffMagic(data: Data) -> (kind: ttzip_file_kind_t, format: String, mime: String) {
+    public static func sniffMagic(data: Data) -> (kind: TTZipFileKind, format: String, mime: String) {
         guard data.count >= 2 else {
-            return (TTZIP_KIND_UNKNOWN, "UNKNOWN", "application/octet-stream")
+            return (.unknown, "UNKNOWN", "application/octet-stream")
         }
         return data.withUnsafeBytes { rawBuf in
             guard let ptr = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return (TTZIP_KIND_UNKNOWN, "UNKNOWN", "application/octet-stream")
+                return (.unknown, "UNKNOWN", "application/octet-stream")
             }
             let len = rawBuf.count
             if len >= 4 && ptr[0] == 0x50 && ptr[1] == 0x4B && ptr[2] == 0x03 && ptr[3] == 0x04 {
@@ -77,15 +86,10 @@ public enum NativeMicrokernelBridge {
         return a.localizedStandardCompare(b)
     }
     
-    /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from a file path using pure Rust kernel.
+    /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from a file path using pure Rust UniFFI kernel.
     public static func extractAudioWaveform(path: String, bucketCount: Int = 36) -> [Float] {
-        var amplitudes = [Float](repeating: 0.0, count: bucketCount)
-        var count = 0
-        let status = path.withCString { cPath in
-            ttzip_extract_audio_waveform(cPath, bucketCount, &amplitudes, &count)
-        }
-        if status == TTZIP_STATUS_OK && count > 0 {
-            return Array(amplitudes.prefix(count))
+        if let result = try? TTZipCore.extractAudioWaveform(path: path, bucketCount: UInt32(bucketCount)), !result.isEmpty {
+            return result
         }
         return (0..<bucketCount).map { idx in
             let p = Float(idx) / Float(bucketCount)
@@ -94,18 +98,10 @@ public enum NativeMicrokernelBridge {
         }
     }
     
-    /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from memory data using pure Rust kernel.
+    /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from memory data using pure Rust UniFFI kernel.
     public static func extractAudioWaveformFromMemory(data: Data, bucketCount: Int = 36) -> [Float] {
-        var amplitudes = [Float](repeating: 0.0, count: bucketCount)
-        var count = 0
-        let status = data.withUnsafeBytes { rawBuf in
-            guard let ptr = rawBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return TTZIP_STATUS_ERR_INVALID_PARAM
-            }
-            return ttzip_extract_audio_waveform_from_memory(ptr, rawBuf.count, bucketCount, &amplitudes, &count)
-        }
-        if status == TTZIP_STATUS_OK && count > 0 {
-            return Array(amplitudes.prefix(count))
+        if let result = try? TTZipCore.extractAudioWaveformFromMemory(data: data, bucketCount: UInt32(bucketCount)), !result.isEmpty {
+            return result
         }
         return (0..<bucketCount).map { idx in
             let p = Float(idx) / Float(bucketCount)
@@ -383,7 +379,7 @@ public final class TarEngineBridgeImplementor: ArchiveEngineImplementorProtocol,
     }
 }
 
-/// Bridge implementor for Unified Rust Engine (High-performance safe Rust C-ABI).
+/// Bridge implementor for Unified Rust Engine (100% Pure Mozilla UniFFI Engine).
 public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
     public let supportedFormat: ArchiveCompressionFormat
 
@@ -399,45 +395,15 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         try Task.checkCancellation()
         
         return try await Task.detached(priority: .userInitiated) {
-            let rustFormat: TTZipArchiveFormat
-            switch self.supportedFormat {
-            case .zip: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
-            case .sevenZip: rustFormat = TTZIP_ARCHIVE_FORMAT_SEVEN_ZIP
-            case .tar: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR
-            case .tarGz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_GZ
-            case .tarBz2: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_BZ2
-            case .tarXz: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_XZ
-            case .tarZst, .zst: rustFormat = TTZIP_ARCHIVE_FORMAT_TAR_ZSTD
-            default: rustFormat = TTZIP_ARCHIVE_FORMAT_ZIP
-            }
-
-            var createOptions = TTZipCreateOptions(
-                format: rustFormat,
-                level: TTZIP_COMPRESSION_LEVEL_NORMAL,
-                encryption: TTZIP_ENCRYPTION_NONE,
-                password: nil,
-                thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
-                solid_block_size_mb: 0,
-                progress_callback: nil,
-                user_data: nil
+            let writer = ArchiveWriter(targetFormat: self.supportedFormat)
+            try writer.createArchiveSync(
+                outputPath: outputPath,
+                format: self.supportedFormat,
+                level: .normal,
+                inputPaths: inputPaths,
+                options: .defaultClean,
+                advancedOptions: options
             )
-
-            let status = CUnsafeBufferAdapter.withCStringsArray(inputPaths) { cInputPaths in
-                CUnsafeBufferAdapter.withCString(outputPath) { outPtr in
-                    guard let outPtr = outPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                    return ttzip_rust_create_archive(
-                        cInputPaths,
-                        inputPaths.count,
-                        outPtr,
-                        &createOptions
-                    )
-                }
-            }
-
-            guard status == TTZIP_STATUS_OK else {
-                throw ArchiveError.readFailed(code: status.rawValue)
-            }
-
             let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
             return (attr?[.size] as? Int64) ?? 0
         }.value
@@ -451,39 +417,13 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         try Task.checkCancellation()
 
         return try await Task.detached(priority: .userInitiated) {
-            var extractOptions = TTZipExtractOptions(
-                destination_path: nil,
-                password: nil,
-                thread_budget: UInt32(options.cpuThreads > 0 ? options.cpuThreads : 4),
-                overwrite_existing: true,
-                preserve_permissions: true,
-                dry_run: false,
-                progress_callback: nil,
-                user_data: nil
+            let extractor = ArchiveExtractor(targetFormat: self.supportedFormat)
+            return try extractor.extractSync(
+                archivePath: archivePath,
+                destinationDir: destinationDir,
+                options: .defaultClean,
+                advancedOptions: options
             )
-
-            var extractedBytes: UInt64 = 0
-            var errorInfo = TTZipErrorInfo.zeroed
-
-            let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
-                CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
-                    guard let aPtr = aPtr, let dPtr = dPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                    extractOptions.destination_path = dPtr
-                    return ttzip_rust_archive_extract_unified_v2(
-                        aPtr,
-                        dPtr,
-                        &extractOptions,
-                        &extractedBytes,
-                        &errorInfo
-                    )
-                }
-            }
-
-            guard status == TTZIP_STATUS_OK else {
-                throw ArchiveError.readFailed(code: status.rawValue)
-            }
-
-            return Int64(extractedBytes)
         }.value
     }
 }

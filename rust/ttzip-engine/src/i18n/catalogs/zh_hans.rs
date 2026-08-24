@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine.
 
 /// Compile-time sorted dictionary slice for zero-allocation O(1) binary search.
 pub static STRINGS: &[(&str, &str)] = &[
@@ -157,6 +159,7 @@ pub static STRINGS: &[(&str, &str)] = &[
     ("explorer.empty_directory", "空文件夹"),
     ("explorer.encrypted_badge", "已加密"),
     ("explorer.extract_to_prompt", "解压到..."),
+    ("explorer.file_explorer", "文件浏览器"),
     ("explorer.file_name", "文件名称"),
     ("explorer.folder_composition", "文件夹结构分析"),
     ("explorer.folder_header", "文件夹"),
@@ -288,8 +291,10 @@ pub static STRINGS: &[(&str, &str)] = &[
     ("preview.loading", "正在渲染预览..."),
     ("preview.media_metadata", "元数据与 EXIF 属性"),
     ("preview.no_chapter_content", "未检索到可读章节内容"),
+    ("preview.open_external", "在外部编辑器中打开"),
     ("preview.open_in_reader", "在独立阅读器中打开"),
     ("preview.page_count", "第 %1$d / %2$d 页"),
+    ("preview.preview_panel", "预览面板"),
     ("preview.raw_text_view", "纯文本快速检视"),
     ("preview.reset_zoom", "实际大小"),
     ("preview.rewind_15", "快退 15 秒"),

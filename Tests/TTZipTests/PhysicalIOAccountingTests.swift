@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import XCTest
 @testable import TTZipCore
@@ -37,15 +30,12 @@ final class PhysicalIOAccountingTests: XCTestCase {
         try content.write(toFile: sampleFile, atomically: true, encoding: .utf8)
 
         let writer = ArchiveWriter()
-        let created = writer.createArchiveWithRust(
+        try writer.createArchiveSync(
             outputPath: zipPath,
             format: .zip,
-            inputPaths: [sampleFile],
             level: .normal,
-            password: nil,
-            totalBytes: Int64(content.utf8.count)
+            inputPaths: [sampleFile]
         )
-        XCTAssertTrue(created)
 
         let initialTtzipTmpFiles = (try? FileManager.default.contentsOfDirectory(atPath: NSTemporaryDirectory()))?.filter { $0.contains("ttzip_") || $0.contains("probe_") }.count ?? 0
 

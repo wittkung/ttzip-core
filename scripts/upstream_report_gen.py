@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+# All rights reserved.
+#
+# TTZip: High-performance native archiving and compression engine.
+
 """
 upstream_report_gen.py - Standardized Markdown & JSON Report Generator for Upstream PRs
 Generates canonical 13-micro and 50-macro sorted tables.

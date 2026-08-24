@@ -3,20 +3,13 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 #if os(macOS)
 import Darwin
+import MachO
 #endif
 
 /// Cross-platform CPU hardware topology and SIMD instruction set detection subsystem.
@@ -26,37 +19,10 @@ public enum PlatformHardware {
     public static let capabilities: CPUFeatureSet = detectCapabilities()
     
     private static func detectCapabilities() -> CPUFeatureSet {
-        var rawCaps = TTZipCpuCapsRaw()
-        let status = ttzip_rust_cpu_get_capabilities(&rawCaps)
-        
         #if arch(arm64)
         let archStr = "arm64"
-        #elseif arch(x86_64)
-        let archStr = "x86_64"
-        #else
-        let archStr = "unknown"
-        #endif
-        
-        if status == TTZIP_STATUS_OK {
-            return CPUFeatureSet(
-                architecture: archStr,
-                logicalCores: Int(rawCaps.logical_cores),
-                pCores: Int(rawCaps.p_cores),
-                eCores: Int(rawCaps.e_cores),
-                physicalPageSize: Int(rawCaps.physical_page_size),
-                hasARMNeon: rawCaps.has_arm_neon,
-                hasARMCrypto: rawCaps.has_arm_crypto,
-                hasAESNI: rawCaps.has_aes_ni,
-                hasAVX2: rawCaps.has_avx2,
-                hasAVX512: rawCaps.has_avx512,
-                hasHardwareCRC32: rawCaps.has_hardware_crc32
-            )
-        }
-        
         let cores = ProcessInfo.processInfo.activeProcessorCount
         let pageSize = PlatformOperatingSystem.current.defaultPageAlignment
-        
-        #if arch(arm64)
         return CPUFeatureSet(
             architecture: archStr,
             logicalCores: cores,
@@ -69,6 +35,9 @@ public enum PlatformHardware {
             hasHardwareCRC32: true
         )
         #elseif arch(x86_64)
+        let archStr = "x86_64"
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        let pageSize = PlatformOperatingSystem.current.defaultPageAlignment
         return CPUFeatureSet(
             architecture: archStr,
             logicalCores: cores,
@@ -81,6 +50,9 @@ public enum PlatformHardware {
             hasHardwareCRC32: true
         )
         #else
+        let archStr = "unknown"
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        let pageSize = PlatformOperatingSystem.current.defaultPageAlignment
         return CPUFeatureSet(
             architecture: archStr,
             logicalCores: cores,
@@ -97,13 +69,6 @@ public enum PlatformHardware {
     
     /// Queries dynamic P-core, E-core, and total logical core topology.
     public static func cpuTopology() -> (pCores: Int, eCores: Int, totalCores: Int) {
-        var p: UInt32 = 0
-        var e: UInt32 = 0
-        var tot: UInt32 = 0
-        let status = ttzip_rust_cpu_get_topology(&p, &e, &tot)
-        if status == TTZIP_STATUS_OK {
-            return (pCores: Int(p), eCores: Int(e), totalCores: Int(tot))
-        }
         let active = ProcessInfo.processInfo.activeProcessorCount
         return (pCores: active, eCores: 0, totalCores: active)
     }
@@ -111,20 +76,10 @@ public enum PlatformHardware {
     /// Boosts current thread scheduling QoS priority to user interactive on Darwin.
     @inlinable
     @available(*, deprecated, message: "Use Task(priority:) or NativeComputeDispatcher to avoid mutating cooperative thread pool worker threads.")
-    public static func boostCurrentThreadPriority() {
-        // Safe no-op in Swift 6 concurrency
-    }
+    public static func boostCurrentThreadPriority() {}
 }
 
 // MARK: - Platform Memory
-
-//
-//
-
-
-#if os(macOS)
-#elseif os(Linux)
-#endif
 
 /// In-process memory telemetry snapshot (Resident Set Size, high-water mark peak RSS, and virtual size).
 public struct MemoryCeilingSnapshot: Sendable, Equatable {
@@ -152,18 +107,6 @@ public enum PlatformMemory {
     /// Queries current process physical resident memory (RSS), peak RSS high-water mark, and virtual memory snapshot.
     @inlinable
     public static func currentMemoryUsage() -> MemoryCeilingSnapshot {
-        var curRss: UInt64 = 0
-        var peakRss: UInt64 = 0
-        var vSize: UInt64 = 0
-        let status = ttzip_rust_memory_usage(&curRss, &peakRss, &vSize)
-        if status == TTZIP_STATUS_OK && (curRss > 0 || peakRss > 0) {
-            return MemoryCeilingSnapshot(
-                currentRSSBytes: curRss,
-                peakRSSBytes: peakRss,
-                virtualSizeBytes: vSize
-            )
-        }
-        
         #if os(macOS)
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
@@ -221,7 +164,7 @@ public enum PlatformMemory {
     @inlinable
     public static func secureZero(pointer: UnsafeMutableRawPointer, byteCount: Int) {
         guard byteCount > 0 else { return }
-        ttzip_rust_secure_zeroize(pointer.assumingMemoryBound(to: UInt8.self), byteCount)
+        memset_s(pointer, byteCount, 0, byteCount)
     }
     
     /// Maps physical file into virtual address space in read-only mode and returns mapping descriptor.
@@ -291,10 +234,6 @@ public enum PlatformMemory {
 
 // MARK: - Thermal Coordinator
 
-//
-//
-
-
 /// Platform hardware thermal state coordinator and DVFS debounce scheduler (Swift 6 Isolated Actor).
 public actor HardwareThermalCoordinator {
     public static let shared = HardwareThermalCoordinator()
@@ -331,13 +270,9 @@ public actor HardwareThermalCoordinator {
         monitorTask = nil
     }
 
-    private func handleThermalStateChange(_ state: ProcessInfo.ThermalState) {
-        // Internal state synchronization hook
-    }
+    private func handleThermalStateChange(_ state: ProcessInfo.ThermalState) {}
 
     /// Performs adaptive hardware cooldown wait if thermal throttling pressure is high.
-    /// - Parameter maxWaitSeconds: Maximum cooldown timeout limit in seconds.
-    /// - Returns: Boolean indicating whether cooldown pause was triggered.
     @discardableResult
     public func performAdaptiveCooldownIfNeeded(maxWaitSeconds: Double = 30.0) async -> Bool {
         let state = ProcessInfo.processInfo.thermalState
@@ -348,16 +283,14 @@ public actor HardwareThermalCoordinator {
         let startNanos = PlatformMonotonicTimer.nowNanoseconds()
         let maxWaitNanos = UInt64(maxWaitSeconds * 1_000_000_000)
 
-        // Poll until thermal state recovers to .nominal or timeout expires
         while ProcessInfo.processInfo.thermalState != .nominal {
             let elapsed = PlatformMonotonicTimer.nowNanoseconds() - startNanos
             if elapsed >= maxWaitNanos {
                 break
             }
-            try? await Task.sleep(nanoseconds: 500_000_000) // Poll every 500ms
+            try? await Task.sleep(nanoseconds: 500_000_000)
         }
 
-        // Additional 1.5s post-nominal stabilization delay for DVFS frequency settling
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         return true
     }
@@ -365,25 +298,14 @@ public actor HardwareThermalCoordinator {
 
 // MARK: - Hardware Protocols
 
-//
-//
-
-
-// MARK: - Algorithm Engine Protocol Abstractions
-
 /// Hardware topology tuning interface for thread pool sizing, buffer alignment, and QoS boosting.
 public protocol HardwareTunerProtocol: Sendable {
-    /// Total logical/physical core count available for concurrency.
     var totalCores: Int { get }
-    /// Optimal Zstandard long distance matching window log base 2.
     var optimalZstdLongWindowLog: Int { get }
-    /// Optimal page-aligned memory buffer size in bytes.
     var optimalAlignedBufferSize: Int { get }
-    /// Elevates current thread QoS priority to userInteractive/userInitiated.
     func boostCurrentThreadPriority()
 }
 
-// Extension conformances for standard engine implementations
 extension AppleSiliconTuner: HardwareTunerProtocol {
     public var totalCores: Int {
         return self.topology.totalCores
@@ -392,15 +314,10 @@ extension AppleSiliconTuner: HardwareTunerProtocol {
 
 // MARK: - Apple Silicon Tuner
 
-//
-//
-
-
 /// Hardware profiling and dynamic tuning engine for Apple Silicon SoC architectures.
 public final class AppleSiliconTuner: @unchecked Sendable {
     public static let shared = AppleSiliconTuner()
     
-    /// Physical chip topology metadata.
     public struct ChipTopology: Sendable {
         public let chipName: String
         public let totalCores: Int
@@ -414,7 +331,6 @@ public final class AppleSiliconTuner: @unchecked Sendable {
         }
     }
     
-    /// Auto-tuned recommended operational configuration profile.
     public struct AutoTunedConfig: Sendable {
         public let recommendedDictionarySizeMB: Int
         public let recommendedChunkSizeBytes: Int
@@ -450,7 +366,6 @@ public final class AppleSiliconTuner: @unchecked Sendable {
             }
         }
         
-        // Fallback to hw.model if machdep.cpu.brand_string is generic
         if chipName == "Apple Silicon" || chipName.contains("Apple processor") {
             sysctlbyname("hw.model", nil, &size, nil, 0)
             if size > 0 {
@@ -466,7 +381,6 @@ public final class AppleSiliconTuner: @unchecked Sendable {
             }
         }
         
-        // Query cores and architecture via sysctl
         var ncpu: Int32 = 0
         var intSize = MemoryLayout<Int32>.size
         sysctlbyname("hw.ncpu", &ncpu, &intSize, nil, 0)
@@ -500,7 +414,6 @@ public final class AppleSiliconTuner: @unchecked Sendable {
             pageSizeBytes: pageVal
         )
         
-        // Auto-calculate optimal configuration based on unified memory capacity
         let memGB = Double(realMem) / (1024.0 * 1024.0 * 1024.0)
         
         let dictSize: Int
@@ -510,31 +423,27 @@ public final class AppleSiliconTuner: @unchecked Sendable {
         let summary: String
         
         if memGB >= 96.0 {
-            // M Max / Ultra 128GB profile
-            dictSize = 4096 // 4GB dictionary
-            chunkSize = 512 * 1024 * 1024 // 512MB solid chunk
-            bufSize = 64 * 1024 * 1024    // 64MB page-aligned I/O buffer
+            dictSize = 4096
+            chunkSize = 512 * 1024 * 1024
+            bufSize = 64 * 1024 * 1024
             isHighMem = true
             summary = "128GB Unified Memory: 4096MB dictionary + 64MB page buffer (\(chipName))"
         } else if memGB >= 48.0 {
-            // M Max 64GB profile
-            dictSize = 2048 // 2GB dictionary
-            chunkSize = 256 * 1024 * 1024 // 256MB solid chunk
-            bufSize = 32 * 1024 * 1024    // 32MB page-aligned buffer
+            dictSize = 2048
+            chunkSize = 256 * 1024 * 1024
+            bufSize = 32 * 1024 * 1024
             isHighMem = true
             summary = "64GB Unified Memory: 2048MB dictionary + 32MB page buffer (\(chipName))"
         } else if memGB >= 24.0 {
-            // M Pro 32GB/36GB profile
-            dictSize = 1024 // 1GB dictionary
-            chunkSize = 128 * 1024 * 1024 // 128MB solid chunk
-            bufSize = 16 * 1024 * 1024    // 16MB page buffer
+            dictSize = 1024
+            chunkSize = 128 * 1024 * 1024
+            bufSize = 16 * 1024 * 1024
             isHighMem = true
             summary = "32GB Unified Memory: 1024MB dictionary + 16MB page buffer (\(chipName))"
         } else {
-            // Base profile (8GB / 16GB)
             dictSize = 64
-            chunkSize = 16 * 1024 * 1024 // 16MB chunk
-            bufSize = 4 * 1024 * 1024    // 4MB buffer
+            chunkSize = 16 * 1024 * 1024
+            bufSize = 4 * 1024 * 1024
             isHighMem = false
             summary = "Standard Memory: 64MB dictionary + 4MB page buffer (\(chipName))"
         }
@@ -548,46 +457,36 @@ public final class AppleSiliconTuner: @unchecked Sendable {
         )
     }
     
-    /// Optimal thread count for performance cores.
     public var optimalEfficiencyThreads: Int {
         return topology.performanceCores > 0 ? topology.performanceCores : min(8, topology.totalCores)
     }
     
-    /// Maximum thread count for burst compute tasks.
     public var optimalBurstThreads: Int {
         return topology.totalCores
     }
     
-    /// Default optimal thread count for parallel compression pipelines.
     public var optimalCompressionThreads: Int {
         return topology.totalCores
     }
     
-    /// Optimal Zstandard Long Distance Matching windowLog parameter (up to 31).
     public var optimalZstdLongWindowLog: Int {
         return topology.unifiedMemoryGB >= 48.0 ? 31 : (topology.unifiedMemoryGB >= 24.0 ? 27 : 0)
     }
     
-    /// Optimal page-aligned I/O buffer size.
     public var optimalAlignedBufferSize: Int {
         return autoTunedConfig.recommendedBufferSize
     }
     
-    /// Formatted hardware and topology summary.
     public var hardwareSummary: String {
         return "\(topology.chipName) (\(topology.totalCores) Cores: \(topology.performanceCores) P-Cores + \(topology.efficiencyCores) E-Cores), \(String(format: "%.1f", topology.unifiedMemoryGB)) GB Unified Memory, \(topology.pageSizeBytes / 1024)KB Page Aligned"
     }
     
-    /// APFS zero-copy kernel clone file.
     @discardableResult
     public func apfsZeroCopyClone(from srcPath: String, to destPath: String) -> Bool {
         try? FileManager.default.removeItem(atPath: destPath)
         return clonefile(srcPath, destPath, 0) == 0
     }
     
-    /// Elevates current thread QoS priority to `QOS_CLASS_USER_INTERACTIVE`.
     @available(*, deprecated, message: "Use Task(priority:) or NativeComputeDispatcher to avoid mutating cooperative thread pool worker threads.")
-    public func boostCurrentThreadPriority() {
-        // Safe no-op to prevent thread pool contamination in Swift 6 concurrency
-    }
+    public func boostCurrentThreadPriority() {}
 }

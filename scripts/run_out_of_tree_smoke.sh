@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
+
 # ==============================================================================
 # scripts/run_out_of_tree_smoke.sh
 # Out-Of-Tree 纯净容器冒烟测试编排器：在完全隔离的无源码空白目录中验证各语言 SDK 的开箱即用性

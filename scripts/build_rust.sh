@@ -4,10 +4,11 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
+
 # ==============================================================================
 # scripts/build_rust.sh
-# 自动化编译 TTZip Rust 胶水层 (ttzip-glue) 并部署 Universal 静态库到 Vendor
+# 自动化编译 TTZip Rust 引擎并生成 100% Mozilla UniFFI 绑定与 XCFramework
 # ==============================================================================
 
 set -euo pipefail
@@ -17,7 +18,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
 VENDOR_DIR="${REPO_ROOT}/Vendor"
 XCFRAMEWORK_MAC_DIR="${VENDOR_DIR}/TTZipVendor.xcframework/macos-arm64"
-HEADER_OUT="${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_rust_glue.h"
 
 BUILD_MODE="release"
 CARGO_FLAGS="--release"
@@ -60,7 +60,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "=========================================="
-echo "📦 Building TTZip Rust Core Glue Layer (${BUILD_MODE})"
+echo "📦 Building TTZip Rust Engine (${BUILD_MODE})"
 echo "=========================================="
 
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -111,7 +111,7 @@ if [ -n "${NEWEST_CODEC_LIB}" ] && [ -f "${NEWEST_CODEC_LIB}" ]; then
 fi
 
 if [ ${#NATIVE_CODECS_LIBS[@]} -gt 0 ]; then
-    echo "--> Merging glue library with native codecs: ${NATIVE_CODECS_LIBS[*]}"
+    echo "--> Merging engine library with native codecs: ${NATIVE_CODECS_LIBS[*]}"
     libtool -static -no_warning_for_no_symbols -o "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" "${BUILT_LIBS[@]}" "${NATIVE_CODECS_LIBS[@]}"
 elif [ ${#BUILT_LIBS[@]} -eq 1 ]; then
     cp "${BUILT_LIBS[0]}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"
@@ -126,19 +126,7 @@ strip -S "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
 echo "    libTTZipVendor.a architecture: $(lipo -info "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a")"
 echo "    libTTZipVendor.a size: $(ls -lh "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | awk '{print $5}')"
 
-# 3. 生成或维护 C-ABI 头文件
-echo "--> [INFO] Generating C headers: Sources/CTTZipBridge/include/ttzip_rust_glue.h..."
-if command -v cbindgen &>/dev/null; then
-    echo "--> Running cbindgen..."
-    cbindgen --config "${RUST_DIR}/ttzip-engine/cbindgen.toml" "${RUST_DIR}/ttzip-engine" --output "${HEADER_OUT}" 2>/dev/null || true
-fi
-
-# 同步头文件至 XCFramework Headers
-if [ -d "${XCFRAMEWORK_MAC_DIR}/Headers" ]; then
-    cp "${HEADER_OUT}" "${XCFRAMEWORK_MAC_DIR}/Headers/ttzip_rust_glue.h"
-fi
-
-# 4. 生成 Mozilla UniFFI 绑定与 Scaffolding C 头文件
+# 3. 生成 Mozilla UniFFI 绑定与 Scaffolding C 头文件
 echo "--> [INFO] Generating Mozilla UniFFI bindings..."
 mkdir -p "${REPO_ROOT}/Sources/TTZipCore/Generated"
 FIRST_TARGET="${TARGETS[0]}"
@@ -155,6 +143,20 @@ if [ -f "${FIRST_DYLIB}" ]; then
             --language swift \
             --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
             --metadata-no-deps
+
+        mkdir -p "${REPO_ROOT}/python/ttzip"
+        cargo run --bin uniffi-bindgen generate \
+            --library "${FIRST_DYLIB}" \
+            --language python \
+            --out-dir "${REPO_ROOT}/python/ttzip" \
+            --metadata-no-deps
+
+        mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
+        cargo run --bin uniffi-bindgen generate \
+            --library "${FIRST_DYLIB}" \
+            --language kotlin \
+            --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
+            --metadata-no-deps
     )
     
     # 执行 Swift 6 并发安全后处理
@@ -170,5 +172,5 @@ if [ -f "${FIRST_DYLIB}" ]; then
 fi
 
 echo "=========================================="
-echo "✅ [SUCCESS] Rust glue & UniFFI universal library generated successfully."
+echo "✅ [SUCCESS] Pure UniFFI engine & universal library generated successfully."
 echo "=========================================="

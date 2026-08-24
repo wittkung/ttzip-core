@@ -3,29 +3,14 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
-/// Memory-safe C pointer and buffer interoperability bridge.
-///
-/// Eliminates dangling pointer dereferences, heap buffer overruns, and stack exhaustion
-/// when interfacing Swift memory collections with underlying C static libraries.
+/// Memory-safe buffer and pointer utilities for high-performance memory operations.
 public enum CUnsafeBufferAdapter {
     
     /// Safely converts an optional Swift `String` to a temporary `const char*` pointer.
-    /// - Parameters:
-    ///   - string: Input Swift string, or `nil`.
-    ///   - body: Closure receiving the C string pointer.
-    /// - Returns: Closure return value.
     @inline(__always)
     public static func withCString<R>(_ string: String?, _ body: (UnsafePointer<CChar>?) throws -> R) rethrows -> R {
         guard let string = string else {
@@ -36,75 +21,7 @@ public enum CUnsafeBufferAdapter {
         }
     }
 
-    /// Safely converts `[String]` into a scoped `const char* const*` pointer array with zero per-string malloc churn.
-    /// - Parameters:
-    ///   - strings: Array of Swift strings.
-    ///   - body: Closure receiving the C string pointer array.
-    /// - Returns: Closure return value.
-    public static func withCStringsArray<R>(_ strings: [String], _ body: (UnsafePointer<UnsafePointer<CChar>?>) throws -> R) rethrows -> R {
-        if strings.isEmpty {
-            var dummy: UnsafePointer<CChar>? = nil
-            return try withUnsafePointer(to: &dummy) { try body($0) }
-        }
-        
-        func scopedHelper(index: Int, accumulated: inout [UnsafePointer<CChar>?]) throws -> R {
-            if index == strings.count {
-                return try accumulated.withUnsafeBufferPointer { bufPtr in
-                    guard let base = bufPtr.baseAddress else {
-                        var dummy: UnsafePointer<CChar>? = nil
-                        return try withUnsafePointer(to: &dummy) { try body($0) }
-                    }
-                    return try body(base)
-                }
-            }
-            return try strings[index].withCString { cStr in
-                accumulated.append(cStr)
-                defer { accumulated.removeLast() }
-                return try scopedHelper(index: index + 1, accumulated: &accumulated)
-            }
-        }
-        
-        var pointers: [UnsafePointer<CChar>?] = []
-        pointers.reserveCapacity(strings.count)
-        return try scopedHelper(index: 0, accumulated: &pointers)
-    }
-
-    /// Safely converts `[String]` into a `NULL`-terminated pointer array suitable for `posix_spawn` argv.
-    /// - Parameters:
-    ///   - strings: Array of Swift argument strings.
-    ///   - body: Closure receiving the NULL-terminated pointer array.
-    /// - Returns: Closure return value.
-    public static func withCStringsNullTerminatedArray<R>(_ strings: [String], _ body: (UnsafePointer<UnsafePointer<CChar>?>) throws -> R) rethrows -> R {
-        var cStrings: [UnsafeMutablePointer<CChar>?] = []
-        cStrings.reserveCapacity(strings.count + 1)
-        for str in strings {
-            cStrings.append(strdup(str))
-        }
-        cStrings.append(nil)
-        defer {
-            for ptr in cStrings {
-                if let ptr = ptr {
-                    free(ptr)
-                }
-            }
-        }
-
-        return try cStrings.withUnsafeBufferPointer { bufPtr in
-            guard let base = bufPtr.baseAddress else {
-                var dummy: UnsafePointer<CChar>? = nil
-                return try withUnsafePointer(to: &dummy) { try body($0) }
-            }
-            return try base.withMemoryRebound(to: UnsafePointer<CChar>?.self, capacity: bufPtr.count) { reboundPtr in
-                try body(reboundPtr)
-            }
-        }
-    }
-
     /// Safely provides raw byte pointer and count representation of Swift `Data`.
-    /// - Parameters:
-    ///   - data: Input Data payload.
-    ///   - body: Closure receiving `(UnsafeRawPointer, Int)`.
-    /// - Returns: Closure return value.
     @inline(__always)
     public static func withBufferPointer<R>(_ data: Data, _ body: (UnsafeRawPointer, Int) throws -> R) rethrows -> R {
         if data.isEmpty {
@@ -122,10 +39,6 @@ public enum CUnsafeBufferAdapter {
     }
 
     /// Safely provides mutable raw byte pointer and capacity representation of Swift `Data`.
-    /// - Parameters:
-    ///   - data: Inout Data payload.
-    ///   - body: Closure receiving `(UnsafeMutableRawPointer, Int)`.
-    /// - Returns: Closure return value.
     @inline(__always)
     public static func withMutableBufferPointer<R>(_ data: inout Data, _ body: (UnsafeMutableRawPointer, Int) throws -> R) rethrows -> R {
         let count = data.count
@@ -144,8 +57,6 @@ public enum CUnsafeBufferAdapter {
     }
 
     /// Allocates an Apple Silicon 16KB hardware page-aligned memory buffer.
-    /// - Parameter capacity: Minimum capacity in bytes.
-    /// - Returns: Pointer to aligned buffer, or `nil` on failure.
     @inline(__always)
     public static func allocateAlignedBuffer(capacity: Int) -> UnsafeMutableRawPointer? {
         guard capacity > 0 else { return nil }
@@ -153,7 +64,6 @@ public enum CUnsafeBufferAdapter {
     }
 
     /// Deallocates a 16KB hardware page-aligned memory buffer.
-    /// - Parameter pointer: Pointer previously returned by `allocateAlignedBuffer`.
     @inline(__always)
     public static func deallocateAlignedBuffer(_ pointer: UnsafeMutableRawPointer) {
         pointer.deallocate()

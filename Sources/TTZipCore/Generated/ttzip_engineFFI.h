@@ -348,6 +348,21 @@ void uniffi_ttzip_engine_fn_free_uniffivfstree(void*_Nonnull ptr, RustCallStatus
 void*_Nonnull uniffi_ttzip_engine_fn_constructor_uniffivfstree_build(RustBuffer entries, RustBuffer root_name, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_GET_CHILDREN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_GET_CHILDREN
+RustBuffer uniffi_ttzip_engine_fn_method_uniffivfstree_get_children(void*_Nonnull ptr, RustBuffer subpath, uint32_t offset, uint32_t limit, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_GET_STATS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_GET_STATS
+RustBuffer uniffi_ttzip_engine_fn_method_uniffivfstree_get_stats(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_RENDER_TREE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_RENDER_TREE
+RustBuffer uniffi_ttzip_engine_fn_method_uniffivfstree_render_tree(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_SEARCH
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_SEARCH
 RustBuffer uniffi_ttzip_engine_fn_method_uniffivfstree_search(void*_Nonnull ptr, RustBuffer query, uint32_t max_results, RustCallStatus *_Nonnull out_status
@@ -398,6 +413,21 @@ double uniffi_ttzip_engine_fn_func_estimate_shannon_entropy(RustBuffer data, Rus
 RustBuffer uniffi_ttzip_engine_fn_func_extract_archive_stream(RustBuffer archive_path, RustBuffer destination_dir, RustBuffer password, RustBuffer progress, RustBuffer token, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_AUDIO_WAVEFORM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_AUDIO_WAVEFORM
+RustBuffer uniffi_ttzip_engine_fn_func_extract_audio_waveform(RustBuffer path, uint32_t bucket_count, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_AUDIO_WAVEFORM_FROM_MEMORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_AUDIO_WAVEFORM_FROM_MEMORY
+RustBuffer uniffi_ttzip_engine_fn_func_extract_audio_waveform_from_memory(RustBuffer data, uint32_t bucket_count, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SELECTED_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SELECTED_ENTRIES
+uint64_t uniffi_ttzip_engine_fn_func_extract_selected_entries(RustBuffer archive_path, RustBuffer target_entries, RustBuffer destination_dir, RustBuffer password, RustBuffer progress, RustBuffer token, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 RustBuffer uniffi_ttzip_engine_fn_func_extract_single_entry_stream(RustBuffer archive_path, uint64_t entry_index, RustBuffer password, RustCallStatus *_Nonnull out_status
@@ -416,6 +446,11 @@ void uniffi_ttzip_engine_fn_func_join_split_volume_chain(RustBuffer first_volume
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOMMEND_CODEC
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOMMEND_CODEC
 RustBuffer uniffi_ttzip_engine_fn_func_recommend_codec(RustBuffer data, int32_t scenario, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_REPAIR_ARCHIVE_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_REPAIR_ARCHIVE_FILE
+uint64_t uniffi_ttzip_engine_fn_func_repair_archive_file(RustBuffer damaged_path, RustBuffer output_path, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_TTZIP_I18N_FORMAT_BYTES
@@ -760,6 +795,24 @@ uint16_t uniffi_ttzip_engine_checksum_func_extract_archive_stream(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_AUDIO_WAVEFORM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_AUDIO_WAVEFORM
+uint16_t uniffi_ttzip_engine_checksum_func_extract_audio_waveform(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_AUDIO_WAVEFORM_FROM_MEMORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_AUDIO_WAVEFORM_FROM_MEMORY
+uint16_t uniffi_ttzip_engine_checksum_func_extract_audio_waveform_from_memory(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SELECTED_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SELECTED_ENTRIES
+uint16_t uniffi_ttzip_engine_checksum_func_extract_selected_entries(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 uint16_t uniffi_ttzip_engine_checksum_func_extract_single_entry_stream(void
@@ -781,6 +834,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_join_split_volume_chain(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_RECOMMEND_CODEC
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_RECOMMEND_CODEC
 uint16_t uniffi_ttzip_engine_checksum_func_recommend_codec(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_REPAIR_ARCHIVE_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_REPAIR_ARCHIVE_FILE
+uint16_t uniffi_ttzip_engine_checksum_func_repair_archive_file(void
     
 );
 #endif
@@ -847,6 +906,24 @@ uint16_t uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key(voi
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_TTZIPLOCALIZATIONENGINE_LOCALIZE_ERROR
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_TTZIPLOCALIZATIONENGINE_LOCALIZE_ERROR
 uint16_t uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_GET_CHILDREN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_GET_CHILDREN
+uint16_t uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_GET_STATS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_GET_STATS
+uint16_t uniffi_ttzip_engine_checksum_method_uniffivfstree_get_stats(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_RENDER_TREE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_RENDER_TREE
+uint16_t uniffi_ttzip_engine_checksum_method_uniffivfstree_render_tree(void
     
 );
 #endif

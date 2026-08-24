@@ -4,7 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
+
 # ==============================================================================
 # scripts/lint_cabi_context.py
 # Bidirectional C-ABI static dead code and dropped struct field context linter.

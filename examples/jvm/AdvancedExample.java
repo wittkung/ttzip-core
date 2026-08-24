@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
+// TTZip: High-performance native archiving and compression engine.
+
 // TTZip: Advanced Java 22+ Panama Foreign Function & Memory (FFM) Demo.
 // Demonstrates custom thread count, AES-256 password, Reed-Solomon RS-ECC (10%),
 // multi-format selection (7z, tar.zst, zip), and MemorySegment zero-copy streaming.

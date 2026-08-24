@@ -4,8 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
-#
+# TTZip: High-performance native archiving and compression engine.
+
 # run_local_ci_gate.sh: Automated Local Regression & Quality Gate Runner
 
 set -e

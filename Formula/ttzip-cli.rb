@@ -1,12 +1,9 @@
-# typed: false
-# frozen_string_literal: true
-
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression CLI utility for macOS.
+# TTZip: High-performance native archiving and compression engine.
 
 class TtzipCli < Formula
   desc "High-performance native archive and compression CLI utility for macOS"

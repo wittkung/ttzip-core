@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 use std::os::raw::c_char;
 use crate::types::{get_execution_provenance, TTZipEngineTag, TTZipExecutionProvenance};

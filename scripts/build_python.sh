@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
+# TTZip: High-performance native archiving and compression engine.
+
 # Builds TTZip native PyO3 C-extension and installs it into local python/ttzip package.
 
 set -euo pipefail

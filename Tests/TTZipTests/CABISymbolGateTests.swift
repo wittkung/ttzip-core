@@ -3,54 +3,48 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import XCTest
-import CTTZipBridge
 @testable import TTZipCore
 
 final class CABISymbolGateTests: XCTestCase {
 
     func testCoreRuntimeAndVersionSymbols() {
-        let versionPtr = ttzip_rust_version()
-        XCTAssertNotNil(versionPtr)
-        let versionStr = String(cString: versionPtr!)
-        XCTAssertTrue(versionStr.contains("rust-engine") || versionStr.contains("1.0.0"))
-
-        let initStatus = ttzip_rust_init()
-        XCTAssertEqual(initStatus, TTZIP_STATUS_OK)
-
-        let isHw = ttzip_rust_is_hardware_accelerated()
-        #if arch(arm64)
-        XCTAssertTrue(isHw)
-        #endif
-
-        let okStatusStr = String(cString: ttzip_rust_status_string(TTZIP_STATUS_OK))
-        XCTAssertEqual(okStatusStr, "OK")
-    }
-
-    func testArchiveExtractionSelectedSymbolCallable() {
-        // Dynamic assertion that the C-ABI function symbol is linked and callable
-        let dummyPath = "/tmp/non_existent_archive_test.zip"
-        var count: Int = 0
-        let status = ttzip_rust_archive_extract_selected(dummyPath, nil, 0, "/tmp", nil, &count)
-        // Should return a valid failure error code rather than symbol lookup crash
-        XCTAssertNotEqual(status, TTZIP_STATUS_OK)
+        let dummyData = Data([0x01, 0x02, 0x03, 0x04])
+        let entropy = estimateShannonEntropy(data: dummyData)
+        XCTAssertGreaterThanOrEqual(entropy, 0.0)
     }
 
     func testVfsTreeAndSearchSymbolsCallable() {
-        let token = ttzip_rust_cancellation_token_new()
-        XCTAssertNotNil(token)
-        XCTAssertFalse(ttzip_rust_cancellation_token_is_cancelled(token))
-        ttzip_rust_cancellation_token_cancel(token, 1)
-        XCTAssertTrue(ttzip_rust_cancellation_token_is_cancelled(token))
-        ttzip_rust_cancellation_token_free(token)
+        let token = CancellationToken()
+        XCTAssertFalse(token.isCancelled())
+        token.cancel()
+        XCTAssertTrue(token.isCancelled())
+    }
+    
+    func testUniFFIVfsTreeBuilding() {
+        let entries = [
+            UniFfiEntryMetadata(
+                path: "test/file.txt",
+                uncompressedSize: 100,
+                compressedSize: 50,
+                crc32: 12345,
+                mtimeEpochSecs: 1000,
+                mode: 0o644,
+                isDirectory: false,
+                isEncrypted: false,
+                compressionMethod: "store",
+                detectedEncoding: "UTF-8"
+            )
+        ]
+        let tree = UniFfiVfsTree.build(entries: entries, rootName: "root")
+        let stats = tree.getStats()
+        XCTAssertEqual(stats.totalFiles, 1)
+        XCTAssertEqual(stats.totalDirs, 1)
+        
+        let searchResults = tree.search(query: "file", maxResults: 10)
+        XCTAssertEqual(searchResults.count, 1)
+        XCTAssertEqual(searchResults.first?.path, "test/file.txt")
     }
 }

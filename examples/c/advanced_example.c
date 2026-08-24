@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
+// TTZip: High-performance native archiving and compression engine.
+
 // TTZip: Advanced C11 Native C-ABI Features Showcase.
 // Demonstrates configuring TTZipCreateOptions (thread budget, compression level,
 // AES-256 password encryption, solid blocks, real-time progress callbacks),

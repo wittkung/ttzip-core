@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Cryptographic routines for SHA-1, HMAC-SHA1, PBKDF2-SHA1, and WinZip AES-256.
 //!

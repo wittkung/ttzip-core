@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Pure, idiomatic Safe Rust SDK 2.0 builders and readers for archive creation,
 //! extraction, and inspection without raw C pointers.

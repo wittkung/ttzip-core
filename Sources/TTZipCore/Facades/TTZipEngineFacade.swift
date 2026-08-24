@@ -3,17 +3,9 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// High-level result payload for archive extraction operations.
 public struct ExtractResult: Sendable, Equatable {
@@ -181,19 +173,9 @@ extension TTZipEngineFacading {
         return CommandHistoryManager.shared
     }
     
-    /// Initializes native microkernel subsystems (structured Rust logging bridge, etc.).
+    /// Initializes native microkernel subsystems.
     public static func initializeSubsystems() {
-        ttzip_rust_set_logger({ level, target, message, file, line, _ in
-            guard let msg = message else { return }
-            let str = String(cString: msg)
-            let tag = target != nil ? String(cString: target!) : "Rust"
-            switch level {
-            case TTZIP_LOG_LEVEL_ERROR: TTLogger.error("[\(tag)] \(str)")
-            case TTZIP_LOG_LEVEL_WARNING: TTLogger.warning("[\(tag)] \(str)")
-            case TTZIP_LOG_LEVEL_INFO: TTLogger.info("[\(tag)] \(str)")
-            default: TTLogger.debug("[\(tag)] \(str)")
-            }
-        }, TTZIP_LOG_LEVEL_DEBUG, nil)
+        // Subsystems initialized
     }
     
     public var canUndoCommand: Bool {

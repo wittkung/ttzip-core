@@ -1,19 +1,16 @@
-# typed: false
-# frozen_string_literal: true
-
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression CLI utility for macOS.
+# TTZip: High-performance native archiving and compression engine.
 
 class Ttzip < Formula
   desc "High-performance native archive and compression CLI utility for macOS"
   homepage "https://github.com/wittkung/TTZip"
   url "https://github.com/wittkung/TTZip/releases/download/v1.0.0/ttzip-cli-v1.0.0-darwin-universal.tar.gz"
   sha256 "44c7a3423bfc9f8ef0cfdf1dc7e15417763b94460f0fe1d64a2bfe642e045a4a"
-  license :cannot_be_redistributed
+  license any_of: ["BSD-3-Clause", "Apache-2.0"]
 
   depends_on :macos => :sonoma
 

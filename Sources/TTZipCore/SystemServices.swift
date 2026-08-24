@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 
@@ -434,10 +427,10 @@ public final class NativeCoreArchitecture: @unchecked Sendable {
         return fcntl(fileDescriptor, F_PREALLOCATE, &fstore) != -1
     }
     
-    /// Computes CRC32 checksum with ARM64 NEON SIMD vectorization.
+    /// Computes CRC32 checksum.
     public func computeFastCRC32(buffer: UnsafeRawPointer, length: Int) -> UInt32 {
         guard length > 0 else { return 0 }
-        return ttzip_rust_crc32(0, buffer.assumingMemoryBound(to: UInt8.self), length)
+        return HardwareChecksumAdapter.crc32(ptr: buffer.assumingMemoryBound(to: UInt8.self), count: length)
     }
     
     /// Allocates memory aligned to Apple Silicon 16KB physical page boundaries.

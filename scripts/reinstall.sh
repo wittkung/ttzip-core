@@ -4,8 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
-#
+# TTZip: High-performance native archiving and compression engine.
+
 # Automated Build & Reinstall Script for TTZip (App + CLI)
 
 set -euo pipefail

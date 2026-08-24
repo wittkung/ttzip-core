@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 #[cfg(test)]
 mod tests {
@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_all_catalogs_have_equal_keys_and_no_missing_entries() {
         let en_keys: HashSet<&str> = catalogs::en::STRINGS.iter().map(|&(k, _)| k).collect();
-        assert_eq!(en_keys.len(), 398, "English catalog should have exactly 398 keys");
+        assert_eq!(en_keys.len(), 401, "English catalog should have exactly 401 keys");
 
         let languages = [
             AppLanguage::ZhHans,

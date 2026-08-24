@@ -4,6 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
+# TTZip: High-performance native archiving and compression engine.
+
 # TTZip: Industrial Git Worktree A/B Benchmark & Statistical Delta Runner.
 
 set -euo pipefail

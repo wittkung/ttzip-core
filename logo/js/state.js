@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine.
+
 // TTZip App Icon Designer - State Management & Persistence
 
 const STORAGE_KEY = 'ttzip_app_icon_designer_state_v1';

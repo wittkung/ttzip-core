@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! POSIX ustar and GNU TAR 512-byte header representation, dual-mode checksums,
 //! octal and base-256 binary encoding and decoding.

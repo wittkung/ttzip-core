@@ -3,20 +3,12 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
-/// High-performance unified stream-based archive extraction engine (Ultra-Thin Rust C-ABI Facade).
-public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
+/// High-performance unified stream-based archive extraction engine (100% Pure Mozilla UniFFI Engine).
+public final class ArchiveExtractor: ArchiveExtracting, Sendable {
     internal let hardwareTuner: HardwareTunerProtocol
     public let targetFormat: ArchiveCompressionFormat?
 
@@ -28,7 +20,7 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
         self.targetFormat = targetFormat
     }
 
-    /// Synchronously extracts an archive to the destination directory via Rust C-ABI, returning extracted byte count.
+    /// Synchronously extracts an archive to the destination directory via UniFFI, returning extracted byte count.
     @inline(__always)
     @discardableResult
     public func extractSync(
@@ -49,19 +41,15 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
 
-        // 记录解压前的既有文件集合快照
         let preExistingSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
-
         Self.preventSpotlightIndexing(at: destinationDir)
         defer { Self.cleanupQuarantineAttributes(at: destinationDir) }
 
         var extractedBytes: UInt64 = 0
-        if dispatchFastExtraction(
+        if dispatchUniFFIExtraction(
             archivePath: archivePath,
             destinationDir: destinationDir,
-            options: options,
             password: password,
-            advancedOptions: advancedOptions,
             progressHandler: progressHandler,
             outExtractedBytes: &extractedBytes
         ) {
@@ -70,12 +58,10 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
 
         if password == nil || password?.isEmpty == true {
             for vaultPwd in PasswordVaultManager.shared.candidatePasswordsForAutoUnlock() {
-                if dispatchFastExtraction(
+                if dispatchUniFFIExtraction(
                     archivePath: archivePath,
                     destinationDir: destinationDir,
-                    options: options,
                     password: vaultPwd,
-                    advancedOptions: advancedOptions,
                     progressHandler: progressHandler,
                     outExtractedBytes: &extractedBytes
                 ) {
@@ -177,48 +163,26 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
                 try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
             }
 
-            let pwd = (password != nil && !password!.isEmpty) ? password : nil
-            let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
-                CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
-                    CUnsafeBufferAdapter.withCString(entryPath) { ePtr in
-                        CUnsafeBufferAdapter.withCString(pwd) { pPtr in
-                            guard let aPtr = aPtr, let dPtr = dPtr, let ePtr = ePtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                            var targets: [UnsafePointer<CChar>?] = [ePtr]
-                            var opt = TTZipExtractOptions(
-                                destination_path: dPtr,
-                                password: pPtr,
-                                thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
-                                overwrite_existing: true,
-                                preserve_permissions: true,
-                                dry_run: false,
-                                progress_callback: nil,
-                                user_data: nil
-                            )
-                            var extractedCount: Int = 0
-                            return targets.withUnsafeMutableBufferPointer { tPtr in
-                                guard let base = tPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                                return ttzip_rust_archive_extract_selected(aPtr, base, 1, dPtr, &opt, &extractedCount)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if status != TTZIP_STATUS_OK {
-                throw ArchiveError.readFailed(code: status.rawValue)
-            }
+            _ = try extractSelectedEntries(
+                archivePath: archivePath,
+                targetEntries: [entryPath],
+                destinationDir: destinationDir,
+                password: password,
+                progress: nil,
+                token: nil
+            )
         }.value
 
         Self.cleanupQuarantineAttributes(at: destinationDir)
     }
 
-    /// Joins multi-volume split archive files into a continuous output file via Rust C-ABI.
+    /// Joins multi-volume split archive files into a continuous output file via UniFFI.
     public func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool {
-        return CUnsafeBufferAdapter.withCString(firstVolumePath) { cFirst in
-            CUnsafeBufferAdapter.withCString(outputPath) { cOut in
-                guard let cFirst = cFirst, let cOut = cOut else { return false }
-                return ttzip_rust_join_split_volumes(cFirst, cOut, nil, nil) == TTZIP_STATUS_OK
-            }
+        do {
+            try joinSplitVolumeChain(firstVolumePath: firstVolumePath, outputPath: outputPath)
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -243,88 +207,66 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
 
 // MARK: - Extractor Dispatch
 
-//
-//
+private final class ExtractProgressRelay: ProgressHandler, @unchecked Sendable {
+    let handler: (@Sendable (ArchiveProgress) -> Void)?
+    let startTime: Date
 
+    init(startTime: Date, handler: (@Sendable (ArchiveProgress) -> Void)?) {
+        self.startTime = startTime
+        self.handler = handler
+    }
+
+    func onProgress(processedBytes: UInt64, totalBytes: UInt64, currentEntry: String?) -> Bool {
+        let duration = max(0.001, Date().timeIntervalSince(startTime))
+        let throughput = (Double(processedBytes) / (1024 * 1024)) / duration
+        handler?(ArchiveProgress(
+            state: .processing,
+            bytesProcessed: Int64(processedBytes),
+            totalBytes: Int64(totalBytes),
+            currentFileName: currentEntry ?? "",
+            throughputMBs: throughput
+        ))
+        return true
+    }
+}
 
 extension ArchiveExtractor {
-    /// Dispatches format-specific fast-path extraction pipelines directly via Rust microkernel C-ABI.
-    internal func dispatchFastExtraction(
+    internal func dispatchUniFFIExtraction(
         archivePath: String,
         destinationDir: String,
-        options: ArchiveFilterOptions,
         password: String?,
-        advancedOptions: ArchiveAdvancedOptions? = nil,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
         outExtractedBytes: UnsafeMutablePointer<UInt64>? = nil
     ) -> Bool {
-        let pwd = (password != nil && !password!.isEmpty) ? password : nil
-        let threadBudget = (advancedOptions?.cpuThreads ?? 0) > 0 
-            ? UInt32(advancedOptions!.cpuThreads) 
-            : UInt32(ProcessInfo.processInfo.activeProcessorCount)
-        let preservePerms = advancedOptions?.preservePosixAttributes ?? true
-        let overwrite = true
+        let startTime = Date()
+        let relay = progressHandler.map { ExtractProgressRelay(startTime: startTime, handler: $0) }
 
-        let bridgeCtx: ProgressBridgeContext? = progressHandler != nil ? ProgressBridgeContext(
-            progressHandler: progressHandler,
-            handle: nil,
-            cancellationCheck: nil,
-            totalExpectedBytes: 0
-        ) : nil
-        let ctxPtr = bridgeCtx != nil ? Unmanaged.passRetained(bridgeCtx!).toOpaque() : nil
-        defer {
-            if let ctxPtr = ctxPtr {
-                Unmanaged<ProgressBridgeContext>.fromOpaque(ctxPtr).release()
-            }
-        }
-
-        var extractedBytes: UInt64 = 0
-        var errorInfo = TTZipErrorInfo.zeroed
-
-        let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
-            CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in
-                CUnsafeBufferAdapter.withCString(pwd) { pPtr in
-                    guard let aPtr = aPtr, let dPtr = dPtr else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                    var opt = TTZipExtractOptions(
-                        destination_path: dPtr,
-                        password: pPtr,
-                        thread_budget: threadBudget,
-                        overwrite_existing: overwrite,
-                        preserve_permissions: preservePerms,
-                        dry_run: false,
-                        progress_callback: ctxPtr != nil ? ttzipProgressCallbackBridge : nil,
-                        user_data: ctxPtr
-                    )
-                    return ttzip_rust_archive_extract_unified_v2(aPtr, dPtr, &opt, &extractedBytes, &errorInfo)
-                }
-            }
-        }
-
-        if status == TTZIP_STATUS_OK {
-            outExtractedBytes?.pointee = extractedBytes
+        do {
+            let report = try extractArchiveStream(
+                archivePath: archivePath,
+                destinationDir: destinationDir,
+                password: password,
+                progress: relay,
+                token: nil
+            )
+            outExtractedBytes?.pointee = report.uncompressedBytes
             Self.cleanupQuarantineAttributes(at: destinationDir)
             return true
+        } catch {
+            return false
         }
-
-        return false
     }
 }
 
 // MARK: - Selective Extractor
 
-//
-//
-
-
-/// High-performance selective archive extractor for targeted file subsets.
-///
-/// Bypasses full-archive decompression by extracting selected paths.
-public final class ArchiveSelectiveExtractor: @unchecked Sendable {
+/// High-performance selective archive extractor for targeted file subsets (100% Pure Mozilla UniFFI Engine).
+public final class ArchiveSelectiveExtractor: Sendable {
     public static let shared = ArchiveSelectiveExtractor()
     
     private init() {}
     
-    /// Selectively extracts a subset of files matching targetEntryPaths into destinationDir via single-pass C-ABI stream.
+    /// Selectively extracts a subset of files matching targetEntryPaths into destinationDir via single-pass UniFFI stream.
     public func extractSelected(
         archivePath: String,
         targetEntryPaths: Set<String>,
@@ -339,46 +281,16 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
         }
         
         let targetsArray = Array(targetEntryPaths)
-        let pwd = (password != nil && !password!.isEmpty) ? password : nil
-        
         return try await Task.detached(priority: .userInitiated) {
-            let (code, count) = CUnsafeBufferAdapter.withCString(archivePath) { aPtr -> (CTTZipBridge.TTZipStatus, Int) in
-                CUnsafeBufferAdapter.withCString(destinationDir) { dPtr -> (CTTZipBridge.TTZipStatus, Int) in
-                    CUnsafeBufferAdapter.withCString(pwd) { pPtr -> (CTTZipBridge.TTZipStatus, Int) in
-                        guard let aPtr = aPtr, let dPtr = dPtr else { return (TTZIP_STATUS_ERR_INVALID_PARAM, 0) }
-                        
-                        let cPointers = targetsArray.map { strdup($0) }
-                        defer {
-                            for ptr in cPointers {
-                                if let ptr = ptr { free(ptr) }
-                            }
-                        }
-                        
-                        var targets: [UnsafePointer<CChar>?] = cPointers.map { $0.map { UnsafePointer($0) } }
-                        var opt = TTZipExtractOptions(
-                            destination_path: dPtr,
-                            password: pPtr,
-                            thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
-                            overwrite_existing: true,
-                            preserve_permissions: true,
-                            dry_run: false,
-                            progress_callback: nil,
-                            user_data: nil
-                        )
-                        var extractedCount: Int = 0
-                        let code = targets.withUnsafeMutableBufferPointer { tPtr -> CTTZipBridge.TTZipStatus in
-                            guard let base = tPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                            return ttzip_rust_archive_extract_selected(aPtr, base, targetsArray.count, dPtr, &opt, &extractedCount)
-                        }
-                        return (code, extractedCount)
-                    }
-                }
-            }
-            
-            if code != TTZIP_STATUS_OK {
-                throw ArchiveError.readFailed(code: code.rawValue)
-            }
-            return count
+            let count = try extractSelectedEntries(
+                archivePath: archivePath,
+                targetEntries: targetsArray,
+                destinationDir: destinationDir,
+                password: password,
+                progress: nil,
+                token: nil
+            )
+            return Int(count)
         }.value
     }
     
@@ -389,63 +301,22 @@ public final class ArchiveSelectiveExtractor: @unchecked Sendable {
         password: String? = nil,
         maxAllowedBytes: Int = 256 * 1024 * 1024
     ) async throws -> Data? {
-        // 0. VFS LZ4 Cache Pool Fast Path
         if let cached = VFSLz4CachePool.shared.getCachedEntry(archivePath: archivePath, entryPath: entryPath) {
             return cached
         }
         
         return await Task.detached(priority: .userInitiated) {
-            // Stage 1: Probe exact uncompressed size with NULL buffer
-            var probedLen: Int = 0
-            let probeStatus = archivePath.withCString { cArch in
-                entryPath.withCString { cEntry in
-                    CUnsafeBufferAdapter.withCString(password) { cPwd in
-                        ttzip_rust_archive_extract_single_entry_memory(
-                            cArch,
-                            cEntry,
-                            -1,
-                            cPwd,
-                            nil,
-                            0,
-                            &probedLen
-                        )
-                    }
-                }
-            }
-            
-            guard probeStatus == TTZIP_STATUS_OK, probedLen > 0, probedLen <= maxAllowedBytes else {
+            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
+            guard let idx = entries.firstIndex(where: {
+                $0.path == entryPath || $0.path.hasSuffix("/" + entryPath) || ($0.path.contains("/") ? String($0.path.split(separator: "/").last!) == entryPath : false)
+            }) else {
                 return nil
             }
-            
-            // Stage 2: Allocate EXACT buffer size (zero waste, zero truncation)
-            var memBuffer = [UInt8](repeating: 0, count: probedLen)
-            var actualExtractedLen: Int = 0
-            
-            let extractStatus = archivePath.withCString { cArch in
-                entryPath.withCString { cEntry in
-                    CUnsafeBufferAdapter.withCString(password) { cPwd in
-                        memBuffer.withUnsafeMutableBufferPointer { bPtr in
-                            guard let base = bPtr.baseAddress else { return TTZIP_STATUS_ERR_INVALID_PARAM }
-                            return ttzip_rust_archive_extract_single_entry_memory(
-                                cArch,
-                                cEntry,
-                                -1,
-                                cPwd,
-                                base,
-                                probedLen,
-                                &actualExtractedLen
-                            )
-                        }
-                    }
-                }
-            }
-            
-            if extractStatus == TTZIP_STATUS_OK && actualExtractedLen == probedLen {
-                let data = Data(memBuffer)
+            if let bytes = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
+                let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
             }
-            
             return nil
         }.value
     }

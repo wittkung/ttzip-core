@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
+# TTZip: High-performance native archiving and compression engine.
+
 # TTZip: Automated AddressSanitizer (ASan) & Memory Leak Detection Gate.
 # Compiles Rust & C/C++ with -fsanitize=address and executes 1,000 rapid cycles.
 

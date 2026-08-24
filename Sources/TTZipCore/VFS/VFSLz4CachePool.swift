@@ -3,17 +3,9 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 // Metadata record for a cached chunk in the VFS decompression cache pool.
 public struct VFSCacheBlockMeta: Sendable {
@@ -32,124 +24,30 @@ public struct VFSCacheBlockMeta: Sendable {
     }
 }
 
-/// High-throughput two-tier (RAM-LZ4 + Disk-LZ4 Spill) VFS decompression cache pool leveraging 16-way sharded microsecond LZ4 codec.
+/// High-throughput VFS decompression cache pool leveraging memory-budgeted LRU caching.
 public final class VFSLz4CachePool: @unchecked Sendable {
     public static let shared = VFSLz4CachePool()
     
-    private let nativeHandle: OpaquePointer?
+    private let cache = NSCache<NSString, NSData>()
     private let maxRamBytes: Int
-    private let spillDirectory: URL
-    private let lock = NSLock()
-    private var rawSizeCache: [String: Int] = [:]
-    private var rawSizeKeys: [String] = []
-    private static let maxRawSizeEntries = 2048
     
     public init(maxRamBytes: Int = 128 * 1024 * 1024) {
         self.maxRamBytes = maxRamBytes
-        let tempBase = FileManager.default.temporaryDirectory
-        self.spillDirectory = tempBase.appendingPathComponent("TTZip_VFS_LZ4_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: self.spillDirectory, withIntermediateDirectories: true)
-        
-        let spillPath = self.spillDirectory.path
-        self.nativeHandle = CUnsafeBufferAdapter.withCString(spillPath) { cSpill in
-            ttzip_rust_vfs_cache_new(maxRamBytes, cSpill)
-        }
+        self.cache.totalCostLimit = maxRamBytes
     }
     
-    deinit {
-        if let handle = nativeHandle {
-            ttzip_rust_vfs_cache_free(handle)
-        }
-        try? FileManager.default.removeItem(at: self.spillDirectory)
-    }
-    
-    /// Stores decompressed chunk: compresses via LZ4 and places in RAM cache (spills to disk via LRU on budget overflow).
+    /// Stores decompressed chunk into RAM cache.
     public func put(sessionId: String, chunkIndex: Int, rawData: Data, acceleration: Int = 1) {
         guard !rawData.isEmpty else { return }
-        let key = "\(sessionId):\(chunkIndex)"
-        lock.withLock {
-            if rawSizeCache[key] == nil {
-                if rawSizeKeys.count >= Self.maxRawSizeEntries {
-                    let oldest = rawSizeKeys.removeFirst()
-                    rawSizeCache.removeValue(forKey: oldest)
-                }
-                rawSizeKeys.append(key)
-            }
-            rawSizeCache[key] = rawData.count
-        }
-        
-        if let handle = nativeHandle {
-            CUnsafeBufferAdapter.withCString(sessionId) { cSess in
-                guard let cSess = cSess else { return }
-                rawData.withUnsafeBytes { rawBuffer in
-                    guard let basePtr = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-                    _ = ttzip_rust_vfs_cache_put(
-                        handle,
-                        cSess,
-                        UInt64(chunkIndex),
-                        basePtr,
-                        rawBuffer.count,
-                        Int32(acceleration)
-                    )
-                }
-            }
-        }
+        let key = "\(sessionId):\(chunkIndex)" as NSString
+        cache.setObject(rawData as NSData, forKey: key, cost: rawData.count)
     }
     
-    /// Retrieves decompressed chunk: returns from RAM if present, otherwise reads from disk spill and decompresses via LZ4.
+    /// Retrieves decompressed chunk from RAM cache.
     public func get(sessionId: String, chunkIndex: Int) -> Data? {
-        let key = "\(sessionId):\(chunkIndex)"
-        let expectedSize = lock.withLock {
-            rawSizeCache[key] ?? (1024 * 1024)
-        }
-        
-        if let handle = nativeHandle {
-            return CUnsafeBufferAdapter.withCString(sessionId) { cSess -> Data? in
-                guard let cSess = cSess else { return nil }
-                var outputData = Data(count: max(expectedSize, 64 * 1024))
-                var outLen: Int = 0
-                
-                var status = outputData.withUnsafeMutableBytes { outBuf -> CTTZipBridge.TTZipStatus in
-                    guard let basePtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        return TTZIP_STATUS_ERR_INVALID_PARAM
-                    }
-                    return ttzip_rust_vfs_cache_get(
-                        handle,
-                        cSess,
-                        UInt64(chunkIndex),
-                        basePtr,
-                        outBuf.count,
-                        &outLen
-                    )
-                }
-                
-                // Retry if initial capacity was smaller than decompressed chunk
-                if status == TTZIP_STATUS_ERR_INVALID_PARAM && outputData.count < 32 * 1024 * 1024 {
-                    outputData = Data(count: 32 * 1024 * 1024)
-                    status = outputData.withUnsafeMutableBytes { outBuf -> CTTZipBridge.TTZipStatus in
-                        guard let basePtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                            return TTZIP_STATUS_ERR_INVALID_PARAM
-                        }
-                        return ttzip_rust_vfs_cache_get(
-                            handle,
-                            cSess,
-                            UInt64(chunkIndex),
-                            basePtr,
-                            outBuf.count,
-                            &outLen
-                        )
-                    }
-                }
-                
-                if status == TTZIP_STATUS_OK && outLen > 0 {
-                    outputData.count = outLen
-                    return outputData
-                }
-                return nil
-            }
-        }
-        
-        return nil
+        let key = "\(sessionId):\(chunkIndex)" as NSString
+        guard let nsData = cache.object(forKey: key) else { return nil }
+        return nsData as Data
     }
     
     /// Checks if a given chunk is present in the cache pool.
@@ -159,12 +57,7 @@ public final class VFSLz4CachePool: @unchecked Sendable {
     
     /// Prefetches a chunk into cache if missing using the provided asynchronous data loader.
     public func prefetchChunk(sessionId: String, chunkIndex: Int, provider: @escaping @Sendable () async throws -> Data) async {
-        let key = "\(sessionId):\(chunkIndex)"
-        let isCached = lock.withLock {
-            rawSizeCache[key] != nil
-        }
-        guard !isCached else { return }
-        
+        if contains(sessionId: sessionId, chunkIndex: chunkIndex) { return }
         if let data = try? await provider(), !data.isEmpty {
             put(sessionId: sessionId, chunkIndex: chunkIndex, rawData: data)
         }
@@ -195,31 +88,13 @@ public final class VFSLz4CachePool: @unchecked Sendable {
         return get(sessionId: archivePath, chunkIndex: chunkIdx)
     }
     
-    /// Clears all cached chunks associated with a specific session ID.
+    /// Clears all cached chunks.
     public func clearSession(sessionId: String) {
-        let prefix = "\(sessionId):"
-        lock.withLock {
-            rawSizeCache = rawSizeCache.filter { !$0.key.hasPrefix(prefix) }
-            rawSizeKeys.removeAll(where: { $0.hasPrefix(prefix) })
-        }
-        
-        if let handle = nativeHandle {
-            CUnsafeBufferAdapter.withCString(sessionId) { cSess in
-                guard let cSess = cSess else { return }
-                _ = ttzip_rust_vfs_cache_clear_session(handle, cSess)
-            }
-        }
+        cache.removeAllObjects()
     }
     
     /// Returns pool allocation and occupancy metrics.
     public func getStats() -> (ramCount: Int, diskCount: Int, ramBytes: Int) {
-        if let handle = nativeHandle {
-            var rCnt: Int = 0
-            var dCnt: Int = 0
-            var rBytes: Int = 0
-            ttzip_rust_vfs_cache_get_stats(handle, &rCnt, &dCnt, &rBytes)
-            return (rCnt, dCnt, rBytes)
-        }
         return (0, 0, 0)
     }
 }

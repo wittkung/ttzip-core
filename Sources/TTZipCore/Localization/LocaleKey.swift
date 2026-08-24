@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 
@@ -69,6 +69,7 @@ public enum L10n {
     
     // MARK: - 3. File Explorer & Archive Outline
     public enum Explorer: String, LocaleKeyProtocol, CaseIterable {
+        case fileExplorer = "explorer.file_explorer"
         case columnsView = "explorer.columns_view"
         case gridView = "explorer.grid_view"
         case listView = "explorer.list_view"
@@ -331,6 +332,8 @@ extension L10n {
         case cannotPreviewFormat = "preview.cannot_preview_format"
         case mediaMetadata = "preview.media_metadata"
         case openInReader = "preview.open_in_reader"
+        case openExternal = "preview.open_external"
+        case previewPanel = "preview.preview_panel"
         case typography = "preview.typography"
         case typographyTheme = "preview.typography_theme"
         case fontFamily = "preview.font_family"

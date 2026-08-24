@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+# All rights reserved.
+#
+# TTZip: High-performance native archiving and compression engine.
+
 """
 upstream_audit_gate.py - Automated Pre-Flight Quality Gate for Upstream Vendor Libraries
 Compliant with JSON Schema Draft-07 contract (specs/133-upstream-contribution-lessons-and-governance/contracts/upstream_audit_report.json)

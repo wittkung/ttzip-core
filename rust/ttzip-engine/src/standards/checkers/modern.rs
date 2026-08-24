@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Format compliance checkers for modern container and compression standards:
 //! XAR, LZFSE, Snappy, LZ4, Unix AR, RAR, and CAB.

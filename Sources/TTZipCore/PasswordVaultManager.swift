@@ -3,21 +3,13 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 import Security
 import CryptoKit
 import CommonCrypto
 import LocalAuthentication
-import CTTZipBridge
 
 public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Sendable {
     public static let shared = PasswordVaultManager()
@@ -376,38 +368,18 @@ extension PasswordVaultManager {
     }
     
     func encryptDataV4WithKey(_ data: Data, vaultKey: SecureBytes) -> Data? {
-        var ivBytes = [UInt8](repeating: 0, count: 12)
-        guard SecRandomCopyBytes(kSecRandomDefault, ivBytes.count, &ivBytes) == errSecSuccess else {
+        guard let sealedBox = vaultKey.withUnsafeBytes({ keyBuf -> AES.GCM.SealedBox? in
+            guard let base = keyBuf.baseAddress, keyBuf.count >= 32 else { return nil }
+            let symKey = SymmetricKey(data: Data(bytes: base, count: 32))
+            return try? AES.GCM.seal(data, using: symKey)
+        }) else {
             return nil
         }
         
-        var ciphertext = [UInt8](repeating: 0, count: data.count)
-        var tag = [UInt8](repeating: 0, count: 16)
-        
-        let status = vaultKey.withUnsafeMutableBytes { keyBuf in
-            guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return TTZIP_STATUS_ERR_INVALID_PARAM
-            }
-            return data.withUnsafeBytes { dataBuf in
-                let dataPtr = dataBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
-                return ttzip_rust_vault_encrypt_key(
-                    keyPtr,
-                    &ivBytes,
-                    dataPtr,
-                    data.count,
-                    nil,
-                    0,
-                    &ciphertext,
-                    &tag
-                )
-            }
-        }
-        guard status == TTZIP_STATUS_OK else { return nil }
-        
         var combinedPayload = Data()
-        combinedPayload.append(contentsOf: ivBytes) // 12 bytes nonce
-        combinedPayload.append(contentsOf: ciphertext) // N bytes cipher
-        combinedPayload.append(contentsOf: tag) // 16 bytes tag
+        combinedPayload.append(Data(sealedBox.nonce)) // 12 bytes nonce
+        combinedPayload.append(sealedBox.ciphertext)  // N bytes cipher
+        combinedPayload.append(sealedBox.tag)         // 16 bytes tag
         
         var result = Data()
         result.append(Self.vaultMagicV4) // 4 bytes
@@ -433,31 +405,19 @@ extension PasswordVaultManager {
         let payload = data.subdata(in: (9 + saltLen)..<data.count)
         guard payload.count >= 28 else { return nil }
         
-        let iv = Array(payload.prefix(12))
-        let tag = Array(payload.suffix(16))
+        let nonceData = payload.prefix(12)
+        let tagData = payload.suffix(16)
         let cipherData = payload.subdata(in: 12..<(payload.count - 16))
         
-        var plaintext = [UInt8](repeating: 0, count: cipherData.count)
-        let status = vaultKey.withUnsafeMutableBytes { keyBuf in
-            guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return TTZIP_STATUS_ERR_INVALID_PARAM
+        return vaultKey.withUnsafeBytes { keyBuf -> Data? in
+            guard let base = keyBuf.baseAddress, keyBuf.count >= 32 else { return nil }
+            let symKey = SymmetricKey(data: Data(bytes: base, count: 32))
+            guard let nonce = try? AES.GCM.Nonce(data: nonceData),
+                  let sealedBox = try? AES.GCM.SealedBox(nonce: nonce, ciphertext: cipherData, tag: tagData) else {
+                return nil
             }
-            return cipherData.withUnsafeBytes { cipherBuf in
-                let cipherPtr = cipherBuf.baseAddress?.assumingMemoryBound(to: UInt8.self)
-                return ttzip_rust_vault_decrypt_key(
-                    keyPtr,
-                    iv,
-                    cipherPtr,
-                    cipherData.count,
-                    nil,
-                    0,
-                    tag,
-                    &plaintext
-                )
-            }
+            return try? AES.GCM.open(sealedBox, using: symKey)
         }
-        guard status == TTZIP_STATUS_OK else { return nil }
-        return Data(plaintext)
     }
     
     func loadConfigInternal() {

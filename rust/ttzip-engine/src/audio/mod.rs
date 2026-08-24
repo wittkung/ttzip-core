@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS, Linux, and Windows.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Cross-platform high-performance acoustic waveform analysis and extraction engine.
 //! Decodes all major audio codecs (MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, ALAC, CAF)

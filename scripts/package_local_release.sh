@@ -4,7 +4,8 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
+
 # ==============================================================================
 # scripts/package_local_release.sh
 # 100% 本地全自动化发布打包流水线 (0 云端 CI / GitHub Actions 额度消耗)

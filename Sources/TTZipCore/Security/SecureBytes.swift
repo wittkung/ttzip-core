@@ -3,25 +3,17 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// A page-aligned, locked in-memory buffer for storing sensitive cryptographic material
 /// such as master passwords, derived vault encryption keys, and intermediate plaintexts.
 ///
 /// Guarantees:
 /// 1. Physical RAM Locking (`mlock`): Prevents the kernel from writing secrets to swap space on disk.
-/// 2. Deterministic Secure Scrubbing on Deinit: Invokes compiler-fence protected zeroization before deallocation.
-/// 3. Zero-Copy C-ABI Interoperability: Exposes direct pointer access via scoped closures.
+/// 2. Deterministic Secure Scrubbing on Deinit: Invokes compiler-fence protected zeroization (`memset_s`) before deallocation.
+/// 3. Zero-Copy Interoperability: Exposes direct pointer access via scoped closures.
 public final class SecureBytes: @unchecked Sendable {
     private let rawPointer: UnsafeMutableRawPointer
     private let allocationSize: Int
@@ -108,8 +100,8 @@ public final class SecureBytes: @unchecked Sendable {
         defer { lock.unlock() }
         guard !isScrubbed else { return }
         
-        // Call Rust FFI volatile-barrier zeroize
-        ttzip_rust_vault_wipe(rawPointer.assumingMemoryBound(to: UInt8.self), allocationSize)
+        // Secure zeroization using POSIX memset_s (guaranteed never dead-code eliminated)
+        memset_s(rawPointer, allocationSize, 0, allocationSize)
         
         // Unlock physical pages
         _ = munlock(rawPointer, allocationSize)
@@ -143,7 +135,7 @@ public final class SecureBytes: @unchecked Sendable {
         return try body(buffer)
     }
 
-    /// Executes closure with null-terminated C string pointer for C-ABI interop.
+    /// Executes closure with null-terminated C string pointer.
     @inline(__always)
     public func withCString<R>(_ body: (UnsafePointer<CChar>?) throws -> R) rethrows -> R {
         lock.lock()

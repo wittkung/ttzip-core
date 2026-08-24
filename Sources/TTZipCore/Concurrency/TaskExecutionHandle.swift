@@ -3,74 +3,34 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// A thread-safe handle bridging Swift 6 structured concurrency Task cancellation
-/// to low-level native Rust C-ABI atomic cancellation tokens.
+/// to low-level native Rust atomic cancellation tokens via Mozilla UniFFI.
 public final class TaskExecutionHandle: @unchecked Sendable {
-    private let rawToken: OpaquePointer?
+    public let uniffiToken: CancellationToken
     private let lock = NSLock()
-    private var _isCancelled: Bool = false
     private var _isPaused: Bool = false
     
     public init() {
-        self.rawToken = ttzip_rust_cancellation_token_new()
+        self.uniffiToken = CancellationToken()
     }
     
-    deinit {
-        if let token = rawToken {
-            ttzip_rust_cancellation_token_free(token)
-        }
-    }
-    
-    public var tokenPointer: OpaquePointer? {
-        rawToken
-    }
-
     /// Increments the reference count of the underlying native CancellationToken.
-    public func retainToken() {
-        if let token = rawToken {
-            ttzip_rust_cancellation_token_retain(token)
-        }
-    }
+    public func retainToken() {}
 
     /// Decrements the reference count of the underlying native CancellationToken.
-    public func releaseToken() {
-        if let token = rawToken {
-            ttzip_rust_cancellation_token_free(token)
-        }
-    }
+    public func releaseToken() {}
     
     /// Cancels execution with specific reason code (0 = user requested, 1 = timeout, 2 = error abort).
     public func cancel(reason: UInt8 = 0) {
-        lock.lock()
-        _isCancelled = true
-        _isPaused = false
-        lock.unlock()
-        
-        if let token = rawToken {
-            ttzip_rust_cancellation_token_cancel(token, reason)
-        }
+        uniffiToken.cancel()
     }
     
     public var isCancelled: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        if _isCancelled { return true }
-        if let token = rawToken {
-            return ttzip_rust_cancellation_token_is_cancelled(token)
-        }
-        return false
+        uniffiToken.isCancelled()
     }
     
     public func pause() {

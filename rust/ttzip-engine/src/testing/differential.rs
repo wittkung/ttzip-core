@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Rayon-accelerated multi-core concurrent directory tree scanner, 5-dimension manifest
 //! comparison engine, and libarchive Golden Oracle differential verifier.

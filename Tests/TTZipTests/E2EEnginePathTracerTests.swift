@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import XCTest
 @testable import TTZipCore
@@ -66,7 +59,7 @@ final class E2EEnginePathTracerTests: XCTestCase {
             inputPaths: [file1.path]
         )
 
-        let (_, provenance) = try EngineProvenanceCollector.capture {
+        let (_, provenance) = try EngineProvenanceCollector.capture(expectedEngine: .rustInPlaceZip) {
             try InPlaceArchiveMutationEngine.shared.addFilesToArchiveSync(
                 archivePath: originalZip.path,
                 sourceFilePaths: [file2.path]

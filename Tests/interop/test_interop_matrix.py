@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 #
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
+# TTZip: High-performance native archiving and compression engine.
+
 # TTZip: Cross-Language N x N Interoperability Matrix Test Orchestrator.
 # Implements automated round-trip matrix validation across Tier-1 SDKs:
 # Python (PyO3), C11 Native, Modern C++20, Go (CGO), Java 22+ (Panama FFM), Dart (FFI).

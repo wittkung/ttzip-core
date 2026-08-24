@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! HMAC-SHA1 and PBKDF2-HMAC-SHA1 routines (RFC 2104 / RFC 2898 / RFC 6070).
 

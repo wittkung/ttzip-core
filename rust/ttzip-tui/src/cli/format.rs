@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Archive container format detection, unified entry info, byte size formatting,
 //! Snappy/Brotli codec parsing, and transparent multi-volume chain detection.

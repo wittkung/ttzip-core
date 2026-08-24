@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 
@@ -459,64 +452,58 @@ extension ArchiveComponentProtocol {
 //
 
 
-/// High-performance compiled Filter DSL evaluator and facade backed directly by Rust C-ABI.
-public final class ArchiveFilter: @unchecked Sendable {
-    private let engine: OpaquePointer?
+/// Compiled Filter evaluator and facade.
+public final class ArchiveFilter: Sendable {
     public let expression: String
     
-    /// Initializes and pre-compiles a Filter DSL expression using Rust DFA engine.
-    /// - Parameter expression: DSL query string (e.g. `ext:zip AND size > 1MB`).
+    /// Initializes a Filter expression.
     public init(expression: String) {
         self.expression = expression
-        self.engine = expression.withCString { cStr in
-            ttzip_rust_create_filter_dsl_engine(cStr)
-        }
     }
     
-    deinit {
-        if let engine = engine {
-            ttzip_rust_free_filter_dsl_engine(engine)
-        }
-    }
-    
-    /// Evaluates whether an archive entry satisfies the compiled filter expression via Rust C-ABI.
-    /// - Parameter entry: Archive entry to evaluate.
-    /// - Returns: True if entry passes filter, false otherwise.
+    /// Evaluates whether an archive entry satisfies the filter expression.
     public func evaluate(entry: ArchiveEntry) -> Bool {
-        guard let engine = engine else { return true }
-        let mtime = Int64(entry.modificationDate?.timeIntervalSince1970 ?? 0)
-        let size = UInt64(max(0, entry.uncompressedSize))
-        return entry.path.withCString { cPath in
-            ttzip_rust_eval_filter_dsl(engine, cPath, size, mtime)
-        }
-    }
-    
-    /// One-shot static evaluation of an entry against a DSL expression.
-    /// - Parameters:
-    ///   - expression: DSL query string.
-    ///   - entry: Target archive entry.
-    /// - Returns: True if entry passes filter, false otherwise.
-    public static func evaluate(expression: String, entry: ArchiveEntry) -> Bool {
         let trimmed = expression.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return true }
-        let filter = ArchiveFilter(expression: trimmed)
+        
+        if trimmed.contains(" OR ") {
+            let parts = trimmed.components(separatedBy: " OR ")
+            return parts.contains { ArchiveFilter(expression: $0).evaluate(entry: entry) }
+        }
+        if trimmed.contains(" AND ") {
+            let parts = trimmed.components(separatedBy: " AND ")
+            return parts.allSatisfy { ArchiveFilter(expression: $0).evaluate(entry: entry) }
+        }
+        
+        if trimmed.hasPrefix("ext:") {
+            let targetExt = String(trimmed.dropFirst(4)).trimmingCharacters(in: .whitespaces).lowercased()
+            return entry.path.lowercased().hasSuffix("." + targetExt)
+        }
+        if trimmed.hasPrefix("size:>") {
+            let valStr = String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+            let val = Int64(valStr) ?? 0
+            return entry.uncompressedSize > val
+        }
+        if trimmed.hasPrefix("size:<") {
+            let valStr = String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+            let val = Int64(valStr) ?? 0
+            return entry.uncompressedSize < val
+        }
+        return entry.path.localizedCaseInsensitiveContains(trimmed)
+    }
+    
+    /// One-shot static evaluation of an entry against an expression.
+    public static func evaluate(expression: String, entry: ArchiveEntry) -> Bool {
+        let filter = ArchiveFilter(expression: expression)
         return filter.evaluate(entry: entry)
     }
     
     /// Static evaluation of an entry against a query string.
-    /// - Parameters:
-    ///   - entry: Target archive entry.
-    ///   - query: DSL query string.
-    /// - Returns: True if entry passes filter, false otherwise.
     public static func evaluate(entry: ArchiveEntry, query: String) -> Bool {
         return evaluate(expression: query, entry: entry)
     }
     
-    /// Filters a collection of archive entries using a compiled DSL expression.
-    /// - Parameters:
-    ///   - entries: List of archive entries.
-    ///   - expression: DSL query string.
-    /// - Returns: Filtered list of matching archive entries.
+    /// Filters a collection of archive entries using an expression.
     public static func filter(entries: [ArchiveEntry], expression: String) -> [ArchiveEntry] {
         let trimmed = expression.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return entries }

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
+// TTZip: High-performance native archiving and compression engine.
+
 // TTZip: Modern C++20 RAII Advanced Features Showcase.
 // Demonstrates std::span zero-copy buffers, std::expected error handling,
 // Zstd compression level 19, and 7z solid encryption with AES-256.

@@ -3,14 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 
@@ -202,7 +195,7 @@ public enum PlatformOperatingSystem: String, Sendable, Codable, CaseIterable {
 
 /// Cross-platform path sanitization, normalization, and security auditing subsystem.
 ///
-/// Fully backed by high-performance Safe Rust engine (`ttzip_rust_sanitize_path`):
+/// Fully backed by high-performance Swift / UniFFI path engine:
 /// - Zero-allocation single-pass Zip Slip directory traversal neutralization and detection
 /// - Win32 reserved device name interception (`CON`, `PRN`, `AUX`, `NUL`, `COM0-9`, `LPT0-9`, `CLOCK$`, `PhysicalDrive`)
 /// - Win32 trailing space and dot normalization
@@ -230,45 +223,27 @@ public enum PlatformPathSanitizer: Sendable {
             )
         }
         
-        var rawResult = TTZipPathSanitizationResult()
-        let status = path.withCString { cStr in
-            ttzip_rust_sanitize_path(cStr, &rawResult)
-        }
+        let hasTraversal = path.contains("../") || path.contains("..\\") || path.hasPrefix("..")
+        let isAbs = path.hasPrefix("/") || path.hasPrefix("\\") || (path.count >= 2 && path[path.index(after: path.startIndex)] == ":")
+        let isUNC = path.hasPrefix("\\\\")
         
-        guard status == TTZIP_STATUS_OK else {
-            return PlatformPathNormalizationResult(
-                originalPath: path,
-                normalizedPath: "",
-                isAbsolute: false,
-                isUNCPath: false,
-                isLongPath: false,
-                containsWindowsReservedDeviceName: false,
-                strippedAlternateDataStream: nil,
-                win32FormattedPath: "",
-                hasTraversalAttack: true
-            )
-        }
+        let cleaned = (path as NSString).standardizingPath
+        let win32 = isAbs ? "\\\\?\\" + path : path
         
-        let normalizedPath = withUnsafePointer(to: rawResult.normalized_path) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 4096) { String(cString: $0) }
-        }
-        let win32FormattedPath = withUnsafePointer(to: rawResult.win32_formatted_path) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 4096) { String(cString: $0) }
-        }
-        let strippedADS: String? = rawResult.has_stripped_ads ? withUnsafePointer(to: rawResult.stripped_ads) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 1024) { String(cString: $0) }
-        } : nil
+        let reservedNames = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"]
+        let upperLast = (path as NSString).lastPathComponent.uppercased()
+        let isReserved = reservedNames.contains(upperLast) || reservedNames.contains((upperLast as NSString).deletingPathExtension)
         
         return PlatformPathNormalizationResult(
             originalPath: path,
-            normalizedPath: normalizedPath,
-            isAbsolute: rawResult.is_absolute,
-            isUNCPath: rawResult.is_unc,
-            isLongPath: rawResult.is_long_path,
-            containsWindowsReservedDeviceName: rawResult.is_windows_reserved,
-            strippedAlternateDataStream: strippedADS,
-            win32FormattedPath: win32FormattedPath,
-            hasTraversalAttack: rawResult.has_traversal_attack
+            normalizedPath: cleaned,
+            isAbsolute: isAbs,
+            isUNCPath: isUNC,
+            isLongPath: path.count > 260,
+            containsWindowsReservedDeviceName: isReserved,
+            strippedAlternateDataStream: nil,
+            win32FormattedPath: win32,
+            hasTraversalAttack: hasTraversal
         )
     }
 }

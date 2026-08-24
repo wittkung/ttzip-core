@@ -3,17 +3,9 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// High-performance APFS Copy-on-Write (CoW) zero-copy clone and allocation service.
 ///
@@ -64,22 +56,15 @@ public enum APFSCloneService: Sendable {
 
         return sourcePath.withCString { cSrc in
             destinationPath.withCString { cDst in
-                let status = ttzip_rust_apfs_clone_file(cSrc, cDst, overwrite)
-                return status == 0
+                return clonefile(cSrc, cDst, 0) == 0
             }
         }
     }
 
     /// Clones file descriptor range using macOS kernel `fcopyfile` zero-copy clone.
-    ///
-    /// - Parameters:
-    ///   - sourceFd: Open file descriptor for the source file.
-    ///   - destinationFd: Open file descriptor for the destination file.
-    /// - Returns: True if kernel zero-copy clone succeeded.
     @discardableResult
     public static func cloneRange(sourceFd: Int32, destinationFd: Int32) -> Bool {
         guard sourceFd >= 0, destinationFd >= 0 else { return false }
-        let status = ttzip_rust_apfs_clone_range(sourceFd, destinationFd)
-        return status == 0
+        return fcopyfile(sourceFd, destinationFd, nil, copyfile_flags_t(COPYFILE_ALL | COPYFILE_CLONE)) == 0
     }
 }

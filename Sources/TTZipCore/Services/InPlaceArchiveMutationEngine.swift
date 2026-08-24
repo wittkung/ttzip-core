@@ -3,17 +3,9 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// High-level in-place archive mutation and live editing coordinator.
 public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
@@ -116,39 +108,48 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     ) throws {
         guard !sourceFilePaths.isEmpty else { return }
         
-        var outSession: OpaquePointer?
-        let status = CUnsafeBufferAdapter.withCString(archivePath) { cPath in
-            ttzip_rust_inplace_session_begin(cPath, 0, &outSession)
-        }
-        
-        guard status == TTZIP_STATUS_OK, let session = outSession else {
-            throw ArchiveError.readFailed(code: status.rawValue)
-        }
-        
-        defer { ttzip_rust_inplace_session_free(session) }
+        let tempExtractDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TTZip_Repack_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempExtractDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempExtractDir) }
+
+        let extractor = ArchiveExtractor()
+        _ = try extractor.extractSync(archivePath: archivePath, destinationDir: tempExtractDir.path, password: password)
+
+        let fm = FileManager.default
         for src in sourceFilePaths {
             let baseName = (src as NSString).lastPathComponent
-            let entryPath: String
+            let targetRelPath: String
             if let destFolder = destinationVirtualFolder, !destFolder.isEmpty, destFolder != "." {
-                entryPath = (destFolder as NSString).appendingPathComponent(baseName)
+                targetRelPath = (destFolder as NSString).appendingPathComponent(baseName)
             } else {
-                entryPath = baseName
+                targetRelPath = baseName
             }
-            
-            let appendStatus = CUnsafeBufferAdapter.withCString(src) { cSrc in
-                CUnsafeBufferAdapter.withCString(entryPath) { cEntry in
-                    ttzip_rust_inplace_session_replace(session, cEntry, cSrc)
-                }
-            }
-            guard appendStatus == TTZIP_STATUS_OK else {
-                throw ArchiveError.readFailed(code: appendStatus.rawValue)
-            }
+            let targetFull = tempExtractDir.appendingPathComponent(targetRelPath)
+            try? fm.createDirectory(at: targetFull.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? fm.removeItem(at: targetFull)
+            try fm.copyItem(atPath: src, toPath: targetFull.path)
         }
-        
-        let commitStatus = ttzip_rust_inplace_session_commit(session)
-        guard commitStatus == TTZIP_STATUS_OK else {
-            throw ArchiveError.readFailed(code: commitStatus.rawValue)
-        }
+
+        let tempOutputArchive = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TTZip_Repacked_\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: tempOutputArchive) }
+
+        let items = (try? fm.contentsOfDirectory(atPath: tempExtractDir.path)) ?? []
+        let inputPaths = items.map { tempExtractDir.appendingPathComponent($0).path }
+
+        let writer = ArchiveWriter()
+        try writer.createArchiveSync(
+            outputPath: tempOutputArchive.path,
+            format: .zip,
+            level: .normal,
+            inputPaths: inputPaths,
+            options: .defaultClean,
+            password: password
+        )
+
+        try? fm.removeItem(atPath: archivePath)
+        try fm.moveItem(atPath: tempOutputArchive.path, toPath: archivePath)
     }
     
     /// Deletes specific entries from inside an existing archive.
@@ -159,20 +160,39 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     ) async throws {
         guard !entryPathsToDelete.isEmpty else { return }
         
-        var outSession: OpaquePointer?
-        let status = CUnsafeBufferAdapter.withCString(archivePath) { cPath in
-            ttzip_rust_inplace_session_begin(cPath, 0, &outSession)
+        let tempExtractDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TTZip_DelRepack_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempExtractDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempExtractDir) }
+
+        let extractor = ArchiveExtractor()
+        _ = try extractor.extractSync(archivePath: archivePath, destinationDir: tempExtractDir.path, password: password)
+
+        let fm = FileManager.default
+        for entry in entryPathsToDelete {
+            let targetPath = tempExtractDir.appendingPathComponent(entry).path
+            try? fm.removeItem(atPath: targetPath)
         }
-        
-        if status == TTZIP_STATUS_OK, let session = outSession {
-            defer { ttzip_rust_inplace_session_free(session) }
-            for entryPath in entryPathsToDelete {
-                _ = CUnsafeBufferAdapter.withCString(entryPath) { cEntry in
-                    ttzip_rust_inplace_session_delete(session, cEntry)
-                }
-            }
-            _ = ttzip_rust_inplace_session_commit(session)
-        }
+
+        let tempOutputArchive = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TTZip_DelRepacked_\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: tempOutputArchive) }
+
+        let items = (try? fm.contentsOfDirectory(atPath: tempExtractDir.path)) ?? []
+        let inputPaths = items.map { tempExtractDir.appendingPathComponent($0).path }
+
+        let writer = ArchiveWriter()
+        try writer.createArchiveSync(
+            outputPath: tempOutputArchive.path,
+            format: .zip,
+            level: .normal,
+            inputPaths: inputPaths,
+            options: .defaultClean,
+            password: password
+        )
+
+        try? fm.removeItem(atPath: archivePath)
+        try fm.moveItem(atPath: tempOutputArchive.path, toPath: archivePath)
     }
     
     /// Closes and cleans up an in-place editing session and its temporary directory.
@@ -195,10 +215,6 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
 }
 
 // MARK: - In-Place Edit Session
-
-//
-//
-
 
 /// State of an in-place editing session.
 public enum InPlaceEditState: String, Sendable, Codable {

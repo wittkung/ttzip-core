@@ -4,7 +4,7 @@
 # Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 #
-# TTZip: High-performance native archiving and compression engine for macOS.
+# TTZip: High-performance native archiving and compression engine.
 
 import sys
 
@@ -35,6 +35,14 @@ def postprocess(swift_path):
         'print("Uniffi callback interface ProgressHandler: handle missing in uniffiFree")',
         '// Uniffi callback interface ProgressHandler: handle missing in uniffiFree'
     )
+
+    # 4. Add Sendable conformances for UniFFI classes
+    sendable_extensions = """
+extension UniFfiVfsTree: @unchecked Sendable {}
+extension CancellationToken: @unchecked Sendable {}
+"""
+    if "extension UniFfiVfsTree: @unchecked Sendable" not in content:
+        content += sendable_extensions
 
     with open(swift_path, "w", encoding="utf-8") as f:
         f.write(content)

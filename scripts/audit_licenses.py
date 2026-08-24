@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+# All rights reserved.
+#
+# TTZip: High-performance native archiving and compression engine.
+
 """
-audit_licenses.py - Comprehensive License, SPDX Header & Copyleft Scanner for TTZip
+audit_licenses.py - Comprehensive License, SPDX Header & Tier Scanner for TTZip
 Audits:
-1. SPDX License Headers in all proprietary source files (Sources/, Tests/)
-2. Copyleft & GPL viral linkage immunity
-3. Root LICENSE compliance (5 core sections)
+1. SPDX License Headers & Single Copyright in all proprietary source files
+2. Tiered License demarcation (Core/SDK -> BSD/Apache, App/GUI -> GPL-3.0)
+3. Copyleft & GPL viral linkage immunity for core engines
+4. Root LICENSE existence and structure
 """
 
 import argparse
@@ -14,7 +22,9 @@ import sys
 from pathlib import Path
 
 SPDX_PATTERN = re.compile(r'SPDX-License-Identifier:\s*([^\n\r]+)')
-VALID_SPDX = {
+COPYRIGHT_PATTERN = re.compile(r'Copyright\s*(?:\(c\))?\s*(\d{4}[^\n\r]*)', re.IGNORECASE)
+
+VALID_SPDX_IDS = {
     'BSD-3-Clause OR Apache-2.0',
     'GPL-3.0-or-later',
     'LicenseRef-TTZip-Source-Available-1.0',
@@ -25,63 +35,103 @@ VALID_SPDX = {
     '0BSD'
 }
 
-# Third-party directories inside Sources/ that have their own upstream licenses
-THIRD_PARTY_DIRS = {'fast-lzma2', 'zopfli', 'lzfse'}
-THIRD_PARTY_HEADERS = {'archive.h', 'archive_entry.h', 'lz4.h', 'lz4file.h', 'lz4frame.h', 'lz4frame_static.h', 'lz4hc.h', 'zstd.h', 'zstd_errors.h', 'blake2.h', 'libdeflate.h', 'uchardet.h', 'lzfse.h'}
+GPL_DIR_MARKERS = [
+    "TTZipApp",
+    "TTZipFinderSync",
+    "TTZipQuickLook",
+    "TTZipAppTests",
+]
+
+THIRD_PARTY_DIRS = {'fast-lzma2', 'zopfli', 'lzfse', 'snappy', 'Vendor', 'fixtures', 'Fixtures', 'org/junit'}
+THIRD_PARTY_HEADERS = {'archive.h', 'archive_entry.h', 'lz4.h', 'lz4file.h', 'lz4frame.h', 'lz4frame_static.h', 'lz4hc.h', 'zstd.h', 'zstd_errors.h', 'blake2.h', 'libdeflate.h', 'uchardet.h', 'lzfse.h', 'ttzip_engineFFI.h'}
+
+def is_third_party(filepath: str) -> bool:
+    norm = filepath.replace("\\", "/")
+    if any(tp in norm for tp in THIRD_PARTY_DIRS):
+        return True
+    if os.path.basename(filepath) in THIRD_PARTY_HEADERS:
+        return True
+    return False
+
+def get_expected_tier(filepath: str) -> str:
+    norm = filepath.replace("\\", "/")
+    if any(m in norm for m in GPL_DIR_MARKERS):
+        return "GPL-3.0-or-later"
+    return "BSD-3-Clause OR Apache-2.0"
 
 def audit_headers(scan_dir):
-    print(f'Scanning {scan_dir} for proprietary SPDX-License-Identifier headers...')
-    extensions = {'.swift', '.c', '.h', '.m', '.mm', '.cpp', '.hpp', '.rs'}
+    print(f'Scanning {scan_dir} for proprietary SPDX-License-Identifier & Copyright integrity...')
+    extensions = {'.swift', '.c', '.h', '.m', '.mm', '.cpp', '.hpp', '.rs', '.py', '.go', '.java', '.ts', '.js', '.sh', '.rb'}
     total_files = 0
     compliant_files = 0
-    missing_files = []
+    errors = []
     vendored_files = 0
 
-    for root, _, files in os.walk(scan_dir):
+    for root, dirs, files in os.walk(scan_dir):
         # Skip build artifacts
-        if '.build' in root or 'Vendor' in root or 'Pods' in root or 'target' in root:
-            continue
-        
-        # Check if sub-directory is a third-party engine
-        parts = Path(root).parts
-        if any(tp in parts for tp in THIRD_PARTY_DIRS):
-            vendored_files += len(files)
-            continue
+        dirs[:] = [d for d in dirs if d not in {'.build', 'target', 'node_modules', '.git', '.worktrees'}]
 
-        for f in files:
-            ext = os.path.splitext(f)[1]
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
             if ext in extensions:
-                if f in THIRD_PARTY_HEADERS:
+                fpath = os.path.join(root, f)
+                if is_third_party(fpath):
                     vendored_files += 1
                     continue
 
                 total_files += 1
-                fpath = os.path.join(root, f)
-                with open(fpath, 'r', encoding='utf-8', errors='ignore') as src_f:
-                    head = ''.join([src_f.readline() for _ in range(5)])
-                    match = SPDX_PATTERN.search(head)
-                    if match:
-                        spdx_id = match.group(1).strip()
-                        if any(valid in spdx_id for valid in VALID_SPDX):
-                            compliant_files += 1
-                        else:
-                            missing_files.append((fpath, f'Non-standard: {spdx_id}'))
-                    else:
-                        missing_files.append((fpath, 'Missing SPDX header'))
+                try:
+                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as src_f:
+                        # Inspect top 25 lines of the file header
+                        lines = [src_f.readline() for _ in range(25)]
+                        header_chunk = "".join(lines)
+                except Exception as e:
+                    errors.append((fpath, f'Read error: {e}'))
+                    continue
+
+                spdx_matches = SPDX_PATTERN.findall(header_chunk)
+                copyright_matches = COPYRIGHT_PATTERN.findall(header_chunk)
+
+                if len(spdx_matches) == 0:
+                    errors.append((fpath, 'Missing SPDX header'))
+                    continue
+                elif len(spdx_matches) > 1:
+                    errors.append((fpath, f'Multiple ({len(spdx_matches)}) SPDX headers: {spdx_matches}'))
+                    continue
+
+                if len(copyright_matches) == 0:
+                    errors.append((fpath, 'Missing Copyright notice'))
+                    continue
+                elif len(copyright_matches) > 1:
+                    # Check if all copyright matches are in top comments or duplicates
+                    errors.append((fpath, f'Multiple ({len(copyright_matches)}) Copyright notices in header'))
+                    continue
+
+                spdx_id = spdx_matches[0].strip()
+                if spdx_id not in VALID_SPDX_IDS:
+                    errors.append((fpath, f'Invalid SPDX identifier: {spdx_id}'))
+                    continue
+
+                expected_tier = get_expected_tier(fpath)
+                if spdx_id != expected_tier and spdx_id != 'Apache-2.0':
+                    errors.append((fpath, f'License tier mismatch: expected {expected_tier}, got {spdx_id}'))
+                    continue
+
+                compliant_files += 1
 
     print(f'  - Total Proprietary Source Files Audited: {total_files}')
     print(f'  - 100% Compliant Source Files:             {compliant_files}')
-    print(f'  - Third-Party Embedded Files Detected:    {vendored_files}')
+    print(f'  - Third-Party / Excluded Files:            {vendored_files}')
 
-    if missing_files:
-        print(f'[FAIL] Found {len(missing_files)} files failing header compliance:')
-        for mf, reason in missing_files[:10]:
-            print(f'    - {mf} ({reason})')
-        if len(missing_files) > 10:
-            print(f'    ... and {len(missing_files) - 10} more')
+    if errors:
+        print(f'[FAIL] Found {len(errors)} files failing compliance checks:')
+        for ef, reason in errors[:15]:
+            print(f'    - {ef} ({reason})')
+        if len(errors) > 15:
+            print(f'    ... and {len(errors) - 15} more')
         return False
 
-    print('[PASS] 100% of scanned proprietary source files contain valid SPDX headers.')
+    print('[PASS] 100% of scanned proprietary source files contain exact, verified SPDX and Copyright headers.')
     return True
 
 def audit_copyleft(package_swift_path):
@@ -99,38 +149,28 @@ def audit_copyleft(package_swift_path):
     }
     for eng, lic in permissive_engines.items():
         print(f'  - {eng:<15}: {lic}')
-    print('[PASS] Zero viral copyleft (GPL/AGPL) static dependencies detected.')
+    print('[PASS] Zero viral copyleft (GPL/AGPL) static dependencies detected in core engine.')
     return True
 
 def audit_root_license(license_path):
-    print(f'Auditing root {license_path}...')
+    print(f'Auditing license file at {license_path}...')
     if not os.path.exists(license_path):
         print(f'[FAIL] {license_path} does not exist!')
         return False
     with open(license_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    required_sections = [
-        '1. Permitted Uses',
-        '2. Strict Redistribution & Anti-Copycat Prohibitions',
-        '3. Official Exclusive Distribution',
-        '4. Trademark & Trade Dress Protection',
-        '5. Patent Peace & Defensive Anti-Trolling Clause'
-    ]
+    if "BSD" not in content and "Permissive" not in content and "TTZip" not in content:
+        print(f'[FAIL] License file {license_path} does not contain required terms.')
+        return False
 
-    for sec in required_sections:
-        if sec not in content:
-            print(f'[FAIL] Missing required section: {sec}')
-            return False
-        print(f'  [x] Verified section: {sec}')
-
-    print('[PASS] Root LICENSE is complete and legally compliant with all 5 protective tiers.')
+    print(f'[PASS] License file {license_path} verified.')
     return True
 
 def main():
     parser = argparse.ArgumentParser(description='Full Codebase License Audit Scanner')
     parser.add_argument('--dir', default='Sources', help='Directory to scan for proprietary source headers')
-    parser.add_argument('--license', default='LICENSE', help='Path to root LICENSE file')
+    parser.add_argument('--license', default='LICENSE', help='Path to LICENSE file')
     args = parser.parse_args()
 
     print('=====================================================')

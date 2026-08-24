@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! Safe extraction pipeline with ZipSlip path traversal defense and two-stage
 //! bottom-up POSIX permission and timestamp restoration.

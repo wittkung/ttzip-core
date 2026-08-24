@@ -3,17 +3,9 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// Unified console, system diagnostics, and in-memory test log buffering service (`TTLogger`).
 public final class TTLogger: @unchecked Sendable {
@@ -75,20 +67,6 @@ public final class TTLogger: @unchecked Sendable {
         } else {
             self._level = .info
         }
-        
-        _ = ttzip_rust_set_logger({ level, targetModule, message, file, line, _ in
-            guard let message = message else { return }
-            let str = String(cString: message)
-            let lvl: TTLogger.Level
-            switch level {
-            case TTZIP_LOG_LEVEL_DEBUG: lvl = .debug
-            case TTZIP_LOG_LEVEL_INFO: lvl = .info
-            case TTZIP_LOG_LEVEL_WARNING: lvl = .warning
-            default: lvl = .error
-            }
-            let target = targetModule != nil ? String(cString: targetModule!) : "Rust"
-            TTLogger.shared.log(level: lvl, message: "[\(target)] \(str)", file: file != nil ? String(cString: file!) : "Rust", line: UInt(line))
-        }, TTZIP_LOG_LEVEL_DEBUG, nil)
     }
 
     // MARK: - Core Logging

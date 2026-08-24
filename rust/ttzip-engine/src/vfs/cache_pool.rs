@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 //! High-Throughput / Fine-Grained Concurrent LZ4 VFS Cache Pool with Safe Slot Reuse & Lock-Free I/O.
 

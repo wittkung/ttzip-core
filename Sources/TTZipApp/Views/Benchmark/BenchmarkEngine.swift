@@ -1,36 +1,29 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
-// TTZip: High-performance native archiving and compression engine for macOS.
+// TTZip: High-performance native archiving and compression engine.
 
 import Foundation
 import QuartzCore
 import TTZipCore
-import CTTZipBridge
 
-/// Multi-core hardware stress testing and efficiency benchmarking engine delegating directly to Rust C-ABI.
+/// Multi-core hardware stress testing and efficiency benchmarking engine delegating directly to pure native engines.
 public final class BenchmarkEngine: @unchecked Sendable {
     public init() {}
 
-    /// High-resolution monotonic nanoseconds provider via Rust C-ABI
+    /// High-resolution monotonic nanoseconds provider
     @inline(__always)
     private func monotonicNanos() -> UInt64 {
-        return ttzip_rust_bench_monotonic_nanos()
+        return DispatchTime.now().uptimeNanoseconds
     }
 
-    /// High-precision throughput calculator via Rust C-ABI
+    /// High-precision throughput calculator
     @inline(__always)
     private func calcThroughputMBs(bytes: Int, elapsedSecs: Double) -> Double {
-        return ttzip_rust_bench_calc_throughput_mbs(bytes, elapsedSecs)
+        guard elapsedSecs > 0 else { return 0.0 }
+        return (Double(bytes) / (1024.0 * 1024.0)) / elapsedSecs
     }
 
     /// Runs full preset benchmark suite across major formats.
