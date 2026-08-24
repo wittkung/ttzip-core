@@ -34,6 +34,7 @@ func printHelp() {
       --json-out <path>    Write structured telemetry report to JSON file
       --svg-out <path>     Write interactive vector SVG Pareto chart
       --html-out <path>    Write self-contained Zen UI HTML dashboard
+      --lang <bcp47>       Force target language (en, zh-Hans, zh-Hant, ja, de, fr, es)
     """)
 }
 
@@ -140,6 +141,12 @@ while idx < args.count {
         idx += 2
     } else if args[idx] == "--html-out", idx + 1 < args.count {
         htmlOut = args[idx + 1]
+        idx += 2
+    } else if args[idx] == "--lang", idx + 1 < args.count {
+        let langStr = args[idx + 1]
+        if let parsed = AppLanguage.from(identifier: langStr) {
+            TTZipLocalizationManager.shared.currentLanguage = parsed
+        }
         idx += 2
     } else {
         idx += 1

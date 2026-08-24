@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
@@ -640,6 +647,22 @@ TTZipStatus ttzip_rust_vfs_get_children(
     TTZipVfsNodeSummary *out_nodes,
     size_t *out_count,
     size_t *out_total_in_dir
+);
+
+// Audio Waveform Acoustic Extraction
+TTZipStatus ttzip_extract_audio_waveform(
+    const char *file_path,
+    size_t bucket_count,
+    float *out_amplitudes,
+    size_t *out_count
+);
+
+TTZipStatus ttzip_extract_audio_waveform_from_memory(
+    const uint8_t *data,
+    size_t data_len,
+    size_t bucket_count,
+    float *out_amplitudes,
+    size_t *out_count
 );
 
 // Execution Provenance & Telemetry

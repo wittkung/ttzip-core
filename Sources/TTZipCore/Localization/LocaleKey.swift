@@ -5,13 +5,6 @@
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 import Foundation
 
 /// Unified protocol for strongly-typed localization keys.
@@ -53,6 +46,8 @@ public enum L10n {
         case selectDestination = "common.select_destination"
         case openFiles = "common.open_files"
         case chooseFolder = "common.choose_folder"
+        case browse = "common.browse"
+        case refresh = "common.refresh"
     }
     
     // MARK: - 2. Sidebar Navigation & Layout
@@ -100,6 +95,13 @@ public enum L10n {
         case archiveHeader = "explorer.archive_header"
         case passwordProtectedArchive = "explorer.password_protected_archive"
         case loadingArchiveStructure = "explorer.loading_archive_structure"
+        case newFolder = "explorer.new_folder"
+        case newFile = "explorer.new_file"
+        case folderName = "explorer.folder_name"
+        case fileName = "explorer.file_name"
+        case rootAccess = "explorer.root_access"
+        case rootAccessHelp = "explorer.root_access_help"
+        case create = "explorer.create"
     }
     
     // MARK: - 4. Compression Options & Progress
@@ -136,6 +138,10 @@ public enum L10n {
         case smartStoreBypassDesc = "compress.smart_store_bypass_desc"
         case targetFolder = "compress.target_folder"
         case archiveNamePlaceholder = "compress.archive_name_placeholder"
+        case createSeparateArchives = "compress.create_separate_archives"
+        case targetParameters = "compress.target_parameters"
+        case hardwareAcceleration = "compress.hardware_acceleration"
+        case formatGuide = "compress.format_guide"
     }
     
     // MARK: - 5. Extraction Workflow
@@ -179,6 +185,10 @@ public enum L10n {
         case hardwareCoresFormat = "benchmark.hardware_cores_format"
         case hardwareMemoryFormat = "benchmark.hardware_memory_format"
         case liveDialTitle = "benchmark.live_dial_title"
+        case testMode = "benchmark.test_mode"
+        case dataScale = "benchmark.data_scale"
+        case customCorpus = "benchmark.custom_corpus"
+        case changeCorpus = "benchmark.change_corpus"
     }
     
     // MARK: - 7. Custom Presets Workspace
@@ -199,6 +209,12 @@ public enum L10n {
         case compressionTier = "presets.compression_tier"
         case filterMacJunkOption = "presets.filter_mac_junk_option"
         case solidBlockOption = "presets.solid_block_option"
+        case copySuffix = "presets.copy_suffix"
+        case volumeSplitting = "presets.volume_splitting"
+        case volumeSize = "presets.volume_size"
+        case filterRules = "presets.filter_rules"
+        case filterMacJunkDesc = "presets.filter_mac_junk_desc"
+        case filterGitDesc = "presets.filter_git_desc"
     }
     
     // MARK: - 8. Password Keychain Vault
@@ -219,6 +235,15 @@ public enum L10n {
         case volatileZeroingDesc = "vault.volatile_zeroing_desc"
         case aesGcmStorageDesc = "vault.aes_gcm_storage_desc"
         case noPasswordsSavedPrompt = "vault.no_passwords_saved_prompt"
+        case strengthVeryWeak = "vault.strength_very_weak"
+        case strengthWeak = "vault.strength_weak"
+        case strengthMedium = "vault.strength_medium"
+        case strengthStrong = "vault.strength_strong"
+        case strengthVeryStrong = "vault.strength_very_strong"
+        case biometricReason = "vault.biometric_reason"
+        case authCancelled = "vault.auth_cancelled"
+        case touchIDNotEnrolled = "vault.touch_id_not_enrolled"
+        case touchIDLockedOut = "vault.touch_id_locked_out"
     }
     
     // MARK: - 9. Preferences & Settings
@@ -273,7 +298,8 @@ public enum L10n {
         Common.self, Sidebar.self, Explorer.self, Compress.self, Extract.self,
         Benchmark.self, Presets.self, Vault.self, Settings.self, Queue.self,
         Preview.self, Menu.self, Dialogs.self, Errors.self, Units.self,
-        CLI.self, Notification.self
+        CLI.self, Notification.self, Diagnostics.self, Recovery.self,
+        QuickLook.self, FinderSync.self
     ]
     
     /// Returns all defined raw keys across all localization namespaces.
@@ -304,6 +330,18 @@ extension L10n {
         case syntaxHighlighting = "preview.syntax_highlighting"
         case cannotPreviewFormat = "preview.cannot_preview_format"
         case mediaMetadata = "preview.media_metadata"
+        case openInReader = "preview.open_in_reader"
+        case typography = "preview.typography"
+        case typographyTheme = "preview.typography_theme"
+        case fontFamily = "preview.font_family"
+        case fontSize = "preview.font_size"
+        case noChapterContent = "preview.no_chapter_content"
+        case audioSpecs = "preview.audio_specs"
+        case rewind15 = "preview.rewind_15"
+        case forward15 = "preview.forward_15"
+        case zoomOut = "preview.zoom_out"
+        case zoomIn = "preview.zoom_in"
+        case resetZoom = "preview.reset_zoom"
     }
     
     // MARK: - 12. AppKit Menu & Finder Extensions
@@ -327,6 +365,17 @@ extension L10n {
         case newArchiveMenu = "menu.new_archive_menu"
         case selectAllMenu = "menu.select_all_menu"
         case toggleFullScreen = "menu.toggle_full_screen"
+        case undo = "menu.undo"
+        case redo = "menu.redo"
+        case cut = "menu.cut"
+        case copy = "menu.copy"
+        case paste = "menu.paste"
+        case pasteAndMatchStyle = "menu.paste_and_match_style"
+        case delete = "menu.delete"
+        case bringAllToFront = "menu.bring_all_to_front"
+        case services = "menu.services"
+        case openRecent = "menu.open_recent"
+        case clearMenu = "menu.clear_menu"
         case finderExtractHere = "menu.finder_extract_here"
         case finderExtractSubfolder = "menu.finder_extract_subfolder"
         case finderInspect = "menu.finder_inspect"
@@ -372,6 +421,10 @@ extension L10n {
         case corruptData = "error.corrupt_data"
         case readError = "error.read_error"
         case writeError = "error.write_error"
+        case passwordRequiredHeaderAndData = "error.password_required_header_and_data"
+        case passwordRequiredPayload = "error.password_required_payload"
+        case engineFailure = "error.engine_failure"
+        case unsupportedEncryption = "error.unsupported_encryption"
     }
     
     // MARK: - 15. Units of Measurement & Counters
@@ -410,5 +463,64 @@ extension L10n {
         case taskFailedBody = "notification.task_failed_body"
         case threatInterceptedTitle = "notification.threat_intercepted_title"
         case threatInterceptedBody = "notification.threat_intercepted_body"
+    }
+    
+    // MARK: - 18. Archive Diagnostics & Standards Inspector
+    public enum Diagnostics: String, LocaleKeyProtocol, CaseIterable {
+        case title = "diagnostics.title"
+        case scanning = "diagnostics.scanning"
+        case parseError = "diagnostics.parse_error"
+        case citations = "diagnostics.citations"
+        case signatures = "diagnostics.signatures"
+        case noSignatures = "diagnostics.no_signatures"
+        case verified = "diagnostics.verified"
+        case signatureBytes = "diagnostics.signature_bytes"
+        case zipTlv = "diagnostics.zip_tlv"
+        case noExtraFields = "diagnostics.no_extra_fields"
+        case validatedHeaders = "diagnostics.validated_headers"
+        case deviationsWarnings = "diagnostics.deviations_warnings"
+        case noReport = "diagnostics.no_report"
+        case diagnosticTime = "diagnostics.diagnostic_time"
+        case compliant = "diagnostics.compliant"
+        case deviationsDetected = "diagnostics.deviations_detected"
+        case damageBreakdown = "diagnostics.damage_breakdown"
+    }
+    
+    // MARK: - 19. Multi-Core Password Recovery
+    public enum Recovery: String, LocaleKeyProtocol, CaseIterable {
+        case title = "recovery.title"
+        case subtitle = "recovery.subtitle"
+        case targetArchive = "recovery.target_archive"
+        case archivePlaceholder = "recovery.archive_placeholder"
+        case candidateWords = "recovery.candidate_words"
+        case saveToVault = "recovery.save_to_vault"
+        case recovering = "recovery.recovering"
+        case foundPassword = "recovery.found_password"
+    }
+    
+    // MARK: - 20. QuickLook Preview HTML
+    public enum QuickLook: String, LocaleKeyProtocol, CaseIterable {
+        case tableHeaderName = "quicklook.table_header_name"
+        case tableHeaderSize = "quicklook.table_header_size"
+        case renderedFooter = "quicklook.rendered_footer"
+        case compressedFormat = "quicklook.compressed_format"
+        case itemsOmittedFormat = "quicklook.items_omitted_format"
+        case encryptedBadge = "quicklook.encrypted_badge"
+        case cannotPreview = "quicklook.cannot_preview"
+        case protectedWithPassword = "quicklook.protected_with_password"
+    }
+    
+    // MARK: - 21. FinderSync Integration
+    public enum FinderSync: String, LocaleKeyProtocol, CaseIterable {
+        case extractHereTitle = "findersync.extract_here_title"
+        case extractSubfolderTitle = "findersync.extract_subfolder_title"
+        case inspectTitle = "findersync.inspect_title"
+        case autofillTitle = "findersync.autofill_title"
+        case computeHashTitle = "findersync.compute_hash_title"
+        case compress7zTitle = "findersync.compress_7z_title"
+        case compressZipTitle = "findersync.compress_zip_title"
+        case compressSeparateTitle = "findersync.compress_separate_title"
+        case compressDeleteSourceTitle = "findersync.compress_delete_source_title"
+        case compressAdvancedTitle = "findersync.compress_advanced_title"
     }
 }

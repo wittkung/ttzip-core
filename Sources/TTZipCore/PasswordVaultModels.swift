@@ -70,6 +70,19 @@ public protocol PasswordVaultManaging: Sendable {
 //
 
 
+/// Strongly-typed password entropy and strength classification tier.
+public enum PasswordStrengthTier: String, CaseIterable, LocaleKeyProtocol, Sendable {
+    case veryWeak = "vault.strength_very_weak"
+    case weak = "vault.strength_weak"
+    case medium = "vault.strength_medium"
+    case strong = "vault.strength_strong"
+    case veryStrong = "vault.strength_very_strong"
+    
+    public func localizedLabel(language: AppLanguage? = nil) -> String {
+        TTZipLocalizationManager.shared.string(for: self, language: language)
+    }
+}
+
 /// macOS Touch ID / Apple Watch biometric authenticator for Password Vault protection.
 public final class TouchIDAuthenticator: @unchecked Sendable {
     public static let shared = TouchIDAuthenticator()
@@ -85,9 +98,16 @@ public final class TouchIDAuthenticator: @unchecked Sendable {
     }
     
     /// Evaluates biometric authentication asynchronously on MainActor / background thread.
-    public func authenticate(reason: String = "Unlock TTZip Password Vault") async -> (success: Bool, error: String?) {
+    public func authenticate(
+        reason: String? = nil,
+        language: AppLanguage? = nil
+    ) async -> (success: Bool, error: String?) {
+        let manager = TTZipLocalizationManager.shared
+        let targetLang = language ?? manager.currentLanguage
         let context = LAContext()
-        context.localizedCancelTitle = "Cancel"
+        context.localizedCancelTitle = manager.string(for: L10n.Common.cancel, language: targetLang)
+        
+        let promptReason = reason ?? manager.string(for: L10n.Vault.biometricReason, language: targetLang)
         
         var authError: NSError?
         let policy: LAPolicy = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError)
@@ -95,16 +115,16 @@ public final class TouchIDAuthenticator: @unchecked Sendable {
             : .deviceOwnerAuthentication
         
         do {
-            let success = try await context.evaluatePolicy(policy, localizedReason: reason)
+            let success = try await context.evaluatePolicy(policy, localizedReason: promptReason)
             return (success, nil)
         } catch let error as LAError {
             switch error.code {
             case .userCancel, .appCancel:
-                return (false, "Authentication was cancelled")
+                return (false, manager.string(for: L10n.Vault.authCancelled, language: targetLang))
             case .biometryNotEnrolled:
-                return (false, "Touch ID is not enrolled on this Mac")
+                return (false, manager.string(for: L10n.Vault.touchIDNotEnrolled, language: targetLang))
             case .biometryLockout:
-                return (false, "Touch ID is locked out due to too many failed attempts")
+                return (false, manager.string(for: L10n.Vault.touchIDLockedOut, language: targetLang))
             default:
                 return (false, error.localizedDescription)
             }

@@ -5,13 +5,6 @@
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 import Foundation
 
 /// Value type representing a reusable user-defined compression preset configuration.
@@ -46,15 +39,15 @@ public struct CompressionPreset: Identifiable, Codable, Equatable, Sendable {
     }
     
     public var splitVolumeDescription: String {
+        localizedSplitVolumeDescription()
+    }
+    
+    public func localizedSplitVolumeDescription(language: AppLanguage? = nil) -> String {
         guard let bytes = splitVolumeSizeBytes, bytes > 0 else {
-            return "Single Volume"
+            return TTZipLocalizationManager.shared.string(for: L10n.Compress.splitVolumeNone, language: language)
         }
-        let gb = Double(bytes) / (1024.0 * 1024.0 * 1024.0)
-        if gb >= 1.0 {
-            return String(format: "%.0f GB Volume", gb)
-        }
-        let mb = Double(bytes) / (1024.0 * 1024.0)
-        return String(format: "%.0f MB Volume", mb)
+        let targetLang = language ?? TTZipLocalizationManager.shared.currentLanguage
+        return ByteSizeFormatter.format(bytes: bytes, style: .binaryIEC, language: targetLang)
     }
 }
 
@@ -81,10 +74,6 @@ extension CompressionPreset: PrototypeCopyable {
 }
 
 // MARK: - Preset Manager
-
-//
-//
-
 
 /// Persistence and management coordinator for compression presets.
 public final class PresetManager: @unchecked Sendable {
@@ -152,7 +141,7 @@ public final class PresetManager: @unchecked Sendable {
     public func duplicatePreset(id: UUID, newName: String? = nil) -> CompressionPreset? {
         return lock.withLock {
             guard let source = cachedPresets.first(where: { $0.id == id }) else { return nil }
-            let defaultName = newName ?? "\(source.name) Copy"
+            let defaultName = newName ?? "\(source.name) (Copy)"
             let item = source.clone(newId: UUID(), newName: defaultName)
             cachedPresets.append(item)
             saveToStorageLocked()

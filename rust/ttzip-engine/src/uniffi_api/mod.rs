@@ -588,3 +588,34 @@ pub fn join_split_volume_chain(
     Ok(())
 }
 
+pub use crate::i18n::{AppLanguage, ByteSizeStandard, TTZipLocalizationEngine};
+
+/// Convenient static function to retrieve localized string via UniFFI.
+#[uniffi::export]
+pub fn ttzip_i18n_get_string(key: String, lang: AppLanguage) -> String {
+    crate::i18n::get_string_or_fallback(&key, lang).to_string()
+}
+
+/// Convenient static function to format byte sizes via UniFFI.
+#[uniffi::export]
+pub fn ttzip_i18n_format_bytes(bytes: i64, standard: ByteSizeStandard, lang: AppLanguage) -> String {
+    crate::i18n::format_bytes(bytes, standard, lang)
+}
+
+/// Convenient static function to format throughput via UniFFI.
+#[uniffi::export]
+pub fn ttzip_i18n_format_throughput(mb_per_sec: f64, lang: AppLanguage) -> String {
+    crate::i18n::format_throughput(mb_per_sec, lang)
+}
+
+/// Convenient static function to localize errors via UniFFI.
+#[uniffi::export]
+pub fn ttzip_i18n_localize_error(
+    error_code: i32,
+    param1: Option<String>,
+    param2: Option<String>,
+    lang: AppLanguage,
+) -> String {
+    crate::i18n::localize_error(error_code, param1.as_deref(), param2.as_deref(), lang)
+}
+

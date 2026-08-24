@@ -37,17 +37,7 @@ public enum ArchiveError: Error, LocalizedError, Equatable {
     }
     
     public var errorDescription: String? {
-        switch self {
-        case .engineFailure(let code, let msg):
-            return "Engine failure (\(code)): \(msg)"
-        case .readFailed(let code):
-            if let lastMsg = ArchiveError.lastRustErrorMessage {
-                return "Read failed (\(code)): \(lastMsg)"
-            }
-            return "Read failed with code: \(code)"
-        default:
-            return String(describing: self)
-        }
+        localizedDescription()
     }
 }
 

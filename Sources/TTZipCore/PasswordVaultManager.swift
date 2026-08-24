@@ -557,7 +557,7 @@ extension PasswordVaultManager {
         if PasswordVaultManager.isCLIProcess { return nil }
         
         let context = LAContext()
-        context.localizedReason = "Unlock TTZip Password Vault"
+        context.localizedReason = TTZipLocalizationManager.shared.string(for: L10n.Vault.biometricReason)
         
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -637,9 +637,9 @@ extension PasswordVaultManager {
         return result
     }
     
-    /// Evaluates password entropy and strength score (0 to 5).
-    public func evaluatePasswordStrength(_ pwd: String) -> (score: Int, label: String) {
-        if pwd.isEmpty { return (0, "Very Weak") }
+    /// Evaluates password entropy and strength score (0 to 5) with strongly-typed tier.
+    public func evaluatePasswordStrength(_ pwd: String) -> (score: Int, tier: PasswordStrengthTier) {
+        if pwd.isEmpty { return (0, .veryWeak) }
         var score = 0
         if pwd.count >= 8 { score += 1 }
         if pwd.count >= 12 { score += 1 }
@@ -648,11 +648,11 @@ extension PasswordVaultManager {
         if pwd.rangeOfCharacter(from: .uppercaseLetters) != nil && pwd.rangeOfCharacter(from: .lowercaseLetters) != nil { score += 1 }
         
         switch score {
-        case 0...1: return (score, "Very Weak")
-        case 2: return (score, "Weak")
-        case 3: return (score, "Medium")
-        case 4: return (score, "Strong")
-        default: return (score, "Very Strong")
+        case 0...1: return (score, .veryWeak)
+        case 2: return (score, .weak)
+        case 3: return (score, .medium)
+        case 4: return (score, .strong)
+        default: return (score, .veryStrong)
         }
     }
 }

@@ -64,6 +64,7 @@ echo "📦 Building TTZip Rust Core Glue Layer (${BUILD_MODE})"
 echo "=========================================="
 
 export PATH="$HOME/.cargo/bin:$PATH"
+export MACOSX_DEPLOYMENT_TARGET="14.0"
 
 mkdir -p "${XCFRAMEWORK_MAC_DIR}/Headers" "${REPO_ROOT}/Sources/CTTZipBridge/include"
 
@@ -74,23 +75,10 @@ TARGETS=()
 if [ -n "${BUILD_TARGET}" ]; then
     TARGETS+=("${BUILD_TARGET}")
 else
-    # 默认多架构支持: 检测 aarch64-apple-darwin 与 x86_64-apple-darwin
-    RUSTUP_TARGETS="$(rustup target list --installed 2>/dev/null || true)"
-    
-    if echo "${RUSTUP_TARGETS}" | grep -q "aarch64-apple-darwin"; then
+    if [ "${HOST_ARCH}" = "arm64" ]; then
         TARGETS+=("aarch64-apple-darwin")
-    fi
-    if echo "${RUSTUP_TARGETS}" | grep -q "x86_64-apple-darwin"; then
+    else
         TARGETS+=("x86_64-apple-darwin")
-    fi
-    
-    # 如果 rustup 没有列出或者使用的是非 rustup 工具链，回退到当前 host target
-    if [ ${#TARGETS[@]} -eq 0 ]; then
-        if [ "${HOST_ARCH}" = "arm64" ]; then
-            TARGETS+=("aarch64-apple-darwin")
-        else
-            TARGETS+=("x86_64-apple-darwin")
-        fi
     fi
 fi
 

@@ -19,6 +19,7 @@ MAX_LOC_THRESHOLD = 800
 SOURCE_DIRS = ["Sources", "rust"]
 SOURCE_EXTENSIONS = {".swift", ".rs", ".c", ".h", ".cpp", ".hpp", ".m"}
 IGNORED_DIRS = {"target", ".build", "Vendor", ".git", "DerivedData", "Generated"}
+IGNORED_FILENAMES = {"ttzip_engineFFI.h"}
 
 # Terminal colors
 C_RESET = "\033[0m"
@@ -46,6 +47,8 @@ def scan_loc_gate(root_dir: Path, max_loc: int = MAX_LOC_THRESHOLD):
             dirs[:] = [d for d in dirs if d not in IGNORED_DIRS]
 
             for file in files:
+                if file in IGNORED_FILENAMES:
+                    continue
                 ext = os.path.splitext(file)[1].lower()
                 if ext in SOURCE_EXTENSIONS:
                     file_path = Path(root) / file

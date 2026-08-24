@@ -649,6 +649,22 @@ TTZipStatus ttzip_rust_vfs_get_children(
     size_t *out_total_in_dir
 );
 
+// Audio Waveform Acoustic Extraction
+TTZipStatus ttzip_extract_audio_waveform(
+    const char *file_path,
+    size_t bucket_count,
+    float *out_amplitudes,
+    size_t *out_count
+);
+
+TTZipStatus ttzip_extract_audio_waveform_from_memory(
+    const uint8_t *data,
+    size_t data_len,
+    size_t bucket_count,
+    float *out_amplitudes,
+    size_t *out_count
+);
+
 // Execution Provenance & Telemetry
 bool ttzip_rust_get_last_execution_provenance(TTZipExecutionProvenance *out_provenance);
 const char *ttzip_rust_engine_tag_name(TTZipEngineTag tag);

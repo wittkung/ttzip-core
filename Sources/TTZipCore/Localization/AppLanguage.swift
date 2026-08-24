@@ -5,26 +5,39 @@
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 import Foundation
 
-/// Supported primary languages (BCP-47 specifications).
-public enum AppLanguage: String, CaseIterable, Identifiable, Sendable, Codable {
-    case en = "en"
-    case zhHans = "zh-Hans"
-    case zhHant = "zh-Hant"
-    case ja = "ja"
-    case de = "de"
-    case fr = "fr"
-    case es = "es"
+extension AppLanguage: @unchecked Sendable, CaseIterable, Identifiable, RawRepresentable, Codable {
+    public static var allCases: [AppLanguage] {
+        [.en, .zhHans, .zhHant, .ja, .de, .fr, .es]
+    }
     
-    public var id: String { rawValue }
+    public var id: String { bcp47 }
+    
+    public var rawValue: String { bcp47 }
+    
+    public init?(rawValue: String) {
+        if let parsed = AppLanguage.from(identifier: rawValue) {
+            self = parsed
+        } else {
+            return nil
+        }
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        if let parsed = AppLanguage.from(identifier: raw) {
+            self = parsed
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid AppLanguage: \(raw)")
+        }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(bcp47)
+    }
     
     public var bcp47: String {
         switch self {

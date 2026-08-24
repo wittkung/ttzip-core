@@ -5,16 +5,9 @@
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 import Foundation
 
-/// Centralized thread-safe localization manager.
+/// Centralized thread-safe localization manager bridging to Rust UniFFI localization engine.
 public final class TTZipLocalizationManager: @unchecked Sendable {
     public static let shared = TTZipLocalizationManager()
     
@@ -36,7 +29,13 @@ public final class TTZipLocalizationManager: @unchecked Sendable {
     }
     
     private init() {
-        // 1. Inspect POSIX environment variables (LC_ALL / LANG)
+        // 1. Inspect shared AppGroup preferences store
+        if let saved = TTZipPreferencesStore.getSavedLanguage() {
+            self._currentLanguage = saved
+            return
+        }
+        
+        // 2. Inspect POSIX environment variables (LC_ALL / LANG)
         let env = ProcessInfo.processInfo.environment
         if let lcAll = env["LC_ALL"], let parsed = AppLanguage.from(identifier: lcAll) {
             self._currentLanguage = parsed
@@ -47,136 +46,62 @@ public final class TTZipLocalizationManager: @unchecked Sendable {
             return
         }
         
-        // 2. Query system preferred languages
+        // 3. Query system preferred languages
         if let preferred = Locale.preferredLanguages.first, let parsed = AppLanguage.from(identifier: preferred) {
             self._currentLanguage = parsed
             return
         }
         
-        // 3. Fallback to English (en)
+        // 4. Fallback to English (en)
         self._currentLanguage = .en
     }
     
     /// Resolves localized string for a key in the target or current active language.
-    public func string(for key: LocaleKeyProtocol, language: AppLanguage? = nil) -> String {
+    public func string(for key: any LocaleKeyProtocol, language: AppLanguage? = nil) -> String {
         let targetLanguage = language ?? currentLanguage
         let rawKey = key.rawKey
-        
-        // 1. Search in target language catalog
-        if let val = catalog(for: targetLanguage)[rawKey] {
-            return val
+        let res = ttzipI18nGetString(key: rawKey, lang: targetLanguage)
+        if !res.isEmpty {
+            return res
         }
-        
-        // 2. Cascade fallback to English (en)
-        if targetLanguage != .en, let fallbackVal = LocaleCatalogEn.strings[rawKey] {
-            return fallbackVal
-        }
-        
-        // 3. Ultimate fallback: Raw Key
         return rawKey
     }
     
-    /// Maps language enum to corresponding string catalog dictionary.
-    private func catalog(for language: AppLanguage) -> [String: String] {
-        switch language {
-        case .en: return LocaleCatalogEn.strings
-        case .zhHans: return LocaleCatalogZhHans.strings
-        case .zhHant: return LocaleCatalogZhHant.strings
-        case .ja: return LocaleCatalogJa.strings
-        case .de: return LocaleCatalogDe.strings
-        case .fr: return LocaleCatalogFr.strings
-        case .es: return LocaleCatalogEs.strings
+    /// Maps language enum to corresponding string catalog dictionary via Rust engine.
+    public func catalog(for language: AppLanguage) -> [String: String] {
+        var dict: [String: String] = [:]
+        for key in L10n.allRawKeys {
+            let res = ttzipI18nGetString(key: key, lang: language)
+            dict[key] = res.isEmpty ? key : res
         }
+        return dict
     }
 }
 
 // MARK: - Formatters & Extensions
 
-//
-//
-
-
-/// Storage capacity formatting standard.
-public enum ByteSizeStandard: Sendable {
-    /// International decimal SI standard (1 KB = 1000 B, 1 MB = 1000 KB, macOS default).
-    case metricSI
-    /// International binary IEC standard (1 KiB = 1024 B, 1 MiB = 1024 KiB).
-    case binaryIEC
+extension ByteSizeStandard: @unchecked Sendable {
+    public static var metricSI: ByteSizeStandard { .metricSi }
+    public static var binaryIEC: ByteSizeStandard { .binaryIec }
 }
 
-/// Zero-heap-allocation byte capacity formatting engine.
+/// Zero-heap-allocation byte capacity formatting engine powered by Rust.
 public enum ByteSizeFormatter {
     
-    private static let metricUnits = ["B", "KB", "MB", "GB", "TB", "PB"]
-    private static let binaryUnits = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
-    
     /// Formats byte count according to standard and localized decimal conventions.
-    public static func format(bytes: Int64, style: ByteSizeStandard = .metricSI, language: AppLanguage = .en) -> String {
-        guard bytes >= 0 else { return "0 B" }
-        if bytes < 1000 && style == .metricSI { return "\(bytes) B" }
-        if bytes < 1024 && style == .binaryIEC { return "\(bytes) B" }
-        
-        let base: Double = (style == .metricSI) ? 1000.0 : 1024.0
-        let units = (style == .metricSI) ? metricUnits : binaryUnits
-        
-        var val = Double(bytes)
-        var unitIdx = 0
-        
-        while val >= base && unitIdx < units.count - 1 {
-            val /= base
-            unitIdx += 1
-        }
-        
-        let formattedVal = String(format: "%.1f", val)
-        let localizedVal = formatDecimalString(formattedVal, for: language)
-        return "\(localizedVal) \(units[unitIdx])"
-    }
-    
-    private static func formatDecimalString(_ str: String, for language: AppLanguage) -> String {
-        switch language {
-        case .de, .fr, .es:
-            return str.replacingOccurrences(of: ".", with: ",")
-        case .en, .zhHans, .zhHant, .ja:
-            return str
-        }
+    public static func format(bytes: Int64, style: ByteSizeStandard = .metricSi, language: AppLanguage = .en) -> String {
+        ttzipI18nFormatBytes(bytes: bytes, standard: style, lang: language)
     }
 }
 
-//
-//
-
-
-/// High-performance lock-free throughput rate formatting engine.
+/// High-performance throughput rate formatting engine powered by Rust.
 public enum ThroughputFormatter {
     
     /// Formats throughput rate in MB/s with locale-sensitive decimal formatting.
     public static func format(mbPerSec: Double, language: AppLanguage = .en) -> String {
-        guard mbPerSec >= 0 else { return "0.0 MB/s" }
-        
-        let formattedVal: String
-        if mbPerSec >= 10000.0 {
-            formattedVal = String(format: "%.0f", mbPerSec)
-        } else if mbPerSec >= 100.0 {
-            formattedVal = String(format: "%.1f", mbPerSec)
-        } else {
-            formattedVal = String(format: "%.2f", mbPerSec)
-        }
-        
-        let localizedVal: String
-        switch language {
-        case .de, .fr, .es:
-            localizedVal = formattedVal.replacingOccurrences(of: ".", with: ",")
-        case .en, .zhHans, .zhHant, .ja:
-            localizedVal = formattedVal
-        }
-        
-        return "\(localizedVal) MB/s"
+        ttzipI18nFormatThroughput(mbPerSec: mbPerSec, lang: language)
     }
 }
-
-//
-//
-
 
 /// Unicode CLDR plural categories.
 public enum PluralCategory: Sendable {
@@ -206,47 +131,49 @@ public enum PluralRuleEngine {
     }
 }
 
-//
-//
-
-
 extension ArchiveError {
-    
     /// Localized error description for the current or specified language.
     public func localizedDescription(for language: AppLanguage? = nil) -> String {
         let manager = TTZipLocalizationManager.shared
+        let targetLang = language ?? manager.currentLanguage
+        let locale = Locale(identifier: targetLang.bcp47)
+        
         switch self {
         case .fileNotFound:
-            return manager.string(for: L10n.Errors.fileNotFound, language: language)
+            return manager.string(for: L10n.Errors.fileNotFound, language: targetLang)
         case .readFailed(let code):
-            let template = manager.string(for: L10n.Errors.readError, language: language)
-            return "\(template) (Code: \(code))"
+            let template = manager.string(for: L10n.Errors.readError, language: targetLang)
+            return String(format: template, locale: locale, code)
         case .invalidFormat:
-            return manager.string(for: L10n.Errors.unsupportedFormat, language: language)
+            return manager.string(for: L10n.Errors.unsupportedFormat, language: targetLang)
         case .passwordRequired:
-            return manager.string(for: L10n.Errors.passwordRequired, language: language)
+            return manager.string(for: L10n.Errors.passwordRequired, language: targetLang)
         case .passwordRequiredDetailed(let archivePath, let tier):
-            let base = manager.string(for: L10n.Errors.passwordRequired, language: language)
             let fileName = (archivePath as NSString).lastPathComponent
             if tier == .headerAndData {
-                return "\(base): header and entries are encrypted (\(fileName))"
+                let template = manager.string(for: L10n.Errors.passwordRequiredHeaderAndData, language: targetLang)
+                return String(format: template, locale: locale, fileName)
             } else {
-                return "\(base): payload data is encrypted (\(fileName))"
+                let template = manager.string(for: L10n.Errors.passwordRequiredPayload, language: targetLang)
+                return String(format: template, locale: locale, fileName)
             }
         case .wrongPassword:
-            return manager.string(for: L10n.Errors.incorrectPassword, language: language)
-        case .unsupportedEncryptionMethod(_, let method):
-            let template = manager.string(for: L10n.Errors.unsupportedFormat, language: language)
-            return "\(template) [\(method)]"
-        case .corruptedData(_, let entryPath):
-            let template = manager.string(for: L10n.Errors.corruptData, language: language)
-            return "\(template): \(entryPath)"
+            return manager.string(for: L10n.Errors.incorrectPassword, language: targetLang)
+        case .unsupportedEncryptionMethod(let path, let method):
+            let template = manager.string(for: L10n.Errors.unsupportedEncryption, language: targetLang)
+            let fileName = (path as NSString).lastPathComponent
+            return String(format: template, locale: locale, method, fileName)
+        case .corruptedData(let archivePath, let entryPath):
+            let template = manager.string(for: L10n.Errors.corruptData, language: targetLang)
+            let fileName = (archivePath as NSString).lastPathComponent
+            return "\(template) (\(fileName): \(entryPath))"
         case .cancelled:
-            return manager.string(for: L10n.Errors.operationCancelled, language: language)
+            return manager.string(for: L10n.Errors.operationCancelled, language: targetLang)
         case .invalidState:
-            return manager.string(for: L10n.Common.error, language: language)
+            return manager.string(for: L10n.Common.error, language: targetLang)
         case .engineFailure(let code, let message):
-            return "Engine failure (\(code)): \(message)"
+            let template = manager.string(for: L10n.Errors.engineFailure, language: targetLang)
+            return String(format: template, locale: locale, code, message)
         }
     }
 }

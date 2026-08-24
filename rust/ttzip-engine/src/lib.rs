@@ -17,6 +17,7 @@ uniffi::setup_scaffolding!();
 
 pub mod analytics;
 pub mod archive;
+pub mod audio;
 pub mod benchmark;
 pub use benchmark as bench;
 pub mod charset;
@@ -24,6 +25,7 @@ pub mod codecs;
 pub mod crypto;
 pub mod ffi;
 pub mod fs;
+pub mod i18n;
 pub mod platform;
 pub mod runtime;
 pub mod security;
@@ -41,11 +43,13 @@ pub use archive::{
     repair_damaged_zip, ArchiveBuilder, ArchiveEntryInfo, ArchiveReader, ExtractBuilder,
     SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
 };
+pub use audio::*;
 pub use benchmark::*;
 pub use charset::*;
 pub use codecs::*;
 pub use crypto::*;
 pub use fs::*;
+pub use i18n::*;
 pub use platform::*;
 pub use runtime::*;
 pub use security::*;

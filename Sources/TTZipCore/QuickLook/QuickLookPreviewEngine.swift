@@ -252,10 +252,18 @@ public enum QuickLookPreviewEngine: Sendable {
     }
     
     /// Generates a rich, responsive, dark/light adaptive HTML5 preview document for QuickLook rendering.
-    public static func generateHTMLPreview(for archivePath: String, password: String? = nil) async throws -> String {
+    public static func generateHTMLPreview(
+        for archivePath: String,
+        password: String? = nil,
+        language: AppLanguage? = nil
+    ) async throws -> String {
+        let manager = TTZipLocalizationManager.shared
+        let targetLang = language ?? manager.currentLanguage
+        let locale = Locale(identifier: targetLang.bcp47)
         let data = try await inspectForPreview(archivePath: archivePath, password: password)
-        let formattedUncompressed = ByteCountFormatter.string(fromByteCount: data.uncompressedSizeBytes, countStyle: .file)
-        let formattedCompressed = ByteCountFormatter.string(fromByteCount: data.compressedSizeBytes, countStyle: .file)
+        
+        let formattedUncompressed = ByteSizeFormatter.format(bytes: data.uncompressedSizeBytes, language: targetLang)
+        let formattedCompressed = ByteSizeFormatter.format(bytes: data.compressedSizeBytes, language: targetLang)
         
         var rowsHTML = ""
         var renderedCount = 0
@@ -264,10 +272,13 @@ public enum QuickLookPreviewEngine: Sendable {
         func renderNodes(_ nodes: [PreviewTreeNode], depth: Int) {
             for node in nodes {
                 if renderedCount >= maxRenderCount {
+                    let omittedCount = data.totalEntriesCount - maxRenderCount
+                    let omittedTemplate = manager.string(for: L10n.QuickLook.itemsOmittedFormat, language: targetLang)
+                    let omittedText = String(format: omittedTemplate, locale: locale, maxRenderCount, omittedCount)
                     rowsHTML += """
                     <tr>
-                        <td colspan="2" class="name-col" style="text-align: center; color: var(--sub-color); padding: 12px;">
-                            ... Showing first \(maxRenderCount) items (\(data.totalEntriesCount - maxRenderCount) more entries omitted in QuickLook) ...
+                        <td colspan="2" class="name-col" style="text-align: center; color: var(--secondary-text); padding: 12px;">
+                            \(escapeHTML(omittedText))
                         </td>
                     </tr>
                     """
@@ -277,7 +288,7 @@ public enum QuickLookPreviewEngine: Sendable {
                 renderedCount += 1
                 let indent = String(repeating: "&nbsp;&nbsp;&nbsp;&nbsp;", count: depth)
                 let icon = node.isDirectory ? "📁" : fileIconEmoji(for: node.name)
-                let sizeStr = node.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: node.uncompressedSizeBytes, countStyle: .file)
+                let sizeStr = node.isDirectory ? "--" : ByteSizeFormatter.format(bytes: node.uncompressedSizeBytes, language: targetLang)
                 let isEnc = node.isEncrypted
                 let encBadge = isEnc ? "<span class='badge enc'>🔒</span>" : ""
                 
@@ -294,9 +305,18 @@ public enum QuickLookPreviewEngine: Sendable {
         }
         renderNodes(data.rootNodes, depth: 0)
         
+        let nameHeader = manager.string(for: L10n.Explorer.nameHeader, language: targetLang)
+        let sizeHeader = manager.string(for: L10n.Explorer.sizeHeader, language: targetLang)
+        let encryptedText = manager.string(for: L10n.QuickLook.encryptedBadge, language: targetLang)
+        let compressedTemplate = manager.string(for: L10n.QuickLook.compressedFormat, language: targetLang)
+        let compressedLabel = String(format: compressedTemplate, locale: locale, formattedCompressed)
+        let itemsCountTemplate = manager.string(for: L10n.Units.itemsCount, language: targetLang)
+        let itemsCountLabel = String(format: itemsCountTemplate, locale: locale, data.totalEntriesCount)
+        let footerText = manager.string(for: L10n.QuickLook.renderedFooter, language: targetLang)
+        
         return """
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="\(targetLang.bcp47)">
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -407,9 +427,9 @@ public enum QuickLookPreviewEngine: Sendable {
                     <h1>\(escapeHTML(data.archiveName))</h1>
                     <div class="meta-stats">
                         <span>\((data.format?.displayName ?? data.formatIdentifier).uppercased())</span> •
-                        <span>\(data.totalEntriesCount) items</span> •
-                        <span>\(formattedUncompressed) (Compressed: \(formattedCompressed))</span>
-                        \(data.isEncrypted ? "• <span class='badge enc'>Encrypted</span>" : "")
+                        <span>\(itemsCountLabel)</span> •
+                        <span>\(formattedUncompressed) \(compressedLabel)</span>
+                        \(data.isEncrypted ? "• <span class='badge enc'>\(escapeHTML(encryptedText))</span>" : "")
                     </div>
                 </div>
                 <div class="badge">TTZip ⚡️</div>
@@ -417,8 +437,8 @@ public enum QuickLookPreviewEngine: Sendable {
             <table>
                 <thead>
                     <tr>
-                        <th class="name-col">Name</th>
-                        <th class="size-col">Size</th>
+                        <th class="name-col">\(escapeHTML(nameHeader))</th>
+                        <th class="size-col">\(escapeHTML(sizeHeader))</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -426,7 +446,7 @@ public enum QuickLookPreviewEngine: Sendable {
                 </tbody>
             </table>
             <div class="footer">
-                Rendered with TTZip High-Performance In-Process Engine
+                \(escapeHTML(footerText))
             </div>
         </body>
         </html>

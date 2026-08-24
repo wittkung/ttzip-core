@@ -5,13 +5,6 @@
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine for macOS.
-
 import Foundation
 
 /// macOS Finder context menu action item matching industrial standards.
@@ -49,8 +42,8 @@ public final class FinderSyncHelper: @unchecked Sendable {
         "aar", "applearchive", "sz", "snappy", "wim", "dmg", "iso", "rar", "cbr", "cab", "001"
     ]
     
-    /// Returns the dynamic context menu items based on the user's selected file URLs.
-    public func getContextMenuItems(selectedURLs: [URL]) -> [FinderContextMenuItem] {
+    /// Returns dynamic context menu items based on selected file URLs and target language.
+    public func getContextMenuItems(selectedURLs: [URL], language: AppLanguage? = nil) -> [FinderContextMenuItem] {
         guard !selectedURLs.isEmpty else { return [] }
         
         let firstURL = selectedURLs[0]
@@ -58,35 +51,70 @@ public final class FinderSyncHelper: @unchecked Sendable {
         let ext = firstURL.pathExtension.lowercased()
         let isArchive = Self.supportedArchiveExtensions.contains(ext)
         let manager = TTZipLocalizationManager.shared
+        let targetLang = language ?? manager.currentLanguage
         
         if isArchive {
             return [
-                FinderContextMenuItem(title: "⚡️ " + manager.string(for: L10n.Menu.finderExtractHere) + " (\(baseName))", actionIdentifier: "extract_here", iconSystemName: "arrow.down.doc"),
-                FinderContextMenuItem(title: "📂 " + manager.string(for: L10n.Menu.finderExtractSubfolder), actionIdentifier: "extract_to_subfolder", iconSystemName: "folder.badge.plus"),
-                FinderContextMenuItem(title: "🔍 " + manager.string(for: L10n.Menu.finderInspect) + "...", actionIdentifier: "inspect_archive", iconSystemName: "eye"),
-                FinderContextMenuItem(title: "🔑 " + manager.string(for: L10n.Menu.finderAutofillVault), actionIdentifier: "autofill_password", iconSystemName: "key"),
-                FinderContextMenuItem(title: "🛡️ " + manager.string(for: L10n.Menu.finderComputeHash), actionIdentifier: "compute_hash", iconSystemName: "checkmark.shield")
+                FinderContextMenuItem(
+                    title: "\(manager.string(for: L10n.FinderSync.extractHereTitle, language: targetLang)) (\(baseName))",
+                    actionIdentifier: "extract_here",
+                    iconSystemName: "arrow.down.doc"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.extractSubfolderTitle, language: targetLang),
+                    actionIdentifier: "extract_to_subfolder",
+                    iconSystemName: "folder.badge.plus"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.inspectTitle, language: targetLang),
+                    actionIdentifier: "inspect_archive",
+                    iconSystemName: "eye"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.autofillTitle, language: targetLang),
+                    actionIdentifier: "autofill_password",
+                    iconSystemName: "key"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.computeHashTitle, language: targetLang),
+                    actionIdentifier: "compute_hash",
+                    iconSystemName: "checkmark.shield"
+                )
             ]
         } else {
             return [
-                FinderContextMenuItem(title: "🌟 " + manager.string(for: L10n.Menu.finderCompress7z) + " (\"\(baseName).7z\")", actionIdentifier: "compress_quick_7z", iconSystemName: "sparkles"),
-                FinderContextMenuItem(title: "📦 " + manager.string(for: L10n.Menu.finderCompressZip) + " (\"\(baseName).zip\")", actionIdentifier: "compress_quick_zip", iconSystemName: "archivebox"),
-                FinderContextMenuItem(title: "📑 " + manager.string(for: L10n.Menu.finderCompressSeparate), actionIdentifier: "compress_separate", iconSystemName: "doc.on.doc"),
-                FinderContextMenuItem(title: "🧹 " + manager.string(for: L10n.Menu.finderCompressDeleteSource), actionIdentifier: "compress_and_delete_source", iconSystemName: "trash", isDestructive: true),
-                FinderContextMenuItem(title: "⚙️ " + manager.string(for: L10n.Menu.finderCompressAdvanced), actionIdentifier: "compress_modal_advanced", iconSystemName: "slider.horizontal.3")
+                FinderContextMenuItem(
+                    title: "\(manager.string(for: L10n.FinderSync.compress7zTitle, language: targetLang)) (\"\(baseName).7z\")",
+                    actionIdentifier: "compress_quick_7z",
+                    iconSystemName: "sparkles"
+                ),
+                FinderContextMenuItem(
+                    title: "\(manager.string(for: L10n.FinderSync.compressZipTitle, language: targetLang)) (\"\(baseName).zip\")",
+                    actionIdentifier: "compress_quick_zip",
+                    iconSystemName: "archivebox"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.compressSeparateTitle, language: targetLang),
+                    actionIdentifier: "compress_separate",
+                    iconSystemName: "doc.on.doc"
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.compressDeleteSourceTitle, language: targetLang),
+                    actionIdentifier: "compress_and_delete_source",
+                    iconSystemName: "trash",
+                    isDestructive: true
+                ),
+                FinderContextMenuItem(
+                    title: manager.string(for: L10n.FinderSync.compressAdvancedTitle, language: targetLang),
+                    actionIdentifier: "compress_modal_advanced",
+                    iconSystemName: "slider.horizontal.3"
+                )
             ]
         }
     }
 }
 
-// MARK: - Finder Action Requests
-
-//
-//
-
-
 /// Action type identifier dispatched from macOS Finder context menu or Services.
-/// Conforms strictly to `contracts/finder-sync-action.json`.
 public enum FinderSyncActionIdentifier: String, Codable, Sendable, CaseIterable {
     case extractHere = "extract_here"
     case extractToSubfolder = "extract_to_subfolder"
@@ -101,7 +129,6 @@ public enum FinderSyncActionIdentifier: String, Codable, Sendable, CaseIterable 
 }
 
 /// Request model representing an IPC action request dispatched from FinderSync context menus or Services.
-/// Conforms strictly to `contracts/finder-sync-action.json`.
 public struct FinderSyncActionRequest: Codable, Sendable, Equatable {
     public let actionIdentifier: String
     public let sourcePaths: [String]
