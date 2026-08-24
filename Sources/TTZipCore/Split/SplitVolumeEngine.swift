@@ -403,8 +403,6 @@ public final class NativeParallelEncryptedSplitEngine: @unchecked Sendable {
             throw ArchiveError.readFailed(code: -404)
         }
         
-        AppleSiliconTuner.shared.boostCurrentThreadPriority()
-        
         let targetExtension = (format == .sevenZip) ? "7z" : "zip"
         let primaryOutputPath = (outputDir as NSString).appendingPathComponent("\(baseName).\(targetExtension)")
         try? FileManager.default.removeItem(atPath: primaryOutputPath)

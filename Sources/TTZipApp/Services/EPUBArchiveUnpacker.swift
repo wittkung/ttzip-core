@@ -14,7 +14,7 @@ public final class EPUBArchiveUnpacker {
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent("ttzip_ephemeral_\(UUID().uuidString)", isDirectory: true)
         try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
-        try? ArchiveExtractor().extractSync(archivePath: epubURL.path, destinationDir: tempDir.path)
+        _ = try? ArchiveExtractor().extractSync(archivePath: epubURL.path, destinationDir: tempDir.path)
         
         var opfURL: URL? = nil
         let containerURL = tempDir.appendingPathComponent("META-INF/container.xml")

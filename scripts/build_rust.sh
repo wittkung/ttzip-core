@@ -150,6 +150,34 @@ if [ -d "${XCFRAMEWORK_MAC_DIR}/Headers" ]; then
     cp "${HEADER_OUT}" "${XCFRAMEWORK_MAC_DIR}/Headers/ttzip_rust_glue.h"
 fi
 
+# 4. 生成 Mozilla UniFFI 绑定与 Scaffolding C 头文件
+echo "--> [INFO] Generating Mozilla UniFFI bindings..."
+mkdir -p "${REPO_ROOT}/Sources/TTZipCore/Generated"
+FIRST_TARGET="${TARGETS[0]}"
+FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
+if [ ! -f "${FIRST_DYLIB}" ]; then
+    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
+fi
+
+if [ -f "${FIRST_DYLIB}" ]; then
+    cargo run --manifest-path "${RUST_DIR}/Cargo.toml" --bin uniffi-bindgen generate \
+        --library "${FIRST_DYLIB}" \
+        --language swift \
+        --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
+        --metadata-no-deps 2>/dev/null || true
+    
+    # 执行 Swift 6 并发安全后处理
+    if [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ]; then
+        python3 "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift"
+    fi
+
+    # 拷贝 Scaffolding 头文件
+    if [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h" ]; then
+        cp "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/"
+        [ -d "${XCFRAMEWORK_MAC_DIR}/Headers" ] && cp "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h" "${XCFRAMEWORK_MAC_DIR}/Headers/"
+    fi
+fi
+
 echo "=========================================="
-echo "✅ [SUCCESS] Rust glue universal library generated successfully."
+echo "✅ [SUCCESS] Rust glue & UniFFI universal library generated successfully."
 echo "=========================================="

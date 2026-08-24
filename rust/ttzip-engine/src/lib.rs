@@ -30,6 +30,7 @@ pub mod sevenz;
 pub mod standards;
 pub mod testing;
 pub mod types;
+pub mod uniffi_api;
 pub mod vfs;
 pub mod zip;
 
@@ -55,5 +56,6 @@ pub use sevenz::{
 pub use standards::*;
 pub use testing::*;
 pub use types::*;
+pub use uniffi_api::*;
 pub use vfs::*;
 pub use zip::{create_zip_archive, ZipArchive, ZipEntry, ZipInputItem};

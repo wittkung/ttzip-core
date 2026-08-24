@@ -237,8 +237,6 @@ extension ArchiveWriter {
         startTime: Date,
         totalBytes: Int64
     ) throws {
-        hardwareTuner.boostCurrentThreadPriority()
-
         let targetFmt = self.targetFormat ?? format
         if targetFmt == .zip {
             let handled = try dispatchZipCreation(

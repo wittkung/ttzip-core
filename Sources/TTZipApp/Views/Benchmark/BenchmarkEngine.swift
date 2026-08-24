@@ -72,7 +72,6 @@ public final class BenchmarkEngine: @unchecked Sendable {
         baseScore: Int = 85,
         progressHandler: (@Sendable (BenchmarkProgress) -> Void)? = nil
     ) async throws -> BenchmarkResult {
-        AppleSiliconTuner.shared.boostCurrentThreadPriority()
         let tuner = AppleSiliconTuner.shared
         let totalBytes = size.bytes
 
@@ -148,7 +147,7 @@ public final class BenchmarkEngine: @unchecked Sendable {
 
         let decompStartNanos = monotonicNanos()
         let extractor = ArchiveEngineFactory.makeExtractor(for: format)
-        try? await extractor.extract(archivePath: outputArchivePath, destinationDir: decompTargetDir)
+        _ = try? await extractor.extract(archivePath: outputArchivePath, destinationDir: decompTargetDir)
         let decompEndNanos = monotonicNanos()
         let decompElapsedNanos = max(500_000, decompEndNanos - decompStartNanos)
         let decompElapsed = Double(decompElapsedNanos) / 1_000_000_000.0
@@ -204,7 +203,6 @@ public final class BenchmarkEngine: @unchecked Sendable {
         baseScore: Int = 90,
         progressHandler: (@Sendable (BenchmarkProgress) -> Void)? = nil
     ) async throws -> BenchmarkResult {
-        AppleSiliconTuner.shared.boostCurrentThreadPriority()
         let tuner = AppleSiliconTuner.shared
         let fm = FileManager.default
 
@@ -271,7 +269,7 @@ public final class BenchmarkEngine: @unchecked Sendable {
         let decompExtractDir = tempDir.appendingPathComponent("decomp_test").path
         let decompStartNanos = monotonicNanos()
         let extractor = ArchiveEngineFactory.makeExtractor(for: format)
-        try? await extractor.extract(archivePath: outputArchivePath, destinationDir: decompExtractDir)
+        _ = try? await extractor.extract(archivePath: outputArchivePath, destinationDir: decompExtractDir)
         let decompElapsedNanos = max(1_000_000, monotonicNanos() - decompStartNanos)
         let decompElapsed = Double(decompElapsedNanos) / 1_000_000_000.0
         let realDecompThroughput = calcThroughputMBs(bytes: Int(totalBytes), elapsedSecs: decompElapsed)

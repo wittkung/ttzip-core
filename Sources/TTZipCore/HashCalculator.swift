@@ -91,19 +91,16 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
             
         case .sha256:
             return try await Task.detached(priority: .userInitiated) {
-                self.hardwareTuner.boostCurrentThreadPriority()
                 return try self.computeCryptoHashSync(filePath: filePath, createHasher: SHA256.init)
             }.value
             
         case .md5:
             return try await Task.detached(priority: .userInitiated) {
-                self.hardwareTuner.boostCurrentThreadPriority()
                 return try self.computeCryptoHashSync(filePath: filePath, createHasher: Insecure.MD5.init)
             }.value
             
         case .sha1:
             return try await Task.detached(priority: .userInitiated) {
-                self.hardwareTuner.boostCurrentThreadPriority()
                 return try self.computeCryptoHashSync(filePath: filePath, createHasher: Insecure.SHA1.init)
             }.value
         }

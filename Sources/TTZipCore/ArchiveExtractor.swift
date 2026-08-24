@@ -48,8 +48,6 @@ public final class ArchiveExtractor: ArchiveExtracting, @unchecked Sendable {
         Self.preventSpotlightIndexing(at: destinationDir)
         defer { Self.cleanupQuarantineAttributes(at: destinationDir) }
 
-        hardwareTuner.boostCurrentThreadPriority()
-
         var extractedBytes: UInt64 = 0
         if dispatchFastExtraction(
             archivePath: archivePath,
