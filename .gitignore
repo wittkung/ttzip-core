@@ -21,3 +21,7 @@ __pycache__/
 docs/benchmarks/benchmark_report_*.json
 docs/benchmarks/benchmark_report_*.md
 
+# Spec Kit design artifacts
+specs/
+.specify/
+
