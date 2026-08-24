@@ -188,10 +188,10 @@ graph TD
    - Inspects Darwin `proc_pid_rusage(..., RUSAGE_INFO_V4)` for `ri_diskio_byteswritten` and sandbox `/tmp` monitors.
    - Proves zero temporary file writes or unneeded scratch amplification during streaming extraction operations (`ZeroDiskIOLeakHarnessTests.swift`).
 
-### 5.2 Bidirectional C-ABI & Struct Field Static Linter
-- Implements `scripts/lint_cabi_context.py` using native Clang AST JSON analysis and Swift regex/AST consumption matching.
-- Detects orphaned C-ABI exports (`CABI_001_DEAD_CABI_EXPORT`), dropped struct fields (`CABI_003_STRUCT_FIELD_DROPPED`), and wildcards (`CABI_005_WILDCARD_IGNORE_DETECTED`).
-- Embedded directly into Stage 2 of `./scripts/verify_cabi_symbols.sh` and local CI gate.
+### 5.2 Mozilla UniFFI Scaffolding & Symbol Parity Gate
+- Implements `scripts/verify_uniffi_symbols.sh` ensuring 100% full-parity alignment between Mozilla UniFFI Scaffolding header definitions (`ttzip_engineFFI.h`) and static Mach-O library export tables (`libTTZipVendor.a`).
+- Guarantees zero dangling scaffolding declarations and zero link-time missing symbol crashes before commit/push.
+- Embedded directly into Stage 2 of `./scripts/run_local_ci_gate.sh`.
 
 ### 5.3 Non-Forgeable Execution Provenance & Anti-Fallback Assertions
 - Rust kernel records `TTZipExecutionProvenance` in thread-local storage on every compression, decompression, and in-place mutation.

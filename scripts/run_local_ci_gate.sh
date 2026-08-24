@@ -69,7 +69,7 @@ echo ""
 # Stage Definitions
 declare -a STAGE_NAMES=(
     "Single-File LOC Defense Gate (<= 800 LOC)"
-    "C-ABI Symbol Alignment Gate (100% Header Parity)"
+    "Mozilla UniFFI Symbol Alignment Gate (100% Scaffolding Parity)"
     "Swift High-Level Facade & CLI Suite"
     "Deflate-Bench 50-Point Matrix Gate"
     "Rust Industrial Suite (Props, Fuzz, Differential)"
@@ -77,7 +77,7 @@ declare -a STAGE_NAMES=(
 
 declare -a STAGE_KEYS=(
     "loc-gate"
-    "cabi-gate"
+    "uniffi-gate"
     "swift-facade"
     "performance"
     "rust-industrial"
@@ -85,7 +85,7 @@ declare -a STAGE_KEYS=(
 
 declare -a STAGE_COMMANDS=(
     "./scripts/lint_loc_gate.sh"
-    "./scripts/verify_cabi_symbols.sh"
+    "./scripts/verify_uniffi_symbols.sh"
     "swift test"
     "swift run ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz"

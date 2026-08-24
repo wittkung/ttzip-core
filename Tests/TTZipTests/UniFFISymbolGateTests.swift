@@ -8,7 +8,7 @@
 import XCTest
 @testable import TTZipCore
 
-final class CABISymbolGateTests: XCTestCase {
+final class UniFFISymbolGateTests: XCTestCase {
 
     func testCoreRuntimeAndVersionSymbols() {
         let dummyData = Data([0x01, 0x02, 0x03, 0x04])

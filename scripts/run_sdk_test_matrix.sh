@@ -300,13 +300,13 @@ if check_category_enabled "unit"; then
     echo -e "\n${BOLD}${CYAN}--- Executing Native Unit Test Matrix across SDKs ---${RESET}"
 
     # 1. Rust SDK
-    run_sdk_test "rust" "Rust Engine & C-ABI Crate" \
+    run_sdk_test "rust" "Rust Engine & UniFFI Crate" \
         "cargo test -p ttzip-engine --manifest-path rust/ttzip-engine/Cargo.toml" \
         18
 
     # 2. Swift 6 SDK
     run_sdk_test "swift" "Swift 6 TTZipCore Package" \
-        "swift test --filter CABISymbolGateTests 2>/dev/null || (test -d Sources/TTZipCore && echo 'Swift 6 package verified')" \
+        "swift test --filter UniFFISymbolGateTests 2>/dev/null || (test -d Sources/TTZipCore && echo 'Swift 6 package verified')" \
         3
 
     # 3. Python 3 SDK

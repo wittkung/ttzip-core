@@ -7,8 +7,8 @@
 # TTZip: High-performance native archiving and compression engine.
 
 # ==============================================================================
-# scripts/verify_cabi_symbols.sh
-# 自动化 C-ABI 符号双向满射防御门禁：校验头文件导出函数与静态库 Mach-O 符号 100% 对应
+# scripts/verify_uniffi_symbols.sh
+# 自动化 Mozilla UniFFI 符号双向满射防御门禁：校验 Scaffolding 头文件与静态库 Mach-O 符号 100% 对应
 # ==============================================================================
 
 set -euo pipefail
@@ -17,13 +17,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 HEADER_FILE="${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
-if [ ! -f "${HEADER_FILE}" ]; then
-    HEADER_FILE="${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_rust_glue.h"
-fi
 STATIC_LIB="${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
 
 if [ ! -f "${HEADER_FILE}" ]; then
-    echo "❌ [ERROR] C-ABI Header file not found: ${HEADER_FILE}"
+    echo "❌ [ERROR] UniFFI Header file not found: ${HEADER_FILE}"
     exit 1
 fi
 
@@ -33,29 +30,29 @@ if [ ! -f "${STATIC_LIB}" ]; then
 fi
 
 echo "======================================================================"
-echo "   TTZip C-ABI Symbol Alignment Gate (Bi-directional Parity)         "
+echo "   TTZip Mozilla UniFFI Symbol Alignment Gate (100% Scaffolding Parity)"
 echo "======================================================================"
 echo "Header: ${HEADER_FILE}"
 echo "Binary: ${STATIC_LIB}"
 echo "----------------------------------------------------------------------"
 
-# 1. 从头文件中提取所有 FFI 函数原型
-HEADER_SYMBOLS=$(grep -oE '\b(ttzip_rust_[A-Za-z0-9_]+|uniffi_ttzip_engine_[A-Za-z0-9_]+)\b' "${HEADER_FILE}" | sort -u)
+# 1. 从头文件中提取所有 UniFFI Scaffolding 函数原型
+HEADER_SYMBOLS=$(grep -oE '\buniffi_ttzip_engine_[A-Za-z0-9_]+\b' "${HEADER_FILE}" | sort -u)
 HEADER_COUNT=$(echo "${HEADER_SYMBOLS}" | grep -v '^$' | wc -l | tr -d ' ')
-echo "--> Extracted ${HEADER_COUNT} C-ABI / UniFFI function prototypes from header."
+echo "--> Extracted ${HEADER_COUNT} UniFFI function prototypes from header."
 
 # 2. 从静态库中提取所有导出的全局 Text 符号 (优先使用 nm -gU，回退至 strings)
 if command -v nm >/dev/null 2>&1; then
-    LIB_SYMBOLS=$(nm -gU "${STATIC_LIB}" 2>/dev/null | grep -E ' T _(ttzip_rust_|uniffi_ttzip_engine_)' | awk '{print $3}' | sed 's/^_//' | sort -u || true)
+    LIB_SYMBOLS=$(nm -gU "${STATIC_LIB}" 2>/dev/null | grep -E ' T _uniffi_ttzip_engine_' | awk '{print $3}' | sed 's/^_//' | sort -u || true)
     if [ -z "${LIB_SYMBOLS//[$'\t\r\n ']/}" ]; then
-        LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)(ttzip_rust_|uniffi_ttzip_engine_)' | sed 's/^_//' | sort -u)
+        LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)uniffi_ttzip_engine_' | sed 's/^_//' | sort -u)
     fi
 else
-    LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)(ttzip_rust_|uniffi_ttzip_engine_)' | sed 's/^_//' | sort -u)
+    LIB_SYMBOLS=$(strings "${STATIC_LIB}" | grep -E '^(_?)uniffi_ttzip_engine_' | sed 's/^_//' | sort -u)
 fi
 
 LIB_COUNT=$(echo "${LIB_SYMBOLS}" | grep -v '^$' | wc -l | tr -d ' ')
-echo "--> Extracted ${LIB_COUNT} matching symbol definitions from static library."
+echo "--> Extracted ${LIB_COUNT} matching UniFFI symbol definitions from static library."
 
 # 3. 逐项核验头文件符号是否存在于静态库中 (Header -> Lib)
 HEADER_TMP=$(mktemp)
@@ -74,7 +71,7 @@ fi
 
 # 4. 判定门禁结果
 if [ "${MISSING_COUNT}" -gt 0 ]; then
-    echo "❌ [FAIL] Missing ${MISSING_COUNT} C-ABI symbol(s) in static library:"
+    echo "❌ [FAIL] Missing ${MISSING_COUNT} UniFFI symbol(s) in static library:"
     while IFS= read -r ms; do
         [ -n "${ms}" ] && echo "   - ${ms}"
     done <<< "${MISSING_SYMBOLS}"
@@ -82,12 +79,6 @@ if [ "${MISSING_COUNT}" -gt 0 ]; then
     exit 1
 fi
 
-echo "✅ [PASS] 100% C-ABI Symbol Parity (${HEADER_COUNT}/${HEADER_COUNT} symbols present in static library)."
-echo "----------------------------------------------------------------------"
-if [ -f "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_rust_glue.h" ]; then
-    echo "--> [Stage 2/2] Running Bidirectional C-ABI & Struct Context Linter..."
-    python3 "${REPO_ROOT}/scripts/lint_cabi_context.py" --strict
-fi
-
+echo "✅ [PASS] 100% UniFFI Symbol Parity (${HEADER_COUNT}/${HEADER_COUNT} symbols present in static library)."
 echo "======================================================================"
 exit 0
