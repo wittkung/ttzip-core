@@ -44,6 +44,9 @@ extension ArchiveReading {
 
 /// Core archive creation and compression engine interface.
 public protocol ArchiveWriting: Sendable {
+    func createArchive(_ request: ArchiveWriteRequest) async throws
+    func createArchiveSync(_ request: ArchiveWriteRequest) throws
+
     func createArchive(
         outputPath: String,
         format: ArchiveCompressionFormat,
@@ -497,6 +500,67 @@ extension ArchiveReading {
     }
 }
 
+// MARK: - ArchiveWriteRequest
+
+/// Encapsulates parameters for archive creation requests across async and sync writing operations.
+public struct ArchiveWriteRequest: Sendable {
+    public var outputPath: String
+    public var format: ArchiveCompressionFormat
+    public var level: ArchiveCompressionLevel
+    public var inputPaths: [String]
+    public var options: ArchiveFilterOptions
+    public var splitVolumeSizeBytes: Int64?
+    public var password: String?
+    public var advancedOptions: ArchiveAdvancedOptions
+    public var progressHandler: (@Sendable (ArchiveProgress) -> Void)?
+
+    public init(
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        inputPaths: [String] = [],
+        options: ArchiveFilterOptions = .defaultClean,
+        splitVolumeSizeBytes: Int64? = nil,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) {
+        self.outputPath = outputPath
+        self.format = format
+        self.level = level
+        self.inputPaths = inputPaths
+        self.options = options
+        self.splitVolumeSizeBytes = splitVolumeSizeBytes
+        self.password = password
+        self.advancedOptions = advancedOptions
+        self.progressHandler = progressHandler
+    }
+
+    public init(
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        components: [ArchiveComponentProtocol],
+        options: ArchiveFilterOptions = .defaultClean,
+        splitVolumeSizeBytes: Int64? = nil,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    ) {
+        self.init(
+            outputPath: outputPath,
+            format: format,
+            level: level,
+            inputPaths: components.map { $0.path },
+            options: options,
+            splitVolumeSizeBytes: splitVolumeSizeBytes,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: progressHandler
+        )
+    }
+}
+
 // MARK: - ArchiveWriting Default Implementations & Extensions
 
 extension ArchiveWriting {
@@ -511,7 +575,7 @@ extension ArchiveWriting {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) async throws {
-        try await createArchive(
+        let request = ArchiveWriteRequest(
             outputPath: outputPath,
             format: format,
             level: level,
@@ -522,6 +586,7 @@ extension ArchiveWriting {
             advancedOptions: advancedOptions,
             progressHandler: progressHandler
         )
+        try await createArchive(request)
     }
 
     public func createArchiveSync(
@@ -535,17 +600,18 @@ extension ArchiveWriting {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) throws {
-        try createArchiveSync(
+        let request = ArchiveWriteRequest(
             outputPath: outputPath,
             format: format,
             level: level,
             inputPaths: inputPaths,
             options: options,
-            password: password,
             splitVolumeSizeBytes: splitVolumeSizeBytes,
+            password: password,
             advancedOptions: advancedOptions,
             progressHandler: progressHandler
         )
+        try createArchiveSync(request)
     }
 
     public func createArchive(
@@ -559,18 +625,18 @@ extension ArchiveWriting {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) async throws {
-        let inputPaths = components.map { $0.path }
-        try await createArchive(
+        let request = ArchiveWriteRequest(
             outputPath: outputPath,
             format: format,
             level: level,
-            inputPaths: inputPaths,
+            components: components,
             options: options,
             splitVolumeSizeBytes: splitVolumeSizeBytes,
             password: password,
             advancedOptions: advancedOptions,
             progressHandler: progressHandler
         )
+        try await createArchive(request)
     }
 
     public func createArchiveSync(
@@ -584,18 +650,18 @@ extension ArchiveWriting {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) throws {
-        let inputPaths = components.map { $0.path }
-        try createArchiveSync(
+        let request = ArchiveWriteRequest(
             outputPath: outputPath,
             format: format,
             level: level,
-            inputPaths: inputPaths,
+            components: components,
             options: options,
-            password: password,
             splitVolumeSizeBytes: splitVolumeSizeBytes,
+            password: password,
             advancedOptions: advancedOptions,
             progressHandler: progressHandler
         )
+        try createArchiveSync(request)
     }
 }
 

@@ -8,47 +8,87 @@
 //! Subcommand execution handler: hash / checksum.
 
 use crate::cli::args::HashResultDto;
-use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::time::Instant;
 use ttzip_engine::crypto::adler32::adler32_fast;
 use ttzip_engine::crypto::crc32::crc32_fast;
-use ttzip_engine::crypto::crc64::crc64_fast;
+use ttzip_engine::crypto::crc64::crc64;
 use ttzip_engine::crypto::sha256::FastSha256;
 
-/// Executes headless `hash` subcommand.
+const CHUNK_SIZE: usize = 128 * 1024; // 128 KB chunk buffer
+
+/// Executes headless `hash` subcommand with streaming chunked reader.
 pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), String> {
     if !path.exists() {
         return Err(format!("File or archive not found: {}", path.display()));
     }
 
     let start = Instant::now();
-    let data = fs::read(path).map_err(|e| format!("Failed to read target file {}: {}", path.display(), e))?;
+    let mut file = File::open(path)
+        .map_err(|e| format!("Failed to open target file {}: {}", path.display(), e))?;
+
     let algo_lower = algorithm.to_lowercase();
-
     let compute_all = algo_lower == "all";
-    let crc32_val = if compute_all || algo_lower == "crc32" {
-        Some(format!("0x{:08X}", crc32_fast(0, &data)))
+    let compute_crc32 = compute_all || algo_lower == "crc32";
+    let compute_crc64 = compute_all || algo_lower == "crc64";
+    let compute_adler32 = compute_all || algo_lower == "adler32";
+    let compute_sha256 = compute_all || algo_lower == "sha256";
+
+    let mut running_crc32: u32 = 0;
+    let mut running_crc64: u64 = 0;
+    let mut running_adler32: u32 = 1;
+    let mut sha256_hasher = FastSha256::new();
+
+    let mut total_bytes: u64 = 0;
+    let mut buffer = vec![0u8; CHUNK_SIZE];
+
+    loop {
+        let n = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read chunk from {}: {}", path.display(), e))?;
+        if n == 0 {
+            break;
+        }
+
+        let chunk = &buffer[..n];
+        total_bytes += n as u64;
+
+        if compute_crc32 {
+            running_crc32 = crc32_fast(running_crc32, chunk);
+        }
+        if compute_crc64 {
+            running_crc64 = crc64(chunk, running_crc64);
+        }
+        if compute_adler32 {
+            running_adler32 = adler32_fast(running_adler32, chunk);
+        }
+        if compute_sha256 {
+            sha256_hasher.update(chunk);
+        }
+    }
+
+    let crc32_val = if compute_crc32 {
+        Some(format!("0x{:08X}", running_crc32))
     } else {
         None
     };
 
-    let crc64_val = if compute_all || algo_lower == "crc64" {
-        Some(format!("0x{:016X}", crc64_fast(&data)))
+    let crc64_val = if compute_crc64 {
+        Some(format!("0x{:016X}", running_crc64))
     } else {
         None
     };
 
-    let adler32_val = if compute_all || algo_lower == "adler32" {
-        Some(format!("0x{:08X}", adler32_fast(1, &data)))
+    let adler32_val = if compute_adler32 {
+        Some(format!("0x{:08X}", running_adler32))
     } else {
         None
     };
 
-    let sha256_val = if compute_all || algo_lower == "sha256" {
-        let mut hasher = FastSha256::new();
-        hasher.update(&data);
-        let digest = hasher.finalize();
+    let sha256_val = if compute_sha256 {
+        let digest = sha256_hasher.finalize();
         Some(hex_encode(&digest))
     } else {
         None
@@ -59,7 +99,7 @@ pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), Stri
     if json {
         let dto = HashResultDto {
             target: path.to_string_lossy().to_string(),
-            size_bytes: data.len() as u64,
+            size_bytes: total_bytes,
             crc32: crc32_val,
             crc64: crc64_val,
             sha256: sha256_val,
@@ -76,7 +116,7 @@ pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), Stri
     println!("{:=<60}", "");
     println!("  TTZip Checksum & Digest: {}", path.display());
     println!("{:=<60}", "");
-    println!("  File Size:  {} bytes", data.len());
+    println!("  File Size:  {} bytes", total_bytes);
     if let Some(ref c32) = crc32_val {
         println!("  CRC-32:     {}", c32);
     }

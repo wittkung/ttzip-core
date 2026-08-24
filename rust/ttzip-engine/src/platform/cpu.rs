@@ -15,6 +15,8 @@ use std::sync::OnceLock;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TTZipCpuCapsRaw {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub logical_cores: u32,
     pub physical_page_size: usize,
     pub p_cores: u32,
@@ -25,6 +27,25 @@ pub struct TTZipCpuCapsRaw {
     pub has_avx2: bool,
     pub has_avx512: bool,
     pub has_hardware_crc32: bool,
+}
+
+impl Default for TTZipCpuCapsRaw {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            logical_cores: 1,
+            physical_page_size: 4096,
+            p_cores: 1,
+            e_cores: 0,
+            has_arm_neon: false,
+            has_arm_crypto: false,
+            has_aes_ni: false,
+            has_avx2: false,
+            has_avx512: false,
+            has_hardware_crc32: false,
+        }
+    }
 }
 
 /// Dynamic CPU feature set and topology.
@@ -153,6 +174,8 @@ pub unsafe extern "C" fn ttzip_rust_cpu_get_capabilities(out_caps: *mut TTZipCpu
         }
         let caps = CpuCapabilities::get();
         *out_caps = TTZipCpuCapsRaw {
+            struct_size: std::mem::size_of::<TTZipCpuCapsRaw>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             logical_cores: caps.logical_cores,
             physical_page_size: caps.physical_page_size,
             p_cores: caps.p_cores,

@@ -101,6 +101,8 @@ typedef struct TTZipExecutionProvenance {
 } TTZipExecutionProvenance;
 
 typedef struct TTZipEntryMetadata {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *path;
     uint64_t uncompressed_size;
     uint64_t compressed_size;
@@ -117,6 +119,8 @@ typedef bool (*TTZipProgressCallback)(uint64_t processed_bytes, uint64_t total_b
 typedef bool (*TTZipInspectCallback)(const TTZipEntryMetadata *entry, void *user_data);
 
 typedef struct TTZipExtractOptions {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *destination_path;
     const char *password;
     uint32_t thread_budget;
@@ -128,6 +132,8 @@ typedef struct TTZipExtractOptions {
 } TTZipExtractOptions;
 
 typedef struct TTZipCreateOptions {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipArchiveFormat format;
     TTZipCompressionLevel level;
     TTZipEncryptionMethod encryption;

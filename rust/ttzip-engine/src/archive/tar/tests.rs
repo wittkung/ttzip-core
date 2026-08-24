@@ -192,6 +192,8 @@ use std::fs;
 
         let archive = TarArchive::open_slice(&archive_bytes).unwrap();
         let options = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 2,

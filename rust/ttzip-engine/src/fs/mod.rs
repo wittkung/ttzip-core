@@ -16,7 +16,6 @@ pub mod vfs;
 
 pub use apfs::*;
 pub use filter::*;
-pub use filter_dsl::*;
 pub use safe_extract::*;
 pub use scanner::*;
 pub use vfs::*;

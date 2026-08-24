@@ -184,7 +184,5 @@ public final class AppViewState: ObservableObject {
                 self?.performRedo()
             }
             .store(in: &cancellables)
-        
-        updateUndoRedoState()
     }
 }

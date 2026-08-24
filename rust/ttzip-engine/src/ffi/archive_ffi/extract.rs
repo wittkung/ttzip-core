@@ -56,6 +56,8 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
         let dest_p = Path::new(dest_str);
 
         let default_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: dest_c,
             password: std::ptr::null(),
             thread_budget: 0,
@@ -102,10 +104,12 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
 
         let open_rc = archive_read_open_filename(a, archive_path, 65536);
         if open_rc != 0 {
-            if let Ok(mapped) = fs::read(archive_p) {
-                if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                    if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
-                        return TTZipStatus::Ok;
+            if let Ok(source) = crate::archive::source::open_archive_source(archive_p) {
+                if let Some(mapped) = source.as_slice() {
+                    if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
+                        if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
+                            return TTZipStatus::Ok;
+                        }
                     }
                 }
             }
@@ -269,10 +273,12 @@ pub unsafe extern "C" fn ttzip_rust_extract_archive(
         drop(guard);
 
         if total_processed == 0 && !dry_run {
-            if let Ok(mapped) = fs::read(archive_p) {
-                if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(&mapped) {
-                    if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
-                        return TTZipStatus::Ok;
+            if let Ok(source) = crate::archive::source::open_archive_source(archive_p) {
+                if let Some(mapped) = source.as_slice() {
+                    if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
+                        if let Ok(_report) = sevenz.extract_all(dest_p, opt_ref) {
+                            return TTZipStatus::Ok;
+                        }
                     }
                 }
             }
@@ -319,12 +325,23 @@ pub unsafe extern "C" fn ttzip_rust_7z_extract_entry_memory(
             return TTZipStatus::ErrFileNotFound;
         }
 
-        let data = match fs::read(p) {
-            Ok(d) => d,
+        let file = match fs::File::open(p) {
+            Ok(f) => f,
+            Err(_) => return TTZipStatus::ErrFileNotFound,
+        };
+        let file_meta = match file.metadata() {
+            Ok(m) => m,
             Err(_) => return TTZipStatus::ErrOpenFailed,
         };
+        if file_meta.len() == 0 {
+            return TTZipStatus::ErrCorruptHeader;
+        }
+        let mmap = match unsafe { memmap2::MmapOptions::new().map(&file) } {
+            Ok(m) => m,
+            Err(_) => return TTZipStatus::ErrMmapFailed,
+        };
 
-        let archive = match crate::sevenz::SevenZArchive::open_slice(&data) {
+        let archive = match crate::sevenz::SevenZArchive::open_slice(&mmap) {
             Ok(a) => a,
             Err(e) => return e,
         };

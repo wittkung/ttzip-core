@@ -1,13 +1,19 @@
 # SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from pathlib import Path
-from .models import EntryMetadata, ProgressInfo
+from .models import (
+    EntryMetadata,
+    BenchmarkPointResult,
+    BenchmarkMatrixReport,
+    ProgressInfo,
+)
 from .exceptions import (
     TTZipError,
     AuthenticationError,
     CorruptArchiveError,
     SecurityError,
 )
+from .zipfile import ZipFile, SevenZipFile, open_archive
 
 def compress(
     sources: Union[str, Path, List[Union[str, Path]]],
@@ -31,19 +37,25 @@ def inspect(
 ) -> List[EntryMetadata]: ...
 
 def decompress_buffer(
-    data: bytes,
+    data: Union[bytes, bytearray, memoryview, Any],
     format: str = "deflate",
 ) -> bytes: ...
 
 def compress_buffer(
-    data: bytes,
+    data: Union[bytes, bytearray, memoryview, Any],
     format: str = "deflate",
     level: int = 6,
 ) -> bytes: ...
 
-def crc32(data: bytes, seed: int = 0) -> int: ...
+def decompress_into(
+    data: Union[bytes, bytearray, memoryview, Any],
+    dst_buffer: bytearray,
+    format: str = "deflate",
+) -> int: ...
 
-def crc64(data: bytes, seed: int = 0) -> int: ...
+def crc32(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int: ...
+
+def crc64(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int: ...
 
 def version() -> str: ...
 
@@ -55,17 +67,24 @@ def benchmark_matrix(
     iterations: int = 1,
 ) -> BenchmarkMatrixReport: ...
 
+open = open_archive
+
 __all__ = [
     "compress",
     "extract",
     "inspect",
     "decompress_buffer",
     "compress_buffer",
+    "decompress_into",
     "crc32",
     "crc64",
     "version",
     "is_hardware_accelerated",
     "benchmark_matrix",
+    "ZipFile",
+    "SevenZipFile",
+    "open_archive",
+    "open",
     "EntryMetadata",
     "BenchmarkPointResult",
     "BenchmarkMatrixReport",

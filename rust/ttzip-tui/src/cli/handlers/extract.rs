@@ -20,13 +20,56 @@ use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::types::TTZipExtractOptions;
 use ttzip_engine::zip::ZipArchive;
 
-/// Executes headless `extract` subcommand.
+/// Simple glob match helper for include/exclude patterns.
+pub fn glob_match(pattern: &str, text: &str) -> bool {
+    let pat = pattern.trim_start_matches("./").trim_start_matches('/');
+    let txt = text.trim_start_matches("./").trim_start_matches('/');
+    if pat == "*" || pat == "**" {
+        return true;
+    }
+    if pat.starts_with('*') && pat.ends_with('*') && pat.len() > 2 {
+        let sub = &pat[1..pat.len() - 1];
+        return txt.contains(sub);
+    }
+    if pat.starts_with('*') {
+        let suffix = &pat[1..];
+        return txt.ends_with(suffix);
+    }
+    if pat.ends_with('*') {
+        let prefix = &pat[..pat.len() - 1];
+        return txt.starts_with(prefix);
+    }
+    txt == pat
+}
+
+/// Checks if an entry path satisfies include/exclude pattern filters.
+pub fn pattern_matches(rel_path: &str, include: &[String], exclude: &[String]) -> bool {
+    let clean = rel_path.trim_start_matches('/');
+    if !include.is_empty() {
+        let matched = include.iter().any(|pat| glob_match(pat, clean));
+        if !matched {
+            return false;
+        }
+    }
+    if !exclude.is_empty() {
+        let excluded = exclude.iter().any(|pat| glob_match(pat, clean));
+        if excluded {
+            return false;
+        }
+    }
+    true
+}
+
+/// Executes headless `extract` subcommand with zero-copy mmap and optional pattern filtering.
 pub fn execute_extract(
     archive_path: &Path,
     output_dir: Option<&Path>,
     password: Option<&str>,
     threads: u32,
     _verbose: bool,
+    dry_run: bool,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<(), String> {
     if !archive_path.exists() {
         return Err(format!("Archive file not found: {}", archive_path.display()));
@@ -34,8 +77,10 @@ pub fn execute_extract(
 
     let start_time = Instant::now();
     let dest_dir = output_dir.unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(dest_dir)
-        .map_err(|e| format!("Failed to create output directory {}: {}", dest_dir.display(), e))?;
+    if !dry_run {
+        fs::create_dir_all(dest_dir)
+            .map_err(|e| format!("Failed to create output directory {}: {}", dest_dir.display(), e))?;
+    }
 
     let (_volumes, data) = read_archive_data_auto(archive_path)?;
     let format = detect_archive_format(archive_path, &data);
@@ -43,41 +88,125 @@ pub fn execute_extract(
     let password_c = password.map(|p| CString::new(p).unwrap_or_default());
     let password_ptr = password_c.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
 
-    let options = TTZipExtractOptions {
-        destination_path: std::ptr::null(),
-        password: password_ptr,
-        thread_budget: threads.max(1),
-        overwrite_existing: true,
-        preserve_permissions: true,
-        dry_run: false,
-        progress_callback: None,
-        user_data: std::ptr::null_mut(),
-    };
+    let mut options = TTZipExtractOptions::default();
+    options.password = password_ptr;
+    options.thread_budget = threads.max(1);
+    options.overwrite_existing = true;
+    options.preserve_permissions = true;
+    options.dry_run = dry_run;
 
     let (entries_count, total_uncompressed_bytes) = match format {
         ContainerFormat::Zip => {
             let archive = ZipArchive::open_slice(&data)
                 .map_err(|e| format!("Failed to open ZIP archive: {:?}", e))?;
-            let rep = archive
-                .extract_all(dest_dir, &options)
-                .map_err(|e| format!("ZIP extraction failed: {:?}", e))?;
-            (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            if include.is_empty() && exclude.is_empty() {
+                let rep = archive
+                    .extract_all(dest_dir, &options)
+                    .map_err(|e| format!("ZIP extraction failed: {:?}", e))?;
+                (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            } else {
+                let mut count = 0;
+                let mut total_bytes = 0;
+                for (idx, entry) in archive.entries().iter().enumerate() {
+                    if pattern_matches(&entry.rel_path, include, exclude) {
+                        let out_path = dest_dir.join(&entry.rel_path);
+                        if entry.is_directory {
+                            if !dry_run {
+                                fs::create_dir_all(&out_path).ok();
+                            }
+                            count += 1;
+                        } else {
+                            if !dry_run {
+                                if let Some(parent) = out_path.parent() {
+                                    fs::create_dir_all(parent).ok();
+                                }
+                                let bytes = archive.extract_entry_bytes(idx, password)
+                                    .map_err(|e| format!("Extraction failed for {}: {:?}", entry.rel_path, e))?;
+                                fs::write(&out_path, &bytes)
+                                    .map_err(|e| format!("Failed to write {}: {}", out_path.display(), e))?;
+                            }
+                            count += 1;
+                            total_bytes += entry.uncompressed_size;
+                        }
+                    }
+                }
+                (count, total_bytes)
+            }
         }
         ContainerFormat::SevenZip => {
-            let archive = SevenZArchive::open_slice(&data)
+            let archive = SevenZArchive::open_slice_with_password(&data, password)
                 .map_err(|e| format!("Failed to open 7z archive: {:?}", e))?;
-            let rep = archive
-                .extract_all(dest_dir, &options)
-                .map_err(|e| format!("7z extraction failed: {:?}", e))?;
-            (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            if include.is_empty() && exclude.is_empty() {
+                let rep = archive
+                    .extract_all(dest_dir, &options)
+                    .map_err(|e| format!("7z extraction failed: {:?}", e))?;
+                (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            } else {
+                let mut count = 0;
+                let mut total_bytes = 0;
+                for (idx, file) in archive.info().files.iter().enumerate() {
+                    if pattern_matches(&file.rel_path, include, exclude) {
+                        let out_path = dest_dir.join(&file.rel_path);
+                        if file.is_directory {
+                            if !dry_run {
+                                fs::create_dir_all(&out_path).ok();
+                            }
+                            count += 1;
+                        } else {
+                            if !dry_run {
+                                if let Some(parent) = out_path.parent() {
+                                    fs::create_dir_all(parent).ok();
+                                }
+                                let bytes = archive.extract_entry_bytes_stream(idx, password)
+                                    .map_err(|e| format!("Extraction failed for {}: {:?}", file.rel_path, e))?;
+                                fs::write(&out_path, &bytes)
+                                    .map_err(|e| format!("Failed to write {}: {}", out_path.display(), e))?;
+                            }
+                            count += 1;
+                            let sz = archive.info().stream_sizes.get(idx).copied().unwrap_or(0);
+                            total_bytes += sz;
+                        }
+                    }
+                }
+                (count, total_bytes)
+            }
         }
         ContainerFormat::Tar => {
             let archive = TarArchive::open_slice(&data)
                 .map_err(|e| format!("Failed to open TAR archive: {:?}", e))?;
-            let rep = archive
-                .extract_all(dest_dir, &options)
-                .map_err(|e| format!("TAR extraction failed: {:?}", e))?;
-            (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            if include.is_empty() && exclude.is_empty() {
+                let rep = archive
+                    .extract_all(dest_dir, &options)
+                    .map_err(|e| format!("TAR extraction failed: {:?}", e))?;
+                (rep.processed_entries_count, rep.total_uncompressed_bytes)
+            } else {
+                let mut count = 0;
+                let mut total_bytes = 0;
+                for (idx, entry) in archive.entries().iter().enumerate() {
+                    if pattern_matches(&entry.path, include, exclude) {
+                        let out_path = dest_dir.join(&*entry.path);
+                        if entry.is_directory {
+                            if !dry_run {
+                                fs::create_dir_all(&out_path).ok();
+                            }
+                            count += 1;
+                        } else {
+                            if !dry_run {
+                                if let Some(parent) = out_path.parent() {
+                                    fs::create_dir_all(parent).ok();
+                                }
+                                let bytes = archive.extract_entry_bytes(idx)
+                                    .map_err(|e| format!("Extraction failed for {}: {:?}", entry.path, e))?;
+                                fs::write(&out_path, &bytes)
+                                    .map_err(|e| format!("Failed to write {}: {}", out_path.display(), e))?;
+                            }
+                            count += 1;
+                            total_bytes += entry.size;
+                        }
+                    }
+                }
+                (count, total_bytes)
+            }
         }
         ContainerFormat::Snappy => {
             let decompressed = snappy_frame_decode_to_vec(&data, 1024 * 1024 * 512)

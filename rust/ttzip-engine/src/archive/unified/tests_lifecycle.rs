@@ -29,6 +29,8 @@ mod tests {
         let extract_out = dir.path().join("extracted_zip");
 
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -50,6 +52,8 @@ mod tests {
         assert!(zip_out.exists());
 
         let extract_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 0,
@@ -93,6 +97,8 @@ mod tests {
             let extract_dir = dir.path().join(format!("ext_{}", filename));
 
             let create_opt = TTZipCreateOptions {
+                struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                 format: fmt,
                 level: TTZipCompressionLevel::Fast,
                 encryption: TTZipEncryptionMethod::None,
@@ -114,6 +120,8 @@ mod tests {
             assert!(out_archive.exists());
 
             let extract_opt = TTZipExtractOptions {
+                struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                 destination_path: std::ptr::null(),
                 password: std::ptr::null(),
                 thread_budget: 0,
@@ -146,6 +154,8 @@ mod tests {
 
         let split_out = dir.path().join("archive.zip");
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -169,6 +179,8 @@ mod tests {
 
         let ext_dir = dir.path().join("split_extracted");
         let extract_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 0,
@@ -201,6 +213,8 @@ mod tests {
         let repaired_path = dir.path().join("repaired.zip");
 
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -249,6 +263,8 @@ mod tests {
         }
 
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,

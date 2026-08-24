@@ -115,6 +115,8 @@ pub unsafe extern "C" fn ttzip_rust_remove_path_fast(path: *const c_char) -> i32
 /// Raw C-ABI structure for a scanned filesystem item.
 #[repr(C)]
 pub struct TTZipScannedItemRaw {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub src_path: *const c_char,
     pub rel_path: *const c_char,
     pub file_size: u64,
@@ -123,16 +125,46 @@ pub struct TTZipScannedItemRaw {
     pub is_directory: bool,
 }
 
+impl Default for TTZipScannedItemRaw {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            src_path: std::ptr::null(),
+            rel_path: std::ptr::null(),
+            file_size: 0,
+            mtime_epoch_secs: 0,
+            mode: 0,
+            is_directory: false,
+        }
+    }
+}
+
 pub type TTZipScanCallback =
     Option<unsafe extern "C" fn(item: *const TTZipScannedItemRaw, user_data: *mut c_void) -> bool>;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TTZipScanConfigRaw {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub include_hidden: bool,
     pub skip_mac_junk: bool,
     pub max_depth: u32,
     pub thread_budget: u32,
+}
+
+impl Default for TTZipScanConfigRaw {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            include_hidden: false,
+            skip_mac_junk: true,
+            max_depth: 0,
+            thread_budget: 0,
+        }
+    }
 }
 
 /// Recursively scans a filesystem directory in parallel with Rayon.
@@ -167,6 +199,8 @@ pub unsafe extern "C" fn ttzip_rust_scan_directory_parallel(
                 let c_src = match CString::new(item.src_path.as_bytes()) { Ok(c) => c, Err(_) => continue };
                 let c_rel = match CString::new(item.rel_path.as_bytes()) { Ok(c) => c, Err(_) => continue };
                 let raw_item = TTZipScannedItemRaw {
+                    struct_size: std::mem::size_of::<TTZipScannedItemRaw>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
                     src_path: c_src.as_ptr(),
                     rel_path: c_rel.as_ptr(),
                     file_size: item.file_size,
@@ -314,6 +348,8 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_render(
 
 #[repr(C)]
 pub struct TTZipVfsSearchResultRaw {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub name: *const c_char,
     pub path: *const c_char,
     pub uncompressed_size: u64,
@@ -322,6 +358,23 @@ pub struct TTZipVfsSearchResultRaw {
     pub is_directory: bool,
     pub is_encrypted: bool,
     pub score: i64,
+}
+
+impl Default for TTZipVfsSearchResultRaw {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            name: std::ptr::null(),
+            path: std::ptr::null(),
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            is_directory: false,
+            is_encrypted: false,
+            score: 0,
+        }
+    }
 }
 
 pub type TTZipVfsSearchCallback =
@@ -365,6 +418,8 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
 
                 if let Some(s) = score {
                     let raw_res = TTZipVfsSearchResultRaw {
+                        struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
+                        abi_version: crate::types::TTZIP_ABI_VERSION_2,
                         name: arena.string_arena[name_off..].as_ptr() as *const c_char,
                         path: arena.string_arena[path_off..].as_ptr() as *const c_char,
                         uncompressed_size: arena.uncompressed_sizes[i],
@@ -389,6 +444,8 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
             let c_name = match CString::new(res.name.as_bytes()) { Ok(c) => c, Err(_) => continue };
             let c_path = match CString::new(res.path.as_bytes()) { Ok(c) => c, Err(_) => continue };
             let raw_res = TTZipVfsSearchResultRaw {
+                struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                 name: c_name.as_ptr(),
                 path: c_path.as_ptr(),
                 uncompressed_size: res.uncompressed_size,
@@ -409,12 +466,14 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
 
 /// Frees a VFS tree handle.
 #[no_mangle]
+#[deprecated(since = "2.0.0", note = "Use ttzip_free(handle, TTZipMemoryKind::VfsTree) instead")]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_free(handle: *mut TTZipVfsTreeHandle) {
     let _ = catch_unwind(|| { if !handle.is_null() { drop(Box::from_raw(handle)); } });
 }
 
 /// Frees an allocated C-string buffer returned by VFS functions.
 #[no_mangle]
+#[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_vfs_free_string(ptr: *mut c_char) {
     let _ = catch_unwind(|| { if !ptr.is_null() { drop(CString::from_raw(ptr)); } });
 }

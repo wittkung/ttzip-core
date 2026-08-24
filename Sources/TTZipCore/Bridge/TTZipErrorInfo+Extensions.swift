@@ -69,17 +69,21 @@ extension TTZipErrorInfo {
         return info
     }
 
-    /// Diagnostic error message string extracted from C fixed array.
+    /// Diagnostic error message string extracted safely from C fixed array up to null terminator or buffer bound.
     public var errorDescription: String {
-        withUnsafePointer(to: message) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
+        withUnsafeBytes(of: message) { rawBuffer in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            let nullIndex = bytes.firstIndex(of: 0) ?? bytes.count
+            return String(decoding: bytes[..<nullIndex], as: UTF8.self)
         }
     }
 
-    /// Failed archive relative entry path string extracted from C fixed array.
+    /// Failed archive relative entry path string extracted safely from C fixed array up to null terminator or buffer bound.
     public var failedEntryPath: String {
-        withUnsafePointer(to: entry_path) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) }
+        withUnsafeBytes(of: entry_path) { rawBuffer in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            let nullIndex = bytes.firstIndex(of: 0) ?? bytes.count
+            return String(decoding: bytes[..<nullIndex], as: UTF8.self)
         }
     }
 }

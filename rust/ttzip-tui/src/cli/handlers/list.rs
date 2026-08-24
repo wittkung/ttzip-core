@@ -9,16 +9,43 @@
 
 use crate::cli::args::{VfsNodeContractDto, VfsTreeContractDto};
 use crate::cli::format::{format_bytes, parse_archive_entries, read_archive_data_auto};
+use crate::cli::handlers::extract::pattern_matches;
 use std::path::Path;
 
+/// Truncates path string safely respecting Unicode character boundaries.
+pub fn truncate_path_display(s: &str, max_width: usize) -> String {
+    let char_count = s.chars().count();
+    if char_count <= max_width {
+        return s.to_string();
+    }
+    if max_width <= 3 {
+        return s.chars().take(max_width).collect();
+    }
+    let suffix_len = max_width - 3;
+    let skip = char_count.saturating_sub(suffix_len);
+    let suffix: String = s.chars().skip(skip).collect();
+    format!("...{}", suffix)
+}
+
 /// Executes headless `list` subcommand.
-pub fn execute_list(archive_path: &Path, _password: Option<&str>, json: bool) -> Result<(), String> {
+pub fn execute_list(
+    archive_path: &Path,
+    _password: Option<&str>,
+    json: bool,
+    include: &[String],
+    exclude: &[String],
+) -> Result<(), String> {
     if !archive_path.exists() {
         return Err(format!("Archive file not found: {}", archive_path.display()));
     }
 
     let (volumes, data) = read_archive_data_auto(archive_path)?;
-    let (format, entries) = parse_archive_entries(archive_path, &data)?;
+    let (format, all_entries) = parse_archive_entries(archive_path, &data)?;
+
+    let entries: Vec<_> = all_entries
+        .into_iter()
+        .filter(|e| pattern_matches(&e.relative_path, include, exclude))
+        .collect();
 
     let total_uncompressed: u64 = entries.iter().map(|e| e.uncompressed_size).sum();
     let _total_compressed: u64 = entries.iter().map(|e| e.compressed_size).sum();
@@ -92,11 +119,7 @@ pub fn execute_list(archive_path: &Path, _password: Option<&str>, json: bool) ->
             entry.relative_path.clone()
         };
 
-        let path_truncated = if path_display.len() > 36 {
-            format!("...{}", &path_display[path_display.len() - 33..])
-        } else {
-            path_display
-        };
+        let path_truncated = truncate_path_display(&path_display, 36);
 
         let crc_str = if entry.is_directory {
             "-".to_string()

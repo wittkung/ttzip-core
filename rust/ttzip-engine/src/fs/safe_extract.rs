@@ -44,9 +44,13 @@ pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Resu
 /// 1. Path traversal (`..`, `../..`, `/..`)
 /// 2. Absolute root paths (`/etc/passwd`, `\Windows\System32`, `C:\`)
 /// 3. Embedded null bytes (`\0`)
-/// 4. Windows UNC paths (`\\server\share`)
 pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Result<PathBuf, TTZipStatus> {
-    if raw_entry_path.is_empty() || raw_entry_path.contains('\0') {
+    if raw_entry_path.is_empty()
+        || raw_entry_path.starts_with('/')
+        || raw_entry_path.starts_with('\\')
+        || raw_entry_path.contains('\0')
+        || raw_entry_path.contains("://")
+    {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
@@ -59,10 +63,6 @@ pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Resu
         if raw_entry_path.starts_with(r"\\") || raw_entry_path.starts_with("//") {
             return Err(TTZipStatus::ErrSecurityViolation);
         }
-    }
-
-    if raw_entry_path.starts_with('/') || raw_entry_path.starts_with('\\') || raw_entry_path.contains("://") {
-        return Err(TTZipStatus::ErrSecurityViolation);
     }
 
     let normalized_slashes = raw_entry_path.replace('\\', "/");

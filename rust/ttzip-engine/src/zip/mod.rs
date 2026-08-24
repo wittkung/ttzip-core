@@ -137,6 +137,8 @@ mod tests {
         fs::write(temp_src.join("nested/file2.bin"), vec![0x33u8; 8192]).unwrap();
 
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -155,6 +157,8 @@ mod tests {
         assert_eq!(archive.len(), 4);
 
         let extract_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 4,

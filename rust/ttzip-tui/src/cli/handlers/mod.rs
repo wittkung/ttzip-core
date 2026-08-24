@@ -26,11 +26,13 @@ pub mod repair;
 pub mod split;
 pub mod tree;
 pub mod update;
+pub mod completions;
 
 pub use bench::*;
 pub use cat::*;
 pub use check::*;
 pub use comment::*;
+pub use completions::*;
 pub use convert::*;
 pub use create::*;
 pub use delete::*;

@@ -76,6 +76,8 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
 
     // 1. Create Archive via FFI
     let create_options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -116,6 +118,8 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
     let c_dest_dir = CString::new(dest_dir.to_str().unwrap()).unwrap();
 
     let dry_run_options = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 4,
@@ -138,6 +142,8 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
 
     // 4. Real Extract Archive via FFI
     let extract_options = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 4,
@@ -187,6 +193,8 @@ fn test_phase5_archive_create_tar_gz_and_extract() {
     let src_ptrs = [c_src_path.as_ptr()];
 
     let create_options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::TarGz,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -212,6 +220,8 @@ fn test_phase5_archive_create_tar_gz_and_extract() {
     let c_dest_dir = CString::new(dest_dir.to_str().unwrap()).unwrap();
 
     let extract_options = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 2,
@@ -287,6 +297,8 @@ fn test_phase5_inplace_editing_ffi_roundtrip() {
     let c_archive_path = CString::new(archive_path.to_str().unwrap()).unwrap();
 
     let create_options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -344,6 +356,8 @@ fn test_phase5_inplace_editing_ffi_roundtrip() {
     let out_dir = temp_dir.join("extracted_inplace");
     let c_out_dir = CString::new(out_dir.to_str().unwrap()).unwrap();
     let extract_options = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: c_out_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 2,

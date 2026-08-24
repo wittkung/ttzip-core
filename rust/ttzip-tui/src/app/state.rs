@@ -325,4 +325,14 @@ impl AppState {
     pub fn set_status(&mut self, message: String) {
         self.status_message = Some((message, Instant::now()));
     }
+
+    /// Determines if an active background job or animation requires redraw on tick.
+    pub fn needs_tick_redraw(&self) -> bool {
+        self.current_mode == AppMode::Progress
+            || self.recovery_modal_state.as_ref().map(|s| s.is_running).unwrap_or(false)
+            || self.repair_modal_state.as_ref().map(|s| s.is_running).unwrap_or(false)
+            || self.pareto_modal_state.as_ref().map(|s| s.is_benchmarking).unwrap_or(false)
+            || self.split_modal_state.as_ref().map(|s| s.is_running).unwrap_or(false)
+            || self.status_message.is_some()
+    }
 }

@@ -139,6 +139,8 @@ fn test_pure_rust_zip_scan_entries_ffi() {
 
     let zip_path = temp_dir.join("test_scan.zip");
     let create_opt = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Fastest,
         encryption: TTZipEncryptionMethod::None,

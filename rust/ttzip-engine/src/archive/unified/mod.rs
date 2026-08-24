@@ -26,6 +26,14 @@ pub mod tests_detection;
 #[cfg(test)]
 pub mod tests_lifecycle;
 
+pub use create::create_archive;
+pub use detect::{detect_format, resolve_create_format};
+pub use extract::{extract_archive, extract_archive_with_metrics};
+pub use extract_single::{extract_selected_entries, extract_single_entry_memory};
+pub use inspect::inspect_archive;
+pub use repair::repair_archive;
+pub use verify::{verify_archive_stream, ArchiveIntegrityReport, CorruptedEntryDetail};
+
 use std::path::{Path, PathBuf};
 
 use crate::standards::signatures::{CompoundFormat, DetectedFormat};

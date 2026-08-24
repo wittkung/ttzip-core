@@ -128,6 +128,8 @@ fn bench_zip_parallel_extraction(c: &mut Criterion) {
                 let dest_path = temp_dir.path();
 
                 let options = TTZipExtractOptions {
+                    struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                    abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
                     destination_path: std::ptr::null(),
                     password: std::ptr::null(),
                     thread_budget: th,

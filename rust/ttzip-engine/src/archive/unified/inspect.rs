@@ -73,6 +73,8 @@ pub fn inspect_archive(
                             let crc_val = loc.and_then(|l| l.crc).unwrap_or(0);
 
                             let meta = TTZipEntryMetadata {
+                                struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+                                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                                 path: path_c.as_ptr(),
                                 uncompressed_size: uncomp_sz,
                                 compressed_size: 0,
@@ -167,6 +169,8 @@ unsafe fn inspect_from_handle(
         let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
 
         let meta = TTZipEntryMetadata {
+            struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             path: raw_path,
             uncompressed_size,
             compressed_size: 0,

@@ -17,6 +17,8 @@ use std::panic::catch_unwind;
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct TTZipPathSanitizationResult {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub normalized_path: [c_char; 4096],
     pub win32_formatted_path: [c_char; 4096],
     pub stripped_ads: [c_char; 1024],
@@ -31,6 +33,8 @@ pub struct TTZipPathSanitizationResult {
 impl Default for TTZipPathSanitizationResult {
     fn default() -> Self {
         Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             normalized_path: [0; 4096],
             win32_formatted_path: [0; 4096],
             stripped_ads: [0; 1024],

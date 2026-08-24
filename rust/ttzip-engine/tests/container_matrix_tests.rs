@@ -139,6 +139,8 @@ fn test_container_creation_and_extraction_matrix() {
         let out_dir = dir.path().join(format!("out_{}", filename));
 
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
             format: fmt,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -154,6 +156,8 @@ fn test_container_creation_and_extraction_matrix() {
         assert!(arch_path.exists());
 
         let extract_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 2,
@@ -323,6 +327,8 @@ fn test_multivolume_split_and_merge_matrix() {
 
     let u_dest_zip = dir.path().join("split_archive.zip");
     let create_opt = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Store,
         encryption: TTZipEncryptionMethod::None,
@@ -342,6 +348,8 @@ fn test_multivolume_split_and_merge_matrix() {
 
     let u_out_dir = dir.path().join("u_extracted");
     let extract_opt = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 2,

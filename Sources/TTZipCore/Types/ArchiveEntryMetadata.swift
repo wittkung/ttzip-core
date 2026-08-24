@@ -104,14 +104,12 @@ public struct ArchiveEntryMetadata: Identifiable, Sendable, Equatable, Codable {
 //
 
 
-/// Shared intrinsic string and metadata interning pool for archive entries.
+/// Shared intrinsic string and metadata interning pool for archive entries using Swift 6 Actor concurrency.
 ///
 /// Reduces memory footprint when browsing massive archives by canonicalizing shared path prefixes, extensions,
 /// and MIME types.
-public final class ArchiveEntryMetadataPool: @unchecked Sendable {
+public actor ArchiveEntryMetadataPool {
     public static let shared = ArchiveEntryMetadataPool()
-
-    private var unfairLock = os_unfair_lock_s()
 
     private var pathPool: [String: String] = [:]
     private var extensionPool: [String: String] = [:]
@@ -151,40 +149,17 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
 
     public var maxPathPoolCapacity: Int = 50_000
 
-    private init() {
+    public init() {
         for (ext, mime) in Self.predefinedMimeTypes {
             extensionPool[ext] = ext
             mimeTypePool[mime] = mime
         }
-        setupMemoryPressureObserver()
-    }
-
-    private func setupMemoryPressureObserver() {
-        #if canImport(AppKit)
-        _ = NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("NSApplicationWillTerminateNotification"),
-            object: nil,
-            queue: nil
-        ) { [weak self] _ in
-            self?.clearPool()
-        }
-        #endif
-
-        #if os(macOS) || os(iOS)
-        let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .global(qos: .utility))
-        source.setEventHandler { [weak self] in
-            self?.clearPool()
-        }
-        source.resume()
-        #endif
     }
 
     // MARK: - Interning API
 
     public func internPath(_ path: String) -> String {
         guard !path.isEmpty else { return "" }
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         if let existing = pathPool[path] {
             return existing
         }
@@ -198,8 +173,6 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
     public func internExtension(_ ext: String) -> String {
         let lowerExt = ext.lowercased()
         guard !lowerExt.isEmpty else { return "" }
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         if let existing = extensionPool[lowerExt] {
             return existing
         }
@@ -209,8 +182,6 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
 
     public func internMimeType(_ mime: String) -> String {
         guard !mime.isEmpty else { return "application/octet-stream" }
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         if let existing = mimeTypePool[mime] {
             return existing
         }
@@ -220,8 +191,6 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
 
     public func internDirectoryPrefix(_ prefix: String) -> String {
         guard !prefix.isEmpty else { return "" }
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         if let existing = directoryPrefixPool[prefix] {
             return existing
         }
@@ -250,8 +219,6 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
     }
 
     public func clearPools() {
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         pathPool.removeAll(keepingCapacity: false)
         extensionPool.removeAll(keepingCapacity: false)
         mimeTypePool.removeAll(keepingCapacity: false)
@@ -264,8 +231,6 @@ public final class ArchiveEntryMetadataPool: @unchecked Sendable {
     }
 
     public var poolCounts: (paths: Int, extensions: Int, mimeTypes: Int, prefixes: Int) {
-        os_unfair_lock_lock(&unfairLock)
-        defer { os_unfair_lock_unlock(&unfairLock) }
         return (pathPool.count, extensionPool.count, mimeTypePool.count, directoryPrefixPool.count)
     }
 }
@@ -279,12 +244,29 @@ public struct ArchiveEntryMetadataState: Sendable, Equatable {
     public let directoryPrefix: String
 
     public init(path: String) {
-        let pool = ArchiveEntryMetadataPool.shared
-        self.path = pool.internPath(path)
-        let ext = (path as NSString).pathExtension
-        self.extensionName = pool.internExtension(ext)
-        self.mimeType = pool.detectMimeType(forPath: path)
-        self.directoryPrefix = pool.extractAndInternDirectoryPrefix(fromPath: path)
+        self.path = path
+        let ext = (path as NSString).pathExtension.lowercased()
+        self.extensionName = ext
+        self.mimeType = ArchiveMimeMapper.mimeType(forExtension: ext)
+        let nsPath = path as NSString
+        let dir = nsPath.deletingLastPathComponent
+        if !dir.isEmpty && dir != "." {
+            self.directoryPrefix = dir.hasSuffix("/") ? dir : "\(dir)/"
+        } else {
+            self.directoryPrefix = ""
+        }
+    }
+
+    public init(
+        path: String,
+        extensionName: String,
+        mimeType: String,
+        directoryPrefix: String
+    ) {
+        self.path = path
+        self.extensionName = extensionName
+        self.mimeType = mimeType
+        self.directoryPrefix = directoryPrefix
     }
 }
 

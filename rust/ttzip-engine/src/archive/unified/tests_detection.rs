@@ -76,6 +76,8 @@ mod tests {
 
         let zip_out = dir.path().join("inspect_test.zip");
         let create_opt = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,

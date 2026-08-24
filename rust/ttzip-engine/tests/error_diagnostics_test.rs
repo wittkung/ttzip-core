@@ -6,8 +6,11 @@
 // TTZip: High-performance native archiving and compression engine for macOS.
 
 use std::ffi::CStr;
-use ttzip_engine::ffi::{ttzip_rust_clear_last_error, ttzip_rust_last_error_message};
-use ttzip_engine::types::{set_last_error, TTZipStatus};
+use ttzip_engine::ffi::{
+    ttzip_free_string, ttzip_rust_clear_last_error, ttzip_rust_get_last_error_info,
+    ttzip_rust_get_last_error_message_owned, ttzip_rust_last_error_message,
+};
+use ttzip_engine::types::{set_last_error, TTZipErrorInfo, TTZipStatus, TTZIP_ABI_VERSION_2};
 
 #[test]
 fn test_error_diagnostics_thread_local() {
@@ -29,7 +32,29 @@ fn test_error_diagnostics_thread_local() {
     assert!(msg_str.contains("Corrupt local header"));
     assert!(msg_str.contains("0x1A40"));
 
-    // 3. Clear
+    // 3. Thread-safe out-pointer error info
+    let mut err_info = TTZipErrorInfo {
+        struct_size: std::mem::size_of::<TTZipErrorInfo>() as u32,
+        abi_version: TTZIP_ABI_VERSION_2,
+        status: TTZipStatus::Ok,
+        error_code: 0,
+        message: [0; 512],
+        entry_path: [0; 256],
+        offset: 0,
+    };
+    let has_err = unsafe { ttzip_rust_get_last_error_info(&mut err_info) };
+    assert!(has_err);
+    assert_eq!(err_info.status, TTZipStatus::ErrCorruptHeader);
+    assert_eq!(err_info.offset, 0x1A40);
+
+    // 4. Owned error message
+    let owned_ptr = unsafe { ttzip_rust_get_last_error_message_owned() };
+    assert!(!owned_ptr.is_null());
+    let owned_str = unsafe { CStr::from_ptr(owned_ptr).to_str().unwrap() };
+    assert!(owned_str.contains("Corrupt local header"));
+    unsafe { ttzip_free_string(owned_ptr) };
+
+    // 5. Clear
     ttzip_rust_clear_last_error();
     assert!(ttzip_rust_last_error_message().is_null());
 }

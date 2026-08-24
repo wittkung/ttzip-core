@@ -181,6 +181,11 @@ impl ParetoPlotCoordinateEngine {
     }
 }
 
+use std::time::Instant;
+use ttzip_engine::bench::{
+    BenchmarkCorpusGenerator, BenchmarkCorpusType, MatrixCodecConfig, MatrixCodecDriver,
+};
+
 /// Benchmark item with metadata and Pareto analysis fields.
 #[derive(Debug, Clone)]
 pub struct BenchmarkCodecItem {
@@ -191,47 +196,75 @@ pub struct BenchmarkCodecItem {
     pub raw: ParetoPointRaw,
 }
 
-pub fn get_standard_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
-    let raw_defs = [
-        ("TTZip Snappy", "Fast", 2200.0, 48.5),
-        ("TTZip Zstd", "L1", 1450.0, 57.8),
-        ("TTZip Zstd", "L3", 880.0, 63.2),
-        ("TTZip Deflate", "L1", 520.0, 56.0),
-        ("TTZip Brotli", "L1", 410.0, 61.0),
-        ("TTZip Zstd", "L9", 230.0, 71.5),
-        ("TTZip Deflate", "L6", 180.0, 64.5),
-        ("TTZip LZMA2", "L1", 125.0, 68.0),
-        ("TTZip Brotli", "L6", 95.0, 70.2),
-        ("TTZip Deflate", "L9", 60.0, 66.8),
-        ("TTZip LZMA2", "L6", 42.0, 74.5),
-        ("TTZip Brotli", "L9", 24.0, 73.8),
-        ("TTZip LZMA2", "L9", 14.0, 77.2),
-        ("Competitor Zip", "L6", 85.0, 61.5),
-        ("Competitor 7z", "L6", 22.0, 72.0),
+pub fn get_live_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
+    let corpus = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::Silesia, 256 * 1024);
+    let orig_len = corpus.len();
+
+    let configs = vec![
+        MatrixCodecConfig::new("Snappy", 1, "Snappy"),
+        MatrixCodecConfig::new("LZ4", 1, "LZ4 Fast 1"),
+        MatrixCodecConfig::new("LZFSE", 1, "Apple LZFSE"),
+        MatrixCodecConfig::new("Zstd", 1, "Zstd L1"),
+        MatrixCodecConfig::new("Zstd", 3, "Zstd L3"),
+        MatrixCodecConfig::new("Zstd", 9, "Zstd L9"),
+        MatrixCodecConfig::new("Libdeflate", 1, "Deflate L1"),
+        MatrixCodecConfig::new("Libdeflate", 6, "Deflate L6"),
+        MatrixCodecConfig::new("Libdeflate", 9, "Deflate L9"),
+        MatrixCodecConfig::new("Brotli", 1, "Brotli L1"),
+        MatrixCodecConfig::new("Brotli", 6, "Brotli L6"),
+        MatrixCodecConfig::new("Brotli", 9, "Brotli L9"),
+        MatrixCodecConfig::new("Bzip2", 1, "Bzip2 L1"),
+        MatrixCodecConfig::new("Bzip2", 6, "Bzip2 L6"),
+        MatrixCodecConfig::new("Bzip2", 9, "Bzip2 L9"),
     ];
 
-    let mut raw_points: Vec<ParetoPointRaw> = raw_defs
-        .iter()
-        .enumerate()
-        .map(|(i, &(_, _, tp, ss))| ParetoPointRaw::new(i as u64, tp, ss))
-        .collect();
+    let mut raw_points = Vec::with_capacity(configs.len());
+    let mut items_meta = Vec::with_capacity(configs.len());
+
+    for (idx, cfg) in configs.iter().enumerate() {
+        let _ = MatrixCodecDriver::compress(cfg, &corpus);
+
+        let iterations = 2;
+        let start = Instant::now();
+        let mut comp_len = orig_len;
+        for _ in 0..iterations {
+            if let Ok(comp) = MatrixCodecDriver::compress(cfg, &corpus) {
+                comp_len = comp.len();
+            }
+        }
+        let elapsed = start.elapsed().as_secs_f64().max(0.00001);
+        let total_mb = ((orig_len * iterations) as f64) / (1024.0 * 1024.0);
+        let throughput = total_mb / elapsed;
+        let space_savings = ((1.0 - (comp_len as f64 / orig_len as f64)) * 100.0).clamp(0.0, 99.9);
+
+        let raw_p = ParetoPointRaw::new(idx as u64, throughput, space_savings);
+        raw_points.push(raw_p);
+        items_meta.push((cfg.algorithm.clone(), format!("L{}", cfg.level), throughput, space_savings, idx as u64));
+    }
 
     compute_pareto_frontier_raw(&mut raw_points);
 
-    raw_defs
-        .iter()
-        .enumerate()
-        .map(|(i, &(name, lvl, tp, ss))| {
-            let p_raw = raw_points.iter().find(|p| p.tag == i as u64).copied().unwrap_or(ParetoPointRaw::new(i as u64, tp, ss));
+    items_meta
+        .into_iter()
+        .map(|(algo, lvl, tp, ss, tag)| {
+            let p_raw = raw_points
+                .iter()
+                .find(|p| p.tag == tag)
+                .copied()
+                .unwrap_or(ParetoPointRaw::new(tag, tp, ss));
             BenchmarkCodecItem {
-                name: name.to_string(),
-                level: lvl.to_string(),
+                name: algo,
+                level: lvl,
                 throughput_mbs: tp,
                 space_savings_pct: ss,
                 raw: p_raw,
             }
         })
         .collect()
+}
+
+pub fn get_standard_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
+    get_live_benchmark_dataset()
 }
 
 pub fn render_pareto_chart(items: &[BenchmarkCodecItem], width_chars: usize, height_chars: usize) -> Vec<String> {

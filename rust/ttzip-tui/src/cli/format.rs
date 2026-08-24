@@ -10,7 +10,11 @@
 
 use std::fs;
 use std::io::Read;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use ttzip_engine::archive::ArchiveSource;
+use ttzip_engine::archive::source::mmap::MmapSource;
+use ttzip_engine::archive::source::StorageMedium;
 use ttzip_engine::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};
 use ttzip_engine::archive::tar::TarArchive;
 use ttzip_engine::codecs::brotli::brotli_decompress_to_vec;
@@ -18,6 +22,30 @@ use ttzip_engine::codecs::snappy::snappy_frame_decode_to_vec;
 use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::zip::ZipArchive;
+
+/// Memory-mapped or allocated buffer backing archive data with zero-copy slice access.
+pub enum ArchiveBuffer {
+    Mmap(MmapSource),
+    Heap(Vec<u8>),
+}
+
+impl Deref for ArchiveBuffer {
+    type Target = [u8];
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        match self {
+            ArchiveBuffer::Mmap(m) => m.as_slice().unwrap_or(&[]),
+            ArchiveBuffer::Heap(v) => v.as_slice(),
+        }
+    }
+}
+
+impl AsRef<[u8]> for ArchiveBuffer {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.deref()
+    }
+}
 
 /// Unified entry metadata extracted from any supported archive format.
 #[derive(Debug, Clone)]
@@ -62,8 +90,8 @@ pub fn detect_volume_chain(path: &Path) -> std::io::Result<Vec<PathBuf>> {
     glue_detect_volume_chain(path)
 }
 
-/// Reads archive data, transparently concatenating multi-volume streams if part of a chain.
-pub fn read_archive_data_auto(path: &Path) -> Result<(Vec<PathBuf>, Vec<u8>), String> {
+/// Reads archive data with zero-copy memory mapping, transparently concatenating multi-volume streams if part of a chain.
+pub fn read_archive_data_auto(path: &Path) -> Result<(Vec<PathBuf>, ArchiveBuffer), String> {
     let chain = detect_volume_chain(path).unwrap_or_else(|_| vec![path.to_path_buf()]);
     if chain.len() > 1 {
         let mut reader = VirtualMultiVolumeReader::from_volumes(chain.clone())
@@ -72,10 +100,15 @@ pub fn read_archive_data_auto(path: &Path) -> Result<(Vec<PathBuf>, Vec<u8>), St
         reader
             .read_to_end(&mut data)
             .map_err(|e| format!("Failed to read multi-volume stream: {}", e))?;
-        Ok((chain, data))
+        Ok((chain, ArchiveBuffer::Heap(data)))
     } else {
-        let data = fs::read(path).map_err(|e| format!("Failed to read archive {}: {}", path.display(), e))?;
-        Ok((chain, data))
+        match MmapSource::open(path, StorageMedium::LocalFastApfs) {
+            Ok(mmap) => Ok((chain, ArchiveBuffer::Mmap(mmap))),
+            Err(_) => {
+                let data = fs::read(path).map_err(|e| format!("Failed to read archive {}: {}", path.display(), e))?;
+                Ok((chain, ArchiveBuffer::Heap(data)))
+            }
+        }
     }
 }
 

@@ -30,7 +30,7 @@ pub fn execute_convert(
         .map_err(|e| format!("Failed to create staging directory for conversion: {}", e))?;
 
     println!("-> Extracting source archive {}...", source_archive.display());
-    let extract_res = execute_extract(source_archive, Some(&staging_path), None, 4, false);
+    let extract_res = execute_extract(source_archive, Some(&staging_path), None, 4, false, false, &[], &[]);
     if let Err(e) = extract_res {
         let _ = std::fs::remove_dir_all(&staging_path);
         return Err(e);

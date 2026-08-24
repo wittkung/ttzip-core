@@ -166,9 +166,8 @@ public final class ArchiveLeafFile: ArchiveComponentProtocol, Identifiable, Equa
         compressedSizeBytes: Int64? = nil,
         crc32: UInt32? = nil
     ) {
-        let factory = ArchiveEntryFlyweightFactory.shared
-        self.name = factory.internPath(name)
-        self.path = factory.internPath(path)
+        self.name = name
+        self.path = path
         self.sizeBytes = sizeBytes
         self.entry = entry
         self.modificationDate = modificationDate
@@ -187,17 +186,16 @@ public final class ArchiveLeafFile: ArchiveComponentProtocol, Identifiable, Equa
 
 // MARK: - Composite Container Node: Directory
 
-/// Represents a directory container holding child files and subdirectories.
-public final class ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifiable, Equatable, @unchecked Sendable {
+/// Represents an immutable directory container holding child files and subdirectories.
+public struct ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifiable, Equatable, Sendable {
     public var id: String { path }
     public let name: String
     public let path: String
-    public let isDirectory: Bool = true
+    public var isDirectory: Bool { true }
     public let entry: ArchiveEntry?
     public let modificationDate: Date?
     
     private var childrenMap: [String: ArchiveComponentProtocol] = [:]
-    private let lock = NSLock()
     
     public init(
         name: String,
@@ -206,9 +204,8 @@ public final class ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifi
         modificationDate: Date? = nil,
         children: [ArchiveComponentProtocol] = []
     ) {
-        let factory = ArchiveEntryFlyweightFactory.shared
-        self.name = factory.internPath(name)
-        self.path = factory.internPath(path)
+        self.name = name
+        self.path = path
         self.entry = entry
         self.modificationDate = modificationDate
         for child in children {
@@ -218,8 +215,6 @@ public final class ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifi
     
     /// Aggregate byte size computed recursively across all children.
     public var sizeBytes: Int64 {
-        lock.lock()
-        defer { lock.unlock() }
         return childrenMap.values.reduce(0) { $0 + $1.sizeBytes }
     }
 
@@ -258,18 +253,12 @@ public final class ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifi
     
     /// Obtains unsorted child items in O(1) time (bypasses locale sorting for sampling).
     public func getChildrenUnsorted() -> [ArchiveComponentProtocol] {
-        lock.lock()
-        defer { lock.unlock() }
         return Array(childrenMap.values)
     }
     
     /// Obtains child items sorted with directories first and alphabetical name order.
     public func getChildren() -> [ArchiveComponentProtocol] {
-        lock.lock()
-        let items = Array(childrenMap.values)
-        lock.unlock()
-        
-        return items.sorted { a, b in
+        return childrenMap.values.sorted { a, b in
             if a.isDirectory != b.isDirectory {
                 return a.isDirectory && !b.isDirectory
             }
@@ -277,54 +266,91 @@ public final class ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifi
         }
     }
     
-    /// Internal direct child insertion without locking (used during single-threaded initialization).
-    internal func addDirect(component: ArchiveComponentProtocol) {
+    /// Internal direct child insertion.
+    public mutating func addDirect(component: ArchiveComponentProtocol) {
         childrenMap[component.name] = component
     }
 
-    /// Internal direct child lookup without locking (used during single-threaded initialization).
-    internal func findChildDirect(named name: String) -> ArchiveComponentProtocol? {
+    /// Internal direct child lookup.
+    public func findChildDirect(named name: String) -> ArchiveComponentProtocol? {
         return childrenMap[name]
     }
 
-    /// Thread-safely adds a child component.
-    public func add(component: ArchiveComponentProtocol) {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Adds a child component.
+    public mutating func add(component: ArchiveComponentProtocol) {
         childrenMap[component.name] = component
     }
     
-    /// Thread-safely removes a child component by name.
-    public func remove(componentNamed name: String) {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Removes a child component by name.
+    public mutating func remove(componentNamed name: String) {
         childrenMap.removeValue(forKey: name)
     }
     
-    /// Thread-safely clears all child components.
-    public func removeAll() {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Clears all child components.
+    public mutating func removeAll() {
         childrenMap.removeAll()
     }
     
-    /// Thread-safely finds a direct child component by name.
+    /// Finds a direct child component by name.
     public func findChild(named name: String) -> ArchiveComponentProtocol? {
-        lock.lock()
-        defer { lock.unlock() }
         return childrenMap[name]
     }
     
     public static func == (lhs: ArchiveCompositeDirectory, rhs: ArchiveCompositeDirectory) -> Bool {
-        return lhs.path == rhs.path && lhs.getChildren().count == rhs.getChildren().count
+        return lhs.path == rhs.path && lhs.childrenMap.count == rhs.childrenMap.count
     }
 }
+
+/// Backward-compatible and semantic alias for immutable directory tree nodes.
+public typealias ArchiveDirectoryNode = ArchiveCompositeDirectory
 
 // MARK: - ArchiveComponentTreeBuilder
 
 public enum ArchiveComponentTreeBuilder {
+    private final class MutableDirNode {
+        let name: String
+        let path: String
+        var entry: ArchiveEntry?
+        var modificationDate: Date?
+        var children: [String: ArchiveComponentProtocol] = [:]
+        
+        init(name: String, path: String, entry: ArchiveEntry? = nil, modificationDate: Date? = nil) {
+            self.name = name
+            self.path = path
+            self.entry = entry
+            self.modificationDate = modificationDate
+        }
+        
+        func toImmutableDirectory() -> ArchiveCompositeDirectory {
+            var dir = ArchiveCompositeDirectory(
+                name: name,
+                path: path,
+                entry: entry,
+                modificationDate: modificationDate
+            )
+            for (_, child) in children {
+                if let mutableChild = child as? MutableDirWrapper {
+                    dir.addDirect(component: mutableChild.node.toImmutableDirectory())
+                } else {
+                    dir.addDirect(component: child)
+                }
+            }
+            return dir
+        }
+    }
+    
+    private final class MutableDirWrapper: ArchiveComponentProtocol, @unchecked Sendable {
+        let node: MutableDirNode
+        var name: String { node.name }
+        var path: String { node.path }
+        var isDirectory: Bool { true }
+        var sizeBytes: Int64 { 0 }
+        func getChildren() -> [ArchiveComponentProtocol] { Array(node.children.values) }
+        init(node: MutableDirNode) { self.node = node }
+    }
+
     public static func buildTree(from entries: [ArchiveEntry]) -> ArchiveCompositeDirectory {
-        let root = ArchiveCompositeDirectory(name: "root", path: "")
+        let root = MutableDirNode(name: "root", path: "")
         for entry in entries {
             let parts = entry.path.split(separator: "/").map(String.init)
             guard !parts.isEmpty else { continue }
@@ -333,19 +359,20 @@ public enum ArchiveComponentTreeBuilder {
             for i in 0..<(parts.count - 1) {
                 let dirName = parts[i]
                 let dirPath = parts[0...i].joined(separator: "/")
-                if let existingDir = current.findChildDirect(named: dirName) as? ArchiveCompositeDirectory {
-                    current = existingDir
+                if let existing = current.children[dirName] as? MutableDirWrapper {
+                    current = existing.node
                 } else {
-                    let newDir = ArchiveCompositeDirectory(name: dirName, path: dirPath)
-                    current.addDirect(component: newDir)
+                    let newDir = MutableDirNode(name: dirName, path: dirPath)
+                    current.children[dirName] = MutableDirWrapper(node: newDir)
                     current = newDir
                 }
             }
             
             let leafName = parts.last!
             if entry.isDirectory {
-                if current.findChildDirect(named: leafName) == nil {
-                    current.addDirect(component: ArchiveCompositeDirectory(name: leafName, path: entry.path))
+                if current.children[leafName] == nil {
+                    let newDir = MutableDirNode(name: leafName, path: entry.path, entry: entry, modificationDate: entry.modificationDate)
+                    current.children[leafName] = MutableDirWrapper(node: newDir)
                 }
             } else {
                 let leaf = ArchiveLeafFile(
@@ -357,20 +384,20 @@ public enum ArchiveComponentTreeBuilder {
                     compressedSizeBytes: nil,
                     crc32: nil
                 )
-                current.addDirect(component: leaf)
+                current.children[leafName] = leaf
             }
         }
-        return root
+        return root.toImmutableDirectory()
     }
 
     public static func buildTree(fromDiskPath diskPath: String) -> ArchiveCompositeDirectory {
         let url = URL(fileURLWithPath: diskPath)
         let name = url.lastPathComponent
-        let root = ArchiveCompositeDirectory(name: name, path: diskPath)
+        let root = MutableDirNode(name: name, path: diskPath)
         
         let fm = FileManager.default
         guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .isDirectoryKey]) else {
-            return root
+            return root.toImmutableDirectory()
         }
         
         for case let fileURL as URL in enumerator {
@@ -386,26 +413,27 @@ public enum ArchiveComponentTreeBuilder {
             for i in 0..<(parts.count - 1) {
                 let dirName = parts[i]
                 let dirPath = diskPath + "/" + parts[0...i].joined(separator: "/")
-                if let existingDir = current.findChildDirect(named: dirName) as? ArchiveCompositeDirectory {
-                    current = existingDir
+                if let existing = current.children[dirName] as? MutableDirWrapper {
+                    current = existing.node
                 } else {
-                    let newDir = ArchiveCompositeDirectory(name: dirName, path: dirPath)
-                    current.addDirect(component: newDir)
+                    let newDir = MutableDirNode(name: dirName, path: dirPath)
+                    current.children[dirName] = MutableDirWrapper(node: newDir)
                     current = newDir
                 }
             }
             
             let leafName = parts.last!
             if isDir {
-                if current.findChildDirect(named: leafName) == nil {
-                    current.addDirect(component: ArchiveCompositeDirectory(name: leafName, path: fileURL.path))
+                if current.children[leafName] == nil {
+                    let newDir = MutableDirNode(name: leafName, path: fileURL.path)
+                    current.children[leafName] = MutableDirWrapper(node: newDir)
                 }
             } else {
                 let leaf = ArchiveLeafFile(name: leafName, path: fileURL.path, sizeBytes: size)
-                current.addDirect(component: leaf)
+                current.children[leafName] = leaf
             }
         }
-        return root
+        return root.toImmutableDirectory()
     }
 }
 

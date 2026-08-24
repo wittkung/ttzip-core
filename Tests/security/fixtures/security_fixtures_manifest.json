@@ -1,0 +1,126 @@
+{
+  "scenarios": [
+    {
+      "name": "zip_slip_relative_traversal",
+      "targetSdk": "all",
+      "attackPayload": "zip_slip_relative.zip",
+      "expectedOutcome": "BLOCKED_PATH_TRAVERSAL_OR_SANITIZED",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "zip_slip_absolute_path_traversal",
+      "targetSdk": "all",
+      "attackPayload": "zip_slip_absolute.zip",
+      "expectedOutcome": "BLOCKED_ABSOLUTE_PATH_EXTRACTION",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "zip_slip_windows_backslash_traversal",
+      "targetSdk": "all",
+      "attackPayload": "zip_slip_windows.zip",
+      "expectedOutcome": "BLOCKED_WINDOWS_TRAVERSAL_SEPARATORS",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "tar_slip_directory_traversal",
+      "targetSdk": "all",
+      "attackPayload": "zip_slip_tar.tar",
+      "expectedOutcome": "BLOCKED_TAR_PATH_TRAVERSAL",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "zip_bomb_flat_expansion_ratio_overflow",
+      "targetSdk": "all",
+      "attackPayload": "zip_bomb_flat_100mb.zip",
+      "expectedOutcome": "REJECTED_MAX_EXPANSION_RATIO_EXCEEDED",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed",
+      "ratio": 1027.42
+    },
+    {
+      "name": "zip_bomb_overlapping_central_directory",
+      "targetSdk": "all",
+      "attackPayload": "zip_bomb_overlap_multi_entry.zip",
+      "expectedOutcome": "REJECTED_MEMORY_QUOTA_EXCEEDED",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed",
+      "ratio": 96470.46
+    },
+    {
+      "name": "corrupt_truncated_central_directory",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "expectedOutcome": "SAFE_DECOMPRESSION_ERROR_NO_CRASH",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "corrupt_crc32_checksum_mismatch",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "expectedOutcome": "ERROR_CRC_CHECKSUM_FAILED",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "corrupt_invalid_magic_signature",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "expectedOutcome": "ERROR_UNSUPPORTED_OR_CORRUPT_ARCHIVE_FORMAT",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "corrupt_truncated_tar_header",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "expectedOutcome": "ERROR_UNEXPECTED_EOF_SAFE_RETURN",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "corrupt_truncated_gzip_stream",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "expectedOutcome": "ERROR_CORRUPT_GZIP_TRAILER_SAFE_RETURN",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    },
+    {
+      "name": "corrupt_truncated_zstandard_frame",
+      "targetSdk": "all",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "expectedOutcome": "ERROR_CORRUPT_ZSTD_FRAME_SAFE_RETURN",
+      "actualOutcome": "FIXTURE_GENERATED",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 0.0,
+      "status": "passed"
+    }
+  ]
+}

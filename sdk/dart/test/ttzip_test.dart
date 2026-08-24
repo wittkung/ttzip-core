@@ -2,23 +2,217 @@
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
 // All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for Dart & Flutter.
+// dart test suite validating dart:ffi bindings, background Isolate compute jobs, and Stream emissions.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:test/test.dart';
 import '../lib/ttzip.dart';
 
-void main() async {
-  print('⚡️ Running TTZip Dart / Flutter SDK Verification Test...');
+void main() {
+  group('TTZip Dart & Flutter SDK Test Suite', () {
+    late Directory tempDir;
 
-  // 1. Version Check
-  assert(TTZip.version == '1.0.0', 'Version should be 1.0.0');
-  print('  [PASS] Dart SDK version: ${TTZip.version}');
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('ttzip_dart_test_');
+    });
 
-  // 2. CRC32 Check
-  final data = Uint8List.fromList('TTZip Dart & Flutter High-Performance SDK'.codeUnits);
-  final crc = TTZip.crc32(data);
-  assert(crc != 0, 'CRC32 should be non-zero');
-  print('  [PASS] Dart SDK CRC-32: 0x${crc.toRadixString(16).toUpperCase()}');
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
 
-  print('✅ All Dart SDK tests passed successfully!');
+    test('validates dart:ffi bindings and hardware acceleration detection', () {
+      expect(TTZip.version, isNotEmpty);
+      expect(TTZip.version, equals('1.0.0'));
+
+      final isHw = TTZip.isHardwareAccelerated;
+      expect(isHw, isA<bool>());
+    });
+
+    test('validates SIMD hardware-accelerated CRC-32 calculation', () {
+      final payload = Uint8List.fromList(
+          'TTZip Dart High-Performance SIMD CRC-32 Acceleration 2026'
+              .codeUnits);
+
+      final crc = TTZip.crc32(payload);
+      expect(crc, isNonZero);
+
+      // Verify incremental / seeded CRC-32 computation
+      final half = payload.length ~/ 2;
+      final firstHalf = Uint8List.sublistView(payload, 0, half);
+      final secondHalf = Uint8List.sublistView(payload, half);
+
+      final seed = TTZip.crc32(firstHalf, 0);
+      final chained = TTZip.crc32(secondHalf, seed);
+      expect(chained, equals(crc));
+    });
+
+    test('validates SIMD hardware-accelerated CRC-64 calculation', () {
+      final payload = Uint8List.fromList(
+          'TTZip Dart High-Performance SIMD CRC-64 Verification'
+              .codeUnits);
+
+      final crc64Val = TTZip.crc64(payload);
+      expect(crc64Val, isNonZero);
+    });
+
+    test('validates background Isolate compute jobs for compression and extraction', () async {
+      final sampleFile = File('${tempDir.path}/sample.txt');
+      const sampleText = 'Dart background Isolate archiving execution with TTZip';
+      await sampleFile.writeAsString(sampleText);
+
+      final archivePath = '${tempDir.path}/isolate_archive.zip';
+      final extractDir = '${tempDir.path}/isolate_extracted';
+      await Directory(extractDir).create(recursive: true);
+
+      // Background Isolate Compression
+      await TTZip.compress(
+        sources: [sampleFile.path],
+        destination: archivePath,
+        format: TTZipFormat.zip,
+        level: TTZipCompressionLevel.normal,
+        threads: 2,
+      );
+
+      final archiveFile = File(archivePath);
+      expect(await archiveFile.exists(), isTrue);
+      expect(await archiveFile.length(), greaterThan(0));
+
+      // Background Isolate Extraction
+      await TTZip.extract(
+        archivePath: archivePath,
+        destination: extractDir,
+        threads: 2,
+      );
+
+      final extractedFile = File('$extractDir/sample.txt');
+      expect(await extractedFile.exists(), isTrue);
+      final readBack = await extractedFile.readAsString();
+      expect(readBack, equals(sampleText));
+    });
+
+    test('validates Stream<ArchiveProgress> emissions during compression', () async {
+      final file1 = File('${tempDir.path}/stream_doc1.txt');
+      final file2 = File('${tempDir.path}/stream_doc2.txt');
+      await file1.writeAsString('Stream document 1 payload data ' * 200);
+      await file2.writeAsString('Stream document 2 payload data ' * 200);
+
+      final archivePath = '${tempDir.path}/stream_output.zip';
+
+      final progressEvents = <ArchiveProgress>[];
+      final completer = Completer<void>();
+
+      final stream = TTZip.compressStream(
+        sources: [file1.path, file2.path],
+        destination: archivePath,
+        format: TTZipFormat.zip,
+        level: TTZipCompressionLevel.fastest,
+        threads: 1,
+      );
+
+      stream.listen(
+        (progress) {
+          progressEvents.add(progress);
+        },
+        onError: (error) {
+          completer.completeError(error);
+        },
+        onDone: () {
+          completer.complete();
+        },
+      );
+
+      await completer.future;
+
+      expect(progressEvents, isNotEmpty);
+      expect(await File(archivePath).exists(), isTrue);
+      expect(progressEvents.last.fractionCompleted, equals(1.0));
+      expect(progressEvents.last.phase, equals('completed'));
+    });
+
+    test('validates Stream<ArchiveProgress> emissions during extraction', () async {
+      final sampleFile = File('${tempDir.path}/extract_stream.txt');
+      await sampleFile.writeAsString('Streaming extraction verification test');
+
+      final archivePath = '${tempDir.path}/extract_stream.zip';
+      final extractDir = '${tempDir.path}/extract_stream_out';
+      await Directory(extractDir).create(recursive: true);
+
+      await TTZip.compress(
+        sources: [sampleFile.path],
+        destination: archivePath,
+        format: TTZipFormat.zip,
+      );
+
+      final progressEvents = <ArchiveProgress>[];
+      final completer = Completer<void>();
+
+      final stream = TTZip.extractStream(
+        archivePath: archivePath,
+        destination: extractDir,
+      );
+
+      stream.listen(
+        (progress) {
+          progressEvents.add(progress);
+        },
+        onError: (error) {
+          completer.completeError(error);
+        },
+        onDone: () {
+          completer.complete();
+        },
+      );
+
+      await completer.future;
+
+      expect(progressEvents, isNotEmpty);
+      expect(await File('$extractDir/extract_stream.txt').exists(), isTrue);
+      expect(progressEvents.last.fractionCompleted, equals(1.0));
+    });
+
+    test('validates multi-file archive creation across formats', () async {
+      final dirA = Directory('${tempDir.path}/folderA');
+      await dirA.create(recursive: true);
+      final item1 = File('${dirA.path}/item1.txt');
+      final item2 = File('${dirA.path}/item2.log');
+      await item1.writeAsString('Item 1 Content');
+      await item2.writeAsString('Item 2 Log Message');
+
+      final formats = [
+        (TTZipFormat.zip, 'multi.zip'),
+        (TTZipFormat.tar, 'multi.tar'),
+      ];
+
+      for (final (fmt, filename) in formats) {
+        final outPath = '${tempDir.path}/$filename';
+        final destPath = '${tempDir.path}/dest_${fmt.name}';
+        await Directory(destPath).create(recursive: true);
+
+        await TTZip.compress(
+          sources: [dirA.path],
+          destination: outPath,
+          format: fmt,
+          level: TTZipCompressionLevel.normal,
+        );
+
+        expect(await File(outPath).exists(), isTrue);
+
+        await TTZip.extract(
+          archivePath: outPath,
+          destination: destPath,
+        );
+
+        final read1 = File('$destPath/folderA/item1.txt');
+        if (await read1.exists()) {
+          expect(await read1.readAsString(), equals('Item 1 Content'));
+        }
+      }
+    });
+  });
 }

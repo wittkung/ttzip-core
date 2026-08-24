@@ -108,8 +108,8 @@ public protocol TTZipEngineFacading: Sendable {
     
     // MARK: - Command Pattern: Execution and Undo/Redo Control
     var historyManager: CommandHistoryManager { get }
-    var canUndoCommand: Bool { get }
-    var canRedoCommand: Bool { get }
+    var canUndoCommand: Bool { get async }
+    var canRedoCommand: Bool { get async }
     func executeCommand(_ command: ArchiveCommandProtocol) async throws -> CommandResult
     func undoCommand() async throws -> CommandResult?
     func redoCommand() async throws -> CommandResult?
@@ -148,41 +148,25 @@ extension TTZipEngineFacading {
         archivePath: String,
         destinationDir: String,
         password: String? = nil,
-        autoVaultUnlock: Bool = true,
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) async throws -> ExtractResult {
         return try await quickExtract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             password: password,
-            autoVaultUnlock: autoVaultUnlock,
+            autoVaultUnlock: true,
             progress: progress
-        )
-    }
-    
-    public func extractSingleEntry(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String? = nil
-    ) async throws {
-        try await extractSingleEntry(
-            archivePath: archivePath,
-            entryPath: entryPath,
-            destinationDir: destinationDir,
-            password: password
         )
     }
     
     public func inspectArchive(
         archivePath: String,
-        password: String? = nil,
-        autoVaultUnlock: Bool = true
+        password: String? = nil
     ) async throws -> ArchiveInspectionResult {
         return try await inspectArchive(
             archivePath: archivePath,
             password: password,
-            autoVaultUnlock: autoVaultUnlock
+            autoVaultUnlock: true
         )
     }
     
@@ -206,11 +190,15 @@ extension TTZipEngineFacading {
     }
     
     public var canUndoCommand: Bool {
-        return historyManager.canUndo
+        get async {
+            await historyManager.canUndo
+        }
     }
     
     public var canRedoCommand: Bool {
-        return historyManager.canRedo
+        get async {
+            await historyManager.canRedo
+        }
     }
     
     public func executeCommand(_ command: ArchiveCommandProtocol) async throws -> CommandResult {
@@ -607,7 +595,7 @@ extension TTZipEngineFacade {
         }
         
         let res = try await builder.executeExtract()
-        return res.throughputMBs
+        return res.durationSeconds
     }
 }
 

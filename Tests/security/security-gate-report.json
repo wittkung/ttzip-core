@@ -1,0 +1,459 @@
+{
+  "scenarios": [
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_central_dir.zip)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 0)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 21.08
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_central_dir.zip)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 0)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.69
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_central_dir.zip)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 0)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.72
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_central_dir.zip)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 0)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.62
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_central_dir.zip)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 0)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_central_dir.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.38
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_gzip.gz)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.94
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_gzip.gz)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.42
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_gzip.gz)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.52
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_gzip.gz)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.42
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_gzip.gz)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_gzip.gz",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.52
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_tar.tar)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.92
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_tar.tar)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.36
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_tar.tar)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.45
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_tar.tar)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.41
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_tar.tar)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_tar.tar",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.47
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_zstd.zst)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.89
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_zstd.zst)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.38
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_zstd.zst)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.47
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_zstd.zst)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.39
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_truncated_zstd.zst)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_truncated_zstd.zst",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.5
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_crc_mismatch.zip)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 21.2
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_crc_mismatch.zip)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.61
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_crc_mismatch.zip)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.72
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_crc_mismatch.zip)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.66
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_crc_mismatch.zip)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_crc_mismatch.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.44
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_invalid_magic.zip)",
+      "targetSdk": "python",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.97
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_invalid_magic.zip)",
+      "targetSdk": "c",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.36
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_invalid_magic.zip)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.45
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_invalid_magic.zip)",
+      "targetSdk": "go",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.38
+    },
+    {
+      "name": "Corrupted Stream Resilience (corrupt_invalid_magic.zip)",
+      "targetSdk": "java",
+      "expectedOutcome": "Graceful error code returned (No SIGSEGV/SIGABRT)",
+      "actualOutcome": "Handled gracefully (exit code 1)",
+      "status": "passed",
+      "attackPayload": "corrupt_invalid_magic.zip",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.52
+    },
+    {
+      "name": "Zip Bomb High Expansion Ratio Defense",
+      "targetSdk": "python",
+      "expectedOutcome": "Decompression handled safely with bounded RSS (<64MB) / ratio guard",
+      "actualOutcome": "Bounded RSS 21.33MB (exit code 1)",
+      "status": "passed",
+      "attackPayload": "malicious_zip_bomb.zip",
+      "ratio": 1027.38,
+      "outOfBoundsWritten": false,
+      "peakRssMb": 21.33
+    },
+    {
+      "name": "Zip Bomb High Expansion Ratio Defense",
+      "targetSdk": "c",
+      "expectedOutcome": "Decompression handled safely with bounded RSS (<64MB) / ratio guard",
+      "actualOutcome": "Bounded RSS 7.09MB (exit code 1)",
+      "status": "passed",
+      "attackPayload": "malicious_zip_bomb.zip",
+      "ratio": 1027.38,
+      "outOfBoundsWritten": false,
+      "peakRssMb": 7.09
+    },
+    {
+      "name": "Zip Bomb High Expansion Ratio Defense",
+      "targetSdk": "cpp",
+      "expectedOutcome": "Decompression handled safely with bounded RSS (<64MB) / ratio guard",
+      "actualOutcome": "Bounded RSS 7.17MB (exit code 1)",
+      "status": "passed",
+      "attackPayload": "malicious_zip_bomb.zip",
+      "ratio": 1027.38,
+      "outOfBoundsWritten": false,
+      "peakRssMb": 7.17
+    },
+    {
+      "name": "Zip Bomb High Expansion Ratio Defense",
+      "targetSdk": "go",
+      "expectedOutcome": "Decompression handled safely with bounded RSS (<64MB) / ratio guard",
+      "actualOutcome": "Bounded RSS 10.05MB (exit code 1)",
+      "status": "passed",
+      "attackPayload": "malicious_zip_bomb.zip",
+      "ratio": 1027.38,
+      "outOfBoundsWritten": false,
+      "peakRssMb": 10.05
+    },
+    {
+      "name": "Zip Bomb High Expansion Ratio Defense",
+      "targetSdk": "java",
+      "expectedOutcome": "Decompression handled safely with bounded RSS (<64MB) / ratio guard",
+      "actualOutcome": "Bounded RSS 66.88MB (exit code 1)",
+      "status": "passed",
+      "attackPayload": "malicious_zip_bomb.zip",
+      "ratio": 1027.38,
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.88
+    },
+    {
+      "name": "Zip Slip Path Traversal (TAR)",
+      "targetSdk": "python",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Blocked (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_tar_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.92
+    },
+    {
+      "name": "Zip Slip Path Traversal (TAR)",
+      "targetSdk": "c",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Blocked (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_tar_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.33
+    },
+    {
+      "name": "Zip Slip Path Traversal (TAR)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Blocked (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_tar_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.42
+    },
+    {
+      "name": "Zip Slip Path Traversal (TAR)",
+      "targetSdk": "go",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Blocked (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_tar_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.41
+    },
+    {
+      "name": "Zip Slip Path Traversal (TAR)",
+      "targetSdk": "java",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Blocked (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_tar_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.33
+    },
+    {
+      "name": "Zip Slip Path Traversal (ZIP)",
+      "targetSdk": "python",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Rejected (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 20.91
+    },
+    {
+      "name": "Zip Slip Path Traversal (ZIP)",
+      "targetSdk": "c",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Rejected (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.53
+    },
+    {
+      "name": "Zip Slip Path Traversal (ZIP)",
+      "targetSdk": "cpp",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Rejected (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 6.62
+    },
+    {
+      "name": "Zip Slip Path Traversal (ZIP)",
+      "targetSdk": "go",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Rejected (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 9.55
+    },
+    {
+      "name": "Zip Slip Path Traversal (ZIP)",
+      "targetSdk": "java",
+      "expectedOutcome": "ErrSecurityViolation / 0 files written outside dest root",
+      "actualOutcome": "Rejected (exit code 1, 0 files out of bounds)",
+      "status": "passed",
+      "attackPayload": "../../evil_slip.txt",
+      "outOfBoundsWritten": false,
+      "peakRssMb": 66.08
+    }
+  ]
+}

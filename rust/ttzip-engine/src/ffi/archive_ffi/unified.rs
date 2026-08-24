@@ -139,6 +139,8 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
         let dest_p = Path::new(dest_str);
 
         let default_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: dest_c,
             password: std::ptr::null(),
             thread_budget: 0,
@@ -348,6 +350,8 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
         }
 
         let default_opt = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             destination_path: destination_dir,
             password: std::ptr::null(),
             thread_budget: 0,
@@ -435,6 +439,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_verify_stream(
 
 /// C-ABI unified string deallocator for strings allocated by Rust FFI.
 #[no_mangle]
+#[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         drop(std::ffi::CString::from_raw(ptr));
@@ -443,6 +448,8 @@ pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
 
 /// Returns thread-local diagnostic error message or NULL if previous operation succeeded.
 #[no_mangle]
+#[allow(deprecated)]
+#[deprecated(since = "2.0.0", note = "Raw TLS pointers are unsafe across threads. Use ttzip_rust_get_last_error_info or ttzip_rust_get_last_error_message_owned")]
 pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
     crate::types::get_last_error_message()
 }
@@ -452,3 +459,5 @@ pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
 pub extern "C" fn ttzip_rust_clear_last_error() {
     crate::types::clear_last_error();
 }
+
+pub use crate::types::{ttzip_rust_get_last_error_info, ttzip_rust_get_last_error_message_owned};

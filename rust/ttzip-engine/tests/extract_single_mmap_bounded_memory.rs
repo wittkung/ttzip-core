@@ -22,6 +22,8 @@ fn test_extract_single_entry_mmap_bounded() {
     fs::write(&f2, b"Payload Content 2 - Target Entry").unwrap();
 
     let options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,

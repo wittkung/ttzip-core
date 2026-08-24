@@ -35,12 +35,35 @@ pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
         .style(Theme::style_table_header());
 
     let visible_items = state.vfs.flatten_visible();
+    let total_count = visible_items.len();
+    let viewport_height = (area.height.saturating_sub(4) as usize).max(1);
 
-    let rows: Vec<Row> = visible_items
+    // Viewport windowing: slice around selected_index to avoid rendering thousands of off-screen rows
+    let (start_idx, end_idx, selected_in_window) = if total_count <= viewport_height {
+        (0, total_count, state.selected_index)
+    } else {
+        let half = viewport_height / 2;
+        let start = if state.selected_index > half {
+            (state.selected_index - half).min(total_count.saturating_sub(viewport_height))
+        } else {
+            0
+        };
+        let end = (start + viewport_height).min(total_count);
+        let sel = state.selected_index.saturating_sub(start);
+        (start, end, sel)
+    };
+
+    let window_slice = if start_idx < end_idx && end_idx <= total_count {
+        &visible_items[start_idx..end_idx]
+    } else {
+        &visible_items[..]
+    };
+
+    let rows: Vec<Row> = window_slice
         .iter()
         .enumerate()
-        .map(|(idx, item)| {
-            let is_selected_cursor = idx == state.selected_index;
+        .map(|(local_idx, item)| {
+            let is_selected_cursor = local_idx == selected_in_window;
             let node = item.node;
 
             // Selection mark column
@@ -137,7 +160,7 @@ pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
 
     let mut table_state = TableState::default();
     if !visible_items.is_empty() {
-        table_state.select(Some(state.selected_index));
+        table_state.select(Some(selected_in_window));
     }
 
     frame.render_stateful_widget(table, area, &mut table_state);

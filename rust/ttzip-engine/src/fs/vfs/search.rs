@@ -208,6 +208,8 @@ pub fn fuzzy_match_zero_alloc(target: &str, pattern: &str) -> Option<i64> {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TTZipVfsMatchDto {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub name: *const std::os::raw::c_char,
     pub name_len: usize,
     pub path: *const std::os::raw::c_char,
@@ -218,6 +220,25 @@ pub struct TTZipVfsMatchDto {
     pub score: i64,
     pub is_directory: bool,
     pub is_encrypted: bool,
+}
+
+impl Default for TTZipVfsMatchDto {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            name: std::ptr::null(),
+            name_len: 0,
+            path: std::ptr::null(),
+            path_len: 0,
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            score: 0,
+            is_directory: false,
+            is_encrypted: false,
+        }
+    }
 }
 
 /// Zero-allocation recursive VFS search populating a caller-provided fixed buffer slice.
@@ -239,6 +260,8 @@ pub fn search_vfs_tree_zero_alloc(
         if let Some(score) = fuzzy_match_zero_alloc(&node.name, query) {
             if *matched_count < capacity {
                 out_results[*matched_count] = TTZipVfsMatchDto {
+                    struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
                     name: node.name.as_ptr() as *const _,
                     name_len: node.name.len(),
                     path: node.path.as_ptr() as *const _,
@@ -255,6 +278,8 @@ pub fn search_vfs_tree_zero_alloc(
         } else if let Some(score) = fuzzy_match_zero_alloc(&node.path, query) {
             if *matched_count < capacity {
                 out_results[*matched_count] = TTZipVfsMatchDto {
+                    struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
                     name: node.name.as_ptr() as *const _,
                     name_len: node.name.len(),
                     path: node.path.as_ptr() as *const _,

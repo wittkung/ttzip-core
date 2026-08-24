@@ -8,11 +8,12 @@
 //! TTZip Standalone Native CLI & Interactive TUI Application Entry Point.
 
 use clap::{CommandFactory, Parser};
+use std::io::IsTerminal;
 use ttzip_tui::cli::{
-    execute_bench, execute_cat, execute_check, execute_comment, execute_convert, execute_create,
-    execute_delete, execute_diff, execute_doctor, execute_extract, execute_hash, execute_info,
-    execute_join, execute_list, execute_lock, execute_recover, execute_repair, execute_split,
-    execute_tree, execute_update, run_interactive_tui, Cli, Commands,
+    execute_bench, execute_cat, execute_check, execute_comment, execute_completions,
+    execute_convert, execute_create, execute_delete, execute_diff, execute_doctor, execute_extract,
+    execute_hash, execute_info, execute_join, execute_list, execute_lock, execute_recover,
+    execute_repair, execute_split, execute_tree, execute_update, run_interactive_tui, Cli, Commands,
 };
 
 fn main() {
@@ -23,19 +24,27 @@ fn main() {
             archive,
             password,
             json,
-        }) => execute_list(&archive, password.as_deref(), json).map_err(|e| e.into()),
+            include,
+            exclude,
+        }) => execute_list(&archive, password.as_deref(), json, &include, &exclude).map_err(|e| e.into()),
         Some(Commands::Extract {
             archive,
             output,
             password,
             threads,
             verbose,
+            dry_run,
+            include,
+            exclude,
         }) => execute_extract(
             &archive,
             output.as_deref(),
             password.as_deref(),
             threads,
             verbose,
+            dry_run,
+            &include,
+            &exclude,
         )
         .map_err(|e| e.into()),
         Some(Commands::Create {
@@ -46,6 +55,9 @@ fn main() {
             password,
             threads,
             volume_size,
+            dry_run: _,
+            include: _,
+            exclude: _,
         }) => execute_create(
             &archive,
             &sources,
@@ -64,8 +76,9 @@ fn main() {
         Some(Commands::Check {
             archive,
             password,
+            deep,
             json,
-        }) => execute_check(&archive, password.as_deref(), json).map_err(|e| e.into()),
+        }) => execute_check(&archive, password.as_deref(), deep, json).map_err(|e| e.into()),
         Some(Commands::Comment {
             archive,
             comment,
@@ -101,14 +114,18 @@ fn main() {
         Some(Commands::Info { archive, json }) => {
             execute_info(&archive, json).map_err(|e| e.into())
         }
-        Some(Commands::Lock { archive, json }) => {
-            execute_lock(&archive, json).map_err(|e| e.into())
-        }
+        Some(Commands::Lock {
+            archive,
+            unlock,
+            json,
+        }) => execute_lock(&archive, unlock, json).map_err(|e| e.into()),
         Some(Commands::Tree {
             archive,
             depth,
+            include,
+            exclude,
             json,
-        }) => execute_tree(&archive, depth, json).map_err(|e| e.into()),
+        }) => execute_tree(&archive, depth, json, &include, &exclude).map_err(|e| e.into()),
         Some(Commands::Update {
             archive,
             sources,
@@ -116,6 +133,7 @@ fn main() {
             json,
         }) => execute_update(&archive, &sources, level, json).map_err(|e| e.into()),
         Some(Commands::Doctor { json }) => execute_doctor(json).map_err(|e| e.into()),
+        Some(Commands::Completions { shell }) => execute_completions(&shell).map_err(|e| e.into()),
         Some(Commands::Recover {
             archive,
             dictionary,
@@ -158,7 +176,12 @@ fn main() {
                     eprintln!("[ERROR] Target archive does not exist: {}", archive_path.display());
                     std::process::exit(1);
                 }
-                run_interactive_tui(archive_path)
+                // TTY Intelligence: Fall back to non-interactive listing if stdout is not a terminal
+                if std::io::stdout().is_terminal() {
+                    run_interactive_tui(archive_path)
+                } else {
+                    execute_list(&archive_path, None, false, &[], &[]).map_err(|e| e.into())
+                }
             } else {
                 let mut cmd = Cli::command();
                 let _ = cmd.print_help();

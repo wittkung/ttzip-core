@@ -59,6 +59,8 @@ pub unsafe extern "C" fn ttzip_rust_tar_scan_entries(
             };
 
             let meta = TTZipEntryMetadata {
+                struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                 path: c_path.as_ptr(),
                 uncompressed_size: entry.size,
                 compressed_size: entry.size,

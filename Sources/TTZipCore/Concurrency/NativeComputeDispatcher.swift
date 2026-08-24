@@ -6,6 +6,7 @@
 // TTZip: High-performance native archiving and compression engine for macOS.
 
 import Foundation
+import os
 
 public enum ExecutionQoSProfile: Sendable {
     case interactive
@@ -44,23 +45,25 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     
     private init() {}
     
-    /// Dispatches intensive C/Rust compute workload on an isolated GCD concurrent queue with cancellation support.
+    /// Dispatches intensive C/Rust compute workload on an isolated GCD concurrent queue with atomic cancellation flag support.
     public func dispatchCompute<T: Sendable>(
         qos: ExecutionQoSProfile = .userInitiated,
         cancellationHandle: TaskExecutionHandle? = nil,
-        _ work: @escaping @Sendable () throws -> T
+        _ work: @escaping @Sendable (_ isCancelled: OSAllocatedUnfairLock<Bool>) throws -> T
     ) async throws -> T {
         try Task.checkCancellation()
+
+        let isCancelledFlag = OSAllocatedUnfairLock(initialState: false)
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 computeQueue.async(qos: qos.dispatchQoS) {
-                    if Task.isCancelled || cancellationHandle?.isCancelled == true {
+                    if Task.isCancelled || cancellationHandle?.isCancelled == true || isCancelledFlag.withLock({ $0 }) {
                         continuation.resume(throwing: CancellationError())
                         return
                     }
                     do {
-                        let val = try work()
+                        let val = try work(isCancelledFlag)
                         continuation.resume(returning: val)
                     } catch {
                         continuation.resume(throwing: error)
@@ -68,7 +71,19 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
                 }
             }
         } onCancel: {
+            isCancelledFlag.withLock { $0 = true }
             cancellationHandle?.cancel()
+        }
+    }
+
+    /// Dispatches compute block with standard 0-argument closure.
+    public func dispatchCompute<T: Sendable>(
+        qos: ExecutionQoSProfile = .userInitiated,
+        cancellationHandle: TaskExecutionHandle? = nil,
+        _ work: @escaping @Sendable () throws -> T
+    ) async throws -> T {
+        try await dispatchCompute(qos: qos, cancellationHandle: cancellationHandle) { _ in
+            try work()
         }
     }
 }

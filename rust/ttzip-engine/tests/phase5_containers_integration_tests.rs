@@ -164,6 +164,8 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
     fs::write(sub.join("b.txt"), b"File Beta Nested Content").unwrap();
 
     let options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: ttzip_engine::types::TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -182,6 +184,8 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
     let archive = ZipArchive::open_slice(&zip_data).expect("open zip failed");
 
     let extract_opts = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 4,

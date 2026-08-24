@@ -32,6 +32,36 @@ public final class ArchiveWriter: ArchiveWriting, @unchecked Sendable {
         self.init(hardwareTuner: hardwareTuner, targetFormat: targetFormat)
     }
 
+    /// Asynchronously creates an archive using a structured `ArchiveWriteRequest`.
+    public func createArchive(_ request: ArchiveWriteRequest) async throws {
+        try await createArchive(
+            outputPath: request.outputPath,
+            format: request.format,
+            level: request.level,
+            inputPaths: request.inputPaths,
+            options: request.options,
+            splitVolumeSizeBytes: request.splitVolumeSizeBytes,
+            password: request.password,
+            advancedOptions: request.advancedOptions,
+            progressHandler: request.progressHandler
+        )
+    }
+
+    /// Synchronously creates an archive using a structured `ArchiveWriteRequest`.
+    public func createArchiveSync(_ request: ArchiveWriteRequest) throws {
+        try createArchiveSync(
+            outputPath: request.outputPath,
+            format: request.format,
+            level: request.level,
+            inputPaths: request.inputPaths,
+            options: request.options,
+            password: request.password,
+            splitVolumeSizeBytes: request.splitVolumeSizeBytes,
+            advancedOptions: request.advancedOptions,
+            progressHandler: request.progressHandler
+        )
+    }
+
     /// Asynchronously compresses files and directories into an archive with validation and progress tracking.
     public func createArchive(
         outputPath: String,

@@ -18,7 +18,7 @@ pub mod tables;
 pub mod transcode;
 
 #[cfg(test)]
-pub mod tests;
+mod tests;
 
 pub use csm::{CharsetKind, CodingStateMachine, CsmState};
 pub use detector::{detect_charset, detect_charset_with_confidence};

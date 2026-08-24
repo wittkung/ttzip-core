@@ -10,6 +10,7 @@
 use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
+use ttzip_engine::ffi::*;
 use ttzip_engine::*;
 
 #[test]

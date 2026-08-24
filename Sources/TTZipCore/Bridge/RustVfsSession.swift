@@ -175,9 +175,70 @@ public final class RustVfsSession: @unchecked Sendable {
         }
         return matches
     }
-    
+}
+
+// MARK: - Safe VFS Node Value Type
+
+/// Safe, value-copied snapshot of a VFS directory node across the Rust FFI boundary.
+public struct VfsNodeSummary: Sendable, Equatable, Identifiable {
+    public var id: UInt32 { nodeId }
+    public let nodeId: UInt32
+    public let name: String
+    public let uncompressedSize: UInt64
+    public let compressedSize: UInt64
+    public let crc32: UInt32
+    public let mtimeEpochSecs: Int64
+    public let mode: UInt32
+    public let isDirectory: Bool
+    public let isEncrypted: Bool
+    public let hasChildren: Bool
+
+    public init(
+        nodeId: UInt32,
+        name: String,
+        uncompressedSize: UInt64,
+        compressedSize: UInt64,
+        crc32: UInt32,
+        mtimeEpochSecs: Int64,
+        mode: UInt32,
+        isDirectory: Bool,
+        isEncrypted: Bool,
+        hasChildren: Bool
+    ) {
+        self.nodeId = nodeId
+        self.name = name
+        self.uncompressedSize = uncompressedSize
+        self.compressedSize = compressedSize
+        self.crc32 = crc32
+        self.mtimeEpochSecs = mtimeEpochSecs
+        self.mode = mode
+        self.isDirectory = isDirectory
+        self.isEncrypted = isEncrypted
+        self.hasChildren = hasChildren
+    }
+
+    public init(cSummary: TTZipVfsNodeSummary) {
+        self.nodeId = cSummary.node_id
+        if let namePtr = cSummary.name_utf8, cSummary.name_len > 0 {
+            let buffer = UnsafeRawBufferPointer(start: namePtr, count: Int(cSummary.name_len))
+            self.name = String(decoding: buffer, as: UTF8.self)
+        } else {
+            self.name = ""
+        }
+        self.uncompressedSize = cSummary.uncompressed_size
+        self.compressedSize = cSummary.compressed_size
+        self.crc32 = cSummary.crc32
+        self.mtimeEpochSecs = cSummary.mtime_epoch_secs
+        self.mode = cSummary.mode
+        self.isDirectory = cSummary.is_directory
+        self.isEncrypted = cSummary.is_encrypted
+        self.hasChildren = cSummary.has_children
+    }
+}
+
+extension RustVfsSession {
     /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging.
-    public func getChildren(dirNodeId: UInt32 = 0, offset: Int = 0, limit: Int = 100) -> (nodes: [TTZipVfsNodeSummary], total: Int) {
+    public func getChildren(dirNodeId: UInt32 = 0, offset: Int = 0, limit: Int = 100) -> (nodes: [VfsNodeSummary], total: Int) {
         var buffer = [TTZipVfsNodeSummary](repeating: TTZipVfsNodeSummary(
             node_id: 0,
             name_utf8: nil,
@@ -200,7 +261,8 @@ public final class RustVfsSession: @unchecked Sendable {
         }
         
         guard status == TTZIP_STATUS_OK else { return ([], 0) }
-        return (Array(buffer.prefix(count)), totalInDir)
+        let summaries = buffer.prefix(count).map { VfsNodeSummary(cSummary: $0) }
+        return (summaries, totalInDir)
     }
 
     /// Renders ASCII/Unicode tree from persistent VFS session.

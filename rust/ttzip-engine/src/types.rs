@@ -148,9 +148,200 @@ pub enum TTZipLogLevel {
     Error = 3,
 }
 
+pub const TTZIP_ABI_VERSION_2: u32 = 2;
+pub const TTZIP_ABI_VERSION: u32 = TTZIP_ABI_VERSION_2;
+
+/// Memory kind enumeration for canonical universal deallocator `ttzip_free`.
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TTZipMemoryKind {
+    /// C-string allocated by Rust (e.g. CString::into_raw).
+    String = 0,
+    /// Raw byte buffer or buffer descriptor.
+    Buffer = 1,
+    /// Aligned buffer allocated via platform alloc / posix_memalign.
+    Aligned = 2,
+    /// Thread-safe error descriptor allocated via Box<TTZipError>.
+    Error = 3,
+    /// VFS tree handle.
+    VfsTree = 4,
+    /// VFS cache pool handle.
+    VfsCache = 5,
+    /// Filter DSL engine handle.
+    Filter = 6,
+    /// Path filter handle.
+    PathFilter = 7,
+    /// Split volume reader handle.
+    SplitReader = 8,
+    /// Split volume writer handle.
+    SplitWriter = 9,
+    /// Stream reader handle.
+    StreamReader = 10,
+    /// Stream writer handle.
+    StreamWriter = 11,
+    /// Cancellation token handle.
+    CancellationToken = 12,
+    /// In-place archive mutation session handle.
+    InPlaceSession = 13,
+}
+
+/// Zero-copy read-only contiguous byte buffer slice descriptor.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TTZipBufferRef {
+    pub data: *const u8,
+    pub len: usize,
+}
+
+impl TTZipBufferRef {
+    #[inline]
+    pub const fn empty() -> Self {
+        Self {
+            data: std::ptr::null(),
+            len: 0,
+        }
+    }
+
+    #[inline]
+    pub const fn from_slice(slice: &[u8]) -> Self {
+        Self {
+            data: slice.as_ptr(),
+            len: slice.len(),
+        }
+    }
+
+    #[inline]
+    pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
+        if self.data.is_null() || self.len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(self.data, self.len)
+        }
+    }
+}
+
+/// Zero-copy mutable contiguous byte buffer slice descriptor.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct TTZipBufferMut {
+    pub data: *mut u8,
+    pub len: usize,
+    pub capacity: usize,
+}
+
+impl TTZipBufferMut {
+    #[inline]
+    pub const fn empty() -> Self {
+        Self {
+            data: std::ptr::null_mut(),
+            len: 0,
+            capacity: 0,
+        }
+    }
+
+    #[inline]
+    pub fn from_vec(vec: &mut Vec<u8>) -> Self {
+        Self {
+            data: vec.as_mut_ptr(),
+            len: vec.len(),
+            capacity: vec.capacity(),
+        }
+    }
+
+    #[inline]
+    pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
+        if self.data.is_null() || self.len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(self.data, self.len)
+        }
+    }
+
+    #[inline]
+    pub unsafe fn as_mut_slice<'a>(&mut self) -> &'a mut [u8] {
+        if self.data.is_null() || self.len == 0 {
+            &mut []
+        } else {
+            std::slice::from_raw_parts_mut(self.data, self.len)
+        }
+    }
+}
+
+/// Thread-safe explicit diagnostic error descriptor envelope.
+///
+/// Allocated on failure across C-ABI 2.0 boundaries; must be released
+/// by the caller via `ttzip_free(error, TTZipMemoryKind::Error)`.
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct TTZipError {
+    pub struct_size: u32,
+    pub abi_version: u32,
+    pub status_code: i32,
+    pub system_errno: i32,
+    pub byte_offset: u64,
+    pub entry_path: [c_char; 256],
+    pub message: [c_char; 512],
+}
+
+impl TTZipError {
+    pub fn new(status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64, system_errno: i32) -> Self {
+        let mut err = Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
+            status_code: status as i32,
+            system_errno,
+            byte_offset: offset,
+            entry_path: [0; 256],
+            message: [0; 512],
+        };
+        let msg_bytes = msg.as_bytes();
+        let copy_len = msg_bytes.len().min(511);
+        for i in 0..copy_len {
+            err.message[i] = msg_bytes[i] as c_char;
+        }
+
+        if let Some(e) = entry {
+            let e_bytes = e.as_bytes();
+            let e_len = e_bytes.len().min(255);
+            for i in 0..e_len {
+                err.entry_path[i] = e_bytes[i] as c_char;
+            }
+        }
+        err
+    }
+
+    #[inline]
+    pub fn allocate(status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64, system_errno: i32) -> *mut Self {
+        Box::into_raw(Box::new(Self::new(status, msg, entry, offset, system_errno)))
+    }
+
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.struct_size as usize == std::mem::size_of::<Self>() && self.abi_version == TTZIP_ABI_VERSION_2
+    }
+}
+
+/// Helper function to safely populate out_error pointer if non-null.
+#[inline]
+pub unsafe fn set_out_error(
+    out_error: *mut *mut TTZipError,
+    status: TTZipStatus,
+    msg: &str,
+    entry: Option<&str>,
+    offset: u64,
+    system_errno: i32,
+) {
+    if !out_error.is_null() {
+        *out_error = TTZipError::allocate(status, msg, entry, offset, system_errno);
+    }
+    set_last_error(status, msg, entry, offset);
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TTZipEntryMetadata {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub path: *const c_char,
     pub uncompressed_size: u64,
     pub compressed_size: u64,
@@ -161,6 +352,25 @@ pub struct TTZipEntryMetadata {
     pub is_encrypted: bool,
     pub compression_method: u16,
     pub detected_encoding: *const c_char,
+}
+
+impl Default for TTZipEntryMetadata {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
+            path: std::ptr::null(),
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            mtime_epoch_secs: 0,
+            mode: 0,
+            is_directory: false,
+            is_encrypted: false,
+            compression_method: 0,
+            detected_encoding: std::ptr::null(),
+        }
+    }
 }
 
 pub type TTZipProgressCallback = Option<
@@ -182,6 +392,8 @@ pub type TTZipInspectCallback = Option<
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TTZipExtractOptions {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub destination_path: *const c_char,
     pub password: *const c_char,
     pub thread_budget: u32,
@@ -192,9 +404,28 @@ pub struct TTZipExtractOptions {
     pub user_data: *mut c_void,
 }
 
+impl Default for TTZipExtractOptions {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
+            destination_path: std::ptr::null(),
+            password: std::ptr::null(),
+            thread_budget: 0,
+            overwrite_existing: true,
+            preserve_permissions: true,
+            dry_run: false,
+            progress_callback: None,
+            user_data: std::ptr::null_mut(),
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TTZipCreateOptions {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub format: TTZipArchiveFormat,
     pub level: TTZipCompressionLevel,
     pub encryption: TTZipEncryptionMethod,
@@ -203,6 +434,23 @@ pub struct TTZipCreateOptions {
     pub solid_block_size_mb: u32,
     pub progress_callback: TTZipProgressCallback,
     pub user_data: *mut c_void,
+}
+
+impl Default for TTZipCreateOptions {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
+            format: TTZipArchiveFormat::Zip,
+            level: TTZipCompressionLevel::Normal,
+            encryption: TTZipEncryptionMethod::None,
+            password: std::ptr::null(),
+            thread_budget: 0,
+            solid_block_size_mb: 64,
+            progress_callback: None,
+            user_data: std::ptr::null_mut(),
+        }
+    }
 }
 
 #[repr(C)]
@@ -218,6 +466,8 @@ pub struct TTZipAes256Context {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct TTZipErrorInfo {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub status: TTZipStatus,
     pub error_code: i32,
     pub message: [c_char; 512],
@@ -228,6 +478,8 @@ pub struct TTZipErrorInfo {
 impl TTZipErrorInfo {
     pub const fn empty() -> Self {
         Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
             status: TTZipStatus::Ok,
             error_code: 0,
             message: [0; 512],
@@ -237,6 +489,8 @@ impl TTZipErrorInfo {
     }
 
     pub fn populate(&mut self, status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64) {
+        self.struct_size = std::mem::size_of::<Self>() as u32;
+        self.abi_version = TTZIP_ABI_VERSION_2;
         self.status = status;
         self.error_code = status as i32;
         self.offset = offset;
@@ -315,6 +569,52 @@ pub fn set_last_error(status: TTZipStatus, msg: &str, entry: Option<&str>, offse
     });
 }
 
+/// Copies the thread-local error info into the caller-provided `out_error` struct.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_get_last_error_info(out_error: *mut TTZipErrorInfo) -> bool {
+    if out_error.is_null() {
+        return false;
+    }
+    LAST_ERROR.with(|cell| {
+        let err = cell.borrow();
+        if err.status == TTZipStatus::Ok && err.message[0] == 0 {
+            false
+        } else {
+            (*out_error).struct_size = std::mem::size_of::<TTZipErrorInfo>() as u32;
+            (*out_error).abi_version = TTZIP_ABI_VERSION_2;
+            (*out_error).status = err.status;
+            (*out_error).error_code = err.status as i32;
+            (*out_error).offset = err.offset;
+            for i in 0..512 {
+                (*out_error).message[i] = err.message[i] as c_char;
+            }
+            for i in 0..256 {
+                (*out_error).entry_path[i] = err.entry_path[i] as c_char;
+            }
+            true
+        }
+    })
+}
+
+/// Returns a heap-allocated, owned C-string copy of the last error message.
+/// The caller must free it using `ttzip_free(ptr, TTZipMemoryKind::String)`.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_get_last_error_message_owned() -> *mut c_char {
+    LAST_ERROR.with(|cell| {
+        let err = cell.borrow();
+        if err.status == TTZipStatus::Ok || err.message[0] == 0 {
+            std::ptr::null_mut()
+        } else {
+            let len = err.message.iter().position(|&b| b == 0).unwrap_or(err.message.len());
+            match std::ffi::CString::new(&err.message[..len]) {
+                Ok(c_str) => c_str.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            }
+        }
+    })
+}
+
+#[deprecated(since = "2.0.0", note = "Raw TLS pointers are unsafe across threads. Use ttzip_rust_get_last_error_info or ttzip_rust_get_last_error_message_owned")]
 pub fn get_last_error_message() -> *const c_char {
     LAST_ERROR.with(|cell| {
         let err = cell.borrow();
@@ -352,6 +652,8 @@ pub enum TTZipEngineTag {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TTZipExecutionProvenance {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub engine_tag: TTZipEngineTag,
     pub thread_count: u32,
     pub uncompressed_bytes: u64,
@@ -364,6 +666,8 @@ pub struct TTZipExecutionProvenance {
 impl Default for TTZipExecutionProvenance {
     fn default() -> Self {
         Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: TTZIP_ABI_VERSION_2,
             engine_tag: TTZipEngineTag::Unknown,
             thread_count: 1,
             uncompressed_bytes: 0,
@@ -377,6 +681,8 @@ impl Default for TTZipExecutionProvenance {
 
 thread_local! {
     static LAST_PROVENANCE: RefCell<TTZipExecutionProvenance> = const { RefCell::new(TTZipExecutionProvenance {
+        struct_size: std::mem::size_of::<TTZipExecutionProvenance>() as u32,
+        abi_version: TTZIP_ABI_VERSION_2,
         engine_tag: TTZipEngineTag::Unknown,
         thread_count: 1,
         uncompressed_bytes: 0,
@@ -407,6 +713,8 @@ pub fn get_execution_provenance(out: *mut TTZipExecutionProvenance) -> bool {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TTZipPackedEntryArray {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub utf8_bytes: *const u8,
     pub total_bytes_len: usize,
     pub path_offsets: *const u32,
@@ -424,6 +732,8 @@ pub struct TTZipPackedEntryArray {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TTZipVfsNodeSummary {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub node_id: u32,
     pub name_utf8: *const c_char,
     pub name_len: u32,
@@ -436,4 +746,5 @@ pub struct TTZipVfsNodeSummary {
     pub is_encrypted: bool,
     pub has_children: bool,
 }
+
 

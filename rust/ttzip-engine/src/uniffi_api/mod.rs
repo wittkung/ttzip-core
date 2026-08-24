@@ -14,8 +14,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 
-uniffi::setup_scaffolding!();
-
 /// Typed error enum mapped directly to Swift `throws TTZipError`.
 #[derive(Debug, Error, uniffi::Error)]
 pub enum TTZipError {
@@ -375,6 +373,8 @@ pub fn extract_archive_stream(
     }
 
     let options = crate::types::TTZipExtractOptions {
+        struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
         thread_budget: 0,
@@ -492,6 +492,8 @@ pub fn create_archive_stream(
     };
 
     let options = crate::types::TTZipCreateOptions {
+        struct_size: std::mem::size_of::<crate::types::TTZipCreateOptions>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_2,
         format: raw_fmt,
         level: comp_level,
         encryption: enc_method,

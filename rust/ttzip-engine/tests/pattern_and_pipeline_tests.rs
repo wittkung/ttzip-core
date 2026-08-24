@@ -397,6 +397,8 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
     let c_p2 = CString::new("TTZipCore/docs/ArchitectureGuide.md").unwrap();
 
     raw_entries.push(TTZipEntryMetadata {
+        struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         path: c_p1.as_ptr(),
         uncompressed_size: 12500,
         compressed_size: 4200,
@@ -409,6 +411,8 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
         detected_encoding: std::ptr::null(),
     });
     raw_entries.push(TTZipEntryMetadata {
+        struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         path: c_p2.as_ptr(),
         uncompressed_size: 8900,
         compressed_size: 3100,

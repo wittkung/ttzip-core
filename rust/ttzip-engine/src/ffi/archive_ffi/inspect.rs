@@ -104,6 +104,8 @@ pub unsafe extern "C" fn ttzip_rust_inspect_archive(
             let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
 
             let meta = TTZipEntryMetadata {
+                struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
                 path: raw_path,
                 uncompressed_size,
                 compressed_size: 0,

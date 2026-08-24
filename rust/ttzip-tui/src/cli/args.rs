@@ -46,6 +46,14 @@ pub enum Commands {
         /// Output in JSON format conforming to TUIVfsTreeContract
         #[arg(long)]
         json: bool,
+
+        /// Include glob patterns (e.g. "*.txt", "docs/*")
+        #[arg(short = 'i', long = "include")]
+        include: Vec<String>,
+
+        /// Exclude glob patterns (e.g. "*.log", ".git/*")
+        #[arg(short = 'x', long = "exclude")]
+        exclude: Vec<String>,
     },
 
     /// Extract archive entries to destination directory (aliases: x, extract)
@@ -70,6 +78,18 @@ pub enum Commands {
         /// Verbose log output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Dry run mode (simulate extraction without writing files to disk)
+        #[arg(short = 'n', long = "dry-run")]
+        dry_run: bool,
+
+        /// Include glob patterns (e.g. "*.txt", "docs/*")
+        #[arg(short = 'i', long = "include")]
+        include: Vec<String>,
+
+        /// Exclude glob patterns (e.g. "*.log", ".git/*")
+        #[arg(short = 'x', long = "exclude")]
+        exclude: Vec<String>,
     },
 
     /// Create a new archive from source files/directories (aliases: c, create)
@@ -102,6 +122,18 @@ pub enum Commands {
         /// Volume chunk size for multi-volume creation (e.g. "10M", "100MB", "1G")
         #[arg(short = 'v', long = "volume-size")]
         volume_size: Option<String>,
+
+        /// Dry run mode (simulate creation without writing files to disk)
+        #[arg(short = 'n', long = "dry-run")]
+        dry_run: bool,
+
+        /// Include glob patterns
+        #[arg(short = 'i', long = "include")]
+        include: Vec<String>,
+
+        /// Exclude glob patterns
+        #[arg(short = 'x', long = "exclude")]
+        exclude: Vec<String>,
     },
 
     /// Recover password of encrypted archive using multi-core dictionary attack (aliases: rec, recover)
@@ -231,6 +263,10 @@ pub enum Commands {
         #[arg(short, long)]
         password: Option<String>,
 
+        /// Perform deep payload decompression and CRC32 verification passes
+        #[arg(long)]
+        deep: bool,
+
         /// Output in JSON format
         #[arg(long)]
         json: bool,
@@ -339,6 +375,10 @@ pub enum Commands {
         #[arg(value_name = "ARCHIVE")]
         archive: PathBuf,
 
+        /// Unlock archive (remove write protection)
+        #[arg(short = 'u', long = "unlock")]
+        unlock: bool,
+
         /// Output in JSON format
         #[arg(long)]
         json: bool,
@@ -354,6 +394,14 @@ pub enum Commands {
         /// Maximum tree depth to display
         #[arg(short = 'd', long = "depth")]
         depth: Option<usize>,
+
+        /// Include glob patterns
+        #[arg(short = 'i', long = "include")]
+        include: Vec<String>,
+
+        /// Exclude glob patterns
+        #[arg(short = 'x', long = "exclude")]
+        exclude: Vec<String>,
 
         /// Output in JSON format
         #[arg(long)]
@@ -386,6 +434,14 @@ pub enum Commands {
         /// Output in JSON format
         #[arg(long)]
         json: bool,
+    },
+
+    /// Generate shell completion scripts (aliases: completions, completion)
+    #[command(name = "completions", alias = "completion")]
+    Completions {
+        /// Target shell (bash, zsh, fish)
+        #[arg(value_name = "SHELL")]
+        shell: String,
     },
 }
 

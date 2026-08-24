@@ -243,6 +243,8 @@ impl VfsArena {
                 let name_ptr = self.string_arena[name_off..].as_ptr() as *const c_char;
 
                 summaries.push(TTZipVfsNodeSummary {
+                    struct_size: std::mem::size_of::<TTZipVfsNodeSummary>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
                     node_id: curr_child,
                     name_utf8: name_ptr,
                     name_len,
@@ -294,6 +296,8 @@ impl VfsArena {
             if let Some(score) = crate::fs::vfs::search::fuzzy_match_zero_alloc(name_str, query) {
                 if matched_count < capacity {
                     out_results[matched_count] = crate::fs::vfs::search::TTZipVfsMatchDto {
+                        struct_size: std::mem::size_of::<crate::fs::vfs::search::TTZipVfsMatchDto>() as u32,
+                        abi_version: crate::types::TTZIP_ABI_VERSION_2,
                         name: self.string_arena[name_off..].as_ptr() as *const c_char,
                         name_len,
                         path: self.string_arena[path_off..].as_ptr() as *const c_char,
@@ -310,6 +314,8 @@ impl VfsArena {
             } else if let Some(score) = crate::fs::vfs::search::fuzzy_match_zero_alloc(path_str, query) {
                 if matched_count < capacity {
                     out_results[matched_count] = crate::fs::vfs::search::TTZipVfsMatchDto {
+                        struct_size: std::mem::size_of::<crate::fs::vfs::search::TTZipVfsMatchDto>() as u32,
+                        abi_version: crate::types::TTZIP_ABI_VERSION_2,
                         name: self.string_arena[name_off..].as_ptr() as *const c_char,
                         name_len,
                         path: self.string_arena[path_off..].as_ptr() as *const c_char,

@@ -27,6 +27,8 @@ use crate::types::TTZipStatus;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TTZipMIPSBenchmarkResult {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub dictionary_size_mb: u32,
     pub thread_count: u32,
     pub compress_mips: f64,
@@ -38,9 +40,29 @@ pub struct TTZipMIPSBenchmarkResult {
     pub rating_per_usage_mips: f64,
 }
 
+impl Default for TTZipMIPSBenchmarkResult {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            dictionary_size_mb: 32,
+            thread_count: 1,
+            compress_mips: 0.0,
+            decompress_mips: 0.0,
+            total_mips: 0.0,
+            compress_speed_mbs: 0.0,
+            decompress_speed_mbs: 0.0,
+            cpu_usage_percent: 0.0,
+            rating_per_usage_mips: 0.0,
+        }
+    }
+}
+
 impl From<MIPSResult> for TTZipMIPSBenchmarkResult {
     fn from(r: MIPSResult) -> Self {
         Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             dictionary_size_mb: r.dictionary_size_mb,
             thread_count: r.thread_count,
             compress_mips: r.compress_mips,
@@ -266,9 +288,10 @@ pub extern "C" fn ttzip_rust_bench_generate_html_dashboard(corpus_type: i32) -> 
 
 /// Frees a C-string allocated by benchmark generators.
 #[no_mangle]
+#[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_bench_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
-        let _ = unsafe { CString::from_raw(ptr) };
+        drop(std::ffi::CString::from_raw(ptr));
     }
 }
 

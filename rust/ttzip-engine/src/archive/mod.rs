@@ -7,6 +7,7 @@
 
 //! Archive streaming and libarchive adapter module.
 
+pub mod builder;
 pub mod in_place_edit;
 pub mod repair;
 pub mod source;
@@ -15,6 +16,7 @@ pub mod stream_adapter;
 pub mod tar;
 pub mod unified;
 
+pub use builder::*;
 pub use in_place_edit::*;
 pub use repair::*;
 pub use source::*;

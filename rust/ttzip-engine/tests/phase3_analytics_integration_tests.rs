@@ -51,6 +51,8 @@ fn test_analytics_ffi_recommend_all_scenarios() {
         (2, vec!["7Z-LZMA2"]),
     ] {
         let mut raw = TTZipRecommendationResult {
+            struct_size: std::mem::size_of::<TTZipRecommendationResult>() as u32,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
             scenario: 0,
             measured_entropy: 0.0,
             trial_compressibility_ratio: 0.0,

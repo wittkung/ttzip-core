@@ -21,7 +21,6 @@ pub use brotli::{
     brotli_decompress_stream_pipe, brotli_decompress_to_vec, BrotliCompressorWriter, BrotliConfig,
     BrotliDecompressorReader, BROTLI_PIPE_BUFFER_SIZE,
 };
-pub use chardet::*;
 pub use deflate::*;
 pub use fast_blocks::*;
 pub use lzma2::*;

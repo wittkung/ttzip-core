@@ -157,6 +157,24 @@ fn test_cli_parsing_subcommands() {
 }
 
 #[test]
+fn test_truncate_path_display_unicode() {
+    assert_eq!(truncate_path_display("small.txt", 10), "small.txt");
+    assert_eq!(truncate_path_display("a/very/long/path/to/archive/file.txt", 15), "...ive/file.txt");
+    // Test multi-byte UTF-8 without byte-slicing panic
+    let unicode_str = "文件夹/测试/文档/这是一个非常非常长的文件名.txt";
+    let truncated = truncate_path_display(unicode_str, 12);
+    assert!(truncated.starts_with("..."));
+}
+
+#[test]
+fn test_completions_generation() {
+    assert!(execute_completions("bash").is_ok());
+    assert!(execute_completions("zsh").is_ok());
+    assert!(execute_completions("fish").is_ok());
+    assert!(execute_completions("unknown_shell").is_err());
+}
+
+#[test]
 fn test_headless_create_list_extract_roundtrip_zip() {
     let temp_dir = tempdir().expect("tempdir failed");
     let source_file = temp_dir.path().join("sample.txt");
@@ -179,7 +197,7 @@ fn test_headless_create_list_extract_roundtrip_zip() {
     assert!(archive_file.exists());
 
     // 2. List ZIP (text)
-    let list_res = execute_list(&archive_file, None, false);
+    let list_res = execute_list(&archive_file, None, false, &[], &[]);
     assert!(list_res.is_ok(), "list_res: {:?}", list_res);
 
     // 3. List ZIP (JSON conforming to TUIVfsTreeContract)
@@ -192,7 +210,7 @@ fn test_headless_create_list_extract_roundtrip_zip() {
 
     // 4. Extract ZIP
     let out_dir = temp_dir.path().join("extracted");
-    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false);
+    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false, false, &[], &[]);
     assert!(extract_res.is_ok(), "extract_res: {:?}", extract_res);
 
     let extracted_file = out_dir.join("sample.txt");
@@ -224,12 +242,12 @@ fn test_headless_create_list_extract_roundtrip_7z() {
     assert!(archive_file.exists());
 
     // 2. List 7z
-    let list_res = execute_list(&archive_file, None, false);
+    let list_res = execute_list(&archive_file, None, false, &[], &[]);
     assert!(list_res.is_ok(), "list_res 7z: {:?}", list_res);
 
     // 3. Extract 7z
     let out_dir = temp_dir.path().join("extracted_7z");
-    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false);
+    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false, false, &[], &[]);
     assert!(extract_res.is_ok(), "extract_res 7z: {:?}", extract_res);
 
     let extracted_file = out_dir.join("doc.md");
@@ -254,9 +272,9 @@ fn test_headless_new_subcommands_e2e() {
     assert!(execute_info(&archive_file, false).is_ok());
     assert!(execute_info(&archive_file, true).is_ok());
 
-    // 2. Check (text & json)
-    assert!(execute_check(&archive_file, None, false).is_ok());
-    assert!(execute_check(&archive_file, None, true).is_ok());
+    // 2. Check (shallow & deep, text & json)
+    assert!(execute_check(&archive_file, None, false, false).is_ok());
+    assert!(execute_check(&archive_file, None, true, true).is_ok());
 
     // 3. Hash (text & json)
     assert!(execute_hash(&archive_file, "all", false).is_ok());
@@ -264,8 +282,8 @@ fn test_headless_new_subcommands_e2e() {
     assert!(execute_hash(&archive_file, "crc64", true).is_ok());
 
     // 4. Tree (text & json)
-    assert!(execute_tree(&archive_file, None, false).is_ok());
-    assert!(execute_tree(&archive_file, Some(2), true).is_ok());
+    assert!(execute_tree(&archive_file, None, false, &[], &[]).is_ok());
+    assert!(execute_tree(&archive_file, Some(2), true, &[], &[]).is_ok());
 
     // 5. Doctor (text & json)
     assert!(execute_doctor(false).is_ok());
@@ -274,8 +292,9 @@ fn test_headless_new_subcommands_e2e() {
     // 6. Comment & Lock (text & json)
     assert!(execute_comment(&archive_file, Some("Test comment"), false).is_ok());
     assert!(execute_comment(&archive_file, None, true).is_ok());
-    assert!(execute_lock(&archive_file, false).is_ok());
-    assert!(execute_lock(&archive_file, true).is_ok());
+    assert!(execute_lock(&archive_file, false, false).is_ok());
+    assert!(execute_lock(&archive_file, false, true).is_ok());
+    assert!(execute_lock(&archive_file, true, false).is_ok());
 
     // 7. Cat
     assert!(execute_cat(&archive_file, "data.txt", None).is_ok());

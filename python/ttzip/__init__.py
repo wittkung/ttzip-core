@@ -9,7 +9,7 @@
 TTZip: Ultra-fast Safe Rust Archiving & Compression Engine for Python.
 """
 
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from pathlib import Path
 
 from .exceptions import (
@@ -18,7 +18,13 @@ from .exceptions import (
     CorruptArchiveError,
     SecurityError,
 )
-from .models import EntryMetadata, ProgressInfo
+from .models import (
+    EntryMetadata,
+    BenchmarkPointResult,
+    BenchmarkMatrixReport,
+    ProgressInfo,
+)
+from .zipfile import ZipFile, SevenZipFile, open_archive
 
 try:
     from . import _ttzip
@@ -92,49 +98,76 @@ def inspect(
 
 
 def decompress_buffer(
-    data: bytes,
+    data: Union[bytes, bytearray, memoryview, Any],
     format: str = "deflate",
 ) -> bytes:
     """
-    Decompresses an in-memory buffer (deflate, zstd, lz4).
+    Decompresses an in-memory buffer (deflate, zstd, lz4, snappy, lzfse).
+    Supports PyBuffer zero-copy protocol and releases the Python GIL.
     """
     if not _HAS_NATIVE:
         raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
 
+    if isinstance(data, memoryview):
+        data = data.tobytes()
     return _ttzip.decompress_buffer(data, format)
 
 
 def compress_buffer(
-    data: bytes,
+    data: Union[bytes, bytearray, memoryview, Any],
     format: str = "deflate",
     level: int = 6,
 ) -> bytes:
     """
     Compresses an in-memory buffer.
+    Supports PyBuffer zero-copy protocol and releases the Python GIL.
     """
     if not _HAS_NATIVE:
         raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
 
+    if isinstance(data, memoryview):
+        data = data.tobytes()
     return _ttzip.compress_buffer(data, format, level)
 
 
-def crc32(data: bytes, seed: int = 0) -> int:
+def decompress_into(
+    data: Union[bytes, bytearray, memoryview, Any],
+    dst_buffer: bytearray,
+    format: str = "deflate",
+) -> int:
+    """
+    Zero-copy in-place decompression directly into a pre-allocated mutable buffer.
+    Releases the Python GIL during decompression. Returns written byte length.
+    """
+    if not _HAS_NATIVE:
+        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
+
+    if isinstance(data, memoryview):
+        data = data.tobytes()
+    return _ttzip.decompress_into(data, dst_buffer, format)
+
+
+def crc32(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int:
     """
     Computes SIMD-accelerated CRC-32 (>40 GB/s on Apple Silicon / AVX-512).
     """
     if not _HAS_NATIVE:
         raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
 
+    if isinstance(data, memoryview):
+        data = data.tobytes()
     return _ttzip.crc32(data, seed)
 
 
-def crc64(data: bytes, seed: int = 0) -> int:
+def crc64(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int:
     """
     Computes SIMD-accelerated CRC-64.
     """
     if not _HAS_NATIVE:
         raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
 
+    if isinstance(data, memoryview):
+        data = data.tobytes()
     return _ttzip.crc64(data, seed)
 
 
@@ -167,17 +200,25 @@ def benchmark_matrix(
     return _ttzip.benchmark_matrix(corpus_type, corpus_size, iterations)
 
 
+open = open_archive
+
+
 __all__ = [
     "compress",
     "extract",
     "inspect",
     "decompress_buffer",
     "compress_buffer",
+    "decompress_into",
     "crc32",
     "crc64",
     "version",
     "is_hardware_accelerated",
     "benchmark_matrix",
+    "ZipFile",
+    "SevenZipFile",
+    "open_archive",
+    "open",
     "EntryMetadata",
     "BenchmarkPointResult",
     "BenchmarkMatrixReport",

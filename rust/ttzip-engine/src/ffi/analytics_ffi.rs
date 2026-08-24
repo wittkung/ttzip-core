@@ -41,6 +41,8 @@ impl From<TTZipSelectorScenario> for Scenario {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct TTZipRecommendationResult {
+    pub struct_size: u32,
+    pub abi_version: u32,
     pub scenario: i32,
     pub measured_entropy: f64,
     pub trial_compressibility_ratio: f64,
@@ -50,6 +52,24 @@ pub struct TTZipRecommendationResult {
     pub projected_throughput_mbs: f64,
     pub projected_space_savings_pct: f64,
     pub probe_duration_ms: f64,
+}
+
+impl Default for TTZipRecommendationResult {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            scenario: 0,
+            measured_entropy: 0.0,
+            trial_compressibility_ratio: 0.0,
+            recommended_algorithm: [0; 32],
+            recommended_level: 0,
+            rationale: [0; 512],
+            projected_throughput_mbs: 0.0,
+            projected_space_savings_pct: 0.0,
+            probe_duration_ms: 0.0,
+        }
+    }
 }
 
 fn copy_str_to_c_buffer(src: &str, dst: &mut [c_char]) {
@@ -132,6 +152,8 @@ pub unsafe extern "C" fn ttzip_rust_recommend_codec(
         let rec = CascadedCodecSelector::recommend(data, sc);
 
         let mut res = TTZipRecommendationResult {
+            struct_size: std::mem::size_of::<TTZipRecommendationResult>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
             scenario: rec.scenario as i32,
             measured_entropy: rec.measured_entropy,
             trial_compressibility_ratio: rec.trial_compressibility_ratio,
@@ -173,17 +195,7 @@ mod tests {
     #[test]
     fn test_ffi_recommend_codec() {
         let sample = b"Performance Benchmark Data 1234567890\n".repeat(500);
-        let mut raw = TTZipRecommendationResult {
-            scenario: 0,
-            measured_entropy: 0.0,
-            trial_compressibility_ratio: 0.0,
-            recommended_algorithm: [0; 32],
-            recommended_level: 0,
-            rationale: [0; 512],
-            projected_throughput_mbs: 0.0,
-            projected_space_savings_pct: 0.0,
-            probe_duration_ms: 0.0,
-        };
+        let mut raw = TTZipRecommendationResult::default();
 
         let st = unsafe { ttzip_rust_recommend_codec(sample.as_ptr(), sample.len(), 1, &mut raw) };
         assert_eq!(st, TTZipStatus::Ok);

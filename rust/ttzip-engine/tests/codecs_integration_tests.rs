@@ -9,6 +9,7 @@
 
 use std::ffi::CStr;
 use std::thread;
+use ttzip_engine::ffi::*;
 use ttzip_engine::*;
 
 #[test]

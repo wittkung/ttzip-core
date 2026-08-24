@@ -35,14 +35,30 @@ pub fn run_interactive_tui(archive_path: PathBuf) -> Result<(), Box<dyn std::err
 
     let event_handler = EventHandler::new(Duration::from_millis(16));
 
-    // Main TUI render & event loop
+    // Main TUI render & event loop with dirty-flag conditional rendering
+    let mut is_dirty = true;
     loop {
-        terminal.draw(|f| {
-            ui::render(f, &mut app_state);
-        })?;
+        if is_dirty {
+            terminal.draw(|f| {
+                ui::render(f, &mut app_state);
+            })?;
+            is_dirty = false;
+        }
 
         let event = event_handler.next()?;
         let sender = event_handler.sender.clone();
+
+        match &event {
+            crate::event::AppEvent::Tick => {
+                if app_state.needs_tick_redraw() {
+                    is_dirty = true;
+                }
+            }
+            _ => {
+                is_dirty = true;
+            }
+        }
+
         app_state.handle_event(event, sender);
 
         if app_state.current_mode == AppMode::Exiting {

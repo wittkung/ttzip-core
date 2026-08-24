@@ -12,7 +12,8 @@
 
 #![allow(non_camel_case_types)]
 #![allow(clippy::missing_safety_doc)]
-#![allow(ambiguous_glob_reexports)]
+
+uniffi::setup_scaffolding!();
 
 pub mod analytics;
 pub mod archive;
@@ -37,14 +38,13 @@ pub mod zip;
 pub use analytics::*;
 pub use archive::{
     compute_volume_path, detect_volume_chain, find_next_pk_signature, repair_damaged_tar,
-    repair_damaged_zip, SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme,
-    VolumeSegment,
+    repair_damaged_zip, ArchiveBuilder, ArchiveEntryInfo, ArchiveReader, ExtractBuilder,
+    SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
 };
 pub use benchmark::*;
 pub use charset::*;
 pub use codecs::*;
 pub use crypto::*;
-pub use ffi::*;
 pub use fs::*;
 pub use platform::*;
 pub use runtime::*;
@@ -54,8 +54,7 @@ pub use sevenz::{
     SevenZHeaderInfo,
 };
 pub use standards::*;
-pub use testing::*;
 pub use types::*;
-pub use uniffi_api::*;
 pub use vfs::*;
 pub use zip::{create_zip_archive, ZipArchive, ZipEntry, ZipInputItem};
+

@@ -26,6 +26,8 @@ fn test_in_place_zip_mutation_roundtrip() {
     fs::write(&f3, b"Initial Content 3").unwrap();
 
     let options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,

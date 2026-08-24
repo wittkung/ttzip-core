@@ -25,6 +25,8 @@ fn test_streaming_parallel_zip_creation_and_inspection() {
     let zip_dest = dir.path().join("output.zip");
 
     let options = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Fast,
         encryption: TTZipEncryptionMethod::None,

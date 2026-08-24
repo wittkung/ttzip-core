@@ -375,6 +375,8 @@ proptest! {
         // 4. On-Disk Safe Landing Invariant
         let temp_dir = tempdir().expect("tempdir creation");
         let extract_opts = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 4,
@@ -443,6 +445,8 @@ proptest! {
         // 4. On-Disk Safe Landing Invariant
         let temp_dir = tempdir().expect("tempdir creation");
         let extract_opts = TTZipExtractOptions {
+            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 2,

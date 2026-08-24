@@ -97,6 +97,8 @@ fn test_vfs_tree_100k_nodes_zero_heap_allocation_search() {
     assert_eq!(tree.total_entries, NODE_COUNT);
 
     let mut result_slots = [TTZipVfsMatchDto {
+        struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         name: std::ptr::null(),
         name_len: 0,
         path: std::ptr::null(),
