@@ -177,10 +177,7 @@ impl<'a> TarArchive<'a> {
             }
         } else {
             // Rayon multi-core parallel extraction
-            let pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(thread_budget)
-                .build()
-                .map_err(|_| TTZipStatus::ErrArchiveInitFailed)?;
+            let pool = crate::platform::cpu::EngineThreadPool::global();
 
             let par_res = pool.install(|| {
                 file_indices.par_iter().try_for_each(|&idx| -> Result<(), TTZipStatus> {

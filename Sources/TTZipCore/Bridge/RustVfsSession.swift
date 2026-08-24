@@ -21,40 +21,80 @@ public final class RustVfsSession: @unchecked Sendable {
         var map: [String: ArchiveEntry] = [:]
         map.reserveCapacity(entries.count)
         
+        var packedUtf8: [UInt8] = []
+        packedUtf8.reserveCapacity(entries.count * 32)
+        var pathOffsets: [UInt32] = []
+        pathOffsets.reserveCapacity(entries.count)
+        var pathLens: [UInt32] = []
+        pathLens.reserveCapacity(entries.count)
+        var uncompressedSizes: [UInt64] = []
+        uncompressedSizes.reserveCapacity(entries.count)
+        var compressedSizes: [UInt64] = []
+        compressedSizes.reserveCapacity(entries.count)
+        var crc32s: [UInt32] = []
+        crc32s.reserveCapacity(entries.count)
+        var mtimes: [Int64] = []
+        mtimes.reserveCapacity(entries.count)
+        var modes: [UInt32] = []
+        modes.reserveCapacity(entries.count)
+        var flags: [UInt8] = []
+        flags.reserveCapacity(entries.count)
+
         for entry in entries {
             map[entry.path] = entry
+            
+            let utf8 = Array(entry.path.utf8)
+            let offset = UInt32(packedUtf8.count)
+            let len = UInt32(utf8.count)
+            packedUtf8.append(contentsOf: utf8)
+            pathOffsets.append(offset)
+            pathLens.append(len)
+            
+            uncompressedSizes.append(UInt64(max(0, entry.uncompressedSize)))
+            compressedSizes.append(0)
+            crc32s.append(0)
+            let mtime = entry.modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
+            mtimes.append(mtime)
+            modes.append(entry.isDirectory ? 0o755 : 0o644)
+            var flag: UInt8 = 0
+            if entry.isDirectory { flag |= 1 }
+            if entry.isEncrypted { flag |= 2 }
+            flags.append(flag)
         }
         self.entryMap = map
         
-        let cPathPointers: [UnsafeMutablePointer<CChar>?] = entries.map { strdup($0.path) }
-        defer {
-            for ptr in cPathPointers {
-                if let ptr = ptr { free(ptr) }
-            }
-        }
-        
-        var rawEntries: [TTZipEntryMetadata] = []
-        rawEntries.reserveCapacity(entries.count)
-        
-        for (i, entry) in entries.enumerated() {
-            let mtime = entry.modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
-            rawEntries.append(TTZipEntryMetadata(
-                path: cPathPointers[i].map { UnsafePointer($0) },
-                uncompressed_size: UInt64(max(0, entry.uncompressedSize)),
-                compressed_size: 0,
-                crc32: 0,
-                mtime_epoch_secs: mtime,
-                mode: entry.isDirectory ? 0o755 : 0o644,
-                is_directory: entry.isDirectory,
-                is_encrypted: entry.isEncrypted,
-                compression_method: 0,
-                detected_encoding: nil
-            ))
-        }
-        
         let builtHandle: OpaquePointer? = rootName.withCString { rPtr in
-            rawEntries.withUnsafeBufferPointer { ePtr in
-                ttzip_rust_vfs_tree_build(ePtr.baseAddress, ePtr.count, rPtr)
+            packedUtf8.withUnsafeBufferPointer { uPtr in
+                pathOffsets.withUnsafeBufferPointer { offPtr in
+                    pathLens.withUnsafeBufferPointer { lenPtr in
+                        uncompressedSizes.withUnsafeBufferPointer { uSizePtr in
+                            compressedSizes.withUnsafeBufferPointer { cSizePtr in
+                                crc32s.withUnsafeBufferPointer { crcPtr in
+                                    mtimes.withUnsafeBufferPointer { mtimePtr in
+                                        modes.withUnsafeBufferPointer { modePtr in
+                                            flags.withUnsafeBufferPointer { flagPtr in
+                                                var packed = TTZipPackedEntryArray(
+                                                    utf8_bytes: uPtr.baseAddress,
+                                                    total_bytes_len: uPtr.count,
+                                                    path_offsets: offPtr.baseAddress,
+                                                    path_lens: lenPtr.baseAddress,
+                                                    uncompressed_sizes: uSizePtr.baseAddress,
+                                                    compressed_sizes: cSizePtr.baseAddress,
+                                                    crc32s: crcPtr.baseAddress,
+                                                    mtimes: mtimePtr.baseAddress,
+                                                    modes: modePtr.baseAddress,
+                                                    flags: flagPtr.baseAddress,
+                                                    count: entries.count
+                                                )
+                                                return ttzip_rust_vfs_tree_build_packed(&packed, rPtr)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         
@@ -136,6 +176,33 @@ public final class RustVfsSession: @unchecked Sendable {
         return matches
     }
     
+    /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging.
+    public func getChildren(dirNodeId: UInt32 = 0, offset: Int = 0, limit: Int = 100) -> (nodes: [TTZipVfsNodeSummary], total: Int) {
+        var buffer = [TTZipVfsNodeSummary](repeating: TTZipVfsNodeSummary(
+            node_id: 0,
+            name_utf8: nil,
+            name_len: 0,
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            mtime_epoch_secs: 0,
+            mode: 0,
+            is_directory: false,
+            is_encrypted: false,
+            has_children: false
+        ), count: limit)
+        
+        var count: Int = 0
+        var totalInDir: Int = 0
+        
+        let status = buffer.withUnsafeMutableBufferPointer { bPtr in
+            ttzip_rust_vfs_get_children(handle, dirNodeId, offset, limit, bPtr.baseAddress, &count, &totalInDir)
+        }
+        
+        guard status == TTZIP_STATUS_OK else { return ([], 0) }
+        return (Array(buffer.prefix(count)), totalInDir)
+    }
+
     /// Renders ASCII/Unicode tree from persistent VFS session.
     public func renderTree() -> String {
         var outPtr: UnsafeMutablePointer<CChar>? = nil

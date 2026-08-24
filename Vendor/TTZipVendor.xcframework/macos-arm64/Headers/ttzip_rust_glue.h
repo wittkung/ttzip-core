@@ -584,6 +584,46 @@ int32_t ttzip_rust_vfs_search_zero_alloc(
     int32_t capacity
 );
 
+typedef struct TTZipPackedEntryArray {
+    const uint8_t  *utf8_bytes;
+    size_t          total_bytes_len;
+    const uint32_t *path_offsets;
+    const uint32_t *path_lens;
+    const uint64_t *uncompressed_sizes;
+    const uint64_t *compressed_sizes;
+    const uint32_t *crc32s;
+    const int64_t  *mtimes;
+    const uint32_t *modes;
+    const uint8_t  *flags;
+    size_t          count;
+} TTZipPackedEntryArray;
+
+typedef struct TTZipVfsNodeSummary {
+    uint32_t node_id;
+    const char *name_utf8;
+    uint32_t name_len;
+    uint64_t uncompressed_size;
+    uint64_t compressed_size;
+    uint32_t crc32;
+    int64_t  mtime_epoch_secs;
+    uint32_t mode;
+    bool is_directory;
+    bool is_encrypted;
+    bool has_children;
+} TTZipVfsNodeSummary;
+
+TTZipVfsTreeHandle *ttzip_rust_vfs_tree_build_packed(const TTZipPackedEntryArray *packed_entries, const char *root_name);
+
+TTZipStatus ttzip_rust_vfs_get_children(
+    const TTZipVfsTreeHandle *handle,
+    uint32_t dir_node_id,
+    size_t offset,
+    size_t limit,
+    TTZipVfsNodeSummary *out_nodes,
+    size_t *out_count,
+    size_t *out_total_in_dir
+);
+
 // Execution Provenance & Telemetry
 bool ttzip_rust_get_last_execution_provenance(TTZipExecutionProvenance *out_provenance);
 const char *ttzip_rust_engine_tag_name(TTZipEngineTag tag);

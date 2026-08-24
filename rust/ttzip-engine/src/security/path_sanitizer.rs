@@ -228,3 +228,39 @@ pub fn sanitize_path(raw_path: &str) -> PathSanitizationResult {
         win32_formatted_path,
     }
 }
+
+/// Real-time stream expansion ratio guard to detect and abort decompression bombs (Zip-Bombs).
+#[derive(Debug, Clone, Copy)]
+pub struct ExpansionRatioGuard {
+    pub max_ratio: f64,
+    pub threshold_uncompressed_bytes: u64,
+}
+
+impl Default for ExpansionRatioGuard {
+    fn default() -> Self {
+        Self {
+            max_ratio: 1000.0,
+            threshold_uncompressed_bytes: 100 * 1024 * 1024, // 100MB threshold before enforcing ratio check
+        }
+    }
+}
+
+impl ExpansionRatioGuard {
+    pub fn new(max_ratio: f64, threshold_bytes: u64) -> Self {
+        Self {
+            max_ratio,
+            threshold_uncompressed_bytes: threshold_bytes,
+        }
+    }
+
+    #[inline]
+    pub fn check(&self, uncompressed_written: u64, compressed_read: u64) -> Result<(), crate::types::TTZipStatus> {
+        if uncompressed_written > self.threshold_uncompressed_bytes {
+            let ratio = (uncompressed_written as f64) / (compressed_read.max(1) as f64);
+            if ratio > self.max_ratio {
+                return Err(crate::types::TTZipStatus::ErrSecurityViolation);
+            }
+        }
+        Ok(())
+    }
+}

@@ -191,3 +191,28 @@ pub unsafe extern "C" fn ttzip_rust_cpu_get_topology(
     });
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
+
+static ENGINE_THREAD_POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
+
+/// Persistent topology-aware Rayon thread pool matching Apple Silicon hardware cores.
+pub struct EngineThreadPool;
+
+impl EngineThreadPool {
+    /// Returns the shared global Rayon thread pool.
+    pub fn global() -> &'static rayon::ThreadPool {
+        ENGINE_THREAD_POOL.get_or_init(|| {
+            let caps = CpuCapabilities::get();
+            let thread_count = caps.p_cores.max(1) as usize;
+            rayon::ThreadPoolBuilder::new()
+                .thread_name(|i| format!("ttzip-worker-{}", i))
+                .num_threads(thread_count)
+                .build()
+                .unwrap_or_else(|_| {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(1)
+                        .build()
+                        .expect("Failed to create fallback thread pool")
+                })
+        })
+    }
+}

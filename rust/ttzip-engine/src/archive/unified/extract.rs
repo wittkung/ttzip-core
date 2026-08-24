@@ -61,6 +61,27 @@ pub fn extract_archive_with_metrics(
         return unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options) };
     }
 
+    // 1. Fast-Path: Pure Safe Rust Streaming 7z Decoder with Bounded RSS
+    if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
+        if let Some(mapped) = source.as_slice() {
+            let pwd_str = if !options.password.is_null() {
+                unsafe { CStr::from_ptr(options.password).to_str().ok() }
+            } else {
+                None
+            };
+            if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice_with_password(mapped, pwd_str) {
+                if let Ok(report) = sevenz.extract_all(destination_path, options) {
+                    return Ok(report.total_uncompressed_bytes);
+                }
+            }
+            if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
+                if let Ok(report) = zip_archive.extract_all(destination_path, options) {
+                    return Ok(report.total_uncompressed_bytes);
+                }
+            }
+        }
+    }
+
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
         .map_err(|_| TTZipStatus::ErrInvalidParam)?;
 
@@ -84,16 +105,6 @@ pub fn extract_archive_with_metrics(
 
         let open_rc = archive_read_open_filename(a, arch_c.as_ptr(), 65536);
         if open_rc != 0 {
-            // Fallback to pure SevenZ decoder via zero-copy mmap
-            if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
-                if let Some(mapped) = source.as_slice() {
-                    if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice(mapped) {
-                        if let Ok(report) = sevenz.extract_all(destination_path, options) {
-                            return Ok(report.total_uncompressed_bytes);
-                        }
-                    }
-                }
-            }
             return Err(TTZipStatus::ErrOpenFailed);
         }
 
@@ -111,6 +122,7 @@ unsafe fn extract_from_archive_handle(
     let mut entry: *mut c_void = std::ptr::null_mut();
     let mut total_processed: u64 = 0;
     let mut buf = vec![0u8; 64 * 1024];
+    let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
 
     while archive_read_next_header(a, &mut entry) == 0 {
         if entry.is_null() {
@@ -226,6 +238,7 @@ unsafe fn extract_from_archive_handle(
                 }
                 remaining = remaining.saturating_sub(bytes_read as u64);
                 total_processed = total_processed.saturating_add(bytes_read as u64);
+                bomb_guard.check(total_processed, total_processed / 1000 + 1)?;
                 if let Some(cb) = options.progress_callback {
                     if !cb(total_processed, total_processed, raw_path, options.user_data) {
                         return Err(TTZipStatus::Cancelled);

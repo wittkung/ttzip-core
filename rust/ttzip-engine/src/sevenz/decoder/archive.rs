@@ -7,7 +7,7 @@
 
 //! Zero-copy 7z Archive reader and extraction engine.
 
-use super::payload::decode_7z_solid_payload;
+use super::payload::decode_7z_solid_streaming;
 use super::stream::extract_entry_bytes_stream;
 use crate::crypto::crc32::crc32_fast;
 use crate::fs::safe_extract::{sanitize_and_validate_path, SafeExtractEngine};
@@ -143,22 +143,20 @@ impl<'a> SevenZArchive<'a> {
             });
         }
 
-        let solid_buf = decode_7z_solid_payload(
-            self.data,
-            &self.info,
-            password_str,
-            options.thread_budget.max(1),
-        )?;
+        struct PendingFileItem {
+            safe_path: std::path::PathBuf,
+            rel_path: String,
+            size: u64,
+            expected_crc: u32,
+        }
 
-        let mut offset = 0usize;
+        let mut pending_files = Vec::new();
         let mut stream_idx = 0usize;
-        let processed_bytes = Arc::new(AtomicU64::new(0));
 
         for file in &self.info.files {
             if file.is_directory {
                 continue;
             }
-
             let safe_path = sanitize_and_validate_path(dest_dir, &file.rel_path)?;
             if let Some(parent) = safe_path.parent() {
                 fs::create_dir_all(parent).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
@@ -170,50 +168,78 @@ impl<'a> SevenZArchive<'a> {
             }
 
             let fsize = if stream_idx < self.info.stream_sizes.len() {
-                self.info.stream_sizes[stream_idx] as usize
+                self.info.stream_sizes[stream_idx]
             } else {
-                solid_buf.len().saturating_sub(offset)
+                0
             };
-
-            let clamped_end = (offset + fsize).min(solid_buf.len());
-            let file_data = if offset < solid_buf.len() {
-                &solid_buf[offset..clamped_end]
-            } else {
-                &[]
-            };
-
-            if let Some(&expected_crc) = self.info.stream_crcs.get(stream_idx) {
-                if expected_crc != 0 && !file_data.is_empty() {
-                    let computed = crc32_fast(0, file_data);
-                    if computed != expected_crc && self.info.is_encrypted {
-                        return Err(TTZipStatus::ErrInvalidPassword);
-                    }
-                }
-            }
-
-            let mut out_file = File::create(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            out_file.write_all(file_data).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-
-            offset += fsize;
+            let exp_crc = self.info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
             stream_idx += 1;
 
-            let current_done = processed_bytes.fetch_add(fsize as u64, Ordering::Relaxed) + fsize as u64;
-
-            if let Some(cb) = options.progress_callback {
-                let c_path = CString::new(file.rel_path.as_str()).unwrap_or_default();
-                let should_continue = unsafe {
-                    cb(
-                        current_done,
-                        total_uncomp_bytes,
-                        c_path.as_ptr(),
-                        options.user_data,
-                    )
-                };
-                if !should_continue {
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
+            pending_files.push(PendingFileItem {
+                safe_path,
+                rel_path: file.rel_path.clone(),
+                size: fsize,
+                expected_crc: exp_crc,
+            });
         }
+
+        let mut current_file_idx = 0usize;
+        let mut current_file_handle: Option<(File, u64, u32)> = None; // (File, bytes_written_for_this_file, running_crc)
+        let processed_bytes = Arc::new(AtomicU64::new(0));
+        let is_encrypted = self.info.is_encrypted;
+        let progress_cb = options.progress_callback;
+        let user_data = options.user_data;
+
+        let _ = decode_7z_solid_streaming(
+            self.data,
+            &self.info,
+            password_str,
+            options.thread_budget.max(1),
+            |mut chunk| -> Result<(), TTZipStatus> {
+                while !chunk.is_empty() && current_file_idx < pending_files.len() {
+                    let target_info = &pending_files[current_file_idx];
+                    
+                    if current_file_handle.is_none() {
+                        let f = File::create(&target_info.safe_path)
+                            .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                        current_file_handle = Some((f, 0, 0));
+                    }
+
+                    let (ref mut file, ref mut written, ref mut running_crc) = current_file_handle.as_mut().unwrap();
+                    let file_remaining = target_info.size.saturating_sub(*written);
+                    let to_write = (chunk.len() as u64).min(file_remaining) as usize;
+
+                    if to_write > 0 {
+                        let slice = &chunk[..to_write];
+                        file.write_all(slice).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                        *running_crc = crc32_fast(*running_crc, slice);
+                        *written += to_write as u64;
+                        let total_done = processed_bytes.fetch_add(to_write as u64, Ordering::Relaxed) + to_write as u64;
+
+                        if let Some(cb) = progress_cb {
+                            let c_path = CString::new(target_info.rel_path.as_str()).unwrap_or_default();
+                            let keep_going = unsafe {
+                                cb(total_done, total_uncomp_bytes, c_path.as_ptr(), user_data)
+                            };
+                            if !keep_going {
+                                return Err(TTZipStatus::Cancelled);
+                            }
+                        }
+
+                        chunk = &chunk[to_write..];
+                    }
+
+                    if *written >= target_info.size {
+                        if target_info.expected_crc != 0 && *running_crc != target_info.expected_crc && is_encrypted {
+                            return Err(TTZipStatus::ErrInvalidPassword);
+                        }
+                        current_file_handle = None;
+                        current_file_idx += 1;
+                    }
+                }
+                Ok(())
+            },
+        )?;
 
         if options.preserve_permissions {
             engine.apply_all()?;

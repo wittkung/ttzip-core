@@ -403,3 +403,37 @@ pub fn get_execution_provenance(out: *mut TTZipExecutionProvenance) -> bool {
     true
 }
 
+/// Zero-copy C-ABI packed array representing batch entries for FFI transfer.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct TTZipPackedEntryArray {
+    pub utf8_bytes: *const u8,
+    pub total_bytes_len: usize,
+    pub path_offsets: *const u32,
+    pub path_lens: *const u32,
+    pub uncompressed_sizes: *const u64,
+    pub compressed_sizes: *const u64,
+    pub crc32s: *const u32,
+    pub mtimes: *const i64,
+    pub modes: *const u32,
+    pub flags: *const u8,
+    pub count: usize,
+}
+
+/// Windowed VFS node summary DTO for zero-copy UI paging queries.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct TTZipVfsNodeSummary {
+    pub node_id: u32,
+    pub name_utf8: *const c_char,
+    pub name_len: u32,
+    pub uncompressed_size: u64,
+    pub compressed_size: u64,
+    pub crc32: u32,
+    pub mtime_epoch_secs: i64,
+    pub mode: u32,
+    pub is_directory: bool,
+    pub is_encrypted: bool,
+    pub has_children: bool,
+}
+

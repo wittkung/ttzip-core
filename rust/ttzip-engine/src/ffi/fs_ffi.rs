@@ -13,7 +13,7 @@ use crate::fs::apfs::{
 };
 use crate::fs::safe_extract::sanitize_and_validate_path;
 use crate::fs::scanner::{scan_directory_parallel, ScanOptions};
-use crate::fs::vfs::{VfsEntry, VfsTree};
+use crate::fs::vfs::{VfsArena, VfsEntry, VfsTree};
 use crate::types::{TTZipEntryMetadata, TTZipStatus};
 use libc::{c_char, c_void};
 use std::ffi::CString;
@@ -189,6 +189,7 @@ pub unsafe extern "C" fn ttzip_rust_scan_directory_parallel(
 
 pub struct TTZipVfsTreeHandle {
     pub inner: VfsTree,
+    pub arena: Option<VfsArena>,
 }
 
 /// Constructs a unified VFS tree from C-ABI entry metadata array.
@@ -223,8 +224,66 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_build(
             }
         }
         let tree = VfsTree::build_from_entries(&vfs_entries, r_name);
-        Box::into_raw(Box::new(TTZipVfsTreeHandle { inner: tree }))
+        Box::into_raw(Box::new(TTZipVfsTreeHandle {
+            inner: tree,
+            arena: None,
+        }))
     }).unwrap_or(std::ptr::null_mut())
+}
+
+/// Constructs a unified VFS tree and arena from a zero-copy packed entry array in O(N) time.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_vfs_tree_build_packed(
+    packed: *const crate::types::TTZipPackedEntryArray,
+    root_name: *const c_char,
+) -> *mut TTZipVfsTreeHandle {
+    catch_unwind(|| {
+        if packed.is_null() {
+            return std::ptr::null_mut();
+        }
+        let r_name = unsafe { safe_cstr(root_name) }.unwrap_or("");
+        let packed_ref = unsafe { &*packed };
+        let arena = VfsArena::build_from_packed(packed_ref, r_name);
+        let tree = VfsTree::new(r_name);
+        Box::into_raw(Box::new(TTZipVfsTreeHandle {
+            inner: tree,
+            arena: Some(arena),
+        }))
+    }).unwrap_or(std::ptr::null_mut())
+}
+
+/// Retrieves windowed children slice for a directory node in O(1) memory.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
+    handle: *const TTZipVfsTreeHandle,
+    dir_node_id: u32,
+    offset: usize,
+    limit: usize,
+    out_nodes: *mut crate::types::TTZipVfsNodeSummary,
+    out_count: *mut usize,
+    out_total_in_dir: *mut usize,
+) -> TTZipStatus {
+    catch_unwind(|| {
+        if handle.is_null() || out_nodes.is_null() || out_count.is_null() || out_total_in_dir.is_null() {
+            return TTZipStatus::ErrInvalidParam;
+        }
+        let handle_ref = unsafe { &*handle };
+        let arena = match &handle_ref.arena {
+            Some(a) => a,
+            None => return TTZipStatus::ErrInvalidParam,
+        };
+
+        let (summaries, total) = arena.get_children_slice(dir_node_id, offset, limit);
+        let count = summaries.len();
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(summaries.as_ptr(), out_nodes, count);
+            *out_count = count;
+            *out_total_in_dir = total;
+        }
+
+        TTZipStatus::Ok
+    }).unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
 /// Renders ASCII/Unicode hierarchical tree into an allocated C-string buffer.
@@ -237,9 +296,12 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_render(
         if handle.is_null() || out_rendered.is_null() {
             return TTZipStatus::ErrInvalidParam;
         }
-        // SAFETY: handle is verified non-null
-        let tree = unsafe { &(*handle).inner };
-        let rendered = tree.render_tree();
+        let h = unsafe { &*handle };
+        let rendered = if let Some(ref arena) = h.arena {
+            format!("VfsArena: {} nodes\n", arena.total_nodes)
+        } else {
+            h.inner.render_tree()
+        };
         let c_str = match CString::new(rendered) {
             Ok(s) => s,
             Err(_) => return TTZipStatus::ErrInvalidParam,
@@ -278,8 +340,49 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
         let cb = match callback { Some(f) => f, None => return TTZipStatus::ErrInvalidParam };
         let q_str = match unsafe { safe_cstr(query) } { Ok(s) => s, Err(st) => return st };
 
-        // SAFETY: handle is verified non-null
-        let tree = unsafe { &(*handle).inner };
+        let h = unsafe { &*handle };
+        if let Some(ref arena) = h.arena {
+            for i in 1..arena.total_nodes {
+                let name_off = arena.name_offsets[i] as usize;
+                let name_len = arena.name_lens[i] as usize;
+                let path_off = arena.full_path_offsets[i] as usize;
+                let path_len = arena.full_path_lens[i] as usize;
+
+                let name_bytes = &arena.string_arena[name_off..name_off + name_len];
+                let path_bytes = &arena.string_arena[path_off..path_off + path_len];
+
+                let name_str = std::str::from_utf8(name_bytes).unwrap_or("");
+                let path_str = std::str::from_utf8(path_bytes).unwrap_or("");
+
+                let is_dir = (arena.flags[i] & crate::fs::vfs::arena::VFS_FLAG_IS_DIR) != 0;
+                let is_enc = (arena.flags[i] & crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED) != 0;
+
+                let score = if let Some(s) = crate::fs::vfs::search::fuzzy_match_zero_alloc(name_str, q_str) {
+                    Some(s + 100)
+                } else {
+                    crate::fs::vfs::search::fuzzy_match_zero_alloc(path_str, q_str)
+                };
+
+                if let Some(s) = score {
+                    let raw_res = TTZipVfsSearchResultRaw {
+                        name: arena.string_arena[name_off..].as_ptr() as *const c_char,
+                        path: arena.string_arena[path_off..].as_ptr() as *const c_char,
+                        uncompressed_size: arena.uncompressed_sizes[i],
+                        compressed_size: arena.compressed_sizes[i],
+                        crc32: arena.crc32s[i],
+                        is_directory: is_dir,
+                        is_encrypted: is_enc,
+                        score: s,
+                    };
+                    if !unsafe { cb(&raw_res, user_data) } {
+                        break;
+                    }
+                }
+            }
+            return TTZipStatus::Ok;
+        }
+
+        let tree = &h.inner;
         let search_results = tree.fuzzy_search(q_str);
 
         for res in &search_results {
@@ -326,7 +429,15 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_get_stats(
 ) {
     let _ = catch_unwind(|| {
         if handle.is_null() { return; }
-        let tree = &(*handle).inner;
+        let h = unsafe { &*handle };
+        if let Some(ref arena) = h.arena {
+            let (f, d, s) = arena.get_stats();
+            if !out_total_files.is_null() { *out_total_files = f; }
+            if !out_total_dirs.is_null() { *out_total_dirs = d; }
+            if !out_total_size.is_null() { *out_total_size = s; }
+            return;
+        }
+        let tree = &h.inner;
         if !out_total_files.is_null() { *out_total_files = tree.root.total_files() as u64; }
         if !out_total_dirs.is_null() { *out_total_dirs = tree.root.total_directories() as u64; }
         if !out_total_size.is_null() { *out_total_size = tree.root.uncompressed_size; }
@@ -351,8 +462,13 @@ pub unsafe extern "C" fn ttzip_rust_vfs_search_zero_alloc(
             Ok(s) => s,
             Err(_) => return -1,
         };
-        let tree = unsafe { &(*handle).inner };
+        let h = unsafe { &*handle };
         let slice = unsafe { std::slice::from_raw_parts_mut(out_matches, capacity as usize) };
+        if let Some(ref arena) = h.arena {
+            let count = arena.search_zero_alloc(q_str, slice);
+            return count as i32;
+        }
+        let tree = &h.inner;
         let count = crate::fs::vfs::search::search_vfs_tree_zero_alloc(&tree.root, q_str, slice);
         count as i32
     }).unwrap_or(-1)

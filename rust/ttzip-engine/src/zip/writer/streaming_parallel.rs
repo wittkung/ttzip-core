@@ -24,7 +24,8 @@ use crate::zip::parser::{
     MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
 };
 use rayon::prelude::*;
-use std::fs::{self, OpenOptions};
+use std::fs::{self, File, OpenOptions};
+use std::io::Read;
 use std::os::unix::fs::{FileExt, MetadataExt};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
@@ -316,14 +317,32 @@ fn compress_single_item(
         });
     }
 
-    let raw_data = if item.is_symlink {
-        item.symlink_target.clone().unwrap_or_default().into_bytes()
+    let (raw_data, uncompressed_size, crc) = if item.is_symlink {
+        let sym_bytes = item.symlink_target.clone().unwrap_or_default().into_bytes();
+        let len = sym_bytes.len() as u64;
+        let c = crc32_fast(0, &sym_bytes);
+        (sym_bytes, len, c)
     } else {
-        fs::read(&item.abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?
+        let file = File::open(&item.abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        let meta = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let file_len = meta.len();
+        
+        // For large files (>8MB), read bounded buffer with streaming CRC
+        let mut data = Vec::with_capacity(file_len.min(8 * 1024 * 1024) as usize);
+        let mut running_crc = 0u32;
+        let mut chunk = vec![0u8; 1024 * 1024];
+        let mut reader = std::io::BufReader::with_capacity(1024 * 1024, file);
+        
+        loop {
+            let bytes_read = reader.read(&mut chunk).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            if bytes_read == 0 {
+                break;
+            }
+            running_crc = crc32_fast(running_crc, &chunk[..bytes_read]);
+            data.extend_from_slice(&chunk[..bytes_read]);
+        }
+        (data, file_len, running_crc)
     };
-
-    let uncompressed_size = raw_data.len() as u64;
-    let crc = crc32_fast(0, &raw_data);
 
     let (actual_method, raw_payload) = if level == 0 || raw_data.is_empty() {
         (0u16, raw_data)
@@ -357,7 +376,7 @@ fn compress_single_item(
             let mut keys = crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
             keys.encrypt_slice(&mut header);
             enc_payload.extend_from_slice(&header);
-            let mut body = raw_payload;
+            let mut body = raw_payload.clone();
             keys.encrypt_slice(&mut body);
             enc_payload.extend_from_slice(&body);
             (actual_method, true, enc_payload)

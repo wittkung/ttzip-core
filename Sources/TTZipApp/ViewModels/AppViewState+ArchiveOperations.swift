@@ -58,9 +58,7 @@ extension AppViewState {
             destDir = (parentDir as NSString).appendingPathComponent(archiveName)
         }
 
-        await MainActor.run {
-            self.statusMessage = "Extracting \(archiveName)..."
-        }
+        self.statusMessage = "Extracting \(archiveName)..."
         
         do {
             let res = try await TTZipEngineFacade.shared.quickExtract(
@@ -69,24 +67,20 @@ extension AppViewState {
                 password: pwd,
                 autoVaultUnlock: self.passwordVault.autoUnlockArchives
             )
-            await MainActor.run {
-                if res.isVaultUnlocked, let pwd = res.unlockedPassword {
-                    self.statusMessage = "Extracted with vault password: \(archiveName)"
-                    ArchivePasswordStore.shared.setPassword(pwd, for: archivePath)
-                } else {
-                    self.statusMessage = "Extraction complete: \(archiveName)"
-                }
-                self.fileViewer.revealInFinder(at: destDir)
-                if trashSourceAfterExtract {
-                    try? FileManager.default.trashItem(at: archiveURL, resultingItemURL: nil)
-                }
+            if res.isVaultUnlocked, let pwd = res.unlockedPassword {
+                self.statusMessage = "Extracted with vault password: \(archiveName)"
+                ArchivePasswordStore.shared.setPassword(pwd, for: archivePath)
+            } else {
+                self.statusMessage = "Extraction complete: \(archiveName)"
+            }
+            self.fileViewer.revealInFinder(at: destDir)
+            if trashSourceAfterExtract {
+                try? FileManager.default.trashItem(at: archiveURL, resultingItemURL: nil)
             }
         } catch {
-            await MainActor.run {
-                self.statusMessage = "Extraction failed: \(error.localizedDescription)"
-                self.pendingEncryptedPath = archivePath
-                self.showPasswordPrompt = true
-            }
+            self.statusMessage = "Extraction failed: \(error.localizedDescription)"
+            self.pendingEncryptedPath = archivePath
+            self.showPasswordPrompt = true
         }
     }
 
@@ -94,21 +88,15 @@ extension AppViewState {
         let name = (entryPath as NSString).lastPathComponent
         let pwd = ArchivePasswordStore.shared.getPassword(for: archivePath) ?? activePassword
         
-        await MainActor.run {
-            self.statusMessage = "Extracting entry: \(name)..."
-        }
+        self.statusMessage = "Extracting entry: \(name)..."
         
         do {
             try await TTZipEngineFacade.shared.extractSingleEntry(archivePath: archivePath, entryPath: entryPath, destinationDir: destinationDir, password: pwd)
             let targetExtractedFile = (destinationDir as NSString).appendingPathComponent(name)
-            await MainActor.run {
-                self.statusMessage = "Extracted entry: \(name)"
-                self.fileViewer.revealInFinder(at: targetExtractedFile)
-            }
+            self.statusMessage = "Extracted entry: \(name)"
+            self.fileViewer.revealInFinder(at: targetExtractedFile)
         } catch {
-            await MainActor.run {
-                self.statusMessage = "Extraction failed: \(error.localizedDescription)"
-            }
+            self.statusMessage = "Extraction failed: \(error.localizedDescription)"
         }
     }
     

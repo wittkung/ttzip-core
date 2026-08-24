@@ -222,10 +222,7 @@ impl<'a> ZipArchive<'a> {
                 }
             }
         } else {
-            let pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(thread_budget)
-                .build()
-                .map_err(|_| TTZipStatus::ErrArchiveInitFailed)?;
+            let pool = crate::platform::cpu::EngineThreadPool::global();
 
             let pwd_owned = password_str.map(|s| s.to_string());
             let cb_mutex = std::sync::Mutex::new(0u64);
