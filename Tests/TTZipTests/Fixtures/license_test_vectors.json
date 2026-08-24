@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipLicenseTestVectors",
+  "description": "Deterministic test vectors for TTZip Ed25519 license validation",
+  "type": "object",
+  "properties": {
+    "public_key_base64": {
+      "type": "string",
+      "description": "Ed25519 Public Key in Base64"
+    },
+    "valid_keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "order_id": { "type": "string" },
+          "tier": { "type": "string" },
+          "license_key": { "type": "string" }
+        },
+        "required": ["email", "order_id", "tier", "license_key"],
+        "additionalProperties": false
+      }
+    },
+    "corrupted_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["public_key_base64", "valid_keys", "corrupted_keys"],
+  "additionalProperties": false
+}

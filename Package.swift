@@ -1,39 +1,31 @@
 // swift-tools-version: 6.0
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
 
 import PackageDescription
 
 let package = Package(
-    name: "TTZip",
+    name: "TTZipCore",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
         .library(
             name: "TTZipCore",
             targets: ["TTZipCore"]
         ),
-        .executable(
-            name: "TTZipApp",
-            targets: ["TTZipApp"]
-        ),
         .library(
-            name: "TTZipQuickLook",
-            type: .dynamic,
-            targets: ["TTZipQuickLook"]
-        ),
-        .library(
-            name: "TTZipFinderSync",
-            type: .dynamic,
-            targets: ["TTZipFinderSync"]
+            name: "CTTZipBridge",
+            targets: ["CTTZipBridge"]
         ),
         .executable(
             name: "ttzip-bench",
             targets: ["TTZipBench"]
         )
     ],
-    dependencies: [
-        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.6.0")
-    ],
+    dependencies: [],
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
@@ -42,6 +34,7 @@ let package = Package(
         .target(
             name: "CTTZipBridge",
             dependencies: ["TTZipVendor"],
+            path: "Sources/CTTZipBridge",
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include")
@@ -57,32 +50,11 @@ let package = Package(
         ),
         .target(
             name: "TTZipCore",
-            dependencies: ["CTTZipBridge"],
+            dependencies: ["CTTZipBridge", "TTZipVendor"],
+            path: "Sources/TTZipCore",
             swiftSettings: [
                 .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
             ]
-        ),
-        .executableTarget(
-            name: "TTZipApp",
-            dependencies: [
-                "TTZipCore",
-                .product(name: "Sparkle", package: "Sparkle")
-            ],
-            exclude: ["Info.plist", "TTZip.entitlements", "TTZip-Direct.entitlements"],
-            resources: [
-                .copy("Resources/AppIcon.icns"),
-                .process("Resources/Assets.xcassets")
-            ]
-        ),
-        .target(
-            name: "TTZipQuickLook",
-            dependencies: ["TTZipCore"],
-            exclude: ["Info.plist"]
-        ),
-        .target(
-            name: "TTZipFinderSync",
-            dependencies: ["TTZipCore"],
-            exclude: ["Info.plist"]
         ),
         .executableTarget(
             name: "TTZipBench",
@@ -90,6 +62,7 @@ let package = Package(
                 "TTZipCore",
                 "CTTZipBridge"
             ],
+            path: "Sources/TTZipBench",
             swiftSettings: [
                 .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
             ]
@@ -97,18 +70,16 @@ let package = Package(
         .testTarget(
             name: "TTZipTests",
             dependencies: [
-                "TTZipCore"
+                "TTZipCore",
+                "CTTZipBridge"
             ],
+            path: "Tests/TTZipTests",
             resources: [
                 .copy("Fixtures")
             ],
             swiftSettings: [
                 .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
             ]
-        ),
-        .testTarget(
-            name: "TTZipAppTests",
-            dependencies: ["TTZipCore", "TTZipApp"]
         )
     ]
 )

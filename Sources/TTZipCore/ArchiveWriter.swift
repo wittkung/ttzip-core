@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
@@ -111,9 +118,6 @@ public final class ArchiveWriter: ArchiveWriting, @unchecked Sendable {
     ) throws {
         guard !inputPaths.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
-        }
-        if (level == .ultra || level.rawValue >= 9) && !LicenseManager.shared.isPro {
-            throw ArchiveError.readFailed(code: -403)
         }
 
         let startTime = Date()

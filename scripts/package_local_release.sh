@@ -21,6 +21,7 @@ cd "${WORKSPACE_ROOT}"
 VERSION="1.0.0"
 TARGET_ARCH="universal"
 OUTPUT_DIR="${WORKSPACE_ROOT}/dist"
+CHANNEL="direct"
 SKIP_DMG=false
 SKIP_RUST=false
 STRIP_SYMBOLS=true
@@ -34,6 +35,7 @@ usage() {
     echo "Options:"
     echo "  --version <ver>      Release version string (default: 1.0.0)"
     echo "  --arch <arch>        Target architecture: universal, arm64, x86_64"
+    echo "  --channel <channel>  Target channel: direct, mas, steam, community (default: direct)"
     echo "  --output-dir <path>  Output directory for artifacts (default: ./dist)"
     echo "  --skip-dmg           Skip generating Release DMG image"
     echo "  --skip-rust          Skip building Rust core and standalone TUI binary"
@@ -47,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --version) VERSION="$2"; shift 2 ;;
         --arch) TARGET_ARCH="$2"; shift 2 ;;
+        --channel) CHANNEL="$2"; shift 2 ;;
         --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
         --skip-dmg) SKIP_DMG=true; shift ;;
         --skip-rust) SKIP_RUST=true; shift ;;
@@ -80,71 +83,29 @@ build_rust_core() {
         echo "--> [INFO] Skipping Rust core build (--skip-rust)"; return 0
     fi
     echo "==> [1/6] Compiling Rust Core Glue & Standalone Binary..."
-    "${SCRIPT_DIR}/build_rust.sh" --release
-    "${SCRIPT_DIR}/build_tui.sh" --release
+    cargo build --release --manifest-path "${WORKSPACE_ROOT}/rust/Cargo.toml" -p ttzip-tui -p ttzip-engine
 }
 
 build_swift_targets() {
-    echo "==> [2/6] Compiling Swift Release Product (TTZipApp)..."
-    swift build -c release --product TTZipApp
+    if [ -f "${WORKSPACE_ROOT}/../apple/Package.swift" ]; then
+        echo "==> [2/6] Compiling Swift Release Product (TTZipApp via apple/ --channel ${CHANNEL})..."
+        "${WORKSPACE_ROOT}/../apple/scripts/bundle_app.sh" --channel "${CHANNEL}"
+    elif [ -f "${WORKSPACE_ROOT}/Package.swift" ]; then
+        echo "==> [2/6] Compiling Swift Core Target in release mode..."
+        swift build -c release --product TTZipCore
+    fi
 }
 
 assemble_app_bundle() {
-    echo "==> [3/6] Assembling Desktop App Bundle (${APP_BUNDLE})..."
-    local app_bin
-    app_bin="$(find_binary TTZipApp)"
-    if [ -z "${app_bin}" ] || [ ! -f "${app_bin}" ]; then
-        echo "❌ Error: TTZipApp executable not found in .build"; exit 1
+    if [ -d "${WORKSPACE_ROOT}/../apple/dist/TTZip.app" ]; then
+        echo "==> [3/6] Linking Desktop App Bundle (${APP_BUNDLE})..."
+        rm -rf "${APP_BUNDLE}"
+        mkdir -p "${OUTPUT_DIR}"
+        cp -R "${WORKSPACE_ROOT}/../apple/dist/TTZip.app" "${APP_BUNDLE}"
+        echo "  ✓ App bundle copied to ${APP_BUNDLE}"
+    else
+        echo "--> [3/6] Pure Core SDK environment; App bundle assembly skipped"
     fi
-    
-    local contents_dir="${APP_BUNDLE}/Contents"
-    local macos_dir="${contents_dir}/MacOS"
-    local frameworks_dir="${contents_dir}/Frameworks"
-    local resources_dir="${contents_dir}/Resources"
-    local helpers_dir="${contents_dir}/Helpers"
-    
-    rm -rf "${APP_BUNDLE}"
-    mkdir -p "${macos_dir}" "${frameworks_dir}" "${resources_dir}" "${helpers_dir}"
-    
-    cp "${app_bin}" "${macos_dir}/TTZip"
-    [ "${STRIP_SYMBOLS}" = true ] && strip -x "${macos_dir}/TTZip" 2>/dev/null || true
-    chmod +x "${macos_dir}/TTZip"
-    install_name_tool -add_rpath @executable_path/../Frameworks "${macos_dir}/TTZip" 2>/dev/null || true
-    
-    local rust_cli="${WORKSPACE_ROOT}/bin/ttzip"
-    [ ! -f "${rust_cli}" ] && rust_cli="${WORKSPACE_ROOT}/rust/target/release/ttzip"
-    if [ -f "${rust_cli}" ]; then
-        cp "${rust_cli}" "${helpers_dir}/ttzip"
-        [ "${STRIP_SYMBOLS}" = true ] && strip -x "${helpers_dir}/ttzip" 2>/dev/null || true
-        chmod +x "${helpers_dir}/ttzip"
-        codesign --force --deep --sign - "${helpers_dir}/ttzip" 2>/dev/null || true
-    fi
-    
-    local sparkle_src
-    sparkle_src="$(find "${WORKSPACE_ROOT}/.build" -name "Sparkle.framework" -type d 2>/dev/null | grep -E "xcframework.*macos|release/Sparkle.framework" | head -n 1 || true)"
-    if [ -n "${sparkle_src}" ] && [ -d "${sparkle_src}" ]; then
-        cp -R "${sparkle_src}" "${frameworks_dir}/"
-        codesign --force --deep --sign - "${frameworks_dir}/Sparkle.framework" 2>/dev/null || true
-    fi
-    
-    cp "${WORKSPACE_ROOT}/Sources/TTZipApp/Info.plist" "${contents_dir}/Info.plist"
-    echo "APPL????" > "${contents_dir}/PkgInfo"
-    
-    local icon_path="${WORKSPACE_ROOT}/Sources/TTZipApp/Resources/AppIcon.icns"
-    if [ ! -f "${icon_path}" ] && [ -f "${SCRIPT_DIR}/generate_app_icon.sh" ]; then
-        "${SCRIPT_DIR}/generate_app_icon.sh" || true
-    fi
-    [ -f "${icon_path}" ] && cp "${icon_path}" "${resources_dir}/AppIcon.icns"
-    [ -f "${WORKSPACE_ROOT}/Sources/TTZipApp/PrivacyInfo.xcprivacy" ] && cp "${WORKSPACE_ROOT}/Sources/TTZipApp/PrivacyInfo.xcprivacy" "${resources_dir}/PrivacyInfo.xcprivacy"
-    local plugins_dir="${contents_dir}/PlugIns"
-    mkdir -p "${plugins_dir}"
-    "${SCRIPT_DIR}/build_extensions.sh"
-    if [ -d "${OUTPUT_DIR}/PlugIns" ]; then
-        cp -R "${OUTPUT_DIR}/PlugIns/"* "${plugins_dir}/"
-    fi
-    
-    codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-    echo "  ✓ App bundle assembled at ${APP_BUNDLE}"
 }
 
 package_cli_tarball() {
@@ -185,15 +146,21 @@ generate_dmg() {
     if [ "${SKIP_DMG}" = true ]; then
         echo "==> [5/6] Skipping DMG Generation (--skip-dmg)"; return 0
     fi
-    echo "==> [5/6] Generating Retina Release DMG (${DMG_NAME})..."
-    "${SCRIPT_DIR}/create_dmg_installer.sh" \
-        --app "${APP_BUNDLE}" \
-        --volname "TTZip" \
-        --output "${OUTPUT_DIR}/${DMG_NAME}"
-    
-    DMG_SHA256="$(shasum -a 256 "${OUTPUT_DIR}/${DMG_NAME}" | awk '{print $1}')"
-    echo "  ✓ DMG Image : ${OUTPUT_DIR}/${DMG_NAME}"
-    echo "  ✓ SHA-256   : ${DMG_SHA256}"
+    if [ -f "${WORKSPACE_ROOT}/../apple/dist/TTZip-1.0.0.dmg" ]; then
+        echo "==> [5/6] Copying Retina Release DMG (${DMG_NAME})..."
+        cp "${WORKSPACE_ROOT}/../apple/dist/TTZip-1.0.0.dmg" "${OUTPUT_DIR}/${DMG_NAME}"
+        DMG_SHA256="$(shasum -a 256 "${OUTPUT_DIR}/${DMG_NAME}" | awk '{print $1}')"
+        echo "  ✓ DMG Image : ${OUTPUT_DIR}/${DMG_NAME}"
+        echo "  ✓ SHA-256   : ${DMG_SHA256}"
+    elif [ -f "${WORKSPACE_ROOT}/../apple/scripts/create_dmg_installer.sh" ]; then
+        echo "==> [5/6] Generating Retina Release DMG (${DMG_NAME})..."
+        "${WORKSPACE_ROOT}/../apple/scripts/create_dmg_installer.sh" --output "${OUTPUT_DIR}/${DMG_NAME}"
+        DMG_SHA256="$(shasum -a 256 "${OUTPUT_DIR}/${DMG_NAME}" | awk '{print $1}')"
+        echo "  ✓ DMG Image : ${OUTPUT_DIR}/${DMG_NAME}"
+        echo "  ✓ SHA-256   : ${DMG_SHA256}"
+    else
+        echo "--> [5/6] Pure Core SDK environment; DMG generation skipped"
+    fi
 }
 
 generate_single_formula() {

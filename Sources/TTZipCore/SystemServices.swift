@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine for macOS.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
@@ -319,7 +326,7 @@ public final class LicenseManager: @unchecked Sendable {
     public static let shared = LicenseManager()
     
     public enum LicenseType: String, Codable, Sendable {
-        case free = "Free Tier"
+        case free = "Community Edition"
         case proPersonal = "TTZip Pro (Personal)"
         case proBusiness = "TTZip Pro (Business)"
     }
@@ -332,105 +339,48 @@ public final class LicenseManager: @unchecked Sendable {
         public let isExpired: Bool
     }
     
-    private let userDefaultsKey = "com.ttzip.license_info"
-    private var _currentLicense: LicenseInfo?
-    private let lock = NSLock()
-    
-    private var currentLicense: LicenseInfo? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _currentLicense
-        }
-        set {
-            lock.lock()
-            _currentLicense = newValue
-            lock.unlock()
-        }
-    }
-    
-    private init() {
-        loadLicense()
-        if currentLicense == nil {
-            _ = activate(key: "AURA-PRO1-KEY8-2026")
-        }
-    }
+    private init() {}
     
     /// Loads stored license record from preferences.
     public func loadLicense() {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-              let info = try? JSONDecoder().decode(LicenseInfo.self, from: data) else {
-            currentLicense = nil
-            return
-        }
-        currentLicense = info
+        Ed25519LicenseManager.shared.refreshState()
     }
     
-    /// Activates a license key with format validation (AURA-XXXX-XXXX-XXXX).
+    /// Activates a license key using Ed25519 cryptographic verification.
     public func activate(key: String, registeredTo: String = "Valued Customer") -> Bool {
-        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        
-        guard validateKeyFormat(trimmedKey) else {
-            return false
-        }
-        
-        let type: LicenseType = trimmedKey.contains("BIZ") ? .proBusiness : .proPersonal
-        let info = LicenseInfo(
-            licenseKey: trimmedKey,
-            type: type,
-            registeredTo: registeredTo,
-            activationDate: Date(),
-            isExpired: false
-        )
-        
-        if let encoded = try? JSONEncoder().encode(info) {
-            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-            currentLicense = info
+        let res = Ed25519LicenseManager.shared.activate(licenseKey: key)
+        if case .valid = res {
             return true
         }
         return false
     }
     
-    private static let testSimulationLock = NSLock()
-    nonisolated(unsafe) private static var _simulateFreeTierInTests: Bool = false
-    public static var simulateFreeTierInTests: Bool {
-        get { testSimulationLock.withLock { _simulateFreeTierInTests } }
-        set { testSimulationLock.withLock { _simulateFreeTierInTests = newValue } }
-    }
-    
-    /// Deactivates and resets license status back to Free Tier.
+    /// Deactivates and resets license status back to Community Edition.
     public func deactivate() {
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-        currentLicense = nil
+        Ed25519LicenseManager.shared.deactivate()
     }
     
     /// Current active license tier.
     public var currentType: LicenseType {
-        if LicenseManager.simulateFreeTierInTests { return .free }
-        return currentLicense?.type ?? (isPro ? .proPersonal : .free)
+        let state = Ed25519LicenseManager.shared.currentState
+        switch state {
+        case .community:
+            return .free
+        case .directPro(let payload):
+            return payload.tier == .proBusiness ? .proBusiness : .proPersonal
+        case .masPro, .steamPro:
+            return .proPersonal
+        }
     }
     
-    /// Whether Pro tier features are active.
+    /// Whether Pro tier features / badge are active.
     public var isPro: Bool {
-        #if MAS_BUILD
-        return true
-        #else
-        if LicenseManager.simulateFreeTierInTests { return false }
-        if let lic = currentLicense {
-            return !lic.isExpired
-        }
-        let procName = ProcessInfo.processInfo.processName.lowercased()
-        return procName.contains("cli") || procName.contains("bench") || procName.contains("test") || procName.contains("xctest")
-        #endif
+        return Ed25519LicenseManager.shared.isPro
     }
     
+    /// Core capability check: 100% full feature availability in all editions.
     public func canUseFeature(_ feature: ProFeature) -> Bool {
-        switch feature {
-        case .basicExtract, .quickLookPreview, .zipCompression:
-            return true
-        default:
-            return isPro
-        }
+        return true
     }
     
     public enum ProFeature: Sendable {
@@ -442,14 +392,6 @@ public final class LicenseManager: @unchecked Sendable {
         case volumeSplit
         case batchProcessing
         case commercialUse
-    }
-    
-    private func validateKeyFormat(_ key: String) -> Bool {
-        let components = key.components(separatedBy: "-")
-        guard components.count == 4, components[0] == "AURA" else {
-            return false
-        }
-        return components.allSatisfy { $0.count == 4 }
     }
 }
 
