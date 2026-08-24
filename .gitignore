@@ -25,3 +25,6 @@ docs/benchmarks/benchmark_report_*.md
 specs/
 .specify/
 
+# Enforce 100% Local CI/CD (Zero Cloud Actions)
+.github/workflows/
+
