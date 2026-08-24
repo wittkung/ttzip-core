@@ -292,9 +292,49 @@ void uniffi_ttzip_engine_fn_method_cancellationtoken_cancel(void*_Nonnull ptr, R
 int8_t uniffi_ttzip_engine_fn_method_cancellationtoken_is_cancelled(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIVFSTREE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIVFSTREE
+void*_Nonnull uniffi_ttzip_engine_fn_clone_uniffivfstree(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FREE_UNIFFIVFSTREE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FREE_UNIFFIVFSTREE
+void uniffi_ttzip_engine_fn_free_uniffivfstree(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CONSTRUCTOR_UNIFFIVFSTREE_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CONSTRUCTOR_UNIFFIVFSTREE_BUILD
+void*_Nonnull uniffi_ttzip_engine_fn_constructor_uniffivfstree_build(RustBuffer entries, RustBuffer root_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_SEARCH
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_SEARCH
+RustBuffer uniffi_ttzip_engine_fn_method_uniffivfstree_search(void*_Nonnull ptr, RustBuffer query, uint32_t max_results, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_TOTAL_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIVFSTREE_TOTAL_ENTRIES
+uint64_t uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_PROGRESSHANDLER
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_PROGRESSHANDLER
 void uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(UniffiVTableCallbackInterfaceProgressHandler* _Nonnull vtable
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_CRC32
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_CRC32
+uint32_t uniffi_ttzip_engine_fn_func_compute_file_crc32(RustBuffer file_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_SHA256
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_SHA256
+RustBuffer uniffi_ttzip_engine_fn_func_compute_file_sha256(RustBuffer file_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_CREATE_ARCHIVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_CREATE_ARCHIVE_STREAM
+RustBuffer uniffi_ttzip_engine_fn_func_create_archive_stream(RustBuffer source_paths, RustBuffer output_path, RustBuffer format, int32_t level, RustBuffer password, RustBuffer progress, RustBuffer token, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DETECT_ARCHIVE_FORMAT
@@ -302,14 +342,34 @@ void uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(UniffiVTableCal
 RustBuffer uniffi_ttzip_engine_fn_func_detect_archive_format(RustBuffer path, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DETECT_SPLIT_VOLUME_CHAIN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DETECT_SPLIT_VOLUME_CHAIN
+RustBuffer uniffi_ttzip_engine_fn_func_detect_split_volume_chain(RustBuffer seed_path, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_ESTIMATE_SHANNON_ENTROPY
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_ESTIMATE_SHANNON_ENTROPY
 double uniffi_ttzip_engine_fn_func_estimate_shannon_entropy(RustBuffer data, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_ARCHIVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_ARCHIVE_STREAM
+RustBuffer uniffi_ttzip_engine_fn_func_extract_archive_stream(RustBuffer archive_path, RustBuffer destination_dir, RustBuffer password, RustBuffer progress, RustBuffer token, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 RustBuffer uniffi_ttzip_engine_fn_func_extract_single_entry_stream(RustBuffer archive_path, uint64_t entry_index, RustBuffer password, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_INSPECT_ARCHIVE_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_INSPECT_ARCHIVE_ENTRIES
+RustBuffer uniffi_ttzip_engine_fn_func_inspect_archive_entries(RustBuffer archive_path, RustBuffer password, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_JOIN_SPLIT_VOLUME_CHAIN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_JOIN_SPLIT_VOLUME_CHAIN
+void uniffi_ttzip_engine_fn_func_join_split_volume_chain(RustBuffer first_volume_path, RustBuffer output_path, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOMMEND_CODEC
@@ -597,9 +657,33 @@ void ffi_ttzip_engine_rust_future_free_void(uint64_t handle
 void ffi_ttzip_engine_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_CRC32
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_CRC32
+uint16_t uniffi_ttzip_engine_checksum_func_compute_file_crc32(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_SHA256
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_SHA256
+uint16_t uniffi_ttzip_engine_checksum_func_compute_file_sha256(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_CREATE_ARCHIVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_CREATE_ARCHIVE_STREAM
+uint16_t uniffi_ttzip_engine_checksum_func_create_archive_stream(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_ARCHIVE_FORMAT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_ARCHIVE_FORMAT
 uint16_t uniffi_ttzip_engine_checksum_func_detect_archive_format(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_SPLIT_VOLUME_CHAIN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_SPLIT_VOLUME_CHAIN
+uint16_t uniffi_ttzip_engine_checksum_func_detect_split_volume_chain(void
     
 );
 #endif
@@ -609,9 +693,27 @@ uint16_t uniffi_ttzip_engine_checksum_func_estimate_shannon_entropy(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_ARCHIVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_ARCHIVE_STREAM
+uint16_t uniffi_ttzip_engine_checksum_func_extract_archive_stream(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 uint16_t uniffi_ttzip_engine_checksum_func_extract_single_entry_stream(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_INSPECT_ARCHIVE_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_INSPECT_ARCHIVE_ENTRIES
+uint16_t uniffi_ttzip_engine_checksum_func_inspect_archive_entries(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_JOIN_SPLIT_VOLUME_CHAIN
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_JOIN_SPLIT_VOLUME_CHAIN
+uint16_t uniffi_ttzip_engine_checksum_func_join_split_volume_chain(void
     
 );
 #endif
@@ -633,9 +735,27 @@ uint16_t uniffi_ttzip_engine_checksum_method_cancellationtoken_is_cancelled(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_SEARCH
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_SEARCH
+uint16_t uniffi_ttzip_engine_checksum_method_uniffivfstree_search(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_TOTAL_ENTRIES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIVFSTREE_TOTAL_ENTRIES
+uint16_t uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_CANCELLATIONTOKEN_NEW
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_CANCELLATIONTOKEN_NEW
 uint16_t uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIVFSTREE_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIVFSTREE_BUILD
+uint16_t uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build(void
     
 );
 #endif

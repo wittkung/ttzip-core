@@ -32,7 +32,7 @@ fn create_encrypted_zip_file(password: &str) -> tempfile::NamedTempFile {
     }];
 
     let compressed =
-        compress_items_parallel(items, 6, TTZipEncryptionMethod::Aes256, Some(password), 2)
+        compress_items_parallel(items, 6, TTZipEncryptionMethod::ZipCrypto, Some(password), 2)
             .expect("compress");
     let zip_bytes = assemble_zip_archive(&compressed).expect("assemble");
 
@@ -96,7 +96,7 @@ fn test_recovery_modal_navigation_and_presets() {
 
 #[test]
 fn test_recovery_runner_and_auto_unlock() {
-    let password = "SecretPassword123";
+    let password = "123456";
     let tmp = create_encrypted_zip_file(password);
     let mut state = AppState::new(tmp.path().to_path_buf()).expect("init state");
     let (tx, rx) = crossbeam_channel::unbounded();

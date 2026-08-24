@@ -160,11 +160,14 @@ if [ ! -f "${FIRST_DYLIB}" ]; then
 fi
 
 if [ -f "${FIRST_DYLIB}" ]; then
-    cargo run --manifest-path "${RUST_DIR}/Cargo.toml" --bin uniffi-bindgen generate \
-        --library "${FIRST_DYLIB}" \
-        --language swift \
-        --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
-        --metadata-no-deps 2>/dev/null || true
+    (
+        cd "${RUST_DIR}"
+        cargo run --bin uniffi-bindgen generate \
+            --library "${FIRST_DYLIB}" \
+            --language swift \
+            --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
+            --metadata-no-deps
+    )
     
     # 执行 Swift 6 并发安全后处理
     if [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ]; then
