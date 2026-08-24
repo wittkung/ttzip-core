@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>TTZip</RootNamespace>
+    <AssemblyName>TTZip</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Witt Kung, TTZip Contributors</Authors>
+    <Company>TTZip Authors</Company>
+    <Description>High-performance native archiving, extraction, and compression engine for .NET 8+.</Description>
+    <PackageLicenseExpression>BSD-3-Clause OR Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/wittkung/ttzip-core</RepositoryUrl>
+    <PackageTags>compression;zip;7z;tar;zstd;lz4;snappy;brotli;crc32;ffi;native;simd</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Multi-RID Unmanaged Native Assets for Packaging & Runtime Resolution -->
+    <Content Include="..\..\..\..\rust\target\release\libttzip_engine.dylib"
+             Link="runtimes\osx-arm64\native\libttzip_engine.dylib"
+             PackagePath="runtimes\osx-arm64\native\libttzip_engine.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\libttzip_engine.dylib')" />
+
+    <Content Include="..\..\..\..\rust\target\release\libttzip_engine.dylib"
+             Link="runtimes\osx-x64\native\libttzip_engine.dylib"
+             PackagePath="runtimes\osx-x64\native\libttzip_engine.dylib"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\libttzip_engine.dylib')" />
+
+    <Content Include="..\..\..\..\rust\target\release\libttzip_engine.so"
+             Link="runtimes\linux-x64\native\libttzip_engine.so"
+             PackagePath="runtimes\linux-x64\native\libttzip_engine.so"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\libttzip_engine.so')" />
+
+    <Content Include="..\..\..\..\rust\target\release\libttzip_engine.so"
+             Link="runtimes\linux-arm64\native\libttzip_engine.so"
+             PackagePath="runtimes\linux-arm64\native\libttzip_engine.so"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\libttzip_engine.so')" />
+
+    <Content Include="..\..\..\..\rust\target\release\ttzip_engine.dll"
+             Link="runtimes\win-x64\native\ttzip_engine.dll"
+             PackagePath="runtimes\win-x64\native\ttzip_engine.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\ttzip_engine.dll')" />
+
+    <Content Include="..\..\..\..\rust\target\release\ttzip_engine.dll"
+             Link="runtimes\win-arm64\native\ttzip_engine.dll"
+             PackagePath="runtimes\win-arm64\native\ttzip_engine.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             Condition="Exists('..\..\..\..\rust\target\release\ttzip_engine.dll')" />
+
+    <None Include="runtimes\**"
+          PackagePath="runtimes"
+          CopyToOutputDirectory="PreserveNewest"
+          Condition="Exists('runtimes')" />
+  </ItemGroup>
+
+</Project>

@@ -9,9 +9,7 @@
 package ttzip
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../../../Sources/CTTZipBridge/include
-#cgo LDFLAGS: -L${SRCDIR}/../../../rust/target/release -lttzip_engine -larchive -lbz2 -lz -llzma -framework Security
-#include "ttzip_rust_glue.h"
+#include "ttzip.h"
 #include <stdlib.h>
 
 extern bool goProgressCallback(uint64_t processed, uint64_t total, char* current_entry, void* user_data);

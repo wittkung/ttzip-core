@@ -142,36 +142,7 @@ public final class TTZip {
     );
 
     static {
-        // Search and load native shared library
-        String customLib = System.getProperty("ttzip.lib.path");
-        if (customLib != null && new File(customLib).exists()) {
-            System.load(new File(customLib).getAbsolutePath());
-        } else {
-            String[] candidatePaths = {
-                "rust/target/release/libttzip_glue.dylib",
-                "rust/target/release/libttzip_glue.so",
-                "rust/target/release/ttzip_glue.dll",
-                "../rust/target/release/libttzip_glue.dylib",
-                "../rust/target/release/libttzip_glue.so",
-                "../../rust/target/release/libttzip_glue.dylib"
-            };
-            boolean loaded = false;
-            for (String path : candidatePaths) {
-                File f = new File(path);
-                if (f.exists()) {
-                    System.load(f.getAbsolutePath());
-                    loaded = true;
-                    break;
-                }
-            }
-            if (!loaded) {
-                try {
-                    System.loadLibrary("ttzip_glue");
-                } catch (UnsatisfiedLinkError ignored) {}
-            }
-        }
-
-        LOOKUP = SymbolLookup.loaderLookup().or(LINKER.defaultLookup());
+        LOOKUP = NativeLoader.load().or(LINKER.defaultLookup());
 
         MH_VERSION = findDowncall("ttzip_rust_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
         MH_IS_HARDWARE_ACCELERATED = findDowncall("ttzip_rust_is_hardware_accelerated", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN));
@@ -185,7 +156,7 @@ public final class TTZip {
     private static MethodHandle findDowncall(String name, FunctionDescriptor descriptor) {
         return LOOKUP.find(name)
             .map(addr -> LINKER.downcallHandle(addr, descriptor))
-            .orElse(null);
+            .orElseThrow(() -> new UnsatisfiedLinkError("Failed to resolve native TTZip downcall symbol: '" + name + "'. Ensure binary ABI matches version " + NativeLoader.VERSION));
     }
 
     private TTZip() {}

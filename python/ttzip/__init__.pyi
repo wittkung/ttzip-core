@@ -15,6 +15,8 @@ from .exceptions import (
 )
 from .zipfile import ZipFile, SevenZipFile, open_archive
 
+__version__: str = "1.0.0"
+
 def compress(
     sources: Union[str, Path, List[Union[str, Path]]],
     destination: Union[str, Path],
@@ -70,6 +72,7 @@ def benchmark_matrix(
 open = open_archive
 
 __all__ = [
+    "__version__",
     "compress",
     "extract",
     "inspect",

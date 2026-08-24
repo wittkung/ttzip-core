@@ -12,6 +12,9 @@ import 'dart:io' show Directory, File, Platform;
 import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
+import 'src/native_loader.dart';
+
+export 'src/native_loader.dart' show loadTTZipLibrary, tryLoadTTZipLibrary;
 
 /// Compression levels for TTZip
 enum TTZipCompressionLevel {
@@ -166,68 +169,13 @@ typedef _NativeProgressCb = ffi.Bool Function(
 
 typedef _NativeInspectCb = ffi.Bool Function(ffi.Pointer<_NativeEntryMetadata> entry, ffi.Pointer<ffi.Void> userData);
 
-// MARK: - Native Library Loader
-
-ffi.DynamicLibrary _loadLibrary() {
-  final envPath = Platform.environment['TTZIP_DYLIB_PATH'];
-  if (envPath != null && File(envPath).existsSync()) {
-    return ffi.DynamicLibrary.open(envPath);
-  }
-
-  if (Platform.isMacOS) {
-    const candidates = [
-      'rust/target/release/libttzip_engine.dylib',
-      'rust/target/release/libttzip_glue.dylib',
-      '../rust/target/release/libttzip_engine.dylib',
-      '../rust/target/release/libttzip_glue.dylib',
-      '../../rust/target/release/libttzip_engine.dylib',
-      '../../rust/target/release/libttzip_glue.dylib',
-      '../../../rust/target/release/libttzip_engine.dylib',
-      '../../../rust/target/release/libttzip_glue.dylib',
-      'libttzip_engine.dylib',
-      'libttzip_glue.dylib',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) return ffi.DynamicLibrary.open(path);
-    }
-    return ffi.DynamicLibrary.process();
-  } else if (Platform.isLinux || Platform.isAndroid) {
-    const candidates = [
-      'rust/target/release/libttzip_engine.so',
-      'rust/target/release/libttzip_glue.so',
-      '../rust/target/release/libttzip_engine.so',
-      '../../rust/target/release/libttzip_engine.so',
-      'libttzip_engine.so',
-      'libttzip_glue.so',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) return ffi.DynamicLibrary.open(path);
-    }
-    return ffi.DynamicLibrary.process();
-  } else if (Platform.isWindows) {
-    const candidates = [
-      'rust/target/release/ttzip_engine.dll',
-      'rust/target/release/ttzip_glue.dll',
-      '../rust/target/release/ttzip_engine.dll',
-      '../../rust/target/release/ttzip_engine.dll',
-      'ttzip_engine.dll',
-      'ttzip_glue.dll',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) return ffi.DynamicLibrary.open(path);
-    }
-    return ffi.DynamicLibrary.process();
-  }
-  return ffi.DynamicLibrary.process();
-}
-
 // MARK: - Primary TTZip SDK Class
 
 class TTZip {
   static const String version = "1.0.0";
   static ffi.DynamicLibrary? _lib;
 
-  static ffi.DynamicLibrary get lib => _lib ??= _loadLibrary();
+  static ffi.DynamicLibrary get lib => _lib ??= loadTTZipLibrary();
 
   /// Returns true if hardware SIMD/Crypto acceleration is active.
   static bool get isHardwareAccelerated {
@@ -284,7 +232,7 @@ class TTZip {
     int threads = 0,
   }) async {
     await Isolate.run(() {
-      final dylib = _loadLibrary();
+      final dylib = loadTTZipLibrary();
       final createFn = dylib.lookupFunction<
           ffi.Int32 Function(
               ffi.Pointer<ffi.Pointer<Utf8>>, ffi.Size, ffi.Pointer<Utf8>, ffi.Pointer<_NativeCreateOptions>),
@@ -328,7 +276,7 @@ class TTZip {
     int threads = 0,
   }) async {
     await Isolate.run(() {
-      final dylib = _loadLibrary();
+      final dylib = loadTTZipLibrary();
       final extractFn = dylib.lookupFunction<
           ffi.Int32 Function(ffi.Pointer<Utf8>, ffi.Pointer<Utf8>, ffi.Pointer<_NativeExtractOptions>),
           int Function(ffi.Pointer<Utf8>, ffi.Pointer<Utf8>,

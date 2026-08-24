@@ -44,7 +44,7 @@ public class Quickstart {
         System.out.println("--------------------------------------------------------------------------------");
 
         // 3. Prepare Temporary Files for Compression Demo
-        Path workDir = Files.createTempDirectory("ttzip_java_quickstart_");
+        Path workDir = Files.createTempDirectory("ttzip_jvm_quickstart_");
         Path sample1 = workDir.resolve("manifest.json");
         Path sample2 = workDir.resolve("nested/data.txt");
         Files.createDirectories(sample2.getParent());

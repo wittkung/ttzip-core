@@ -32,6 +32,8 @@ try:
 except ImportError:
     _HAS_NATIVE = False
 
+__version__ = "1.0.0"
+
 
 def compress(
     sources: Union[str, Path, List[Union[str, Path]]],
@@ -204,6 +206,7 @@ open = open_archive
 
 
 __all__ = [
+    "__version__",
     "compress",
     "extract",
     "inspect",

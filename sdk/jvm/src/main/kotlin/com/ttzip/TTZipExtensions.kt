@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
 // All rights reserved.
 //
-// TTZip Kotlin Coroutines & Flow Extensions.
+// TTZip Kotlin Coroutines & Flow Extensions for Java 22+ Panama FFM.
 
 package com.ttzip
 
@@ -13,12 +13,25 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.lang.foreign.Arena
+import java.lang.foreign.MemorySegment
 import java.nio.file.Path
 
 /**
- * Emits real-time [TTZip.ArchiveProgress] events during archive compression.
+ * Emits real-time [TTZip.ArchiveProgress] events during archive compression of a single file.
  */
 fun File.ttzipCompressFlow(
+    destination: File,
+    format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
+    level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
+    password: String? = null,
+    threads: Int = 0
+): Flow<TTZip.ArchiveProgress> = listOf(this).ttzipCompressFlow(destination, format, level, password, threads)
+
+/**
+ * Emits real-time [TTZip.ArchiveProgress] events during archive compression of multiple files.
+ */
+fun List<File>.ttzipCompressFlow(
     destination: File,
     format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
     level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
@@ -30,8 +43,9 @@ fun File.ttzipCompressFlow(
     }
 
     try {
+        val paths = this@ttzipCompressFlow.map { it.absolutePath }
         TTZip.compress(
-            listOf(this@ttzipCompressFlow.absolutePath),
+            paths,
             destination.absolutePath,
             format,
             level,
@@ -44,7 +58,7 @@ fun File.ttzipCompressFlow(
         close(e)
     }
 
-    awaitClose { /* Cleanup resources */ }
+    awaitClose { /* Cleanup channel resources */ }
 }
 
 /**
@@ -72,11 +86,11 @@ fun File.ttzipExtractFlow(
         close(e)
     }
 
-    awaitClose { /* Cleanup resources */ }
+    awaitClose { /* Cleanup channel resources */ }
 }
 
 /**
- * Path extension for streaming compression progress.
+ * Path extension for streaming single-file compression progress.
  */
 fun Path.ttzipCompressFlow(
     destination: Path,
@@ -85,6 +99,17 @@ fun Path.ttzipCompressFlow(
     password: String? = null,
     threads: Int = 0
 ): Flow<TTZip.ArchiveProgress> = this.toFile().ttzipCompressFlow(destination.toFile(), format, level, password, threads)
+
+/**
+ * Path extension for streaming multi-path compression progress.
+ */
+fun List<Path>.ttzipCompressPathsFlow(
+    destination: Path,
+    format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
+    level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
+    password: String? = null,
+    threads: Int = 0
+): Flow<TTZip.ArchiveProgress> = this.map { it.toFile() }.ttzipCompressFlow(destination.toFile(), format, level, password, threads)
 
 /**
  * Path extension for streaming extraction progress.
@@ -96,14 +121,15 @@ fun Path.ttzipExtractFlow(
 ): Flow<TTZip.ArchiveProgress> = this.toFile().ttzipExtractFlow(destinationDirectory.toFile(), password, threads)
 
 /**
- * Suspending non-blocking compression offloaded to Dispatchers.IO.
+ * Suspending non-blocking single-file compression offloaded to Dispatchers.IO.
  */
 suspend fun File.ttzipCompress(
     destination: File,
     format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
     level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
     password: String? = null,
-    threads: Int = 0
+    threads: Int = 0,
+    listener: TTZip.ProgressListener? = null
 ) = withContext(Dispatchers.IO) {
     TTZip.compress(
         listOf(this@ttzipCompress.absolutePath),
@@ -112,7 +138,29 @@ suspend fun File.ttzipCompress(
         level,
         password,
         threads,
-        null
+        listener
+    )
+}
+
+/**
+ * Suspending non-blocking multi-file compression offloaded to Dispatchers.IO.
+ */
+suspend fun List<File>.ttzipCompress(
+    destination: File,
+    format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
+    level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
+    password: String? = null,
+    threads: Int = 0,
+    listener: TTZip.ProgressListener? = null
+) = withContext(Dispatchers.IO) {
+    TTZip.compress(
+        this@ttzipCompress.map { it.absolutePath },
+        destination.absolutePath,
+        format,
+        level,
+        password,
+        threads,
+        listener
     )
 }
 
@@ -122,16 +170,39 @@ suspend fun File.ttzipCompress(
 suspend fun File.ttzipExtract(
     destinationDirectory: File,
     password: String? = null,
-    threads: Int = 0
+    threads: Int = 0,
+    listener: TTZip.ProgressListener? = null
 ) = withContext(Dispatchers.IO) {
     TTZip.extract(
         this@ttzipExtract.absolutePath,
         destinationDirectory.absolutePath,
         password,
         threads,
-        null
+        listener
     )
 }
+
+/**
+ * Suspending non-blocking compression for Path offloaded to Dispatchers.IO.
+ */
+suspend fun Path.ttzipCompress(
+    destination: Path,
+    format: TTZip.ArchiveFormat = TTZip.ArchiveFormat.AUTO,
+    level: TTZip.CompressionLevel = TTZip.CompressionLevel.NORMAL,
+    password: String? = null,
+    threads: Int = 0,
+    listener: TTZip.ProgressListener? = null
+) = this.toFile().ttzipCompress(destination.toFile(), format, level, password, threads, listener)
+
+/**
+ * Suspending non-blocking extraction for Path offloaded to Dispatchers.IO.
+ */
+suspend fun Path.ttzipExtract(
+    destinationDirectory: Path,
+    password: String? = null,
+    threads: Int = 0,
+    listener: TTZip.ProgressListener? = null
+) = this.toFile().ttzipExtract(destinationDirectory.toFile(), password, threads, listener)
 
 /**
  * Inspects archive metadata entries without disk extraction.
@@ -141,6 +212,27 @@ fun File.ttzipInspect(password: String? = null): List<TTZip.EntryMetadata> {
 }
 
 /**
+ * Inspects archive metadata entries for Path without disk extraction.
+ */
+fun Path.ttzipInspect(password: String? = null): List<TTZip.EntryMetadata> {
+    return TTZip.inspect(this.toAbsolutePath().toString(), password)
+}
+
+/**
  * Computes SIMD-accelerated CRC-32 on byte array.
  */
 fun ByteArray.ttzipCrc32(): Int = TTZip.crc32(this)
+
+/**
+ * Computes SIMD-accelerated CRC-64 on byte array.
+ */
+fun ByteArray.ttzipCrc64(): Long {
+    Arena.ofConfined().use { arena ->
+        val seg = arena.allocate(this.size.toLong())
+        MemorySegment.copy(
+            MemorySegment.ofArray(this), 0,
+            seg, 0, this.size.toLong()
+        )
+        return TTZip.crc64(seg, 0L)
+    }
+}

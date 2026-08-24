@@ -10,7 +10,7 @@ authors = [{ name = "Witt Kung", email = "witt.w.kung@gmail.com" }]
 license = { text = "BSD-3-Clause OR Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["compression", "zip", "7z", "tar", "zstd", "simd", "performance", "pyo3"]
+keywords = ["compression", "zip", "7z", "tar", "zstd", "simd", "performance", "pyo3", "abi3"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
@@ -28,9 +28,21 @@ classifiers = [
     "Topic :: System :: Archiving :: Compression",
     "Typing :: Typed",
 ]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ttzip/ttzip"
+Documentation = "https://github.com/ttzip/ttzip#readme"
+Repository = "https://github.com/ttzip/ttzip.git"
+Issues = "https://github.com/ttzip/ttzip/issues"
 
 [tool.maturin]
 module-name = "ttzip._ttzip"
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "pyo3/abi3-py310"]
 manifest-path = "rust/ttzip-python/Cargo.toml"
 python-source = "python"
+python-packages = ["ttzip"]
+include = [
+    "python/ttzip/py.typed",
+    "python/ttzip/*.pyi",
+]

@@ -5,7 +5,7 @@
 #
 # TTZip: High-performance native archiving and compression engine for macOS.
 
-.PHONY: all build release reinstall install app cli test test-all-sdk test-interop test-security test-bench test-sanitizers clean help
+.PHONY: all build release reinstall install app cli test test-all-sdk test-interop test-security test-bench test-sanitizers test-out-of-tree-smoke clean help
 
 all: reinstall
 
@@ -51,6 +51,9 @@ test-bench:
 test-sanitizers:
 	@./scripts/run_sanitizers.sh
 	@./scripts/run_race_detector.sh
+
+test-out-of-tree-smoke:
+	@./scripts/run_out_of_tree_smoke.sh
 
 clean:
 	@rm -rf .build dist

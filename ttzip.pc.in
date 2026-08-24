@@ -1,10 +1,16 @@
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+# All rights reserved.
+
 prefix=@PREFIX@
 exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
 
 Name: ttzip
 Description: High-performance native archiving and compression engine
 Version: @VERSION@
-Libs: -L${libdir} -lttzip_glue -lpthread -lm
+Libs: -L${libdir} -lttzip_engine
+Libs.private: @LIBS_PRIVATE@
 Cflags: -I${includedir}
