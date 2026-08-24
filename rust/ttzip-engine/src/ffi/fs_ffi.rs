@@ -417,11 +417,19 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
                 };
 
                 if let Some(s) = score {
+                    let c_name = match CString::new(name_str.as_bytes()) {
+                        Ok(c) => c,
+                        Err(_) => continue,
+                    };
+                    let c_path = match CString::new(path_str.as_bytes()) {
+                        Ok(c) => c,
+                        Err(_) => continue,
+                    };
                     let raw_res = TTZipVfsSearchResultRaw {
                         struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
                         abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                        name: arena.string_arena[name_off..].as_ptr() as *const c_char,
-                        path: arena.string_arena[path_off..].as_ptr() as *const c_char,
+                        name: c_name.as_ptr(),
+                        path: c_path.as_ptr(),
                         uncompressed_size: arena.uncompressed_sizes[i],
                         compressed_size: arena.compressed_sizes[i],
                         crc32: arena.crc32s[i],

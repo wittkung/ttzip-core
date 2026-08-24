@@ -31,10 +31,11 @@ public enum EngineProvenanceCollector {
             tag = .unknown
         }
 
-        let fallbackReason = withUnsafePointer(to: raw.fallback_reason) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: 128) { cStr in
-                cStr.pointee != 0 ? String(cString: cStr) : nil
+        let fallbackReason = withUnsafeBytes(of: raw.fallback_reason) { rawBuf -> String? in
+            guard let ptr = rawBuf.baseAddress?.assumingMemoryBound(to: CChar.self), ptr.pointee != 0 else {
+                return nil
             }
+            return String(cString: ptr)
         }
 
         let kernelNanos = raw.kernel_duration_nanos

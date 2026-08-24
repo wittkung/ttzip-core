@@ -30,6 +30,12 @@ def postprocess(swift_path):
     content = content.replace("fileprivate static var handleMap =", "nonisolated(unsafe) fileprivate static var handleMap =")
     content = content.replace("private var initializationResult:", "private let initializationResult:")
 
+    # 3. Strip bare print calls from uniffi template for invariant linter compliance
+    content = content.replace(
+        'print("Uniffi callback interface ProgressHandler: handle missing in uniffiFree")',
+        '// Uniffi callback interface ProgressHandler: handle missing in uniffiFree'
+    )
+
     with open(swift_path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"Postprocessed {swift_path} for Swift 6 concurrency.")

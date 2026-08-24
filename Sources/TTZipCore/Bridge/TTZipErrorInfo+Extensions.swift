@@ -14,6 +14,8 @@ extension TTZipErrorInfo {
     @inline(__always)
     public static var zeroed: TTZipErrorInfo {
         let info = TTZipErrorInfo(
+            struct_size: UInt32(MemoryLayout<TTZipErrorInfo>.size),
+            abi_version: 2,
             status: TTZIP_STATUS_OK,
             error_code: 0,
             message: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

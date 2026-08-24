@@ -1372,7 +1372,7 @@ private enum UniffiCallbackInterfaceProgressHandler {
         uniffiFree: { (uniffiHandle: UInt64) in
             let result = try? FfiConverterCallbackInterfaceProgressHandler.handleMap.remove(handle: uniffiHandle)
             if result == nil {
-                print("Uniffi callback interface ProgressHandler: handle missing in uniffiFree")
+                // Uniffi callback interface ProgressHandler: handle missing in uniffiFree
             }
         }
     )

@@ -272,7 +272,7 @@ extension ArchiveExtractor {
         }
 
         var extractedBytes: UInt64 = 0
-        var errorInfo = TTZipErrorInfo()
+        var errorInfo = TTZipErrorInfo.zeroed
 
         let status = CUnsafeBufferAdapter.withCString(archivePath) { aPtr in
             CUnsafeBufferAdapter.withCString(destinationDir) { dPtr in

@@ -336,13 +336,17 @@ extension ArchiveWriter {
         let pwd = (password != nil && !password!.isEmpty) ? password : nil
         let splitSize = UInt64(max(0, splitVolumeSizeBytes ?? 0))
 
-        let bridgeCtx = ProgressBridgeContext(
+        let bridgeCtx = progressHandler != nil ? ProgressBridgeContext(
             progressHandler: progressHandler,
             handle: nil,
             totalExpectedBytes: totalBytes
-        )
-        let ctxPtr = Unmanaged.passRetained(bridgeCtx).toOpaque()
-        defer { Unmanaged<ProgressBridgeContext>.fromOpaque(ctxPtr).release() }
+        ) : nil
+        let ctxPtr = bridgeCtx != nil ? Unmanaged.passRetained(bridgeCtx!).toOpaque() : nil
+        defer {
+            if let ctxPtr = ctxPtr {
+                Unmanaged<ProgressBridgeContext>.fromOpaque(ctxPtr).release()
+            }
+        }
 
         let status = CUnsafeBufferAdapter.withCString(outputPath) { cOutputPath in
             CUnsafeBufferAdapter.withCStringsArray(inputPaths) { cInputPaths in
@@ -355,7 +359,7 @@ extension ArchiveWriter {
                         password: cPassword,
                         thread_budget: UInt32(ProcessInfo.processInfo.activeProcessorCount),
                         solid_block_size_mb: 0,
-                        progress_callback: ttzipProgressCallbackBridge,
+                        progress_callback: ctxPtr != nil ? ttzipProgressCallbackBridge : nil,
                         user_data: ctxPtr
                     )
                     return ttzip_rust_archive_create_unified(cInputPaths, inputPaths.count, cOutputPath, &opt, splitSize)

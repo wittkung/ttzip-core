@@ -83,3 +83,56 @@ public enum RustVfsBridge {
         }
     }
 }
+
+extension TTZipCreateOptions {
+    public init(
+        format: TTZipArchiveFormat,
+        level: TTZipCompressionLevel,
+        encryption: TTZipEncryptionMethod,
+        password: UnsafePointer<CChar>?,
+        thread_budget: UInt32,
+        solid_block_size_mb: UInt32,
+        progress_callback: TTZipProgressCallback?,
+        user_data: UnsafeMutableRawPointer?
+    ) {
+        self.init(
+            struct_size: UInt32(MemoryLayout<TTZipCreateOptions>.size),
+            abi_version: 2,
+            format: format,
+            level: level,
+            encryption: encryption,
+            password: password,
+            thread_budget: thread_budget,
+            solid_block_size_mb: solid_block_size_mb,
+            progress_callback: progress_callback,
+            user_data: user_data
+        )
+    }
+}
+
+extension TTZipExtractOptions {
+    public init(
+        destination_path: UnsafePointer<CChar>?,
+        password: UnsafePointer<CChar>?,
+        thread_budget: UInt32,
+        overwrite_existing: Bool,
+        preserve_permissions: Bool,
+        dry_run: Bool,
+        progress_callback: TTZipProgressCallback?,
+        user_data: UnsafeMutableRawPointer?
+    ) {
+        self.init(
+            struct_size: UInt32(MemoryLayout<TTZipExtractOptions>.size),
+            abi_version: 2,
+            destination_path: destination_path,
+            password: password,
+            thread_budget: thread_budget,
+            overwrite_existing: overwrite_existing,
+            preserve_permissions: preserve_permissions,
+            dry_run: dry_run,
+            progress_callback: progress_callback,
+            user_data: user_data
+        )
+    }
+}
+

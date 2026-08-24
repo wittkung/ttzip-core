@@ -57,12 +57,12 @@ public final class ProgressBridgeContext: @unchecked Sendable {
 }
 
 /// Standard C-ABI progress bridge callback conforming to `TTZipProgressCallback`.
-public func ttzipProgressCallbackBridge(
-    processedBytes: UInt64,
-    totalBytes: UInt64,
-    currentEntry: UnsafePointer<CChar>?,
-    userData: UnsafeMutableRawPointer?
-) -> Bool {
+public let ttzipProgressCallbackBridge: @convention(c) (
+    UInt64,
+    UInt64,
+    UnsafePointer<CChar>?,
+    UnsafeMutableRawPointer?
+) -> Bool = { processedBytes, totalBytes, currentEntry, userData in
     guard let userData = userData else { return true }
     let ctx = Unmanaged<ProgressBridgeContext>.fromOpaque(userData).takeUnretainedValue()
 

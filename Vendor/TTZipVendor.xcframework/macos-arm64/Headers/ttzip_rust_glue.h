@@ -91,6 +91,8 @@ typedef enum TTZipEngineTag {
 } TTZipEngineTag;
 
 typedef struct TTZipExecutionProvenance {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipEngineTag engine_tag;
     uint32_t thread_count;
     uint64_t uncompressed_bytes;
@@ -101,6 +103,8 @@ typedef struct TTZipExecutionProvenance {
 } TTZipExecutionProvenance;
 
 typedef struct TTZipEntryMetadata {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *path;
     uint64_t uncompressed_size;
     uint64_t compressed_size;
@@ -117,6 +121,8 @@ typedef bool (*TTZipProgressCallback)(uint64_t processed_bytes, uint64_t total_b
 typedef bool (*TTZipInspectCallback)(const TTZipEntryMetadata *entry, void *user_data);
 
 typedef struct TTZipExtractOptions {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *destination_path;
     const char *password;
     uint32_t thread_budget;
@@ -128,6 +134,8 @@ typedef struct TTZipExtractOptions {
 } TTZipExtractOptions;
 
 typedef struct TTZipCreateOptions {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipArchiveFormat format;
     TTZipCompressionLevel level;
     TTZipEncryptionMethod encryption;
@@ -146,6 +154,8 @@ typedef struct TTZipAes256Context {
 } TTZipAes256Context;
 
 typedef struct TTZipErrorInfo {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipStatus status;
     int32_t error_code;
     char message[512];
@@ -517,6 +527,8 @@ void ttzip_rust_free_differential_string(char *ptr);
 typedef struct TTZipVfsTreeHandle TTZipVfsTreeHandle;
 
 typedef struct TTZipVfsSearchResultRaw {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *name;
     const char *path;
     uint64_t uncompressed_size;
@@ -565,6 +577,8 @@ TTZipStatus ttzip_rust_archive_verify_stream(
 );
 
 typedef struct TTZipVfsMatchDto {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const char *name;
     size_t name_len;
     const char *path;
@@ -585,6 +599,8 @@ int32_t ttzip_rust_vfs_search_zero_alloc(
 );
 
 typedef struct TTZipPackedEntryArray {
+    uint32_t struct_size;
+    uint32_t abi_version;
     const uint8_t  *utf8_bytes;
     size_t          total_bytes_len;
     const uint32_t *path_offsets;
@@ -599,6 +615,8 @@ typedef struct TTZipPackedEntryArray {
 } TTZipPackedEntryArray;
 
 typedef struct TTZipVfsNodeSummary {
+    uint32_t struct_size;
+    uint32_t abi_version;
     uint32_t node_id;
     const char *name_utf8;
     uint32_t name_len;

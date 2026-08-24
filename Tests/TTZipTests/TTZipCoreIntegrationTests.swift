@@ -12,15 +12,15 @@ import Foundation
 final class TTZipCoreIntegrationTests: XCTestCase {
     private var sandbox: IsolatedTempSandbox!
 
-    override func setUp() async throws {
-        try await super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         sandbox = try IsolatedTempSandbox(prefix: "core_integration")
     }
 
-    override func tearDown() async throws {
+    override func tearDownWithError() throws {
         sandbox?.cleanup()
         sandbox = nil
-        try await super.tearDown()
+        try super.tearDownWithError()
     }
 
     // MARK: - 1. ArchiveWriter & ArchiveExtractor Multi-Format Integration (ZIP / 7z / TAR)

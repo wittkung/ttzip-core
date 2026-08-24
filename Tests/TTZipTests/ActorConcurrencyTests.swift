@@ -13,15 +13,15 @@ import Foundation
 final class ActorConcurrencyTests: XCTestCase {
     private var sandbox: IsolatedTempSandbox!
 
-    override func setUp() async throws {
-        try await super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         sandbox = try IsolatedTempSandbox(prefix: "actor_concurrency")
     }
 
-    override func tearDown() async throws {
+    override func tearDownWithError() throws {
         sandbox?.cleanup()
         sandbox = nil
-        try await super.tearDown()
+        try super.tearDownWithError()
     }
 
     // MARK: - 1. Swift 6 Actor Isolation & Race-Free Concurrent Archiving Operations
@@ -139,23 +139,27 @@ final class ActorConcurrencyTests: XCTestCase {
         let archiveZip = sandbox.fileURL(named: "cancellation_extract.zip")
         let extractDir = try sandbox.createSubdirectory("cancellation_extract_dir")
 
+        print("🔍 [ActorConcurrencyTests] Step 1: compressing direct...")
         _ = try await engine.compressDirect(
             inputs: [largeFile.path],
             outputPath: archiveZip.path,
             format: .zip
         )
+        print("🔍 [ActorConcurrencyTests] Step 1 complete. Archive created.")
         XCTAssertTrue(FileManager.default.fileExists(atPath: archiveZip.path))
 
+        print("🔍 [ActorConcurrencyTests] Step 2: starting extraction...")
         let (stream, extractionTask) = await engine.extract(
             archivePath: archiveZip.path,
             destinationDir: extractDir.path
         )
 
         // Cancel extraction task
+        print("🔍 [ActorConcurrencyTests] Step 3: cancelling extraction task...")
         extractionTask.cancel()
 
-        for await _ in stream {
-            // Drain stream
+        for await p in stream {
+            print("🔍 [ActorConcurrencyTests] extraction progress: \(p.state)")
         }
 
         do {

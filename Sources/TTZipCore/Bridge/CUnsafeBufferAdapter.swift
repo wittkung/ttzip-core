@@ -39,58 +39,27 @@ public enum CUnsafeBufferAdapter {
             var dummy: UnsafePointer<CChar>? = nil
             return try withUnsafePointer(to: &dummy) { try body($0) }
         }
-
-        // 1. Compute total buffer requirements: contiguous null-terminated UTF-8 bytes
-        var totalBytes = 0
-        for str in strings {
-            totalBytes += str.utf8.count + 1
-        }
-
-        // 2. Allocate typed memory buffer and guarantee paired deinitialization
-        let byteBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: totalBytes)
-        defer {
-            byteBuffer.deinitialize(count: totalBytes)
-            byteBuffer.deallocate()
-        }
-
-        var pointers = [UnsafePointer<CChar>?]()
-        pointers.reserveCapacity(strings.count)
-
-        var currentOffset = 0
-
-        for str in strings {
-            let destPtr = byteBuffer.advanced(by: currentOffset)
-            let strLength = str.utf8.count
-            
-            // Direct contiguous memory copy to avoid Array intermediate heap churn
-            let copied = str.utf8.withContiguousStorageIfAvailable { srcBuf -> Bool in
-                guard let baseAddress = srcBuf.baseAddress else { return false }
-                destPtr.initialize(from: baseAddress, count: strLength)
-                return true
-            } ?? false
-
-            if !copied {
-                var offset = 0
-                for byte in str.utf8 {
-                    destPtr.advanced(by: offset).initialize(to: byte)
-                    offset += 1
+        
+        func scopedHelper(index: Int, accumulated: inout [UnsafePointer<CChar>?]) throws -> R {
+            if index == strings.count {
+                return try accumulated.withUnsafeBufferPointer { bufPtr in
+                    guard let base = bufPtr.baseAddress else {
+                        var dummy: UnsafePointer<CChar>? = nil
+                        return try withUnsafePointer(to: &dummy) { try body($0) }
+                    }
+                    return try body(base)
                 }
             }
-            
-            // Correct typed initialization of trailing null terminator (zero UB)
-            destPtr.advanced(by: strLength).initialize(to: 0)
-            
-            pointers.append(UnsafePointer<CChar>(OpaquePointer(destPtr)))
-            currentOffset += strLength + 1
-        }
-
-        return try pointers.withUnsafeBufferPointer { bufPtr in
-            guard let base = bufPtr.baseAddress else {
-                var dummy: UnsafePointer<CChar>? = nil
-                return try withUnsafePointer(to: &dummy) { try body($0) }
+            return try strings[index].withCString { cStr in
+                accumulated.append(cStr)
+                defer { accumulated.removeLast() }
+                return try scopedHelper(index: index + 1, accumulated: &accumulated)
             }
-            return try body(base)
         }
+        
+        var pointers: [UnsafePointer<CChar>?] = []
+        pointers.reserveCapacity(strings.count)
+        return try scopedHelper(index: 0, accumulated: &pointers)
     }
 
     /// Safely converts `[String]` into a `NULL`-terminated pointer array suitable for `posix_spawn` argv.

@@ -72,12 +72,15 @@ func executePipelineBenchmark(jsonOut: String?) {
 
         // 2. Measure End-to-End APFS Pipeline speed
         let writer = ArchiveWriter()
-        let provenance = try! writer.createArchiveWithReport(
+        guard let provenance = try? writer.createArchiveWithReport(
             outputPath: outputZip.path,
             format: .zip,
             level: .normal,
             inputPaths: [inputFile.path]
-        )
+        ) else {
+            print("❌ Failed to create benchmark archive.")
+            continue
+        }
 
         let e2eDurationSec = Double(provenance.totalE2EDurationNanos) / 1_000_000_000.0
         let e2eThroughput = Double(sizeMB) / max(0.0001, e2eDurationSec)

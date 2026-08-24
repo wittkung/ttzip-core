@@ -74,6 +74,8 @@ public final class RustVfsSession: @unchecked Sendable {
                                         modes.withUnsafeBufferPointer { modePtr in
                                             flags.withUnsafeBufferPointer { flagPtr in
                                                 var packed = TTZipPackedEntryArray(
+                                                    struct_size: UInt32(MemoryLayout<TTZipPackedEntryArray>.size),
+                                                    abi_version: 2,
                                                     utf8_bytes: uPtr.baseAddress,
                                                     total_bytes_len: uPtr.count,
                                                     path_offsets: offPtr.baseAddress,
@@ -142,6 +144,8 @@ public final class RustVfsSession: @unchecked Sendable {
         guard !trimmed.isEmpty else { return allEntries }
         
         var buffer = [TTZipVfsMatchDto](repeating: TTZipVfsMatchDto(
+            struct_size: UInt32(MemoryLayout<TTZipVfsMatchDto>.size),
+            abi_version: 2,
             name: nil,
             name_len: 0,
             path: nil,
@@ -240,6 +244,8 @@ extension RustVfsSession {
     /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging.
     public func getChildren(dirNodeId: UInt32 = 0, offset: Int = 0, limit: Int = 100) -> (nodes: [VfsNodeSummary], total: Int) {
         var buffer = [TTZipVfsNodeSummary](repeating: TTZipVfsNodeSummary(
+            struct_size: UInt32(MemoryLayout<TTZipVfsNodeSummary>.size),
+            abi_version: 2,
             node_id: 0,
             name_utf8: nil,
             name_len: 0,
