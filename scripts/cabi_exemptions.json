@@ -117,8 +117,19 @@
       "round_keys_enc",
       "round_keys_dec"
     ],
-    "TTZipExtractOptions": [
+    "TTZipCreateOptions": [
+      "struct_size",
+      "abi_version",
       "user_data"
+    ],
+    "TTZipExtractOptions": [
+      "struct_size",
+      "abi_version",
+      "user_data"
+    ],
+    "TTZipEntryMetadata": [
+      "struct_size",
+      "abi_version"
     ],
     "TTZipScannedItemRaw": [
       "src_path",
