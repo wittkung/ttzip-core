@@ -176,19 +176,9 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
         return "00000000"
     }
     
-    /// Asynchronously computes SHA256 digest string for a file.
+    /// Asynchronously computes SHA256 digest string for a file using Safe Rust SIMD kernel.
     public func computeSHA256(filePath: String) async throws -> String {
-        if let sha = try? computeFileSha256(filePath: filePath) {
-            return sha
-        }
-        guard let handle = FileHandle(forReadingAtPath: filePath) else { throw ArchiveError.fileNotFound }
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while let chunk = try? handle.read(upToCount: 65536), !chunk.isEmpty {
-            hasher.update(data: chunk)
-        }
-        let digest = hasher.finalize()
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return try computeFileSha256(filePath: filePath)
     }
     
     /// Directly inspects data blocks and verifies cryptographic CRCs/checksums across archive entries in memory.
