@@ -1390,6 +1390,102 @@ public func FfiConverterTypePasswordRecoveryOutcome_lower(_ value: PasswordRecov
 }
 
 /**
+ * Sniffed file format and magic metadata record.
+ */
+public struct SniffMetadata {
+    public var formatName: String
+    public var mimeType: String
+    public var isArchive: Bool
+    public var isSfx: Bool
+    public var sfxOffset: UInt64
+    public var confidence: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(formatName: String, mimeType: String, isArchive: Bool, isSfx: Bool, sfxOffset: UInt64, confidence: UInt32) {
+        self.formatName = formatName
+        self.mimeType = mimeType
+        self.isArchive = isArchive
+        self.isSfx = isSfx
+        self.sfxOffset = sfxOffset
+        self.confidence = confidence
+    }
+}
+
+extension SniffMetadata: Equatable, Hashable {
+    public static func == (lhs: SniffMetadata, rhs: SniffMetadata) -> Bool {
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.isArchive != rhs.isArchive {
+            return false
+        }
+        if lhs.isSfx != rhs.isSfx {
+            return false
+        }
+        if lhs.sfxOffset != rhs.sfxOffset {
+            return false
+        }
+        if lhs.confidence != rhs.confidence {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatName)
+        hasher.combine(mimeType)
+        hasher.combine(isArchive)
+        hasher.combine(isSfx)
+        hasher.combine(sfxOffset)
+        hasher.combine(confidence)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSniffMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SniffMetadata {
+        return
+            try SniffMetadata(
+                formatName: FfiConverterString.read(from: &buf),
+                mimeType: FfiConverterString.read(from: &buf),
+                isArchive: FfiConverterBool.read(from: &buf),
+                isSfx: FfiConverterBool.read(from: &buf),
+                sfxOffset: FfiConverterUInt64.read(from: &buf),
+                confidence: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: SniffMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterBool.write(value.isArchive, into: &buf)
+        FfiConverterBool.write(value.isSfx, into: &buf)
+        FfiConverterUInt64.write(value.sfxOffset, into: &buf)
+        FfiConverterUInt32.write(value.confidence, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSniffMetadata_lift(_ buf: RustBuffer) throws -> SniffMetadata {
+    return try FfiConverterTypeSniffMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSniffMetadata_lower(_ value: SniffMetadata) -> RustBuffer {
+    return FfiConverterTypeSniffMetadata.lower(value)
+}
+
+/**
  * Metadata record for a single archive entry exposed via UniFFI.
  */
 public struct UniFfiEntryMetadata {
@@ -2541,7 +2637,7 @@ public func createArchiveStream(sourcePaths: [String], outputPath: String, forma
 }
 
 /**
- * Detects archive format from file magic bytes.
+ * Detects archive format from file using the full 16-format magic and SFX sniffer.
  */
 public func detectArchiveFormat(path: String) throws -> ArchiveFormat {
     return try FfiConverterTypeArchiveFormat.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
@@ -2726,6 +2822,29 @@ public func scanDirectory(path: String, maxDepth: UInt32) throws -> [DiskItemSum
 }
 
 /**
+ * Sniffs format and metadata from in-memory byte buffer.
+ */
+public func sniffFormatBuffer(data: Data, filenameHint: String?) -> SniffMetadata {
+    return try! FfiConverterTypeSniffMetadata.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_sniff_format_buffer(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(filenameHint), $0
+        )
+    })
+}
+
+/**
+ * Sniffs format and metadata from file on disk.
+ */
+public func sniffFormatFile(path: String) throws -> SniffMetadata {
+    return try FfiConverterTypeSniffMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_sniff_format_file(
+            FfiConverterString.lower(path), $0
+        )
+    })
+}
+
+/**
  * Convenient static function to format byte sizes via UniFFI.
  */
 public func ttzipI18nFormatBytes(bytes: Int64, standard: ByteSizeStandard, lang: AppLanguage) -> String {
@@ -2804,7 +2923,7 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_ttzip_engine_checksum_func_detect_archive_format() != 50024 {
+    if uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_detect_split_volume_chain() != 23903 {
@@ -2847,6 +2966,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_scan_directory() != 41201 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_sniff_format_buffer() != 26304 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_sniff_format_file() != 63931 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193 {

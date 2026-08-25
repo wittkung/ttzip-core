@@ -9,9 +9,9 @@
 
 use std::sync::Arc;
 use rayon::prelude::*;
-use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, TTZipError, UniFFIEntryMetadata};
+use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, SniffMetadata, TTZipError, UniFFIEntryMetadata};
 
-/// Detects archive format from file magic bytes.
+/// Detects archive format from file using the full 16-format magic and SFX sniffer.
 #[uniffi::export]
 pub fn detect_archive_format(path: String) -> Result<ArchiveFormat, TTZipError> {
     let p = std::path::Path::new(&path);
@@ -19,24 +19,67 @@ pub fn detect_archive_format(path: String) -> Result<ArchiveFormat, TTZipError> 
         return Err(TTZipError::FileNotFound { path });
     }
 
-    let mut f = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut magic = [0u8; 16];
-    let bytes_read = std::io::Read::read(&mut f, &mut magic).unwrap_or(0);
-    let buf = &magic[..bytes_read];
+    let sniff = crate::standards::detect_format_file(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
 
-    if buf.starts_with(b"PK\x03\x04") || buf.starts_with(b"PK\x05\x06") || buf.starts_with(b"PK\x07\x08") {
-        Ok(ArchiveFormat::Zip)
-    } else if buf.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        Ok(ArchiveFormat::SevenZip)
-    } else if buf.starts_with(b"\x1F\x8B") {
-        Ok(ArchiveFormat::TarGz)
-    } else if buf.starts_with(b"\x28\xB5\x2F\xFD") {
-        Ok(ArchiveFormat::TarZstd)
-    } else if buf.starts_with(b"bzx\x00") || buf.starts_with(b"bvf\x00") {
-        Ok(ArchiveFormat::Lzfse)
-    } else {
-        Ok(ArchiveFormat::Auto)
+    let fmt = match sniff.format {
+        crate::standards::signatures::DetectedFormat::Zip => ArchiveFormat::Zip,
+        crate::standards::signatures::DetectedFormat::SevenZip => ArchiveFormat::SevenZip,
+        crate::standards::signatures::DetectedFormat::Tar => {
+            match sniff.compound_format {
+                Some(crate::standards::signatures::CompoundFormat::TarGz) => ArchiveFormat::TarGz,
+                Some(crate::standards::signatures::CompoundFormat::TarBz2) => ArchiveFormat::TarBz2,
+                Some(crate::standards::signatures::CompoundFormat::TarXz) => ArchiveFormat::TarXz,
+                Some(crate::standards::signatures::CompoundFormat::TarZstd) => ArchiveFormat::TarZstd,
+                _ => ArchiveFormat::Tar,
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Gzip => ArchiveFormat::TarGz,
+        crate::standards::signatures::DetectedFormat::Bzip2 => ArchiveFormat::TarBz2,
+        crate::standards::signatures::DetectedFormat::Xz => ArchiveFormat::TarXz,
+        crate::standards::signatures::DetectedFormat::Zstd => ArchiveFormat::TarZstd,
+        crate::standards::signatures::DetectedFormat::Dmg => ArchiveFormat::Dmg,
+        crate::standards::signatures::DetectedFormat::Lzfse => ArchiveFormat::Lzfse,
+        crate::standards::signatures::DetectedFormat::Snappy => ArchiveFormat::Snappy,
+        crate::standards::signatures::DetectedFormat::Wim => ArchiveFormat::Wim,
+        _ => ArchiveFormat::Auto,
+    };
+    Ok(fmt)
+}
+
+/// Sniffs format and metadata from in-memory byte buffer.
+#[uniffi::export]
+pub fn sniff_format_buffer(data: Vec<u8>, filename_hint: Option<String>) -> SniffMetadata {
+    let sniff = crate::standards::detect_format_buffer(&data, filename_hint.as_deref());
+    let is_archive = sniff.format != crate::standards::signatures::DetectedFormat::Unknown;
+    SniffMetadata {
+        format_name: sniff.description.to_string(),
+        mime_type: sniff.mime_type.to_string(),
+        is_archive,
+        is_sfx: sniff.is_sfx,
+        sfx_offset: sniff.sfx_offset as u64,
+        confidence: sniff.confidence as u32,
     }
+}
+
+/// Sniffs format and metadata from file on disk.
+#[uniffi::export]
+pub fn sniff_format_file(path: String) -> Result<SniffMetadata, TTZipError> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(TTZipError::FileNotFound { path });
+    }
+    let sniff = crate::standards::detect_format_file(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    let is_archive = sniff.format != crate::standards::signatures::DetectedFormat::Unknown;
+    Ok(SniffMetadata {
+        format_name: sniff.description.to_string(),
+        mime_type: sniff.mime_type.to_string(),
+        is_archive,
+        is_sfx: sniff.is_sfx,
+        sfx_offset: sniff.sfx_offset as u64,
+        confidence: sniff.confidence as u32,
+    })
 }
 
 /// Measures Shannon entropy of byte data using SIMD.

@@ -137,6 +137,17 @@ pub struct DiskItemSummary {
     pub mtime_epoch_secs: i64,
 }
 
+/// Sniffed file format and magic metadata record.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct SniffMetadata {
+    pub format_name: String,
+    pub mime_type: String,
+    pub is_archive: bool,
+    pub is_sfx: bool,
+    pub sfx_offset: u64,
+    pub confidence: u32,
+}
+
 /// Callback interface protocol implemented in Swift.
 #[uniffi::export(callback_interface)]
 pub trait ProgressHandler: Send + Sync {

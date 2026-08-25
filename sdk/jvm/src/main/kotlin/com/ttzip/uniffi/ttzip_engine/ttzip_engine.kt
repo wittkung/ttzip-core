@@ -815,6 +815,10 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -916,6 +920,10 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_repair_archive_file(`damagedPath`: RustBuffer.ByValue,`outputPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     fun uniffi_ttzip_engine_fn_func_scan_directory(`path`: RustBuffer.ByValue,`maxDepth`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_sniff_format_buffer(`data`: RustBuffer.ByValue,`filenameHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_sniff_format_file(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes(`bytes`: Long,`standard`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1075,6 +1083,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_scan_directory(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_sniff_format_buffer(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_sniff_format_file(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_throughput(
@@ -1144,7 +1156,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 50024.toShort()) {
+    if (lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_detect_split_volume_chain() != 23903.toShort()) {
@@ -1187,6 +1199,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_scan_directory() != 41201.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_sniff_format_buffer() != 26304.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_sniff_format_file() != 63931.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193.toShort()) {
@@ -2679,6 +2697,57 @@ public object FfiConverterTypePasswordRecoveryOutcome: FfiConverterRustBuffer<Pa
 
 
 /**
+ * Sniffed file format and magic metadata record.
+ */
+data class SniffMetadata (
+    var `formatName`: kotlin.String, 
+    var `mimeType`: kotlin.String, 
+    var `isArchive`: kotlin.Boolean, 
+    var `isSfx`: kotlin.Boolean, 
+    var `sfxOffset`: kotlin.ULong, 
+    var `confidence`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSniffMetadata: FfiConverterRustBuffer<SniffMetadata> {
+    override fun read(buf: ByteBuffer): SniffMetadata {
+        return SniffMetadata(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SniffMetadata) = (
+            FfiConverterString.allocationSize(value.`formatName`) +
+            FfiConverterString.allocationSize(value.`mimeType`) +
+            FfiConverterBoolean.allocationSize(value.`isArchive`) +
+            FfiConverterBoolean.allocationSize(value.`isSfx`) +
+            FfiConverterULong.allocationSize(value.`sfxOffset`) +
+            FfiConverterUInt.allocationSize(value.`confidence`)
+    )
+
+    override fun write(value: SniffMetadata, buf: ByteBuffer) {
+            FfiConverterString.write(value.`formatName`, buf)
+            FfiConverterString.write(value.`mimeType`, buf)
+            FfiConverterBoolean.write(value.`isArchive`, buf)
+            FfiConverterBoolean.write(value.`isSfx`, buf)
+            FfiConverterULong.write(value.`sfxOffset`, buf)
+            FfiConverterUInt.write(value.`confidence`, buf)
+    }
+}
+
+
+
+/**
  * Metadata record for a single archive entry exposed via UniFFI.
  */
 data class UniFfiEntryMetadata (
@@ -3619,7 +3688,7 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
-         * Detects archive format from file magic bytes.
+         * Detects archive format from file using the full 16-format magic and SFX sniffer.
          */
     @Throws(TtZipException::class) fun `detectArchiveFormat`(`path`: kotlin.String): ArchiveFormat {
             return FfiConverterTypeArchiveFormat.lift(
@@ -3804,6 +3873,31 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_scan_directory(
         FfiConverterString.lower(`path`),FfiConverterUInt.lower(`maxDepth`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sniffs format and metadata from in-memory byte buffer.
+         */ fun `sniffFormatBuffer`(`data`: kotlin.ByteArray, `filenameHint`: kotlin.String?): SniffMetadata {
+            return FfiConverterTypeSniffMetadata.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_sniff_format_buffer(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`filenameHint`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sniffs format and metadata from file on disk.
+         */
+    @Throws(TtZipException::class) fun `sniffFormatFile`(`path`: kotlin.String): SniffMetadata {
+            return FfiConverterTypeSniffMetadata.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_sniff_format_file(
+        FfiConverterString.lower(`path`),_status)
 }
     )
     }

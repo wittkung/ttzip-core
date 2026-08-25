@@ -473,6 +473,16 @@ uint64_t uniffi_ttzip_engine_fn_func_repair_archive_file(RustBuffer damaged_path
 RustBuffer uniffi_ttzip_engine_fn_func_scan_directory(RustBuffer path, uint32_t _max_depth, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SNIFF_FORMAT_BUFFER
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SNIFF_FORMAT_BUFFER
+RustBuffer uniffi_ttzip_engine_fn_func_sniff_format_buffer(RustBuffer data, RustBuffer filename_hint, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SNIFF_FORMAT_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SNIFF_FORMAT_FILE
+RustBuffer uniffi_ttzip_engine_fn_func_sniff_format_file(RustBuffer path, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_TTZIP_I18N_FORMAT_BYTES
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_TTZIP_I18N_FORMAT_BYTES
 RustBuffer uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes(int64_t bytes, RustBuffer standard, RustBuffer lang, RustCallStatus *_Nonnull out_status
@@ -884,6 +894,18 @@ uint16_t uniffi_ttzip_engine_checksum_func_repair_archive_file(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SCAN_DIRECTORY
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SCAN_DIRECTORY
 uint16_t uniffi_ttzip_engine_checksum_func_scan_directory(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SNIFF_FORMAT_BUFFER
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SNIFF_FORMAT_BUFFER
+uint16_t uniffi_ttzip_engine_checksum_func_sniff_format_buffer(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SNIFF_FORMAT_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SNIFF_FORMAT_FILE
+uint16_t uniffi_ttzip_engine_checksum_func_sniff_format_file(void
     
 );
 #endif

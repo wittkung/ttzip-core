@@ -468,7 +468,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 50024:
+    if lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_detect_split_volume_chain() != 23903:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -497,6 +497,10 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_repair_archive_file() != 26144:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_scan_directory() != 41201:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_sniff_format_buffer() != 26304:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_sniff_format_file() != 63931:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -901,6 +905,17 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_scan_directory.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_scan_directory.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_buffer.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_buffer.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_file.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes.argtypes = (
     ctypes.c_int64,
     _UniffiRustBuffer,
@@ -1253,6 +1268,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_repair_archive_file.restype = ctype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_scan_directory.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_scan_directory.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_sniff_format_buffer.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_sniff_format_buffer.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_sniff_format_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_sniff_format_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.restype = ctypes.c_uint16
@@ -2127,6 +2148,74 @@ class _UniffiConverterTypePasswordRecoveryOutcome(_UniffiConverterRustBuffer):
         _UniffiConverterUInt64.write(value.total_attempts, buf)
         _UniffiConverterUInt64.write(value.elapsed_nanos, buf)
         _UniffiConverterDouble.write(value.attempts_per_second, buf)
+
+
+class SniffMetadata:
+    """
+    Sniffed file format and magic metadata record.
+    """
+
+    format_name: "str"
+    mime_type: "str"
+    is_archive: "bool"
+    is_sfx: "bool"
+    sfx_offset: "int"
+    confidence: "int"
+    def __init__(self, *, format_name: "str", mime_type: "str", is_archive: "bool", is_sfx: "bool", sfx_offset: "int", confidence: "int"):
+        self.format_name = format_name
+        self.mime_type = mime_type
+        self.is_archive = is_archive
+        self.is_sfx = is_sfx
+        self.sfx_offset = sfx_offset
+        self.confidence = confidence
+
+    def __str__(self):
+        return "SniffMetadata(format_name={}, mime_type={}, is_archive={}, is_sfx={}, sfx_offset={}, confidence={})".format(self.format_name, self.mime_type, self.is_archive, self.is_sfx, self.sfx_offset, self.confidence)
+
+    def __eq__(self, other):
+        if self.format_name != other.format_name:
+            return False
+        if self.mime_type != other.mime_type:
+            return False
+        if self.is_archive != other.is_archive:
+            return False
+        if self.is_sfx != other.is_sfx:
+            return False
+        if self.sfx_offset != other.sfx_offset:
+            return False
+        if self.confidence != other.confidence:
+            return False
+        return True
+
+class _UniffiConverterTypeSniffMetadata(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return SniffMetadata(
+            format_name=_UniffiConverterString.read(buf),
+            mime_type=_UniffiConverterString.read(buf),
+            is_archive=_UniffiConverterBool.read(buf),
+            is_sfx=_UniffiConverterBool.read(buf),
+            sfx_offset=_UniffiConverterUInt64.read(buf),
+            confidence=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.format_name)
+        _UniffiConverterString.check_lower(value.mime_type)
+        _UniffiConverterBool.check_lower(value.is_archive)
+        _UniffiConverterBool.check_lower(value.is_sfx)
+        _UniffiConverterUInt64.check_lower(value.sfx_offset)
+        _UniffiConverterUInt32.check_lower(value.confidence)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.format_name, buf)
+        _UniffiConverterString.write(value.mime_type, buf)
+        _UniffiConverterBool.write(value.is_archive, buf)
+        _UniffiConverterBool.write(value.is_sfx, buf)
+        _UniffiConverterUInt64.write(value.sfx_offset, buf)
+        _UniffiConverterUInt32.write(value.confidence, buf)
 
 
 class UniFfiEntryMetadata:
@@ -3252,7 +3341,7 @@ def create_archive_stream(source_paths: "typing.List[str]",output_path: "str",fo
 
 def detect_archive_format(path: "str") -> "ArchiveFormat":
     """
-    Detects archive format from file magic bytes.
+    Detects archive format from file using the full 16-format magic and SFX sniffer.
     """
 
     _UniffiConverterString.check_lower(path)
@@ -3475,6 +3564,31 @@ def scan_directory(path: "str",max_depth: "int") -> "typing.List[DiskItemSummary
         _UniffiConverterUInt32.lower(max_depth)))
 
 
+def sniff_format_buffer(data: "bytes",filename_hint: "typing.Optional[str]") -> "SniffMetadata":
+    """
+    Sniffs format and metadata from in-memory byte buffer.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(filename_hint)
+    
+    return _UniffiConverterTypeSniffMetadata.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_buffer,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(filename_hint)))
+
+
+def sniff_format_file(path: "str") -> "SniffMetadata":
+    """
+    Sniffs format and metadata from file on disk.
+    """
+
+    _UniffiConverterString.check_lower(path)
+    
+    return _UniffiConverterTypeSniffMetadata.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_sniff_format_file,
+        _UniffiConverterString.lower(path)))
+
+
 def ttzip_i18n_format_bytes(bytes: "int",standard: "ByteSizeStandard",lang: "AppLanguage") -> "str":
     """
     Convenient static function to format byte sizes via UniFFI.
@@ -3550,6 +3664,7 @@ __all__ = [
     "DiskItemSummary",
     "InPlaceMutationAction",
     "PasswordRecoveryOutcome",
+    "SniffMetadata",
     "UniFfiEntryMetadata",
     "UniFfiVfsMatch",
     "UniFfiVfsNodeSummary",
@@ -3573,6 +3688,8 @@ __all__ = [
     "recover_archive_password",
     "repair_archive_file",
     "scan_directory",
+    "sniff_format_buffer",
+    "sniff_format_file",
     "ttzip_i18n_format_bytes",
     "ttzip_i18n_format_throughput",
     "ttzip_i18n_get_string",
