@@ -8,7 +8,8 @@
 //! Mozilla UniFFI Archive Creation, Extraction, and Inspection Scaffolding.
 
 use std::sync::Arc;
-use super::types::{ArchiveFormat, CancellationToken, CompressionReport, ProgressHandler, TTZipError, UniFFIEntryMetadata};
+use rayon::prelude::*;
+use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, TTZipError, UniFFIEntryMetadata};
 
 /// Detects archive format from file magic bytes.
 #[uniffi::export]
@@ -528,3 +529,44 @@ pub fn repair_archive_file(damaged_path: String, output_path: String) -> Result<
         .map(|count| count as u64)
         .map_err(|s| TTZipError::EngineError { code: s as i32 })
 }
+
+/// Recovers password against an encrypted archive using Rayon multi-core parallel probing.
+#[uniffi::export]
+pub fn recover_archive_password(
+    archive_path: String,
+    dictionary: Vec<String>,
+) -> Result<PasswordRecoveryOutcome, TTZipError> {
+    let p = std::path::Path::new(&archive_path);
+    if !p.exists() {
+        return Err(TTZipError::FileNotFound { path: archive_path });
+    }
+
+    let file_bytes = std::fs::read(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    let start = std::time::Instant::now();
+    let total_attempts = dictionary.len() as u64;
+
+    // Use Rayon parallel search
+    let found_password = dictionary.into_par_iter().find_any(|candidate| {
+        if file_bytes.starts_with(b"7z\xBC\xAF\x27\x1C") {
+            if let Ok(arch) = crate::sevenz::decoder::SevenZArchive::open_slice(&file_bytes) {
+                return arch.extract_entry_bytes_stream(0, Some(candidate.as_str())).is_ok();
+            }
+        } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(&file_bytes) {
+            return zip_archive.extract_entry_bytes(0, Some(candidate.as_str())).is_ok();
+        }
+        false
+    });
+
+    let elapsed = start.elapsed();
+    let elapsed_nanos = elapsed.as_nanos() as u64;
+    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
+    let attempts_per_second = (total_attempts as f64) / elapsed_secs;
+
+    Ok(PasswordRecoveryOutcome {
+        found_password,
+        total_attempts,
+        elapsed_nanos,
+        attempts_per_second,
+    })
+}
+

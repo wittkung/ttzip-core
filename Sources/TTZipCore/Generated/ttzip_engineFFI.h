@@ -378,6 +378,11 @@ uint64_t uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries(void*_Nonnull
 void uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(UniffiVTableCallbackInterfaceProgressHandler* _Nonnull vtable
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_AUTOCOMPLETE_DISK_PATH
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_AUTOCOMPLETE_DISK_PATH
+RustBuffer uniffi_ttzip_engine_fn_func_autocomplete_disk_path(RustBuffer raw_input, RustBuffer base_directory, uint32_t max_results, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_CRC32
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_COMPUTE_FILE_CRC32
 uint32_t uniffi_ttzip_engine_fn_func_compute_file_crc32(RustBuffer file_path, RustCallStatus *_Nonnull out_status
@@ -448,9 +453,19 @@ void uniffi_ttzip_engine_fn_func_join_split_volume_chain(RustBuffer first_volume
 RustBuffer uniffi_ttzip_engine_fn_func_recommend_codec(RustBuffer data, int32_t scenario, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOVER_ARCHIVE_PASSWORD
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOVER_ARCHIVE_PASSWORD
+RustBuffer uniffi_ttzip_engine_fn_func_recover_archive_password(RustBuffer archive_path, RustBuffer dictionary, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_REPAIR_ARCHIVE_FILE
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_REPAIR_ARCHIVE_FILE
 uint64_t uniffi_ttzip_engine_fn_func_repair_archive_file(RustBuffer damaged_path, RustBuffer output_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SCAN_DIRECTORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_SCAN_DIRECTORY
+RustBuffer uniffi_ttzip_engine_fn_func_scan_directory(RustBuffer path, uint32_t _max_depth, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_TTZIP_I18N_FORMAT_BYTES
@@ -753,6 +768,12 @@ void ffi_ttzip_engine_rust_future_free_void(uint64_t handle
 void ffi_ttzip_engine_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_AUTOCOMPLETE_DISK_PATH
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_AUTOCOMPLETE_DISK_PATH
+uint16_t uniffi_ttzip_engine_checksum_func_autocomplete_disk_path(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_CRC32
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_COMPUTE_FILE_CRC32
 uint16_t uniffi_ttzip_engine_checksum_func_compute_file_crc32(void
@@ -837,9 +858,21 @@ uint16_t uniffi_ttzip_engine_checksum_func_recommend_codec(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_RECOVER_ARCHIVE_PASSWORD
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_RECOVER_ARCHIVE_PASSWORD
+uint16_t uniffi_ttzip_engine_checksum_func_recover_archive_password(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_REPAIR_ARCHIVE_FILE
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_REPAIR_ARCHIVE_FILE
 uint16_t uniffi_ttzip_engine_checksum_func_repair_archive_file(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SCAN_DIRECTORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_SCAN_DIRECTORY
+uint16_t uniffi_ttzip_engine_checksum_func_scan_directory(void
     
 );
 #endif

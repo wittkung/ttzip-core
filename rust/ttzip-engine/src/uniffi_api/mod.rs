@@ -12,11 +12,13 @@
 
 pub mod archive;
 pub mod audio;
+pub mod disk_scanner;
 pub mod types;
 pub mod vfs;
 
 pub use archive::*;
 pub use audio::*;
+pub use disk_scanner::*;
 pub use types::*;
 pub use vfs::*;
 

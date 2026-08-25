@@ -59,6 +59,7 @@ pub use sevenz::{
 };
 pub use standards::*;
 pub use types::*;
+pub use uniffi_api::*;
 pub use vfs::*;
 pub use zip::{create_zip_archive, ZipArchive, ZipEntry, ZipInputItem};
 

@@ -111,6 +111,25 @@ pub struct UniFFIVfsStats {
     pub total_uncompressed_bytes: u64,
 }
 
+/// Password recovery result record.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct PasswordRecoveryOutcome {
+    pub found_password: Option<String>,
+    pub total_attempts: u64,
+    pub elapsed_nanos: u64,
+    pub attempts_per_second: f64,
+}
+
+/// Disk item summary record.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct DiskItemSummary {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
+    pub size: u64,
+    pub mtime_epoch_secs: i64,
+}
+
 /// Callback interface protocol implemented in Swift.
 #[uniffi::export(callback_interface)]
 pub trait ProgressHandler: Send + Sync {

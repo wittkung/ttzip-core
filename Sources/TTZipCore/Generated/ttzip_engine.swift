@@ -9,7 +9,8 @@ import Foundation
 // this module. This is a bit of light hackery to work with both.
 #if canImport(ttzip_engineFFI)
     import ttzip_engineFFI
-#elseif canImport(CTTZipBridge)
+#endif
+#if canImport(CTTZipBridge)
     import CTTZipBridge
 #endif
 
@@ -1153,6 +1154,174 @@ public func FfiConverterTypeCompressionReport_lower(_ value: CompressionReport) 
 }
 
 /**
+ * Disk item summary record.
+ */
+public struct DiskItemSummary {
+    public var path: String
+    public var name: String
+    public var isDirectory: Bool
+    public var size: UInt64
+    public var mtimeEpochSecs: Int64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(path: String, name: String, isDirectory: Bool, size: UInt64, mtimeEpochSecs: Int64) {
+        self.path = path
+        self.name = name
+        self.isDirectory = isDirectory
+        self.size = size
+        self.mtimeEpochSecs = mtimeEpochSecs
+    }
+}
+
+extension DiskItemSummary: Equatable, Hashable {
+    public static func == (lhs: DiskItemSummary, rhs: DiskItemSummary) -> Bool {
+        if lhs.path != rhs.path {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.isDirectory != rhs.isDirectory {
+            return false
+        }
+        if lhs.size != rhs.size {
+            return false
+        }
+        if lhs.mtimeEpochSecs != rhs.mtimeEpochSecs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(name)
+        hasher.combine(isDirectory)
+        hasher.combine(size)
+        hasher.combine(mtimeEpochSecs)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDiskItemSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DiskItemSummary {
+        return
+            try DiskItemSummary(
+                path: FfiConverterString.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                isDirectory: FfiConverterBool.read(from: &buf),
+                size: FfiConverterUInt64.read(from: &buf),
+                mtimeEpochSecs: FfiConverterInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: DiskItemSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterBool.write(value.isDirectory, into: &buf)
+        FfiConverterUInt64.write(value.size, into: &buf)
+        FfiConverterInt64.write(value.mtimeEpochSecs, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiskItemSummary_lift(_ buf: RustBuffer) throws -> DiskItemSummary {
+    return try FfiConverterTypeDiskItemSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiskItemSummary_lower(_ value: DiskItemSummary) -> RustBuffer {
+    return FfiConverterTypeDiskItemSummary.lower(value)
+}
+
+/**
+ * Password recovery result record.
+ */
+public struct PasswordRecoveryOutcome {
+    public var foundPassword: String?
+    public var totalAttempts: UInt64
+    public var elapsedNanos: UInt64
+    public var attemptsPerSecond: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(foundPassword: String?, totalAttempts: UInt64, elapsedNanos: UInt64, attemptsPerSecond: Double) {
+        self.foundPassword = foundPassword
+        self.totalAttempts = totalAttempts
+        self.elapsedNanos = elapsedNanos
+        self.attemptsPerSecond = attemptsPerSecond
+    }
+}
+
+extension PasswordRecoveryOutcome: Equatable, Hashable {
+    public static func == (lhs: PasswordRecoveryOutcome, rhs: PasswordRecoveryOutcome) -> Bool {
+        if lhs.foundPassword != rhs.foundPassword {
+            return false
+        }
+        if lhs.totalAttempts != rhs.totalAttempts {
+            return false
+        }
+        if lhs.elapsedNanos != rhs.elapsedNanos {
+            return false
+        }
+        if lhs.attemptsPerSecond != rhs.attemptsPerSecond {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(foundPassword)
+        hasher.combine(totalAttempts)
+        hasher.combine(elapsedNanos)
+        hasher.combine(attemptsPerSecond)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePasswordRecoveryOutcome: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PasswordRecoveryOutcome {
+        return
+            try PasswordRecoveryOutcome(
+                foundPassword: FfiConverterOptionString.read(from: &buf),
+                totalAttempts: FfiConverterUInt64.read(from: &buf),
+                elapsedNanos: FfiConverterUInt64.read(from: &buf),
+                attemptsPerSecond: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: PasswordRecoveryOutcome, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.foundPassword, into: &buf)
+        FfiConverterUInt64.write(value.totalAttempts, into: &buf)
+        FfiConverterUInt64.write(value.elapsedNanos, into: &buf)
+        FfiConverterDouble.write(value.attemptsPerSecond, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypePasswordRecoveryOutcome_lift(_ buf: RustBuffer) throws -> PasswordRecoveryOutcome {
+    return try FfiConverterTypePasswordRecoveryOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypePasswordRecoveryOutcome_lower(_ value: PasswordRecoveryOutcome) -> RustBuffer {
+    return FfiConverterTypePasswordRecoveryOutcome.lower(value)
+}
+
+/**
  * Metadata record for a single archive entry exposed via UniFFI.
  */
 public struct UniFfiEntryMetadata {
@@ -1918,7 +2087,7 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 private enum UniffiCallbackInterfaceProgressHandler {
     /// Create the VTable using a series of closures.
     /// Swift automatically converts these into C callback functions.
-    nonisolated(unsafe) static var vtable: UniffiVTableCallbackInterfaceProgressHandler = .init(
+    static nonisolated(unsafe) var vtable: UniffiVTableCallbackInterfaceProgressHandler = .init(
         onProgress: { (
             uniffiHandle: UInt64,
             processedBytes: UInt64,
@@ -1949,7 +2118,7 @@ private enum UniffiCallbackInterfaceProgressHandler {
         uniffiFree: { (uniffiHandle: UInt64) in
             let result = try? FfiConverterCallbackInterfaceProgressHandler.handleMap.remove(handle: uniffiHandle)
             if result == nil {
-                // Uniffi callback interface ProgressHandler: handle missing in uniffiFree
+                print("Uniffi callback interface ProgressHandler: handle missing in uniffiFree")
             }
         }
     )
@@ -1964,7 +2133,7 @@ private func uniffiCallbackInitProgressHandler() {
     @_documentation(visibility: private)
 #endif
 private enum FfiConverterCallbackInterfaceProgressHandler {
-    nonisolated(unsafe) fileprivate static var handleMap = UniffiHandleMap<ProgressHandler>()
+    fileprivate static nonisolated(unsafe) var handleMap = UniffiHandleMap<ProgressHandler>()
 }
 
 #if swift(>=5.8)
@@ -2129,6 +2298,31 @@ private struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeDiskItemSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [DiskItemSummary]
+
+    static func write(_ value: [DiskItemSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeDiskItemSummary.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [DiskItemSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [DiskItemSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeDiskItemSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFIEntryMetadata: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiEntryMetadata]
 
@@ -2199,6 +2393,19 @@ private struct FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuf
         }
         return seq
     }
+}
+
+/**
+ * Fast path autocompletion query based on directory scanning and prefix matching.
+ */
+public func autocompleteDiskPath(rawInput: String, baseDirectory: String, maxResults: UInt32) -> [String] {
+    return try! FfiConverterSequenceString.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_autocomplete_disk_path(
+            FfiConverterString.lower(rawInput),
+            FfiConverterString.lower(baseDirectory),
+            FfiConverterUInt32.lower(maxResults), $0
+        )
+    })
 }
 
 /**
@@ -2378,6 +2585,18 @@ public func recommendCodec(data: Data, scenario: Int32) -> String {
 }
 
 /**
+ * Recovers password against an encrypted archive using Rayon multi-core parallel probing.
+ */
+public func recoverArchivePassword(archivePath: String, dictionary: [String]) throws -> PasswordRecoveryOutcome {
+    return try FfiConverterTypePasswordRecoveryOutcome.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_recover_archive_password(
+            FfiConverterString.lower(archivePath),
+            FfiConverterSequenceString.lower(dictionary), $0
+        )
+    })
+}
+
+/**
  * Repairs damaged archive file and writes to output destination.
  */
 public func repairArchiveFile(damagedPath: String, outputPath: String) throws -> UInt64 {
@@ -2385,6 +2604,18 @@ public func repairArchiveFile(damagedPath: String, outputPath: String) throws ->
         uniffi_ttzip_engine_fn_func_repair_archive_file(
             FfiConverterString.lower(damagedPath),
             FfiConverterString.lower(outputPath), $0
+        )
+    })
+}
+
+/**
+ * Scans a directory and returns lightweight item summaries.
+ */
+public func scanDirectory(path: String, maxDepth: UInt32) throws -> [DiskItemSummary] {
+    return try FfiConverterSequenceTypeDiskItemSummary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_scan_directory(
+            FfiConverterString.lower(path),
+            FfiConverterUInt32.lower(maxDepth), $0
         )
     })
 }
@@ -2456,6 +2687,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_autocomplete_disk_path() != 34824 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_compute_file_crc32() != 21036 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2498,7 +2732,13 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_recover_archive_password() != 41198 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_repair_archive_file() != 26144 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_scan_directory() != 41201 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193 {
@@ -2581,3 +2821,6 @@ private func uniffiEnsureInitialized() {
 
 extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
+
+
+// swiftlint:enable all

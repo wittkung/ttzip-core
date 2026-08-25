@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "ttzip_engineFFI.h"
 
 #ifdef __cplusplus
 extern "C" {
