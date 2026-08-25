@@ -438,6 +438,11 @@ uint64_t uniffi_ttzip_engine_fn_func_extract_selected_entries(RustBuffer archive
 RustBuffer uniffi_ttzip_engine_fn_func_extract_single_entry_stream(RustBuffer archive_path, uint64_t entry_index, RustBuffer password, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_IN_PLACE_MUTATE_ARCHIVE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_IN_PLACE_MUTATE_ARCHIVE
+void uniffi_ttzip_engine_fn_func_in_place_mutate_archive(RustBuffer archive_path, RustBuffer actions, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_INSPECT_ARCHIVE_ENTRIES
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_INSPECT_ARCHIVE_ENTRIES
 RustBuffer uniffi_ttzip_engine_fn_func_inspect_archive_entries(RustBuffer archive_path, RustBuffer password, RustCallStatus *_Nonnull out_status
@@ -837,6 +842,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_extract_selected_entries(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_EXTRACT_SINGLE_ENTRY_STREAM
 uint16_t uniffi_ttzip_engine_checksum_func_extract_single_entry_stream(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_IN_PLACE_MUTATE_ARCHIVE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_IN_PLACE_MUTATE_ARCHIVE
+uint16_t uniffi_ttzip_engine_checksum_func_in_place_mutate_archive(void
     
 );
 #endif

@@ -460,6 +460,8 @@ def _uniffi_check_contract_api_version(lib):
         raise InternalError("UniFFI contract version mismatch: try cleaning and rebuilding your project")
 
 def _uniffi_check_api_checksums(lib):
+    if lib.uniffi_ttzip_engine_checksum_func_autocomplete_disk_path() != 34824:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_compute_file_crc32() != 21036:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_compute_file_sha256() != 50222:
@@ -482,13 +484,19 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream() != 57921:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_in_place_mutate_archive() != 28841:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_inspect_archive_entries() != 34993:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_join_split_volume_chain() != 52199:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_recover_archive_password() != 41198:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_repair_archive_file() != 26144:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_scan_directory() != 41201:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -770,6 +778,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.argtypes 
     ctypes.POINTER(_UniffiVTableCallbackInterfaceProgressHandler),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_func_autocomplete_disk_path.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_autocomplete_disk_path.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_compute_file_crc32.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -844,6 +859,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_in_place_mutate_archive.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_in_place_mutate_archive.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_func_inspect_archive_entries.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -862,12 +883,24 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_recommend_codec.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_recommend_codec.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_recover_archive_password.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_recover_archive_password.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_repair_archive_file.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_repair_archive_file.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_scan_directory.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_scan_directory.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes.argtypes = (
     ctypes.c_int64,
     _UniffiRustBuffer,
@@ -1163,6 +1196,9 @@ _UniffiLib.ffi_ttzip_engine_rust_future_complete_void.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.ffi_ttzip_engine_rust_future_complete_void.restype = None
+_UniffiLib.uniffi_ttzip_engine_checksum_func_autocomplete_disk_path.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_autocomplete_disk_path.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_compute_file_crc32.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_compute_file_crc32.restype = ctypes.c_uint16
@@ -1196,6 +1232,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_selected_entries.restype = 
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_in_place_mutate_archive.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_in_place_mutate_archive.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_inspect_archive_entries.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_inspect_archive_entries.restype = ctypes.c_uint16
@@ -1205,9 +1244,15 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_join_split_volume_chain.restype = c
 _UniffiLib.uniffi_ttzip_engine_checksum_func_recommend_codec.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_recommend_codec.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_recover_archive_password.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_recover_archive_password.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_repair_archive_file.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_repair_archive_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_scan_directory.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_scan_directory.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.restype = ctypes.c_uint16
@@ -1924,6 +1969,164 @@ class _UniffiConverterTypeCompressionReport(_UniffiConverterRustBuffer):
         _UniffiConverterDouble.write(value.throughput_mbs, buf)
         _UniffiConverterDouble.write(value.space_savings_pct, buf)
         _UniffiConverterString.write(value.engine_provenance, buf)
+
+
+class DiskItemSummary:
+    """
+    Disk item summary record.
+    """
+
+    path: "str"
+    name: "str"
+    is_directory: "bool"
+    size: "int"
+    mtime_epoch_secs: "int"
+    def __init__(self, *, path: "str", name: "str", is_directory: "bool", size: "int", mtime_epoch_secs: "int"):
+        self.path = path
+        self.name = name
+        self.is_directory = is_directory
+        self.size = size
+        self.mtime_epoch_secs = mtime_epoch_secs
+
+    def __str__(self):
+        return "DiskItemSummary(path={}, name={}, is_directory={}, size={}, mtime_epoch_secs={})".format(self.path, self.name, self.is_directory, self.size, self.mtime_epoch_secs)
+
+    def __eq__(self, other):
+        if self.path != other.path:
+            return False
+        if self.name != other.name:
+            return False
+        if self.is_directory != other.is_directory:
+            return False
+        if self.size != other.size:
+            return False
+        if self.mtime_epoch_secs != other.mtime_epoch_secs:
+            return False
+        return True
+
+class _UniffiConverterTypeDiskItemSummary(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return DiskItemSummary(
+            path=_UniffiConverterString.read(buf),
+            name=_UniffiConverterString.read(buf),
+            is_directory=_UniffiConverterBool.read(buf),
+            size=_UniffiConverterUInt64.read(buf),
+            mtime_epoch_secs=_UniffiConverterInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.path)
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterBool.check_lower(value.is_directory)
+        _UniffiConverterUInt64.check_lower(value.size)
+        _UniffiConverterInt64.check_lower(value.mtime_epoch_secs)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.path, buf)
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterBool.write(value.is_directory, buf)
+        _UniffiConverterUInt64.write(value.size, buf)
+        _UniffiConverterInt64.write(value.mtime_epoch_secs, buf)
+
+
+class InPlaceMutationAction:
+    is_delete: "bool"
+    entry_path: "str"
+    source_path: "typing.Optional[str]"
+    def __init__(self, *, is_delete: "bool", entry_path: "str", source_path: "typing.Optional[str]"):
+        self.is_delete = is_delete
+        self.entry_path = entry_path
+        self.source_path = source_path
+
+    def __str__(self):
+        return "InPlaceMutationAction(is_delete={}, entry_path={}, source_path={})".format(self.is_delete, self.entry_path, self.source_path)
+
+    def __eq__(self, other):
+        if self.is_delete != other.is_delete:
+            return False
+        if self.entry_path != other.entry_path:
+            return False
+        if self.source_path != other.source_path:
+            return False
+        return True
+
+class _UniffiConverterTypeInPlaceMutationAction(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return InPlaceMutationAction(
+            is_delete=_UniffiConverterBool.read(buf),
+            entry_path=_UniffiConverterString.read(buf),
+            source_path=_UniffiConverterOptionalString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterBool.check_lower(value.is_delete)
+        _UniffiConverterString.check_lower(value.entry_path)
+        _UniffiConverterOptionalString.check_lower(value.source_path)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterBool.write(value.is_delete, buf)
+        _UniffiConverterString.write(value.entry_path, buf)
+        _UniffiConverterOptionalString.write(value.source_path, buf)
+
+
+class PasswordRecoveryOutcome:
+    """
+    Password recovery result record.
+    """
+
+    found_password: "typing.Optional[str]"
+    total_attempts: "int"
+    elapsed_nanos: "int"
+    attempts_per_second: "float"
+    def __init__(self, *, found_password: "typing.Optional[str]", total_attempts: "int", elapsed_nanos: "int", attempts_per_second: "float"):
+        self.found_password = found_password
+        self.total_attempts = total_attempts
+        self.elapsed_nanos = elapsed_nanos
+        self.attempts_per_second = attempts_per_second
+
+    def __str__(self):
+        return "PasswordRecoveryOutcome(found_password={}, total_attempts={}, elapsed_nanos={}, attempts_per_second={})".format(self.found_password, self.total_attempts, self.elapsed_nanos, self.attempts_per_second)
+
+    def __eq__(self, other):
+        if self.found_password != other.found_password:
+            return False
+        if self.total_attempts != other.total_attempts:
+            return False
+        if self.elapsed_nanos != other.elapsed_nanos:
+            return False
+        if self.attempts_per_second != other.attempts_per_second:
+            return False
+        return True
+
+class _UniffiConverterTypePasswordRecoveryOutcome(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return PasswordRecoveryOutcome(
+            found_password=_UniffiConverterOptionalString.read(buf),
+            total_attempts=_UniffiConverterUInt64.read(buf),
+            elapsed_nanos=_UniffiConverterUInt64.read(buf),
+            attempts_per_second=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterOptionalString.check_lower(value.found_password)
+        _UniffiConverterUInt64.check_lower(value.total_attempts)
+        _UniffiConverterUInt64.check_lower(value.elapsed_nanos)
+        _UniffiConverterDouble.check_lower(value.attempts_per_second)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterOptionalString.write(value.found_password, buf)
+        _UniffiConverterUInt64.write(value.total_attempts, buf)
+        _UniffiConverterUInt64.write(value.elapsed_nanos, buf)
+        _UniffiConverterDouble.write(value.attempts_per_second, buf)
 
 
 class UniFfiEntryMetadata:
@@ -2854,6 +3057,56 @@ class _UniffiConverterSequenceString(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypeDiskItemSummary(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeDiskItemSummary.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeDiskItemSummary.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeDiskItemSummary.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeInPlaceMutationAction(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeInPlaceMutationAction.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeInPlaceMutationAction.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeInPlaceMutationAction.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiEntryMetadata(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -2928,6 +3181,23 @@ class _UniffiConverterSequenceTypeUniFfiVfsNodeSummary(_UniffiConverterRustBuffe
         ]
 
 # Async support
+
+def autocomplete_disk_path(raw_input: "str",base_directory: "str",max_results: "int") -> "typing.List[str]":
+    """
+    Fast path autocompletion query based on directory scanning and prefix matching.
+    """
+
+    _UniffiConverterString.check_lower(raw_input)
+    
+    _UniffiConverterString.check_lower(base_directory)
+    
+    _UniffiConverterUInt32.check_lower(max_results)
+    
+    return _UniffiConverterSequenceString.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_autocomplete_disk_path,
+        _UniffiConverterString.lower(raw_input),
+        _UniffiConverterString.lower(base_directory),
+        _UniffiConverterUInt32.lower(max_results)))
+
 
 def compute_file_crc32(file_path: "str") -> "int":
     """
@@ -3107,6 +3377,20 @@ def extract_single_entry_stream(archive_path: "str",entry_index: "int",password:
         _UniffiConverterOptionalString.lower(password)))
 
 
+def in_place_mutate_archive(archive_path: "str",actions: "typing.List[InPlaceMutationAction]") -> None:
+    """
+    Atomically mutates archive in-place (append, replace, delete) without full recompression.
+    """
+
+    _UniffiConverterString.check_lower(archive_path)
+    
+    _UniffiConverterSequenceTypeInPlaceMutationAction.check_lower(actions)
+    
+    _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_in_place_mutate_archive,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterSequenceTypeInPlaceMutationAction.lower(actions))
+
+
 def inspect_archive_entries(archive_path: "str",password: "typing.Optional[str]") -> "typing.List[UniFfiEntryMetadata]":
     """
     Inspects all archive entry metadata items.
@@ -3149,6 +3433,20 @@ def recommend_codec(data: "bytes",scenario: "int") -> "str":
         _UniffiConverterInt32.lower(scenario)))
 
 
+def recover_archive_password(archive_path: "str",dictionary: "typing.List[str]") -> "PasswordRecoveryOutcome":
+    """
+    Recovers password against an encrypted archive using Rayon multi-core parallel probing.
+    """
+
+    _UniffiConverterString.check_lower(archive_path)
+    
+    _UniffiConverterSequenceString.check_lower(dictionary)
+    
+    return _UniffiConverterTypePasswordRecoveryOutcome.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_recover_archive_password,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterSequenceString.lower(dictionary)))
+
+
 def repair_archive_file(damaged_path: "str",output_path: "str") -> "int":
     """
     Repairs damaged archive file and writes to output destination.
@@ -3161,6 +3459,20 @@ def repair_archive_file(damaged_path: "str",output_path: "str") -> "int":
     return _UniffiConverterUInt64.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_repair_archive_file,
         _UniffiConverterString.lower(damaged_path),
         _UniffiConverterString.lower(output_path)))
+
+
+def scan_directory(path: "str",max_depth: "int") -> "typing.List[DiskItemSummary]":
+    """
+    Scans a directory and returns lightweight item summaries.
+    """
+
+    _UniffiConverterString.check_lower(path)
+    
+    _UniffiConverterUInt32.check_lower(max_depth)
+    
+    return _UniffiConverterSequenceTypeDiskItemSummary.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_scan_directory,
+        _UniffiConverterString.lower(path),
+        _UniffiConverterUInt32.lower(max_depth)))
 
 
 def ttzip_i18n_format_bytes(bytes: "int",standard: "ByteSizeStandard",lang: "AppLanguage") -> "str":
@@ -3235,10 +3547,14 @@ __all__ = [
     "ByteSizeStandard",
     "TtZipError",
     "CompressionReport",
+    "DiskItemSummary",
+    "InPlaceMutationAction",
+    "PasswordRecoveryOutcome",
     "UniFfiEntryMetadata",
     "UniFfiVfsMatch",
     "UniFfiVfsNodeSummary",
     "UniFfiVfsStats",
+    "autocomplete_disk_path",
     "compute_file_crc32",
     "compute_file_sha256",
     "create_archive_stream",
@@ -3250,10 +3566,13 @@ __all__ = [
     "extract_audio_waveform_from_memory",
     "extract_selected_entries",
     "extract_single_entry_stream",
+    "in_place_mutate_archive",
     "inspect_archive_entries",
     "join_split_volume_chain",
     "recommend_codec",
+    "recover_archive_password",
     "repair_archive_file",
+    "scan_directory",
     "ttzip_i18n_format_bytes",
     "ttzip_i18n_format_throughput",
     "ttzip_i18n_get_string",

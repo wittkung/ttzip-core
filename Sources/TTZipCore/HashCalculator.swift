@@ -29,20 +29,11 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
     public func computeHashSync(filePath: String, type: HashType) throws -> String {
         switch type {
         case .crc32:
-            if let crc = try? computeFileCrc32(filePath: filePath) {
-                return String(format: "%08X", crc)
-            }
-            if let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
-                let crc = HardwareChecksumAdapter.crc32(for: data)
-                return String(format: "%08X", crc)
-            }
-            return "00000000"
+            let crc = try computeFileCrc32(filePath: filePath)
+            return String(format: "%08X", crc)
             
         case .sha256:
-            if let sha = try? computeFileSha256(filePath: filePath) {
-                return sha
-            }
-            return try computeCryptoHashSync(filePath: filePath, createHasher: SHA256.init)
+            return try computeFileSha256(filePath: filePath)
             
         case .md5:
             return try computeCryptoHashSync(filePath: filePath, createHasher: Insecure.MD5.init)

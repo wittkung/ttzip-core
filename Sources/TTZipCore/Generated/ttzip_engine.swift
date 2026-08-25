@@ -9,8 +9,7 @@ import Foundation
 // this module. This is a bit of light hackery to work with both.
 #if canImport(ttzip_engineFFI)
     import ttzip_engineFFI
-#endif
-#if canImport(CTTZipBridge)
+#elseif canImport(CTTZipBridge)
     import CTTZipBridge
 #endif
 
@@ -1241,6 +1240,75 @@ public func FfiConverterTypeDiskItemSummary_lower(_ value: DiskItemSummary) -> R
     return FfiConverterTypeDiskItemSummary.lower(value)
 }
 
+public struct InPlaceMutationAction {
+    public var isDelete: Bool
+    public var entryPath: String
+    public var sourcePath: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(isDelete: Bool, entryPath: String, sourcePath: String?) {
+        self.isDelete = isDelete
+        self.entryPath = entryPath
+        self.sourcePath = sourcePath
+    }
+}
+
+extension InPlaceMutationAction: Equatable, Hashable {
+    public static func == (lhs: InPlaceMutationAction, rhs: InPlaceMutationAction) -> Bool {
+        if lhs.isDelete != rhs.isDelete {
+            return false
+        }
+        if lhs.entryPath != rhs.entryPath {
+            return false
+        }
+        if lhs.sourcePath != rhs.sourcePath {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(isDelete)
+        hasher.combine(entryPath)
+        hasher.combine(sourcePath)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInPlaceMutationAction: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InPlaceMutationAction {
+        return
+            try InPlaceMutationAction(
+                isDelete: FfiConverterBool.read(from: &buf),
+                entryPath: FfiConverterString.read(from: &buf),
+                sourcePath: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: InPlaceMutationAction, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.isDelete, into: &buf)
+        FfiConverterString.write(value.entryPath, into: &buf)
+        FfiConverterOptionString.write(value.sourcePath, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInPlaceMutationAction_lift(_ buf: RustBuffer) throws -> InPlaceMutationAction {
+    return try FfiConverterTypeInPlaceMutationAction.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInPlaceMutationAction_lower(_ value: InPlaceMutationAction) -> RustBuffer {
+    return FfiConverterTypeInPlaceMutationAction.lower(value)
+}
+
 /**
  * Password recovery result record.
  */
@@ -2087,7 +2155,7 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 private enum UniffiCallbackInterfaceProgressHandler {
     /// Create the VTable using a series of closures.
     /// Swift automatically converts these into C callback functions.
-    static nonisolated(unsafe) var vtable: UniffiVTableCallbackInterfaceProgressHandler = .init(
+    nonisolated(unsafe) static var vtable: UniffiVTableCallbackInterfaceProgressHandler = .init(
         onProgress: { (
             uniffiHandle: UInt64,
             processedBytes: UInt64,
@@ -2118,7 +2186,7 @@ private enum UniffiCallbackInterfaceProgressHandler {
         uniffiFree: { (uniffiHandle: UInt64) in
             let result = try? FfiConverterCallbackInterfaceProgressHandler.handleMap.remove(handle: uniffiHandle)
             if result == nil {
-                print("Uniffi callback interface ProgressHandler: handle missing in uniffiFree")
+                // Uniffi callback interface ProgressHandler: handle missing in uniffiFree
             }
         }
     )
@@ -2133,7 +2201,7 @@ private func uniffiCallbackInitProgressHandler() {
     @_documentation(visibility: private)
 #endif
 private enum FfiConverterCallbackInterfaceProgressHandler {
-    fileprivate static nonisolated(unsafe) var handleMap = UniffiHandleMap<ProgressHandler>()
+    nonisolated(unsafe) fileprivate static var handleMap = UniffiHandleMap<ProgressHandler>()
 }
 
 #if swift(>=5.8)
@@ -2315,6 +2383,31 @@ private struct FfiConverterSequenceTypeDiskItemSummary: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeDiskItemSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeInPlaceMutationAction: FfiConverterRustBuffer {
+    typealias SwiftType = [InPlaceMutationAction]
+
+    static func write(_ value: [InPlaceMutationAction], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInPlaceMutationAction.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InPlaceMutationAction] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InPlaceMutationAction]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeInPlaceMutationAction.read(from: &buf))
         }
         return seq
     }
@@ -2549,6 +2642,18 @@ public func extractSingleEntryStream(archivePath: String, entryIndex: UInt64, pa
 }
 
 /**
+ * Atomically mutates archive in-place (append, replace, delete) without full recompression.
+ */
+public func inPlaceMutateArchive(archivePath: String, actions: [InPlaceMutationAction]) throws {
+    try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_in_place_mutate_archive(
+            FfiConverterString.lower(archivePath),
+            FfiConverterSequenceTypeInPlaceMutationAction.lower(actions), $0
+        )
+    }
+}
+
+/**
  * Inspects all archive entry metadata items.
  */
 public func inspectArchiveEntries(archivePath: String, password: String?) throws -> [UniFfiEntryMetadata] {
@@ -2723,6 +2828,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_extract_single_entry_stream() != 57921 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_in_place_mutate_archive() != 28841 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_inspect_archive_entries() != 34993 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2821,6 +2929,3 @@ private func uniffiEnsureInitialized() {
 
 extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
-
-
-// swiftlint:enable all

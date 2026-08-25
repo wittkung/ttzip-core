@@ -31,26 +31,92 @@ public final class SplitVolumeEngine: Sendable {
         return SplitVolumeConcatenator.shared.inspect(seedPath: seedPath)?.volumePaths ?? [seedPath]
     }
 
-    /// Slices a file into multi-volume parts of `splitSizeBytes`.
+    /// Slices a file into multi-volume parts of `splitSizeBytes` with zero heap memory overhead.
     public func sliceArchive(
         archivePath: String,
         splitSizeBytes: Int64,
         namingPattern: VolumeNamingPattern = .numberedExtension,
         cleanOnFailure: Bool = true
     ) throws {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: archivePath)) else {
+        guard splitSizeBytes > 0 else { throw ArchiveError.readFailed(code: -1) }
+        guard let inputStream = InputStream(fileAtPath: archivePath) else {
             throw ArchiveError.fileNotFound
         }
+        inputStream.open()
+        defer { inputStream.close() }
+        
+        let bufferSize = 1024 * 1024 // 1 MB chunk stream
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { buffer.deallocate() }
+        
         var partIndex = 1
-        var offset = 0
-        while offset < data.count {
-            let end = min(offset + Int(splitSizeBytes), data.count)
-            let chunk = data.subdata(in: offset..<end)
-            let partExt = String(format: "%03d", partIndex)
+        var bytesWrittenToCurrentPart: Int64 = 0
+        var currentOutputStream: OutputStream? = nil
+        var createdParts: [String] = []
+        
+        func closeCurrentOutput() {
+            if let stream = currentOutputStream {
+                stream.close()
+                currentOutputStream = nil
+            }
+        }
+        
+        func openNextOutput() throws -> OutputStream {
+            closeCurrentOutput()
+            let partExt: String
+            switch namingPattern {
+            case .numberedExtension, .rawSplit:
+                partExt = String(format: "%03d", partIndex)
+            case .pkzipSpanned:
+                partExt = String(format: "z%02d", partIndex)
+            }
             let partPath = "\(archivePath).\(partExt)"
-            try chunk.write(to: URL(fileURLWithPath: partPath))
-            offset = end
+            createdParts.append(partPath)
+            guard let outStream = OutputStream(toFileAtPath: partPath, append: false) else {
+                throw ArchiveError.engineFailure(code: -1, message: "Failed to open output stream")
+            }
+            outStream.open()
             partIndex += 1
+            bytesWrittenToCurrentPart = 0
+            return outStream
+        }
+        
+        do {
+            var activeStream = try openNextOutput()
+            while inputStream.hasBytesAvailable {
+                let bytesToRead = min(Int64(bufferSize), splitSizeBytes - bytesWrittenToCurrentPart)
+                if bytesToRead <= 0 {
+                    activeStream = try openNextOutput()
+                    continue
+                }
+                let bytesRead = inputStream.read(buffer, maxLength: Int(bytesToRead))
+                if bytesRead < 0 {
+                    throw ArchiveError.readFailed(code: -2)
+                } else if bytesRead == 0 {
+                    break
+                }
+                var totalWritten = 0
+                while totalWritten < bytesRead {
+                    let written = activeStream.write(buffer.advanced(by: totalWritten), maxLength: bytesRead - totalWritten)
+                    if written <= 0 {
+                        throw ArchiveError.engineFailure(code: -3, message: "Failed to write bytes to stream")
+                    }
+                    totalWritten += written
+                }
+                bytesWrittenToCurrentPart += Int64(bytesRead)
+                if bytesWrittenToCurrentPart >= splitSizeBytes && inputStream.hasBytesAvailable {
+                    activeStream = try openNextOutput()
+                }
+            }
+            closeCurrentOutput()
+        } catch {
+            closeCurrentOutput()
+            if cleanOnFailure {
+                for path in createdParts {
+                    try? FileManager.default.removeItem(atPath: path)
+                }
+            }
+            throw error
         }
     }
 }

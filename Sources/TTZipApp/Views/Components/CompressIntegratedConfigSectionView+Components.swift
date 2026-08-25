@@ -22,26 +22,32 @@ extension CompressIntegratedConfigSectionView {
             switch selectedFormat {
             case .sevenZip:
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 12) {
-                        Text("Algorithm").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
-                        Picker("", selection: $compressionAlgorithm) {
-                            Text("LZMA2 (Default)").tag("LZMA2")
-                            Text("LZMA (Legacy)").tag("LZMA")
-                            Text("PPMd (Text/Code)").tag("PPMd")
-                            Text("BZip2 (Parallel)").tag("BZip2")
-                            Text("Copy (Store)").tag("Copy")
-                        }.pickerStyle(.menu).controlSize(.small)
+                    if compressionLevel != .store {
+                        HStack(spacing: 12) {
+                            Text("Algorithm").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
+                            Picker("", selection: $compressionAlgorithm) {
+                                Text("LZMA2 (Default)").tag("LZMA2")
+                                Text("LZMA (Legacy)").tag("LZMA")
+                                Text("PPMd (Text/Code)").tag("PPMd")
+                                Text("BZip2 (Parallel)").tag("BZip2")
+                                Text("Copy (Store)").tag("Copy")
+                            }.pickerStyle(.menu).controlSize(.small)
+                        }
+                        HStack(spacing: 12) {
+                            Text("Dictionary").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
+                            Picker("", selection: $dictionarySizeMB) {
+                                Text("16 MB").tag(16); Text("32 MB (Standard)").tag(32); Text("64 MB").tag(64); Text("128 MB").tag(128); Text("256 MB (Ultra)").tag(256)
+                            }.pickerStyle(.segmented).tint(TTZipTheme.bambooGreen)
+                        }
+                        HStack(spacing: 16) {
+                            Toggle("Solid Archive", isOn: $enableSolidArchive).tint(TTZipTheme.bambooGreen)
+                            Toggle("Encrypt File Names", isOn: $encryptFileNames).disabled(!enableEncryption).tint(TTZipTheme.bambooGreen)
+                        }.font(.system(size: 11))
+                    } else {
+                        HStack(spacing: 16) {
+                            Toggle("Encrypt File Names", isOn: $encryptFileNames).disabled(!enableEncryption).tint(TTZipTheme.bambooGreen)
+                        }.font(.system(size: 11))
                     }
-                    HStack(spacing: 12) {
-                        Text("Dictionary").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
-                        Picker("", selection: $dictionarySizeMB) {
-                            Text("16 MB").tag(16); Text("32 MB (Standard)").tag(32); Text("64 MB").tag(64); Text("128 MB").tag(128); Text("256 MB (Ultra)").tag(256)
-                        }.pickerStyle(.segmented).tint(TTZipTheme.bambooGreen)
-                    }
-                    HStack(spacing: 16) {
-                        Toggle("Solid Archive", isOn: $enableSolidArchive).tint(TTZipTheme.bambooGreen)
-                        Toggle("Encrypt File Names", isOn: $encryptFileNames).disabled(!enableEncryption).tint(TTZipTheme.bambooGreen)
-                    }.font(.system(size: 11))
                 }
             case .zip:
                 VStack(alignment: .leading, spacing: 8) {
@@ -56,13 +62,17 @@ extension CompressIntegratedConfigSectionView {
                 }
             case .zst, .tarZst:
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 12) {
-                        Text("ZSTD Level").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
-                        Picker("", selection: $zstdLevel) {
-                            Text("Level 1 (Fast)").tag(1); Text("Level 3 (Default)").tag(3); Text("Level 9 (Balanced)").tag(9); Text("Level 19 (Ultra)").tag(19)
-                        }.pickerStyle(.segmented).tint(TTZipTheme.bambooGreen)
+                    if compressionLevel != .store {
+                        HStack(spacing: 12) {
+                            Text("ZSTD Level").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).frame(width: 75, alignment: .trailing)
+                            Picker("", selection: $zstdLevel) {
+                                Text("Level 1 (Fast)").tag(1); Text("Level 3 (Default)").tag(3); Text("Level 9 (Balanced)").tag(9); Text("Level 19 (Ultra)").tag(19)
+                            }.pickerStyle(.segmented).tint(TTZipTheme.bambooGreen)
+                        }
+                        Toggle("Enable Long Distance Matching (LDM)", isOn: $zstdEnableLDM).font(.system(size: 11)).tint(TTZipTheme.bambooGreen)
+                    } else {
+                        Toggle("Preserve UNIX POSIX File Permissions and Owner (chmod/chown)", isOn: $preservePosixAttributes).font(.system(size: 11)).tint(TTZipTheme.bambooGreen)
                     }
-                    Toggle("Enable Long Distance Matching (LDM)", isOn: $zstdEnableLDM).font(.system(size: 11)).tint(TTZipTheme.bambooGreen)
                 }
             case .tarGz, .gz, .tarBz2, .tarXz, .tar, .bz2, .xz, .lzip, .lz4, .brotli, .lrzip, .aar, .snappy, .wim, .dmg, .iso:
                 VStack(alignment: .leading, spacing: 8) {
@@ -75,7 +85,14 @@ extension CompressIntegratedConfigSectionView {
     
     func formatTile(format: ArchiveCompressionFormat) -> some View {
         let isSel = selectedFormat == format
-        return Button(action: { selectedFormat = format }) {
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedFormat = format
+                if !format.supportedLevels.contains(compressionLevel) {
+                    compressionLevel = format.supportedLevels.first ?? .store
+                }
+            }
+        }) {
             VStack(alignment: .center, spacing: 1) {
                 Text(format.displayName).font(.system(size: 10, weight: .bold))
                 Text(format.shortcutBadge).font(.system(size: 7.5, weight: .semibold)).foregroundStyle(isSel ? TTZipTheme.bambooGreen : Color.secondary.opacity(0.8))
@@ -91,7 +108,11 @@ extension CompressIntegratedConfigSectionView {
     
     func levelTile(level: ArchiveCompressionLevel, name: String) -> some View {
         let isSel = compressionLevel == level
-        return Button(action: { compressionLevel = level }) {
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                compressionLevel = level
+            }
+        }) {
             Text(name).font(.system(size: 10.5, weight: isSel ? .bold : .regular))
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(isSel ? TTZipTheme.bambooGreen.opacity(0.14) : Color.primary.opacity(0.03))

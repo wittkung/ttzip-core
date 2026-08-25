@@ -143,6 +143,20 @@ public enum L10n {
         case targetParameters = "compress.target_parameters"
         case hardwareAcceleration = "compress.hardware_acceleration"
         case formatGuide = "compress.format_guide"
+        case algorithm = "compress.algorithm"
+        case dictAutoFormat = "compress.dict_auto_format"
+        case dictSpeedUnit = "compress.dict_speed_unit"
+        case dictStandardUnit = "compress.dict_standard_unit"
+        case dictLargeMemoryUnit = "compress.dict_large_memory_unit"
+        case dictUltraUnit = "compress.dict_ultra_unit"
+        case dictPhysicalLimitUnit = "compress.dict_physical_limit_unit"
+        case solidArchiveDesc = "compress.solid_archive_desc"
+        case encryptFileNames7z = "compress.encrypt_file_names_7z"
+        case zipMethod = "compress.zip_method"
+        case zipMethodAes = "compress.zip_method_aes"
+        case zipMethodZipCrypto = "compress.zip_method_zipcrypto"
+        case zstdLevel = "compress.zstd_level"
+        case zstdLdm = "compress.zstd_ldm"
     }
     
     // MARK: - 5. Extraction Workflow

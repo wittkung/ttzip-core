@@ -16,7 +16,7 @@ mod tests {
     #[test]
     fn test_all_catalogs_have_equal_keys_and_no_missing_entries() {
         let en_keys: HashSet<&str> = catalogs::en::STRINGS.iter().map(|&(k, _)| k).collect();
-        assert_eq!(en_keys.len(), 401, "English catalog should have exactly 401 keys");
+        assert_eq!(en_keys.len(), 415, "English catalog should have exactly 415 keys");
 
         let languages = [
             AppLanguage::ZhHans,

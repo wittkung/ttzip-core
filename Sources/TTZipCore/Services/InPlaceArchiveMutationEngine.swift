@@ -99,7 +99,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         )
     }
     
-    /// Synchronously adds files into an existing archive using in-place mutation.
+    /// Synchronously adds files into an existing archive using 100% pure Rust UniFFI in-place mutation.
     public func addFilesToArchiveSync(
         archivePath: String,
         sourceFilePaths: [String],
@@ -108,16 +108,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     ) throws {
         guard !sourceFilePaths.isEmpty else { return }
         
-        let tempExtractDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TTZip_Repack_\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempExtractDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempExtractDir) }
-
-        let extractor = ArchiveExtractor()
-        _ = try extractor.extractSync(archivePath: archivePath, destinationDir: tempExtractDir.path, password: password)
-
-        let fm = FileManager.default
-        for src in sourceFilePaths {
+        let actions = sourceFilePaths.map { src -> InPlaceMutationAction in
             let baseName = (src as NSString).lastPathComponent
             let targetRelPath: String
             if let destFolder = destinationVirtualFolder, !destFolder.isEmpty, destFolder != "." {
@@ -125,34 +116,13 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
             } else {
                 targetRelPath = baseName
             }
-            let targetFull = tempExtractDir.appendingPathComponent(targetRelPath)
-            try? fm.createDirectory(at: targetFull.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? fm.removeItem(at: targetFull)
-            try fm.copyItem(atPath: src, toPath: targetFull.path)
+            return InPlaceMutationAction(isDelete: false, entryPath: targetRelPath, sourcePath: src)
         }
-
-        let tempOutputArchive = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TTZip_Repacked_\(UUID().uuidString).zip")
-        defer { try? FileManager.default.removeItem(at: tempOutputArchive) }
-
-        let items = (try? fm.contentsOfDirectory(atPath: tempExtractDir.path)) ?? []
-        let inputPaths = items.map { tempExtractDir.appendingPathComponent($0).path }
-
-        let writer = ArchiveWriter()
-        try writer.createArchiveSync(
-            outputPath: tempOutputArchive.path,
-            format: .zip,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            password: password
-        )
-
-        try? fm.removeItem(atPath: archivePath)
-        try fm.moveItem(atPath: tempOutputArchive.path, toPath: archivePath)
+        
+        try inPlaceMutateArchive(archivePath: archivePath, actions: actions)
     }
     
-    /// Deletes specific entries from inside an existing archive.
+    /// Deletes specific entries from inside an existing archive using 100% pure Rust UniFFI in-place mutation.
     public func deleteEntriesFromArchive(
         archivePath: String,
         entryPathsToDelete: [String],
@@ -160,39 +130,11 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     ) async throws {
         guard !entryPathsToDelete.isEmpty else { return }
         
-        let tempExtractDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TTZip_DelRepack_\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempExtractDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempExtractDir) }
-
-        let extractor = ArchiveExtractor()
-        _ = try extractor.extractSync(archivePath: archivePath, destinationDir: tempExtractDir.path, password: password)
-
-        let fm = FileManager.default
-        for entry in entryPathsToDelete {
-            let targetPath = tempExtractDir.appendingPathComponent(entry).path
-            try? fm.removeItem(atPath: targetPath)
+        let actions = entryPathsToDelete.map { entry in
+            InPlaceMutationAction(isDelete: true, entryPath: entry, sourcePath: nil)
         }
-
-        let tempOutputArchive = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TTZip_DelRepacked_\(UUID().uuidString).zip")
-        defer { try? FileManager.default.removeItem(at: tempOutputArchive) }
-
-        let items = (try? fm.contentsOfDirectory(atPath: tempExtractDir.path)) ?? []
-        let inputPaths = items.map { tempExtractDir.appendingPathComponent($0).path }
-
-        let writer = ArchiveWriter()
-        try writer.createArchiveSync(
-            outputPath: tempOutputArchive.path,
-            format: .zip,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            password: password
-        )
-
-        try? fm.removeItem(atPath: archivePath)
-        try fm.moveItem(atPath: tempOutputArchive.path, toPath: archivePath)
+        
+        try inPlaceMutateArchive(archivePath: archivePath, actions: actions)
     }
     
     /// Closes and cleans up an in-place editing session and its temporary directory.

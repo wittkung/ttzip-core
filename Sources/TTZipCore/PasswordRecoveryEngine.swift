@@ -28,7 +28,7 @@ public struct PasswordRecoveryResult: Sendable {
 public final class PasswordRecoveryEngine: Sendable {
     public init() {}
     
-    /// Tests dictionary candidate passwords against encrypted archive headers.
+    /// Tests dictionary candidate passwords against encrypted archive headers using Rust Rayon parallel engine.
     public func recoverPassword(
         archivePath: String,
         dictionary: [String]
@@ -36,24 +36,21 @@ public final class PasswordRecoveryEngine: Sendable {
         guard FileManager.default.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
         }
-        
-        let start = Date()
-        var attempts: Int64 = 0
-        var foundPassword: String? = nil
-        for pwd in dictionary {
-            attempts += 1
-            if await Self.testArchivePassword(archivePath: archivePath, password: pwd) {
-                foundPassword = pwd
-                break
-            }
+        guard !dictionary.isEmpty else {
+            return PasswordRecoveryResult(foundPassword: nil, totalAttempts: 0, durationSeconds: 0)
         }
         
-        let duration = max(0.001, Date().timeIntervalSince(start))
-        return PasswordRecoveryResult(
-            foundPassword: foundPassword,
-            totalAttempts: attempts,
-            durationSeconds: duration
-        )
+        do {
+            let outcome = try recoverArchivePassword(archivePath: archivePath, dictionary: dictionary)
+            let duration = Double(outcome.elapsedNanos) / 1_000_000_000.0
+            return PasswordRecoveryResult(
+                foundPassword: outcome.foundPassword,
+                totalAttempts: Int64(outcome.totalAttempts),
+                durationSeconds: max(0.0001, duration)
+            )
+        } catch {
+            return PasswordRecoveryResult(foundPassword: nil, totalAttempts: Int64(dictionary.count), durationSeconds: 0.001)
+        }
     }
     
     /// Probes archive stream password in-process without full extraction via UniFFI.
@@ -66,7 +63,7 @@ public final class PasswordRecoveryEngine: Sendable {
         }
     }
 
-    /// Fast in-memory dictionary recovery via native UniFFI stream decryption.
+    /// Fast in-memory dictionary recovery via native UniFFI parallel stream decryption.
     public static func recoverFastInMemory(
         passwords: [String],
         archivePath: String
@@ -74,11 +71,6 @@ public final class PasswordRecoveryEngine: Sendable {
         guard !passwords.isEmpty, FileManager.default.fileExists(atPath: archivePath) else {
             return nil
         }
-        for pwd in passwords {
-            if (try? extractSingleEntryStream(archivePath: archivePath, entryIndex: 0, password: pwd)) != nil {
-                return pwd
-            }
-        }
-        return nil
+        return (try? recoverArchivePassword(archivePath: archivePath, dictionary: passwords))?.foundPassword
     }
 }

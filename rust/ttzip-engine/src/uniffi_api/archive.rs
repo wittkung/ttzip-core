@@ -570,3 +570,35 @@ pub fn recover_archive_password(
     })
 }
 
+/// Atomically mutates archive in-place (append, replace, delete) without full recompression.
+#[uniffi::export]
+pub fn in_place_mutate_archive(
+    archive_path: String,
+    actions: Vec<super::types::InPlaceMutationAction>,
+) -> Result<(), TTZipError> {
+    let p = std::path::Path::new(&archive_path);
+    if !p.exists() {
+        return Err(TTZipError::FileNotFound { path: archive_path });
+    }
+
+    let mut session = crate::archive::in_place_edit::InPlaceArchiveSession::begin(p, None)
+        .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+
+    for act in actions {
+        if act.is_delete {
+            session.delete(&act.entry_path)
+                .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+        } else if let Some(ref src) = act.source_path {
+            let src_path = std::path::Path::new(src);
+            session.replace(&act.entry_path, src_path)
+                .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+        }
+    }
+
+    session.commit()
+        .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+
+    Ok(())
+}
+
+

@@ -68,6 +68,13 @@ pub struct UniFFIEntryMetadata {
     pub detected_encoding: Option<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct InPlaceMutationAction {
+    pub is_delete: bool,
+    pub entry_path: String,
+    pub source_path: Option<String>,
+}
+
 /// Telemetry report for compression / extraction operations.
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct CompressionReport {

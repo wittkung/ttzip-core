@@ -106,10 +106,7 @@ public final class ArchiveTreeStore: ObservableObject {
             if let session = session {
                 return session.fuzzySearch(query: trimmed)
             } else {
-                let lowerQuery = trimmed.lowercased()
-                return source.filter { entry in
-                    entry.name.lowercased().contains(lowerQuery) || entry.path.lowercased().contains(lowerQuery)
-                }
+                return RustVfsBridge.fuzzySearch(in: source, query: trimmed)
             }
         }
         activeFilterTask = filterTask

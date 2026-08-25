@@ -223,162 +223,6 @@ open class AdvancedArchiveOperationPipelineAbstraction: ArchiveOperationAbstract
 
 // MARK: - Concrete Implementors
 
-/// Bridge implementor for ZIP archives.
-public final class ZipEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
-    public let supportedFormat: ArchiveCompressionFormat = .zip
-
-    public init() {}
-
-    public func compressStream(
-        inputPaths: [String],
-        outputPath: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let writer = ArchiveWriter()
-        try writer.createArchiveSync(
-            outputPath: outputPath,
-            format: .zip,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-        let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-        return (attr?[.size] as? Int64) ?? 0
-    }
-
-    public func extractStream(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let extractor = ArchiveExtractor()
-        return try extractor.extractSync(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-    }
-}
-
-/// Bridge implementor for 7z archives.
-public final class SevenZipEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
-    public let supportedFormat: ArchiveCompressionFormat = .sevenZip
-
-    public init() {}
-
-    public func compressStream(
-        inputPaths: [String],
-        outputPath: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let writer = ArchiveWriter()
-        try writer.createArchiveSync(
-            outputPath: outputPath,
-            format: .sevenZip,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-        let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-        return (attr?[.size] as? Int64) ?? 0
-    }
-
-    public func extractStream(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let extractor = ArchiveExtractor()
-        return try extractor.extractSync(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-    }
-}
-
-/// Bridge implementor for Zstandard (.zst) archives.
-public final class ZstdEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
-    public let supportedFormat: ArchiveCompressionFormat = .zst
-
-    public init() {}
-
-    public func compressStream(
-        inputPaths: [String],
-        outputPath: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let writer = ArchiveWriter()
-        try writer.createArchiveSync(
-            outputPath: outputPath,
-            format: .zst,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-        let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-        return (attr?[.size] as? Int64) ?? 0
-    }
-
-    public func extractStream(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let extractor = ArchiveExtractor()
-        return try extractor.extractSync(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-    }
-}
-
-/// Bridge implementor for POSIX TAR archives.
-public final class TarEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
-    public let supportedFormat: ArchiveCompressionFormat = .tar
-
-    public init() {}
-
-    public func compressStream(
-        inputPaths: [String],
-        outputPath: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let writer = ArchiveEngineFactory.makeWriter(for: .tar)
-        try writer.createArchiveSync(
-            outputPath: outputPath,
-            format: .tar,
-            level: .normal,
-            inputPaths: inputPaths,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-        let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-        return (attr?[.size] as? Int64) ?? 0
-    }
-
-    public func extractStream(
-        archivePath: String,
-        destinationDir: String,
-        options: ArchiveAdvancedOptions
-    ) async throws -> Int64 {
-        let extractor = ArchiveExtractor()
-        return try extractor.extractSync(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: .defaultClean,
-            advancedOptions: options
-        )
-    }
-}
-
 /// Bridge implementor for Unified Rust Engine (100% Pure Mozilla UniFFI Engine).
 public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImplementorProtocol, @unchecked Sendable {
     public let supportedFormat: ArchiveCompressionFormat
@@ -428,19 +272,16 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
     }
 }
 
+public typealias ZipEngineBridgeImplementor = RustUnifiedArchiveEngineBridgeImplementor
+public typealias SevenZipEngineBridgeImplementor = RustUnifiedArchiveEngineBridgeImplementor
+public typealias ZstdEngineBridgeImplementor = RustUnifiedArchiveEngineBridgeImplementor
+public typealias TarEngineBridgeImplementor = RustUnifiedArchiveEngineBridgeImplementor
+
 // MARK: - ArchiveEngineBridge Factory
 
 public enum ArchiveEngineBridge {
     public static func makeImplementor(for format: ArchiveCompressionFormat = .zip) -> ArchiveEngineImplementorProtocol {
-        switch format {
-        case .zip:
-            return ZipEngineBridgeImplementor()
-        case .sevenZip:
-            return SevenZipEngineBridgeImplementor()
-        case .zst:
-            return ZstdEngineBridgeImplementor()
-        default:
-            return RustUnifiedArchiveEngineBridgeImplementor(format: format)
-        }
+        return RustUnifiedArchiveEngineBridgeImplementor(format: format)
     }
 }
+
