@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipPackedEntryArrayContract",
+  "description": "C-ABI JSON contract for zero-copy batch entry metadata transfer across the Swift-Rust FFI boundary without per-string allocations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "total_bytes_len",
+    "count",
+    "path_offsets",
+    "path_lens",
+    "uncompressed_sizes",
+    "compressed_sizes",
+    "crc32s",
+    "mtimes",
+    "modes",
+    "flags"
+  ],
+  "properties": {
+    "total_bytes_len": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total length in bytes of the contiguous UTF-8 path buffer."
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of items in the batch."
+    },
+    "path_offsets": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Array of 32-bit start offsets for each entry path in the contiguous buffer."
+    },
+    "path_lens": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Array of 32-bit byte lengths for each entry path."
+    },
+    "uncompressed_sizes": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "compressed_sizes": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "crc32s": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "mtimes": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "modes": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "flags": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+    }
+  }
+}

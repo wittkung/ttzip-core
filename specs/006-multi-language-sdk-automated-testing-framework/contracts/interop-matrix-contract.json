@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InteropMatrixContract",
+  "type": "object",
+  "required": [
+    "matrix"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceSdk",
+          "targetSdk",
+          "format",
+          "fixture",
+          "status",
+          "extractedSha256",
+          "expectedSha256",
+          "durationMs"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceSdk": { "type": "string" },
+          "targetSdk": { "type": "string" },
+          "format": { "type": "string" },
+          "encryption": { "type": "string" },
+          "fixture": { "type": "string" },
+          "status": { "type": "string", "enum": ["passed", "failed", "mismatch", "error"] },
+          "extractedSha256": { "type": "string" },
+          "expectedSha256": { "type": "string" },
+          "durationMs": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipEngineActorOperationContract",
+  "description": "JSON schema defining the structured operation payload for Swift 6 TTZipEngine actor and SDK interfaces.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation_id",
+    "operation_type",
+    "inputs",
+    "destination",
+    "format",
+    "level"
+  ],
+  "properties": {
+    "operation_id": {
+      "type": "string",
+      "description": "Unique UUID for operation tracking."
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": ["compress", "extract", "inspect", "repair", "benchmark"],
+      "description": "Target operation command."
+    },
+    "inputs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Array of input file or directory paths."
+    },
+    "destination": {
+      "type": "string",
+      "description": "Target archive file or destination extraction folder."
+    },
+    "format": {
+      "type": "string",
+      "enum": ["zip", "seven_zip", "tar", "tar_gz", "tar_bz2", "tar_xz", "tar_zstd", "dmg", "lzfse", "snappy", "unknown"]
+    },
+    "level": {
+      "type": "string",
+      "enum": ["store", "fastest", "fast", "normal", "maximum", "ultra"]
+    },
+    "password": {
+      "type": "string",
+      "description": "Optional archive encryption / decryption password."
+    },
+    "split_size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional maximum slice size for multi-volume archives."
+    }
+  }
+}

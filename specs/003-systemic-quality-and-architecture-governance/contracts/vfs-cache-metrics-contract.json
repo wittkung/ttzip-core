@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipVFSCacheMetricsContract",
+  "description": "JSON Schema contract representing VFS cache memory usage and slot recycling metrics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sessionId",
+    "ramCount",
+    "diskCount",
+    "ramBytes",
+    "maxRamBytes",
+    "slotReusedCount"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique VFS session identifier."
+    },
+    "ramCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of live chunks residing in RAM."
+    },
+    "diskCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of spilled chunks on disk."
+    },
+    "ramBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total compressed memory bytes consumed in RAM."
+    },
+    "maxRamBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Configured maximum RAM budget in bytes."
+    },
+    "slotReusedCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Cumulative count of reused arena node slots."
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZipOutOfTreeSmokeContract",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "isolatedTestDir": { "type": "string" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": { "type": "string" },
+          "artifactType": { "type": "string" },
+          "buildDurationSeconds": { "type": "number" },
+          "executionDurationSeconds": { "type": "number" },
+          "exitCode": { "type": "integer" },
+          "outputSample": { "type": "string" },
+          "passed": { "type": "boolean" }
+        },
+        "required": ["language", "artifactType", "buildDurationSeconds", "executionDurationSeconds", "exitCode", "passed"]
+      }
+    },
+    "allPassed": { "type": "boolean" }
+  },
+  "required": ["schemaVersion", "timestamp", "isolatedTestDir", "results", "allPassed"]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipCancellationTokenContract",
+  "description": "JSON schema defining the cross-boundary cancellation token bridge contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "token_id",
+    "is_cancelled",
+    "abort_timeout_ms"
+  ],
+  "properties": {
+    "token_id": {
+      "type": "string",
+      "description": "Unique identifier for the cancellation token handle."
+    },
+    "is_cancelled": {
+      "type": "boolean",
+      "description": "Atomic boolean state indicating whether an abort signal was dispatched."
+    },
+    "abort_timeout_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum tolerated latency in milliseconds for kernel to stop execution."
+    }
+  }
+}

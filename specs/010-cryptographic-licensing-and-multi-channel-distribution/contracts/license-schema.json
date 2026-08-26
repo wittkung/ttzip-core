@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipLicensePayloadSchema",
+  "description": "Schema for TTZip Ed25519 Signed License Payload",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "License structure schema version"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Licensed user email address"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["pro_lifetime", "pro_business"],
+      "description": "License tier classification"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC license issue timestamp"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Payment platform order identifier"
+    }
+  },
+  "required": ["v", "email", "tier", "issued_at", "order_id"],
+  "additionalProperties": false
+}

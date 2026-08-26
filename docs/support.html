@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户支持与帮助中心 - TTZip</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23111827'/><path d='M25 35h50M50 35v35M35 70h30' stroke='%2310b981' stroke-width='8' stroke-linecap='round'/></svg>">
+    <style>
+        :root {
+            --bg-base: #090a0f;
+            --bg-card: rgba(22, 27, 34, 0.7);
+            --border-card: rgba(255, 255, 255, 0.1);
+            --accent-green: #10b981;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-green); text-decoration: none; font-size: 14px; font-weight: 500; margin-bottom: 24px; }
+        h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+        .badge { display: inline-block; padding: 4px 12px; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 28px; }
+        .card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 14px; padding: 28px; margin-bottom: 20px; }
+        h2 { font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #fff; }
+        p { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+        ul { padding-left: 20px; font-size: 14px; color: var(--text-secondary); }
+        li { margin-bottom: 8px; }
+        .faq-q { font-weight: 600; color: #fff; font-size: 15px; margin-top: 14px; margin-bottom: 4px; }
+        footer { text-align: center; font-size: 13px; color: #6b7280; margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 返回 TTZip 官网首页</a>
+        <h1>TTZip 客户支持与使用常见问题</h1>
+        <div class="badge">版本：v1.0.0 (Universal Apple Silicon / macOS 14.0+)</div>
+
+        <div class="card">
+            <h2>常见问题解答 (FAQ)</h2>
+            
+            <div class="faq-q">Q: 如何在压缩包内直接预览文件？</div>
+            <p>A: 在 TTZip 主界面的分栏浏览（Miller Columns）中选中任意文件，直接按下键盘上的 <strong>空格键 (Spacebar)</strong>，即可像原生 macOS Finder 一样即时预览图片、代码语法、文本或音频波形。</p>
+
+            <div class="faq-q">Q: 如何解决 Windows 压缩包在 Mac 上文件名乱码？</div>
+            <p>A: TTZip 内置了智能编码识别引擎（uchardet），在打开 ZIP 归档时会自动探测 GB18030、Big5、Shift-JIS、EUC-KR 等编码并无损转换，无需手动切换编码。</p>
+
+            <div class="faq-q">Q: 什么是 APFS 零秒写时克隆 (Clonefile)？</div>
+            <p>A: 当你在 APFS 格式的硬盘或 SSD 上解压同卷文件时，TTZip 会优先调用系统底层的写时复制接口，实现接近 0 秒的瞬间释放，且不会重复占用物理磁盘空间。</p>
+
+            <div class="faq-q">Q: 我购买了买断 Key，如何激活？</div>
+            <p>A: 打开 TTZip -> 点击菜单栏「设置 (Settings)」-> 切换到「授权与分发」标签页 -> 粘贴您的 <code>TTZIP1-...</code> 授权码并点击激活即可。</p>
+        </div>
+
+        <div class="card">
+            <h2>技术支持与反馈渠道</h2>
+            <p>如果您在使用过程中遇到任何 Bug、功能建议或格式兼容问题，欢迎通过以下渠道随时联系我们：</p>
+            <ul>
+                <li><strong>官方支持邮箱</strong>：<a href="mailto:support@ttzip.app" style="color: var(--accent-green);">support@ttzip.app</a></li>
+                <li><strong>GitHub Issue 跟踪</strong>：<a href="https://github.com/wittkung/ttzip-apple/issues" target="_blank" style="color: var(--accent-green);">提交 GitHub Issue</a></li>
+                <li><strong>服务主体</strong>：元学线（上海）教育科技有限公司</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>&copy; 2026 元学线（上海）教育科技有限公司. 保留所有权利。</p>
+        </footer>
+    </div>
+</body>
+</html>

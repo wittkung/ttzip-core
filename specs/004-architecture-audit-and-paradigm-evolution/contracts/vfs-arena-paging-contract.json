@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipVfsArenaPagingContract",
+  "description": "C-ABI JSON contract for windowed VFS slice paging and Node summary queries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dir_node_id",
+    "offset",
+    "limit",
+    "nodes",
+    "count",
+    "total_in_directory"
+  ],
+  "properties": {
+    "dir_node_id": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Parent directory node identifier."
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Window offset within directory children."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65536,
+      "description": "Maximum number of children to return in this slice."
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Actual number of children returned."
+    },
+    "total_in_directory": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of direct children in this directory."
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "name",
+          "uncompressed_size",
+          "compressed_size",
+          "crc32",
+          "is_directory",
+          "is_encrypted",
+          "has_children"
+        ],
+        "properties": {
+          "node_id": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string" },
+          "uncompressed_size": { "type": "integer", "minimum": 0 },
+          "compressed_size": { "type": "integer", "minimum": 0 },
+          "crc32": { "type": "integer", "minimum": 0 },
+          "mtime_epoch_secs": { "type": "integer" },
+          "mode": { "type": "integer", "minimum": 0 },
+          "is_directory": { "type": "boolean" },
+          "is_encrypted": { "type": "boolean" },
+          "has_children": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

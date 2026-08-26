@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipEphemeralResourceBrokerContract",
+  "description": "JSON contract defining memory budget and eviction latency requirements for the unified EphemeralResourceBroker.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "max_aggregate_cache_bytes",
+    "memory_pressure_eviction_timeout_ms",
+    "retained_thumbnail_count",
+    "active_temp_preview_files_count"
+  ],
+  "properties": {
+    "max_aggregate_cache_bytes": {
+      "type": "integer",
+      "maximum": 67108864,
+      "description": "Hard limit on total combined in-memory cache usage (64MB)."
+    },
+    "memory_pressure_eviction_timeout_ms": {
+      "type": "integer",
+      "maximum": 50,
+      "description": "Maximum allowed duration to flush all caches upon receiving a memory pressure signal."
+    },
+    "retained_thumbnail_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "active_temp_preview_files_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

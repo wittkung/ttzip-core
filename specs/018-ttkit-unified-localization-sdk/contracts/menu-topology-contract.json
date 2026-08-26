@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTKitMenuTopologyNode",
+  "description": "Schema for AppKit menu item topological synchronization node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tag", "localeKey"],
+  "properties": {
+    "tag": {
+      "type": "integer",
+      "description": "Unique permanent integer tag for NSMenuItem"
+    },
+    "localeKey": {
+      "type": "string",
+      "description": "Target localization key from catalog contract"
+    },
+    "actionSelector": {
+      "type": "string",
+      "description": "Objective-C selector signature string (optional)"
+    },
+    "slotIndex": {
+      "type": "integer",
+      "description": "Structural slot index within parent NSMenu (optional)"
+    }
+  }
+}

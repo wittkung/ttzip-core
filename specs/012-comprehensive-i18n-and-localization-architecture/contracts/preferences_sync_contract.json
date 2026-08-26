@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PreferencesSyncContract",
+  "description": "Schema defining cross-process IPC preference synchronization between TTZipApp, FinderSync, and QuickLook.",
+  "type": "object",
+  "required": [
+    "appGroupID",
+    "selectedLanguage",
+    "byteUnitStandard",
+    "darwinNotificationName",
+    "timestampEpochMs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "appGroupID": {
+      "type": "string",
+      "enum": ["group.com.metastudyline.ttzip"]
+    },
+    "selectedLanguage": {
+      "type": "string",
+      "enum": ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es"]
+    },
+    "byteUnitStandard": {
+      "type": "string",
+      "enum": ["metricSI", "binaryIEC"]
+    },
+    "darwinNotificationName": {
+      "type": "string",
+      "enum": ["com.metastudyline.ttzip.languageChanged"]
+    },
+    "timestampEpochMs": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

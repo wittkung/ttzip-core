@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipVfsWindowedPagingContract",
+  "description": "JSON schema for zero-alloc windowed directory slicing across FFI boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dir_node_id",
+    "offset",
+    "limit",
+    "total_count",
+    "returned_count",
+    "nodes"
+  ],
+  "properties": {
+    "dir_node_id": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Directory node ID to inspect (0 for root)."
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Starting index of child slice."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum entries to return."
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total child entries inside directory."
+    },
+    "returned_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of records populated in buffer."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Array of node summary objects.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "name",
+          "uncompressed_size",
+          "compressed_size",
+          "crc32",
+          "mtime_epoch_secs",
+          "mode",
+          "is_directory",
+          "is_encrypted",
+          "has_children"
+        ],
+        "properties": {
+          "node_id": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string" },
+          "uncompressed_size": { "type": "integer", "minimum": 0 },
+          "compressed_size": { "type": "integer", "minimum": 0 },
+          "crc32": { "type": "integer", "minimum": 0 },
+          "mtime_epoch_secs": { "type": "integer" },
+          "mode": { "type": "integer", "minimum": 0 },
+          "is_directory": { "type": "boolean" },
+          "is_encrypted": { "type": "boolean" },
+          "has_children": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

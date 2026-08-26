@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsnappy_test_support.a "CMakeFiles/snappy_test_support.dir/snappy-test.cc.o" CMakeFiles/snappy_test_support.dir/snappy_test_data.cc.o
+/usr/bin/ranlib libsnappy_test_support.a

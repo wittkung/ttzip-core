@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SdkProgressEventContract",
+  "description": "Standard streaming progress event schema across Swift, Python, Rust, Go, C#, Java, and Dart SDKs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "processed_bytes",
+    "total_bytes",
+    "fraction_completed",
+    "current_entry_path",
+    "current_entry_index",
+    "total_entries",
+    "phase"
+  ],
+  "properties": {
+    "processed_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fraction_completed": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "current_entry_path": {
+      "type": "string"
+    },
+    "current_entry_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_entries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["indexing", "compressing", "decompressing", "verifying", "finalizing", "completed", "cancelled", "failed"]
+    },
+    "throughput_mbs": {
+      "type": "number",
+      "minimum": 0.0
+    }
+  }
+}

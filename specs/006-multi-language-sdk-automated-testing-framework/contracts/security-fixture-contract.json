@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SecurityFixtureContract",
+  "type": "object",
+  "required": [
+    "scenarios"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "targetSdk",
+          "expectedOutcome",
+          "actualOutcome",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "targetSdk": { "type": "string" },
+          "attackPayload": { "type": "string" },
+          "ratio": { "type": "number" },
+          "expectedOutcome": { "type": "string" },
+          "actualOutcome": { "type": "string" },
+          "outOfBoundsWritten": { "type": "boolean" },
+          "peakRssMb": { "type": "number" },
+          "status": { "type": "string", "enum": ["passed", "failed", "vulnerable"] }
+        }
+      }
+    }
+  }
+}

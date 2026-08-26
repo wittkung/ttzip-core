@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CancellationHandleContract",
+  "description": "Lifecycle state and reference counting contract for asynchronous task cancellation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["handle_address", "ref_count", "is_cancelled"],
+  "properties": {
+    "handle_address": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Non-null raw pointer address of opaque CancellationToken"
+    },
+    "ref_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Atomic reference count of the handle"
+    },
+    "is_cancelled": {
+      "type": "boolean",
+      "description": "Flag indicating whether cancellation has been requested"
+    }
+  }
+}

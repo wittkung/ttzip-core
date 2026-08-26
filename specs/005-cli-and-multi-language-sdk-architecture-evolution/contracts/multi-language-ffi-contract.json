@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MultiLanguageFfiContract",
+  "description": "Cross-language FFI binding invariants and zero-subprocess policy definitions for Java FFM, Dart FFI, .NET P/Invoke, and C++20.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "zero_subprocess_policy",
+    "supported_platforms",
+    "languages"
+  ],
+  "properties": {
+    "zero_subprocess_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enforced", "prohibited_patterns"],
+      "properties": {
+        "enforced": { "type": "boolean" },
+        "prohibited_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "supported_platforms": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "languages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["java_jvm", "dart_flutter", "dotnet_csharp", "cpp20", "golang"],
+      "properties": {
+        "java_jvm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["binding_tech", "minimum_version", "arena_lifecycle"],
+          "properties": {
+            "binding_tech": { "type": "string" },
+            "minimum_version": { "type": "integer" },
+            "arena_lifecycle": { "type": "string" }
+          }
+        },
+        "dart_flutter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["binding_tech", "isolate_offloading", "progress_stream"],
+          "properties": {
+            "binding_tech": { "type": "string" },
+            "isolate_offloading": { "type": "boolean" },
+            "progress_stream": { "type": "string" }
+          }
+        },
+        "dotnet_csharp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["binding_tech", "span_support", "utf8_marshaling"],
+          "properties": {
+            "binding_tech": { "type": "string" },
+            "span_support": { "type": "boolean" },
+            "utf8_marshaling": { "type": "string" }
+          }
+        },
+        "cpp20": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["header_name", "raii_wrappers", "error_model"],
+          "properties": {
+            "header_name": { "type": "string" },
+            "raii_wrappers": { "type": "array", "items": { "type": "string" } },
+            "error_model": { "type": "string" }
+          }
+        },
+        "golang": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["package_name", "fs_compatibility", "context_cancellation"],
+          "properties": {
+            "package_name": { "type": "string" },
+            "fs_compatibility": { "type": "string" },
+            "context_cancellation": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

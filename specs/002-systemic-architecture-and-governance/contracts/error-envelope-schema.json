@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipErrorInfo",
+  "description": "C-ABI structured error envelope for cross-language error propagation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "domain", "message", "source_file", "line_number"],
+  "properties": {
+    "code": {
+      "type": "integer",
+      "description": "TTZipStatus negative error code (or 0 for OK)"
+    },
+    "domain": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Error domain (1: Archive, 2: Crypto, 3: VFS, 4: FFI, 5: System)"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Human-readable UTF-8 error diagnostic string"
+    },
+    "source_file": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Source filename where error was created"
+    },
+    "line_number": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Line number where error was created"
+    }
+  }
+}

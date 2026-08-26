@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipPackedStringArray",
+  "description": "Schema for zero-fragment contiguous C-ABI string buffer arrays",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["count", "total_payload_bytes", "offsets", "lengths", "payload"],
+  "properties": {
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of strings encoded in array"
+    },
+    "total_payload_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total byte length of contiguous payload"
+    },
+    "offsets": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Byte offset array for string starts"
+    },
+    "lengths": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "description": "Byte length array for each string"
+    },
+    "payload": {
+      "type": "string",
+      "description": "Contiguous UTF-8 encoded string content"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SDKMatrixContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["languages", "cAbiVersion", "zeroSubprocessGuaranteed"],
+  "properties": {
+    "cAbiVersion": { "type": "string", "const": "2.0.0" },
+    "zeroSubprocessGuaranteed": { "type": "boolean", "const": true },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "packageManagerCmd", "sampleSnippet"],
+        "properties": {
+          "id": { "type": "string", "enum": ["cpp", "rust", "python", "go", "jvm", "csharp", "dart", "swift"] },
+          "name": { "type": "string" },
+          "packageManagerCmd": { "type": "string" },
+          "sampleSnippet": { "type": "string" }
+        }
+      }
+    }
+  }
+}

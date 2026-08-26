@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZipNativeLoaderReportContract",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "platform": {
+      "type": "object",
+      "properties": {
+        "os": { "type": "string" },
+        "arch": { "type": "string" },
+        "classifier": { "type": "string" },
+        "libraryFileName": { "type": "string" }
+      },
+      "required": ["os", "arch", "classifier", "libraryFileName"]
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": ["system_property", "env_variable", "embedded_jar_resource", "dev_workspace", "system_path"]
+    },
+    "resolvedPath": { "type": "string" },
+    "isCached": { "type": "boolean" },
+    "status": { "type": "string", "enum": ["LOADED", "FAILED"] },
+    "diagnosticsLog": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["version", "platform", "sourceType", "resolvedPath", "status", "diagnosticsLog"]
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CanonicalCAbi2Contract",
+  "description": "Schema definition for TTZip Canonical C-ABI 2.0 interface contracts and binary layout descriptors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "abi_version",
+    "memory_management",
+    "error_envelope",
+    "buffer_descriptors",
+    "entry_descriptor"
+  ],
+  "properties": {
+    "abi_version": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2
+    },
+    "memory_management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unified_deallocator", "supported_kinds"],
+      "properties": {
+        "unified_deallocator": {
+          "type": "string"
+        },
+        "supported_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "error_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "struct_name",
+        "struct_size_bytes",
+        "fields"
+      ],
+      "properties": {
+        "struct_name": {
+          "type": "string"
+        },
+        "struct_size_bytes": {
+          "type": "integer"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "c_type", "byte_offset", "size_bytes"],
+            "properties": {
+              "name": { "type": "string" },
+              "c_type": { "type": "string" },
+              "byte_offset": { "type": "integer" },
+              "size_bytes": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "buffer_descriptors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_only_descriptor", "mutable_descriptor"],
+      "properties": {
+        "read_only_descriptor": {
+          "type": "string"
+        },
+        "mutable_descriptor": {
+          "type": "string"
+        }
+      }
+    },
+    "entry_descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["struct_name", "fields"],
+      "properties": {
+        "struct_name": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "c_type"],
+            "properties": {
+              "name": { "type": "string" },
+              "c_type": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

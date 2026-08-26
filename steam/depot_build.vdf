@@ -1,0 +1,15 @@
+"DepotBuildConfig"
+{
+	"DepotID" "3849121" // Replace with your actual Steam DepotID
+	"ContentRoot" "../apple/dist"
+	"FileMapping"
+	{
+		"LocalPath" "TTZip.app/*"
+		"DepotPath" "TTZip.app"
+		"recursive" "1"
+	}
+	"FileExcludes"
+	{
+		"Pattern" "*.DS_Store"
+	}
+}

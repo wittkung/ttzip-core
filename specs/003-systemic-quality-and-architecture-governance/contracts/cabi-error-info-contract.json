@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipErrorInfoContract",
+  "description": "JSON Schema contract representing structured C-ABI error information.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "errorCode",
+    "message",
+    "entryPath",
+    "offset"
+  ],
+  "properties": {
+    "status": {
+      "type": "integer",
+      "description": "TTZipStatus C-ABI enum value"
+    },
+    "errorCode": {
+      "type": "integer",
+      "description": "POSIX/Engine numerical error code"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Diagnostic error message"
+    },
+    "entryPath": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Failing entry relative path"
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Stream byte offset where error occurred"
+    }
+  }
+}

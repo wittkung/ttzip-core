@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FrontendSessionContracts",
+  "description": "JSON Schemas defining data exchange contracts for frontend sessions, form models, and cache configurations in TTZip.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "CompressFormSessionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputPaths",
+        "outputName",
+        "targetDirectory",
+        "format",
+        "compressionLevel"
+      ],
+      "properties": {
+        "inputPaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "outputName": { "type": "string" },
+        "targetDirectory": { "type": "string" },
+        "format": {
+          "type": "string",
+          "enum": [
+            "zip", "7z", "tar", "zst", "gz", "bz2", "xz", "lzip",
+            "lz4", "brotli", "lrzip", "aar", "snappy", "wim", "dmg", "iso"
+          ]
+        },
+        "compressionLevel": {
+          "type": "string",
+          "enum": ["store", "fastest", "fast", "normal", "maximum", "ultra"]
+        },
+        "password": {
+          "type": ["string", "null"]
+        },
+        "splitVolumeBytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "skipMacJunk": { "type": "boolean" },
+        "cpuThreads": { "type": "string" }
+      }
+    },
+    "ArchiveHierarchySessionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archivePath",
+        "modificationTimestamp",
+        "fileByteSize",
+        "totalEntryCount",
+        "subpathKeys"
+      ],
+      "properties": {
+        "archivePath": { "type": "string" },
+        "modificationTimestamp": { "type": "number" },
+        "fileByteSize": { "type": "integer", "minimum": 0 },
+        "totalEntryCount": { "type": "integer", "minimum": 0 },
+        "subpathKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "SyntaxHighlightTokenPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rangeLocation", "rangeLength", "colorType"],
+      "properties": {
+        "rangeLocation": { "type": "integer", "minimum": 0 },
+        "rangeLength": { "type": "integer", "minimum": 1 },
+        "colorType": {
+          "type": "string",
+          "enum": ["comment", "string", "keyword", "number", "type"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipABBenchmarkContract",
+  "description": "JSON Schema contract representing automated A/B benchmark telemetry and statistical delta gate result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baselineCommit",
+    "candidateCommit",
+    "sampleRounds",
+    "e2eExtractSpeedupPercent",
+    "vfsSearchSpeedupPercent",
+    "vaultSpeedupPercent",
+    "quickLookSpeedupPercent",
+    "verdict"
+  ],
+  "properties": {
+    "baselineCommit": {
+      "type": "string",
+      "description": "Baseline git commit hash."
+    },
+    "candidateCommit": {
+      "type": "string",
+      "description": "Candidate git commit hash or working tree identifier."
+    },
+    "sampleRounds": {
+      "type": "integer",
+      "minimum": 3,
+      "description": "Number of interleaved benchmark measurement rounds."
+    },
+    "e2eExtractSpeedupPercent": {
+      "type": "number",
+      "description": "End-to-end extraction speedup percentage (positive indicates improvement)."
+    },
+    "vfsSearchSpeedupPercent": {
+      "type": "number",
+      "description": "VFS search speedup percentage."
+    },
+    "vaultSpeedupPercent": {
+      "type": "number",
+      "description": "Password vault operation speedup percentage."
+    },
+    "quickLookSpeedupPercent": {
+      "type": "number",
+      "description": "Single-entry Quick Look extraction speedup percentage."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "REGRESSION_DETECTED"],
+      "description": "Overall gate verdict."
+    }
+  }
+}

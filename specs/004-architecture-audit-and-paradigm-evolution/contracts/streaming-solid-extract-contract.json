@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipStreamingSolidExtractContract",
+  "description": "Validation schema and resource contract for bounded O(1) RAM sliding window 7z solid extraction and parallel chunk streaming.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "max_rss_bytes",
+    "sliding_window_bytes",
+    "chunk_size_bytes",
+    "expansion_ratio_threshold",
+    "total_uncompressed_bytes",
+    "total_compressed_bytes",
+    "processed_entries_count"
+  ],
+  "properties": {
+    "max_rss_bytes": {
+      "type": "integer",
+      "maximum": 67108864,
+      "description": "Hard limit on peak memory RSS during extraction (64MB)."
+    },
+    "sliding_window_bytes": {
+      "type": "integer",
+      "minimum": 1048576,
+      "maximum": 8388608,
+      "description": "Ring buffer sliding window size (1MB - 8MB)."
+    },
+    "chunk_size_bytes": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 4194304,
+      "description": "Pread/pwrite block size for streaming I/O."
+    },
+    "expansion_ratio_threshold": {
+      "type": "number",
+      "minimum": 100.0,
+      "maximum": 2000.0,
+      "description": "Maximum allowed expansion ratio before anti-bomb abort."
+    },
+    "total_uncompressed_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_compressed_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "processed_entries_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

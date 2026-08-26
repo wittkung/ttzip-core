@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTKitLocalizationChangeEvent",
+  "description": "Schema for cross-process Darwin notification preferences payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["language", "timestamp"],
+  "properties": {
+    "language": {
+      "type": "string",
+      "description": "BCP-47 language tag (e.g. en, zh-Hans, ja)"
+    },
+    "byteStandard": {
+      "type": "string",
+      "description": "Capacity formatting unit standard",
+      "enum": ["MetricSI", "BinaryIEC"]
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds"
+    },
+    "sourceBundleId": {
+      "type": "string",
+      "description": "Originating application bundle ID"
+    }
+  }
+}

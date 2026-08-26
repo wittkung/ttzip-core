@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipExtractMetricsContract",
+  "description": "JSON Schema contract representing archive extraction metrics and byte counts returned directly via FFI out-parameters.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archivePath",
+    "destinationPath",
+    "extractedBytes",
+    "durationMs",
+    "secondaryScanSkipped"
+  ],
+  "properties": {
+    "archivePath": {
+      "type": "string",
+      "description": "Source archive file path."
+    },
+    "destinationPath": {
+      "type": "string",
+      "description": "Target destination folder path."
+    },
+    "extractedBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed payload bytes written to destination."
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Extraction elapsed duration in milliseconds."
+    },
+    "secondaryScanSkipped": {
+      "type": "boolean",
+      "description": "Whether secondary recursive disk scan was skipped."
+    }
+  }
+}

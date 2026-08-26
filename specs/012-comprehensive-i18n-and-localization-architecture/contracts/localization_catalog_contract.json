@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LocalizationCatalogContract",
+  "description": "Schema defining strict structure and validation constraints for TTZip in-memory multi-language catalog entries.",
+  "type": "object",
+  "required": [
+    "languageIdentifier",
+    "bcp47",
+    "displayName",
+    "catalogEntriesCount",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "languageIdentifier": {
+      "type": "string",
+      "enum": ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es"]
+    },
+    "bcp47": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Za-z0-9]+)?$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 2
+    },
+    "catalogEntriesCount": {
+      "type": "integer",
+      "minimum": 296
+    },
+    "entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "properties": {}
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReleaseManifest",
+  "type": "object",
+  "required": [
+    "version",
+    "release_date",
+    "artifacts"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "build_number": {
+      "type": "string"
+    },
+    "release_date": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "size_bytes",
+          "sha256",
+          "artifact_type"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "artifact_type": {
+            "type": "string",
+            "enum": ["dmg_installer", "cli_tarball", "wheel", "nuget_package", "jar_bundle"]
+          },
+          "target_arch": {
+            "type": "string",
+            "enum": ["universal", "arm64", "x86_64", "any"]
+          }
+        }
+      }
+    }
+  }
+}

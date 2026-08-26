@@ -1,0 +1,29 @@
+[workspace]
+members = [
+    "tt-i18n-core",
+    "tt-l10n-tools",
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
+license = "BSD-3-Clause OR Apache-2.0"
+edition = "2021"
+homepage = "https://github.com/wittkung/ttkit"
+repository = "https://github.com/wittkung/ttkit"
+documentation = "https://github.com/wittkung/ttkit"
+
+[workspace.lints.rust]
+unsafe_code = "allow"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+[profile.test]
+opt-level = 1
+debug = 1

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTKitLocalizationCatalogEntry",
+  "description": "Standard schema for TTKit localization catalog entry dictionary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "translations"],
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Dot-separated hierarchical key (e.g. common.cancel)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Contextual description for translators"
+    },
+    "translations": {
+      "type": "object",
+      "description": "Map of BCP-47 language codes to localized strings",
+      "additionalProperties": false,
+      "required": ["en", "zh-Hans"],
+      "properties": {
+        "en": { "type": "string" },
+        "zh-Hans": { "type": "string" },
+        "zh-Hant": { "type": "string" },
+        "ja": { "type": "string" },
+        "de": { "type": "string" },
+        "fr": { "type": "string" },
+        "es": { "type": "string" }
+      }
+    },
+    "placeholders": {
+      "type": "array",
+      "description": "List of positional or named format specifiers",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

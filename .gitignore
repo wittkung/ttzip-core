@@ -1,8 +1,17 @@
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
 .build/
 target/
-*.xcuserstate
+core/target/
+apple/.build/
+.swiftpm/
+*.xcodeproj
 *.xcworkspace
+*.xcuserstate
+xcuserdata/
+DerivedData/
 userdata/
 *.swp
 *.orig
@@ -38,9 +47,8 @@ reports/*.json
 docs/benchmarks/benchmark_report_*.json
 docs/benchmarks/benchmark_report_*.md
 
-# Spec Kit design artifacts
-specs/
-.specify/
-
-# Enforce 100% Local CI/CD (Zero Cloud Actions)
-.github/workflows/
+# Cache & Temporary
+.cache/
+*.tmp
+*.log
+.system_generated/

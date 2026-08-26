@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CliMachineOutputContract",
+  "description": "Standard JSON output schema for TTZip CLI commands in machine-readable mode (--format json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success", "command", "schema_version", "data"],
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "command": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp_epoch_secs", "payload"],
+      "properties": {
+        "timestamp_epoch_secs": {
+          "type": "integer"
+        },
+        "archive_path": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary"],
+          "properties": {
+            "summary": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["total_entries", "total_uncompressed_bytes"],
+              "properties": {
+                "total_entries": { "type": "integer" },
+                "total_uncompressed_bytes": { "type": "integer" },
+                "total_compressed_bytes": { "type": "integer" },
+                "compression_ratio": { "type": "number" },
+                "is_solid": { "type": "boolean" },
+                "is_encrypted": { "type": "boolean" }
+              }
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "uncompressed_size", "compressed_size", "crc32", "is_directory"],
+                "properties": {
+                  "path": { "type": "string" },
+                  "uncompressed_size": { "type": "integer" },
+                  "compressed_size": { "type": "integer" },
+                  "crc32": { "type": "string" },
+                  "is_directory": { "type": "boolean" },
+                  "mtime_epoch_secs": { "type": "integer" },
+                  "compression_method": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "integer" },
+        "message": { "type": "string" },
+        "entry_path": { "type": "string" },
+        "offset": { "type": "integer" }
+      }
+    }
+  }
+}

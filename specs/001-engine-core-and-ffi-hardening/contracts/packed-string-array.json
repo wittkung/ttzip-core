@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipPackedStringArrayContract",
+  "description": "JSON Schema contract representing the contiguous zero-fragment string array marshaling protocol.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "count",
+    "totalBytes",
+    "offsets",
+    "contiguousUtf8Payload"
+  ],
+  "properties": {
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of strings packed in the array."
+    },
+    "totalBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total byte count of the contiguous string buffer including null terminators."
+    },
+    "offsets": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Starting byte offset of each string in the contiguous buffer."
+    },
+    "contiguousUtf8Payload": {
+      "type": "string",
+      "description": "Base64-encoded or raw packed null-delimited UTF-8 string payload."
+    }
+  }
+}

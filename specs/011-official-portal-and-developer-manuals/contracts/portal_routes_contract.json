@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PortalRoutesContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["routes", "domain", "sslEnforced"],
+  "properties": {
+    "domain": { "type": "string", "enum": ["ttzip.app"] },
+    "sslEnforced": { "type": "boolean", "const": true },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "title", "category", "hasFluidCanvas"],
+        "properties": {
+          "path": { "type": "string" },
+          "title": { "type": "string" },
+          "category": { "type": "string", "enum": ["Product", "Developer", "Architecture", "Legal", "Support"] },
+          "hasFluidCanvas": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

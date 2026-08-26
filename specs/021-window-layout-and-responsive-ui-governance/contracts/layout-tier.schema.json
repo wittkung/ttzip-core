@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WindowLayoutTierSchema",
+  "description": "Schema defining the window responsive breakpoint tiers and constraints in TTZip.",
+  "type": "object",
+  "properties": {
+    "tier": {
+      "type": "string",
+      "enum": ["compact", "medium", "expanded"],
+      "description": "The active window responsive layout tier."
+    },
+    "windowWidth": {
+      "type": "number",
+      "minimum": 520,
+      "description": "Total width of the macOS application window."
+    },
+    "leftSidebarWidth": {
+      "type": "number",
+      "minimum": 64,
+      "maximum": 280,
+      "description": "Effective width of the left navigation sidebar."
+    },
+    "isRightInspectorAvailable": {
+      "type": "boolean",
+      "description": "Whether the right inspector panel is eligible to be shown."
+    }
+  },
+  "required": ["tier", "windowWidth", "leftSidebarWidth", "isRightInspectorAvailable"],
+  "additionalProperties": false
+}

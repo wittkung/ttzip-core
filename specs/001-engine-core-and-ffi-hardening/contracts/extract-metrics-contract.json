@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipExtractMetricsContract",
+  "description": "JSON Schema contract representing archive extraction metrics and byte counts returned directly via FFI out-parameters.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "extractedBytes",
+    "processedEntries",
+    "durationMs"
+  ],
+  "properties": {
+    "status": {
+      "type": "integer",
+      "description": "TTZipStatus code."
+    },
+    "extractedBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed payload bytes written to destination."
+    },
+    "processedEntries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total archive entries processed."
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Extraction elapsed duration in milliseconds."
+    }
+  }
+}

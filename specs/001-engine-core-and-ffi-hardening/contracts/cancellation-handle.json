@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipCancellationHandleContract",
+  "description": "JSON Schema contract representing thread-safe reference counted cancellation token lifecycle state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handleAddress",
+    "strongCount",
+    "isCancelled",
+    "cancellationReason"
+  ],
+  "properties": {
+    "handleAddress": {
+      "type": "string",
+      "description": "Hexadecimal memory pointer representation of the opaque CancellationToken."
+    },
+    "strongCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Current atomic strong reference count across Swift and Rust."
+    },
+    "isCancelled": {
+      "type": "boolean",
+      "description": "Atomic boolean flag indicating whether cancellation was triggered."
+    },
+    "cancellationReason": {
+      "type": "integer",
+      "description": "Cancellation reason code (0 for user abort, 1 for timeout, 2 for error cascade)."
+    }
+  }
+}

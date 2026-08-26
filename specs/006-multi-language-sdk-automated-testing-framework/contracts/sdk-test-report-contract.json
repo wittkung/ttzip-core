@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SdkTestReportContract",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "version",
+    "environment",
+    "summary",
+    "results"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "os",
+        "cpuCores"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "os": { "type": "string" },
+        "cpuCores": { "type": "integer" },
+        "rustcVersion": { "type": "string" },
+        "swiftVersion": { "type": "string" },
+        "pythonVersion": { "type": "string" },
+        "goVersion": { "type": "string" },
+        "javaVersion": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalSdks",
+        "passedSdks",
+        "failedSdks",
+        "skippedSdks",
+        "totalTestCases",
+        "passedTestCases",
+        "failedTestCases",
+        "skippedTestCases",
+        "totalDurationMs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "totalSdks": { "type": "integer" },
+        "passedSdks": { "type": "integer" },
+        "failedSdks": { "type": "integer" },
+        "skippedSdks": { "type": "integer" },
+        "totalTestCases": { "type": "integer" },
+        "passedTestCases": { "type": "integer" },
+        "failedTestCases": { "type": "integer" },
+        "skippedTestCases": { "type": "integer" },
+        "totalDurationMs": { "type": "integer" }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "language",
+          "toolchainAvailable",
+          "status",
+          "durationMs",
+          "totalTests",
+          "passedTests",
+          "failedTests",
+          "skippedTests"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "language": { "type": "string" },
+          "toolchainAvailable": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+          "durationMs": { "type": "integer" },
+          "totalTests": { "type": "integer" },
+          "passedTests": { "type": "integer" },
+          "failedTests": { "type": "integer" },
+          "skippedTests": { "type": "integer" },
+          "testSuites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "status", "durationMs"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "status": { "type": "string" },
+                "durationMs": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
