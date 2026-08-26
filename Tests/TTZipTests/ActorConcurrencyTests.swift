@@ -119,9 +119,10 @@ final class ActorConcurrencyTests: XCTestCase {
 
         do {
             _ = try await compressionTask.value
+            XCTFail("Should have thrown CancellationError")
         } catch {
             // Task cancellation is expected to throw CancellationError or ArchiveError.cancelled
-            XCTAssertTrue(error is CancellationError || "\(error)".lowercased().contains("cancel") || "\(error)".lowercased().contains("abort"))
+            XCTAssertTrue(error is CancellationError || (error as? ArchiveError) == .cancelled)
             didObserveTerminalOrCancellation = true
         }
 
@@ -146,28 +147,25 @@ final class ActorConcurrencyTests: XCTestCase {
             outputPath: archiveZip.path,
             format: .zip
         )
-        print("🔍 [ActorConcurrencyTests] Step 1 complete. Archive created.")
         XCTAssertTrue(FileManager.default.fileExists(atPath: archiveZip.path))
 
-        print("🔍 [ActorConcurrencyTests] Step 2: starting extraction...")
         let (stream, extractionTask) = await engine.extract(
             archivePath: archiveZip.path,
             destinationDir: extractDir.path
         )
 
         // Cancel extraction task
-        print("🔍 [ActorConcurrencyTests] Step 3: cancelling extraction task...")
         extractionTask.cancel()
 
-        for await p in stream {
-            print("🔍 [ActorConcurrencyTests] extraction progress: \(p.state)")
+        for await _ in stream {
+            // Drain stream
         }
 
         do {
             _ = try await extractionTask.value
+            XCTFail("Should have thrown CancellationError")
         } catch {
-            print("🔍 [ActorConcurrencyTests] Extraction cancellation caught: \(type(of: error)) -> \(error)")
-            XCTAssertTrue(error is CancellationError || error is ArchiveError || "\(error)".count > 0)
+            XCTAssertTrue(error is CancellationError || (error as? ArchiveError) == .cancelled)
         }
     }
 

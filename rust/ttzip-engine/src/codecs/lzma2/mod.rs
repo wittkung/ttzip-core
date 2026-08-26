@@ -18,6 +18,46 @@ pub use compress::{fl2_compress, fl2_compress_bound, Fl2CCtx};
 pub use decompress::{fl2_decompress, fl2_find_decompressed_size, Fl2DCtx, Fl2DStream};
 pub use ffi::{Fl2CParameter, Fl2InBuffer, Fl2OutBuffer};
 
+use crate::types::TTZipCompressionLevel;
+
+/// Architectural maximum dictionary size for LZMA2 in 7-Zip (1536 MB = 1.5 GB).
+pub const LZMA2_MAX_DICTIONARY_MB: usize = 1536;
+
+/// Calculates LZMA2 compression dictionary size in MB based on compression level and physical RAM in GB.
+pub fn calculate_lzma2_dictionary_mb(level: TTZipCompressionLevel, physical_ram_gb: f64) -> usize {
+    match level {
+        TTZipCompressionLevel::Store => 0,
+        TTZipCompressionLevel::Fastest | TTZipCompressionLevel::Fast => 16,
+        TTZipCompressionLevel::Normal => 64,
+        TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => {
+            if physical_ram_gb >= 64.0 {
+                1024 // 1 GB
+            } else if physical_ram_gb >= 32.0 {
+                512  // 512 MB
+            } else if physical_ram_gb >= 16.0 {
+                256  // 256 MB
+            } else {
+                128  // 128 MB
+            }
+        }
+    }
+}
+
+/// Alias for calculate_lzma2_dictionary_mb.
+pub fn calculate_dictionary_mb(level: TTZipCompressionLevel, physical_ram_gb: f64) -> usize {
+    calculate_lzma2_dictionary_mb(level, physical_ram_gb)
+}
+
+/// Estimates physical memory budget in MB for LZMA2 compression per thread (BT4 match finder ~10.5x dictionary size).
+pub fn lzma2_memory_budget_mb(dict_mb: usize, thread_count: usize) -> f64 {
+    (dict_mb as f64) * 10.5 * (thread_count.max(1) as f64)
+}
+
+/// Estimates physical memory budget per single thread in MB.
+pub fn lzma2_memory_budget_per_thread_mb(dict_mb: usize) -> f64 {
+    lzma2_memory_budget_mb(dict_mb, 1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

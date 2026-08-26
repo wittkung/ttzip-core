@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PeakMatrixConsolidationContract",
+  "description": "Schema for consolidated peak performance matrix across all 16 formats and 262 dimensions",
+  "type": "object",
+  "required": [
+    "format",
+    "dimensionName",
+    "level",
+    "isEncrypted",
+    "maxCompressMBs",
+    "maxExtractMBs",
+    "bestCompressReport",
+    "bestExtractReport"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": ["zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2", "tar.xz", "wim", "dmg", "lz4", "lzip", "lrzip", "aar", "iso", "brotli", "snappy", "gz", "bz2", "xz", "zst"]
+    },
+    "dimensionName": {
+      "type": "string"
+    },
+    "level": {
+      "type": "integer"
+    },
+    "isEncrypted": {
+      "type": "boolean"
+    },
+    "maxCompressMBs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "maxExtractMBs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bestCompressReport": {
+      "type": "string"
+    },
+    "bestExtractReport": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

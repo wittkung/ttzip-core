@@ -6,9 +6,7 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CryptoKit
 import Compression
-import zlib
 
 /// Supported cryptographic and verification hash algorithms.
 public enum HashType: String, Sendable {
@@ -36,96 +34,27 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
             return try computeFileSha256(filePath: filePath)
             
         case .md5:
-            return try computeCryptoHashSync(filePath: filePath, createHasher: Insecure.MD5.init)
+            return try computeFileHash(path: filePath, algorithm: "md5")
             
         case .sha1:
-            return try computeCryptoHashSync(filePath: filePath, createHasher: Insecure.SHA1.init)
+            return try computeFileHash(path: filePath, algorithm: "sha1")
         }
     }
     
     public func computeHash(filePath: String, type: HashType) async throws -> String {
-        switch type {
-        case .crc32:
-            return try computeHashSync(filePath: filePath, type: .crc32)
-            
-        case .sha256:
-            return try await Task.detached(priority: .userInitiated) {
-                return try self.computeHashSync(filePath: filePath, type: .sha256)
-            }.value
-            
-        case .md5:
-            return try await Task.detached(priority: .userInitiated) {
-                return try self.computeCryptoHashSync(filePath: filePath, createHasher: Insecure.MD5.init)
-            }.value
-            
-        case .sha1:
-            return try await Task.detached(priority: .userInitiated) {
-                return try self.computeCryptoHashSync(filePath: filePath, createHasher: Insecure.SHA1.init)
-            }.value
-        }
-    }
-    
-    // MARK: - Core Crypto Hash Helper
-    
-    private func computeCryptoHashSync<H: HashFunction>(
-        filePath: String,
-        createHasher: () -> H
-    ) throws -> String {
-        let fd = open(filePath, O_RDONLY)
-        guard fd >= 0 else { throw ArchiveError.fileNotFound }
-        defer { close(fd) }
-        
-        var st = stat()
-        if fstat(fd, &st) == 0 {
-            let fileSize = Int(st.st_size)
-            if fileSize == 0 {
-                let digest = createHasher().finalize()
-                return digest.map { String(format: "%02x", $0) }.joined()
-            }
-            if let mapped = mmap(nil, fileSize, PROT_READ, MAP_SHARED, fd, 0), mapped != MAP_FAILED {
-                defer { munmap(mapped, fileSize) }
-                posix_madvise(mapped, fileSize, POSIX_MADV_WILLNEED)
-                var hasher = createHasher()
-                hasher.update(bufferPointer: UnsafeRawBufferPointer(start: mapped, count: fileSize))
-                let digest = hasher.finalize()
-                return digest.map { String(format: "%02x", $0) }.joined()
-            }
-        }
-        
-        let bufSize = hardwareTuner.optimalAlignedBufferSize
-        var pageBuffer = [UInt8](repeating: 0, count: bufSize)
-        
-        var hasher = createHasher()
-        var bytesRead = pageBuffer.withUnsafeMutableBufferPointer { bPtr -> Int in
-            guard let base = bPtr.baseAddress else { return 0 }
-            return read(fd, base, bufSize)
-        }
-        while bytesRead > 0 {
-            pageBuffer.withUnsafeBytes { rawPtr in
-                if let base = rawPtr.baseAddress {
-                    let chunk = UnsafeRawBufferPointer(start: base, count: bytesRead)
-                    hasher.update(bufferPointer: chunk)
-                }
-            }
-            bytesRead = pageBuffer.withUnsafeMutableBufferPointer { bPtr -> Int in
-                guard let base = bPtr.baseAddress else { return 0 }
-                return read(fd, base, bufSize)
-            }
-        }
-        let digest = hasher.finalize()
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return try await Task.detached(priority: .userInitiated) {
+            try self.computeHashSync(filePath: filePath, type: type)
+        }.value
     }
     
     /// Static convenience method for calculating SHA-256 fingerprint of a file.
     public static func calculateSHA256(filePath: String) -> String? {
-        let calc = HashCalculator()
-        return try? calc.computeHashSync(filePath: filePath, type: .sha256)
+        return try? computeFileSha256(filePath: filePath)
     }
     
     /// Static convenience method for calculating SHA-256 fingerprint of raw in-memory data.
     public static func calculateSHA256(data: Data) -> String? {
-        let digest = SHA256.hash(data: data)
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return computeBytesSha256(data: data)
     }
 }
 
@@ -138,38 +67,28 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func adler32(for data: Data, initial: UInt32 = 1) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return data.withUnsafeBytes { rawBuffer in
-            guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return initial
-            }
-            return UInt32(zlib.adler32(uLong(initial), baseAddress, uInt(rawBuffer.count)))
-        }
+        return computeBytesAdler32(data: data)
     }
     
     /// Computes 32-bit Adler-32 checksum via direct pointer access.
     @inlinable
     public static func adler32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 1) -> UInt32 {
         guard count > 0 else { return initial }
-        return UInt32(zlib.adler32(uLong(initial), ptr, uInt(count)))
+        return computeBytesAdler32(data: Data(bytes: ptr, count: count))
     }
 
     /// Computes 32-bit CRC-32 checksum.
     @inlinable
     public static func crc32(for data: Data, initial: UInt32 = 0) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return data.withUnsafeBytes { rawBuffer in
-            guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                return initial
-            }
-            return UInt32(zlib.crc32(uLong(initial), baseAddress, uInt(rawBuffer.count)))
-        }
+        return computeBytesCrc32(data: data)
     }
 
     /// Computes 32-bit CRC-32 checksum via direct pointer access.
     @inlinable
     public static func crc32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 0) -> UInt32 {
         guard count > 0 else { return initial }
-        return UInt32(zlib.crc32(uLong(initial), ptr, uInt(count)))
+        return computeBytesCrc32(data: Data(bytes: ptr, count: count))
     }
 
     @inlinable
@@ -179,7 +98,8 @@ public enum HardwareChecksumAdapter {
 
     @inlinable
     public static func combineCRC32(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32 {
-        return UInt32(crc32_combine(UInt(crc1), UInt(crc2), len2))
+        guard len2 > 0 else { return crc1 }
+        return combineCrc32(crc1: crc1, crc2: crc2, len2: UInt64(len2))
     }
 }
 

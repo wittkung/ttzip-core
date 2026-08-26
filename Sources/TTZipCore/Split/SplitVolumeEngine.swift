@@ -39,84 +39,27 @@ public final class SplitVolumeEngine: Sendable {
         cleanOnFailure: Bool = true
     ) throws {
         guard splitSizeBytes > 0 else { throw ArchiveError.readFailed(code: -1) }
-        guard let inputStream = InputStream(fileAtPath: archivePath) else {
+        guard FileManager.default.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
-        }
-        inputStream.open()
-        defer { inputStream.close() }
-        
-        let bufferSize = 1024 * 1024 // 1 MB chunk stream
-        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
-        defer { buffer.deallocate() }
-        
-        var partIndex = 1
-        var bytesWrittenToCurrentPart: Int64 = 0
-        var currentOutputStream: OutputStream? = nil
-        var createdParts: [String] = []
-        
-        func closeCurrentOutput() {
-            if let stream = currentOutputStream {
-                stream.close()
-                currentOutputStream = nil
-            }
-        }
-        
-        func openNextOutput() throws -> OutputStream {
-            closeCurrentOutput()
-            let partExt: String
-            switch namingPattern {
-            case .numberedExtension, .rawSplit:
-                partExt = String(format: "%03d", partIndex)
-            case .pkzipSpanned:
-                partExt = String(format: "z%02d", partIndex)
-            }
-            let partPath = "\(archivePath).\(partExt)"
-            createdParts.append(partPath)
-            guard let outStream = OutputStream(toFileAtPath: partPath, append: false) else {
-                throw ArchiveError.engineFailure(code: -1, message: "Failed to open output stream")
-            }
-            outStream.open()
-            partIndex += 1
-            bytesWrittenToCurrentPart = 0
-            return outStream
         }
         
         do {
-            var activeStream = try openNextOutput()
-            while inputStream.hasBytesAvailable {
-                let bytesToRead = min(Int64(bufferSize), splitSizeBytes - bytesWrittenToCurrentPart)
-                if bytesToRead <= 0 {
-                    activeStream = try openNextOutput()
-                    continue
-                }
-                let bytesRead = inputStream.read(buffer, maxLength: Int(bytesToRead))
-                if bytesRead < 0 {
-                    throw ArchiveError.readFailed(code: -2)
-                } else if bytesRead == 0 {
-                    break
-                }
-                var totalWritten = 0
-                while totalWritten < bytesRead {
-                    let written = activeStream.write(buffer.advanced(by: totalWritten), maxLength: bytesRead - totalWritten)
-                    if written <= 0 {
-                        throw ArchiveError.engineFailure(code: -3, message: "Failed to write bytes to stream")
-                    }
-                    totalWritten += written
-                }
-                bytesWrittenToCurrentPart += Int64(bytesRead)
-                if bytesWrittenToCurrentPart >= splitSizeBytes && inputStream.hasBytesAvailable {
-                    activeStream = try openNextOutput()
-                }
+            _ = try sliceArchiveFile(
+                sourcePath: archivePath,
+                splitSizeBytes: UInt64(splitSizeBytes),
+                namingPattern: namingPattern.rawValue
+            )
+        } catch let err as TtZipError {
+            switch err {
+            case .FileNotFound:
+                throw ArchiveError.fileNotFound
+            case .Cancelled:
+                throw ArchiveError.cancelled
+            default:
+                throw ArchiveError.engineFailure(code: -1, message: "Slice archive failed: \(err)")
             }
-            closeCurrentOutput()
         } catch {
-            closeCurrentOutput()
-            if cleanOnFailure {
-                for path in createdParts {
-                    try? FileManager.default.removeItem(atPath: path)
-                }
-            }
-            throw error
+            throw ArchiveError.engineFailure(code: -1, message: "Slice archive failed: \(error)")
         }
     }
 }

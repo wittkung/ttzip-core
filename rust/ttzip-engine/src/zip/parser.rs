@@ -299,10 +299,10 @@ mod tests {
 
     #[test]
     fn test_dos_to_unix_time() {
-        // 2026-01-01 00:00:00
+        // 2026-01-01 00:00:00 UTC
         let dos_date = ((2026 - 1980) << 9) | (1 << 5) | 1;
         let dos_time = 0;
         let unix = dos_to_unix_time(dos_time, dos_date as u16);
-        assert!(unix > 1700000000);
+        assert_eq!(unix, 1767225600);
     }
 }

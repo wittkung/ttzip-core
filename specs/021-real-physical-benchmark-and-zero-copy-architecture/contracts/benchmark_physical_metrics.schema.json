@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkPhysicalMetricRecord",
+  "description": "Schema for real physical benchmark measurement and performance gate assertion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenarioName",
+    "payloadBytes",
+    "elapsedSeconds",
+    "throughputMBs",
+    "isZeroCopyUsed",
+    "isPassed",
+    "gateFloorMBs"
+  ],
+  "properties": {
+    "scenarioName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the benchmark scenario"
+    },
+    "payloadBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Uncompressed input payload size in bytes"
+    },
+    "elapsedSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "description": "Elapsed execution duration in seconds"
+    },
+    "throughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Measured throughput in MB/s"
+    },
+    "isZeroCopyUsed": {
+      "type": "boolean",
+      "enum": [false],
+      "description": "Whether APFS zero-copy was used (must be strictly false in benchmark)"
+    },
+    "isPassed": {
+      "type": "boolean",
+      "description": "Whether the measurement satisfied the gate floor"
+    },
+    "gateFloorMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Minimum required throughput floor in MB/s"
+    }
+  }
+}

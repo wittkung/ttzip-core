@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HardwareCapabilitiesProtocol",
+  "description": "Strict JSON Schema for TTZip CPU Feature Detection and Vector SIMD Architecture Capabilities",
+  "type": "object",
+  "required": ["requestId", "queryType", "capabilities"],
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique request identifier for hardware capability query"
+    },
+    "queryType": {
+      "type": "string",
+      "enum": ["cpuCapabilityProbe", "cpuCapabilityResponse"]
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["targetOs", "cpuArchitecture", "hasArmNeon", "hasArmCrc32", "hasX86Avx2", "hasX86Avx512", "hasX86Vpclmul", "optimalDeflateChunkSize"],
+      "additionalProperties": false,
+      "properties": {
+        "targetOs": {
+          "type": "string",
+          "enum": ["macOS", "Windows", "Linux", "GenericPOSIX"]
+        },
+        "cpuArchitecture": {
+          "type": "string",
+          "enum": ["arm64", "x86_64", "unknown"]
+        },
+        "hasArmNeon": {
+          "type": "boolean",
+          "description": "ARM NEON 128-bit vector instructions available"
+        },
+        "hasArmCrc32": {
+          "type": "boolean",
+          "description": "ARMv8 hardware CRC32 instruction available"
+        },
+        "hasX86Avx2": {
+          "type": "boolean",
+          "description": "x86 AVX2 256-bit SIMD instructions available"
+        },
+        "hasX86Avx512": {
+          "type": "boolean",
+          "description": "x86 AVX-512 Foundation instructions available"
+        },
+        "hasX86Vpclmul": {
+          "type": "boolean",
+          "description": "x86 PCLMULQDQ / VPCLMULQDQ carry-less multiplication available"
+        },
+        "optimalDeflateChunkSize": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1048576,
+          "description": "Recommended streaming chunk size in bytes based on L1/L2 cache hierarchy"
+        }
+      }
+    }
+  }
+}

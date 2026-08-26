@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkContract",
+  "description": "Schema defining Criterion micro-benchmark suites, confidence intervals, and throughput floors",
+  "type": "object",
+  "required": ["benchmarkSuite", "targetPayloadSizesBytes", "minThroughputMBps", "maxStandardDeviationPercent"],
+  "properties": {
+    "benchmarkSuite": {
+      "type": "string",
+      "enum": ["cryptoIntrinsics", "codecsSingleCore", "zipParallelThroughput", "sevenzSolidSelectiveLatency"]
+    },
+    "targetPayloadSizesBytes": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "minThroughputMBps": {
+      "type": "number",
+      "minimum": 100.0
+    },
+    "maxStandardDeviationPercent": {
+      "type": "number",
+      "maximum": 5.0
+    }
+  },
+  "additionalProperties": false
+}

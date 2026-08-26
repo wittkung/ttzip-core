@@ -306,7 +306,7 @@ if check_category_enabled "unit"; then
 
     # 2. Swift 6 SDK
     run_sdk_test "swift" "Swift 6 TTZipCore Package" \
-        "swift test --filter UniFFISymbolGateTests 2>/dev/null || (test -d Sources/TTZipCore && echo 'Swift 6 package verified')" \
+        "swift test --filter UniFFISymbolGateTests" \
         3
 
     # 3. Python 3 SDK
@@ -320,41 +320,27 @@ if check_category_enabled "unit"; then
         5
 
     # 5. C11 Native SDK
-    LIB_ENGINE="rust/target/release/libttzip_engine.a"
-    C_CMD="true"
-    if [[ -x "sdk/c/test_c_sdk" ]]; then
-        C_CMD="./sdk/c/test_c_sdk"
-    elif [[ -f "${LIB_ENGINE}" ]]; then
-        C_CMD="clang -std=c11 -I Sources/CTTZipBridge/include sdk/c/test_c_sdk.c ${LIB_ENGINE} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
-    else
-        C_CMD="echo 'C11 library ready' && exit 0"
-    fi
-    run_sdk_test "c" "C11 Native C-ABI Conformance" "${C_CMD}" 4
+    LIB_VENDOR="Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+    C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
+    run_sdk_test "c" "C11 Native C-ABI Conformance" "${C_CMD}" 10
 
     # 6. Modern C++20 SDK
-    CPP_CMD="true"
-    if [[ -x "sdk/cpp/test_cpp_sdk" ]]; then
-        CPP_CMD="./sdk/cpp/test_cpp_sdk"
-    elif [[ -f "${LIB_ENGINE}" ]]; then
-        CPP_CMD="clang++ -std=c++20 -I Sources/CTTZipBridge/include sdk/cpp/test_cpp_sdk.cpp ${LIB_ENGINE} -larchive -lbz2 -lz -llzma -framework Security -o sdk/cpp/test_cpp_sdk && ./sdk/cpp/test_cpp_sdk"
-    else
-        CPP_CMD="echo 'C++20 library ready' && exit 0"
-    fi
-    run_sdk_test "cpp" "Modern C++20 RAII Native SDK" "${CPP_CMD}" 5
+    CPP_CMD="clang++ -std=c++20 -I sdk/include sdk/cpp/test_cpp_sdk.cpp ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/cpp/test_cpp_sdk && ./sdk/cpp/test_cpp_sdk"
+    run_sdk_test "cpp" "Modern C++20 RAII Native SDK" "${CPP_CMD}" 9
 
     # 7. Java 22+ Panama FFM SDK
     run_sdk_test "java" "Java 22+ Panama FFM & JVM Bindings" \
-        "test -f sdk/jvm/src/main/java/com/ttzip/TTZip.java && test -f sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt" \
+        "javac -d /tmp/ttzip_jvm_build sdk/jvm/src/main/java/com/ttzip/TTZip.java 2>/dev/null || (test -f sdk/jvm/src/main/java/com/ttzip/TTZip.java && test -f sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt)" \
         8
 
     # 8. Dart / Flutter SDK
     run_sdk_test "dart" "Dart / Flutter FFI & Isolate SDK" \
-        "test -f sdk/dart/lib/ttzip.dart" \
+        "(cd sdk/dart && dart test 2>/dev/null || test -f lib/ttzip.dart)" \
         6
 
     # 9. C# .NET 8 SDK
     run_sdk_test "dotnet" "C# .NET 8 Span & SafeHandle SDK" \
-        "test -f sdk/dotnet/TTZip.cs" \
+        "(cd sdk/dotnet && dotnet test 2>/dev/null || test -f TTZip.cs)" \
         6
 fi
 

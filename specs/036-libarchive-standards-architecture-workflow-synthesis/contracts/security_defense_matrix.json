@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SecurityDefenseMatrix",
+  "description": "Schema for industrial-grade security defense invariants and vulnerability mitigation matrix.",
+  "type": "object",
+  "required": [
+    "matrix_version",
+    "path_security",
+    "integer_safety",
+    "decompression_bomb",
+    "memory_lifecycle"
+  ],
+  "properties": {
+    "matrix_version": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "path_security": {
+      "type": "object",
+      "required": [
+        "normalization_algorithm",
+        "symlink_traversal_check",
+        "toctou_mitigation"
+      ],
+      "properties": {
+        "normalization_algorithm": {
+          "type": "string",
+          "enum": ["IN_PLACE_SINGLE_PASS_CLEANUP"]
+        },
+        "symlink_traversal_check": {
+          "type": "string",
+          "enum": ["AT_API_STEPWISE_INODE_CHECK"]
+        },
+        "toctou_mitigation": {
+          "type": "string",
+          "enum": ["DEFERRED_FIXUP_DEPTH_FIRST_REVERSE"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "integer_safety": {
+      "type": "object",
+      "required": [
+        "overflow_check_engine",
+        "narrowing_clamp_mask"
+      ],
+      "properties": {
+        "overflow_check_engine": {
+          "type": "string",
+          "enum": ["COMPILER_BUILTIN_HARDWARE_OVERFLOW"]
+        },
+        "narrowing_clamp_mask": {
+          "type": "string",
+          "enum": ["SSIZE_MAX_CLAMP"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "decompression_bomb": {
+      "type": "object",
+      "required": [
+        "max_compression_ratio",
+        "rar5_max_window_bytes",
+        "meta_stream_consistency_check"
+      ],
+      "properties": {
+        "max_compression_ratio": {
+          "type": "number",
+          "minimum": 100.0
+        },
+        "rar5_max_window_bytes": {
+          "type": "integer",
+          "enum": [67108864]
+        },
+        "meta_stream_consistency_check": {
+          "type": "boolean",
+          "enum": [true]
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory_lifecycle": {
+      "type": "object",
+      "required": [
+        "magic_header_field",
+        "magic_invalidation_on_free",
+        "passphrase_secure_zeroing"
+      ],
+      "properties": {
+        "magic_header_field": {
+          "type": "string",
+          "enum": ["magic"]
+        },
+        "magic_invalidation_on_free": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "passphrase_secure_zeroing": {
+          "type": "string",
+          "enum": ["EXPLICIT_BZERO_OR_MEMSET_S"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

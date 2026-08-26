@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipCPITelemetryContract",
+  "description": "Strict JSON Schema specification for TTZip CPI and microarchitectural benchmark telemetry outputs.",
+  "type": "object",
+  "required": [
+    "suite_name",
+    "timestamp",
+    "nominal_freq_ghz",
+    "metrics"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "suite_name": {
+      "type": "string",
+      "enum": [
+        "checksums",
+        "codecs",
+        "matchfinders",
+        "stress"
+      ],
+      "description": "Identifier of the benchmark suite executed"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "UNIX epoch timestamp in seconds"
+    },
+    "nominal_freq_ghz": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 6.0,
+      "description": "Nominal CPU frequency used for cycle normalization"
+    },
+    "metrics": {
+      "type": "array",
+      "description": "Array of microarchitectural metric measurements",
+      "items": {
+        "type": "object",
+        "required": [
+          "kernel_name",
+          "buffer_bytes",
+          "elapsed_nanos",
+          "throughput_mbs",
+          "cycles_per_byte",
+          "estimated_ipc",
+          "estimated_cpi"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kernel_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Kernel name"
+          },
+          "buffer_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Buffer size in bytes"
+          },
+          "elapsed_nanos": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Elapsed execution time in nanoseconds"
+          },
+          "throughput_mbs": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Calculated throughput in MB/s"
+          },
+          "cycles_per_byte": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Cycles per byte"
+          },
+          "estimated_ipc": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 12.0,
+            "description": "Estimated Instructions Per Cycle"
+          },
+          "estimated_cpi": {
+            "type": "number",
+            "minimum": 0.05,
+            "maximum": 100.0,
+            "description": "Estimated Cycles Per Instruction"
+          }
+        }
+      }
+    }
+  }
+}

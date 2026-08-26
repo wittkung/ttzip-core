@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZip7zCryptoSolidContractSchema",
+  "description": "Strict JSON schema for 7z hardware crypto and solid streaming decoder configurations.",
+  "type": "object",
+  "required": [
+    "crypto_engine",
+    "solid_streaming"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "crypto_engine": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "key_bits",
+        "hardware_extension",
+        "kdf_cycles_power",
+        "parallel_batch_blocks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "AES-256-CBC",
+            "AES-128-CBC"
+          ]
+        },
+        "key_bits": {
+          "type": "integer",
+          "enum": [
+            128,
+            256
+          ]
+        },
+        "hardware_extension": {
+          "type": "string",
+          "enum": [
+            "ARM64_CRYPTO_ACLE",
+            "X86_AESNI",
+            "SOFTWARE_SCALAR"
+          ]
+        },
+        "kdf_cycles_power": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "parallel_batch_blocks": {
+          "type": "integer",
+          "enum": [
+            4,
+            8,
+            16
+          ]
+        }
+      }
+    },
+    "solid_streaming": {
+      "type": "object",
+      "required": [
+        "mode",
+        "discard_buffer_bytes",
+        "early_termination_supported"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "SELECTIVE_ENTRY",
+            "FULL_EXTRACT",
+            "INDEX_SCAN"
+          ]
+        },
+        "discard_buffer_bytes": {
+          "type": "integer",
+          "minimum": 4096
+        },
+        "early_termination_supported": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

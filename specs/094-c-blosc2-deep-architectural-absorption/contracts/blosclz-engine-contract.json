@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BloscLZEngineContract",
+  "type": "object",
+  "required": [
+    "operation",
+    "clevel",
+    "hashLog",
+    "typesize",
+    "uncompressedBytes",
+    "compressedBytes",
+    "sha256ParityMatched"
+  ],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["compress", "decompress", "roundtrip"]
+    },
+    "clevel": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9
+    },
+    "hashLog": {
+      "type": "integer",
+      "minimum": 12,
+      "maximum": 14
+    },
+    "typesize": {
+      "type": "integer",
+      "enum": [1, 2, 4, 8, 16]
+    },
+    "uncompressedBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compressedBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compressionRatio": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "throughputMBs": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "sha256ParityMatched": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

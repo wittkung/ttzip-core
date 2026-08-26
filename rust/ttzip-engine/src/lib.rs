@@ -59,7 +59,11 @@ pub use sevenz::{
 };
 pub use standards::*;
 pub use types::*;
-pub use uniffi_api::*;
+pub use uniffi_api::{
+    archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*,
+    ttzip_i18n_format_bytes, ttzip_i18n_format_throughput, ttzip_i18n_get_string,
+    ttzip_i18n_localize_error, vault::*, vfs::*,
+};
 pub use vfs::*;
 pub use zip::{create_zip_archive, ZipArchive, ZipEntry, ZipInputItem};
 

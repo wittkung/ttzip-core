@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GUILocalizationState",
+  "description": "State schema for desktop GUI language switching and unit standard configuration",
+  "type": "object",
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "system",
+        "zhHans",
+        "en",
+        "zhHant",
+        "ja",
+        "de",
+        "fr",
+        "es"
+      ]
+    },
+    "unitStandard": {
+      "type": "string",
+      "enum": [
+        "si_decimal",
+        "iec_binary"
+      ]
+    },
+    "effectiveLanguage": {
+      "type": "string",
+      "enum": [
+        "zhHans",
+        "en",
+        "zhHant",
+        "ja",
+        "de",
+        "fr",
+        "es"
+      ]
+    }
+  },
+  "required": [
+    "language",
+    "unitStandard",
+    "effectiveLanguage"
+  ],
+  "additionalProperties": false
+}

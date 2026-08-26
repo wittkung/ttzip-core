@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature178Contract",
+  "description": "Schema verifying invariants for Feature 178: full-screen interactive TUI modals and wizards.",
+  "type": "object",
+  "required": [
+    "interactive_password_recovery_modal",
+    "interactive_repair_wizard_modal",
+    "interactive_pareto_canvas_modal",
+    "interactive_split_manager_modal",
+    "zero_regression"
+  ],
+  "properties": {
+    "interactive_password_recovery_modal": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "interactive_repair_wizard_modal": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "interactive_pareto_canvas_modal": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "interactive_split_manager_modal": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TUISessionState",
+  "type": "object",
+  "required": [
+    "archivePath",
+    "currentDirectoryPath",
+    "cursorIndex",
+    "scrollOffset",
+    "expandedPaths",
+    "selectedPaths",
+    "visibleRows",
+    "isPeeking",
+    "isExiting",
+    "terminalRows",
+    "terminalCols"
+  ],
+  "properties": {
+    "archivePath": {
+      "type": "string",
+      "description": "Absolute path to the inspected archive file"
+    },
+    "currentDirectoryPath": {
+      "type": "string",
+      "description": "Current active working directory path inside archive"
+    },
+    "cursorIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "0-based index of highlighted visible row"
+    },
+    "scrollOffset": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Top visible row offset in terminal viewport"
+    },
+    "expandedPaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Set of expanded directory subpaths"
+    },
+    "selectedPaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Set of checked entry paths for selective extraction"
+    },
+    "visibleRows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "isDirectory",
+          "depth",
+          "isExpanded",
+          "sizeBytes",
+          "formattedSize",
+          "isSelected",
+          "indentationPrefix",
+          "iconEmoji"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "isDirectory": { "type": "boolean" },
+          "depth": { "type": "integer", "minimum": 0 },
+          "isExpanded": { "type": "boolean" },
+          "sizeBytes": { "type": "integer", "minimum": 0 },
+          "formattedSize": { "type": "string" },
+          "isSelected": { "type": "boolean" },
+          "indentationPrefix": { "type": "string" },
+          "iconEmoji": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "isPeeking": {
+      "type": "boolean",
+      "description": "Whether in-terminal peek modal is active"
+    },
+    "peekContent": {
+      "type": "object",
+      "required": [
+        "filePath",
+        "mimeType",
+        "uncompressedSize",
+        "formattedSize",
+        "lines",
+        "isTruncated"
+      ],
+      "properties": {
+        "filePath": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "uncompressedSize": { "type": "integer", "minimum": 0 },
+        "formattedSize": { "type": "string" },
+        "lines": { "type": "array", "items": { "type": "string" } },
+        "hexDump": { "type": ["string", "null"] },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "isTruncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "flashMessage": {
+      "type": ["string", "null"],
+      "description": "Transient notification message on bottom status bar"
+    },
+    "isExiting": {
+      "type": "boolean",
+      "description": "Whether TUI run loop has received termination signal"
+    },
+    "terminalRows": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "terminalCols": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

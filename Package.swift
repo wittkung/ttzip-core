@@ -32,9 +32,7 @@ let package = Package(
             targets: ["TTZipBench"]
         )
     ],
-    dependencies: [
-        .package(path: "../ttkit-localization/TTLocalizationKit")
-    ],
+    dependencies: [],
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
@@ -61,8 +59,7 @@ let package = Package(
             name: "TTZipCore",
             dependencies: [
                 "CTTZipBridge",
-                "TTZipVendor",
-                .product(name: "TTLocalizationKit", package: "TTLocalizationKit")
+                "TTZipVendor"
             ],
             path: "Sources/TTZipCore",
             swiftSettings: coreSwiftSettings

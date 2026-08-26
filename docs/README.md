@@ -56,24 +56,24 @@ docs/
 ## 各分类核心文档导览
 
 ### 1. 软件架构与工程规范 (`docs/architecture/`)
-- **[系统全景架构设计 (`system_overview.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/architecture/system_overview.md)**：阐述 Swift 6 核心调度层、C 桥接中枢、硬件加速派发表与 100% In-Process C 静态绑定的分层架构。
-- **[汇编与底层派发表架构 (`assembly_infrastructure_architecture.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/architecture/assembly_infrastructure_architecture.md)**：8 大底层模式规范，涵盖 `g_ttzip_dispatch` 只读函数指针表、SIMD 硬件加速与 Fast-Path 分发。
-- **[系统工程四大铁律 (`systemic_engineering_methodology.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/architecture/systemic_engineering_methodology.md)**：流式第一性 (Stream-First)、纵深防御 (Invariant-First)、确定性确界 (Bounds-First) 与 真实预言机 (Oracle-First)。
+- **[系统全景架构设计 (`system_overview.md`)](architecture/system_overview.md)**：阐述 Swift 6 核心调度层、C 桥接中枢、硬件加速派发表与 100% In-Process C 静态绑定的分层架构。
+- **[汇编与底层派发表架构 (`assembly_infrastructure_architecture.md`)](architecture/assembly_infrastructure_architecture.md)**：8 大底层模式规范，涵盖 `g_ttzip_dispatch` 只读函数指针表、SIMD 硬件加速与 Fast-Path 分发。
+- **[系统工程四大铁律 (`systemic_engineering_methodology.md`)](architecture/systemic_engineering_methodology.md)**：流式第一性 (Stream-First)、纵深防御 (Invariant-First)、确定性确界 (Bounds-First) 与 真实预言机 (Oracle-First)。
 
 ### 2. 技术调研与生态对标 (`docs/research/`)
-- **[开源压缩加速全景调研 (`compression_acceleration_ecosystem.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/research/compression_acceleration_ecosystem.md)**：系统性梳理 `libdeflate`、`fast-lzma2`、`zlib-ng`、`zstd` 等 20+ 个高性能开源库，深入分析 macOS/Windows 双平台收益、代码对口点与商业许可证合规边界。
-- **[Apple Silicon 指令集审计 (`apple_silicon_m5_max_isa_audit.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/research/apple_silicon_m5_max_isa_audit.md)**：分析 ARM64 NEON、PMULL、CRC32、SVE2 及 Apple Silicon 微架构缓存特性对压缩吞吐的加持。
+- **[开源压缩加速全景调研 (`compression_acceleration_ecosystem.md`)](research/compression_acceleration_ecosystem.md)**：系统性梳理 `libdeflate`、`fast-lzma2`、`zlib-ng`、`zstd` 等 20+ 个高性能开源库，深入分析 macOS/Windows 双平台收益、代码对口点与商业许可证合规边界。
+- **[Apple Silicon 指令集审计 (`apple_silicon_m5_max_isa_audit.md`)](research/apple_silicon_m5_max_isa_audit.md)**：分析 ARM64 NEON、PMULL、CRC32、SVE2 及 Apple Silicon 微架构缓存特性对压缩吞吐的加持。
 
 ### 3. UI/UX 设计系统 (`docs/design-system/`)
-- **[TTZip UI 设计系统规范 (`ttzip_ui_design_system_specification.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/design-system/ttzip_ui_design_system_specification.md)**：融合“侘寂禅意 (Wabi-Sabi)”、“金缮裂纹 (Kintsugi Gold)”与“WSJ 报刊排版”的 macOS 原生桌面界面设计语言规范。
+- **[TTZip UI 设计系统规范 (`ttzip_ui_design_system_specification.md`)](design-system/ttzip_ui_design_system_specification.md)**：融合“侘寂禅意 (Wabi-Sabi)”、“金缮裂纹 (Kintsugi Gold)”与“WSJ 报刊排版”的 macOS 原生桌面界面设计语言规范。
 
 ### 4. 质量审查与性能审计 (`docs/audits/`)
-- **[低于 1000MB/s 性能专项归因 (`performance_sub_1000mbs_audit.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/audits/performance_sub_1000mbs_audit.md)**：定位慢速格式（如 LRZIP、LZIP、Brotli）的瓶颈根因，并给出修复前后的物理跑分明细。
-- **[系统修复与性能影响评估 (`remediation_and_performance_impact.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/audits/remediation_and_performance_impact.md)**：代码审计整改记录与端到端吞吐收益量化报告。
+- **[低于 1000MB/s 性能专项归因 (`performance_sub_1000mbs_audit.md`)](audits/performance_sub_1000mbs_audit.md)**：定位慢速格式（如 LRZIP、LZIP、Brotli）的瓶颈根因，并给出修复前后的物理跑分明细。
+- **[系统修复与性能影响评估 (`remediation_and_performance_impact.md`)](audits/remediation_and_performance_impact.md)**：代码审计整改记录与端到端吞吐收益量化报告。
 
 ### 5. 性能基准与自动化门禁 (`docs/benchmarks/`)
-- **[全格式最优门禁矩阵 (`peak_performance_matrix.json`)](file:///Users/kevintung/Documents/dev/TTZip/docs/benchmarks/peak_performance_matrix.json)**：固化全格式 46 项基准测试（覆盖 16 种格式、262 个细分维度）的历史最高纪录，作为 CI/CD 零性能倒退阻断门禁。
-- **[最新自动化回归对比 (`latest_regression_audit.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/benchmarks/latest_regression_audit.md)**：通过 `python3 scripts/audit_performance_regression.py` 自动生成的最新吞吐对比报告。
+- **[全格式最优门禁矩阵 (`peak_performance_matrix.json`)](benchmarks/peak_performance_matrix.json)**：固化全格式 46 项基准测试（覆盖 16 种格式、262 个细分维度）的历史最高纪录，作为 CI/CD 零性能倒退阻断门禁。
+- **[最新自动化回归对比 (`latest_regression_audit.md`)](benchmarks/latest_regression_audit.md)**：通过 `python3 scripts/audit_performance_regression.py` 自动生成的最新吞吐对比报告。
 
 ### 6. 测试与 CI 报告 (`docs/test_reports/`)
-- **[特性矩阵与测试报告 (`feature_matrix_and_test_report.md`)](file:///Users/kevintung/Documents/dev/TTZip/docs/test_reports/feature_matrix_and_test_report.md)**：归档支持的 16 种格式压缩、解压、穿透浏览与分卷测试覆盖率。
+- **[特性矩阵与测试报告 (`feature_matrix_and_test_report.md`)](test_reports/feature_matrix_and_test_report.md)**：归档支持的 16 种格式压缩、解压、穿透浏览与分卷测试覆盖率。

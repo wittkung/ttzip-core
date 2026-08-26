@@ -40,13 +40,16 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         }
         try data.write(to: stagedFile, options: .atomic)
         
+        let initialDiff = try? inspectStagingFileMutation(stagedPath: stagedFile.path, initialHash: "")
+        let initialHash = initialDiff?.newHash ?? (HashCalculator.calculateSHA256(filePath: stagedFile.path) ?? "")
+        
         let session = InPlaceEditSession(
             archivePath: archivePath,
             entryPath: entryPath,
             stagedFilePath: stagedFile.path,
             stagedDirectoryPath: tempDir.path,
             state: .active,
-            initialHash: HashCalculator.calculateSHA256(filePath: stagedFile.path) ?? "",
+            initialHash: initialHash,
             lastKnownMtime: (try? fm.attributesOfItem(atPath: stagedFile.path)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         )
         
@@ -72,9 +75,27 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         }
     }
     
-    /// Syncs modified staged file back into the target archive.
-    public func syncModifiedFile(session: InPlaceEditSession, password: String? = nil) async throws {
-        guard FileManager.default.fileExists(atPath: session.stagedFilePath) else { return }
+    /// Inspects whether an active staging file has mutated against its initial hash using pure Rust.
+    public func inspectSessionMutation(session: InPlaceEditSession) throws -> UniFfiTransactionDiff {
+        try inspectStagingFileMutation(stagedPath: session.stagedFilePath, initialHash: session.initialHash)
+    }
+    
+    /// Directly commits changes from a live editing session back into the target archive if modified.
+    @discardableResult
+    public func commitChangesDirectly(
+        session: InPlaceEditSession,
+        password: String? = nil
+    ) async throws -> Bool {
+        guard FileManager.default.fileExists(atPath: session.stagedFilePath) else { return false }
+        
+        let diff = try inspectStagingFileMutation(
+            stagedPath: session.stagedFilePath,
+            initialHash: session.initialHash
+        )
+        
+        guard diff.hasChanged else {
+            return false
+        }
         
         try await addFilesToArchive(
             archivePath: session.archivePath,
@@ -82,6 +103,17 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
             destinationVirtualFolder: (session.entryPath as NSString).deletingLastPathComponent,
             password: password
         )
+        
+        var updated = session
+        updated.initialHash = diff.newHash
+        updated.hasUnsavedChanges = false
+        setSession(updated)
+        return true
+    }
+    
+    /// Syncs modified staged file back into the target archive.
+    public func syncModifiedFile(session: InPlaceEditSession, password: String? = nil) async throws {
+        try await commitChangesDirectly(session: session, password: password)
     }
     
     /// Adds files into an existing archive using in-place mutation or transactional repacking.
@@ -141,6 +173,13 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     public func closeEditingSession(session: InPlaceEditSession) {
         removeSession(sessionId: session.sessionId)
         try? FileManager.default.removeItem(atPath: session.stagedDirectoryPath)
+    }
+    
+    /// Retrieves an active in-place editing session by its ID.
+    public func getSession(sessionId: String) -> InPlaceEditSession? {
+        lock.lock()
+        defer { lock.unlock() }
+        return activeSessions[sessionId]
     }
     
     private func setSession(_ session: InPlaceEditSession) {

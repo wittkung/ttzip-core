@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EngineStrategyTemplateSchema",
+  "type": "object",
+  "required": [
+    "context",
+    "result"
+  ],
+  "properties": {
+    "context": {
+      "type": "object",
+      "required": [
+        "operationId",
+        "operationType",
+        "format",
+        "archivePath",
+        "destinationDir",
+        "isEncrypted",
+        "hasPassword",
+        "executionMode"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "operationType": {
+          "type": "string",
+          "enum": ["compress", "extract", "testArchive", "repair"]
+        },
+        "format": {
+          "type": "string",
+          "enum": ["zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2", "tar.xz", "lz4", "brotli", "snappy", "wim", "dmg", "iso", "lzip", "lrzip", "aar"]
+        },
+        "archivePath": {
+          "type": "string"
+        },
+        "destinationDir": {
+          "type": "string"
+        },
+        "isEncrypted": {
+          "type": "boolean"
+        },
+        "hasPassword": {
+          "type": "boolean"
+        },
+        "executionMode": {
+          "type": "string",
+          "enum": ["template_orchestrated", "direct_c_bypass"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "operationId",
+        "isSuccess",
+        "bytesProcessed",
+        "compressedSizeBytes",
+        "errorCode",
+        "errorMessage"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "bytesProcessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compressedSizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorCode": {
+          "type": "integer"
+        },
+        "errorMessage": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

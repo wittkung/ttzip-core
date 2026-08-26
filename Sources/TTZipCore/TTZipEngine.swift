@@ -59,26 +59,42 @@ public actor TTZipEngine {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions
     ) -> (progress: AsyncStream<ArchiveProgress>, task: Task<ArchiveOperationResult, Error>) {
         let (stream, continuation) = AsyncStream.makeStream(of: ArchiveProgress.self)
+        let token = CancellationToken()
 
         let task = Task<ArchiveOperationResult, Error> {
-            do {
-                let res = try await self.facade.quickCompress(
-                    inputs: inputs,
-                    outputPath: outputPath,
-                    format: format,
-                    level: level,
-                    password: password,
-                    splitSize: splitVolumeSizeBytes,
-                    filterOptions: options,
-                    advancedOptions: advancedOptions
-                ) { progress in
-                    continuation.yield(progress)
+            defer { continuation.finish() }
+            if Task.isCancelled || token.isCancelled() {
+                continuation.yield(ArchiveProgress(state: .cancelled))
+                throw CancellationError()
+            }
+            return try await withTaskCancellationHandler {
+                do {
+                    let res = try await self.facade.quickCompress(
+                        inputs: inputs,
+                        outputPath: outputPath,
+                        format: format,
+                        level: level,
+                        password: password,
+                        splitSize: splitVolumeSizeBytes,
+                        filterOptions: options,
+                        advancedOptions: advancedOptions,
+                        progress: { progress in
+                            continuation.yield(progress)
+                        },
+                        token: token
+                    )
+                    return res
+                } catch {
+                    if Task.isCancelled || token.isCancelled() {
+                        continuation.yield(ArchiveProgress(state: .cancelled))
+                        throw CancellationError()
+                    }
+                    throw error
                 }
+            } onCancel: {
+                token.cancel()
+                continuation.yield(ArchiveProgress(state: .cancelled))
                 continuation.finish()
-                return res
-            } catch {
-                continuation.finish()
-                throw error
             }
         }
 
@@ -119,22 +135,38 @@ public actor TTZipEngine {
         autoVaultUnlock: Bool = true
     ) -> (progress: AsyncStream<ArchiveProgress>, task: Task<ExtractResult, Error>) {
         let (stream, continuation) = AsyncStream.makeStream(of: ArchiveProgress.self)
+        let token = CancellationToken()
 
         let task = Task<ExtractResult, Error> {
-            do {
-                let res = try await self.facade.quickExtract(
-                    archivePath: archivePath,
-                    destinationDir: destinationDir,
-                    password: password,
-                    autoVaultUnlock: autoVaultUnlock
-                ) { progress in
-                    continuation.yield(progress)
+            defer { continuation.finish() }
+            if Task.isCancelled || token.isCancelled() {
+                continuation.yield(ArchiveProgress(state: .cancelled))
+                throw CancellationError()
+            }
+            return try await withTaskCancellationHandler {
+                do {
+                    let res = try await self.facade.quickExtract(
+                        archivePath: archivePath,
+                        destinationDir: destinationDir,
+                        password: password,
+                        autoVaultUnlock: autoVaultUnlock,
+                        progress: { progress in
+                            continuation.yield(progress)
+                        },
+                        token: token
+                    )
+                    return res
+                } catch {
+                    if Task.isCancelled || token.isCancelled() {
+                        continuation.yield(ArchiveProgress(state: .cancelled))
+                        throw CancellationError()
+                    }
+                    throw error
                 }
+            } onCancel: {
+                token.cancel()
+                continuation.yield(ArchiveProgress(state: .cancelled))
                 continuation.finish()
-                return res
-            } catch {
-                continuation.finish()
-                throw error
             }
         }
 
@@ -226,22 +258,38 @@ public struct TTZipArchive: Sendable, Identifiable {
     ) -> (progress: AsyncStream<ArchiveProgress>, task: Task<ExtractResult, Error>) {
         let effectivePassword = password ?? defaultPassword
         let (stream, continuation) = AsyncStream.makeStream(of: ArchiveProgress.self)
+        let token = CancellationToken()
 
         let task = Task<ExtractResult, Error> {
-            do {
-                let res = try await TTZipEngineFacade.shared.quickExtract(
-                    archivePath: self.path,
-                    destinationDir: destinationDir,
-                    password: effectivePassword,
-                    autoVaultUnlock: autoVaultUnlock
-                ) { progress in
-                    continuation.yield(progress)
+            defer { continuation.finish() }
+            if Task.isCancelled || token.isCancelled() {
+                continuation.yield(ArchiveProgress(state: .cancelled))
+                throw CancellationError()
+            }
+            return try await withTaskCancellationHandler {
+                do {
+                    let res = try await TTZipEngineFacade.shared.quickExtract(
+                        archivePath: self.path,
+                        destinationDir: destinationDir,
+                        password: effectivePassword,
+                        autoVaultUnlock: autoVaultUnlock,
+                        progress: { progress in
+                            continuation.yield(progress)
+                        },
+                        token: token
+                    )
+                    return res
+                } catch {
+                    if Task.isCancelled || token.isCancelled() {
+                        continuation.yield(ArchiveProgress(state: .cancelled))
+                        throw CancellationError()
+                    }
+                    throw error
                 }
+            } onCancel: {
+                token.cancel()
+                continuation.yield(ArchiveProgress(state: .cancelled))
                 continuation.finish()
-                return res
-            } catch {
-                continuation.finish()
-                throw error
             }
         }
 

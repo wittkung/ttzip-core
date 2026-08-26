@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArchiveFixtureManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "fixtures"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "type": "string",
+      "enum": [
+        "1.0.0"
+      ],
+      "description": "Schema version"
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fixtureId",
+          "fileName",
+          "format",
+          "expectedTier",
+          "expectedAlgorithm",
+          "validPassphrases",
+          "invalidPassphrases",
+          "expectedEntriesCount",
+          "expectedPayloadSHA256"
+        ],
+        "properties": {
+          "fixtureId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "zip",
+              "7z",
+              "rar4",
+              "rar5"
+            ]
+          },
+          "expectedTier": {
+            "type": "string",
+            "enum": [
+              "DATA_ONLY",
+              "HEADER_AND_DATA"
+            ]
+          },
+          "expectedAlgorithm": {
+            "type": "string",
+            "enum": [
+              "WinZip-AES-128",
+              "WinZip-AES-256",
+              "ZipCrypto",
+              "7z-AES-256",
+              "RAR4-AES-128",
+              "RAR5-AES-256"
+            ]
+          },
+          "validPassphrases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invalidPassphrases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedEntriesCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expectedPayloadSHA256": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

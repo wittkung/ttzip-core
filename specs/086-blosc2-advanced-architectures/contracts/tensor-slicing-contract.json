@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TensorSlicingContract",
+  "type": "object",
+  "required": ["ndim", "shape", "chunkshape", "blockshape", "item_size"],
+  "properties": {
+    "ndim": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    },
+    "shape": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "chunkshape": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "blockshape": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "item_size": {
+      "type": "integer",
+      "enum": [1, 2, 4, 8, 16]
+    }
+  },
+  "additionalProperties": false
+}

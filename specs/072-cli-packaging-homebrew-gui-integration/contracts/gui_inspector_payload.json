@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GUIInspectorPayload",
+  "description": "Diagnostic payload structure consumed by TTZipApp Archive Inspector and Health Check",
+  "type": "object",
+  "properties": {
+    "filePath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fileName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fileByteSize": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "detectedFormat": {
+      "type": ["string", "null"]
+    },
+    "officialStandardName": {
+      "type": ["string", "null"]
+    },
+    "standardCitation": {
+      "type": ["string", "null"]
+    },
+    "mimeType": {
+      "type": ["string", "null"]
+    },
+    "appleUTI": {
+      "type": ["string", "null"]
+    },
+    "isCompliant": {
+      "type": "boolean"
+    },
+    "matchedSignaturesCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scanDurationMs": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "violationsCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warningsCount": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "filePath",
+    "fileName",
+    "fileByteSize",
+    "isCompliant",
+    "matchedSignaturesCount",
+    "scanDurationMs",
+    "violationsCount",
+    "warningsCount"
+  ],
+  "additionalProperties": false
+}

@@ -14,6 +14,7 @@ use std::ffi::CString;
 use std::fs::{self, File};
 use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tempfile::tempdir;
 use ttzip_engine::ffi::*;
 use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
@@ -48,9 +49,8 @@ unsafe extern "C" fn test_progress_cb(
 
 #[test]
 fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
-    let temp_dir = std::env::temp_dir().join("ttzip_test_phase5_roundtrip_zip");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let tmp_dir = tempdir().unwrap();
+    let temp_dir = tmp_dir.path();
 
     let src_dir = temp_dir.join("src_files");
     fs::create_dir_all(&src_dir).unwrap();
@@ -180,9 +180,8 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
 
 #[test]
 fn test_phase5_archive_create_tar_gz_and_extract() {
-    let temp_dir = std::env::temp_dir().join("ttzip_test_phase5_targz");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let tmp_dir = tempdir().unwrap();
+    let temp_dir = tmp_dir.path();
 
     let src_file = temp_dir.join("test_sample.log");
     fs::write(&src_file, b"Sample log line 1\nSample log line 2\n").unwrap();
@@ -241,14 +240,13 @@ fn test_phase5_archive_create_tar_gz_and_extract() {
     };
     assert_eq!(ext_status, TTZipStatus::Ok);
     assert!(dest_dir.join("test_sample.log").exists());
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_phase5_archive_error_handling() {
     let invalid_path = CString::new("/nonexistent/path/to/archive.zip").unwrap();
-    let dest_dir = CString::new("/tmp/some_dest").unwrap();
+    let tmp_dest_dir = tempdir().unwrap();
+    let dest_dir = CString::new(tmp_dest_dir.path().to_str().unwrap()).unwrap();
 
     let inspect_status = unsafe {
         ttzip_rust_inspect_archive(

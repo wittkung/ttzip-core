@@ -311,10 +311,12 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::os::unix::fs::PermissionsExt;
+    use tempfile::tempdir;
 
     #[test]
     fn test_zipslip_traversal_rejection() {
-        let dest = Path::new("/tmp/ttzip_safe_extract_test");
+        let tmp = tempdir().unwrap();
+        let dest = tmp.path();
 
         assert_eq!(
             sanitize_and_validate_path(dest, "../../etc/passwd"),
@@ -344,7 +346,8 @@ mod tests {
 
     #[test]
     fn test_valid_path_sanitization() {
-        let dest = Path::new("/tmp/ttzip_safe_extract_test");
+        let tmp = tempdir().unwrap();
+        let dest = tmp.path();
         let valid = sanitize_and_validate_path(dest, "folder/subfolder/file.txt").unwrap();
         assert_eq!(valid, dest.join("folder/subfolder/file.txt"));
 
@@ -354,9 +357,8 @@ mod tests {
 
     #[test]
     fn test_two_stage_extraction_and_bottom_up_metadata() {
-        let temp_dir = std::env::temp_dir().join("ttzip_test_two_stage");
-        let _ = fs::remove_dir_all(&temp_dir);
-        fs::create_dir_all(&temp_dir).unwrap();
+        let tmp_dir = tempdir().unwrap();
+        let temp_dir = tmp_dir.path();
 
         let mut engine = SafeExtractEngine::new();
 
@@ -381,7 +383,5 @@ mod tests {
 
         let final_dir_meta = fs::metadata(&sub_dir).unwrap();
         assert_eq!(final_dir_meta.permissions().mode() & 0o777, 0o755);
-
-        let _ = fs::remove_dir_all(&temp_dir);
     }
 }

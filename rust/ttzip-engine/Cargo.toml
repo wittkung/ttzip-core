@@ -45,11 +45,11 @@ aes = "0.8"
 ctr = "0.9"
 cbc = "0.1"
 symphonia = { version = "0.5", features = ["all"] }
-tt_i18n = { package = "tt-i18n-core", path = "../../../ttkit-localization/tt-i18n-core" }
+sha2 = "0.10"
+ed25519-dalek = { version = "2.1", default-features = false, features = ["fast"] }
 
 [dev-dependencies]
 hex = "0.4"
-sha2 = "0.10"
 crc32fast = "1.4"
 adler2 = "2.0"
 proptest = "1.5"

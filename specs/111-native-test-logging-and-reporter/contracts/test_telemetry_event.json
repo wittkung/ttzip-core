@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestTelemetryEvent",
+  "description": "Structured NDJSON schema for in-process test execution and reporting events in TTZip",
+  "type": "object",
+  "required": [
+    "eventType",
+    "timestamp",
+    "sessionID"
+  ],
+  "properties": {
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "runStarted",
+        "suiteStarted",
+        "caseStarted",
+        "casePassed",
+        "caseFailed",
+        "caseSkipped",
+        "suiteFinished",
+        "runFinished"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sessionID": {
+      "type": "string"
+    },
+    "sequenceNumber": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "suiteName": {
+      "type": "string"
+    },
+    "caseName": {
+      "type": "string"
+    },
+    "badge": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "skip",
+        "standards",
+        "oracle",
+        "fuzz",
+        "perf",
+        "run",
+        "info"
+      ]
+    },
+    "durationMs": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "failureContext": {
+      "type": "object",
+      "required": [
+        "sourceFile",
+        "lineNumber",
+        "assertionMessage"
+      ],
+      "properties": {
+        "sourceFile": {
+          "type": "string"
+        },
+        "lineNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "assertionMessage": {
+          "type": "string"
+        },
+        "expectedValue": {
+          "type": "string"
+        },
+        "actualValue": {
+          "type": "string"
+        },
+        "hexDiffSnippet": {
+          "type": "string"
+        },
+        "unicodeDiagnostic": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalSuites",
+        "totalCases",
+        "passedCases",
+        "failedCases",
+        "skippedCases",
+        "passRatePercent",
+        "wallClockDurationMs"
+      ],
+      "properties": {
+        "totalSuites": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalCases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passedCases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedCases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedCases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passRatePercent": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0
+        },
+        "wallClockDurationMs": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

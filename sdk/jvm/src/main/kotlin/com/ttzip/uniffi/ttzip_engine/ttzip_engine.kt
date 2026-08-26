@@ -819,6 +819,54 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -873,6 +921,8 @@ internal interface UniffiLib : Library {
     ): Pointer
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_get_children(`ptr`: Pointer,`subpath`: RustBuffer.ByValue,`offset`: Int,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivfstree_get_children_paged(`ptr`: Pointer,`subpath`: RustBuffer.ByValue,`offset`: Int,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_get_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_render_tree(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -885,8 +935,18 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_ttzip_engine_fn_func_autocomplete_disk_path(`rawInput`: RustBuffer.ByValue,`baseDirectory`: RustBuffer.ByValue,`maxResults`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_combine_crc32(`crc1`: Int,`crc2`: Int,`len2`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_ttzip_engine_fn_func_compute_bytes_adler32(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_ttzip_engine_fn_func_compute_bytes_crc32(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_ttzip_engine_fn_func_compute_bytes_sha256(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_compute_file_crc32(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    fun uniffi_ttzip_engine_fn_func_compute_file_hash(`path`: RustBuffer.ByValue,`algorithm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_compute_file_sha256(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_create_archive_stream(`sourcePaths`: RustBuffer.ByValue,`outputPath`: RustBuffer.ByValue,`format`: RustBuffer.ByValue,`level`: Int,`password`: RustBuffer.ByValue,`progress`: RustBuffer.ByValue,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -903,27 +963,51 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_extract_audio_waveform_from_memory(`data`: RustBuffer.ByValue,`bucketCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_extract_parent_and_prefix(`rawInput`: RustBuffer.ByValue,`baseDirectory`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_extract_selected_entries(`archivePath`: RustBuffer.ByValue,`targetEntries`: RustBuffer.ByValue,`destinationDir`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,`progress`: RustBuffer.ByValue,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_func_extract_single_entry_by_path(`archivePath`: RustBuffer.ByValue,`entryPath`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_extract_single_entry_stream(`archivePath`: RustBuffer.ByValue,`entryIndex`: Long,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded(`archivePath`: RustBuffer.ByValue,`entryIndex`: Long,`password`: RustBuffer.ByValue,`maxPrecedingBudgetMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset(`targetPath`: RustBuffer.ByValue,`targetBytes`: Long,`profileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_func_in_place_mutate_archive(`archivePath`: RustBuffer.ByValue,`actions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_ttzip_engine_fn_func_inspect_archive_entries(`archivePath`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_inspect_staging_file_mutation(`stagedPath`: RustBuffer.ByValue,`initialHash`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_join_split_volume_chain(`firstVolumePath`: RustBuffer.ByValue,`outputPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_ttzip_engine_fn_func_natural_compare(`a`: RustBuffer.ByValue,`b`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_ttzip_engine_fn_func_natural_sort_paths(`items`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_parse_epub_metadata(`epubPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_recommend_codec(`data`: RustBuffer.ByValue,`scenario`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_recover_archive_password(`archivePath`: RustBuffer.ByValue,`dictionary`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_repair_archive_file(`damagedPath`: RustBuffer.ByValue,`outputPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_func_resolve_smart_extract_decision(`entryPaths`: RustBuffer.ByValue,`destinationParent`: RustBuffer.ByValue,`archiveStem`: RustBuffer.ByValue,`collisionPolicy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_sanitize_posix_path(`rawInput`: RustBuffer.ByValue,`baseDirectory`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_scan_directory(`path`: RustBuffer.ByValue,`maxDepth`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_slice_archive_file(`sourcePath`: RustBuffer.ByValue,`splitSizeBytes`: Long,`namingPattern`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_sniff_format_buffer(`data`: RustBuffer.ByValue,`filenameHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_sniff_format_file(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_tokenize_source_code(`text`: RustBuffer.ByValue,`fileExtension`: RustBuffer.ByValue,`maxLength`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes(`bytes`: Long,`standard`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -932,6 +1016,18 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_ttzip_i18n_get_string(`key`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_i18n_localize_error(`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_vault_compute_verifier(`key`: RustBuffer.ByValue,`salt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_vault_decrypt_payload(`key`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_vault_derive_key(`password`: RustBuffer.ByValue,`salt`: RustBuffer.ByValue,`iterations`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_vault_encrypt_payload(`key`: RustBuffer.ByValue,`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_verify_archive_integrity(`archivePath`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,`progress`: RustBuffer.ByValue,`token`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_verify_license_key(`licenseKey`: RustBuffer.ByValue,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_ttzip_engine_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1047,7 +1143,17 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_ttzip_engine_checksum_func_autocomplete_disk_path(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_combine_crc32(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_compute_bytes_adler32(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_compute_bytes_crc32(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_compute_bytes_sha256(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_compute_file_crc32(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_compute_file_hash(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_compute_file_sha256(
     ): Short
@@ -1065,15 +1171,31 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_extract_audio_waveform_from_memory(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_extract_parent_and_prefix(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_extract_selected_entries(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_extract_single_entry_by_path(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_extract_single_entry_stream(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_in_place_mutate_archive(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_inspect_archive_entries(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_inspect_staging_file_mutation(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_join_split_volume_chain(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_natural_compare(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_natural_sort_paths(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_parse_epub_metadata(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_recommend_codec(
     ): Short
@@ -1081,11 +1203,19 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_repair_archive_file(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_resolve_smart_extract_decision(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_sanitize_posix_path(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_scan_directory(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_slice_archive_file(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_sniff_format_buffer(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_sniff_format_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_tokenize_source_code(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes(
     ): Short
@@ -1094,6 +1224,18 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_ttzip_i18n_get_string(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_vault_compute_verifier(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_vault_decrypt_payload(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_vault_derive_key(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_vault_encrypt_payload(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_verify_archive_integrity(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_verify_license_key(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_cancellationtoken_cancel(
     ): Short
@@ -1110,6 +1252,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children_paged(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_stats(
     ): Short
@@ -1144,13 +1288,28 @@ private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: UniffiLib) {
-    if (lib.uniffi_ttzip_engine_checksum_func_autocomplete_disk_path() != 34824.toShort()) {
+    if (lib.uniffi_ttzip_engine_checksum_func_autocomplete_disk_path() != 33853.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ttzip_engine_checksum_func_compute_file_crc32() != 21036.toShort()) {
+    if (lib.uniffi_ttzip_engine_checksum_func_combine_crc32() != 58739.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ttzip_engine_checksum_func_compute_file_sha256() != 50222.toShort()) {
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_bytes_adler32() != 37371.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_bytes_crc32() != 21937.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_bytes_sha256() != 15299.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_file_crc32() != 52669.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_file_hash() != 37572.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_compute_file_sha256() != 31235.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966.toShort()) {
@@ -1174,10 +1333,22 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_extract_audio_waveform_from_memory() != 33678.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_extract_parent_and_prefix() != 51667.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_extract_selected_entries() != 9142.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_by_path() != 26783.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream() != 57921.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_in_place_mutate_archive() != 28841.toShort()) {
@@ -1186,7 +1357,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_inspect_archive_entries() != 34993.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_inspect_staging_file_mutation() != 36811.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_join_split_volume_chain() != 52199.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_natural_compare() != 19274.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_natural_sort_paths() != 11229.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata() != 61296.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005.toShort()) {
@@ -1198,13 +1381,25 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_repair_archive_file() != 26144.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_resolve_smart_extract_decision() != 25103.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_sanitize_posix_path() != 27114.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_scan_directory() != 41201.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_slice_archive_file() != 21457.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_sniff_format_buffer() != 26304.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_sniff_format_file() != 63931.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_tokenize_source_code() != 14659.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193.toShort()) {
@@ -1217,6 +1412,24 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error() != 34636.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_vault_decrypt_payload() != 2052.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_vault_derive_key() != 48379.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_vault_encrypt_payload() != 57815.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_verify_archive_integrity() != 56393.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_verify_license_key() != 34182.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_cancellationtoken_cancel() != 59500.toShort()) {
@@ -1241,6 +1454,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children_paged() != 50396.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_stats() != 53715.toShort()) {
@@ -2315,6 +2531,8 @@ public interface UniFfiVfsTreeInterface {
     
     fun `getChildren`(`subpath`: kotlin.String?, `offset`: kotlin.UInt, `limit`: kotlin.UInt): List<UniFfiVfsNodeSummary>
     
+    fun `getChildrenPaged`(`subpath`: kotlin.String?, `offset`: kotlin.UInt, `limit`: kotlin.UInt): UniFfiVfsPagedResult
+    
     fun `getStats`(): UniFfiVfsStats
     
     fun `renderTree`(): kotlin.String
@@ -2415,6 +2633,18 @@ open class UniFfiVfsTree: Disposable, AutoCloseable, UniFfiVfsTreeInterface {
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivfstree_get_children(
+        it, FfiConverterOptionalString.lower(`subpath`),FfiConverterUInt.lower(`offset`),FfiConverterUInt.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `getChildrenPaged`(`subpath`: kotlin.String?, `offset`: kotlin.UInt, `limit`: kotlin.UInt): UniFfiVfsPagedResult {
+            return FfiConverterTypeUniFFIVfsPagedResult.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivfstree_get_children_paged(
         it, FfiConverterOptionalString.lower(`subpath`),FfiConverterUInt.lower(`offset`),FfiConverterUInt.lower(`limit`),_status)
 }
     }
@@ -2697,6 +2927,49 @@ public object FfiConverterTypePasswordRecoveryOutcome: FfiConverterRustBuffer<Pa
 
 
 /**
+ * Path suggestion item for real-time autocompletion.
+ */
+data class PathSuggestionItem (
+    var `fullPath`: kotlin.String, 
+    var `displayName`: kotlin.String, 
+    var `isDirectory`: kotlin.Boolean, 
+    var `isArchive`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePathSuggestionItem: FfiConverterRustBuffer<PathSuggestionItem> {
+    override fun read(buf: ByteBuffer): PathSuggestionItem {
+        return PathSuggestionItem(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PathSuggestionItem) = (
+            FfiConverterString.allocationSize(value.`fullPath`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterBoolean.allocationSize(value.`isDirectory`) +
+            FfiConverterBoolean.allocationSize(value.`isArchive`)
+    )
+
+    override fun write(value: PathSuggestionItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fullPath`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterBoolean.write(value.`isDirectory`, buf)
+            FfiConverterBoolean.write(value.`isArchive`, buf)
+    }
+}
+
+
+
+/**
  * Sniffed file format and magic metadata record.
  */
 data class SniffMetadata (
@@ -2742,6 +3015,49 @@ public object FfiConverterTypeSniffMetadata: FfiConverterRustBuffer<SniffMetadat
             FfiConverterBoolean.write(value.`isSfx`, buf)
             FfiConverterULong.write(value.`sfxOffset`, buf)
             FfiConverterUInt.write(value.`confidence`, buf)
+    }
+}
+
+
+
+/**
+ * Corrupted entry information in integrity verification.
+ */
+data class UniFfiCorruptedEntry (
+    var `path`: kotlin.String, 
+    var `expectedCrc32`: kotlin.UInt, 
+    var `actualCrc32`: kotlin.UInt, 
+    var `reason`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFICorruptedEntry: FfiConverterRustBuffer<UniFfiCorruptedEntry> {
+    override fun read(buf: ByteBuffer): UniFfiCorruptedEntry {
+        return UniFfiCorruptedEntry(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiCorruptedEntry) = (
+            FfiConverterString.allocationSize(value.`path`) +
+            FfiConverterUInt.allocationSize(value.`expectedCrc32`) +
+            FfiConverterUInt.allocationSize(value.`actualCrc32`) +
+            FfiConverterString.allocationSize(value.`reason`)
+    )
+
+    override fun write(value: UniFfiCorruptedEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`path`, buf)
+            FfiConverterUInt.write(value.`expectedCrc32`, buf)
+            FfiConverterUInt.write(value.`actualCrc32`, buf)
+            FfiConverterString.write(value.`reason`, buf)
     }
 }
 
@@ -2809,6 +3125,341 @@ public object FfiConverterTypeUniFFIEntryMetadata: FfiConverterRustBuffer<UniFfi
             FfiConverterBoolean.write(value.`isEncrypted`, buf)
             FfiConverterString.write(value.`compressionMethod`, buf)
             FfiConverterOptionalString.write(value.`detectedEncoding`, buf)
+    }
+}
+
+
+
+data class UniFfiEpubBook (
+    var `title`: kotlin.String, 
+    var `chapters`: List<UniFfiEpubChapter>, 
+    var `coverPath`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEpubBook: FfiConverterRustBuffer<UniFfiEpubBook> {
+    override fun read(buf: ByteBuffer): UniFfiEpubBook {
+        return UniFfiEpubBook(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeUniFFIEpubChapter.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEpubBook) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterSequenceTypeUniFFIEpubChapter.allocationSize(value.`chapters`) +
+            FfiConverterOptionalString.allocationSize(value.`coverPath`)
+    )
+
+    override fun write(value: UniFfiEpubBook, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterSequenceTypeUniFFIEpubChapter.write(value.`chapters`, buf)
+            FfiConverterOptionalString.write(value.`coverPath`, buf)
+    }
+}
+
+
+
+data class UniFfiEpubChapter (
+    var `title`: kotlin.String, 
+    var `href`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEpubChapter: FfiConverterRustBuffer<UniFfiEpubChapter> {
+    override fun read(buf: ByteBuffer): UniFfiEpubChapter {
+        return UniFfiEpubChapter(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEpubChapter) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`href`)
+    )
+
+    override fun write(value: UniFfiEpubChapter, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`href`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive archive integrity report.
+ */
+data class UniFfiIntegrityReport (
+    var `isValid`: kotlin.Boolean, 
+    var `totalEntries`: kotlin.ULong, 
+    var `verifiedEntries`: kotlin.ULong, 
+    var `corruptedEntries`: List<UniFfiCorruptedEntry>, 
+    var `elapsedNanos`: kotlin.ULong, 
+    var `errorMessage`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIIntegrityReport: FfiConverterRustBuffer<UniFfiIntegrityReport> {
+    override fun read(buf: ByteBuffer): UniFfiIntegrityReport {
+        return UniFfiIntegrityReport(
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterSequenceTypeUniFFICorruptedEntry.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiIntegrityReport) = (
+            FfiConverterBoolean.allocationSize(value.`isValid`) +
+            FfiConverterULong.allocationSize(value.`totalEntries`) +
+            FfiConverterULong.allocationSize(value.`verifiedEntries`) +
+            FfiConverterSequenceTypeUniFFICorruptedEntry.allocationSize(value.`corruptedEntries`) +
+            FfiConverterULong.allocationSize(value.`elapsedNanos`) +
+            FfiConverterOptionalString.allocationSize(value.`errorMessage`)
+    )
+
+    override fun write(value: UniFfiIntegrityReport, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`isValid`, buf)
+            FfiConverterULong.write(value.`totalEntries`, buf)
+            FfiConverterULong.write(value.`verifiedEntries`, buf)
+            FfiConverterSequenceTypeUniFFICorruptedEntry.write(value.`corruptedEntries`, buf)
+            FfiConverterULong.write(value.`elapsedNanos`, buf)
+            FfiConverterOptionalString.write(value.`errorMessage`, buf)
+    }
+}
+
+
+
+/**
+ * Structured payload contained within an Ed25519 signed license key.
+ */
+data class UniFfiLicensePayload (
+    var `version`: kotlin.Int, 
+    var `email`: kotlin.String, 
+    var `tier`: kotlin.String, 
+    var `issuedAt`: kotlin.String, 
+    var `orderId`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFILicensePayload: FfiConverterRustBuffer<UniFfiLicensePayload> {
+    override fun read(buf: ByteBuffer): UniFfiLicensePayload {
+        return UniFfiLicensePayload(
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiLicensePayload) = (
+            FfiConverterInt.allocationSize(value.`version`) +
+            FfiConverterString.allocationSize(value.`email`) +
+            FfiConverterString.allocationSize(value.`tier`) +
+            FfiConverterString.allocationSize(value.`issuedAt`) +
+            FfiConverterString.allocationSize(value.`orderId`)
+    )
+
+    override fun write(value: UniFfiLicensePayload, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`version`, buf)
+            FfiConverterString.write(value.`email`, buf)
+            FfiConverterString.write(value.`tier`, buf)
+            FfiConverterString.write(value.`issuedAt`, buf)
+            FfiConverterString.write(value.`orderId`, buf)
+    }
+}
+
+
+
+/**
+ * Parent directory and autocompletion prefix record.
+ */
+data class UniFfiParentAndPrefix (
+    var `parentDirectory`: kotlin.String, 
+    var `prefix`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIParentAndPrefix: FfiConverterRustBuffer<UniFfiParentAndPrefix> {
+    override fun read(buf: ByteBuffer): UniFfiParentAndPrefix {
+        return UniFfiParentAndPrefix(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiParentAndPrefix) = (
+            FfiConverterString.allocationSize(value.`parentDirectory`) +
+            FfiConverterString.allocationSize(value.`prefix`)
+    )
+
+    override fun write(value: UniFfiParentAndPrefix, buf: ByteBuffer) {
+            FfiConverterString.write(value.`parentDirectory`, buf)
+            FfiConverterString.write(value.`prefix`, buf)
+    }
+}
+
+
+
+/**
+ * Smart extraction decision record exposed via UniFFI.
+ */
+data class UniFfiSmartExtractDecision (
+    /**
+     * Decision mode: "directExtract", "wrapInFolder", or "emptyArchive".
+     */
+    var `mode`: kotlin.String, 
+    /**
+     * Number of distinct top-level root entities (excluding system metadata).
+     */
+    var `effectiveRootCount`: kotlin.UInt, 
+    /**
+     * Name of the single root file or folder when `effective_root_count == 1`.
+     */
+    var `singleRootName`: kotlin.String?, 
+    /**
+     * Resolved absolute or relative destination folder path for extraction.
+     */
+    var `destinationFolder`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISmartExtractDecision: FfiConverterRustBuffer<UniFfiSmartExtractDecision> {
+    override fun read(buf: ByteBuffer): UniFfiSmartExtractDecision {
+        return UniFfiSmartExtractDecision(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSmartExtractDecision) = (
+            FfiConverterString.allocationSize(value.`mode`) +
+            FfiConverterUInt.allocationSize(value.`effectiveRootCount`) +
+            FfiConverterOptionalString.allocationSize(value.`singleRootName`) +
+            FfiConverterString.allocationSize(value.`destinationFolder`)
+    )
+
+    override fun write(value: UniFfiSmartExtractDecision, buf: ByteBuffer) {
+            FfiConverterString.write(value.`mode`, buf)
+            FfiConverterUInt.write(value.`effectiveRootCount`, buf)
+            FfiConverterOptionalString.write(value.`singleRootName`, buf)
+            FfiConverterString.write(value.`destinationFolder`, buf)
+    }
+}
+
+
+
+/**
+ * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
+ */
+data class UniFfiTokenSpan (
+    var `location`: kotlin.UInt, 
+    var `length`: kotlin.UInt, 
+    var `category`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITokenSpan: FfiConverterRustBuffer<UniFfiTokenSpan> {
+    override fun read(buf: ByteBuffer): UniFfiTokenSpan {
+        return UniFfiTokenSpan(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiTokenSpan) = (
+            FfiConverterUInt.allocationSize(value.`location`) +
+            FfiConverterUInt.allocationSize(value.`length`) +
+            FfiConverterString.allocationSize(value.`category`)
+    )
+
+    override fun write(value: UniFfiTokenSpan, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`location`, buf)
+            FfiConverterUInt.write(value.`length`, buf)
+            FfiConverterString.write(value.`category`, buf)
+    }
+}
+
+
+
+data class UniFfiTransactionDiff (
+    var `hasChanged`: kotlin.Boolean, 
+    var `oldHash`: kotlin.String, 
+    var `newHash`: kotlin.String, 
+    var `bytesWritten`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITransactionDiff: FfiConverterRustBuffer<UniFfiTransactionDiff> {
+    override fun read(buf: ByteBuffer): UniFfiTransactionDiff {
+        return UniFfiTransactionDiff(
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiTransactionDiff) = (
+            FfiConverterBoolean.allocationSize(value.`hasChanged`) +
+            FfiConverterString.allocationSize(value.`oldHash`) +
+            FfiConverterString.allocationSize(value.`newHash`) +
+            FfiConverterULong.allocationSize(value.`bytesWritten`)
+    )
+
+    override fun write(value: UniFfiTransactionDiff, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`hasChanged`, buf)
+            FfiConverterString.write(value.`oldHash`, buf)
+            FfiConverterString.write(value.`newHash`, buf)
+            FfiConverterULong.write(value.`bytesWritten`, buf)
     }
 }
 
@@ -2919,6 +3570,41 @@ public object FfiConverterTypeUniFFIVfsNodeSummary: FfiConverterRustBuffer<UniFf
             FfiConverterBoolean.write(value.`isDirectory`, buf)
             FfiConverterBoolean.write(value.`isEncrypted`, buf)
             FfiConverterBoolean.write(value.`hasChildren`, buf)
+    }
+}
+
+
+
+/**
+ * VFS windowed paging response record containing nodes and directory total entry count.
+ */
+data class UniFfiVfsPagedResult (
+    var `nodes`: List<UniFfiVfsNodeSummary>, 
+    var `totalCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVfsPagedResult: FfiConverterRustBuffer<UniFfiVfsPagedResult> {
+    override fun read(buf: ByteBuffer): UniFfiVfsPagedResult {
+        return UniFfiVfsPagedResult(
+            FfiConverterSequenceTypeUniFFIVfsNodeSummary.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiVfsPagedResult) = (
+            FfiConverterSequenceTypeUniFFIVfsNodeSummary.allocationSize(value.`nodes`) +
+            FfiConverterUInt.allocationSize(value.`totalCount`)
+    )
+
+    override fun write(value: UniFfiVfsPagedResult, buf: ByteBuffer) {
+            FfiConverterSequenceTypeUniFFIVfsNodeSummary.write(value.`nodes`, buf)
+            FfiConverterUInt.write(value.`totalCount`, buf)
     }
 }
 
@@ -3258,6 +3944,93 @@ public object FfiConverterTypeTTZipError : FfiConverterRustBuffer<TtZipException
 
 
 
+/**
+ * Verification result enumeration exposed to UniFFI.
+ */
+sealed class UniFfiLicenseResult {
+    
+    data class Valid(
+        val `payload`: UniFfiLicensePayload) : UniFfiLicenseResult() {
+        companion object
+    }
+    
+    object InvalidSignature : UniFfiLicenseResult()
+    
+    
+    data class MalformedKey(
+        val `reason`: kotlin.String) : UniFfiLicenseResult() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFILicenseResult : FfiConverterRustBuffer<UniFfiLicenseResult>{
+    override fun read(buf: ByteBuffer): UniFfiLicenseResult {
+        return when(buf.getInt()) {
+            1 -> UniFfiLicenseResult.Valid(
+                FfiConverterTypeUniFFILicensePayload.read(buf),
+                )
+            2 -> UniFfiLicenseResult.InvalidSignature
+            3 -> UniFfiLicenseResult.MalformedKey(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiLicenseResult) = when(value) {
+        is UniFfiLicenseResult.Valid -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeUniFFILicensePayload.allocationSize(value.`payload`)
+            )
+        }
+        is UniFfiLicenseResult.InvalidSignature -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiLicenseResult.MalformedKey -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: UniFfiLicenseResult, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiLicenseResult.Valid -> {
+                buf.putInt(1)
+                FfiConverterTypeUniFFILicensePayload.write(value.`payload`, buf)
+                Unit
+            }
+            is UniFfiLicenseResult.InvalidSignature -> {
+                buf.putInt(2)
+                Unit
+            }
+            is UniFfiLicenseResult.MalformedKey -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -3415,6 +4188,38 @@ public object FfiConverterOptionalTypeCancellationToken: FfiConverterRustBuffer<
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUniFFIEpubBook: FfiConverterRustBuffer<UniFfiEpubBook?> {
+    override fun read(buf: ByteBuffer): UniFfiEpubBook? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFIEpubBook.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiEpubBook?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFIEpubBook.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiEpubBook?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFIEpubBook.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeProgressHandler: FfiConverterRustBuffer<ProgressHandler?> {
     override fun read(buf: ByteBuffer): ProgressHandler? {
         if (buf.get().toInt() == 0) {
@@ -3559,6 +4364,62 @@ public object FfiConverterSequenceTypeInPlaceMutationAction: FfiConverterRustBuf
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffer<List<PathSuggestionItem>> {
+    override fun read(buf: ByteBuffer): List<PathSuggestionItem> {
+        val len = buf.getInt()
+        return List<PathSuggestionItem>(len) {
+            FfiConverterTypePathSuggestionItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PathSuggestionItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePathSuggestionItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PathSuggestionItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePathSuggestionItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer<List<UniFfiCorruptedEntry>> {
+    override fun read(buf: ByteBuffer): List<UniFfiCorruptedEntry> {
+        val len = buf.getInt()
+        return List<UniFfiCorruptedEntry>(len) {
+            FfiConverterTypeUniFFICorruptedEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiCorruptedEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFICorruptedEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiCorruptedEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFICorruptedEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIEntryMetadata: FfiConverterRustBuffer<List<UniFfiEntryMetadata>> {
     override fun read(buf: ByteBuffer): List<UniFfiEntryMetadata> {
         val len = buf.getInt()
@@ -3577,6 +4438,62 @@ public object FfiConverterSequenceTypeUniFFIEntryMetadata: FfiConverterRustBuffe
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIEntryMetadata.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIEpubChapter: FfiConverterRustBuffer<List<UniFfiEpubChapter>> {
+    override fun read(buf: ByteBuffer): List<UniFfiEpubChapter> {
+        val len = buf.getInt()
+        return List<UniFfiEpubChapter>(len) {
+            FfiConverterTypeUniFFIEpubChapter.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiEpubChapter>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIEpubChapter.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiEpubChapter>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIEpubChapter.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer<List<UniFfiTokenSpan>> {
+    override fun read(buf: ByteBuffer): List<UniFfiTokenSpan> {
+        val len = buf.getInt()
+        return List<UniFfiTokenSpan>(len) {
+            FfiConverterTypeUniFFITokenSpan.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiTokenSpan>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFITokenSpan.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiTokenSpan>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFITokenSpan.write(it, buf)
         }
     }
 }
@@ -3638,8 +4555,8 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
 }
         /**
          * Fast path autocompletion query based on directory scanning and prefix matching.
-         */ fun `autocompleteDiskPath`(`rawInput`: kotlin.String, `baseDirectory`: kotlin.String, `maxResults`: kotlin.UInt): List<kotlin.String> {
-            return FfiConverterSequenceString.lift(
+         */ fun `autocompleteDiskPath`(`rawInput`: kotlin.String, `baseDirectory`: kotlin.String, `maxResults`: kotlin.UInt): List<PathSuggestionItem> {
+            return FfiConverterSequenceTypePathSuggestionItem.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_autocomplete_disk_path(
         FfiConverterString.lower(`rawInput`),FfiConverterString.lower(`baseDirectory`),FfiConverterUInt.lower(`maxResults`),_status)
@@ -3649,7 +4566,55 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
-         * Computes CRC32 checksum of a file.
+         * Combines two CRC-32 checksums into the CRC-32 of their concatenation.
+         */ fun `combineCrc32`(`crc1`: kotlin.UInt, `crc2`: kotlin.UInt, `len2`: kotlin.ULong): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_combine_crc32(
+        FfiConverterUInt.lower(`crc1`),FfiConverterUInt.lower(`crc2`),FfiConverterULong.lower(`len2`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes in-memory Adler-32 checksum via hardware SIMD.
+         */ fun `computeBytesAdler32`(`data`: kotlin.ByteArray): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_compute_bytes_adler32(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes in-memory CRC32 checksum via hardware SIMD.
+         */ fun `computeBytesCrc32`(`data`: kotlin.ByteArray): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_compute_bytes_crc32(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes in-memory SHA-256 hex digest via hardware SIMD.
+         */ fun `computeBytesSha256`(`data`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_compute_bytes_sha256(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes CRC32 checksum of a file in zero-copy streaming fashion.
          */
     @Throws(TtZipException::class) fun `computeFileCrc32`(`filePath`: kotlin.String): kotlin.UInt {
             return FfiConverterUInt.lift(
@@ -3662,7 +4627,22 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
-         * Computes SHA-256 hex digest of a file.
+         * Computes hash or checksum of a file in zero-copy chunked streaming fashion.
+         *
+         * Supported algorithms: "crc32", "sha256", "sha1", "md5".
+         */
+    @Throws(TtZipException::class) fun `computeFileHash`(`path`: kotlin.String, `algorithm`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_compute_file_hash(
+        FfiConverterString.lower(`path`),FfiConverterString.lower(`algorithm`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes SHA-256 hex digest of a file in zero-copy streaming fashion.
          */
     @Throws(TtZipException::class) fun `computeFileSha256`(`filePath`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
@@ -3765,6 +4745,18 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
+         * Extracts the parent directory to query and the trailing prefix for real-time autocompletion.
+         */ fun `extractParentAndPrefix`(`rawInput`: kotlin.String, `baseDirectory`: kotlin.String?): UniFfiParentAndPrefix {
+            return FfiConverterTypeUniFFIParentAndPrefix.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_extract_parent_and_prefix(
+        FfiConverterString.lower(`rawInput`),FfiConverterOptionalString.lower(`baseDirectory`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts selected subset of entries from an archive into destination directory.
          */
     @Throws(TtZipException::class) fun `extractSelectedEntries`(`archivePath`: kotlin.String, `targetEntries`: List<kotlin.String>, `destinationDir`: kotlin.String, `password`: kotlin.String?, `progress`: ProgressHandler?, `token`: CancellationToken?): kotlin.ULong {
@@ -3772,6 +4764,19 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_extract_selected_entries(
         FfiConverterString.lower(`archivePath`),FfiConverterSequenceString.lower(`targetEntries`),FfiConverterString.lower(`destinationDir`),FfiConverterOptionalString.lower(`password`),FfiConverterOptionalTypeProgressHandler.lower(`progress`),FfiConverterOptionalTypeCancellationToken.lower(`token`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts a single entry stream preview directly by relative entry path.
+         */
+    @Throws(TtZipException::class) fun `extractSingleEntryByPath`(`archivePath`: kotlin.String, `entryPath`: kotlin.String, `password`: kotlin.String?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_extract_single_entry_by_path(
+        FfiConverterString.lower(`archivePath`),FfiConverterString.lower(`entryPath`),FfiConverterOptionalString.lower(`password`),_status)
 }
     )
     }
@@ -3788,6 +4793,34 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
 }
     )
     }
+    
+
+        /**
+         * Extracts a single entry stream preview with configurable preceding solid budget in MB.
+         */
+    @Throws(TtZipException::class) fun `extractSingleEntryStreamGuarded`(`archivePath`: kotlin.String, `entryIndex`: kotlin.ULong, `password`: kotlin.String?, `maxPrecedingBudgetMb`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded(
+        FfiConverterString.lower(`archivePath`),FfiConverterULong.lower(`entryIndex`),FfiConverterOptionalString.lower(`password`),FfiConverterUInt.lower(`maxPrecedingBudgetMb`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Generates a synthetic benchmark dataset file at high throughput.
+         *
+         * Uses buffered I/O, reusable 4MB chunk memory, and non-blocking SIMD-friendly
+         * pattern synthesis to generate multi-gigabyte datasets in milliseconds.
+         */
+    @Throws(TtZipException::class) fun `generateSyntheticBenchmarkDataset`(`targetPath`: kotlin.String, `targetBytes`: kotlin.ULong, `profileName`: kotlin.String)
+        = 
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset(
+        FfiConverterString.lower(`targetPath`),FfiConverterULong.lower(`targetBytes`),FfiConverterString.lower(`profileName`),_status)
+}
+    
     
 
         /**
@@ -3816,6 +4849,19 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
+         * Inspects a staged temporary file and computes cryptographic diff against its initial hash.
+         */
+    @Throws(TtZipException::class) fun `inspectStagingFileMutation`(`stagedPath`: kotlin.String, `initialHash`: kotlin.String): UniFfiTransactionDiff {
+            return FfiConverterTypeUniFFITransactionDiff.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_inspect_staging_file_mutation(
+        FfiConverterString.lower(`stagedPath`),FfiConverterString.lower(`initialHash`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Joins multi-volume split archive files into a continuous output file.
          */
     @Throws(TtZipException::class) fun `joinSplitVolumeChain`(`firstVolumePath`: kotlin.String, `outputPath`: kotlin.String)
@@ -3825,6 +4871,42 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
         FfiConverterString.lower(`firstVolumePath`),FfiConverterString.lower(`outputPath`),_status)
 }
     
+    
+
+        /**
+         * Natural string comparator exposed via UniFFI.
+         */ fun `naturalCompare`(`a`: kotlin.String, `b`: kotlin.String): kotlin.Int {
+            return FfiConverterInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_natural_compare(
+        FfiConverterString.lower(`a`),FfiConverterString.lower(`b`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Natural sorts a list of paths exposed via UniFFI.
+         */ fun `naturalSortPaths`(`items`: List<kotlin.String>): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_natural_sort_paths(
+        FfiConverterSequenceString.lower(`items`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Parses EPUB book metadata and chapters with zero temporary disk extraction.
+         */ fun `parseEpubMetadata`(`epubPath`: kotlin.String): UniFfiEpubBook? {
+            return FfiConverterOptionalTypeUniFFIEpubBook.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_parse_epub_metadata(
+        FfiConverterString.lower(`epubPath`),_status)
+}
+    )
+    }
     
 
         /**
@@ -3866,6 +4948,35 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     
 
         /**
+         * Resolves the optimal extraction destination directory and wrapping strategy in pure Rust.
+         *
+         * - `entry_paths`: Array of relative archive paths.
+         * - `destination_parent`: Directory where the archive extraction is being triggered.
+         * - `archive_stem`: Base name of the archive file (without extension).
+         * - `collision_policy`: Policy when destination directory already exists ("autoRenameNumbered", etc.).
+         */ fun `resolveSmartExtractDecision`(`entryPaths`: List<kotlin.String>, `destinationParent`: kotlin.String, `archiveStem`: kotlin.String, `collisionPolicy`: kotlin.String): UniFfiSmartExtractDecision {
+            return FfiConverterTypeUniFFISmartExtractDecision.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_resolve_smart_extract_decision(
+        FfiConverterSequenceString.lower(`entryPaths`),FfiConverterString.lower(`destinationParent`),FfiConverterString.lower(`archiveStem`),FfiConverterString.lower(`collisionPolicy`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Normalizes and resolves a raw user input path into a canonical POSIX path.
+         */ fun `sanitizePosixPath`(`rawInput`: kotlin.String, `baseDirectory`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_sanitize_posix_path(
+        FfiConverterString.lower(`rawInput`),FfiConverterOptionalString.lower(`baseDirectory`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Scans a directory and returns lightweight item summaries.
          */
     @Throws(TtZipException::class) fun `scanDirectory`(`path`: kotlin.String, `maxDepth`: kotlin.UInt): List<DiskItemSummary> {
@@ -3873,6 +4984,19 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_scan_directory(
         FfiConverterString.lower(`path`),FfiConverterUInt.lower(`maxDepth`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Slices an archive file into multi-volume segments according to the specified naming pattern.
+         */
+    @Throws(TtZipException::class) fun `sliceArchiveFile`(`sourcePath`: kotlin.String, `splitSizeBytes`: kotlin.ULong, `namingPattern`: kotlin.String): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_slice_archive_file(
+        FfiConverterString.lower(`sourcePath`),FfiConverterULong.lower(`splitSizeBytes`),FfiConverterString.lower(`namingPattern`),_status)
 }
     )
     }
@@ -3898,6 +5022,18 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_sniff_format_file(
         FfiConverterString.lower(`path`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tokenizes source code text into high-precision UTF-16 token spans for syntax highlighting.
+         */ fun `tokenizeSourceCode`(`text`: kotlin.String, `fileExtension`: kotlin.String, `maxLength`: kotlin.UInt): List<UniFfiTokenSpan> {
+            return FfiConverterSequenceTypeUniFFITokenSpan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_tokenize_source_code(
+        FfiConverterString.lower(`text`),FfiConverterString.lower(`fileExtension`),FfiConverterUInt.lower(`maxLength`),_status)
 }
     )
     }
@@ -3946,6 +5082,86 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_i18n_localize_error(
         FfiConverterInt.lower(`errorCode`),FfiConverterOptionalString.lower(`param1`),FfiConverterOptionalString.lower(`param2`),FfiConverterTypeAppLanguage.lower(`lang`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes HMAC-SHA256 verifier hash of derived key and salt for master password verification.
+         */ fun `vaultComputeVerifier`(`key`: kotlin.ByteArray, `salt`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_vault_compute_verifier(
+        FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`salt`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Decrypts an authenticated payload generated by `vault_encrypt_payload`.
+         *
+         * Input format: `[12-byte IV] || [Ciphertext] || [16-byte Tag]`
+         */
+    @Throws(TtZipException::class) fun `vaultDecryptPayload`(`key`: kotlin.ByteArray, `encryptedData`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_vault_decrypt_payload(
+        FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`encryptedData`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Derives a 256-bit symmetric encryption key using PBKDF2-HMAC-SHA256.
+         */
+    @Throws(TtZipException::class) fun `vaultDeriveKey`(`password`: kotlin.String, `salt`: kotlin.ByteArray, `iterations`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_vault_derive_key(
+        FfiConverterString.lower(`password`),FfiConverterByteArray.lower(`salt`),FfiConverterUInt.lower(`iterations`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Encrypts an arbitrary payload using AES-256-GCM with a fresh random 12-byte IV.
+         *
+         * Output format: `[12-byte IV] || [Ciphertext] || [16-byte Tag]`
+         */
+    @Throws(TtZipException::class) fun `vaultEncryptPayload`(`key`: kotlin.ByteArray, `payload`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_vault_encrypt_payload(
+        FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`payload`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Verifies full archive integrity in single-pass streaming fashion without N-roundtrip FFI overhead.
+         */
+    @Throws(TtZipException::class) fun `verifyArchiveIntegrity`(`archivePath`: kotlin.String, `password`: kotlin.String?, `progress`: ProgressHandler?, `token`: CancellationToken?): UniFfiIntegrityReport {
+            return FfiConverterTypeUniFFIIntegrityReport.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_verify_archive_integrity(
+        FfiConverterString.lower(`archivePath`),FfiConverterOptionalString.lower(`password`),FfiConverterOptionalTypeProgressHandler.lower(`progress`),FfiConverterOptionalTypeCancellationToken.lower(`token`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Verifies a license key against embedded or custom Ed25519 public key.
+         */ fun `verifyLicenseKey`(`licenseKey`: kotlin.String, `publicKeyBase64`: kotlin.String?): UniFfiLicenseResult {
+            return FfiConverterTypeUniFFILicenseResult.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_verify_license_key(
+        FfiConverterString.lower(`licenseKey`),FfiConverterOptionalString.lower(`publicKeyBase64`),_status)
 }
     )
     }

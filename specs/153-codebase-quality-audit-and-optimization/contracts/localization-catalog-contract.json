@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LocaleCatalogContract",
+  "description": "JSON schema for TTZip multi-language string localization catalogs",
+  "type": "object",
+  "required": [
+    "language_code",
+    "catalog_version",
+    "entry_count",
+    "strings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "language_code": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "de",
+        "es",
+        "fr"
+      ]
+    },
+    "catalog_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "strings": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "propertyNames": {
+        "pattern": "^[a-z]+(\\.[a-z0-9_]+)+$"
+      }
+    }
+  }
+}

@@ -173,25 +173,17 @@ pub fn repair_damaged_tar(damaged_path: &Path, repaired_path: &Path) -> Result<u
             continue;
         }
 
-        // Verify TAR checksum (offset 148..156)
-        let chk_bytes = &block[148..156];
-        let chk_str = std::str::from_utf8(chk_bytes).unwrap_or("").trim_matches(&['\0', ' '][..]);
-        let expected_chk = u32::from_str_radix(chk_str, 8).unwrap_or(0);
-
-        let mut calc_chk = 0u32;
-        for (i, &b) in block.iter().enumerate() {
-            if (148..156).contains(&i) {
-                calc_chk += b' ' as u32;
-            } else {
-                calc_chk += b as u32;
+        let block_arr: &[u8; 512] = match block.try_into() {
+            Ok(b) => b,
+            Err(_) => {
+                offset += 512;
+                continue;
             }
-        }
+        };
 
-        if expected_chk != 0 && (expected_chk == calc_chk || expected_chk == calc_chk.wrapping_sub(0x100)) {
+        if crate::archive::tar::header::verify_tar_checksum(block_arr) {
             // Valid header block found
-            let size_bytes = &block[124..136];
-            let size_str = std::str::from_utf8(size_bytes).unwrap_or("").trim_matches(&['\0', ' '][..]);
-            let file_size = usize::from_str_radix(size_str, 8).unwrap_or(0);
+            let file_size = crate::archive::tar::header::parse_octal(&block[124..136]).unwrap_or(0) as usize;
 
             let payload_blocks = file_size.div_ceil(512);
             let available_payload = total_len.saturating_sub(offset + 512);

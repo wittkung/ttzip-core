@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FL2StreamCompressionContract",
+  "description": "Strongly-typed contract for streaming Fast-LZMA2 compression lifecycle events, progress, and telemetry.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "event_type",
+    "total_in_bytes",
+    "total_out_bytes",
+    "active_workers",
+    "allocated_arena_bytes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique session identifier for the stream pipeline"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["session_created", "chunk_processed", "flushed", "completed", "errored"],
+      "description": "Current lifecycle transition event"
+    },
+    "total_in_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total uncompressed bytes ingested"
+    },
+    "total_out_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total compressed bytes emitted"
+    },
+    "active_workers": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32,
+      "description": "Number of active threads currently working"
+    },
+    "allocated_arena_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 536870912,
+      "description": "Current allocated arena memory in bytes (guaranteed <= 512MB)"
+    }
+  }
+}

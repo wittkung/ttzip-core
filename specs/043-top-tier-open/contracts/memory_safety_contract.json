@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MmapBufferHandleSpec",
+  "description": "ARC/RAII-based memory-mapped buffer handle contract ensuring strict Swift 6 Sendable and deterministic deallocation",
+  "type": "object",
+  "required": [
+    "base_address_pointer",
+    "byte_count",
+    "file_descriptor",
+    "owns_file_descriptor",
+    "is_strict_sendable"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "base_address_pointer": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "byte_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "file_descriptor": {
+      "type": "integer",
+      "minimum": -1
+    },
+    "owns_file_descriptor": {
+      "type": "boolean"
+    },
+    "is_strict_sendable": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  }
+}

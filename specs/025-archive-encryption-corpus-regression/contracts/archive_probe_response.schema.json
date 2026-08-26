@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArchiveProbeResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "archivePath",
+    "format",
+    "encryptionTier",
+    "isEncrypted",
+    "probeDurationMs",
+    "status"
+  ],
+  "properties": {
+    "archivePath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute filesystem path to target archive"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "ZIP",
+        "7Z",
+        "TAR",
+        "RAR4",
+        "RAR5",
+        "UNKNOWN"
+      ],
+      "description": "Detected archive format"
+    },
+    "encryptionTier": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "DATA_ONLY",
+        "HEADER_AND_DATA",
+        "UNSUPPORTED"
+      ],
+      "description": "Classification of archive encryption tier"
+    },
+    "isEncrypted": {
+      "type": "boolean",
+      "description": "True if any encryption is present"
+    },
+    "detectedCipher": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "WinZip-AES-128",
+        "WinZip-AES-256",
+        "ZipCrypto",
+        "7z-AES-256",
+        "RAR4-AES-128",
+        "RAR5-AES-256",
+        "Unknown",
+        null
+      ],
+      "description": "Primary detected cipher algorithm"
+    },
+    "matchingPassphrase": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The matching passphrase from candidates if verified"
+    },
+    "probeDurationMs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Probe execution time in milliseconds"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "PASSWORD_REQUIRED",
+        "WRONG_PASSWORD",
+        "CORRUPTED",
+        "FAILED"
+      ],
+      "description": "Execution status outcome"
+    },
+    "errorMessage": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Detailed error diagnostic if failed"
+    }
+  }
+}

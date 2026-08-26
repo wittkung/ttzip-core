@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include "../../Sources/CTTZipBridge/include/ttzip.h"
+#include "../include/ttzip.h"
 
 static TTZipArchiveFormat parse_format(const char *fmt_str) {
     if (!fmt_str) return TTZIP_ARCHIVE_FORMAT_ZIP;

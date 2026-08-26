@@ -90,6 +90,19 @@ public final class SecureBytes: @unchecked Sendable {
         }
     }
 
+    /// Initializes buffer from byte array.
+    public convenience init(bytes: [UInt8]) {
+        self.init(data: Data(bytes))
+    }
+
+    /// Returns a copy of the secure buffer contents as `Data`.
+    public func toData() -> Data {
+        withUnsafeBytes { buf in
+            guard let base = buf.baseAddress, buf.count > 0 else { return Data() }
+            return Data(bytes: base, count: buf.count)
+        }
+    }
+
     deinit {
         wipeAndFree()
     }

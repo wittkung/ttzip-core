@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature183Contract",
+  "description": "Contract for Feature 183 archive dispatch decoupling and protocol modularization.",
+  "type": "object",
+  "required": [
+    "all_files_under_350_loc",
+    "zero_regression"
+  ],
+  "properties": {
+    "all_files_under_350_loc": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

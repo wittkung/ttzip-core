@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipProgressLogEventContract",
+  "description": "Schema defining asynchronous event broadcasts for progress updates, cancellation signals, and structured logging",
+  "type": "object",
+  "required": ["eventType", "timestampEpochMs", "taskId", "eventPayload"],
+  "properties": {
+    "eventType": {
+      "type": "string",
+      "enum": ["progressUpdate", "cancellationSignal", "logMessage"]
+    },
+    "timestampEpochMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "taskId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventPayload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "eventType": { "const": "progressUpdate" }
+        }
+      },
+      "then": {
+        "properties": {
+          "eventPayload": {
+            "type": "object",
+            "required": ["processedBytes", "totalBytes", "currentEntryPath", "completedEntriesCount", "totalEntriesCount"],
+            "properties": {
+              "processedBytes": { "type": "integer", "minimum": 0 },
+              "totalBytes": { "type": "integer", "minimum": 0 },
+              "currentEntryPath": { "type": "string" },
+              "completedEntriesCount": { "type": "integer", "minimum": 0 },
+              "totalEntriesCount": { "type": "integer", "minimum": 0 },
+              "instantThroughputMBps": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": { "const": "cancellationSignal" }
+        }
+      },
+      "then": {
+        "properties": {
+          "eventPayload": {
+            "type": "object",
+            "required": ["isCancelled", "cancellationReason"],
+            "properties": {
+              "isCancelled": { "type": "boolean" },
+              "cancellationReason": { "type": "string", "enum": ["userRequested", "timeout", "resourceExhaustion", "fatalError"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": { "const": "logMessage" }
+        }
+      },
+      "then": {
+        "properties": {
+          "eventPayload": {
+            "type": "object",
+            "required": ["level", "targetModule", "message"],
+            "properties": {
+              "level": { "type": "string", "enum": ["debug", "info", "warning", "error"] },
+              "targetModule": { "type": "string" },
+              "message": { "type": "string", "minLength": 1 },
+              "file": { "type": ["string", "null"] },
+              "line": { "type": ["integer", "null"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ]
+}

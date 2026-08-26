@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SevenZipCryptoProperties",
+  "description": "Schema for 7z AES-256 coder properties",
+  "type": "object",
+  "properties": {
+    "num_cycles_power": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 24,
+      "description": "Power of 2 for SHA-256 iteration rounds in KDF"
+    },
+    "salt_size": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16,
+      "description": "Length of salt in bytes"
+    },
+    "iv_size": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16,
+      "description": "Length of IV encoded in archive header"
+    },
+    "salt_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{0,32}$",
+      "description": "Hex-encoded salt bytes"
+    },
+    "iv_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{32}$",
+      "description": "Hex-encoded 16-byte aligned initialization vector"
+    }
+  },
+  "required": [
+    "num_cycles_power",
+    "salt_size",
+    "iv_size",
+    "salt_hex",
+    "iv_hex"
+  ],
+  "additionalProperties": false
+}

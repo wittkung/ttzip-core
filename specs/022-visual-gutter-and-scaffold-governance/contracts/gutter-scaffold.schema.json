@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipGutterAndScaffoldTopologySchema",
+  "type": "object",
+  "properties": {
+    "topBarOffset": {
+      "type": "number",
+      "enum": [38.0]
+    },
+    "headerBarHeight": {
+      "type": "number",
+      "enum": [52.0]
+    },
+    "goldenLineY": {
+      "type": "number",
+      "enum": [90.0]
+    },
+    "gutterWidth": {
+      "type": "number",
+      "enum": [8.0]
+    },
+    "workspaceLeadingPadding": {
+      "type": "number",
+      "enum": [8.0]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "topBarOffset",
+    "headerBarHeight",
+    "goldenLineY",
+    "gutterWidth",
+    "workspaceLeadingPadding"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RustSinkingContract",
+  "description": "Schema verifying invariants of Rust core self-sufficiency and Swift layer thinning.",
+  "type": "object",
+  "required": ["rust_native_standards", "rust_native_crypto_zeroize", "rust_native_rs_fec", "rust_native_tar_pax", "zero_regression"],
+  "properties": {
+    "rust_native_standards": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "rust_native_crypto_zeroize": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "rust_native_rs_fec": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "rust_native_tar_pax": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

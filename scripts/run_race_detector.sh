@@ -36,7 +36,7 @@ echo "  [PASS] Rust property tests passed."
 # 3. Swift Strict Concurrency Tests (if swift toolchain available)
 echo "--> [3/3] Running Swift 6 Strict Concurrency & Actor Isolation Tests..."
 if command -v swift >/dev/null 2>&1; then
-    swift test --filter TTZipCoreIntegrationTests >/dev/null 2>&1 || true
+    swift test --filter TTZipCoreIntegrationTests
     echo "  [PASS] Swift 6 Actor concurrency verified."
 fi
 

@@ -45,112 +45,113 @@ PASSED=0
 FAILED=0
 SKIPPED=0
 
+declare -a SDK_KEYS=()
+declare -a SDK_STATUSES=()
+declare -a SDK_DURATIONS=()
+declare -a SDK_AVAIL=()
+
+get_time_ms() {
+    python3 -c 'import time; print(int(time.time() * 1000))'
+}
+
+run_suite() {
+    local key="$1"
+    local name="$2"
+    local cmd="$3"
+    local check_tool="$4"
+
+    SDK_KEYS+=("${key}")
+
+    if [ -n "${check_tool}" ] && ! command -v "${check_tool}" >/dev/null 2>&1; then
+        echo -e "  [SKIP] ${name} toolchain (${check_tool}) not available."
+        SKIPPED=$((SKIPPED + 1))
+        SDK_STATUSES+=("skipped")
+        SDK_DURATIONS+=(0)
+        SDK_AVAIL+=("false")
+        return
+    fi
+
+    SDK_AVAIL+=("true")
+    local t0=$(get_time_ms)
+    set +e
+    TMP_LOG=$(mktemp)
+    eval "${cmd}" > "${TMP_LOG}" 2>&1
+    local exit_code=$?
+    set -e
+    local t1=$(get_time_ms)
+    local dur=$((t1 - t0))
+    SDK_DURATIONS+=("${dur}")
+
+    if [ ${exit_code} -eq 0 ]; then
+        echo -e "  [PASS] ${name} test suite passed (${dur}ms)."
+        PASSED=$((PASSED + 1))
+        SDK_STATUSES+=("passed")
+    else
+        echo -e "  [FAIL] ${name} test suite failed with exit code ${exit_code} (${dur}ms)."
+        tail -n 15 "${TMP_LOG}"
+        FAILED=$((FAILED + 1))
+        SDK_STATUSES+=("failed")
+    fi
+    rm -f "${TMP_LOG}"
+}
+
 # 1. Rust SDK
 echo ">>> [1/9] Testing Pure Rust & C-ABI Crate Suites..."
-if [ -d "rust/ttzip-engine" ]; then
-    echo "  [PASS] Rust ttzip-engine structure verified."
-    PASSED=$((PASSED + 1))
-else
-    echo "  [FAIL] Rust ttzip-engine not found."
-    FAILED=$((FAILED + 1))
-fi
+run_suite "rust" "Rust Microkernel & C-ABI" "cargo test -p ttzip-engine --manifest-path rust/ttzip-engine/Cargo.toml" "cargo"
 
 # 2. Swift 6 SDK
 echo ">>> [2/9] Testing Swift 6 Core SDK..."
-if [ -d "Sources/TTZipCore" ]; then
-    echo "  [PASS] Swift 6 TTZipCore facade structure verified."
-    PASSED=$((PASSED + 1))
-else
-    echo "  [FAIL] Swift 6 TTZipCore not found."
-    FAILED=$((FAILED + 1))
-fi
+run_suite "swift" "Swift 6 TTZipCore Package" "swift test --filter UniFFISymbolGateTests" "swift"
 
 # 3. Python 3 SDK
 echo ">>> [3/9] Testing Python PyO3 SDK (16 Formats Matrix)..."
-if command -v python3 >/dev/null 2>&1; then
-    PYTHONPATH=python python3 -m unittest discover -s python/tests >/dev/null 2>&1
-    echo "  [PASS] Python SDK 16-format & benchmark matrix passed."
-    PASSED=$((PASSED + 1))
-else
-    echo "  [SKIP] Python 3 not available."
-    SKIPPED=$((SKIPPED + 1))
-fi
+run_suite "python" "Python 3 SDK & 16-Format Matrix" "PYTHONPATH=python python3 -m unittest discover -s python/tests" "python3"
 
 # 4. Node.js / TypeScript SDK
 echo ">>> [4/9] Testing Node.js / TypeScript SDK..."
-if command -v node >/dev/null 2>&1; then
-    node node/test.js >/dev/null 2>&1
-    echo "  [PASS] Node.js & TypeScript SDK passed."
-    PASSED=$((PASSED + 1))
-else
-    echo "  [SKIP] Node.js not available."
-    SKIPPED=$((SKIPPED + 1))
-fi
+run_suite "node" "Node.js & TypeScript SDK" "node node/test.js" "node"
 
 # 5. C11 Native SDK
 echo ">>> [5/9] Testing C11 Native SDK..."
-LIB_ENGINE="rust/target/release/libttzip_engine.a"
-if [ -f "${LIB_ENGINE}" ] && command -v clang >/dev/null 2>&1; then
-    clang -std=c11 -I Sources/CTTZipBridge/include sdk/c/test_c_sdk.c "${LIB_ENGINE}" -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk >/dev/null 2>&1 || true
-    if [ -x "sdk/c/test_c_sdk" ]; then
-        ./sdk/c/test_c_sdk >/dev/null
-        echo "  [PASS] C11 SDK binary tests passed."
-        PASSED=$((PASSED + 1))
-    else
-        echo "  [SKIP] C11 test binary not executable."
-        SKIPPED=$((SKIPPED + 1))
-    fi
-else
-    echo "  [SKIP] C11 compiler or static library not ready."
-    SKIPPED=$((SKIPPED + 1))
-fi
+LIB_VENDOR="Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
+run_suite "c" "C11 Native SDK" "${C_CMD}" "clang"
 
 # 6. Modern C++20 SDK
 echo ">>> [6/9] Testing Modern C++20 SDK..."
-if [ -f "${LIB_ENGINE}" ] && command -v clang++ >/dev/null 2>&1; then
-    clang++ -std=c++20 -I Sources/CTTZipBridge/include sdk/cpp/test_cpp_sdk.cpp "${LIB_ENGINE}" -larchive -lbz2 -lz -llzma -framework Security -o sdk/cpp/test_cpp_sdk >/dev/null 2>&1 || true
-    if [ -x "sdk/cpp/test_cpp_sdk" ]; then
-        ./sdk/cpp/test_cpp_sdk >/dev/null
-        echo "  [PASS] Modern C++20 SDK binary tests passed."
-        PASSED=$((PASSED + 1))
-    else
-        echo "  [SKIP] C++20 test binary not executable."
-        SKIPPED=$((SKIPPED + 1))
-    fi
-else
-    echo "  [SKIP] C++20 compiler or static library not ready."
-    SKIPPED=$((SKIPPED + 1))
-fi
+CPP_CMD="clang++ -std=c++20 -I sdk/include sdk/cpp/test_cpp_sdk.cpp ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/cpp/test_cpp_sdk && ./sdk/cpp/test_cpp_sdk"
+run_suite "cpp" "Modern C++20 SDK" "${CPP_CMD}" "clang++"
 
 # 7. Java 22+ & Kotlin Coroutines SDK
 echo ">>> [7/9] Testing Java 22+ Foreign Function & Memory (FFM) SDK..."
-if [ -f "sdk/jvm/src/main/java/com/ttzip/TTZip.java" ] && [ -f "sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt" ]; then
-    echo "  [PASS] Java 22+ FFM & Kotlin Coroutines SDK bindings verified."
-    PASSED=$((PASSED + 1))
+if command -v javac >/dev/null 2>&1; then
+    run_suite "java_kotlin" "Java 22+ Panama FFM SDK" "test -f sdk/jvm/src/main/java/com/ttzip/TTZip.java && test -f sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt" ""
 else
-    echo "  [SKIP] Java SDK sources not found."
+    echo "  [SKIP] Java toolchain (javac) not available."
     SKIPPED=$((SKIPPED + 1))
+    SDK_KEYS+=("java_kotlin")
+    SDK_STATUSES+=("skipped")
+    SDK_DURATIONS+=(0)
+    SDK_AVAIL+=("false")
 fi
 
 # 8. Go SDK (io/fs.FS)
 echo ">>> [8/9] Testing Go SDK (io/fs.FS & context)..."
-if command -v go >/dev/null 2>&1 && [ -f "${LIB_ENGINE}" ]; then
-    (cd sdk/go && go test ./... >/dev/null 2>&1)
-    echo "  [PASS] Go SDK io/fs.FS & context tests passed."
-    PASSED=$((PASSED + 1))
-else
-    echo "  [SKIP] Go toolchain or static library not ready."
-    SKIPPED=$((SKIPPED + 1))
-fi
+run_suite "go" "Go SDK (io/fs.FS & context)" "(cd sdk/go && go test ./...)" "go"
 
 # 9. Dart & C# Binding Verification
 echo ">>> [9/9] Testing Dart / Flutter & C# .NET SDK Assets..."
-if [ -f "sdk/dart/lib/ttzip.dart" ] && [ -f "sdk/dotnet/TTZip.cs" ]; then
-    echo "  [PASS] Dart / Flutter (FFI) and C# .NET (ReadOnlySpan/IAsyncEnumerable) validated."
-    PASSED=$((PASSED + 1))
+if command -v dart >/dev/null 2>&1; then
+    run_suite "dart_dotnet" "Dart / Flutter & C# .NET SDK" "(cd sdk/dart && dart test)" "dart"
+elif command -v dotnet >/dev/null 2>&1; then
+    run_suite "dart_dotnet" "Dart / Flutter & C# .NET SDK" "(cd sdk/dotnet && dotnet test)" "dotnet"
 else
-    echo "  [FAIL] Dart/DotNet SDK files missing."
-    FAILED=$((FAILED + 1))
+    echo "  [SKIP] Dart / .NET toolchains not available in current environment."
+    SKIPPED=$((SKIPPED + 1))
+    SDK_KEYS+=("dart_dotnet")
+    SDK_STATUSES+=("skipped")
+    SDK_DURATIONS+=(0)
+    SDK_AVAIL+=("false")
 fi
 
 echo "======================================================================"
@@ -159,25 +160,50 @@ echo "======================================================================"
 
 if [ -n "${JSON_OUT}" ]; then
     mkdir -p "$(dirname "${JSON_OUT}")"
-    cat << JSONEOF > "${JSON_OUT}"
-{
-  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "totalSdks": $((PASSED + FAILED + SKIPPED)),
-  "passedCount": ${PASSED},
-  "failedCount": ${FAILED},
-  "skippedCount": ${SKIPPED},
-  "results": [
-    { "language": "rust", "toolchainAvailable": true, "status": "passed", "durationMs": 10 },
-    { "language": "swift", "toolchainAvailable": true, "status": "passed", "durationMs": 10 },
-    { "language": "python", "toolchainAvailable": true, "status": "passed", "durationMs": 260 },
-    { "language": "node", "toolchainAvailable": true, "status": "passed", "durationMs": 80 },
-    { "language": "c", "toolchainAvailable": true, "status": "passed", "durationMs": 40 },
-    { "language": "cpp", "toolchainAvailable": true, "status": "passed", "durationMs": 50 },
-    { "language": "java_kotlin", "toolchainAvailable": true, "status": "passed", "durationMs": 20 },
-    { "language": "go", "toolchainAvailable": true, "status": "passed", "durationMs": 350 },
-    { "language": "dart_dotnet", "toolchainAvailable": true, "status": "passed", "durationMs": 5 }
-  ]
+    python3 -c "
+import json
+import sys
+
+keys = sys.argv[1].split(',')
+statuses = sys.argv[2].split(',')
+durations = [int(x) for x in sys.argv[3].split(',')]
+avails = [x.lower() == 'true' for x in sys.argv[4].split(',')]
+
+results = []
+for i in range(len(keys)):
+    results.append({
+        'language': keys[i],
+        'toolchainAvailable': avails[i] if i < len(avails) else False,
+        'status': statuses[i] if i < len(statuses) else 'skipped',
+        'durationMs': durations[i] if i < len(durations) else 0
+    })
+
+report = {
+    'timestamp': sys.argv[5],
+    'totalSdks': int(sys.argv[6]),
+    'passedCount': int(sys.argv[7]),
+    'failedCount': int(sys.argv[8]),
+    'skippedCount': int(sys.argv[9]),
+    'results': results
 }
-JSONEOF
-    echo "Exported JSON matrix report to ${JSON_OUT}"
+
+out_path = sys.argv[10]
+with open(out_path, 'w') as f:
+    json.dump(report, f, indent=2)
+print('Exported JSON matrix report to ' + out_path)
+" "$(IFS=,; echo "${SDK_KEYS[*]}")" \
+  "$(IFS=,; echo "${SDK_STATUSES[*]}")" \
+  "$(IFS=,; echo "${SDK_DURATIONS[*]}")" \
+  "$(IFS=,; echo "${SDK_AVAIL[*]}")" \
+  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  "$((PASSED + FAILED + SKIPPED))" \
+  "${PASSED}" \
+  "${FAILED}" \
+  "${SKIPPED}" \
+  "${JSON_OUT}"
 fi
+
+if [ ${FAILED} -gt 0 ]; then
+    exit 1
+fi
+exit 0

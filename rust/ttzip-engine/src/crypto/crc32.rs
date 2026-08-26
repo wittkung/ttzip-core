@@ -372,9 +372,85 @@ pub fn crc32(data: &[u8]) -> u32 {
     crc32_fast(0, data)
 }
 
+fn gf2_matrix_times(mat: &[u32; 32], mut vec: u32) -> u32 {
+    let mut sum = 0u32;
+    let mut idx = 0;
+    while vec != 0 {
+        if (vec & 1) != 0 {
+            sum ^= mat[idx];
+        }
+        vec >>= 1;
+        idx += 1;
+    }
+    sum
+}
+
+fn gf2_matrix_square(square: &mut [u32; 32], mat: &[u32; 32]) {
+    for n in 0..32 {
+        square[n] = gf2_matrix_times(mat, mat[n]);
+    }
+}
+
+/// Combines two CRC-32 checksums into the CRC-32 of their concatenation.
+pub fn crc32_combine(crc1: u32, crc2: u32, mut len2: u64) -> u32 {
+    if len2 == 0 {
+        return crc1;
+    }
+
+    let mut even = [0u32; 32];
+    let mut odd = [0u32; 32];
+
+    odd[0] = 0xedb88320;
+    let mut row = 1u32;
+    for n in 1..32 {
+        odd[n] = row;
+        row <<= 1;
+    }
+
+    gf2_matrix_square(&mut even, &odd);
+    gf2_matrix_square(&mut odd, &even);
+
+    let mut c1 = crc1;
+    loop {
+        gf2_matrix_square(&mut even, &odd);
+        if (len2 & 1) != 0 {
+            c1 = gf2_matrix_times(&even, c1);
+        }
+        len2 >>= 1;
+        if len2 == 0 {
+            break;
+        }
+
+        gf2_matrix_square(&mut odd, &even);
+        if (len2 & 1) != 0 {
+            c1 = gf2_matrix_times(&odd, c1);
+        }
+        len2 >>= 1;
+        if len2 == 0 {
+            break;
+        }
+    }
+
+    c1 ^ crc2
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_crc32_combine() {
+        let part1 = b"12345";
+        let part2 = b"6789";
+        let full = b"123456789";
+
+        let crc1 = crc32(part1);
+        let crc2 = crc32(part2);
+        let crc_full = crc32(full);
+
+        let combined = crc32_combine(crc1, crc2, part2.len() as u64);
+        assert_eq!(combined, crc_full);
+    }
 
     #[test]
     fn test_crc32_empty() {

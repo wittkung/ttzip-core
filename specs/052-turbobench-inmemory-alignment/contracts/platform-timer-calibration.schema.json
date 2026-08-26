@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PlatformTimerCalibration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "platformOS",
+    "architecture",
+    "timerBackend",
+    "frequencyHz",
+    "timebaseNumer",
+    "timebaseDenom",
+    "resolutionNanos",
+    "overheadNanos"
+  ],
+  "properties": {
+    "platformOS": {
+      "type": "string",
+      "enum": ["macOS", "Windows", "Linux"]
+    },
+    "architecture": {
+      "type": "string",
+      "enum": ["arm64", "x86_64", "arm", "x86"]
+    },
+    "timerBackend": {
+      "type": "string",
+      "enum": [
+        "mach_absolute_time",
+        "clock_gettime_nsec_np_CLOCK_UPTIME_RAW",
+        "QueryPerformanceCounter",
+        "clock_gettime_CLOCK_MONOTONIC_RAW"
+      ]
+    },
+    "frequencyHz": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timebaseNumer": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timebaseDenom": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "resolutionNanos": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "overheadNanos": {
+      "type": "number",
+      "minimum": 0.0
+    }
+  }
+}

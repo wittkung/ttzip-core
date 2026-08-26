@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LiblzmaVendorBuildContract",
+  "description": "Schema definition for Vendor/liblzma static library build flags and configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "target_architectures",
+    "deployment_target",
+    "build_type",
+    "enable_arm64_crc32",
+    "enable_neon",
+    "output_static_library"
+  ],
+  "properties": {
+    "target_architectures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["arm64", "x86_64"]
+      },
+      "minItems": 1,
+      "maxItems": 2,
+      "description": "Target Mach-O CPU architectures"
+    },
+    "deployment_target": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Minimum macOS deployment target version (e.g. 14.0)"
+    },
+    "build_type": {
+      "type": "string",
+      "enum": ["Debug", "Release", "RelWithDebInfo"],
+      "description": "CMake / Compiler optimization profile"
+    },
+    "enable_arm64_crc32": {
+      "type": "boolean",
+      "description": "Whether ARMv8 ACLE CRC32 hardware instructions are enabled"
+    },
+    "enable_neon": {
+      "type": "boolean",
+      "description": "Whether ARM NEON Advanced SIMD vectorization is enabled"
+    },
+    "output_static_library": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to output static library file (e.g. Vendor/lib/liblzma.a)"
+    },
+    "mas_sandbox_compliant": {
+      "type": "boolean",
+      "description": "Whether built binary is 100% compliant with MAS sandbox requirements"
+    }
+  }
+}

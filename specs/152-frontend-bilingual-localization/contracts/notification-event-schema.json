@@ -1,0 +1,57 @@
+{
+  "": "http://json-schema.org/draft-07/schema#",
+  "title": "SystemNotificationEventSchema",
+  "description": "Contract for dispatching localized system notifications and modal alerts.",
+  "type": "object",
+  "required": [
+    "notificationId",
+    "language",
+    "category",
+    "title",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "notificationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "de",
+        "fr",
+        "es"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "COMPRESSION_COMPLETED",
+        "EXTRACTION_COMPLETED",
+        "OPERATION_FAILED",
+        "SECURITY_INTERCEPTED"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1
+    },
+    "durationSeconds": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "payloadSizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

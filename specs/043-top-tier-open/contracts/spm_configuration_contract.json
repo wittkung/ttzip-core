@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SPMConfigurationSpec",
+  "description": "Swift Package Manager configuration contract guaranteeing zero unsafe flags and clean binaryTarget isolation",
+  "type": "object",
+  "required": [
+    "package_name",
+    "swift_tools_version",
+    "zero_unsafe_flags",
+    "binary_targets",
+    "system_libraries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "package_name": {
+      "type": "string",
+      "enum": ["TTZip"]
+    },
+    "swift_tools_version": {
+      "type": "string",
+      "enum": ["6.0"]
+    },
+    "zero_unsafe_flags": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "binary_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["TTZipVendor"]
+      },
+      "minItems": 1
+    },
+    "system_libraries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["bz2", "z", "iconv", "xml2", "expat", "c++"]
+      },
+      "minItems": 6
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LZMAEncoderMatchFinderContract",
+  "description": "Schema definition for LZMA / LZMA2 Match Finder state configuration and match queries",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "buffer_size",
+    "dict_size",
+    "nice_len",
+    "cut_value",
+    "algorithm",
+    "vector_acceleration"
+  ],
+  "properties": {
+    "buffer_size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1073741824,
+      "description": "Size in bytes of active input memory buffer"
+    },
+    "dict_size": {
+      "type": "integer",
+      "minimum": 4096,
+      "maximum": 1073741824,
+      "description": "Sliding dictionary history size in bytes (power of 2)"
+    },
+    "nice_len": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 273,
+      "description": "Threshold match length for early search termination"
+    },
+    "cut_value": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128,
+      "description": "Maximum hash chain search depth limit"
+    },
+    "algorithm": {
+      "type": "string",
+      "enum": ["HC3", "HC4", "BT2", "BT3", "BT4"],
+      "description": "Match finder algorithm type"
+    },
+    "vector_acceleration": {
+      "type": "string",
+      "enum": ["NONE", "SWAR_64", "NEON_128", "HYBRID_SWAR_NEON"],
+      "description": "Hardware SIMD vector acceleration mode"
+    },
+    "matches_output": {
+      "type": "array",
+      "description": "List of discovered match candidate length-distance pairs",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["len", "dist"],
+        "properties": {
+          "len": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 273,
+            "description": "Matched byte prefix length"
+          },
+          "dist": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741823,
+            "description": "0-based backward dictionary distance"
+          }
+        }
+      }
+    }
+  }
+}

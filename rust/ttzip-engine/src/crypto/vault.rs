@@ -317,6 +317,143 @@ pub fn aes256_gcm_decrypt(
     Ok(())
 }
 
+/// Standard HMAC-SHA256 (RFC 2104 / RFC 4231).
+pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let mut k_pad = [0u8; 64];
+    if key.len() > 64 {
+        let digest = crate::crypto::sha256::FastSha256::digest(key);
+        k_pad[..32].copy_from_slice(&digest);
+    } else {
+        k_pad[..key.len()].copy_from_slice(key);
+    }
+
+    let mut k_ipad = [0x36u8; 64];
+    let mut k_opad = [0x5cu8; 64];
+    for i in 0..64 {
+        k_ipad[i] ^= k_pad[i];
+        k_opad[i] ^= k_pad[i];
+    }
+
+    let mut inner = crate::crypto::sha256::FastSha256::new();
+    inner.update(&k_ipad);
+    inner.update(data);
+    let inner_hash = inner.finalize();
+
+    let mut outer = crate::crypto::sha256::FastSha256::new();
+    outer.update(&k_opad);
+    outer.update(&inner_hash);
+    let result = outer.finalize();
+
+    k_pad.zeroize();
+    k_ipad.zeroize();
+    k_opad.zeroize();
+    compiler_fence(Ordering::SeqCst);
+
+    result
+}
+
+/// PBKDF2-HMAC-SHA256 key derivation (RFC 2898 / RFC 6070).
+pub fn pbkdf2_hmac_sha256(
+    password: &[u8],
+    salt: &[u8],
+    rounds: u32,
+    out_key: &mut [u8],
+) -> Result<(), TTZipStatus> {
+    if password.is_empty() && salt.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+    if rounds == 0 || out_key.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+
+    let mut k_pad = [0u8; 64];
+    if password.len() > 64 {
+        let digest = crate::crypto::sha256::FastSha256::digest(password);
+        k_pad[..32].copy_from_slice(&digest);
+    } else {
+        k_pad[..password.len()].copy_from_slice(password);
+    }
+
+    let mut k_ipad = [0x36u8; 64];
+    let mut k_opad = [0x5cu8; 64];
+    for i in 0..64 {
+        k_ipad[i] ^= k_pad[i];
+        k_opad[i] ^= k_pad[i];
+    }
+
+    let mut base_inner = crate::crypto::sha256::FastSha256::new();
+    base_inner.update(&k_ipad);
+
+    let mut base_outer = crate::crypto::sha256::FastSha256::new();
+    base_outer.update(&k_opad);
+
+    let key_len = out_key.len();
+    let blocks_needed = key_len.div_ceil(32);
+
+    let mut u_digest = [0u8; 32];
+    let mut t_digest = [0u8; 32];
+
+    for block_idx in 1..=blocks_needed as u32 {
+        let be_block = block_idx.to_be_bytes();
+
+        let mut inner = base_inner.clone();
+        inner.update(salt);
+        inner.update(&be_block);
+        let inner_hash = inner.finalize();
+
+        let mut outer = base_outer.clone();
+        outer.update(&inner_hash);
+        u_digest = outer.finalize();
+
+        t_digest.copy_from_slice(&u_digest);
+
+        for _ in 1..rounds {
+            let mut inner = base_inner.clone();
+            inner.update(&u_digest);
+            let inner_hash = inner.finalize();
+
+            let mut outer = base_outer.clone();
+            outer.update(&inner_hash);
+            u_digest = outer.finalize();
+
+            for k in 0..32 {
+                t_digest[k] ^= u_digest[k];
+            }
+        }
+
+        let offset = (block_idx as usize - 1) * 32;
+        let copy_len = (offset + 32).min(key_len) - offset;
+        out_key[offset..offset + copy_len].copy_from_slice(&t_digest[..copy_len]);
+    }
+
+    k_pad.zeroize();
+    k_ipad.zeroize();
+    k_opad.zeroize();
+    u_digest.zeroize();
+    t_digest.zeroize();
+    compiler_fence(Ordering::SeqCst);
+
+    Ok(())
+}
+
+/// Cryptographically secure random bytes generator.
+pub fn get_random_bytes(buf: &mut [u8]) -> Result<(), TTZipStatus> {
+    if buf.is_empty() {
+        return Ok(());
+    }
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    unsafe {
+        libc::arc4random_buf(buf.as_mut_ptr() as *mut libc::c_void, buf.len());
+        Ok(())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+    {
+        use std::io::Read;
+        let mut f = std::fs::File::open("/dev/urandom").map_err(|_| TTZipStatus::ErrIo)?;
+        f.read_exact(buf).map_err(|_| TTZipStatus::ErrIo)?;
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -344,6 +481,42 @@ mod tests {
         let mut sensitive = [0xAAu8; 64];
         secure_wipe(sensitive.as_mut_ptr(), sensitive.len());
         assert_eq!(sensitive, [0u8; 64]);
+    }
+
+    #[test]
+    fn test_hmac_sha256_rfc4231() {
+        let key = [0x0bu8; 20];
+        let data = b"Hi There";
+        let result = hmac_sha256(&key, data);
+        assert_eq!(
+            hex::encode(result),
+            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+        );
+    }
+
+    #[test]
+    fn test_pbkdf2_hmac_sha256_rfc6070() {
+        let password = b"password";
+        let salt = b"salt";
+        let mut key = [0u8; 32];
+
+        pbkdf2_hmac_sha256(password, salt, 1, &mut key).unwrap();
+        assert_eq!(
+            hex::encode(key),
+            "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"
+        );
+
+        pbkdf2_hmac_sha256(password, salt, 2, &mut key).unwrap();
+        assert_eq!(
+            hex::encode(key),
+            "ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43"
+        );
+
+        pbkdf2_hmac_sha256(password, salt, 4096, &mut key).unwrap();
+        assert_eq!(
+            hex::encode(key),
+            "c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a"
+        );
     }
 }
 

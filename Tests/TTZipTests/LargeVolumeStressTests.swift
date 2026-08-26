@@ -104,4 +104,92 @@ final class LargeVolumeStressTests: XCTestCase {
         let concatenatedLeaks = tmpFiles.filter { $0.contains("ttzip_split_concat") }
         XCTAssertTrue(concatenatedLeaks.isEmpty)
     }
+
+    // MARK: - 3. Synthetic Payload Large Volume & Multi-File Stress with TestFileGenerator
+
+    func testSyntheticPayloadLargeVolumeStressWithGenerator() async throws {
+        let inputDir = tempWorkingDir.appendingPathComponent("synthetic_inputs")
+        let extractDir = tempWorkingDir.appendingPathComponent("synthetic_extracted")
+        let archiveURL = tempWorkingDir.appendingPathComponent("synthetic_stress.zip")
+
+        // 1. Generate batches of small files and structured log files
+        let smallFiles = try TestFileGenerator.createBatchSmallFiles(in: inputDir, count: 20, sizePerFileInKB: 16)
+        let logFileURL = inputDir.appendingPathComponent("server_access.log")
+        try TestFileGenerator.createRealisticLogFile(at: logFileURL, linesCount: 300)
+
+        var allInputs = smallFiles.map(\.path)
+        allInputs.append(logFileURL.path)
+
+        // 2. Compress via ArchiveWriter
+        let writer = ArchiveWriter()
+        try await writer.createArchive(
+            outputPath: archiveURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: allInputs
+        )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+
+        // 3. Extract via ArchiveExtractor
+        let extractor = ArchiveExtractor()
+        try await extractor.extractArchive(
+            archivePath: archiveURL.path,
+            destinationDir: extractDir.path
+        )
+
+        // 4. Verify all extracted files match originals
+        for origURL in smallFiles {
+            let extractedFile = extractDir.appendingPathComponent(origURL.lastPathComponent)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile.path))
+            let origData = try Data(contentsOf: origURL)
+            TTZipAssertions.assertFileContents(extractedFile, expectedData: origData)
+        }
+
+        let extractedLog = extractDir.appendingPathComponent("server_access.log")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedLog.path))
+        let origLogData = try Data(contentsOf: logFileURL)
+        TTZipAssertions.assertFileContents(extractedLog, expectedData: origLogData)
+    }
+
+    // MARK: - 4. Standard Silesia Corpus Compression & Verification Stress
+
+    func testSilesiaCorpusCompressionAndVerificationStress() async throws {
+        let dickensURL = try SilesiaFixtureLoader.fileURL(named: "dickens")
+        let mozillaURL = try SilesiaFixtureLoader.fileURL(named: "mozilla")
+
+        let archiveURL = tempWorkingDir.appendingPathComponent("silesia_corpus.zip")
+        let extractDir = tempWorkingDir.appendingPathComponent("silesia_extracted")
+
+        // 1. Compress Silesia fixtures
+        let writer = ArchiveWriter()
+        try await writer.createArchive(
+            outputPath: archiveURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: [dickensURL.path, mozillaURL.path]
+        )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+
+        // 2. Extract and verify integrity
+        let extractor = ArchiveExtractor()
+        try await extractor.extractArchive(
+            archivePath: archiveURL.path,
+            destinationDir: extractDir.path
+        )
+
+        let extractedDickens = extractDir.appendingPathComponent("dickens")
+        let extractedMozilla = extractDir.appendingPathComponent("mozilla")
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedDickens.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedMozilla.path))
+
+        let originalDickensData = try SilesiaFixtureLoader.mappedData(named: "dickens")
+        let originalMozillaData = try SilesiaFixtureLoader.mappedData(named: "mozilla")
+
+        let readDickens = try Data(contentsOf: extractedDickens)
+        let readMozilla = try Data(contentsOf: extractedMozilla)
+
+        TTZipAssertions.assertDataEqual(readDickens, originalDickensData, message: "Dickens corpus verification mismatch")
+        TTZipAssertions.assertDataEqual(readMozilla, originalMozillaData, message: "Mozilla corpus verification mismatch")
+    }
 }

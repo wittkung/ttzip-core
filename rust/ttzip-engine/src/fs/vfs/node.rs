@@ -112,7 +112,7 @@ pub fn cmp_case_insensitive(a: &str, b: &str) -> Ordering {
         self.children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
-            _ => Self::cmp_case_insensitive(&a.name, &b.name),
+            _ => crate::fs::natural_sort::natural_cmp(&a.name, &b.name),
         });
     }
 

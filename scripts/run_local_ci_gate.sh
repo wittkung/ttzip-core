@@ -70,6 +70,7 @@ echo ""
 declare -a STAGE_NAMES=(
     "Single-File LOC Defense Gate (<= 800 LOC)"
     "Mozilla UniFFI Symbol Alignment Gate (100% Scaffolding Parity)"
+    "Universal XCFramework & SDK Checksum Gate"
     "Swift High-Level Facade & CLI Suite"
     "Deflate-Bench 50-Point Matrix Gate"
     "Rust Industrial Suite (Props, Fuzz, Differential)"
@@ -78,6 +79,7 @@ declare -a STAGE_NAMES=(
 declare -a STAGE_KEYS=(
     "loc-gate"
     "uniffi-gate"
+    "sdk-gate"
     "swift-facade"
     "performance"
     "rust-industrial"
@@ -86,6 +88,7 @@ declare -a STAGE_KEYS=(
 declare -a STAGE_COMMANDS=(
     "./scripts/lint_loc_gate.sh"
     "./scripts/verify_uniffi_symbols.sh"
+    "./scripts/build_sdk_framework.sh --release"
     "swift test"
     "swift run ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz"
@@ -186,41 +189,50 @@ if [[ -n "${JSON_REPORT_PATH}" ]]; then
     python3 -c "
 import json
 import os
-names = [\"Single-File LOC Defense Gate (<= 800 LOC)\", \"Swift High-Level Facade & CLI Suite\", \"Deflate-Bench 50-Point Matrix Gate\", \"Rust Industrial Suite (Props, Fuzz, Differential)\"]
-cmds = [
-    \"./scripts/lint_loc_gate.sh\",
-    \"swift test\",
-    \"swift run ttzip-bench gate\",
-    \"./scripts/run_rust_tests.sh --unit --props --fuzz\"
-]
-status_list = '${STAGE_STATUSES[*]}'.split()
-durations = [float(x) for x in '${STAGE_DURATIONS[*]}'.split()]
-stages = []
-for idx, stat in enumerate(status_list):
-    stages.append({
-        'stageIndex': idx + 1,
-        'name': names[idx] if idx < len(names) else f'Stage {idx+1}',
-        'command': cmds[idx] if idx < len(cmds) else '',
-        'status': stat,
-        'durationSeconds': durations[idx] if idx < len(durations) else 0.0,
-        'diagnosticMessage': 'Stage execution failed' if stat == 'fail' else None
-    })
+import sys
 
+raw_input = sys.stdin.read()
+data = json.loads(raw_input)
+
+out_path = data['out_path']
 report = {
-    'totalStages': len(names),
-    'passedStages': ${PASSED_STAGES},
-    'failedStages': ${FAILED_STAGES},
-    'totalDurationSeconds': ${GLOBAL_DURATION},
-    'isSuccess': (${FAILED_STAGES} == 0),
-    'stages': stages
+    'totalStages': len(data['stages']),
+    'passedStages': data['passedStages'],
+    'failedStages': data['failedStages'],
+    'totalDurationSeconds': data['totalDurationSeconds'],
+    'isSuccess': (data['failedStages'] == 0),
+    'stages': data['stages']
 }
 
-out_path = '${JSON_REPORT_PATH}'
 os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
 with open(out_path, 'w') as f:
     json.dump(report, f, indent=2)
 print('Exported JSON gate report to ' + out_path)
-"
+" << JSONPAYLOAD
+{
+  "out_path": "${JSON_REPORT_PATH}",
+  "passedStages": ${PASSED_STAGES},
+  "failedStages": ${FAILED_STAGES},
+  "totalDurationSeconds": ${GLOBAL_DURATION},
+  "stages": [
+$(for i in "${!STAGE_NAMES[@]}"; do
+    comma=","
+    if [ $i -eq $((${#STAGE_NAMES[@]} - 1)) ]; then comma=""; fi
+    cat << STAGE_ITEM
+    {
+      "stageIndex": $((i + 1)),
+      "key": "${STAGE_KEYS[$i]}",
+      "name": "${STAGE_NAMES[$i]}",
+      "command": "${STAGE_COMMANDS[$i]}",
+      "status": "${STAGE_STATUSES[$i]}",
+      "durationSeconds": ${STAGE_DURATIONS[$i]},
+      "diagnosticMessage": $(if [ "${STAGE_STATUSES[$i]}" = "fail" ]; then echo "\"Stage execution failed\""; else echo "null"; fi)
+    }${comma}
+STAGE_ITEM
+done)
+  ]
+}
+JSONPAYLOAD
 fi
 
 if [ ${FAILED_STAGES} -gt 0 ]; then

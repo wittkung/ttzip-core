@@ -265,10 +265,10 @@ extension ArchiveWriter {
                 throughputMBs: throughput
             ))
         } catch {
-            if token?.isCancelled() == true {
+            if token?.isCancelled() == true || Task.isCancelled {
                 throw ArchiveError.cancelled
             }
-            throw ArchiveError.readFailed(code: -1)
+            throw ArchiveError.from(error: error)
         }
     }
 

@@ -17,7 +17,7 @@ import tempfile
 import time
 from pathlib import Path
 
-REPO_ROOT = Path("/Users/kevintung/Documents/dev/TTZip/core")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 BASELINE_DIR = Path("/tmp/ttzip_baseline_ab")
 ROUNDS = 5
 

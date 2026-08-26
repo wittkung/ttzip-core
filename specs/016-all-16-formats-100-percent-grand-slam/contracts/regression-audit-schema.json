@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PerformanceRegressionAuditReport",
+  "type": "object",
+  "required": [
+    "auditTimestamp",
+    "baselineFile",
+    "latestFile",
+    "improvedCount",
+    "neutralCount",
+    "regressedCount",
+    "maxRegressionPercent",
+    "isPassed"
+  ],
+  "properties": {
+    "auditTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "baselineFile": {
+      "type": "string"
+    },
+    "latestFile": {
+      "type": "string"
+    },
+    "improvedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "neutralCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "regressedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "maxRegressionPercent": {
+      "type": "number"
+    },
+    "isPassed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

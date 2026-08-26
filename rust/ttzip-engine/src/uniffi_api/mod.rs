@@ -12,15 +12,32 @@
 
 pub mod archive;
 pub mod audio;
+pub mod benchmark;
 pub mod disk_scanner;
+pub mod epub;
+pub mod extraction;
+pub mod integrity;
+pub mod smart_extract;
+pub mod syntax;
+pub mod transaction;
 pub mod types;
+pub mod vault;
 pub mod vfs;
 
 pub use archive::*;
 pub use audio::*;
+pub use benchmark::*;
 pub use disk_scanner::*;
+pub use epub::*;
+pub use extraction::*;
+pub use integrity::*;
+pub use smart_extract::*;
+pub use syntax::*;
+pub use transaction::*;
 pub use types::*;
+pub use vault::*;
 pub use vfs::*;
+pub use crate::security::license::*;
 
 pub use crate::i18n::{AppLanguage, ByteSizeStandard, TTZipLocalizationEngine};
 

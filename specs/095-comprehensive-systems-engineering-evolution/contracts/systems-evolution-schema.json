@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SystemsEvolutionSchema",
+  "type": "object",
+  "required": [
+    "featureId",
+    "compilerGuards",
+    "defensiveInvariants",
+    "verificationMatrix"
+  ],
+  "properties": {
+    "featureId": {
+      "type": "string",
+      "enum": ["095-comprehensive-systems-engineering-evolution"]
+    },
+    "compilerGuards": {
+      "type": "object",
+      "required": [
+        "visibilityHidden",
+        "missingPrototypes",
+        "noVla",
+        "warningsAsErrors"
+      ],
+      "properties": {
+        "visibilityHidden": { "type": "boolean" },
+        "missingPrototypes": { "type": "boolean" },
+        "noVla": { "type": "boolean" },
+        "warningsAsErrors": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "defensiveInvariants": {
+      "type": "object",
+      "required": [
+        "structMagicEmbedding",
+        "freePoisoningValue",
+        "volatileZeroing",
+        "cachelineAlignmentBytes"
+      ],
+      "properties": {
+        "structMagicEmbedding": { "type": "boolean" },
+        "freePoisoningValue": { "type": "string" },
+        "volatileZeroing": { "type": "boolean" },
+        "cachelineAlignmentBytes": { "type": "integer", "enum": [64, 128] }
+      },
+      "additionalProperties": false
+    },
+    "verificationMatrix": {
+      "type": "object",
+      "required": [
+        "multiWayOraclesCount",
+        "fuzzingVectorsCount",
+        "performanceGatesPassed"
+      ],
+      "properties": {
+        "multiWayOraclesCount": { "type": "integer", "minimum": 4 },
+        "fuzzingVectorsCount": { "type": "integer", "minimum": 6 },
+        "performanceGatesPassed": { "type": "integer", "minimum": 13 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

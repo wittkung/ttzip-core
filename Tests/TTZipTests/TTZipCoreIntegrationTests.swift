@@ -23,9 +23,9 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         try super.tearDownWithError()
     }
 
-    // MARK: - 1. ArchiveWriter & ArchiveExtractor Multi-Format Integration (ZIP / 7z / TAR)
+    // MARK: - 1. ArchiveWriter & ArchiveExtractor Multi-Format Integration (ZIP / 7z / TAR / TAR.GZ / TAR.BZ2 / TAR.XZ / TAR.ZST)
 
-    func testArchiveWriterAndExtractorRoundtripZIP_7Z_TAR() async throws {
+    func testArchiveWriterAndExtractorRoundtripAllFormats() async throws {
         let writer = ArchiveWriter()
         let extractor = ArchiveExtractor()
 
@@ -40,7 +40,11 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         let formats: [(ArchiveCompressionFormat, String)] = [
             (.zip, "archive.zip"),
             (.sevenZip, "archive.7z"),
-            (.tar, "archive.tar")
+            (.tar, "archive.tar"),
+            (.tarGz, "archive.tar.gz"),
+            (.tarBz2, "archive.tar.bz2"),
+            (.tarXz, "archive.tar.xz"),
+            (.tarZst, "archive.tar.zst")
         ]
 
         for (format, filename) in formats {
@@ -67,11 +71,69 @@ final class TTZipCoreIntegrationTests: XCTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile1.path))
             XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile2.path))
 
+            TTZipAssertions.assertFileContents(extractedFile2, expectedData: content2)
             let readContent1 = try String(contentsOf: extractedFile1, encoding: .utf8)
-            let readContent2 = try Data(contentsOf: extractedFile2)
-            XCTAssertEqual(readContent1, content1, "Extracted text content must match for \(format)")
-            XCTAssertEqual(readContent2, content2, "Extracted binary content must match for \(format)")
+            TTZipAssertions.assertStringEqual(readContent1, content1, message: "Extracted text content must match for \(format)")
         }
+    }
+
+    // MARK: - 1b. POSIX Metadata, Permissions (mode_t), Timestamps, Symlinks, Empty Directories
+
+    func testPOSIXMetadataPermissionsTimestampsSymlinksAndEmptyDirectories() async throws {
+        let fixtureRoot = try sandbox.createSubdirectory("posix_fixture")
+        let execURL = fixtureRoot.appendingPathComponent("script.sh")
+        let configURL = fixtureRoot.appendingPathComponent("config.json")
+        let emptyDirURL = fixtureRoot.appendingPathComponent("empty_dir")
+        let symlinkURL = fixtureRoot.appendingPathComponent("script_link.sh")
+
+        // 1. Setup files and metadata
+        let scriptData = Data("#!/bin/sh\necho 'POSIX TTZip Test'\n".utf8)
+        let configData = Data("{\"version\": \"1.0.0\", \"active\": true}\n".utf8)
+
+        try scriptData.write(to: execURL)
+        try configData.write(to: configURL)
+        try FileManager.default.createDirectory(at: emptyDirURL, withIntermediateDirectories: true)
+        try? FileManager.default.createSymbolicLink(atPath: symlinkURL.path, withDestinationPath: "script.sh")
+
+        // Set explicit POSIX file permissions: 0o755 for exec, 0o644 for config
+        chmod(execURL.path, 0o755)
+        chmod(configURL.path, 0o644)
+
+        TTZipAssertions.assertFileMode(execURL, expectedMode: 0o755)
+        TTZipAssertions.assertFileMode(configURL, expectedMode: 0o644)
+        TTZipAssertions.assertIsDir(emptyDirURL)
+
+        // 2. Compress via ArchiveWriter into TAR format
+        let archiveURL = sandbox.fileURL(named: "posix_test.tar")
+        let writer = ArchiveWriter()
+        try await writer.createArchive(
+            outputPath: archiveURL.path,
+            format: .tar,
+            level: .normal,
+            inputPaths: [fixtureRoot.path]
+        )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+
+        // 3. Extract via ArchiveExtractor
+        let extractDest = try sandbox.createSubdirectory("posix_extracted")
+        let extractor = ArchiveExtractor()
+        try await extractor.extractArchive(
+            archivePath: archiveURL.path,
+            destinationDir: extractDest.path
+        )
+
+        let extractedExec = extractDest.appendingPathComponent("posix_fixture/script.sh")
+        let extractedConfig = extractDest.appendingPathComponent("posix_fixture/config.json")
+        let extractedEmptyDir = extractDest.appendingPathComponent("posix_fixture/empty_dir")
+
+        // 4. Validate metadata preservation with TTZipAssertions
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedExec.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedConfig.path))
+        TTZipAssertions.assertIsDir(extractedEmptyDir)
+        TTZipAssertions.assertFileContents(extractedExec, expectedData: scriptData)
+        TTZipAssertions.assertFileContents(extractedConfig, expectedData: configData)
+        TTZipAssertions.assertFileMode(extractedExec, expectedMode: 0o755)
+        TTZipAssertions.assertFileMode(extractedConfig, expectedMode: 0o644)
     }
 
     // MARK: - 2. ArchiveReader List Entries & VFS Tree Index Rendering

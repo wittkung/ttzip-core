@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkMatrixExecutionReport",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "totalPoints",
+    "passedPoints",
+    "totalDurationMs",
+    "medianCvPercentage",
+    "regressionPointsCount",
+    "gateVerdict"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalPoints": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "passedPoints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalDurationMs": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "medianCvPercentage": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "regressionPointsCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gateVerdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "WARN",
+        "BLOCKED"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -20,8 +20,8 @@ use ttzip_engine::zip::writer::{assemble_zip_archive, ZipCompressedItem};
 
 #[test]
 fn test_vfs_lz4_cache_pool_ffi_lifecycle_and_spill() {
-    let temp_spill = std::env::temp_dir().join("ttzip_vfs_test_spill");
-    let _ = fs::remove_dir_all(&temp_spill);
+    let temp_spill_dir = tempfile::tempdir().unwrap();
+    let temp_spill = temp_spill_dir.path();
     let c_spill = CString::new(temp_spill.to_str().unwrap()).unwrap();
 
     let handle = unsafe { ttzip_rust_vfs_cache_new(1024 * 1024, c_spill.as_ptr()) };

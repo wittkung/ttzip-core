@@ -97,12 +97,13 @@ public enum ConcurrencyBridge {
 
     /// High-resolution, zero-allocation lock-free stream bridge connecting worker callbacks to SwiftUI 60fps loops.
     public final class ProgressStreamBridge: @unchecked Sendable {
-        private var continuation: AsyncStream<ArchiveProgress>.Continuation?
+        private let continuation: AsyncStream<ArchiveProgress>.Continuation?
         private var lastEmitNanos: UInt64 = 0
         private var isCancelledFlag: Bool = false
         private let lock = os_unfair_lock_t.allocate(capacity: 1)
 
-        public init() {
+        public init(continuation: AsyncStream<ArchiveProgress>.Continuation? = nil) {
+            self.continuation = continuation
             lock.initialize(to: os_unfair_lock())
         }
 
@@ -117,8 +118,18 @@ public enum ConcurrencyBridge {
             return isCancelledFlag
         }
 
+        public func markCancelled() {
+            os_unfair_lock_lock(lock)
+            isCancelledFlag = true
+            os_unfair_lock_unlock(lock)
+        }
+
         public func cancel() {
             os_unfair_lock_lock(lock)
+            if isCancelledFlag {
+                os_unfair_lock_unlock(lock)
+                return
+            }
             isCancelledFlag = true
             os_unfair_lock_unlock(lock)
             continuation?.yield(ArchiveProgress(state: .cancelled))
@@ -161,12 +172,10 @@ public enum ConcurrencyBridge {
         }
 
         public static func create() -> (bridge: ProgressStreamBridge, stream: AsyncStream<ArchiveProgress>) {
-            let bridge = ProgressStreamBridge()
-            let stream = AsyncStream<ArchiveProgress> { continuation in
-                bridge.continuation = continuation
-                continuation.onTermination = { @Sendable _ in
-                    bridge.cancel()
-                }
+            let (stream, continuation) = AsyncStream.makeStream(of: ArchiveProgress.self)
+            let bridge = ProgressStreamBridge(continuation: continuation)
+            continuation.onTermination = { @Sendable _ in
+                bridge.markCancelled()
             }
             return (bridge, stream)
         }

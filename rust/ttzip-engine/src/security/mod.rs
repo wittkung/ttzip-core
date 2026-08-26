@@ -7,9 +7,11 @@
 
 //! Security, sandbox isolation, path defense, and threat scanning modules.
 
+pub mod license;
 pub mod path_sanitizer;
 
 #[cfg(test)]
 mod tests;
 
+pub use license::*;
 pub use path_sanitizer::*;

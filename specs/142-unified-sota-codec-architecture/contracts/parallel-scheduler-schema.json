@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ParallelSchedulerContract",
+  "description": "Strongly-typed contract for Layer 1 universal parallel chunk scheduler.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schedulerId",
+    "chunkSizeBytes",
+    "overlapSizeBytes",
+    "numWorkerThreads",
+    "enableAsymmetricSizing",
+    "maxResidentMemoryMB"
+  ],
+  "properties": {
+    "schedulerId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "chunkSizeBytes": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 16777216
+    },
+    "overlapSizeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2097152
+    },
+    "numWorkerThreads": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128
+    },
+    "enableAsymmetricSizing": {
+      "type": "boolean"
+    },
+    "maxResidentMemoryMB": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 1024
+    }
+  }
+}

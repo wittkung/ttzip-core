@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkResult",
+  "type": "object",
+  "properties": {
+    "cpu_model": { "type": "string" },
+    "dataset_size_gb": { "type": "number", "minimum": 0.1 },
+    "iterations": { "type": "integer", "minimum": 1 },
+    "generic_time_sec": { "type": "number", "minimum": 0.0001 },
+    "generic_throughput_mbs": { "type": "number", "minimum": 1.0 },
+    "pmull_time_sec": { "type": "number", "minimum": 0.0001 },
+    "pmull_throughput_mbs": { "type": "number", "minimum": 1.0 },
+    "speedup_factor": { "type": "number", "minimum": 1.0 },
+    "bit_exact_parity": { "type": "boolean" }
+  },
+  "required": [
+    "cpu_model",
+    "dataset_size_gb",
+    "iterations",
+    "generic_time_sec",
+    "generic_throughput_mbs",
+    "pmull_time_sec",
+    "pmull_throughput_mbs",
+    "speedup_factor",
+    "bit_exact_parity"
+  ],
+  "additionalProperties": false
+}

@@ -11,23 +11,30 @@
 
 <p align="center">
   <strong>Ultra-High-Performance Native Archiving & Compression Microkernel</strong><br />
-  Engineered with a Safe Rust Microkernel (<code>ttzip-glue</code> &rarr; <code>TTZipVendor.xcframework</code>), SOTA Codecs, Dual-ISA SIMD / PMULL Vector Acceleration, and a Swift 6 macOS GUI Shell & CLI (<code>TTZipApp</code>, <code>TTZipCLI</code>, <code>TTZipCore</code>).
+  Engineered with a Safe Rust Microkernel (<code>ttzip-engine</code> &rarr; <code>TTZipVendor.xcframework</code>), SOTA Codecs, Dual-ISA SIMD / PMULL Vector Acceleration, and a Swift 6 SDK Shell & CLI (<code>TTZipCore</code>, <code>ttzip</code>, <code>ttzip-bench</code>).
 </p>
 
 <p align="center">
-  <a href="https://github.com/wittkung/TTZip"><img src="https://img.shields.io/badge/Architecture-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
+  <a href="https://github.com/wittkung/ttzip-core"><img src="https://img.shields.io/badge/Architecture-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B%20%7C%20Cargo-dea584?style=flat-square&logo=rust" alt="Rust Cargo" /></a>
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
 </p>
+
+---
+
+## 📖 Architecture & Design Documentation
+
+- **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: Deep dive into the Dual-Core UniFFI microkernel, memory safety, APFS CoW rollback, and architectural testing invariants.
+- **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 完整的中文系统架构设计白皮书与工程治理规范。
 
 ---
 
 ## 🌟 Key Highlights & Architectural Principles
 
-- **🚀 Dual-Core Architecture (Swift 6 + Safe Rust Microkernel)**: High-throughput, memory-safe Rust native engine (`rust/ttzip-glue` compiled into `TTZipVendor.xcframework`), bridged via a standardized zero-overhead C-ABI (`CTTZipBridge`), orchestrated by Swift 6 complete concurrency (`TTZipCore`), and presented via native desktop GUI (`TTZipApp`), POSIX CLI (`ttzip-cli`), and telemetry benchmark suite (`ttzip-bench`).
+- **🚀 Dual-Core Architecture (Swift 6 + Safe Rust Microkernel)**: High-throughput, memory-safe Rust native engine (`rust/ttzip-engine` compiled into `TTZipVendor.xcframework`), bridged via a standardized zero-overhead C-ABI & UniFFI (`CTTZipBridge`), orchestrated by Swift 6 complete concurrency (`TTZipCore`), and presented via POSIX CLI (`ttzip`), telemetry benchmark suite (`ttzip-bench`), and native desktop applications (`apple/TTZipApp`).
 - **⚡️ 63+ GB/s Hardware Vector Dual-ISA Acceleration**:
   - **63,232 MB/s (63.2 GB/s) CRC32**: Hardware polynomial multiplication (`vmull_p64` / `__crc32d` on ARM64, `_mm_clmulepi64_si128` on x86_64).
   - **36,017 MB/s (36.0 GB/s) CRC64**: Dual-ISA wide-folded polynomial reduction (ECMA-182).
@@ -124,11 +131,11 @@ make reinstall
 ### 3. Build via Swift Package Manager (SwiftPM)
 
 ```bash
-# Build all release products (TTZipApp, ttzip-cli, ttzip-bench)
+# Build all release products (TTZipCore, CTTZipBridge, ttzip-bench)
 swift build -c release
 ```
 
-### 4. Build Rust Core Microkernel (`ttzip-glue`)
+### 4. Build Rust Core Microkernel (`ttzip-engine`)
 
 ```bash
 # Automatically compile universal static library & deploy to Vendor XCFramework
@@ -250,13 +257,14 @@ We actively contribute verified hardware acceleration routines back to foundatio
 ---
 
 ## 📄 License & Community Model
-
-TTZip is licensed under the **TTZip Source-Available & Anti-Copycat Public License v1.0 (TTZip-SAL-1.0)**.
-
-- **100% Free for Developers & Personal Use**: All source code is open for reading, learning, research, and local execution.
-- **Strict Anti-Copycat Protection**: Repackaging or publishing TTZip (free or paid) to the Apple Mac App Store, Microsoft Store, Steam, or other marketplaces without authorization is strictly prohibited.
-- **Commercial Licensing**: Inquiries: `witt.w.kung@gmail.com`.
-
+ 
+TTZip Core is dual-licensed under the **BSD 3-Clause License** and the **Apache License (Version 2.0)**:
+ 
+- See [LICENSE-BSD](LICENSE-BSD) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
+- **100% Open Source**: All source code in `ttzip-core` is available for commercial, academic, and personal use under OSI-approved licenses.
+- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [apple/LICENSE](../apple/LICENSE) (GPL-3.0-or-later).
+- Commercial Inquiries: `witt.w.kung@gmail.com`.
+ 
 ---
-
+ 
 © 2026 Witt Kung. All rights reserved.

@@ -11,6 +11,7 @@ pub mod adler32;
 pub mod aes256;
 pub mod crc32;
 pub mod crc64;
+pub mod md5;
 pub mod password_recovery;
 pub mod recovery;
 pub mod rs_fec;
@@ -21,8 +22,9 @@ pub mod zipcrypto;
 
 pub use adler32::{adler32, adler32_fast};
 pub use aes256::{aes256_cbc_decrypt, aes256_cbc_encrypt, aes256_ctr_crypt, Aes256Context};
-pub use crc32::{crc32, crc32_fast};
+pub use crc32::{crc32, crc32_combine, crc32_fast};
 pub use crc64::{crc64, crc64_fast};
+pub use md5::{md5, FastMd5};
 pub use password_recovery::*;
 pub use recovery::*;
 pub use rs_fec::{
@@ -34,8 +36,8 @@ pub use sha1::{
 };
 pub use sha256::{sha256_7z_kdf, FastSha256};
 pub use vault::{
-    aes256_gcm_decrypt, aes256_gcm_encrypt, constant_time_eq_16, secure_wipe, secure_wipe_slice,
-    GHash,
+    aes256_gcm_decrypt, aes256_gcm_encrypt, constant_time_eq_16, get_random_bytes, hmac_sha256,
+    pbkdf2_hmac_sha256, secure_wipe, secure_wipe_slice, GHash,
 };
 pub use zipcrypto::{
     zipcrypto_decrypt_slice, zipcrypto_encrypt_slice, ZipCryptoBatch4, ZipCryptoKeys,

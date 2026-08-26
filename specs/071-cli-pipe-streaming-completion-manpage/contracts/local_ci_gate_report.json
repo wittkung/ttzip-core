@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LocalCIGateReport",
+  "description": "Output schema reporting local CI regression test gate results",
+  "type": "object",
+  "properties": {
+    "totalStages": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "passedStages": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failedStages": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "isSuccess": {
+      "type": "boolean"
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stageIndex": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "skip"]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "diagnosticMessage": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "stageIndex",
+          "name",
+          "command",
+          "status",
+          "durationSeconds"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "totalStages",
+    "passedStages",
+    "failedStages",
+    "totalDurationSeconds",
+    "isSuccess",
+    "stages"
+  ],
+  "additionalProperties": false
+}

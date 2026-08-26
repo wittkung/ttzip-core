@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContinuousIntegrationSpec",
+  "description": "Industrial CI/CD pipeline contract guaranteeing PR triggers, full parallel test suites, and Sanitizer matrix",
+  "type": "object",
+  "required": [
+    "trigger_events",
+    "target_branches",
+    "total_test_suites_count",
+    "enabled_sanitizers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "trigger_events": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["pull_request", "push", "workflow_dispatch"]
+      },
+      "minItems": 3
+    },
+    "target_branches": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["main"]
+      },
+      "minItems": 1
+    },
+    "total_test_suites_count": {
+      "type": "integer",
+      "minimum": 90
+    },
+    "enabled_sanitizers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["address", "thread"]
+      },
+      "minItems": 2
+    }
+  }
+}

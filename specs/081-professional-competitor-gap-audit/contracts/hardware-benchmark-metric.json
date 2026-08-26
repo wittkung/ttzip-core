@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HardwareBenchmarkMetric",
+  "description": "Schema for 7-Zip aligned MIPS hardware benchmark telemetry and scores in TTZip",
+  "type": "object",
+  "required": [
+    "dictionarySizeMB",
+    "threadCount",
+    "compressMIPS",
+    "decompressMIPS",
+    "totalMIPS",
+    "compressSpeedMBs",
+    "decompressSpeedMBs",
+    "cpuUsagePercent",
+    "ratingPerUsageMIPS"
+  ],
+  "properties": {
+    "dictionarySizeMB": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "LZMA dictionary buffer size in MB"
+    },
+    "threadCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of concurrent benchmark threads"
+    },
+    "compressMIPS": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "7-Zip standardized compression MIPS rating"
+    },
+    "decompressMIPS": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "7-Zip standardized decompression MIPS rating"
+    },
+    "totalMIPS": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Combined average MIPS score"
+    },
+    "compressSpeedMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Physical compression throughput in MB/s"
+    },
+    "decompressSpeedMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Physical decompression throughput in MB/s"
+    },
+    "cpuUsagePercent": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Aggregate CPU core utilization percentage"
+    },
+    "ratingPerUsageMIPS": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Normalized efficiency score per CPU usage"
+    }
+  },
+  "additionalProperties": false
+}

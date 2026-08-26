@@ -92,7 +92,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             }
         }
 
-        if token?.isCancelled() == true {
+        if token?.isCancelled() == true || Task.isCancelled {
             throw ArchiveError.cancelled
         }
         throw ArchiveError.readFailed(code: -1)
@@ -317,6 +317,12 @@ public final class ArchiveSelectiveExtractor: Sendable {
         }
         
         return await Task.detached(priority: .userInitiated) {
+            if let bytes = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
+                let data = Data(bytes)
+                VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
+                return data
+            }
+            // Fallback for subpaths or index probing if path normalization differs
             let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
             guard let idx = entries.firstIndex(where: {
                 $0.path == entryPath || $0.path.hasSuffix("/" + entryPath) || ($0.path.contains("/") ? String($0.path.split(separator: "/").last!) == entryPath : false)

@@ -26,7 +26,8 @@ use ttzip_engine::types::{TTZipLogLevel, TTZipStatus};
 
 #[test]
 fn test_phase4_stream_reader_writer_ffi_roundtrip() {
-    let temp_file = std::env::temp_dir().join("ttzip_test_stream_ffi.bin");
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let temp_file = tmp_dir.path().join("ttzip_test_stream_ffi.bin");
     let c_path = CString::new(temp_file.to_str().unwrap()).unwrap();
 
     // 1. Write data using stream writer FFI
@@ -64,7 +65,9 @@ fn test_phase4_stream_reader_writer_ffi_roundtrip() {
 
 #[test]
 fn test_phase4_zipslip_and_path_validation_ffi() {
-    let dest_dir = CString::new("/tmp/ttzip_safe_test_dir").unwrap();
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let dest_dir_str = tmp_dir.path().to_str().unwrap();
+    let dest_dir = CString::new(dest_dir_str).unwrap();
     let mut out_buf = [0i8; 1024];
 
     // Valid path
@@ -79,7 +82,8 @@ fn test_phase4_zipslip_and_path_validation_ffi() {
     };
     assert_eq!(status, TTZipStatus::Ok);
     let sanitized_str = unsafe { CStr::from_ptr(out_buf.as_ptr()).to_str().unwrap() };
-    assert_eq!(sanitized_str, "/tmp/ttzip_safe_test_dir/folder/file.txt");
+    let expected = tmp_dir.path().join("folder/file.txt").to_str().unwrap().to_string();
+    assert_eq!(sanitized_str, expected);
 
     // ZipSlip Traversal: ../../etc/passwd
     let evil_entry = CString::new("../../etc/passwd").unwrap();
@@ -108,9 +112,8 @@ fn test_phase4_zipslip_and_path_validation_ffi() {
 
 #[test]
 fn test_phase4_safe_extract_bottom_up_permission_engine() {
-    let temp_root = std::env::temp_dir().join("ttzip_test_safe_extract_integration");
-    let _ = fs::remove_dir_all(&temp_root);
-    fs::create_dir_all(&temp_root).unwrap();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_root = temp_dir.path().to_path_buf();
 
     let mut engine = SafeExtractEngine::new();
 
@@ -150,7 +153,8 @@ fn test_phase4_safe_extract_bottom_up_permission_engine() {
 
 #[test]
 fn test_phase4_apfs_preallocate_and_mac_junk_ffi() {
-    let temp_file = std::env::temp_dir().join("ttzip_test_apfs_ffi.bin");
+    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_file = temp_dir.path().join("ttzip_test_apfs_ffi.bin");
     let file = File::create(&temp_file).unwrap();
     let fd = file.as_raw_fd();
 
@@ -231,4 +235,7 @@ fn test_phase4_structured_logging_ffi_routing() {
     }
 
     assert_eq!(RECEIVED_LOG_COUNT.load(Ordering::SeqCst), 1);
+    unsafe {
+        ttzip_rust_set_logger(None, TTZipLogLevel::Error, std::ptr::null_mut());
+    }
 }

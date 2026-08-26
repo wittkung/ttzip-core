@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinderSyncActionRequest",
+  "type": "object",
+  "required": ["actionIdentifier", "targetFilePaths", "requestTimestamp"],
+  "properties": {
+    "actionIdentifier": {
+      "type": "string",
+      "enum": ["extract_here", "extract_to_subfolder", "inspect_archive", "compress_zip", "compress_7z", "autofill_password"]
+    },
+    "targetFilePaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "destinationDirectory": {
+      "type": ["string", "null"]
+    },
+    "requestTimestamp": {
+      "type": "number"
+    }
+  }
+}

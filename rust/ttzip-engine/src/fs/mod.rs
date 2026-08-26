@@ -10,12 +10,14 @@
 pub mod apfs;
 pub mod filter;
 pub mod filter_dsl;
+pub mod natural_sort;
 pub mod safe_extract;
 pub mod scanner;
 pub mod vfs;
 
 pub use apfs::*;
 pub use filter::*;
+pub use natural_sort::*;
 pub use safe_extract::*;
 pub use scanner::*;
 pub use vfs::*;

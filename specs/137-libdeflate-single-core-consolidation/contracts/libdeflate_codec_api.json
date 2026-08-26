@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LibdeflateCodecAPIContract",
+  "description": "Strongly typed JSON schema contract for single-core Deflate and Inflate operations via libdeflate C adapter",
+  "definitions": {
+    "DeflateCompressionRequest": {
+      "type": "object",
+      "properties": {
+        "sourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "destinationCapacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compressionLevel": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "isFinal": {
+          "type": "boolean"
+        }
+      },
+      "required": ["sourceBytes", "destinationCapacity", "compressionLevel", "isFinal"],
+      "additionalProperties": false
+    },
+    "DeflateCompressionResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SUCCESS", "BUFFER_TOO_SMALL", "INVALID_ARGUMENT", "INTERNAL_ERROR"]
+        },
+        "bytesWritten": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compressedRatio": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      },
+      "required": ["status", "bytesWritten", "compressedRatio"],
+      "additionalProperties": false
+    },
+    "DeflateDecompressionRequest": {
+      "type": "object",
+      "properties": {
+        "compressedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expectedOriginalSize": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["compressedBytes", "expectedOriginalSize"],
+      "additionalProperties": false
+    },
+    "DeflateDecompressionResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SUCCESS", "DECOMPRESSION_FAILED", "CORRUPTED_STREAM", "BUFFER_TOO_SMALL"]
+        },
+        "bytesDecompressed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["status", "bytesDecompressed"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -15,7 +15,7 @@
 #include <span>
 #include <string>
 #include <filesystem>
-#include "../../Sources/CTTZipBridge/include/ttzip.hpp"
+#include "../include/ttzip.hpp"
 
 namespace fs = std::filesystem;
 

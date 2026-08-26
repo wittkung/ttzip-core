@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LicensingPolicyContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "licenseName",
+    "spdxIdentifier",
+    "permittedUses",
+    "prohibitedActions",
+    "enterpriseCommercialChannel",
+    "upstreamCarveOut"
+  ],
+  "properties": {
+    "licenseName": {
+      "type": "string"
+    },
+    "spdxIdentifier": {
+      "type": "string"
+    },
+    "permittedUses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prohibitedActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enterpriseCommercialChannel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiresCommercialLicense", "contactEmail"],
+      "properties": {
+        "requiresCommercialLicense": {
+          "type": "boolean"
+        },
+        "contactEmail": {
+          "type": "string"
+        }
+      }
+    },
+    "upstreamCarveOut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "applicableProjects"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "applicableProjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -132,6 +132,7 @@ fn compile_native_codecs(repo_root: &Path) {
             "compress/zstd_preSplit.c",
             "compress/zstdmt_compress.c",
             "decompress/huf_decompress.c",
+            "decompress/huf_decompress_amd64.S",
             "decompress/zstd_ddict.c",
             "decompress/zstd_decompress.c",
             "decompress/zstd_decompress_block.c",

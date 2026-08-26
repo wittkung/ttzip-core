@@ -513,18 +513,13 @@ mod tests {
 
         let archive_out = dir.path().join("output.zip");
 
-        // 1. Build Archive using ArchiveBuilder
-        let mut progress_count = 0;
         let mut builder = ArchiveBuilder::new()
             .add_source(&src_dir)
             .destination(&archive_out)
             .format(TTZipArchiveFormat::Zip)
             .level(TTZipCompressionLevel::Normal)
             .thread_budget(2)
-            .on_progress(move |_processed, _total, _entry| {
-                progress_count += 1;
-                true
-            });
+            .on_progress(|_processed, _total, _entry| true);
 
         builder.build().expect("ArchiveBuilder build must succeed");
         assert!(archive_out.exists());

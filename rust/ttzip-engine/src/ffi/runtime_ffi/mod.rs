@@ -51,6 +51,7 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
         TTZipStatus::ErrInvalidPassword => c"Invalid Password".as_ptr(),
         TTZipStatus::ErrExtractionFailed => c"Extraction Failed".as_ptr(),
         TTZipStatus::ErrCompressionFailed => c"Compression Failed".as_ptr(),
+        TTZipStatus::ErrSolidBudgetExceeded => c"Solid Budget Exceeded".as_ptr(),
         TTZipStatus::ErrSecurityViolation => c"Security Violation".as_ptr(),
         TTZipStatus::ErrPanicCaught => c"Panic Caught".as_ptr(),
     }

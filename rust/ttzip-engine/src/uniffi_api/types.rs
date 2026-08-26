@@ -36,6 +36,20 @@ pub enum TTZipError {
     Cancelled,
 }
 
+impl TTZipError {
+    pub fn file_not_found(path: &str) -> Self {
+        TTZipError::FileNotFound {
+            path: path.to_string(),
+        }
+    }
+
+    pub fn io_error(err: impl std::fmt::Display, context: &str) -> Self {
+        TTZipError::IoError {
+            message: format!("{context}: {err}"),
+        }
+    }
+}
+
 /// Archive format enum exposed to Swift.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ArchiveFormat {
@@ -110,6 +124,13 @@ pub struct UniFFIVfsNodeSummary {
     pub has_children: bool,
 }
 
+/// VFS windowed paging response record containing nodes and directory total entry count.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIVfsPagedResult {
+    pub nodes: Vec<UniFFIVfsNodeSummary>,
+    pub total_count: u32,
+}
+
 /// VFS aggregated tree statistics record.
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct UniFFIVfsStats {
@@ -148,6 +169,42 @@ pub struct SniffMetadata {
     pub confidence: u32,
 }
 
+/// Corrupted entry information in integrity verification.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFICorruptedEntry {
+    pub path: String,
+    pub expected_crc32: u32,
+    pub actual_crc32: u32,
+    pub reason: String,
+}
+
+/// Comprehensive archive integrity report.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIIntegrityReport {
+    pub is_valid: bool,
+    pub total_entries: u64,
+    pub verified_entries: u64,
+    pub corrupted_entries: Vec<UniFFICorruptedEntry>,
+    pub elapsed_nanos: u64,
+    pub error_message: Option<String>,
+}
+
+/// Path suggestion item for real-time autocompletion.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct PathSuggestionItem {
+    pub full_path: String,
+    pub display_name: String,
+    pub is_directory: bool,
+    pub is_archive: bool,
+}
+
+/// Parent directory and autocompletion prefix record.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIParentAndPrefix {
+    pub parent_directory: String,
+    pub prefix: String,
+}
+
 /// Callback interface protocol implemented in Swift.
 #[uniffi::export(callback_interface)]
 pub trait ProgressHandler: Send + Sync {
@@ -177,3 +234,4 @@ impl CancellationToken {
         self.cancelled.load(Ordering::Acquire)
     }
 }
+

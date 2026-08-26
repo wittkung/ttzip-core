@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpstreamAuditReport",
+  "description": "Strict contract for upstream pre-flight audit report output and telemetry",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "audit_timestamp",
+    "target_upstream",
+    "target_function",
+    "worktree_path",
+    "baseline_branch",
+    "candidate_branch",
+    "compiler_audit",
+    "dual_build_audit",
+    "micro_results",
+    "macro_results",
+    "cv_statistics",
+    "overall_verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0.0"
+      ]
+    },
+    "audit_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target_upstream": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_function": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worktree_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compiler_audit": {
+      "type": "object",
+      "required": [
+        "compiler_id",
+        "compiler_version",
+        "baseline_c_flags",
+        "candidate_c_flags",
+        "flags_identical"
+      ],
+      "properties": {
+        "compiler_id": {
+          "type": "string"
+        },
+        "compiler_version": {
+          "type": "string"
+        },
+        "baseline_c_flags": {
+          "type": "string"
+        },
+        "candidate_c_flags": {
+          "type": "string"
+        },
+        "flags_identical": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dual_build_audit": {
+      "type": "object",
+      "required": [
+        "cmake_build_passed",
+        "autotools_build_passed",
+        "ctest_passed",
+        "disassembly_instruction_count",
+        "stack_spill_detected"
+      ],
+      "properties": {
+        "cmake_build_passed": {
+          "type": "boolean"
+        },
+        "autotools_build_passed": {
+          "type": "boolean"
+        },
+        "ctest_passed": {
+          "type": "boolean"
+        },
+        "disassembly_instruction_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stack_spill_detected": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "micro_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "benchmark_name",
+          "workload_type",
+          "payload_size_bytes",
+          "compression_level",
+          "baseline_median_ns",
+          "candidate_median_ns",
+          "delta_percentage",
+          "cv_percentage",
+          "is_regression"
+        ],
+        "properties": {
+          "benchmark_name": {
+            "type": "string"
+          },
+          "workload_type": {
+            "type": "string",
+            "enum": [
+              "micro_match"
+            ]
+          },
+          "payload_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compression_level": {
+            "type": "integer"
+          },
+          "baseline_median_ns": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "candidate_median_ns": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "delta_percentage": {
+            "type": "number"
+          },
+          "cv_percentage": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "is_regression": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "macro_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "benchmark_name",
+          "workload_type",
+          "payload_size_bytes",
+          "compression_level",
+          "baseline_median_ns",
+          "candidate_median_ns",
+          "delta_percentage",
+          "cv_percentage",
+          "is_regression"
+        ],
+        "properties": {
+          "benchmark_name": {
+            "type": "string"
+          },
+          "workload_type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "striped_rgb",
+              "dna",
+              "mixed",
+              "short_match",
+              "random",
+              "literals",
+              "realistic_rgb"
+            ]
+          },
+          "payload_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "compression_level": {
+            "type": "integer"
+          },
+          "baseline_median_ns": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "candidate_median_ns": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "delta_percentage": {
+            "type": "number"
+          },
+          "cv_percentage": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "is_regression": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cv_statistics": {
+      "type": "object",
+      "required": [
+        "median_cv_percentage",
+        "mean_cv_percentage",
+        "max_cv_percentage",
+        "high_variance_point_count"
+      ],
+      "properties": {
+        "median_cv_percentage": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "mean_cv_percentage": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "max_cv_percentage": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "high_variance_point_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "overall_verdict": {
+      "type": "object",
+      "required": [
+        "gate_passed",
+        "verdict_level",
+        "blocking_reasons",
+        "recommended_action"
+      ],
+      "properties": {
+        "gate_passed": {
+          "type": "boolean"
+        },
+        "verdict_level": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "BLOCK_REGRESSION",
+            "BLOCK_HIGH_VARIANCE",
+            "BLOCK_BUILD_MISMATCH"
+          ]
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommended_action": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

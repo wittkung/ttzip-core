@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ParetoFrontierAnalysisResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "totalPointsEvaluated",
+    "frontierPoints",
+    "convexEnvelopePoints",
+    "allPoints",
+    "generatedAt"
+  ],
+  "properties": {
+    "totalPointsEvaluated": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "frontierPoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ParetoPoint"
+      }
+    },
+    "convexEnvelopePoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ParetoPoint"
+      }
+    },
+    "allPoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ParetoPoint"
+      }
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "definitions": {
+    "ParetoPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "algorithm",
+        "level",
+        "throughputMBs",
+        "spaceSavingsPct",
+        "compressedBytes",
+        "uncompressedBytes",
+        "paretoRank",
+        "isParetoOptimal",
+        "isOnConvexEnvelope"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "algorithm": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 22
+        },
+        "throughputMBs": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "spaceSavingsPct": {
+          "type": "number"
+        },
+        "compressedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uncompressedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "paretoRank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "isParetoOptimal": {
+          "type": "boolean"
+        },
+        "isOnConvexEnvelope": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

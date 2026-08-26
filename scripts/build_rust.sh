@@ -22,6 +22,7 @@ XCFRAMEWORK_MAC_DIR="${VENDOR_DIR}/TTZipVendor.xcframework/macos-arm64"
 BUILD_MODE="release"
 CARGO_FLAGS="--release"
 BUILD_TARGET=""
+OFFLINE_FLAG=""
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -29,6 +30,7 @@ usage() {
     echo "  --release        Build in release mode with LTO and -O3 (default)"
     echo "  --debug          Build in debug mode"
     echo "  --target <TRGT>  Build specific target (e.g. aarch64-apple-darwin)"
+    echo "  --offline        Build offline without network access"
     echo "  --help           Show this help message"
     exit 0
 }
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
         --debug)
             BUILD_MODE="debug"
             CARGO_FLAGS=""
+            shift
+            ;;
+        --offline)
+            OFFLINE_FLAG="--offline"
             shift
             ;;
         --target)
@@ -89,7 +95,7 @@ EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 
 for target in "${TARGETS[@]}"; do
     echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${target}" ${CARGO_FLAGS}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
@@ -138,21 +144,21 @@ fi
 if [ -f "${FIRST_DYLIB}" ]; then
     (
         cd "${RUST_DIR}"
-        cargo run --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
             --library "${FIRST_DYLIB}" \
             --language swift \
             --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
             --metadata-no-deps
 
         mkdir -p "${REPO_ROOT}/python/ttzip"
-        cargo run --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
             --library "${FIRST_DYLIB}" \
             --language python \
             --out-dir "${REPO_ROOT}/python/ttzip" \
             --metadata-no-deps
 
         mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-        cargo run --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
             --library "${FIRST_DYLIB}" \
             --language kotlin \
             --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \

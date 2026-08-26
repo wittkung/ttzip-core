@@ -8,7 +8,7 @@
 //! Mozilla UniFFI In-Memory VFS Tree Object Scaffolding.
 
 use std::sync::Arc;
-use super::types::{UniFFIEntryMetadata, UniFFIVfsMatch, UniFFIVfsNodeSummary, UniFFIVfsStats};
+use super::types::{UniFFIEntryMetadata, UniFFIVfsMatch, UniFFIVfsNodeSummary, UniFFIVfsPagedResult, UniFFIVfsStats};
 
 /// Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
 #[derive(uniffi::Object)]
@@ -56,6 +56,10 @@ impl UniFFIVfsTree {
     }
 
     pub fn get_children(&self, subpath: Option<String>, offset: u32, limit: u32) -> Vec<UniFFIVfsNodeSummary> {
+        self.get_children_paged(subpath, offset, limit).nodes
+    }
+
+    pub fn get_children_paged(&self, subpath: Option<String>, offset: u32, limit: u32) -> UniFFIVfsPagedResult {
         let guard = self.tree.read();
         let target_node = if let Some(ref sp) = subpath {
             let clean = sp.trim_matches('/');
@@ -68,7 +72,10 @@ impl UniFFIVfsTree {
                     if let Some(child) = curr.children.iter().find(|c| c.name == seg && c.is_directory) {
                         curr = child;
                     } else {
-                        return Vec::new();
+                        return UniFFIVfsPagedResult {
+                            nodes: Vec::new(),
+                            total_count: 0,
+                        };
                     }
                 }
                 curr
@@ -77,7 +84,8 @@ impl UniFFIVfsTree {
             &guard.root
         };
 
-        target_node
+        let total_count = target_node.children.len() as u32;
+        let nodes = target_node
             .children
             .iter()
             .skip(offset as usize)
@@ -94,7 +102,9 @@ impl UniFFIVfsTree {
                 is_encrypted: c.is_encrypted,
                 has_children: !c.children.is_empty(),
             })
-            .collect()
+            .collect();
+
+        UniFFIVfsPagedResult { nodes, total_count }
     }
 
     pub fn render_tree(&self) -> String {

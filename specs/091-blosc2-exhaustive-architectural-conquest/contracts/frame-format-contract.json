@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipBlosc2FrameContract",
+  "description": "Interface contract for Blosc2 standard contiguous/sparse frame serialization and metalayers",
+  "type": "object",
+  "properties": {
+    "magic": {
+      "type": "string",
+      "enum": ["b2frame", "b2fr"]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 2
+    },
+    "typesize": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 255
+    },
+    "chunksize": {
+      "type": "integer",
+      "minimum": 1024
+    },
+    "blocksize": {
+      "type": "integer",
+      "minimum": 1024
+    },
+    "nchunks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nbytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cbytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "metalayers_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "trailer_crc32": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "magic",
+    "version",
+    "typesize",
+    "chunksize",
+    "blocksize",
+    "nchunks",
+    "nbytes",
+    "cbytes",
+    "metalayers_count",
+    "trailer_crc32"
+  ],
+  "additionalProperties": false
+}

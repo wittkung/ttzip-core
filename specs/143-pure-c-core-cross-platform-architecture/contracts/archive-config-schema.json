@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArchiveConfigContract",
+  "description": "Strongly-typed contract for TTZip public C API archive creation options.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "compressionLevel",
+    "numThreads",
+    "isSolid"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "zip",
+        "sevenZip",
+        "tar",
+        "tarZst",
+        "tarGz",
+        "tarBz2",
+        "tarXz",
+        "dmg",
+        "wim"
+      ]
+    },
+    "compressionLevel": {
+      "type": "integer",
+      "minimum": -5,
+      "maximum": 22
+    },
+    "numThreads": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 128
+    },
+    "splitVolumeSizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "isSolid": {
+      "type": "boolean"
+    },
+    "password": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

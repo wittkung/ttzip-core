@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MatchfinderRebaseParams",
+  "description": "Schema for 16-bit matchfinder sliding window rebase telemetry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "windowSize",
+    "tableSizeEntries",
+    "vectorInstruction",
+    "rebaseDurationMicros"
+  ],
+  "properties": {
+    "windowSize": {
+      "type": "integer",
+      "enum": [32768, 65536],
+      "description": "Sliding window size in bytes"
+    },
+    "tableSizeEntries": {
+      "type": "integer",
+      "minimum": 1024,
+      "description": "Total number of 16-bit entries in matchfinder hash/next table"
+    },
+    "vectorInstruction": {
+      "type": "string",
+      "enum": [
+        "arm_neon_vqaddq_s16",
+        "x86_avx2_paddsw",
+        "scalar_branchless"
+      ],
+      "description": "Vector instruction set utilized for saturated subtraction rebase"
+    },
+    "rebaseDurationMicros": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Elapsed time in microseconds for full table rebase"
+    }
+  }
+}

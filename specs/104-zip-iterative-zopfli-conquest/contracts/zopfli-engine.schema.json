@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipZopfliOptionsContract",
+  "description": "Schema for TTZip Zopfli and iterative multi-pass compression configuration",
+  "type": "object",
+  "properties": {
+    "compression_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12,
+      "description": "Base Deflate compression level"
+    },
+    "num_iterations": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 30,
+      "description": "Number of iterative dynamic Huffman re-weighting passes"
+    },
+    "block_splitting": {
+      "type": "integer",
+      "enum": [0, 1],
+      "description": "Dynamic block splitting flag (0=disabled, 1=enabled)"
+    },
+    "max_block_splits": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 30,
+      "description": "Maximum number of dynamic block splits"
+    },
+    "early_exit_threshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Asymptotic cost convergence early exit delta threshold"
+    }
+  },
+  "required": [
+    "compression_level",
+    "num_iterations",
+    "block_splitting",
+    "max_block_splits",
+    "early_exit_threshold"
+  ],
+  "additionalProperties": false
+}

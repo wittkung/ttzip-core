@@ -12,7 +12,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
-#include "../../Sources/CTTZipBridge/include/ttzip.hpp"
+#include "../include/ttzip.hpp"
 
 static std::string to_lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {

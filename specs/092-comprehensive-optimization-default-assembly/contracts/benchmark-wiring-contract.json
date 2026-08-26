@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipBenchmarkWiringContract",
+  "description": "Interface contract for full-stack competitor benchmark matrix execution with multi-modal datasets",
+  "type": "object",
+  "properties": {
+    "dataset_archetype": {
+      "type": "string",
+      "enum": ["FLOAT32_SENSOR", "HIGH_ENTROPY_BINARY", "SPARSE_HOLES_EXTENT", "STRUCTURED_JSON_STREAM"]
+    },
+    "dataset_size_bytes": {
+      "type": "integer",
+      "minimum": 1048576
+    },
+    "tested_format": {
+      "type": "string",
+      "enum": ["7z", "zip", "tar.zst", "tar.gz", "tar.bz2", "tar.xz", "tar", "lzip", "lz4", "brotli", "lrzip", "aar", "snappy", "wim", "dmg", "iso"]
+    },
+    "competitor_tools_tested": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ttzip_compression_mb_s": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "ttzip_decompression_mb_s": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "round_trip_integrity_verified": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "dataset_archetype",
+    "dataset_size_bytes",
+    "tested_format",
+    "competitor_tools_tested",
+    "ttzip_compression_mb_s",
+    "ttzip_decompression_mb_s",
+    "round_trip_integrity_verified"
+  ],
+  "additionalProperties": false
+}

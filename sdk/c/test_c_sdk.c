@@ -13,7 +13,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include "../../Sources/CTTZipBridge/include/ttzip.h"
+#include "../include/ttzip.h"
 
 typedef struct {
     size_t count;

@@ -1,27 +1,41 @@
+# macOS & System Clutter
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
+
+# SwiftPM & Xcode
 .build/
-target/
-core/target/
-apple/.build/
 .swiftpm/
-*.xcodeproj
-*.xcworkspace
-*.xcuserstate
-xcuserdata/
+.cache/
 DerivedData/
 userdata/
-*.swp
-*.orig
+xcuserdata/
+*.xcuserstate
+*.xcworkspace
 *.dSYM/
+Vendor/TTZipVendor.xcframework/
+*.a
+
+# Rust Cargo & UniFFI
+target/
+rust/target/
+core/target/
+**/*.rs.bk
+
+# C / C++ & CMake Build
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.o
 *.class
 bin/
 
-# Python build artifacts
+# Python / PyO3 Build Artifacts
 *.so
 *.dylib
+*.pyd
 *.egg-info/
 dist/
 wheels/
@@ -29,26 +43,31 @@ __pycache__/
 .pytest_cache/
 .coverage
 
-# Compiled test binaries
+# Compiled Multi-Language SDK Test Binaries
 sdk/c/test_c_sdk
 sdk/c/asan_stress_test
+sdk/c/asan_stress_test.dSYM
 sdk/c/interop_cli
 sdk/cpp/test_cpp_sdk
 sdk/cpp/interop_cli
 sdk/go/interop_cli
 sdk/jvm/bin/
 
-# Generated test corpus & fixtures
+# Generated Test Corpus & Dynamic Fixtures
 Tests/fixtures/canonical/
 Tests/security/fixtures/corpus/
 reports/*.json
 
-# Ephemeral benchmark telemetry logs
+# Ephemeral Benchmark Telemetry Dumps
 docs/benchmarks/benchmark_report_*.json
 docs/benchmarks/benchmark_report_*.md
 
-# Cache & Temporary
-.cache/
+# Editor & Temporary
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
 *.tmp
 *.log
 .system_generated/

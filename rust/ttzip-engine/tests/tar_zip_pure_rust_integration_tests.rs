@@ -49,9 +49,8 @@ unsafe extern "C" fn zip_scan_cb(
 
 #[test]
 fn test_pure_rust_tar_scan_and_extract_ffi() {
-    let temp_dir = std::env::temp_dir().join("ttzip_test_tar_ffi");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = tmp_dir.path();
 
     let tar_path = temp_dir.join("test_archive.tar");
     let file = fs::File::create(&tar_path).unwrap();
@@ -122,15 +121,12 @@ fn test_pure_rust_tar_scan_and_extract_ffi() {
         )
     };
     assert_eq!(oob_status, TTZipStatus::ErrInvalidOffset);
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_pure_rust_zip_scan_entries_ffi() {
-    let temp_dir = std::env::temp_dir().join("ttzip_test_zip_scan_ffi");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = tmp_dir.path();
 
     let src_file1 = temp_dir.join("a.txt");
     let src_file2 = temp_dir.join("b.bin");
@@ -165,6 +161,4 @@ fn test_pure_rust_zip_scan_entries_ffi() {
     };
     assert_eq!(status, TTZipStatus::Ok);
     assert_eq!(ZIP_SCANNED_COUNT.load(Ordering::SeqCst), 2);
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }

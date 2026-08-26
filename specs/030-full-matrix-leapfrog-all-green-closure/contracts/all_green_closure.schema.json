@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AllGreenClosureAuditContract",
+  "description": "Schema for full matrix leapfrog all-green transformation and zero regression audit",
+  "type": "object",
+  "required": [
+    "qosClass",
+    "isPCoreAffinityActive",
+    "boostTimestamp",
+    "readBufferCapacity",
+    "isSingleFileBypass",
+    "directoryCacheSlots"
+  ],
+  "properties": {
+    "qosClass": {
+      "type": "string"
+    },
+    "isPCoreAffinityActive": {
+      "type": "boolean"
+    },
+    "boostTimestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "readBufferCapacity": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "isSingleFileBypass": {
+      "type": "boolean"
+    },
+    "directoryCacheSlots": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

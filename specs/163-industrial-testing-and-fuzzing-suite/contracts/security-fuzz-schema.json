@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipSecurityAndFuzzingReportSchema",
+  "description": "Strict JSON schema for TTZip CVE defense, legacy archive compatibility, APFS metadata, and LibFuzzer reports.",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "total_cve_cases",
+    "cve_intercepted_count",
+    "compat_fixtures_count",
+    "compat_passed_count",
+    "metadata_tests_count",
+    "metadata_passed_count",
+    "cve_records",
+    "compat_records",
+    "metadata_records"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_cve_cases": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cve_intercepted_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compat_fixtures_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compat_passed_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "metadata_tests_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "metadata_passed_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cve_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cve_identifier",
+          "attack_vector",
+          "payload_size_bytes",
+          "expected_error_code",
+          "execution_verdict",
+          "elapsed_microseconds",
+          "sanitizer_clean"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "cve_identifier": {
+            "type": "string"
+          },
+          "attack_vector": {
+            "type": "string"
+          },
+          "payload_size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expected_error_code": {
+            "type": "string"
+          },
+          "execution_verdict": {
+            "type": "string",
+            "enum": [
+              "INTERCEPTED_SAFE",
+              "UNCAUGHT_ERROR",
+              "SEGFAULT"
+            ]
+          },
+          "elapsed_microseconds": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "sanitizer_clean": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "compat_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fixture_name",
+          "source_generator",
+          "container_format",
+          "entry_count",
+          "uncompressed_bytes",
+          "roundtrip_exact",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "fixture_name": {
+            "type": "string"
+          },
+          "source_generator": {
+            "type": "string"
+          },
+          "container_format": {
+            "type": "string",
+            "enum": [
+              "zip",
+              "tar",
+              "7z"
+            ]
+          },
+          "entry_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uncompressed_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "roundtrip_exact": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          }
+        }
+      }
+    },
+    "metadata_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "test_case",
+          "source_stat_size",
+          "physical_blocks_used",
+          "xattr_count",
+          "fidelity_passed"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "test_case": {
+            "type": "string"
+          },
+          "source_stat_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "physical_blocks_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "xattr_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fidelity_passed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

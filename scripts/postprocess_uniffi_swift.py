@@ -12,17 +12,16 @@ def postprocess(swift_path):
     with open(swift_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # 1. Add CTTZipBridge fallback import if not present
-    target_import = """#if canImport(ttzip_engineFFI)
-    import ttzip_engineFFI
-#endif"""
-    replacement_import = """#if canImport(ttzip_engineFFI)
-    import ttzip_engineFFI
-#elseif canImport(CTTZipBridge)
-    import CTTZipBridge
-#endif"""
+    # 1. Add CTTZipBridge import if not present
     if "import CTTZipBridge" not in content:
-        content = content.replace(target_import, replacement_import)
+        content = content.replace(
+            "#if canImport(ttzip_engineFFI)\n    import ttzip_engineFFI\n#endif",
+            "import CTTZipBridge"
+        )
+    content = content.replace(
+        "#if canImport(ttzip_engineFFI)\n    import ttzip_engineFFI\n#elseif canImport(CTTZipBridge)\n    import CTTZipBridge\n#endif",
+        "import CTTZipBridge"
+    )
 
     # 2. Fix mutable globals for Swift 6 strict concurrency (idempotent)
     content = content.replace("nonisolated(unsafe) ", "")

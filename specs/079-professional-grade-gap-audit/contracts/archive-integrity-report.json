@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ttzip.app/schemas/archive-integrity-report.json",
+  "title": "ArchiveIntegrityReport",
+  "description": "Schema for in-memory archive integrity check reports and corruption diagnostics.",
+  "type": "object",
+  "required": [
+    "archivePath",
+    "totalEntriesCount",
+    "verifiedEntriesCount",
+    "corruptedEntriesCount",
+    "overallStatus",
+    "verificationDurationSeconds",
+    "averageThroughputMBs",
+    "corruptedEntries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "archivePath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the verified archive."
+    },
+    "totalEntriesCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of entries examined."
+    },
+    "verifiedEntriesCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of entries passing all checksum validations."
+    },
+    "corruptedEntriesCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of corrupt or unreadable entries."
+    },
+    "overallStatus": {
+      "type": "string",
+      "enum": ["passed", "corrupted", "unreadable", "encrypted_missing_key"],
+      "description": "Overall status verdict."
+    },
+    "verificationDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Elapsed duration of verification pass in seconds."
+    },
+    "averageThroughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "In-memory decoding and verification throughput in MB/s."
+    },
+    "corruptedEntries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CorruptedEntryDetail"
+      },
+      "description": "List of corrupted entry records."
+    }
+  },
+  "definitions": {
+    "CorruptedEntryDetail": {
+      "type": "object",
+      "required": [
+        "entryPath",
+        "errorType",
+        "expectedChecksum",
+        "actualChecksum",
+        "diagnosticMessage"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entryPath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative path of corrupted file in archive."
+        },
+        "errorType": {
+          "type": "string",
+          "enum": ["crc32_mismatch", "header_damaged", "block_truncated", "invalid_dictionary"],
+          "description": "Classification of corruption."
+        },
+        "expectedChecksum": {
+          "type": "string",
+          "description": "Expected CRC32 / SHA-256 hex string from archive header."
+        },
+        "actualChecksum": {
+          "type": "string",
+          "description": "Actual CRC32 / SHA-256 computed over decompressed bytes."
+        },
+        "diagnosticMessage": {
+          "type": "string",
+          "description": "Detailed error string from low-level C decompressor."
+        }
+      }
+    }
+  }
+}

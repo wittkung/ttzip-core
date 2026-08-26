@@ -7,7 +7,6 @@
 
 //! Task T008: ZipSlip & Path Traversal Injection Fuzzing.
 
-use std::path::Path;
 use ttzip_engine::fs::safe_extract::{sanitize_and_validate_path, SafeExtractEngine};
 use ttzip_engine::types::TTZipStatus;
 
@@ -15,7 +14,8 @@ use super::common::{fuzz_scale, FuzzRng};
 
 #[test]
 fn test_fuzz_safe_extract_zipslip_traversals() {
-    let dest_dir = Path::new("/tmp/ttzip_safe_extract_sandbox_test");
+    let tmp_dir = tempfile::tempdir().expect("create tempdir");
+    let dest_dir = tmp_dir.path();
     let mut rng = FuzzRng::new(0x5119511900000001);
 
     // 1. Static corpus of high-risk exploit payloads
@@ -116,15 +116,16 @@ fn test_fuzz_safe_extract_zipslip_traversals() {
         }
     }
 
-    // 3. Engine-level extraction integration with malicious entries
+    // 3. Engine-level extraction integration with malicious and safe entries
     let mut engine = SafeExtractEngine::new();
     for &payload in &static_evil_payloads {
         let check_res = sanitize_and_validate_path(dest_dir, payload);
         assert_eq!(check_res, Err(TTZipStatus::ErrSecurityViolation));
-        if let Ok(safe_p) = check_res {
-            engine.register_entry(safe_p, 0o644, 1700000000, 0, false);
-        }
     }
+    // Verify engine registers validated safe paths successfully
+    let safe_p = sanitize_and_validate_path(dest_dir, "safe_folder/valid_file.txt")
+        .expect("sanitized safe path");
+    engine.register_entry(safe_p, 0o644, 1700000000, 0, false);
 
     println!(
         "[FUZZ] Completed 20,000+ mutations on safeExtractPathTraversals -> {} trapped, 0 escapes",

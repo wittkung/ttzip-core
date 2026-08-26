@@ -7,8 +7,6 @@
 
 import Foundation
 import Security
-import CryptoKit
-import CommonCrypto
 import LocalAuthentication
 
 public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Sendable {
@@ -322,37 +320,17 @@ extension PasswordVaultManager {
     static let defaultV4Iterations: UInt32 = 600_000
     
     func deriveSymmetricKeyBytesV4(_ password: String, salt: Data, iterations: UInt32 = defaultV4Iterations) -> [UInt8]? {
-        var derivedKey = [UInt8](repeating: 0, count: 32)
-        let passBytes = Array(password.utf8)
-        let status = salt.withUnsafeBytes { sBuf in
-            CCKeyDerivationPBKDF(
-                CCPBKDFAlgorithm(kCCPBKDF2),
-                password, passBytes.count,
-                sBuf.baseAddress?.assumingMemoryBound(to: UInt8.self), salt.count,
-                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                iterations,
-                &derivedKey, 32
-            )
+        guard let derivedData = try? vaultDeriveKey(password: password, salt: salt, iterations: iterations) else {
+            return nil
         }
-        guard status == kCCSuccess else {
-            return nil // 绝对禁止 SHA-256 弱哈希回退降级
-        }
-        return derivedKey
+        return Array(derivedData)
     }
     
     func computeVerifierHash(vaultKey: SecureBytes, salt: Data) -> String {
         return vaultKey.withUnsafeBytes { kBuf in
-            guard let kBase = kBuf.baseAddress else { return "" }
-            var hmacContext = CCHmacContext()
-            CCHmacInit(&hmacContext, CCHmacAlgorithm(kCCHmacAlgSHA256), kBase, kBuf.count)
-            salt.withUnsafeBytes { sBuf in
-                if let sBase = sBuf.baseAddress {
-                    CCHmacUpdate(&hmacContext, sBase, sBuf.count)
-                }
-            }
-            var output = [UInt8](repeating: 0, count: 32)
-            CCHmacFinal(&hmacContext, &output)
-            return output.map { String(format: "%02x", $0) }.joined()
+            guard let kBase = kBuf.baseAddress, kBuf.count >= 32 else { return "" }
+            let keyData = Data(bytes: kBase, count: 32)
+            return vaultComputeVerifier(key: keyData, salt: salt)
         }
     }
     
@@ -368,18 +346,13 @@ extension PasswordVaultManager {
     }
     
     func encryptDataV4WithKey(_ data: Data, vaultKey: SecureBytes) -> Data? {
-        guard let sealedBox = vaultKey.withUnsafeBytes({ keyBuf -> AES.GCM.SealedBox? in
+        guard let encryptedPayload = vaultKey.withUnsafeBytes({ keyBuf -> Data? in
             guard let base = keyBuf.baseAddress, keyBuf.count >= 32 else { return nil }
-            let symKey = SymmetricKey(data: Data(bytes: base, count: 32))
-            return try? AES.GCM.seal(data, using: symKey)
+            let keyData = Data(bytes: base, count: 32)
+            return try? vaultEncryptPayload(key: keyData, payload: data)
         }) else {
             return nil
         }
-        
-        var combinedPayload = Data()
-        combinedPayload.append(Data(sealedBox.nonce)) // 12 bytes nonce
-        combinedPayload.append(sealedBox.ciphertext)  // N bytes cipher
-        combinedPayload.append(sealedBox.tag)         // 16 bytes tag
         
         var result = Data()
         result.append(Self.vaultMagicV4) // 4 bytes
@@ -390,7 +363,7 @@ extension PasswordVaultManager {
         var saltLen = UInt8(salt.count)
         result.append(Data(bytes: &saltLen, count: 1)) // 1 byte
         result.append(salt) // 32 bytes
-        result.append(combinedPayload) // AES-GCM sealed box
+        result.append(encryptedPayload) // 12-byte IV + cipher + 16-byte tag
         return result
     }
     
@@ -403,20 +376,10 @@ extension PasswordVaultManager {
         guard data.count >= 9 + saltLen + 28 else { return nil }
         
         let payload = data.subdata(in: (9 + saltLen)..<data.count)
-        guard payload.count >= 28 else { return nil }
-        
-        let nonceData = payload.prefix(12)
-        let tagData = payload.suffix(16)
-        let cipherData = payload.subdata(in: 12..<(payload.count - 16))
-        
         return vaultKey.withUnsafeBytes { keyBuf -> Data? in
             guard let base = keyBuf.baseAddress, keyBuf.count >= 32 else { return nil }
-            let symKey = SymmetricKey(data: Data(bytes: base, count: 32))
-            guard let nonce = try? AES.GCM.Nonce(data: nonceData),
-                  let sealedBox = try? AES.GCM.SealedBox(nonce: nonce, ciphertext: cipherData, tag: tagData) else {
-                return nil
-            }
-            return try? AES.GCM.open(sealedBox, using: symKey)
+            let keyData = Data(bytes: base, count: 32)
+            return try? vaultDecryptPayload(key: keyData, encryptedData: payload)
         }
     }
     

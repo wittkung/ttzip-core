@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRC32ComputationRequest",
+  "description": "Request model for hardware-accelerated CRC-32 checksum calculation",
+  "type": "object",
+  "properties": {
+    "initial_crc": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "description": "Initial running CRC-32 seed value (0 for first chunk)"
+    },
+    "buffer_size_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total length of the data buffer in bytes"
+    },
+    "alignment_offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63,
+      "description": "Memory buffer pointer alignment offset modulo 64 bytes"
+    }
+  },
+  "required": [
+    "initial_crc",
+    "buffer_size_bytes",
+    "alignment_offset"
+  ],
+  "additionalProperties": false
+}

@@ -109,7 +109,7 @@ fi
 # Micro-benchmarks
 if [ "${RUN_BENCH}" = true ]; then
     echo "--> [2/2] Running Criterion Micro-benchmarks..."
-    cargo bench -p ttzip-engine || true
+    cargo bench -p ttzip-engine
     echo "✅ [PASS] Criterion Benchmarks executed."
 fi
 

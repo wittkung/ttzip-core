@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FinalClosureAuditContract",
+  "description": "Schema for final 2 regressions zero closure and fast-path direct write",
+  "type": "object",
+  "required": [
+    "isSingleRootFile",
+    "fileDescriptor",
+    "totalWrittenBytes",
+    "format",
+    "hasPassword",
+    "isDirectNativeRoute",
+    "isTempDirAllocated"
+  ],
+  "properties": {
+    "isSingleRootFile": {
+      "type": "boolean"
+    },
+    "fileDescriptor": {
+      "type": "integer"
+    },
+    "totalWrittenBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "format": {
+      "type": "string"
+    },
+    "hasPassword": {
+      "type": "boolean"
+    },
+    "isDirectNativeRoute": {
+      "type": "boolean"
+    },
+    "isTempDirAllocated": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

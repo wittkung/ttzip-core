@@ -729,3 +729,6 @@ public typealias CompressionFormat = ArchiveCompressionFormat
 public typealias CompressionLevel = ArchiveCompressionLevel
 public typealias CompressionOptions = ArchiveAdvancedOptions
 public typealias EntryMetadata = ArchiveEntryMetadata
+public typealias UniFFITransactionDiff = UniFfiTransactionDiff
+public typealias UniFFISmartExtractDecision = UniFfiSmartExtractDecision
+

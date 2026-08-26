@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NativeDeflateConfigurationAndResultContract",
+  "description": "强类型零通配契约：自研原生 Apple Silicon Deflate 引擎配置、分块并发及执行结果",
+  "type": "object",
+  "required": [
+    "profile",
+    "tileExecution",
+    "metrics"
+  ],
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": [
+        "tierLevel",
+        "profileName",
+        "maxChainDepth",
+        "niceMatchLength",
+        "dynamicHuffman",
+        "historyWarmupEnabled"
+      ],
+      "properties": {
+        "tierLevel": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7,
+          "description": "0: Store, 1..2: Fast Greedy, 3..4: Lazy Evaluation, 5..6: Optimal DAG, 7: Extreme Squeeze"
+        },
+        "profileName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "档位易读名称"
+        },
+        "maxChainDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128,
+          "description": "哈希链回溯深度"
+        },
+        "niceMatchLength": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 258,
+          "description": "提前截断判定长度"
+        },
+        "dynamicHuffman": {
+          "type": "boolean",
+          "description": "是否生成动态 Canonical 树"
+        },
+        "historyWarmupEnabled": {
+          "type": "boolean",
+          "description": "是否开启 32KB 跨 Tile 字典预热"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tileExecution": {
+      "type": "object",
+      "required": [
+        "totalTiles",
+        "tileSizeBytes",
+        "historyWindowBytes",
+        "syncFlushBetweenTiles"
+      ],
+      "properties": {
+        "totalTiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Tile 并发分块总数"
+        },
+        "tileSizeBytes": {
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 67108864,
+          "description": "单个 Tile 目标字节数 (默认 1MB~6.25MB)"
+        },
+        "historyWindowBytes": {
+          "type": "integer",
+          "enum": [0, 32768],
+          "description": "跨 Tile 预热历史窗口字节数"
+        },
+        "syncFlushBetweenTiles": {
+          "type": "boolean",
+          "description": "前 N-1 块是否发射 Z_SYNC_FLUSH 字节对齐标记"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "uncompressedBytes",
+        "compressedBytes",
+        "compressionRatio",
+        "spaceSavingsPct",
+        "throughputMBs",
+        "systemUnzipVerified"
+      ],
+      "properties": {
+        "uncompressedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compressedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "compressionRatio": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "spaceSavingsPct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0
+        },
+        "throughputMBs": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "systemUnzipVerified": {
+          "type": "boolean",
+          "description": "系统自带 /usr/bin/unzip -t 校验是否 100% 通过"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

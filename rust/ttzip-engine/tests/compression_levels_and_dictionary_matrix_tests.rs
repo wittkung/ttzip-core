@@ -74,43 +74,32 @@ fn test_store_mode_zero_compression_roundtrip() {
     assert_eq!(extracted_data, payload, "Extracted payload must match original exactly");
 }
 
+use ttzip_engine::codecs::deflate::DEFLATE_WINDOW_SIZE_BYTES;
+use ttzip_engine::codecs::lzma2::{
+    calculate_dictionary_mb, lzma2_memory_budget_per_thread_mb, LZMA2_MAX_DICTIONARY_MB,
+};
+
 #[test]
 fn test_7z_dictionary_scaling_bounds_and_limits() {
-    // 7-Zip LZMA2 dictionary size definitions in MB
     let test_dicts_mb = [16, 32, 64, 128, 256, 512, 1024, 1536];
 
     for &dict_mb in &test_dicts_mb {
-        // Physical memory multiplier for LZMA2 BT4 is ~10.5x dictionary size per thread
-        let mem_per_thread_mb = (dict_mb as f64) * 10.5;
+        // Physical memory budget for LZMA2 BT4 via exported engine function
+        let mem_per_thread_mb = lzma2_memory_budget_per_thread_mb(dict_mb);
         assert!(mem_per_thread_mb > 0.0);
-        
-        // Ensure within 1536 MB architecture limit (31-bit match-finder offset)
-        assert!(dict_mb <= 1536, "Dictionary size {} MB exceeds 1.5GB 7z architectural maximum", dict_mb);
+        assert_eq!(mem_per_thread_mb, (dict_mb as f64) * 10.5);
+
+        // Ensure within exported architecture maximum limit
+        assert!(
+            dict_mb <= LZMA2_MAX_DICTIONARY_MB,
+            "Dictionary size {} MB exceeds 1.5GB 7z architectural maximum",
+            dict_mb
+        );
     }
 }
 
 #[test]
 fn test_level_driven_dictionary_formula() {
-    // Simulates the level-to-dictionary mapping logic
-    fn calculate_dictionary_mb(level: TTZipCompressionLevel, physical_ram_gb: f64) -> usize {
-        match level {
-            TTZipCompressionLevel::Store => 0,
-            TTZipCompressionLevel::Fastest | TTZipCompressionLevel::Fast => 16,
-            TTZipCompressionLevel::Normal => 64,
-            TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => {
-                if physical_ram_gb >= 64.0 {
-                    1024 // 1 GB
-                } else if physical_ram_gb >= 32.0 {
-                    512  // 512 MB
-                } else if physical_ram_gb >= 16.0 {
-                    256  // 256 MB
-                } else {
-                    128  // 128 MB
-                }
-            }
-        }
-    }
-
     // Level 0 (Store)
     assert_eq!(calculate_dictionary_mb(TTZipCompressionLevel::Store, 64.0), 0);
 
@@ -130,7 +119,9 @@ fn test_level_driven_dictionary_formula() {
 
 #[test]
 fn test_zip_deflate_rfc1951_sliding_window_constant() {
-    // RFC 1951 Deflate sliding window size is strictly 32 KB
-    const DEFLATE_WINDOW_SIZE_BYTES: usize = 32 * 1024;
-    assert_eq!(DEFLATE_WINDOW_SIZE_BYTES, 32768, "Standard Deflate sliding window is fixed at 32 KB");
+    // RFC 1951 Deflate sliding window size is strictly 32 KB, exported by ttzip_engine::codecs::deflate
+    assert_eq!(
+        DEFLATE_WINDOW_SIZE_BYTES, 32768,
+        "Standard Deflate sliding window is fixed at 32 KB"
+    );
 }

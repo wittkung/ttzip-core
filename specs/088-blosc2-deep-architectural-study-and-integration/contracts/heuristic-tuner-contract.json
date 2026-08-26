@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HeuristicTunerContract",
+  "description": "Strict schema for small-sample micro-probing, entropy estimation, and Pareto filter/codec decision telemetry",
+  "type": "object",
+  "required": ["probeWindow", "entropyAnalysis", "strideAnalysis", "paretoSelection"],
+  "additionalProperties": false,
+  "properties": {
+    "probeWindow": {
+      "type": "object",
+      "required": ["sampleSizeBytes", "probeOffsetBytes", "totalStreamSizeBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "sampleSizeBytes": {
+          "type": "integer",
+          "enum": [16384, 32768, 65536]
+        },
+        "probeOffsetBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalStreamSizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "entropyAnalysis": {
+      "type": "object",
+      "required": ["shannonEntropyBitsPerByte", "zeroCount", "zeroRunRatio", "isIncompressibleEarlyExit"],
+      "additionalProperties": false,
+      "properties": {
+        "shannonEntropyBitsPerByte": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 8.0
+        },
+        "zeroCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "zeroRunRatio": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "isIncompressibleEarlyExit": {
+          "type": "boolean"
+        }
+      }
+    },
+    "strideAnalysis": {
+      "type": "object",
+      "required": ["testedStrides", "optimalTypeSize", "correlationScore", "differenceVarianceRatio"],
+      "additionalProperties": false,
+      "properties": {
+        "testedStrides": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [1, 2, 4, 8, 16]
+          }
+        },
+        "optimalTypeSize": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16]
+        },
+        "correlationScore": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "differenceVarianceRatio": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      }
+    },
+    "paretoSelection": {
+      "type": "object",
+      "required": ["tradeoffAlpha", "selectedFilters", "selectedCodec", "probingElapsedMicroseconds"],
+      "additionalProperties": false,
+      "properties": {
+        "tradeoffAlpha": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "selectedFilters": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["NONE", "SHUFFLE", "BITSHUFFLE", "BYTEDELTA", "TRUNC_FLOAT32", "TRUNC_FLOAT64"]
+          }
+        },
+        "selectedCodec": {
+          "type": "string",
+          "enum": ["STORE", "LZ4", "ZSTD", "DEFLATE", "BLOSCLZ"]
+        },
+        "probingElapsedMicroseconds": {
+          "type": "number",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

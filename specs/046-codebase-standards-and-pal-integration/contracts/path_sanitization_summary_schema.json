@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PathSanitizationSummary",
+  "description": "Schema for comprehensive path sanitization summary in SecurityScanner",
+  "type": "object",
+  "required": [
+    "originalPath",
+    "cleanRelativePath",
+    "isPathSafe",
+    "hasWindowsReservedName",
+    "hasAlternateDataStream",
+    "isLongPath"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "originalPath": {
+      "type": "string"
+    },
+    "cleanRelativePath": {
+      "type": "string"
+    },
+    "isPathSafe": {
+      "type": "boolean"
+    },
+    "hasWindowsReservedName": {
+      "type": "boolean"
+    },
+    "hasAlternateDataStream": {
+      "type": "boolean"
+    },
+    "isLongPath": {
+      "type": "boolean"
+    }
+  }
+}

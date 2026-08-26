@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FilterPipelineContract",
+  "description": "Strict schema for CTTZipFilterPipeline multi-filter configuration, execution, and roundtrip telemetry",
+  "type": "object",
+  "required": ["pipelineConfig", "inputBufferBytes", "direction", "executionStatus"],
+  "additionalProperties": false,
+  "properties": {
+    "pipelineConfig": {
+      "type": "object",
+      "required": ["filterCount", "stages", "typesize", "autoTuningEnabled"],
+      "additionalProperties": false,
+      "properties": {
+        "filterCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "description": "Total number of chained filters"
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["filterId", "filterParam", "filterName"],
+            "additionalProperties": false,
+            "properties": {
+              "filterId": {
+                "type": "integer",
+                "enum": [0, 1, 2, 3, 4, 5],
+                "description": "0: None, 1: Shuffle, 2: BitShuffle, 3: ByteDelta, 4: TruncPrecFloat32, 5: TruncPrecFloat64"
+              },
+              "filterParam": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 64,
+                "description": "Parameter such as mantissa bits preserved"
+              },
+              "filterName": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_]+$"
+              }
+            }
+          }
+        },
+        "typesize": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16],
+          "description": "Data element size in bytes"
+        },
+        "autoTuningEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inputBufferBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Byte count of the buffer to transform"
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["FORWARD_ENCODE", "BACKWARD_DECODE"],
+      "description": "Transformation direction"
+    },
+    "executionStatus": {
+      "type": "object",
+      "required": ["success", "processedBytes", "throughputMBs", "elapsedMicroseconds", "checksumCRC32"],
+      "additionalProperties": false,
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "processedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "throughputMBs": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "elapsedMicroseconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checksumCRC32": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "errorCode": {
+          "type": "string",
+          "enum": ["OK", "ERR_INVALID_PARAM", "ERR_BUFFER_OVERRUN", "ERR_UNALIGNED_LENGTH", "ERR_UNSUPPORTED_FILTER"]
+        }
+      }
+    }
+  }
+}

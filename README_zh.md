@@ -11,23 +11,30 @@
 
 <p align="center">
   <strong>极速原生跨平台归档与压缩微内核</strong><br />
-  基于 Safe Rust 安全微内核 (<code>ttzip-glue</code> &rarr; <code>TTZipVendor.xcframework</code>)、SOTA 顶尖编解码器矩阵、Dual-ISA 硬件向量加速（ARM64 PMULL / x86_64 AVX2）以及 Swift 6 原生 macOS 表现层与 CLI (<code>TTZipApp</code>, <code>TTZipCLI</code>, <code>TTZipCore</code>) 构建。
+  基于 Safe Rust 安全微内核 (<code>ttzip-engine</code> &rarr; <code>TTZipVendor.xcframework</code>)、SOTA 顶尖编解码器矩阵、Dual-ISA 硬件向量加速（ARM64 PMULL / x86_64 AVX2）以及 Swift 6 SDK 表现层与 CLI (<code>TTZipCore</code>, <code>ttzip</code>, <code>ttzip-bench</code>) 构建。
 </p>
 
 <p align="center">
-  <a href="https://github.com/wittkung/TTZip"><img src="https://img.shields.io/badge/架构-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
+  <a href="https://github.com/wittkung/ttzip-core"><img src="https://img.shields.io/badge/架构-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B%20%7C%20Cargo-dea584?style=flat-square&logo=rust" alt="Rust Cargo" /></a>
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20严格并发-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/向量%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-Source--Available-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
 </p>
+
+---
+
+## 📖 架构设计与工程规范文档
+
+- **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 详述双核 UniFFI 微内核、内存安全模型、APFS CoW 事务回滚、VFS 零分配搜索与四大架构不变量。
+- **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: 英文版系统全景架构与工程规范白皮书。
 
 ---
 
 ## 🌟 核心技术亮点与架构设计
 
-- **🚀 双核微内核架构 (Swift 6 + Safe Rust 微内核)**：内存安全的高吞吐 Rust 原生引擎 (`rust/ttzip-glue` 编译为 `TTZipVendor.xcframework`)，通过零开销标准化 C-ABI (`CTTZipBridge`) 进行跨语言桥接，由 Swift 6 完全并发域编排 (`TTZipCore`) 驱动，呈现于原生桌面 GUI (`TTZipApp`)、POSIX 命令行 (`ttzip-cli`) 与性能基准套件 (`ttzip-bench`)。
+- **🚀 双核微内核架构 (Swift 6 + Safe Rust 微内核)**：内存安全的高吞吐 Rust 原生引擎 (`rust/ttzip-engine` 编译为 `TTZipVendor.xcframework`)，通过零开销标准化 C-ABI & UniFFI (`CTTZipBridge`) 进行跨语言桥接，由 Swift 6 完全并发域编排 (`TTZipCore`) 驱动，呈现于 POSIX 命令行 (`ttzip`)、性能基准套件 (`ttzip-bench`) 与原生桌面应用 (`apple/TTZipApp`)。
 - **⚡️ 63+ GB/s 硬件双指令集 (Dual-ISA) 向量加速**：
   - **63,232 MB/s (63.2 GB/s) CRC32**：ARM64 硬件多项式乘法 (`vmull_p64` / `__crc32d`) 与 x86_64 PCLMULQDQ 宽折叠加速。
   - **36,017 MB/s (36.0 GB/s) CRC64**：Dual-ISA 向量化 ECMA-182 校验。
@@ -124,11 +131,11 @@ make reinstall
 ### 3. 通过 Swift Package Manager (SwiftPM) 编译
 
 ```bash
-# 编译所有 Release 产物 (TTZipApp, ttzip-cli, ttzip-bench)
+# 编译所有 Core Release 产物 (TTZipCore, CTTZipBridge, ttzip-bench)
 swift build -c release
 ```
 
-### 4. 编译 Rust 安全微内核 (`ttzip-glue`)
+### 4. 编译 Rust 安全微内核 (`ttzip-engine`)
 
 ```bash
 # 自动编译 Universal 静态库并部署至 Vendor XCFramework
@@ -227,13 +234,14 @@ TTZip 秉持开源回馈精神，积极将验证过的硬件加速与架构优�
 
 ---
 
-## 📄 许可证与社区准则
+## 📄 开源许可证与社区准则
 
-TTZip 遵循 **TTZip Source-Available & Anti-Copycat Public License v1.0 (TTZip-SAL-1.0)**：
+TTZip Core 遵循 **BSD 3-Clause** 与 **Apache 2.0** 双重开源协议：
 
-- **开发者与个人免费使用**：所有源代码完全开放用于学习、代码审查、学术研究与个人本地日常使用。
-- **严禁第三方套壳分发与抄袭**：无论免费或收费，一律严禁擅自打包、更名上架至 Apple Mac App Store、Microsoft Store、Steam 等应用商店。
-- **商业授权咨询**：企业商用请联系 `witt.w.kung@gmail.com`。
+- 详见 [LICENSE-BSD](LICENSE-BSD) 与 [LICENSE-APACHE](LICENSE-APACHE)。
+- **100% 开源自由**：`ttzip-core` 所有源码完全开放用于商业、学术研究与个人使用。
+- **桌面客户端开源协议**：macOS 原生桌面客户端（`ttzip-apple`）遵循 [apple/LICENSE](../apple/LICENSE)（GPL-3.0-or-later）。
+- 商业授权咨询：`witt.w.kung@gmail.com`。
 
 ---
 

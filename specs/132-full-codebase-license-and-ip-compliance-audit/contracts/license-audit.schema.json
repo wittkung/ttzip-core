@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FullRepositoryLicenseAuditSummary",
+  "type": "object",
+  "required": [
+    "total_proprietary_files",
+    "compliant_files_count",
+    "third_party_components_count",
+    "viral_copyleft_detected",
+    "audit_passed"
+  ],
+  "properties": {
+    "total_proprietary_files": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "compliant_files_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "third_party_components_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "viral_copyleft_detected": {
+      "type": "boolean"
+    },
+    "audit_passed": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

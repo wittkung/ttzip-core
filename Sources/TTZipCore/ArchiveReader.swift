@@ -216,29 +216,25 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
 
             let relay = progressHandler.map { ProgressRelay(handler: $0) }
             do {
-                let entries = try inspectArchiveEntries(archivePath: archivePath, password: password)
-                var corrupted: [CorruptedEntryDetail] = []
-                for (idx, entry) in entries.enumerated() {
-                    do {
-                        _ = try extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password)
-                    } catch {
-                        corrupted.append(CorruptedEntryDetail(
-                            entryPath: entry.path,
-                            errorType: .crc32Mismatch,
-                            expectedChecksum: String(format: "%08X", entry.crc32),
-                            actualChecksum: "",
-                            diagnosticMessage: "Decompression or CRC verification failed"
-                        ))
-                    }
+                let uniffiReport = try verifyArchiveIntegrity(archivePath: archivePath, password: password, progress: relay, token: nil)
+                let corrupted = uniffiReport.corruptedEntries.map { c in
+                    CorruptedEntryDetail(
+                        entryPath: c.path,
+                        errorType: .crc32Mismatch,
+                        expectedChecksum: String(format: "%08X", c.expectedCrc32),
+                        actualChecksum: c.actualCrc32 > 0 ? String(format: "%08X", c.actualCrc32) : "",
+                        diagnosticMessage: c.reason
+                    )
                 }
-                let status: IntegrityStatus = corrupted.isEmpty ? .passed : .corrupted
+                let status: IntegrityStatus = uniffiReport.isValid ? .passed : .corrupted
+                let durationSecs = max(0.0001, Double(uniffiReport.elapsedNanos) / 1_000_000_000.0)
                 let report = ArchiveIntegrityReport(
                     archivePath: archivePath,
-                    totalEntriesCount: entries.count,
-                    verifiedEntriesCount: entries.count - corrupted.count,
+                    totalEntriesCount: Int(uniffiReport.totalEntries),
+                    verifiedEntriesCount: Int(uniffiReport.verifiedEntries),
                     corruptedEntriesCount: corrupted.count,
                     overallStatus: status,
-                    verificationDurationSeconds: 0.01,
+                    verificationDurationSeconds: durationSecs,
                     averageThroughputMBs: 100.0,
                     corruptedEntries: corrupted
                 )
@@ -259,7 +255,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
                             errorType: .headerDamaged,
                             expectedChecksum: "",
                             actualChecksum: "",
-                            diagnosticMessage: "Archive header or central directory is corrupted"
+                            diagnosticMessage: error.localizedDescription
                         )
                     ]
                 )

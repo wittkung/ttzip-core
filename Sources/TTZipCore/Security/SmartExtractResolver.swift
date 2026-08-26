@@ -62,81 +62,25 @@ public enum SmartExtractResolver: Sendable {
         archiveStemName: String,
         collisionPolicy: SmartExtractCollisionPolicy = .autoRenameNumbered
     ) -> SmartExtractResolutionResult {
-        var effectiveRoots = Set<String>()
+        let decision = resolveSmartExtractDecision(
+            entryPaths: entryPaths,
+            destinationParent: destinationParentURL.path,
+            archiveStem: archiveStemName,
+            collisionPolicy: collisionPolicy.rawValue
+        )
         
-        for rawPath in entryPaths {
-            // 1. Skip system metadata & AppleDouble junk
-            if ArchiveFilterOptions.isSystemMetadata(path: rawPath) {
-                continue
-            }
-            
-            var normalized = rawPath.replacingOccurrences(of: "\\", with: "/")
-            while normalized.hasPrefix("./") {
-                normalized.removeFirst(2)
-            }
-            normalized = normalized.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            
-            guard !normalized.isEmpty else { continue }
-            
-            let components = normalized.split(separator: "/")
-            if let first = components.first {
-                effectiveRoots.insert(String(first))
-            }
-        }
-
-        
-        let rootCount = effectiveRoots.count
-        let mode: SmartExtractResolutionMode
-        let singleRoot: String?
-        var targetURL: URL
-        
-        if rootCount == 0 {
-            mode = .emptyArchive
-            singleRoot = nil
-            targetURL = destinationParentURL
-        } else if rootCount == 1 {
-            mode = .directExtract
-            singleRoot = effectiveRoots.first
-            targetURL = destinationParentURL
-        } else {
-            mode = .wrapInFolder
-            singleRoot = nil
-            targetURL = destinationParentURL.appendingPathComponent(archiveStemName, isDirectory: true)
-        }
-        
-        // 2. Handle path collision if required and wrapping in folder
-        if mode == .wrapInFolder && collisionPolicy == .autoRenameNumbered {
-            targetURL = resolveNumberedCollision(initialURL: targetURL)
+        let mode: SmartExtractResolutionMode = switch decision.mode {
+        case "directExtract": .directExtract
+        case "wrapInFolder": .wrapInFolder
+        default: .emptyArchive
         }
         
         return SmartExtractResolutionResult(
             resolutionMode: mode,
-            effectiveRootCount: rootCount,
-            singleRootName: singleRoot,
-            finalExtractionURL: targetURL
+            effectiveRootCount: Int(decision.effectiveRootCount),
+            singleRootName: decision.singleRootName,
+            finalExtractionURL: URL(fileURLWithPath: decision.destinationFolder)
         )
-    }
-    
-    /// Generates a non-colliding directory URL (e.g., "Folder 2", "Folder 3").
-    private static func resolveNumberedCollision(initialURL: URL) -> URL {
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: initialURL.path) else {
-            return initialURL
-        }
-        
-        let parentURL = initialURL.deletingLastPathComponent()
-        let baseName = initialURL.lastPathComponent
-        var counter = 2
-        
-        while counter < 1000 {
-            let candidateURL = parentURL.appendingPathComponent("\(baseName) \(counter)", isDirectory: true)
-            if !fileManager.fileExists(atPath: candidateURL.path) {
-                return candidateURL
-            }
-            counter += 1
-        }
-        
-        return parentURL.appendingPathComponent("\(baseName)_\(UUID().uuidString.prefix(6))", isDirectory: true)
     }
 }
 

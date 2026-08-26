@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipZeroAllocationAuditContract",
+  "description": "Interface contract for zero dynamic heap allocation verification in file writing hot paths",
+  "type": "object",
+  "properties": {
+    "file_path": {
+      "type": "string"
+    },
+    "file_size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "io_strategy": {
+      "type": "string",
+      "enum": ["MMAP_SHARED_ZERO_COPY", "STACK_BUFFER_64K_STREAM"]
+    },
+    "heap_allocations_count": {
+      "type": "integer",
+      "enum": [0]
+    },
+    "swar_zero_check_enabled": {
+      "type": "boolean"
+    },
+    "io_throughput_mb_s": {
+      "type": "number",
+      "minimum": 0.0
+    }
+  },
+  "required": [
+    "file_path",
+    "file_size_bytes",
+    "io_strategy",
+    "heap_allocations_count",
+    "swar_zero_check_enabled",
+    "io_throughput_mb_s"
+  ],
+  "additionalProperties": false
+}

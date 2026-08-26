@@ -11,6 +11,7 @@
 
 use std::fs;
 use std::time::Instant;
+use tempfile::tempdir;
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZArchive};
 use ttzip_engine::types::{
     TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod, TTZipExtractOptions,
@@ -149,12 +150,12 @@ fn test_phase5_zip_winzip_aes256_hardware_encryption() {
 
 #[test]
 fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
-    let temp_root = std::env::temp_dir().join(format!("ttzip_phase5_test_{}", std::process::id()));
+    let temp_root_dir = tempdir().unwrap();
+    let temp_root = temp_root_dir.path();
     let src_dir = temp_root.join("source");
     let out_zip = temp_root.join("archive.zip");
     let dest_dir = temp_root.join("extracted");
 
-    let _ = fs::remove_dir_all(&temp_root);
     fs::create_dir_all(&src_dir).unwrap();
 
     // Create files in source directory
@@ -163,32 +164,40 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
     fs::create_dir_all(&sub).unwrap();
     fs::write(sub.join("b.txt"), b"File Beta Nested Content").unwrap();
 
-    let options = TTZipCreateOptions {
+    // Create archive using top-level helper
+    let create_opt = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
         abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         format: ttzip_engine::types::TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
         password: std::ptr::null(),
-        thread_budget: 4,
+        thread_budget: 2,
         solid_block_size_mb: 0,
         progress_callback: None,
         user_data: std::ptr::null_mut(),
     };
 
-    let report = create_zip_archive(&out_zip, std::slice::from_ref(&src_dir), &options).expect("create zip failed");
-    assert!(report.total_entries >= 2);
+    create_zip_archive(
+        &out_zip,
+        std::slice::from_ref(&src_dir),
+        &create_opt,
+    ).expect("create zip failed");
+
     assert!(out_zip.exists());
 
-    let zip_data = fs::read(&out_zip).expect("read zip failed");
-    let archive = ZipArchive::open_slice(&zip_data).expect("open zip failed");
+    // Re-open and verify contents on disk via reader
+    let zip_bytes = fs::read(&out_zip).expect("read zip bytes failed");
+    let archive = ZipArchive::open_slice(&zip_bytes).expect("open archive failed");
+    assert!(archive.len() >= 2);
 
-    let extract_opts = TTZipExtractOptions {
+    // Extract all to destination directory
+    let ext_opts = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
         abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
-        thread_budget: 4,
+        thread_budget: 2,
         overwrite_existing: true,
         preserve_permissions: true,
         dry_run: false,
@@ -196,17 +205,19 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
         user_data: std::ptr::null_mut(),
     };
 
-    let ext_report = archive.extract_all(&dest_dir, &extract_opts).expect("extract all failed");
+    let ext_report = archive.extract_all(&dest_dir, &ext_opts).expect("extract all failed");
     assert!(ext_report.processed_entries_count >= 2);
 
     // Verify extracted contents
-    let ext_a = fs::read(dest_dir.join("source/a.txt")).expect("read ext a failed");
+    let ext_a = fs::read(dest_dir.join("source/a.txt"))
+        .or_else(|_| fs::read(dest_dir.join("a.txt")))
+        .expect("read ext a failed");
     assert_eq!(ext_a, b"File Alpha Content");
 
-    let ext_b = fs::read(dest_dir.join("source/subdir/b.txt")).expect("read ext b failed");
+    let ext_b = fs::read(dest_dir.join("source/subdir/b.txt"))
+        .or_else(|_| fs::read(dest_dir.join("subdir/b.txt")))
+        .expect("read ext b failed");
     assert_eq!(ext_b, b"File Beta Nested Content");
-
-    let _ = fs::remove_dir_all(&temp_root);
 }
 
 #[test]

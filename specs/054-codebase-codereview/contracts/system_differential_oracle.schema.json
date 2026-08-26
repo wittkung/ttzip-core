@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SystemDifferentialOracleSchema",
+  "type": "object",
+  "required": [
+    "testCaseName",
+    "direction",
+    "format",
+    "systemToolPath",
+    "payloadSha256Original",
+    "payloadSha256Extracted",
+    "hashesMatch",
+    "exitCode"
+  ],
+  "properties": {
+    "testCaseName": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "ttzip_pack_system_extract",
+        "system_pack_ttzip_extract"
+      ]
+    },
+    "format": {
+      "type": "string",
+      "enum": ["zip", "tar", "tar.gz", "tar.bz2", "tar.xz"]
+    },
+    "systemToolPath": {
+      "type": "string",
+      "enum": ["/usr/bin/unzip", "/usr/bin/tar"]
+    },
+    "payloadSha256Original": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "payloadSha256Extracted": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hashesMatch": {
+      "type": "boolean"
+    },
+    "exitCode": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}

@@ -5,7 +5,7 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! Mozilla UniFFI Archive Creation, Extraction, and Inspection Scaffolding.
+//! Mozilla UniFFI Archive Creation, Inspection, and Format Detection Scaffolding.
 
 use std::sync::Arc;
 use rayon::prelude::*;
@@ -188,18 +188,45 @@ pub fn extract_single_entry_stream(
     entry_index: u64,
     password: Option<String>,
 ) -> Result<Vec<u8>, TTZipError> {
+    extract_single_entry_stream_guarded(archive_path, entry_index, password, 100)
+}
+
+/// Extracts a single entry stream preview with configurable preceding solid budget in MB.
+#[uniffi::export]
+pub fn extract_single_entry_stream_guarded(
+    archive_path: String,
+    entry_index: u64,
+    password: Option<String>,
+    max_preceding_budget_mb: u32,
+) -> Result<Vec<u8>, TTZipError> {
     let p = std::path::Path::new(&archive_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
     }
 
-    let file_bytes = std::fs::read(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    if file_bytes.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        let arch = crate::sevenz::decoder::SevenZArchive::open_slice(&file_bytes)
+    let source = crate::archive::source::open_archive_source(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError {
+        message: "Failed to map archive bytes".to_string(),
+    })?;
+
+    if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
+        let arch = crate::sevenz::decoder::SevenZArchive::open_slice(mapped)
             .map_err(|_| TTZipError::CorruptHeader { details: "Invalid 7z header".to_string(), offset: 0 })?;
-        arch.extract_entry_bytes_stream(entry_index as usize, password.as_deref())
-            .map_err(|_| TTZipError::InvalidPassword)
-    } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(&file_bytes) {
+        let budget_bytes = (max_preceding_budget_mb as u64) * 1024 * 1024;
+        crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
+            mapped,
+            arch.info(),
+            arch.seek_index(),
+            entry_index as usize,
+            password.as_deref(),
+            budget_bytes,
+        ).map_err(|status| match status {
+            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+            crate::types::TTZipStatus::ErrSolidBudgetExceeded => TTZipError::EngineError { code: -24 },
+            _ => TTZipError::EngineError { code: status as i32 },
+        })
+    } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
         zip_archive.extract_entry_bytes(entry_index as usize, password.as_deref())
             .map_err(|status| match status {
                 crate::types::TTZipStatus::ErrCorruptHeader => {
@@ -211,95 +238,6 @@ pub fn extract_single_entry_stream(
     } else {
         Err(TTZipError::EngineError { code: -1 })
     }
-}
-
-/// Extracts full archive with progress reporting.
-#[uniffi::export]
-pub fn extract_archive_stream(
-    archive_path: String,
-    destination_dir: String,
-    password: Option<String>,
-    progress: Option<Box<dyn ProgressHandler>>,
-    token: Option<Arc<CancellationToken>>,
-) -> Result<CompressionReport, TTZipError> {
-    let src = std::path::Path::new(&archive_path);
-    let dst = std::path::Path::new(&destination_dir);
-    if !src.exists() {
-        return Err(TTZipError::FileNotFound { path: archive_path });
-    }
-
-    let start = std::time::Instant::now();
-    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
-
-    struct ProgressBox {
-        handler: Option<Box<dyn ProgressHandler>>,
-        token: Option<Arc<CancellationToken>>,
-    }
-    let mut pbox = ProgressBox { handler: progress, token };
-
-    unsafe extern "C" fn progress_cb(
-        processed: u64,
-        total: u64,
-        entry_name: *const libc::c_char,
-        user_data: *mut libc::c_void,
-    ) -> bool {
-        if user_data.is_null() {
-            return true;
-        }
-        let p = &*(user_data as *const ProgressBox);
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            return h.on_progress(processed, total, name);
-        }
-        true
-    }
-
-    let options = crate::types::TTZipExtractOptions {
-        struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
-        abi_version: crate::types::TTZIP_ABI_VERSION_2,
-        destination_path: std::ptr::null(),
-        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-        thread_budget: 0,
-        overwrite_existing: true,
-        preserve_permissions: true,
-        dry_run: false,
-        progress_callback: Some(progress_cb),
-        user_data: &mut pbox as *mut ProgressBox as *mut libc::c_void,
-    };
-
-    let bytes = crate::archive::unified::extract::extract_archive_with_metrics(src, dst, &options)
-        .map_err(|s| {
-            if s == crate::types::TTZipStatus::Cancelled {
-                TTZipError::Cancelled
-            } else if s == crate::types::TTZipStatus::ErrInvalidPassword {
-                TTZipError::InvalidPassword
-            } else {
-                TTZipError::EngineError { code: s as i32 }
-            }
-        })?;
-
-    let elapsed = start.elapsed();
-    let elapsed_nanos = elapsed.as_nanos() as u64;
-    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
-    let throughput_mbs = (bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
-
-    Ok(CompressionReport {
-        uncompressed_bytes: bytes,
-        compressed_bytes: std::fs::metadata(src).map(|m| m.len()).unwrap_or(bytes),
-        elapsed_nanos,
-        throughput_mbs,
-        space_savings_pct: 0.0,
-        engine_provenance: "Mozilla UniFFI Native Core Pipeline".to_string(),
-    })
 }
 
 /// Compresses source paths into destination archive.
@@ -420,159 +358,6 @@ pub fn create_archive_stream(
     })
 }
 
-/// Extracts selected subset of entries from an archive into destination directory.
-#[uniffi::export]
-pub fn extract_selected_entries(
-    archive_path: String,
-    target_entries: Vec<String>,
-    destination_dir: String,
-    password: Option<String>,
-    progress: Option<Box<dyn ProgressHandler>>,
-    token: Option<Arc<CancellationToken>>,
-) -> Result<u64, TTZipError> {
-    let src = std::path::Path::new(&archive_path);
-    let dst = std::path::Path::new(&destination_dir);
-    if !src.exists() {
-        return Err(TTZipError::FileNotFound { path: archive_path });
-    }
-
-    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
-
-    struct ProgressBox {
-        handler: Option<Box<dyn ProgressHandler>>,
-        token: Option<Arc<CancellationToken>>,
-    }
-    let mut pbox = ProgressBox { handler: progress, token };
-
-    unsafe extern "C" fn progress_cb(
-        processed: u64,
-        total: u64,
-        entry_name: *const libc::c_char,
-        user_data: *mut libc::c_void,
-    ) -> bool {
-        if user_data.is_null() {
-            return true;
-        }
-        let p = &*(user_data as *const ProgressBox);
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            return h.on_progress(processed, total, name);
-        }
-        true
-    }
-
-    let options = crate::types::TTZipExtractOptions {
-        struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
-        abi_version: crate::types::TTZIP_ABI_VERSION_2,
-        destination_path: std::ptr::null(),
-        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-        thread_budget: 0,
-        overwrite_existing: true,
-        preserve_permissions: true,
-        dry_run: false,
-        progress_callback: Some(progress_cb),
-        user_data: &mut pbox as *mut ProgressBox as *mut libc::c_void,
-    };
-
-    crate::archive::unified::extract_single::extract_selected_entries(
-        src,
-        &target_entries,
-        dst,
-        &options,
-    )
-    .map(|count| count as u64)
-    .map_err(|s| {
-        if s == crate::types::TTZipStatus::Cancelled {
-            TTZipError::Cancelled
-        } else if s == crate::types::TTZipStatus::ErrInvalidPassword {
-            TTZipError::InvalidPassword
-        } else {
-            TTZipError::EngineError { code: s as i32 }
-        }
-    })
-}
-
-/// Computes SHA-256 hex digest of a file.
-#[uniffi::export]
-pub fn compute_file_sha256(file_path: String) -> Result<String, TTZipError> {
-    let p = std::path::Path::new(&file_path);
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: file_path });
-    }
-    let bytes = std::fs::read(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut hasher = crate::crypto::sha256::FastSha256::new();
-    hasher.update(&bytes);
-    let hash = hasher.finalize();
-    Ok(hash.iter().map(|b| format!("{:02x}", b)).collect())
-}
-
-/// Computes CRC32 checksum of a file.
-#[uniffi::export]
-pub fn compute_file_crc32(file_path: String) -> Result<u32, TTZipError> {
-    let p = std::path::Path::new(&file_path);
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: file_path });
-    }
-    let bytes = std::fs::read(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    Ok(crate::crypto::crc32::crc32(&bytes))
-}
-
-/// Detects split volume chain members starting from seed file.
-#[uniffi::export]
-pub fn detect_split_volume_chain(seed_path: String) -> Result<Vec<String>, TTZipError> {
-    let p = std::path::Path::new(&seed_path);
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: seed_path });
-    }
-    let chain = crate::archive::split::detect_volume_chain(p)
-        .map_err(|_| TTZipError::EngineError { code: -1 })?;
-    Ok(chain.into_iter().filter_map(|p| p.to_str().map(|s| s.to_string())).collect())
-}
-
-/// Joins multi-volume split archive files into a continuous output file.
-#[uniffi::export]
-pub fn join_split_volume_chain(
-    first_volume_path: String,
-    output_path: String,
-) -> Result<(), TTZipError> {
-    let first = std::path::Path::new(&first_volume_path);
-    let out = std::path::Path::new(&output_path);
-    if !first.exists() {
-        return Err(TTZipError::FileNotFound { path: first_volume_path });
-    }
-    let chain = crate::archive::split::detect_volume_chain(first)
-        .map_err(|_| TTZipError::EngineError { code: -1 })?;
-    let mut virtual_reader = crate::archive::split::VirtualMultiVolumeReader::from_volumes(chain)
-        .map_err(|_| TTZipError::EngineError { code: -2 })?;
-    let mut out_file = std::fs::File::create(out)
-        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    std::io::copy(&mut virtual_reader, &mut out_file)
-        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    Ok(())
-}
-
-/// Repairs damaged archive file and writes to output destination.
-#[uniffi::export]
-pub fn repair_archive_file(damaged_path: String, output_path: String) -> Result<u64, TTZipError> {
-    let damaged = std::path::Path::new(&damaged_path);
-    let output = std::path::Path::new(&output_path);
-    if !damaged.exists() {
-        return Err(TTZipError::FileNotFound { path: damaged_path });
-    }
-    crate::archive::unified::repair::repair_archive(damaged, output)
-        .map(|count| count as u64)
-        .map_err(|s| TTZipError::EngineError { code: s as i32 })
-}
-
 /// Recovers password against an encrypted archive using Rayon multi-core parallel probing.
 #[uniffi::export]
 pub fn recover_archive_password(
@@ -612,36 +397,3 @@ pub fn recover_archive_password(
         attempts_per_second,
     })
 }
-
-/// Atomically mutates archive in-place (append, replace, delete) without full recompression.
-#[uniffi::export]
-pub fn in_place_mutate_archive(
-    archive_path: String,
-    actions: Vec<super::types::InPlaceMutationAction>,
-) -> Result<(), TTZipError> {
-    let p = std::path::Path::new(&archive_path);
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: archive_path });
-    }
-
-    let mut session = crate::archive::in_place_edit::InPlaceArchiveSession::begin(p, None)
-        .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
-
-    for act in actions {
-        if act.is_delete {
-            session.delete(&act.entry_path)
-                .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
-        } else if let Some(ref src) = act.source_path {
-            let src_path = std::path::Path::new(src);
-            session.replace(&act.entry_path, src_path)
-                .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
-        }
-    }
-
-    session.commit()
-        .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
-
-    Ok(())
-}
-
-

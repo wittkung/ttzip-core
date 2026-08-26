@@ -23,7 +23,7 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(line_buffering=True)
 
-CORE_DIR = Path("/Users/kevintung/Documents/dev/TTZip/core")
+CORE_DIR = Path(__file__).resolve().parent.parent
 BASELINE_WORKTREE = Path("/tmp/ttzip_baseline_worktree")
 
 def run_cmd(cmd, cwd=None, env=None, stream=False):

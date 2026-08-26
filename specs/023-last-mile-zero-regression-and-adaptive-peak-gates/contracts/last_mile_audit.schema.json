@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LastMileRegressionAuditContract",
+  "description": "Schema for Feature 023 last mile regression closure audit report and dynamic peak tracking",
+  "type": "object",
+  "required": [
+    "auditTimestamp",
+    "baselineReport",
+    "latestReport",
+    "totalDimensionsEvaluated",
+    "improvedCount",
+    "unchangedCount",
+    "warningCount",
+    "criticalRegressionCount",
+    "criticalRegressions"
+  ],
+  "properties": {
+    "auditTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "baselineReport": {
+      "type": "string"
+    },
+    "latestReport": {
+      "type": "string"
+    },
+    "totalDimensionsEvaluated": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "improvedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unchangedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warningCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "criticalRegressionCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "criticalRegressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "format",
+          "dimension",
+          "level",
+          "isEncrypted",
+          "operation",
+          "baselineThroughputMBs",
+          "currentThroughputMBs",
+          "regressionPercent",
+          "status"
+        ],
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["zip", "7z", "tar", "tar.zst", "tar.gz", "tar.bz2", "tar.xz", "wim", "dmg", "lz4", "lzip", "lrzip", "aar", "iso", "brotli", "snappy", "gz", "bz2", "xz", "zst"]
+          },
+          "dimension": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "isEncrypted": {
+            "type": "boolean"
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["compress", "extract"]
+          },
+          "baselineThroughputMBs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "currentThroughputMBs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "regressionPercent": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["RESOLVED", "BLOCKED"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RecoveryRecordPayload",
+  "description": "Schema for Reed-Solomon Forward Error Correction (FEC) Recovery Record in TTZip",
+  "type": "object",
+  "required": [
+    "recoveryPercent",
+    "sliceSizeBytes",
+    "dataSlicesCount",
+    "paritySlicesCount",
+    "protectedPayloadLength",
+    "rootChecksum",
+    "eccAlgorithm"
+  ],
+  "properties": {
+    "recoveryPercent": {
+      "type": "number",
+      "minimum": 1.0,
+      "maximum": 30.0,
+      "description": "Configured redundancy percentage for recovery"
+    },
+    "sliceSizeBytes": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 1048576,
+      "description": "Byte size of each Cauchy RS shard"
+    },
+    "dataSlicesCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Number of source data slices K"
+    },
+    "paritySlicesCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Number of computed parity slices M"
+    },
+    "protectedPayloadLength": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total length of the payload protected by the recovery record"
+    },
+    "rootChecksum": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$",
+      "description": "SHA-256 or BLAKE3 root hash of the protected payload"
+    },
+    "eccAlgorithm": {
+      "type": "string",
+      "enum": [
+        "cauchy_rs_gf16"
+      ],
+      "description": "Forward error correction algorithm identifier"
+    }
+  },
+  "additionalProperties": false
+}

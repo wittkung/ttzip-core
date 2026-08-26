@@ -13,7 +13,7 @@
 
 use std::fs;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use ttzip_engine::codecs::deflate::{gzip_compress, gzip_decompress};
@@ -26,24 +26,18 @@ use ttzip_engine::zip::writer::{assemble_zip_archive, compress_items_parallel, Z
 
 /// Helper to create a dedicated temp directory for differential tests.
 struct TempTestDir {
+    _tmp: tempfile::TempDir,
     path: PathBuf,
 }
 
 impl TempTestDir {
     fn new(prefix: &str) -> Self {
-        let unique_id = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("{}_{}", prefix, unique_id));
-        fs::create_dir_all(&path).expect("failed to create temp test directory");
-        Self { path }
-    }
-}
-
-impl Drop for TempTestDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+        let tmp = tempfile::Builder::new()
+            .prefix(prefix)
+            .tempdir()
+            .expect("failed to create temp test directory");
+        let path = tmp.path().to_path_buf();
+        Self { _tmp: tmp, path }
     }
 }
 
@@ -450,7 +444,8 @@ fn build_cve_2022_1271_gzip_vector() -> Vec<u8> {
 
 #[test]
 fn test_cve_golden_corpus_in_memory_rejection() {
-    let dest_dir = Path::new("/tmp/ttzip_cve_audit_sandbox");
+    let temp_sandbox = tempfile::tempdir().expect("create tempdir");
+    let dest_dir = temp_sandbox.path();
 
     // 1. CVE-2018-1002204: ZipSlip Directory Traversal Invariant Assertion
     let zipslip_bytes = build_cve_2018_1002204_zipslip_vector();
@@ -470,10 +465,14 @@ fn test_cve_golden_corpus_in_memory_rejection() {
     // 2. CVE-2001-0775: Filename Length Overflow Assertion (0 Panic, ErrCorruptHeader)
     let fn_overflow_bytes = build_cve_2001_0775_filename_overflow_vector();
     let parse_res = catch_unwind(AssertUnwindSafe(|| {
-        let _ = ZipArchive::open_slice(&fn_overflow_bytes);
-        let _ = parse_all_entries(&fn_overflow_bytes);
+        let open_res = ZipArchive::open_slice(&fn_overflow_bytes);
+        let entries_res = parse_all_entries(&fn_overflow_bytes);
+        (open_res, entries_res)
     }));
     assert!(parse_res.is_ok(), "CVE-2001-0775 triggered panic!");
+    let (open_res, entries_res) = parse_res.unwrap();
+    assert_eq!(open_res.err(), Some(TTZipStatus::ErrCorruptHeader));
+    assert_eq!(entries_res, Err(TTZipStatus::ErrCorruptHeader));
 
     // 3. CVE-2002-1337: EOCD Comment Length Buffer Overflow (0 Panic, Graceful rejection)
     let eocd_overflow_bytes = build_cve_2002_1337_eocd_comment_overflow_vector();
@@ -486,9 +485,14 @@ fn test_cve_golden_corpus_in_memory_rejection() {
     // 4. CVE-2023-45853: Zip64 Integer Overflow
     let zip64_extra = build_cve_2023_45853_zip64_overflow_vector();
     let zip64_res = catch_unwind(AssertUnwindSafe(|| {
-        ZipExtraFields::parse(&zip64_extra, true, true, true, true)
+        let parsed = ZipExtraFields::parse(&zip64_extra, true, true, true, true);
+        let malformed_lfh = parse_local_file_header(&zip64_extra, 0);
+        (parsed, malformed_lfh)
     }));
     assert!(zip64_res.is_ok(), "CVE-2023-45853 Zip64 parser panicked!");
+    let (parsed, malformed_lfh) = zip64_res.unwrap();
+    assert_eq!(parsed.uncompressed_size, Some(u64::MAX));
+    assert_eq!(malformed_lfh, Err(TTZipStatus::ErrCorruptHeader));
 
     // 5. CVE-2022-1271: Corrupted Gzip Header & Method
     let gzip_corrupt = build_cve_2022_1271_gzip_vector();
@@ -525,9 +529,10 @@ fn test_cve_golden_corpus_in_memory_rejection() {
 
     let enc_archive = ZipArchive::open_slice(&enc_zip_bytes).expect("open enc slice failed");
     let extract_tampered_res = enc_archive.extract_entry_bytes(0, Some(password));
-    assert!(
-        extract_tampered_res.is_err(),
-        "Tampered WinZip AES payload MUST be rejected, but got Ok"
+    assert_eq!(
+        extract_tampered_res,
+        Err(TTZipStatus::ErrInvalidPassword),
+        "Tampered WinZip AES payload MUST return ErrInvalidPassword upon auth tag failure"
     );
 
     println!("[ORACLE] In-memory Historical CVE Golden Corpus test completed: 100% trapped / safely rejected, 0 panics.");

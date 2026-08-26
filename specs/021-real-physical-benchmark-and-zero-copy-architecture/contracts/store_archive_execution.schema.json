@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoreArchiveExecutionOptions",
+  "description": "Schema for Store mode archive execution and APFS zero-copy configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "outputPath",
+    "inputPaths",
+    "skipMacJunk",
+    "enableZeroCopy",
+    "chunkSizeBytes"
+  ],
+  "properties": {
+    "outputPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target archive file path"
+    },
+    "inputPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "List of input file or directory paths"
+    },
+    "skipMacJunk": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to exclude macOS metadata files"
+    },
+    "enableZeroCopy": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to attempt APFS extent-level clone"
+    },
+    "chunkSizeBytes": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 67108864,
+      "default": 4194304,
+      "description": "Chunk size in bytes for physical pwrite operations"
+    }
+  }
+}

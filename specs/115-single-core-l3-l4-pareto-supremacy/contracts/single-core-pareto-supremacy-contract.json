@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SingleCoreParetoSupremacyContract",
+  "description": "Strict contract defining single-core DEFLATE tier differentiation, chunk streaming, and Pareto evaluation models.",
+  "definitions": {
+    "TierProfileConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier_id",
+        "tier_name",
+        "matchfinder_type",
+        "max_chain_depth",
+        "nice_match_len",
+        "lookahead_steps",
+        "skip_intermediate_hashes",
+        "target_throughput_mbs",
+        "target_space_savings_pct"
+      ],
+      "properties": {
+        "tier_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7,
+          "description": "Unique identifier for the compression tier"
+        },
+        "tier_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Descriptive name of the compression profile"
+        },
+        "matchfinder_type": {
+          "type": "string",
+          "enum": ["FAST_GREEDY", "FAST_LAZY", "DEEP_LAZY", "ZOPFLI"],
+          "description": "Match finder algorithm architecture"
+        },
+        "max_chain_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64,
+          "description": "Maximum number of hash chain links traversed per candidate search"
+        },
+        "nice_match_len": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 258,
+          "description": "Threshold match length that triggers immediate chain search termination"
+        },
+        "lookahead_steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Lookahead search steps (0=greedy, 1=standard lazy, 2=2-step lazy)"
+        },
+        "skip_intermediate_hashes": {
+          "type": "boolean",
+          "description": "When true, skips per-byte hash insertion inside long matches"
+        },
+        "target_throughput_mbs": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Minimum required throughput floor in MB/s"
+        },
+        "target_space_savings_pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Expected space savings percentage on standard 100MB text corpora"
+        }
+      }
+    },
+    "ChunkStreamingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chunk_size_bytes",
+        "history_size_bytes",
+        "token_buffer_capacity",
+        "is_final_chunk",
+        "bytes_processed",
+        "bytes_written"
+      ],
+      "properties": {
+        "chunk_size_bytes": {
+          "type": "integer",
+          "minimum": 32768,
+          "maximum": 131072,
+          "description": "Size of each processed slice in bytes"
+        },
+        "history_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32768,
+          "description": "Active sliding window history size preceding current chunk"
+        },
+        "token_buffer_capacity": {
+          "type": "integer",
+          "minimum": 65536,
+          "description": "Maximum number of tokens in thread-local storage"
+        },
+        "is_final_chunk": {
+          "type": "boolean",
+          "description": "True if the current chunk terminates the stream"
+        },
+        "bytes_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total uncompressed input bytes processed across all chunks"
+        },
+        "bytes_written": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total compressed bytes emitted to the output buffer"
+        }
+      }
+    },
+    "ParetoBenchmarkEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmark_id",
+        "ttzip_tier3_throughput_mbs",
+        "ttzip_tier3_savings_pct",
+        "ttzip_tier4_throughput_mbs",
+        "ttzip_tier4_savings_pct",
+        "libdeflate_l3_throughput_mbs",
+        "libdeflate_l6_throughput_mbs",
+        "is_pareto_strictly_dominant"
+      ],
+      "properties": {
+        "benchmark_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Identifier of benchmark run"
+        },
+        "ttzip_tier3_throughput_mbs": {
+          "type": "number",
+          "minimum": 1200.0,
+          "description": "Physical single-core throughput of TTZip Tier 3 in MB/s"
+        },
+        "ttzip_tier3_savings_pct": {
+          "type": "number",
+          "minimum": 65.0,
+          "maximum": 100.0,
+          "description": "Space savings percentage of TTZip Tier 3"
+        },
+        "ttzip_tier4_throughput_mbs": {
+          "type": "number",
+          "minimum": 850.0,
+          "description": "Physical single-core throughput of TTZip Tier 4 in MB/s"
+        },
+        "ttzip_tier4_savings_pct": {
+          "type": "number",
+          "minimum": 66.5,
+          "maximum": 100.0,
+          "description": "Space savings percentage of TTZip Tier 4"
+        },
+        "libdeflate_l3_throughput_mbs": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Competitor baseline throughput for libdeflate Level 3"
+        },
+        "libdeflate_l6_throughput_mbs": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "description": "Competitor baseline throughput for libdeflate Level 6"
+        },
+        "is_pareto_strictly_dominant": {
+          "type": "boolean",
+          "description": "True if TTZip points form a strictly upper-right bounding Pareto envelope"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "streaming_context",
+    "evaluation"
+  ],
+  "properties": {
+    "profile": {
+      "$ref": "#/definitions/TierProfileConfig"
+    },
+    "streaming_context": {
+      "$ref": "#/definitions/ChunkStreamingContext"
+    },
+    "evaluation": {
+      "$ref": "#/definitions/ParetoBenchmarkEvaluation"
+    }
+  }
+}

@@ -337,7 +337,7 @@ fn test_crypto_throughput_benchmark() {
     let gb_crc = (size as f64 * iters_crc as f64) / (1024.0 * 1024.0 * 1024.0);
     let speed_crc = gb_crc / dur_crc.as_secs_f64();
     println!("CRC32 Throughput: {:.2} GB/s", speed_crc);
-    assert!(crc != 0 || size > 0);
+    assert_ne!(crc, 0);
 
     // Adler32 Benchmark
     let mut adler = 1u32;
@@ -350,7 +350,7 @@ fn test_crypto_throughput_benchmark() {
     let gb_adler = (size as f64 * iters_adler as f64) / (1024.0 * 1024.0 * 1024.0);
     let speed_adler = gb_adler / dur_adler.as_secs_f64();
     println!("Adler32 Throughput: {:.2} GB/s", speed_adler);
-    assert!(adler != 0);
+    assert_ne!(adler, 0);
 
     // AES-256-CTR Benchmark
     let start_ctr = Instant::now();
@@ -363,6 +363,16 @@ fn test_crypto_throughput_benchmark() {
     let speed_ctr = gb_ctr / dur_ctr.as_secs_f64();
     println!("AES-256-CTR Throughput: {:.2} GB/s", speed_ctr);
 
+    // AES-256-CTR Roundtrip Consistency Strong Assertion
+    let last_ctr_counter = ((iters_ctr - 1) * 1000) as u64;
+    let mut roundtrip_ctr = vec![0u8; size];
+    aes256_ctr_crypt(&key, last_ctr_counter, &dst, &mut roundtrip_ctr).unwrap();
+    assert_eq!(
+        &roundtrip_ctr[..],
+        &buffer[..],
+        "AES-256-CTR plaintext-ciphertext-plaintext roundtrip mismatch"
+    );
+
     // AES-256-CBC Decrypt Benchmark
     let start_cbc = Instant::now();
     let iters_cbc = 20;
@@ -373,4 +383,15 @@ fn test_crypto_throughput_benchmark() {
     let gb_cbc = (size as f64 * iters_cbc as f64) / (1024.0 * 1024.0 * 1024.0);
     let speed_cbc = gb_cbc / dur_cbc.as_secs_f64();
     println!("AES-256-CBC Decrypt Throughput: {:.2} GB/s", speed_cbc);
+
+    // AES-256-CBC Roundtrip Consistency Strong Assertion
+    let mut enc_cbc = vec![0u8; size];
+    let mut dec_cbc = vec![0u8; size];
+    aes256_cbc_encrypt(&key, &iv, &buffer, &mut enc_cbc).unwrap();
+    aes256_cbc_decrypt(&key, &iv, &enc_cbc, &mut dec_cbc).unwrap();
+    assert_eq!(
+        &dec_cbc[..],
+        &buffer[..],
+        "AES-256-CBC plaintext-ciphertext-plaintext roundtrip mismatch"
+    );
 }

@@ -25,6 +25,12 @@ pub use pool::*;
 
 use crate::types::TTZipStatus;
 
+/// RFC 1951 Deflate sliding window size in bytes (32 KB = 32768 bytes).
+pub const DEFLATE_WINDOW_SIZE_BYTES: usize = 32 * 1024;
+
+/// Alias for RFC 1951 Deflate sliding window size.
+pub const DEFLATE_SLIDING_WINDOW_SIZE: usize = DEFLATE_WINDOW_SIZE_BYTES;
+
 // MARK: - High-Level Zero-Copy Helpers
 
 /// Zero-copy raw DEFLATE compression using thread-local pooled compressor.

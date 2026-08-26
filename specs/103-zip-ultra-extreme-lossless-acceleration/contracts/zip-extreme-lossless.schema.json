@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZipExtremeLosslessConfig",
+  "description": "Configuration schema for lossless acceleration of ZIP Tier 6/7",
+  "type": "object",
+  "properties": {
+    "blockSizeBytes": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 67108864
+    },
+    "historySizeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32768
+    },
+    "fixedPointThreshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 0.01
+    },
+    "maxIterations": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "enableDynamicSplitting": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "blockSizeBytes",
+    "historySizeBytes",
+    "fixedPointThreshold",
+    "maxIterations",
+    "enableDynamicSplitting"
+  ],
+  "additionalProperties": false
+}

@@ -569,7 +569,7 @@ extension TTZipEngineFacade {
                     isVaultUnlocked: false
                 )
             } catch {
-                if token?.isCancelled() == true {
+                if token?.isCancelled() == true || Task.isCancelled {
                     throw ArchiveError.cancelled
                 }
                 // Password-less extraction failed, try password vault auto-unlock

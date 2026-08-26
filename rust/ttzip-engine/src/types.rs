@@ -30,6 +30,7 @@ pub enum TTZipStatus {
     ErrInvalidPassword = -10,
     ErrExtractionFailed = -11,
     ErrCompressionFailed = -12,
+    ErrSolidBudgetExceeded = -24,
     ErrSecurityViolation = -30,
     ErrPanicCaught = -99,
 }
@@ -74,6 +75,7 @@ impl TTZipStatus {
             TTZipStatus::ErrInvalidPassword => "Invalid or missing archive password",
             TTZipStatus::ErrExtractionFailed => "Extraction error",
             TTZipStatus::ErrCompressionFailed => "Compression error",
+            TTZipStatus::ErrSolidBudgetExceeded => "7z solid decompression budget exceeded",
             TTZipStatus::ErrSecurityViolation => "Security boundary violation (e.g. path traversal)",
             TTZipStatus::ErrPanicCaught => "Internal panic caught at FFI boundary",
         }

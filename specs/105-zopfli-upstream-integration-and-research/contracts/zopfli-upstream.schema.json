@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTZipZopfliUpstreamContract",
+  "description": "JSON Schema contract for Google Zopfli in-process multi-core compression and benchmark telemetry",
+  "type": "object",
+  "required": [
+    "profile",
+    "tileDescriptor",
+    "result"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": [
+        "compressionLevel",
+        "numIterations",
+        "blockSplitting",
+        "maxBlockSplits",
+        "earlyExitThreshold"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "compressionLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15
+        },
+        "numIterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "blockSplitting": {
+          "type": "boolean"
+        },
+        "maxBlockSplits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "earlyExitThreshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 0.01
+        }
+      }
+    },
+    "tileDescriptor": {
+      "type": "object",
+      "required": [
+        "tileIndex",
+        "totalTiles",
+        "inOffset",
+        "inLength",
+        "historyOffset",
+        "historyLength",
+        "isFinalTile"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tileIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "totalTiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "inOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 33554432
+        },
+        "historyOffset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "historyLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32768
+        },
+        "isFinalTile": {
+          "type": "boolean"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "tileIndex",
+        "compressedBytes",
+        "uncompressedBytes",
+        "executionDurationMs",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tileIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "compressedBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "uncompressedBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "executionDurationMs": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "SUCCESS",
+            "BUFFER_OVERFLOW",
+            "INVALID_INPUT"
+          ]
+        }
+      }
+    }
+  }
+}

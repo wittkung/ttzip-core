@@ -125,11 +125,16 @@ public struct VfsNodeSummary: Sendable, Equatable, Identifiable {
 }
 
 extension RustVfsSession {
-    /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging.
+    /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging with exact total count.
+    public func getChildrenPaged(subpath: String? = nil, offset: Int = 0, limit: Int = 100) -> (nodes: [VfsNodeSummary], total: Int) {
+        let paged = uniffiTree.getChildrenPaged(subpath: subpath, offset: UInt32(offset), limit: UInt32(limit))
+        let summaries = paged.nodes.map { VfsNodeSummary(summary: $0) }
+        return (summaries, Int(paged.totalCount))
+    }
+
+    /// Backward-compatible windowed slice retrieval for child nodes.
     public func getChildren(subpath: String? = nil, offset: Int = 0, limit: Int = 100) -> (nodes: [VfsNodeSummary], total: Int) {
-        let results = uniffiTree.getChildren(subpath: subpath, offset: UInt32(offset), limit: UInt32(limit))
-        let summaries = results.map { VfsNodeSummary(summary: $0) }
-        return (summaries, summaries.count)
+        return getChildrenPaged(subpath: subpath, offset: offset, limit: limit)
     }
 
     /// Renders ASCII/Unicode tree from persistent VFS session.

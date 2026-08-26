@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicroCorpusProfile",
+  "description": "Configuration schema for deterministic micro-file corpus generation in HyperCompressBench",
+  "type": "object",
+  "required": [
+    "profileId",
+    "fileCount",
+    "minFileSizeBytes",
+    "maxFileSizeBytes",
+    "jsonRatio",
+    "logRatio",
+    "highEntropyRatio",
+    "maxDirectoryDepth",
+    "directoryFanout",
+    "seed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "profileId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for the profile (e.g. ci-fast-gate, stress-50k)"
+    },
+    "fileCount": {
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 100000,
+      "description": "Total number of micro-files to generate"
+    },
+    "minFileSizeBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65536,
+      "description": "Minimum byte size for generated files"
+    },
+    "maxFileSizeBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65536,
+      "description": "Maximum byte size for generated files"
+    },
+    "jsonRatio": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Fraction of micro-JSON files"
+    },
+    "logRatio": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Fraction of server log files"
+    },
+    "highEntropyRatio": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Fraction of high-entropy binary files"
+    },
+    "maxDirectoryDepth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32,
+      "description": "Maximum directory nesting depth"
+    },
+    "directoryFanout": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 100,
+      "description": "Target branch factor per directory"
+    },
+    "seed": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{16}$",
+      "description": "Hexadecimal 64-bit deterministic PRNG seed (e.g. 0x4879706572436f6d)"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FL2EngineConfigContract",
+  "description": "Strongly-typed JSON schema for Fast-LZMA2 engine configuration and runtime parameter boundaries.",
+  "type": "object",
+  "required": [
+    "magic",
+    "compression_level",
+    "dictionary_size",
+    "thread_count",
+    "max_memory_budget_bytes",
+    "enable_hybrid_neon_l1",
+    "enable_zero_block_bypass"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "magic": {
+      "type": "integer",
+      "enum": [1179406915],
+      "description": "FL2C Magic value (0x464C3243 in decimal: 1179406915)"
+    },
+    "compression_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9,
+      "description": "LZMA2 compression level from 1 (fastest) to 9 (ultra)"
+    },
+    "dictionary_size": {
+      "type": "integer",
+      "minimum": 65536,
+      "maximum": 67108864,
+      "description": "LZMA2 dictionary size in bytes (64KB to 64MB)"
+    },
+    "thread_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32,
+      "description": "Number of concurrent worker threads"
+    },
+    "max_memory_budget_bytes": {
+      "type": "integer",
+      "minimum": 67108864,
+      "maximum": 2147483648,
+      "description": "Maximum memory ceiling in bytes (64MB to 2GB, default 512MB)"
+    },
+    "enable_hybrid_neon_l1": {
+      "type": "boolean",
+      "description": "Whether to auto-route Level 1 to handwritten ARM64 NEON fast encoder"
+    },
+    "enable_zero_block_bypass": {
+      "type": "boolean",
+      "description": "Whether to enable vectorized zero-block detection and direct encoding"
+    }
+  }
+}

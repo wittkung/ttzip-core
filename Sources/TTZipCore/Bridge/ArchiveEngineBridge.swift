@@ -52,14 +52,17 @@ public enum NativeMicrokernelBridge {
         return (kind, meta.formatName, meta.mimeType)
     }
     
-    /// Fast natural sort on paths.
+    /// Fast natural sort on paths backed by pure Rust UniFFI kernel.
     public static func naturalSort(_ paths: [String]) -> [String] {
-        return paths.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        return naturalSortPaths(items: paths)
     }
 
-    /// Natural string comparator.
+    /// Natural string comparator backed by pure Rust UniFFI kernel.
     public static func naturalCompare(_ a: String, _ b: String) -> ComparisonResult {
-        return a.localizedStandardCompare(b)
+        let cmp = TTZipCore.naturalCompare(a: a, b: b)
+        if cmp < 0 { return .orderedAscending }
+        if cmp > 0 { return .orderedDescending }
+        return .orderedSame
     }
     
     /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from a file path using pure Rust UniFFI kernel.

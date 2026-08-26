@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StreamChunkDescriptor",
+  "description": "Lifecycle and telemetry schema for individual in-flight data chunk in TTZip stream coder",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sequenceNumber",
+    "uncompressedSize",
+    "compressedSize",
+    "chunkCrc32",
+    "isFinalChunk",
+    "state"
+  ],
+  "properties": {
+    "sequenceNumber": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "0-indexed monotonically increasing chunk sequence number"
+    },
+    "uncompressedSize": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 67108864,
+      "description": "Actual uncompressed byte count contained in this chunk"
+    },
+    "compressedSize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Actual compressed byte count after DEFLATE encoding"
+    },
+    "chunkCrc32": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "description": "32-bit unsigned CRC-32 checksum calculated for this chunk payload"
+    },
+    "isFinalChunk": {
+      "type": "boolean",
+      "description": "True if this is the terminal chunk of the compressed file stream"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "compressing",
+        "ready_to_write",
+        "written",
+        "recycled"
+      ],
+      "description": "Current lifecycle state of the chunk memory slot"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnwikBenchmarkResult",
+  "type": "object",
+  "description": "Quantitative benchmark results, throughput metrics, and verification flags for an enwik corpus run.",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "corpusId",
+    "format",
+    "algorithm",
+    "compressionLevel",
+    "threadCount",
+    "uncompressedSizeBytes",
+    "compressedSizeBytes",
+    "spaceSavingsRatioPercent",
+    "compressionThroughputMBs",
+    "decompressionThroughputMBs",
+    "compressionDurationSeconds",
+    "decompressionDurationSeconds",
+    "memoryTelemetry",
+    "memoryBudgetPassed",
+    "decompressionIntegrityPassed",
+    "decompressionSha256"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique run execution UUID."
+    },
+    "corpusId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Corpus identifier."
+    },
+    "format": {
+      "type": "string",
+      "description": "Archive format evaluated."
+    },
+    "algorithm": {
+      "type": "string",
+      "description": "Compression algorithm evaluated."
+    },
+    "compressionLevel": {
+      "type": "integer",
+      "description": "Applied compression level."
+    },
+    "threadCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Worker threads used."
+    },
+    "uncompressedSizeBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Uncompressed input size in bytes."
+    },
+    "compressedSizeBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Compressed output archive size in bytes."
+    },
+    "spaceSavingsRatioPercent": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 100.0,
+      "description": "Percentage space reduction."
+    },
+    "compressionThroughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Compression throughput in Megabytes per second."
+    },
+    "decompressionThroughputMBs": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Decompression throughput in Megabytes per second."
+    },
+    "compressionDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Wall-clock duration for compression in seconds."
+    },
+    "decompressionDurationSeconds": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Wall-clock duration for decompression in seconds."
+    },
+    "memoryTelemetry": {
+      "$ref": "memory-telemetry-snapshot.schema.json"
+    },
+    "memoryBudgetPassed": {
+      "type": "boolean",
+      "description": "Whether peak RSS memory stayed strictly under maxAllowedPeakRSSBytes."
+    },
+    "decompressionIntegrityPassed": {
+      "type": "boolean",
+      "description": "Whether decompressed payload matches expected SHA-256 byte-for-byte."
+    },
+    "decompressionSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Calculated SHA-256 hash of decompressed stream."
+    }
+  }
+}

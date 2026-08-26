@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TUIEventContract",
+  "description": "Schema defining terminal user input events, navigation keys, and background task signals",
+  "type": "object",
+  "required": ["eventKind", "timestampEpochMs", "payload"],
+  "properties": {
+    "eventKind": {
+      "type": "string",
+      "enum": ["keyInput", "mouseScroll", "windowResize", "progressTick", "taskCompleted", "cancellationRequested"]
+    },
+    "timestampEpochMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "required": ["actionType"],
+      "properties": {
+        "actionType": {
+          "type": "string",
+          "enum": ["navigateUp", "navigateDown", "toggleExpand", "startSearch", "togglePreview", "triggerExtract", "cancelTask", "quit"]
+        },
+        "keyChar": { "type": ["string", "null"] },
+        "windowCols": { "type": ["integer", "null"] },
+        "windowRows": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature176Contract",
+  "description": "Schema verifying invariants for Feature 176: Snappy framing, pure Rust Brotli, multi-volume streams, SIMD entropy, VFS LZ4 cache pool, and in-memory password recovery.",
+  "type": "object",
+  "required": [
+    "snappy_framing_standard_crc32c",
+    "brotli_pure_rust_cross_platform",
+    "split_volume_stream_sink",
+    "simd_entropy_sub_100us",
+    "vfs_lz4_o1_cache_pool",
+    "in_memory_password_recovery_150k",
+    "zero_regression"
+  ],
+  "properties": {
+    "snappy_framing_standard_crc32c": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "brotli_pure_rust_cross_platform": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "split_volume_stream_sink": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "simd_entropy_sub_100us": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "vfs_lz4_o1_cache_pool": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "in_memory_password_recovery_150k": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "zero_regression": {
+      "type": "boolean",
+      "enum": [true]
+    }
+  },
+  "additionalProperties": false
+}

@@ -137,4 +137,72 @@ final class UniFFIBindingsTests: XCTestCase {
             XCTFail("UniFFI archive pipeline failed: \(error)")
         }
     }
+
+    func testSliceArchiveFileAndJoinVolumes() throws {
+        let fm = FileManager.default
+        let tempDir = fm.temporaryDirectory.appendingPathComponent("ttzip_split_test_\(UUID().uuidString)")
+        try? fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let originalFile = tempDir.appendingPathComponent("payload.dat")
+        var originalData = Data()
+        for i in 0..<5000 {
+            originalData.append(UInt8(i % 256))
+        }
+        try originalData.write(to: originalFile)
+
+        // 1. Slice using SplitVolumeEngine backed by Rust UniFFI
+        try SplitVolumeEngine.shared.sliceArchive(
+            archivePath: originalFile.path,
+            splitSizeBytes: 1000,
+            namingPattern: .numberedExtension
+        )
+
+        let volumes = SplitVolumeEngine.shared.resolveVolumes(seedPath: "\(originalFile.path).001")
+        XCTAssertEqual(volumes.count, 5)
+
+        // 2. Join volumes back
+        let restoredFile = tempDir.appendingPathComponent("restored.dat")
+        try SplitVolumeEngine.shared.joinVolumes(
+            firstVolumePath: "\(originalFile.path).001",
+            outputPath: restoredFile.path
+        )
+
+        let restoredData = try Data(contentsOf: restoredFile)
+        XCTAssertEqual(restoredData, originalData)
+    }
+
+    func testVfsPagedChildrenAndTotalCount() {
+        var entries: [ArchiveEntry] = []
+        for i in 0..<30 {
+            entries.append(ArchiveEntry(
+                path: String(format: "Folder/item_%02d.txt", i),
+                uncompressedSize: 100,
+                isDirectory: false,
+                detectedEncoding: "UTF-8",
+                modificationDate: Date(),
+                isEncrypted: false
+            ))
+        }
+
+        guard let session = RustVfsSession(entries: entries, rootName: "Root") else {
+            XCTFail("Failed to initialize session")
+            return
+        }
+
+        let paged = session.getChildrenPaged(subpath: "Folder", offset: 10, limit: 5)
+        XCTAssertEqual(paged.nodes.count, 5)
+        XCTAssertEqual(paged.total, 30)
+        XCTAssertEqual(paged.nodes.first?.name, "item_10.txt")
+    }
+
+    func testNaturalCompareAndSort() {
+        let unsorted = ["file10.txt", "file2.txt", "file1.txt", "file20.txt"]
+        let sorted = NativeMicrokernelBridge.naturalSort(unsorted)
+        XCTAssertEqual(sorted, ["file1.txt", "file2.txt", "file10.txt", "file20.txt"])
+
+        XCTAssertEqual(NativeMicrokernelBridge.naturalCompare("v1.2.0", "v1.10.0"), .orderedAscending)
+        XCTAssertEqual(NativeMicrokernelBridge.naturalCompare("v1.10.0", "v1.2.0"), .orderedDescending)
+        XCTAssertEqual(NativeMicrokernelBridge.naturalCompare("abc", "abc"), .orderedSame)
+    }
 }

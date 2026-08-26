@@ -186,8 +186,16 @@ unsafe fn extract_from_archive_handle(
                     }
                     let parent_dir = target_path.parent().unwrap_or(destination_path);
                     let resolved_target = parent_dir.join(symlink_target);
-                    if sanitize_and_validate_path(destination_path, &resolved_target.to_string_lossy()).is_err() {
-                        return Err(TTZipStatus::ErrSecurityViolation);
+                    match resolved_target.strip_prefix(destination_path) {
+                        Ok(rel_to_dest) => {
+                            let rel_str = rel_to_dest.to_string_lossy();
+                            if !rel_str.is_empty() && sanitize_and_validate_path(destination_path, &rel_str).is_err() {
+                                return Err(TTZipStatus::ErrSecurityViolation);
+                            }
+                        }
+                        Err(_) => {
+                            return Err(TTZipStatus::ErrSecurityViolation);
+                        }
                     }
                     crate::fs::safe_extract::validate_no_intermediate_symlinks(destination_path, &target_path)?;
                     if target_path.exists() || fs::symlink_metadata(&target_path).is_ok() {

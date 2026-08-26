@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemorySafetyAuditContract",
+  "description": "JSON schema for TTZip C bridge memory safety and lifecycle audit records",
+  "type": "object",
+  "required": [
+    "module_name",
+    "operation_type",
+    "buffer_size_bytes",
+    "is_overflow_checked",
+    "is_secure_zeroed",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": [
+        "allocation",
+        "reallocation",
+        "deallocation",
+        "zeroing",
+        "fd_close"
+      ]
+    },
+    "buffer_size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "is_overflow_checked": {
+      "type": "boolean"
+    },
+    "is_secure_zeroed": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "oom_handled",
+        "io_error",
+        "corrupt_rejected"
+      ]
+    }
+  }
+}
