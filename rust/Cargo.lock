@@ -2107,6 +2107,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tt-i18n-core"
+version = "1.0.0"
+dependencies = [
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "uniffi",
+]
+
+[[package]]
 name = "ttzip-engine"
 version = "1.0.0"
 dependencies = [
@@ -2139,6 +2149,7 @@ dependencies = [
  "tar",
  "tempfile",
  "thiserror 2.0.20",
+ "tt-i18n-core",
  "unicode-normalization",
  "uniffi",
  "zeroize",

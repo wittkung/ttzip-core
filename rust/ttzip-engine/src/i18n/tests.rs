@@ -7,9 +7,9 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::i18n::catalog::{lookup, AppLanguage};
+    use crate::i18n::catalog::AppLanguage;
     use crate::i18n::catalogs;
-    use crate::i18n::engine::TTZipLocalizationEngine;
+    use crate::i18n::engine::TTLocalizationEngine as TTZipLocalizationEngine;
     use crate::i18n::formatting::ByteSizeStandard;
     use std::collections::HashSet;
 

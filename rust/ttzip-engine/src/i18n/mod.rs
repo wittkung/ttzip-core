@@ -7,17 +7,13 @@
 
 //! Pure Safe Rust Unified Internationalization (i18n) & CLDR Formatting Engine.
 //!
-//! Provides compile-time zero-allocation static dictionaries across 7 languages,
-//! CLDR-compliant byte size / throughput formatters, and UniFFI exportable bindings.
+//! Powered by standalone `tt-i18n-core` SDK.
 
-pub mod catalog;
-pub mod catalogs;
-pub mod engine;
-pub mod formatting;
+pub use tt_i18n::catalog::{self, get_string_or_fallback, lookup, AppLanguage};
+pub use tt_i18n::catalogs;
+pub use tt_i18n::cldr as formatting;
+pub use tt_i18n::cldr::{format_bytes, format_throughput, localize_error, ByteSizeStandard, PluralCategory};
+pub use tt_i18n::engine::{self, TTLocalizationEngine as TTZipLocalizationEngine};
 
 #[cfg(test)]
 pub mod tests;
-
-pub use catalog::{get_string_or_fallback, lookup, AppLanguage};
-pub use engine::TTZipLocalizationEngine;
-pub use formatting::{format_bytes, format_throughput, localize_error, ByteSizeStandard};

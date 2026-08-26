@@ -8,6 +8,10 @@
 
 import PackageDescription
 
+let coreSwiftSettings: [SwiftSetting] = [
+    .enableUpcomingFeature("StrictConcurrency")
+]
+
 let package = Package(
     name: "TTZipCore",
     platforms: [
@@ -28,7 +32,9 @@ let package = Package(
             targets: ["TTZipBench"]
         )
     ],
-    dependencies: [],
+    dependencies: [
+        .package(path: "../ttkit-localization/TTLocalizationKit")
+    ],
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
@@ -53,11 +59,13 @@ let package = Package(
         ),
         .target(
             name: "TTZipCore",
-            dependencies: ["CTTZipBridge", "TTZipVendor"],
+            dependencies: [
+                "CTTZipBridge",
+                "TTZipVendor",
+                .product(name: "TTLocalizationKit", package: "TTLocalizationKit")
+            ],
             path: "Sources/TTZipCore",
-            swiftSettings: [
-                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
-            ]
+            swiftSettings: coreSwiftSettings
         ),
         .executableTarget(
             name: "TTZipBench",
@@ -66,9 +74,7 @@ let package = Package(
                 "CTTZipBridge"
             ],
             path: "Sources/TTZipBench",
-            swiftSettings: [
-                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
-            ]
+            swiftSettings: coreSwiftSettings
         ),
         .testTarget(
             name: "TTZipTests",
@@ -80,9 +86,7 @@ let package = Package(
             resources: [
                 .copy("Fixtures")
             ],
-            swiftSettings: [
-                .unsafeFlags(["-no-whole-module-optimization", "-enable-batch-mode"])
-            ]
+            swiftSettings: coreSwiftSettings
         )
     ]
 )

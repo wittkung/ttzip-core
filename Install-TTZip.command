@@ -59,90 +59,45 @@ if pgrep -x "TTZip" >/dev/null 2>&1; then
     sleep 0.8
 fi
 
-# 3. Compile Release Targets
+# 3. Compile Release Targets & Bundle App
 echo -e "\n${BLUE}==> [3/5] 开始编译最新 Release 版本 (Swift 6.0 + 硬件加速)...${NC}"
-echo "  --> 正在编译 TTZipApp 桌面端..."
-swift build -c release --product TTZipApp
-
-echo "  --> 正在编译 ttzip-cli 命令行工具..."
-swift build -c release --product ttzip-cli
-
-BUILD_DIR="${REPO_ROOT}/.build/release"
-APP_SRC="${BUILD_DIR}/TTZipApp"
-CLI_SRC="${BUILD_DIR}/ttzip-cli"
-
-if [ ! -f "${APP_SRC}" ] || [ ! -f "${CLI_SRC}" ]; then
-    echo -e "${RED}[错误] 编译产物缺失，请检查构建日志。${NC}"
-    read -n 1 -s -r
-    exit 1
-fi
-
-# 4. Package TTZip.app & Install to /Applications
-echo -e "\n${BLUE}==> [4/5] 打包并覆盖安装 TTZip.app 到 /Applications...${NC}"
-APP_BUNDLE="${REPO_ROOT}/dist/TTZip.app"
-CONTENTS_DIR="${APP_BUNDLE}/Contents"
-MACOS_DIR="${CONTENTS_DIR}/MacOS"
-FRAMEWORKS_DIR="${CONTENTS_DIR}/Frameworks"
-RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-ICON_ASSET="${REPO_ROOT}/Sources/TTZipApp/Resources/AppIcon.icns"
-
-rm -rf "${REPO_ROOT}/dist"
-mkdir -p "${MACOS_DIR}" "${FRAMEWORKS_DIR}" "${RESOURCES_DIR}"
-
-# Copy binary & strip
-cp "${APP_SRC}" "${MACOS_DIR}/TTZip"
-strip -x "${MACOS_DIR}/TTZip" 2>/dev/null || true
-chmod +x "${MACOS_DIR}/TTZip"
-
-# Ensure rpath includes Frameworks directory
-install_name_tool -add_rpath @executable_path/../Frameworks "${MACOS_DIR}/TTZip" 2>/dev/null || true
-
-# Copy Sparkle.framework if present
-SPARKLE_SRC="$(find "${REPO_ROOT}/.build" -name "Sparkle.framework" -type d 2>/dev/null | grep -E "xcframework.*macos|release/Sparkle.framework" | head -n 1 || true)"
-if [ -n "${SPARKLE_SRC}" ] && [ -d "${SPARKLE_SRC}" ]; then
-    echo "  --> 注入 Sparkle 自动更新框架: ${SPARKLE_SRC}"
-    cp -R "${SPARKLE_SRC}" "${FRAMEWORKS_DIR}/"
-    codesign --force --deep --sign - "${FRAMEWORKS_DIR}/Sparkle.framework" 2>/dev/null || true
-fi
-
-# Copy plist & icons
-cp "${REPO_ROOT}/Sources/TTZipApp/Info.plist" "${CONTENTS_DIR}/Info.plist"
-echo "APPL????" > "${CONTENTS_DIR}/PkgInfo"
-if [ -f "${ICON_ASSET}" ]; then
-    cp "${ICON_ASSET}" "${RESOURCES_DIR}/AppIcon.icns"
-fi
-if [ -f "${REPO_ROOT}/Sources/TTZipApp/PrivacyInfo.xcprivacy" ]; then
-    cp "${REPO_ROOT}/Sources/TTZipApp/PrivacyInfo.xcprivacy" "${RESOURCES_DIR}/PrivacyInfo.xcprivacy"
-fi
-
-# Sign
-echo "  --> 执行本地 Ad-hoc 代码签名..."
-codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-
-# Target install
-TARGET_APP="/Applications/TTZip.app"
-echo "  --> 覆盖安装至 ${TARGET_APP}..."
-
-if [ -d "${TARGET_APP}" ]; then
-    if [ -w "/Applications" ]; then
-        rm -rf "${TARGET_APP}"
-    else
-        echo -e "${YELLOW}  [需要权限] 请输入密码以覆盖 /Applications/TTZip.app:${NC}"
-        sudo rm -rf "${TARGET_APP}"
-    fi
-fi
-
-if [ -w "/Applications" ]; then
-    cp -R "${APP_BUNDLE}" "/Applications/"
+if [ -f "${REPO_ROOT}/../apple/scripts/bundle_app.sh" ]; then
+    echo "  --> 正在调用 apple/scripts/bundle_app.sh 构建桌面端..."
+    "${REPO_ROOT}/../apple/scripts/bundle_app.sh" --release
+    APP_BUNDLE="${REPO_ROOT}/../apple/dist/TTZip.app"
 else
-    sudo cp -R "${APP_BUNDLE}" "/Applications/"
+    echo "  --> 正在编译 TTZipCore..."
+    swift build -c release
+    APP_BUNDLE="${REPO_ROOT}/dist/TTZip.app"
 fi
 
-# Re-register LaunchServices
-if [ -x "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister" ]; then
-    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "${TARGET_APP}" 2>/dev/null || true
+# 4. Install TTZip.app to /Applications
+echo -e "\n${BLUE}==> [4/5] 覆盖安装 TTZip.app 到 /Applications...${NC}"
+TARGET_APP="/Applications/TTZip.app"
+
+if [ -d "${APP_BUNDLE}" ]; then
+    echo "  --> 覆盖安装至 ${TARGET_APP}..."
+    if [ -d "${TARGET_APP}" ]; then
+        if [ -w "/Applications" ]; then
+            rm -rf "${TARGET_APP}"
+        else
+            echo -e "${YELLOW}  [需要权限] 请输入密码以覆盖 /Applications/TTZip.app:${NC}"
+            sudo rm -rf "${TARGET_APP}"
+        fi
+    fi
+
+    if [ -w "/Applications" ]; then
+        cp -R "${APP_BUNDLE}" "/Applications/"
+    else
+        sudo cp -R "${APP_BUNDLE}" "/Applications/"
+    fi
+
+    # Re-register LaunchServices
+    if [ -x "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister" ]; then
+        /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "${TARGET_APP}" 2>/dev/null || true
+    fi
+    echo -e "${GREEN}  ✓ GUI 桌面版安装成功: ${TARGET_APP}${NC}"
 fi
-echo -e "${GREEN}  ✓ GUI 桌面版安装成功: ${TARGET_APP}${NC}"
 
 # 5. Install CLI Tools to System PATH
 echo -e "\n${BLUE}==> [5/5] 安装 CLI 命令行工具 (ttzip / ttzip-cli)...${NC}"

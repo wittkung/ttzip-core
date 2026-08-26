@@ -45,6 +45,7 @@ aes = "0.8"
 ctr = "0.9"
 cbc = "0.1"
 symphonia = { version = "0.5", features = ["all"] }
+tt_i18n = { package = "tt-i18n-core", path = "../../../ttkit-localization/tt-i18n-core" }
 
 [dev-dependencies]
 hex = "0.4"
