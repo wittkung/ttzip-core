@@ -119,17 +119,21 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         }
 
         Self.preventSpotlightIndexing(at: destinationDir)
-        try Task.checkCancellation()
+        let capturedToken = token
+        let capturedOptions = options
+        let capturedAdvanced = advancedOptions
+        let capturedProgress = progressHandler
+        let capturedPassword = password
 
         let bytes = try await Task.detached(priority: .userInitiated) {
             try self.extractSync(
                 archivePath: archivePath,
                 destinationDir: destinationDir,
-                options: options,
-                password: password,
-                advancedOptions: advancedOptions,
-                progressHandler: progressHandler,
-                token: token
+                options: capturedOptions,
+                password: capturedPassword,
+                advancedOptions: capturedAdvanced,
+                progressHandler: capturedProgress,
+                token: capturedToken
             )
         }.value
 

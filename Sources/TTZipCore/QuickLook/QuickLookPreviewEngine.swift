@@ -108,6 +108,7 @@ public enum QuickLookFormatIdentifier: String, Codable, Sendable, CaseIterable {
         case .lzfse: return .lzfse
         case .lzh: return .lzh
         case .brotli, .tarBrotli: return .zip
+        @unknown default: return .zip
         }
     }
     

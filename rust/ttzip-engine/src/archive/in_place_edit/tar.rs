@@ -62,6 +62,7 @@ pub(crate) fn mutate_tar_bytes(mapped: &[u8], actions: &[InPlaceAction]) -> Resu
     }
 
     let mut out = Vec::with_capacity(mapped.len() + 65536);
+    let mut processed_replaced = HashSet::new();
 
     for entry in &entries {
         let key = entry.path.trim_start_matches('/').to_string();
@@ -70,6 +71,7 @@ pub(crate) fn mutate_tar_bytes(mapped: &[u8], actions: &[InPlaceAction]) -> Resu
         }
 
         if let Some(src_path) = replaced.get(&key) {
+            processed_replaced.insert(key);
             write_tar_entry_from_file(&mut out, &entry.path, src_path)?;
         } else {
             let block_start = entry.header_offset;
@@ -79,6 +81,12 @@ pub(crate) fn mutate_tar_bytes(mapped: &[u8], actions: &[InPlaceAction]) -> Resu
             if block_end <= mapped.len() && block_start <= block_end {
                 out.extend_from_slice(&mapped[block_start..block_end]);
             }
+        }
+    }
+
+    for (key, src_path) in &replaced {
+        if !processed_replaced.contains(key) {
+            write_tar_entry_from_file(&mut out, key, src_path)?;
         }
     }
 

@@ -9,7 +9,7 @@ import Foundation
 
 /// Persistent Safe Rust VFS Tree session with cached lookups and zero per-keystroke allocations.
 /// 100% Mozilla UniFFI-backed memory-safe tree representation.
-public final class RustVfsSession: Sendable {
+public final class RustVfsSession: @unchecked Sendable {
     public let uniffiTree: UniFfiVfsTree
     private let entryMap: [String: ArchiveEntry]
     public let allEntries: [ArchiveEntry]

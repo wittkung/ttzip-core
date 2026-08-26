@@ -535,6 +535,7 @@ public enum StandardsComplianceChecker {
         case .squashfs: return 26
         case .lzfse: return 27
         case .lzh: return 28
+        @unknown default: return 0
         }
     }
 }

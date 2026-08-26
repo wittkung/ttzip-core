@@ -15,11 +15,19 @@ def postprocess(swift_path):
     # 1. Add CTTZipBridge import if not present
     if "import CTTZipBridge" not in content:
         content = content.replace(
+            "#if canImport(ttzip_engineFFI)\nimport ttzip_engineFFI\n#endif",
+            "import CTTZipBridge"
+        )
+        content = content.replace(
             "#if canImport(ttzip_engineFFI)\n    import ttzip_engineFFI\n#endif",
             "import CTTZipBridge"
         )
     content = content.replace(
         "#if canImport(ttzip_engineFFI)\n    import ttzip_engineFFI\n#elseif canImport(CTTZipBridge)\n    import CTTZipBridge\n#endif",
+        "import CTTZipBridge"
+    )
+    content = content.replace(
+        "#if canImport(ttzip_engineFFI)\nimport ttzip_engineFFI\n#elseif canImport(CTTZipBridge)\nimport CTTZipBridge\n#endif",
         "import CTTZipBridge"
     )
 

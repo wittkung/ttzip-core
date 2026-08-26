@@ -46,7 +46,8 @@ pub fn in_place_edit_zip(
         }
     }
 
-    let mut new_items: Vec<ZipCompressedItem> = Vec::with_capacity(entries.len() + appended.len());
+    let mut new_items: Vec<ZipCompressedItem> = Vec::with_capacity(entries.len() + appended.len() + replaced.len());
+    let mut processed_replaced = HashSet::new();
 
     for entry in &entries {
         let key = entry.rel_path.trim_start_matches('/').to_string();
@@ -55,6 +56,7 @@ pub fn in_place_edit_zip(
         }
 
         if let Some(src_path) = replaced.get(&key) {
+            processed_replaced.insert(key);
             let item = compress_file_for_zip(&entry.rel_path, src_path)?;
             new_items.push(item);
         } else {
@@ -80,6 +82,13 @@ pub fn in_place_edit_zip(
                 is_directory: entry.is_directory,
                 is_encrypted: entry.is_encrypted,
             });
+        }
+    }
+
+    for (key, src_path) in &replaced {
+        if !processed_replaced.contains(key) {
+            let item = compress_file_for_zip(key, src_path)?;
+            new_items.push(item);
         }
     }
 
