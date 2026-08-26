@@ -70,6 +70,14 @@ public enum QuickLookFormatIdentifier: String, Codable, Sendable, CaseIterable {
     case iso
     case rar
     case cab
+    case cpio
+    case ar
+    case deb
+    case rpm
+    case xar
+    case squashfs
+    case lzfse
+    case lzh
     
     /// Maps from an `ArchiveCompressionFormat`.
     public static func from(format: ArchiveCompressionFormat) -> QuickLookFormatIdentifier {
@@ -81,15 +89,25 @@ public enum QuickLookFormatIdentifier: String, Codable, Sendable, CaseIterable {
         case .bz2, .tarBz2: return .bz2
         case .xz, .tarXz: return .xz
         case .zst, .tarZst: return .zst
-        case .lz4: return .lz4
-        case .lzip: return .lz
-        case .lrzip: return .lrz
+        case .lz4, .tarLz4: return .lz4
+        case .lzip, .tarLzip: return .lz
+        case .lrzip, .tarLrzip: return .lrz
         case .aar: return .aar
         case .snappy: return .sz
         case .wim: return .wim
         case .dmg: return .dmg
         case .iso: return .iso
-        case .brotli: return .zip
+        case .cab: return .cab
+        case .cpio: return .cpio
+        case .ar: return .ar
+        case .deb: return .deb
+        case .rpm: return .rpm
+        case .xar: return .xar
+        case .rar: return .rar
+        case .squashfs: return .squashfs
+        case .lzfse: return .lzfse
+        case .lzh: return .lzh
+        case .brotli, .tarBrotli: return .zip
         }
     }
     
@@ -114,6 +132,14 @@ public enum QuickLookFormatIdentifier: String, Codable, Sendable, CaseIterable {
         case "iso": return .iso
         case "rar", "cbr": return .rar
         case "cab": return .cab
+        case "cpio": return .cpio
+        case "ar", "a": return .ar
+        case "deb": return .deb
+        case "rpm": return .rpm
+        case "xar", "pkg": return .xar
+        case "squashfs", "sqsh": return .squashfs
+        case "lzfse": return .lzfse
+        case "lzh", "lha": return .lzh
         default: return .zip
         }
     }

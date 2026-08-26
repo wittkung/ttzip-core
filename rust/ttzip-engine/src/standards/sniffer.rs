@@ -198,7 +198,10 @@ fn deduce_compound_format(format: DetectedFormat, filename_hint: Option<&str>) -
         DetectedFormat::Bzip2 if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") || name.ends_with(".tbz") => Some(CompoundFormat::TarBz2),
         DetectedFormat::Xz if name.ends_with(".tar.xz") || name.ends_with(".txz") => Some(CompoundFormat::TarXz),
         DetectedFormat::Zstd if name.ends_with(".tar.zst") || name.ends_with(".tzst") => Some(CompoundFormat::TarZstd),
-        DetectedFormat::Lz4 if name.ends_with(".tar.lz4") => Some(CompoundFormat::TarLz4),
+        DetectedFormat::Lz4 if name.ends_with(".tar.lz4") || name.ends_with(".tlz4") => Some(CompoundFormat::TarLz4),
+        DetectedFormat::Brotli if name.ends_with(".tar.br") || name.ends_with(".tbr") => Some(CompoundFormat::TarBrotli),
+        DetectedFormat::Lzip if name.ends_with(".tar.lz") || name.ends_with(".tlz") => Some(CompoundFormat::TarLzip),
+        DetectedFormat::Lrzip if name.ends_with(".tar.lrz") || name.ends_with(".tlrz") => Some(CompoundFormat::TarLrzip),
         _ => None,
     }
 }

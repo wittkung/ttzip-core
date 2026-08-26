@@ -126,3 +126,24 @@ impl UniFFIVfsTree {
         guard.total_entries as u64
     }
 }
+
+/// Recursively drills down nested archives in-memory and returns inner archive entries.
+#[uniffi::export]
+pub fn drill_down_nested_archive(
+    archive_path: String,
+    drill_path: Vec<String>,
+    password: Option<String>,
+) -> Result<Vec<UniFFIEntryMetadata>, super::types::TTZipError> {
+    crate::archive::nested_vfs::drill_down_nested_archive(&archive_path, &drill_path, password.as_deref())
+}
+
+/// Recursively drills down nested archives in-memory and returns a streaming VirtualFileStream.
+#[uniffi::export]
+pub fn open_virtual_file_stream(
+    archive_path: String,
+    drill_path: Vec<String>,
+    target_entry: String,
+    password: Option<String>,
+) -> Result<Arc<crate::archive::nested_vfs::VirtualFileStream>, super::types::TTZipError> {
+    crate::archive::nested_vfs::open_virtual_file_stream(&archive_path, &drill_path, &target_entry, password.as_deref())
+}

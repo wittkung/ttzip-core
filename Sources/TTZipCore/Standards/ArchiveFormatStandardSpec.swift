@@ -424,10 +424,33 @@ public enum ArchiveMagicSignatureScanner {
             case .tarBz2: format = .tarBz2
             case .tarXz: format = .tarXz
             case .tarZstd: format = .tarZst
-            case .dmg: format = .dmg
-            case .snappy: format = .snappy
-            case .lzfse: format = .aar
+            case .tarLz4: format = .tarLz4
+            case .tarBrotli: format = .tarBrotli
+            case .tarLzip: format = .tarLzip
+            case .tarLrzip: format = .tarLrzip
+            case .gzip: format = .gz
+            case .bzip2: format = .bz2
+            case .xz: format = .xz
+            case .zstd: format = .zst
+            case .lz4: format = .lz4
+            case .brotli: format = .brotli
+            case .iso: format = .iso
+            case .cab: format = .cab
             case .wim: format = .wim
+            case .dmg: format = .dmg
+            case .aar: format = .aar
+            case .cpio: format = .cpio
+            case .ar: format = .ar
+            case .deb: format = .deb
+            case .rpm: format = .rpm
+            case .xar: format = .xar
+            case .rar: format = .rar
+            case .squashfs: format = .squashfs
+            case .lzfse: format = .lzfse
+            case .lzh: format = .lzh
+            case .snappy: format = .snappy
+            case .lzip: format = .lzip
+            case .lrzip: format = .lrzip
             case .auto: format = .zip
             }
             return resolveCompoundFormat(detected: format, fileURL: fileURL)
@@ -454,6 +477,10 @@ public enum ArchiveMagicSignatureScanner {
         case 7: return .zst
         case 10: return .iso
         case 11: return .dmg
+        case 12: return .cab
+        case 13: return .cpio
+        case 14: return .ar
+        case 15: return .deb
         case 16: return .snappy
         case 17: return .lz4
         case 18: return .lzip
@@ -461,6 +488,12 @@ public enum ArchiveMagicSignatureScanner {
         case 20: return .brotli
         case 21: return .aar
         case 22: return .wim
+        case 23: return .rpm
+        case 24: return .xar
+        case 25: return .rar
+        case 26: return .squashfs
+        case 27: return .lzfse
+        case 28: return .lzh
         default: return nil
         }
     }
@@ -479,6 +512,14 @@ public enum ArchiveMagicSignatureScanner {
             return .tarXz
         case .zst where lower.hasSuffix(".tar.zst") || lower.hasSuffix(".tzst"):
             return .tarZst
+        case .lz4 where lower.hasSuffix(".tar.lz4") || lower.hasSuffix(".tlz4"):
+            return .tarLz4
+        case .brotli where lower.hasSuffix(".tar.br") || lower.hasSuffix(".tbr"):
+            return .tarBrotli
+        case .lzip where lower.hasSuffix(".tar.lz") || lower.hasSuffix(".tlz"):
+            return .tarLzip
+        case .lrzip where lower.hasSuffix(".tar.lrz") || lower.hasSuffix(".tlrz"):
+            return .tarLrzip
         default:
             return detected
         }
@@ -490,8 +531,12 @@ public enum ArchiveMagicSignatureScanner {
         if lower.hasSuffix(".tar.bz2") || lower.hasSuffix(".tbz2") || lower.hasSuffix(".tbz") { return .tarBz2 }
         if lower.hasSuffix(".tar.xz") || lower.hasSuffix(".txz") { return .tarXz }
         if lower.hasSuffix(".tar.zst") || lower.hasSuffix(".tzst") { return .tarZst }
-        if lower.hasSuffix(".tar") { return .tar }
-        if lower.hasSuffix(".zip") || lower.hasSuffix(".zipx") || lower.hasSuffix(".jar") || lower.hasSuffix(".apk") { return .zip }
+        if lower.hasSuffix(".tar.lz4") || lower.hasSuffix(".tlz4") { return .tarLz4 }
+        if lower.hasSuffix(".tar.br") || lower.hasSuffix(".tbr") { return .tarBrotli }
+        if lower.hasSuffix(".tar.lz") || lower.hasSuffix(".tlz") { return .tarLzip }
+        if lower.hasSuffix(".tar.lrz") || lower.hasSuffix(".tlrz") { return .tarLrzip }
+        if lower.hasSuffix(".tar") || lower.hasSuffix(".cbt") { return .tar }
+        if lower.hasSuffix(".zip") || lower.hasSuffix(".zipx") || lower.hasSuffix(".jar") || lower.hasSuffix(".apk") || lower.hasSuffix(".cbz") || lower.hasSuffix(".epub") { return .zip }
         if lower.hasSuffix(".7z") || lower.hasSuffix(".cb7") { return .sevenZip }
         if lower.hasSuffix(".gz") { return .gz }
         if lower.hasSuffix(".bz2") { return .bz2 }
@@ -501,11 +546,21 @@ public enum ArchiveMagicSignatureScanner {
         if lower.hasSuffix(".lz4") { return .lz4 }
         if lower.hasSuffix(".br") || lower.hasSuffix(".brotli") { return .brotli }
         if lower.hasSuffix(".lrz") || lower.hasSuffix(".lrzip") { return .lrzip }
-        if lower.hasSuffix(".aar") { return .aar }
+        if lower.hasSuffix(".aar") || lower.hasSuffix(".aea") { return .aar }
         if lower.hasSuffix(".sz") || lower.hasSuffix(".snappy") { return .snappy }
-        if lower.hasSuffix(".wim") { return .wim }
+        if lower.hasSuffix(".wim") || lower.hasSuffix(".swm") || lower.hasSuffix(".esd") { return .wim }
         if lower.hasSuffix(".dmg") { return .dmg }
-        if lower.hasSuffix(".iso") { return .iso }
+        if lower.hasSuffix(".iso") || lower.hasSuffix(".img") { return .iso }
+        if lower.hasSuffix(".cab") { return .cab }
+        if lower.hasSuffix(".cpio") { return .cpio }
+        if lower.hasSuffix(".ar") || lower.hasSuffix(".a") { return .ar }
+        if lower.hasSuffix(".deb") { return .deb }
+        if lower.hasSuffix(".rpm") { return .rpm }
+        if lower.hasSuffix(".xar") || lower.hasSuffix(".pkg") { return .xar }
+        if lower.hasSuffix(".rar") || lower.hasSuffix(".cbr") { return .rar }
+        if lower.hasSuffix(".squashfs") || lower.hasSuffix(".sqsh") { return .squashfs }
+        if lower.hasSuffix(".lzfse") { return .lzfse }
+        if lower.hasSuffix(".lzh") || lower.hasSuffix(".lha") { return .lzh }
         return nil
     }
 }

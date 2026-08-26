@@ -39,9 +39,10 @@ pub mod zip;
 
 pub use analytics::*;
 pub use archive::{
-    compute_volume_path, detect_volume_chain, find_next_pk_signature, repair_damaged_tar,
-    repair_damaged_zip, ArchiveBuilder, ArchiveEntryInfo, ArchiveReader, ExtractBuilder,
-    SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
+    compute_volume_path, detect_volume_chain, drill_down_nested_archive, find_next_pk_signature,
+    open_virtual_file_stream, repair_damaged_tar, repair_damaged_zip, ArchiveBuilder,
+    ArchiveEntryInfo, ArchiveReader, ExtractBuilder, SplitVolumeWriter, VirtualFileStream,
+    VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
 };
 pub use audio::*;
 pub use benchmark::*;

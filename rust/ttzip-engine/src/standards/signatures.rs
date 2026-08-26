@@ -37,77 +37,112 @@ pub enum DetectedFormat {
     Brotli = 20,
     Aar = 21,
     Wim = 22,
+    Cpio = 23,
+    Deb = 24,
+    Rpm = 25,
+    Squashfs = 26,
 }
 
 impl DetectedFormat {
     /// Maps detected format to TTZip core archive format enum.
-    pub fn to_ttzip_format(self) -> TTZipArchiveFormat {
+    #[must_use]
+    pub const fn to_ttzip_format(self) -> TTZipArchiveFormat {
         match self {
-            DetectedFormat::Zip => TTZipArchiveFormat::Zip,
-            DetectedFormat::SevenZip => TTZipArchiveFormat::SevenZip,
-            DetectedFormat::Tar => TTZipArchiveFormat::Tar,
-            DetectedFormat::Dmg => TTZipArchiveFormat::Dmg,
-            DetectedFormat::Lzfse => TTZipArchiveFormat::Lzfse,
-            DetectedFormat::Snappy => TTZipArchiveFormat::Snappy,
-            _ => TTZipArchiveFormat::Unknown,
+            Self::Zip => TTZipArchiveFormat::Zip,
+            Self::SevenZip => TTZipArchiveFormat::SevenZip,
+            Self::Tar => TTZipArchiveFormat::Tar,
+            Self::Gzip => TTZipArchiveFormat::Gzip,
+            Self::Bzip2 => TTZipArchiveFormat::Bzip2,
+            Self::Xz => TTZipArchiveFormat::Xz,
+            Self::Zstd => TTZipArchiveFormat::Zstd,
+            Self::Rar => TTZipArchiveFormat::Rar,
+            Self::Cab => TTZipArchiveFormat::Cab,
+            Self::Iso => TTZipArchiveFormat::Iso,
+            Self::Dmg => TTZipArchiveFormat::Dmg,
+            Self::Xar => TTZipArchiveFormat::Xar,
+            Self::Lzh => TTZipArchiveFormat::Lzh,
+            Self::Ar => TTZipArchiveFormat::Ar,
+            Self::Lzfse => TTZipArchiveFormat::Lzfse,
+            Self::Snappy => TTZipArchiveFormat::Snappy,
+            Self::Lz4 => TTZipArchiveFormat::Lz4,
+            Self::Lzip => TTZipArchiveFormat::Lzip,
+            Self::Lrzip => TTZipArchiveFormat::Lrzip,
+            Self::Brotli => TTZipArchiveFormat::Brotli,
+            Self::Aar => TTZipArchiveFormat::Aar,
+            Self::Wim => TTZipArchiveFormat::Wim,
+            Self::Cpio => TTZipArchiveFormat::Cpio,
+            Self::Deb => TTZipArchiveFormat::Deb,
+            Self::Rpm => TTZipArchiveFormat::Rpm,
+            Self::Squashfs => TTZipArchiveFormat::Squashfs,
+            Self::Unknown => TTZipArchiveFormat::Unknown,
         }
     }
 
     /// Primary standard file extension for this format.
-    pub fn primary_extension(self) -> &'static str {
+    #[must_use]
+    pub const fn primary_extension(self) -> &'static str {
         match self {
-            DetectedFormat::Zip => "zip",
-            DetectedFormat::SevenZip => "7z",
-            DetectedFormat::Tar => "tar",
-            DetectedFormat::Gzip => "gz",
-            DetectedFormat::Bzip2 => "bz2",
-            DetectedFormat::Xz => "xz",
-            DetectedFormat::Zstd => "zst",
-            DetectedFormat::Rar => "rar",
-            DetectedFormat::Cab => "cab",
-            DetectedFormat::Iso => "iso",
-            DetectedFormat::Dmg => "dmg",
-            DetectedFormat::Xar => "xar",
-            DetectedFormat::Lzh => "lzh",
-            DetectedFormat::Ar => "ar",
-            DetectedFormat::Lzfse => "lzfse",
-            DetectedFormat::Snappy => "sz",
-            DetectedFormat::Lz4 => "lz4",
-            DetectedFormat::Lzip => "lz",
-            DetectedFormat::Lrzip => "lrz",
-            DetectedFormat::Brotli => "br",
-            DetectedFormat::Aar => "aar",
-            DetectedFormat::Wim => "wim",
-            DetectedFormat::Unknown => "bin",
+            Self::Zip => "zip",
+            Self::SevenZip => "7z",
+            Self::Tar => "tar",
+            Self::Gzip => "gz",
+            Self::Bzip2 => "bz2",
+            Self::Xz => "xz",
+            Self::Zstd => "zst",
+            Self::Rar => "rar",
+            Self::Cab => "cab",
+            Self::Iso => "iso",
+            Self::Dmg => "dmg",
+            Self::Xar => "xar",
+            Self::Lzh => "lzh",
+            Self::Ar => "ar",
+            Self::Lzfse => "lzfse",
+            Self::Snappy => "sz",
+            Self::Lz4 => "lz4",
+            Self::Lzip => "lz",
+            Self::Lrzip => "lrz",
+            Self::Brotli => "br",
+            Self::Aar => "aar",
+            Self::Wim => "wim",
+            Self::Cpio => "cpio",
+            Self::Deb => "deb",
+            Self::Rpm => "rpm",
+            Self::Squashfs => "squashfs",
+            Self::Unknown => "bin",
         }
     }
 
     /// Primary MIME type identifier.
-    pub fn mime_type(self) -> &'static str {
+    #[must_use]
+    pub const fn mime_type(self) -> &'static str {
         match self {
-            DetectedFormat::Zip => "application/zip",
-            DetectedFormat::SevenZip => "application/x-7z-compressed",
-            DetectedFormat::Tar => "application/x-tar",
-            DetectedFormat::Gzip => "application/gzip",
-            DetectedFormat::Bzip2 => "application/x-bzip2",
-            DetectedFormat::Xz => "application/x-xz",
-            DetectedFormat::Zstd => "application/zstd",
-            DetectedFormat::Rar => "application/vnd.rar",
-            DetectedFormat::Cab => "application/vnd.ms-cab-compressed",
-            DetectedFormat::Iso => "application/x-iso9660-image",
-            DetectedFormat::Dmg => "application/x-apple-diskimage",
-            DetectedFormat::Xar => "application/x-xar",
-            DetectedFormat::Lzh => "application/x-lzh-compressed",
-            DetectedFormat::Ar => "application/x-archive",
-            DetectedFormat::Lzfse => "application/x-lzfse",
-            DetectedFormat::Snappy => "application/x-snappy-framed",
-            DetectedFormat::Lz4 => "application/x-lz4",
-            DetectedFormat::Lzip => "application/x-lzip",
-            DetectedFormat::Lrzip => "application/x-lrzip",
-            DetectedFormat::Brotli => "application/x-brotli",
-            DetectedFormat::Aar => "application/x-apple-archive",
-            DetectedFormat::Wim => "application/x-ms-wim",
-            DetectedFormat::Unknown => "application/octet-stream",
+            Self::Zip => "application/zip",
+            Self::SevenZip => "application/x-7z-compressed",
+            Self::Tar => "application/x-tar",
+            Self::Gzip => "application/gzip",
+            Self::Bzip2 => "application/x-bzip2",
+            Self::Xz => "application/x-xz",
+            Self::Zstd => "application/zstd",
+            Self::Rar => "application/vnd.rar",
+            Self::Cab => "application/vnd.ms-cab-compressed",
+            Self::Iso => "application/x-iso9660-image",
+            Self::Dmg => "application/x-apple-diskimage",
+            Self::Xar => "application/x-xar",
+            Self::Lzh => "application/x-lzh-compressed",
+            Self::Ar => "application/x-archive",
+            Self::Lzfse => "application/x-lzfse",
+            Self::Snappy => "application/x-snappy-framed",
+            Self::Lz4 => "application/x-lz4",
+            Self::Lzip => "application/x-lzip",
+            Self::Lrzip => "application/x-lrzip",
+            Self::Brotli => "application/x-brotli",
+            Self::Aar => "application/x-apple-archive",
+            Self::Wim => "application/x-ms-wim",
+            Self::Cpio => "application/x-cpio",
+            Self::Deb => "application/vnd.debian.binary-package",
+            Self::Rpm => "application/x-rpm",
+            Self::Squashfs => "application/x-squashfs",
+            Self::Unknown => "application/octet-stream",
         }
     }
 }
@@ -120,28 +155,39 @@ pub enum CompoundFormat {
     TarXz,
     TarZstd,
     TarLz4,
+    TarBrotli,
+    TarLzip,
+    TarLrzip,
 }
 
 impl CompoundFormat {
     /// Maps compound format to TTZip core archive format enum.
-    pub fn to_ttzip_format(self) -> TTZipArchiveFormat {
+    #[must_use]
+    pub const fn to_ttzip_format(self) -> TTZipArchiveFormat {
         match self {
-            CompoundFormat::TarGz => TTZipArchiveFormat::TarGz,
-            CompoundFormat::TarBz2 => TTZipArchiveFormat::TarBz2,
-            CompoundFormat::TarXz => TTZipArchiveFormat::TarXz,
-            CompoundFormat::TarZstd => TTZipArchiveFormat::TarZstd,
-            CompoundFormat::TarLz4 => TTZipArchiveFormat::Tar,
+            Self::TarGz => TTZipArchiveFormat::TarGz,
+            Self::TarBz2 => TTZipArchiveFormat::TarBz2,
+            Self::TarXz => TTZipArchiveFormat::TarXz,
+            Self::TarZstd => TTZipArchiveFormat::TarZstd,
+            Self::TarLz4 => TTZipArchiveFormat::TarLz4,
+            Self::TarBrotli => TTZipArchiveFormat::TarBrotli,
+            Self::TarLzip => TTZipArchiveFormat::TarLzip,
+            Self::TarLrzip => TTZipArchiveFormat::TarLrzip,
         }
     }
 
     /// Primary file extension for compound format.
-    pub fn primary_extension(self) -> &'static str {
+    #[must_use]
+    pub const fn primary_extension(self) -> &'static str {
         match self {
-            CompoundFormat::TarGz => "tar.gz",
-            CompoundFormat::TarBz2 => "tar.bz2",
-            CompoundFormat::TarXz => "tar.xz",
-            CompoundFormat::TarZstd => "tar.zst",
-            CompoundFormat::TarLz4 => "tar.lz4",
+            Self::TarGz => "tar.gz",
+            Self::TarBz2 => "tar.bz2",
+            Self::TarXz => "tar.xz",
+            Self::TarZstd => "tar.zst",
+            Self::TarLz4 => "tar.lz4",
+            Self::TarBrotli => "tar.br",
+            Self::TarLzip => "tar.lz",
+            Self::TarLrzip => "tar.lrz",
         }
     }
 }
@@ -239,6 +285,78 @@ pub static PRIORITIZED_SIGNATURES: &[SignatureEntry] = &[
         min_total_size: 8,
         description: "UNIX Archive / Debian Package",
         priority: 70,
+    },
+    // 8b. Red Hat Package Manager (RPM)
+    SignatureEntry {
+        format: DetectedFormat::Rpm,
+        anchor: Anchor::Head(0),
+        magic: &[0xED, 0xAB, 0xEE, 0xDB],
+        min_total_size: 4,
+        description: "RPM Package Archive",
+        priority: 69,
+    },
+    // 8c. Squashfs Archive (Little Endian)
+    SignatureEntry {
+        format: DetectedFormat::Squashfs,
+        anchor: Anchor::Head(0),
+        magic: &[0x68, 0x73, 0x71, 0x73], // "hsqs"
+        min_total_size: 4,
+        description: "Squashfs Compressed Filesystem (LE)",
+        priority: 68,
+    },
+    // 8d. Squashfs Archive (Big Endian)
+    SignatureEntry {
+        format: DetectedFormat::Squashfs,
+        anchor: Anchor::Head(0),
+        magic: &[0x73, 0x71, 0x73, 0x68], // "sqsh"
+        min_total_size: 4,
+        description: "Squashfs Compressed Filesystem (BE)",
+        priority: 68,
+    },
+    // 8e. CPIO Archive (SVR4 newc)
+    SignatureEntry {
+        format: DetectedFormat::Cpio,
+        anchor: Anchor::Head(0),
+        magic: &[0x30, 0x37, 0x30, 0x37, 0x30, 0x31], // "070701"
+        min_total_size: 6,
+        description: "CPIO Archive (SVR4 newc)",
+        priority: 67,
+    },
+    // 8f. CPIO Archive (SVR4 with CRC)
+    SignatureEntry {
+        format: DetectedFormat::Cpio,
+        anchor: Anchor::Head(0),
+        magic: &[0x30, 0x37, 0x30, 0x37, 0x30, 0x32], // "070702"
+        min_total_size: 6,
+        description: "CPIO Archive (SVR4 crc)",
+        priority: 67,
+    },
+    // 8g. CPIO Archive (POSIX odc)
+    SignatureEntry {
+        format: DetectedFormat::Cpio,
+        anchor: Anchor::Head(0),
+        magic: &[0x30, 0x37, 0x30, 0x37, 0x30, 0x37], // "070707"
+        min_total_size: 6,
+        description: "CPIO Archive (POSIX odc)",
+        priority: 66,
+    },
+    // 8h. CPIO Archive (Binary LE)
+    SignatureEntry {
+        format: DetectedFormat::Cpio,
+        anchor: Anchor::Head(0),
+        magic: &[0xC7, 0x71],
+        min_total_size: 2,
+        description: "CPIO Archive (Binary LE)",
+        priority: 65,
+    },
+    // 8i. CPIO Archive (Binary BE)
+    SignatureEntry {
+        format: DetectedFormat::Cpio,
+        anchor: Anchor::Head(0),
+        magic: &[0x71, 0xC7],
+        min_total_size: 2,
+        description: "CPIO Archive (Binary BE)",
+        priority: 65,
     },
     // 9. Snappy Framed Stream
     SignatureEntry {

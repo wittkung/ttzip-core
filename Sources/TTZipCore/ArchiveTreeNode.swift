@@ -620,25 +620,40 @@ public struct ArchiveFilterOptions: Sendable, Equatable {
     public static let defaultClean = ArchiveFilterOptions(excludePatterns: [], includePatterns: [], stripComponents: 0, excludeVCS: false, noMacMetadata: true)
     public static let preserveAll = ArchiveFilterOptions(excludePatterns: [], includePatterns: [], stripComponents: 0, excludeVCS: false, noMacMetadata: false)
     
-    /// Returns true if the entry path represents macOS or Windows system metadata artifacts.
+    /// Returns true if the entry path represents macOS, Windows, or POSIX PaxHeader system metadata artifacts.
     public static func isSystemMetadata(path: String) -> Bool {
         var normalized = path.replacingOccurrences(of: "\\", with: "/")
         while normalized.hasPrefix("./") {
             normalized.removeFirst(2)
         }
-        normalized = normalized.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if normalized == "__MACOSX" || normalized.hasPrefix("__MACOSX/") {
-            return true
+        let segments = normalized.split(separator: "/", omittingEmptySubsequences: true)
+        if segments.isEmpty {
+            return false
         }
-        let fileName = (normalized as NSString).lastPathComponent
-        if fileName.hasPrefix("._") || fileName == ".DS_Store" || fileName == ".localized" || fileName == ".VolumeIcon.icns" {
-            return true
-        }
-        if fileName.hasPrefix(".Spotlight-V100") || fileName.hasPrefix(".Trashes") || fileName.hasPrefix(".fseventsd") || fileName.hasPrefix(".TemporaryItems") || fileName.hasPrefix("PaxHeader") {
-            return true
-        }
-        if fileName.caseInsensitiveCompare("Thumbs.db") == .orderedSame || fileName.caseInsensitiveCompare("desktop.ini") == .orderedSame || fileName.caseInsensitiveCompare("ehthumbs.db") == .orderedSame {
-            return true
+        
+        for seg in segments {
+            let s = String(seg)
+            if s == "__MACOSX" {
+                return true
+            }
+            if s.hasPrefix("._") {
+                return true
+            }
+            if s == ".DS_Store" || s == ".localized" || s == ".VolumeIcon.icns" {
+                return true
+            }
+            if s.hasPrefix(".Spotlight-V100") || s.hasPrefix(".Trashes") || s.hasPrefix(".fseventsd") || s.hasPrefix(".TemporaryItems") {
+                return true
+            }
+            if s == "PaxHeader" || s.hasPrefix("PaxHeaders.") || s.hasPrefix("PaxHeader.") {
+                return true
+            }
+            if s.caseInsensitiveCompare("Thumbs.db") == .orderedSame ||
+               s.caseInsensitiveCompare("desktop.ini") == .orderedSame ||
+               s.caseInsensitiveCompare("ehthumbs.db") == .orderedSame ||
+               s.caseInsensitiveCompare("$RECYCLE.BIN") == .orderedSame {
+                return true
+            }
         }
         return false
     }

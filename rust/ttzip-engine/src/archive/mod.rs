@@ -14,10 +14,14 @@ pub mod source;
 pub mod split;
 pub mod stream_adapter;
 pub mod tar;
+pub mod nested_vfs;
 pub mod unified;
+
+pub mod wal_mutation;
 
 pub use builder::*;
 pub use in_place_edit::*;
+pub use nested_vfs::*;
 pub use repair::*;
 pub use source::*;
 pub use split::{
@@ -27,5 +31,6 @@ pub use split::{
 pub use stream_adapter::*;
 pub use tar::*;
 pub use unified::*;
+pub use wal_mutation::*;
 
 

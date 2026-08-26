@@ -94,21 +94,54 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             TTZipArchiveFormat::Tar => {
                 archive_write_set_format_pax_restricted(a);
             }
-            TTZipArchiveFormat::TarGz => {
+            TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => {
                 archive_write_set_format_pax_restricted(a);
                 archive_write_add_filter_gzip(a);
             }
-            TTZipArchiveFormat::TarBz2 => {
+            TTZipArchiveFormat::TarBz2 | TTZipArchiveFormat::Bzip2 => {
                 archive_write_set_format_pax_restricted(a);
                 archive_write_add_filter_bzip2(a);
             }
-            TTZipArchiveFormat::TarXz => {
+            TTZipArchiveFormat::TarXz | TTZipArchiveFormat::Xz => {
                 archive_write_set_format_pax_restricted(a);
                 archive_write_add_filter_xz(a);
             }
-            TTZipArchiveFormat::TarZstd => {
+            TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => {
                 archive_write_set_format_pax_restricted(a);
                 archive_write_add_filter_zstd(a);
+            }
+            TTZipArchiveFormat::TarLz4 | TTZipArchiveFormat::Lz4 => {
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_lz4(a);
+            }
+            TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
+                archive_write_set_format_pax_restricted(a);
+            }
+            TTZipArchiveFormat::TarLzip | TTZipArchiveFormat::Lzip => {
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_lzip(a);
+            }
+            TTZipArchiveFormat::TarLrzip | TTZipArchiveFormat::Lrzip => {
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_lrzip(a);
+            }
+            TTZipArchiveFormat::Iso => {
+                archive_write_set_format_iso9660(a);
+            }
+            TTZipArchiveFormat::Cpio => {
+                archive_write_set_format_cpio_newc(a);
+            }
+            TTZipArchiveFormat::Ar | TTZipArchiveFormat::Deb => {
+                archive_write_set_format_ar_svr4(a);
+            }
+            TTZipArchiveFormat::Xar => {
+                archive_write_set_format_xar(a);
+            }
+            TTZipArchiveFormat::Wim => {
+                archive_write_set_format_pax_restricted(a);
+            }
+            TTZipArchiveFormat::Rar => {
+                return TTZipStatus::ErrInvalidParam;
             }
             _ => {
                 archive_write_set_format_zip(a);

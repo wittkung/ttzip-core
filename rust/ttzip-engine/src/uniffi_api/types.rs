@@ -61,10 +61,33 @@ pub enum ArchiveFormat {
     TarBz2,
     TarXz,
     TarZstd,
+    TarLz4,
+    TarBrotli,
+    TarLzip,
+    TarLrzip,
     Dmg,
     Lzfse,
     Snappy,
+    Gzip,
+    Bzip2,
+    Xz,
+    Zstd,
+    Lz4,
+    Brotli,
+    Iso,
+    Cab,
     Wim,
+    Rar,
+    Aar,
+    Lzip,
+    Lrzip,
+    Cpio,
+    Ar,
+    Deb,
+    Rpm,
+    Xar,
+    Squashfs,
+    Lzh,
 }
 
 /// Metadata record for a single archive entry exposed via UniFFI.
@@ -87,6 +110,25 @@ pub struct InPlaceMutationAction {
     pub is_delete: bool,
     pub entry_path: String,
     pub source_path: Option<String>,
+}
+
+/// WAL journal mutation summary record exposed via UniFFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIWalMutationSummary {
+    pub wal_path: String,
+    pub entry_path: String,
+    pub delta_bytes: u64,
+    pub total_pieces: u32,
+    pub is_staged: bool,
+}
+
+/// WAL atomic commit execution telemetry record exposed via UniFFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIWalCommitResult {
+    pub success: bool,
+    pub bytes_written: u64,
+    pub cow_cloned: bool,
+    pub elapsed_millis: u64,
 }
 
 /// Telemetry report for compression / extraction operations.

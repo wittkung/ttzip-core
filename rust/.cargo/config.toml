@@ -1,6 +1,27 @@
-# Cargo configuration for TTZip Rust Workspace
-[target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+# All rights reserved.
+#
+# TTZip: High-performance native archiving and compression engine.
 
-[target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+[source.crates-io]
+replace-with = 'rsproxy-sparse'
+
+[source.rsproxy]
+registry = "https://rsproxy.cn/index/"
+
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"
+
+[registries.rsproxy]
+index = "https://rsproxy.cn/index/"
+
+[net]
+git-fetch-with-cli = true
+retry = 3
+
+[http]
+cainfo = "/etc/ssl/cert.pem"
+check-revoke = false
+

@@ -19,6 +19,7 @@ public final class ArchiveFormatStandardRegistry: @unchecked Sendable {
         registerArchiveSpecs()
         registerStreamSpecs()
         registerDiskImageSpecs()
+        registerPackagingSpecs()
     }
 
     /// Retrieve format standard specification by typed enum format.

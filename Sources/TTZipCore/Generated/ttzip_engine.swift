@@ -1064,6 +1064,289 @@ public func FfiConverterTypeUniFFIVfsTree_lower(_ value: UniFfiVfsTree) -> Unsaf
 }
 
 /**
+ * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ */
+public protocol VirtualFileStreamProtocol: AnyObject {
+    func position() -> UInt64
+
+    func read(maxBytes: UInt32) throws -> Data
+
+    func readAll() throws -> Data
+
+    func readExactAt(offset: UInt64, length: UInt32) throws -> Data
+
+    func seek(offset: UInt64) throws -> UInt64
+
+    func size() -> UInt64
+}
+
+/**
+ * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ */
+open class VirtualFileStream:
+    VirtualFileStreamProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_virtualfilestream(self.pointer, $0) }
+    }
+
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_ttzip_engine_fn_free_virtualfilestream(pointer, $0) }
+    }
+
+    public static func newEmpty() -> VirtualFileStream {
+        return try! FfiConverterTypeVirtualFileStream.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_constructor_virtualfilestream_new_empty($0)
+        })
+    }
+
+    open func position() -> UInt64 {
+        return try! FfiConverterUInt64.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_position(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func read(maxBytes: UInt32) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_read(self.uniffiClonePointer(),
+                                                                 FfiConverterUInt32.lower(maxBytes), $0)
+        })
+    }
+
+    open func readAll() throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_read_all(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func readExactAt(offset: UInt64, length: UInt32) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_read_exact_at(self.uniffiClonePointer(),
+                                                                          FfiConverterUInt64.lower(offset),
+                                                                          FfiConverterUInt32.lower(length), $0)
+        })
+    }
+
+    open func seek(offset: UInt64) throws -> UInt64 {
+        return try FfiConverterUInt64.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_seek(self.uniffiClonePointer(),
+                                                                 FfiConverterUInt64.lower(offset), $0)
+        })
+    }
+
+    open func size() -> UInt64 {
+        return try! FfiConverterUInt64.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_virtualfilestream_size(self.uniffiClonePointer(), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVirtualFileStream: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = VirtualFileStream
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> VirtualFileStream {
+        return VirtualFileStream(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: VirtualFileStream) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VirtualFileStream {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: VirtualFileStream, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVirtualFileStream_lift(_ pointer: UnsafeMutableRawPointer) throws -> VirtualFileStream {
+    return try FfiConverterTypeVirtualFileStream.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVirtualFileStream_lower(_ value: VirtualFileStream) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeVirtualFileStream.lower(value)
+}
+
+/**
+ * Audio metadata properties record exposed to Swift.
+ */
+public struct AudioMetadataRecord {
+    public var durationSecs: Double
+    public var sampleRate: UInt32
+    public var channels: UInt32
+    public var bitDepth: UInt32
+    public var bitrateKbps: UInt32
+    public var codec: String
+    public var title: String?
+    public var artist: String?
+    public var album: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(durationSecs: Double, sampleRate: UInt32, channels: UInt32, bitDepth: UInt32, bitrateKbps: UInt32, codec: String, title: String?, artist: String?, album: String?) {
+        self.durationSecs = durationSecs
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.bitDepth = bitDepth
+        self.bitrateKbps = bitrateKbps
+        self.codec = codec
+        self.title = title
+        self.artist = artist
+        self.album = album
+    }
+}
+
+extension AudioMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: AudioMetadataRecord, rhs: AudioMetadataRecord) -> Bool {
+        if lhs.durationSecs != rhs.durationSecs {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.bitDepth != rhs.bitDepth {
+            return false
+        }
+        if lhs.bitrateKbps != rhs.bitrateKbps {
+            return false
+        }
+        if lhs.codec != rhs.codec {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.artist != rhs.artist {
+            return false
+        }
+        if lhs.album != rhs.album {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(durationSecs)
+        hasher.combine(sampleRate)
+        hasher.combine(channels)
+        hasher.combine(bitDepth)
+        hasher.combine(bitrateKbps)
+        hasher.combine(codec)
+        hasher.combine(title)
+        hasher.combine(artist)
+        hasher.combine(album)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAudioMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AudioMetadataRecord {
+        return
+            try AudioMetadataRecord(
+                durationSecs: FfiConverterDouble.read(from: &buf),
+                sampleRate: FfiConverterUInt32.read(from: &buf),
+                channels: FfiConverterUInt32.read(from: &buf),
+                bitDepth: FfiConverterUInt32.read(from: &buf),
+                bitrateKbps: FfiConverterUInt32.read(from: &buf),
+                codec: FfiConverterString.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                artist: FfiConverterOptionString.read(from: &buf),
+                album: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: AudioMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.durationSecs, into: &buf)
+        FfiConverterUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterUInt32.write(value.channels, into: &buf)
+        FfiConverterUInt32.write(value.bitDepth, into: &buf)
+        FfiConverterUInt32.write(value.bitrateKbps, into: &buf)
+        FfiConverterString.write(value.codec, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.artist, into: &buf)
+        FfiConverterOptionString.write(value.album, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAudioMetadataRecord_lift(_ buf: RustBuffer) throws -> AudioMetadataRecord {
+    return try FfiConverterTypeAudioMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAudioMetadataRecord_lower(_ value: AudioMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeAudioMetadataRecord.lower(value)
+}
+
+/**
  * Telemetry report for compression / extraction operations.
  */
 public struct CompressionReport {
@@ -1160,6 +1443,78 @@ public func FfiConverterTypeCompressionReport_lower(_ value: CompressionReport) 
 }
 
 /**
+ * Decoded RGBA8 image pixel buffer record exposed to Swift.
+ */
+public struct DecodedImageRecord {
+    public var width: UInt32
+    public var height: UInt32
+    public var rgbaBytes: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(width: UInt32, height: UInt32, rgbaBytes: Data) {
+        self.width = width
+        self.height = height
+        self.rgbaBytes = rgbaBytes
+    }
+}
+
+extension DecodedImageRecord: Equatable, Hashable {
+    public static func == (lhs: DecodedImageRecord, rhs: DecodedImageRecord) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(rgbaBytes)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDecodedImageRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DecodedImageRecord {
+        return
+            try DecodedImageRecord(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                rgbaBytes: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: DecodedImageRecord, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDecodedImageRecord_lift(_ buf: RustBuffer) throws -> DecodedImageRecord {
+    return try FfiConverterTypeDecodedImageRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDecodedImageRecord_lower(_ value: DecodedImageRecord) -> RustBuffer {
+    return FfiConverterTypeDecodedImageRecord.lower(value)
+}
+
+/**
  * Disk item summary record.
  */
 public struct DiskItemSummary {
@@ -1247,6 +1602,510 @@ public func FfiConverterTypeDiskItemSummary_lower(_ value: DiskItemSummary) -> R
     return FfiConverterTypeDiskItemSummary.lower(value)
 }
 
+/**
+ * Document metadata properties record exposed to Swift.
+ */
+public struct DocumentMetadataRecord {
+    public var formatName: String
+    public var version: String?
+    public var pageCount: UInt32?
+    public var title: String?
+    public var author: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(formatName: String, version: String?, pageCount: UInt32?, title: String?, author: String?) {
+        self.formatName = formatName
+        self.version = version
+        self.pageCount = pageCount
+        self.title = title
+        self.author = author
+    }
+}
+
+extension DocumentMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: DocumentMetadataRecord, rhs: DocumentMetadataRecord) -> Bool {
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.version != rhs.version {
+            return false
+        }
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatName)
+        hasher.combine(version)
+        hasher.combine(pageCount)
+        hasher.combine(title)
+        hasher.combine(author)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDocumentMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DocumentMetadataRecord {
+        return
+            try DocumentMetadataRecord(
+                formatName: FfiConverterString.read(from: &buf),
+                version: FfiConverterOptionString.read(from: &buf),
+                pageCount: FfiConverterOptionUInt32.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                author: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: DocumentMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterOptionString.write(value.version, into: &buf)
+        FfiConverterOptionUInt32.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDocumentMetadataRecord_lift(_ buf: RustBuffer) throws -> DocumentMetadataRecord {
+    return try FfiConverterTypeDocumentMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDocumentMetadataRecord_lower(_ value: DocumentMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeDocumentMetadataRecord.lower(value)
+}
+
+/**
+ * Comprehensive metadata record returned to Swift.
+ */
+public struct FileMetadataRecord {
+    public var mediaType: FileMediaType
+    public var formatName: String
+    public var mimeType: String
+    public var fileSize: UInt64
+    public var isContainer: Bool
+    public var image: ImageMetadataRecord?
+    public var audio: AudioMetadataRecord?
+    public var video: VideoMetadataRecord?
+    public var font: FontMetadataRecord?
+    public var model3d: Model3DMetadataRecord?
+    public var document: DocumentMetadataRecord?
+    public var attributes: [String: String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(mediaType: FileMediaType, formatName: String, mimeType: String, fileSize: UInt64, isContainer: Bool, image: ImageMetadataRecord?, audio: AudioMetadataRecord?, video: VideoMetadataRecord?, font: FontMetadataRecord?, model3d: Model3DMetadataRecord?, document: DocumentMetadataRecord?, attributes: [String: String]) {
+        self.mediaType = mediaType
+        self.formatName = formatName
+        self.mimeType = mimeType
+        self.fileSize = fileSize
+        self.isContainer = isContainer
+        self.image = image
+        self.audio = audio
+        self.video = video
+        self.font = font
+        self.model3d = model3d
+        self.document = document
+        self.attributes = attributes
+    }
+}
+
+extension FileMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: FileMetadataRecord, rhs: FileMetadataRecord) -> Bool {
+        if lhs.mediaType != rhs.mediaType {
+            return false
+        }
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.fileSize != rhs.fileSize {
+            return false
+        }
+        if lhs.isContainer != rhs.isContainer {
+            return false
+        }
+        if lhs.image != rhs.image {
+            return false
+        }
+        if lhs.audio != rhs.audio {
+            return false
+        }
+        if lhs.video != rhs.video {
+            return false
+        }
+        if lhs.font != rhs.font {
+            return false
+        }
+        if lhs.model3d != rhs.model3d {
+            return false
+        }
+        if lhs.document != rhs.document {
+            return false
+        }
+        if lhs.attributes != rhs.attributes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(mediaType)
+        hasher.combine(formatName)
+        hasher.combine(mimeType)
+        hasher.combine(fileSize)
+        hasher.combine(isContainer)
+        hasher.combine(image)
+        hasher.combine(audio)
+        hasher.combine(video)
+        hasher.combine(font)
+        hasher.combine(model3d)
+        hasher.combine(document)
+        hasher.combine(attributes)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFileMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FileMetadataRecord {
+        return
+            try FileMetadataRecord(
+                mediaType: FfiConverterTypeFileMediaType.read(from: &buf),
+                formatName: FfiConverterString.read(from: &buf),
+                mimeType: FfiConverterString.read(from: &buf),
+                fileSize: FfiConverterUInt64.read(from: &buf),
+                isContainer: FfiConverterBool.read(from: &buf),
+                image: FfiConverterOptionTypeImageMetadataRecord.read(from: &buf),
+                audio: FfiConverterOptionTypeAudioMetadataRecord.read(from: &buf),
+                video: FfiConverterOptionTypeVideoMetadataRecord.read(from: &buf),
+                font: FfiConverterOptionTypeFontMetadataRecord.read(from: &buf),
+                model3d: FfiConverterOptionTypeModel3DMetadataRecord.read(from: &buf),
+                document: FfiConverterOptionTypeDocumentMetadataRecord.read(from: &buf),
+                attributes: FfiConverterDictionaryStringString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FileMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeFileMediaType.write(value.mediaType, into: &buf)
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterUInt64.write(value.fileSize, into: &buf)
+        FfiConverterBool.write(value.isContainer, into: &buf)
+        FfiConverterOptionTypeImageMetadataRecord.write(value.image, into: &buf)
+        FfiConverterOptionTypeAudioMetadataRecord.write(value.audio, into: &buf)
+        FfiConverterOptionTypeVideoMetadataRecord.write(value.video, into: &buf)
+        FfiConverterOptionTypeFontMetadataRecord.write(value.font, into: &buf)
+        FfiConverterOptionTypeModel3DMetadataRecord.write(value.model3d, into: &buf)
+        FfiConverterOptionTypeDocumentMetadataRecord.write(value.document, into: &buf)
+        FfiConverterDictionaryStringString.write(value.attributes, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileMetadataRecord_lift(_ buf: RustBuffer) throws -> FileMetadataRecord {
+    return try FfiConverterTypeFileMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileMetadataRecord_lower(_ value: FileMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeFileMetadataRecord.lower(value)
+}
+
+/**
+ * Font metadata properties record exposed to Swift.
+ */
+public struct FontMetadataRecord {
+    public var fontFamily: String?
+    public var fontSubfamily: String?
+    public var postscriptName: String?
+    public var unitsPerEm: UInt32
+    public var numGlyphs: UInt32
+    public var isVariable: Bool
+    public var formatFlavor: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(fontFamily: String?, fontSubfamily: String?, postscriptName: String?, unitsPerEm: UInt32, numGlyphs: UInt32, isVariable: Bool, formatFlavor: String) {
+        self.fontFamily = fontFamily
+        self.fontSubfamily = fontSubfamily
+        self.postscriptName = postscriptName
+        self.unitsPerEm = unitsPerEm
+        self.numGlyphs = numGlyphs
+        self.isVariable = isVariable
+        self.formatFlavor = formatFlavor
+    }
+}
+
+extension FontMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: FontMetadataRecord, rhs: FontMetadataRecord) -> Bool {
+        if lhs.fontFamily != rhs.fontFamily {
+            return false
+        }
+        if lhs.fontSubfamily != rhs.fontSubfamily {
+            return false
+        }
+        if lhs.postscriptName != rhs.postscriptName {
+            return false
+        }
+        if lhs.unitsPerEm != rhs.unitsPerEm {
+            return false
+        }
+        if lhs.numGlyphs != rhs.numGlyphs {
+            return false
+        }
+        if lhs.isVariable != rhs.isVariable {
+            return false
+        }
+        if lhs.formatFlavor != rhs.formatFlavor {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fontFamily)
+        hasher.combine(fontSubfamily)
+        hasher.combine(postscriptName)
+        hasher.combine(unitsPerEm)
+        hasher.combine(numGlyphs)
+        hasher.combine(isVariable)
+        hasher.combine(formatFlavor)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFontMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FontMetadataRecord {
+        return
+            try FontMetadataRecord(
+                fontFamily: FfiConverterOptionString.read(from: &buf),
+                fontSubfamily: FfiConverterOptionString.read(from: &buf),
+                postscriptName: FfiConverterOptionString.read(from: &buf),
+                unitsPerEm: FfiConverterUInt32.read(from: &buf),
+                numGlyphs: FfiConverterUInt32.read(from: &buf),
+                isVariable: FfiConverterBool.read(from: &buf),
+                formatFlavor: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: FontMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.fontFamily, into: &buf)
+        FfiConverterOptionString.write(value.fontSubfamily, into: &buf)
+        FfiConverterOptionString.write(value.postscriptName, into: &buf)
+        FfiConverterUInt32.write(value.unitsPerEm, into: &buf)
+        FfiConverterUInt32.write(value.numGlyphs, into: &buf)
+        FfiConverterBool.write(value.isVariable, into: &buf)
+        FfiConverterString.write(value.formatFlavor, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFontMetadataRecord_lift(_ buf: RustBuffer) throws -> FontMetadataRecord {
+    return try FfiConverterTypeFontMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFontMetadataRecord_lower(_ value: FontMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeFontMetadataRecord.lower(value)
+}
+
+/**
+ * Image metadata properties record exposed to Swift.
+ */
+public struct ImageMetadataRecord {
+    public var width: UInt32
+    public var height: UInt32
+    public var orientation: UInt32
+    public var bitDepth: UInt32
+    public var colorSpace: String?
+    public var hasAlpha: Bool
+    public var cameraMake: String?
+    public var cameraModel: String?
+    public var lensModel: String?
+    public var focalLengthMm: Double?
+    public var fNumber: Double?
+    public var exposureTimeSecs: Double?
+    public var isoSpeed: UInt32?
+    public var dateTimeOriginal: String?
+    public var iccProfileName: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(width: UInt32, height: UInt32, orientation: UInt32, bitDepth: UInt32, colorSpace: String?, hasAlpha: Bool, cameraMake: String?, cameraModel: String?, lensModel: String?, focalLengthMm: Double?, fNumber: Double?, exposureTimeSecs: Double?, isoSpeed: UInt32?, dateTimeOriginal: String?, iccProfileName: String?) {
+        self.width = width
+        self.height = height
+        self.orientation = orientation
+        self.bitDepth = bitDepth
+        self.colorSpace = colorSpace
+        self.hasAlpha = hasAlpha
+        self.cameraMake = cameraMake
+        self.cameraModel = cameraModel
+        self.lensModel = lensModel
+        self.focalLengthMm = focalLengthMm
+        self.fNumber = fNumber
+        self.exposureTimeSecs = exposureTimeSecs
+        self.isoSpeed = isoSpeed
+        self.dateTimeOriginal = dateTimeOriginal
+        self.iccProfileName = iccProfileName
+    }
+}
+
+extension ImageMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: ImageMetadataRecord, rhs: ImageMetadataRecord) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.orientation != rhs.orientation {
+            return false
+        }
+        if lhs.bitDepth != rhs.bitDepth {
+            return false
+        }
+        if lhs.colorSpace != rhs.colorSpace {
+            return false
+        }
+        if lhs.hasAlpha != rhs.hasAlpha {
+            return false
+        }
+        if lhs.cameraMake != rhs.cameraMake {
+            return false
+        }
+        if lhs.cameraModel != rhs.cameraModel {
+            return false
+        }
+        if lhs.lensModel != rhs.lensModel {
+            return false
+        }
+        if lhs.focalLengthMm != rhs.focalLengthMm {
+            return false
+        }
+        if lhs.fNumber != rhs.fNumber {
+            return false
+        }
+        if lhs.exposureTimeSecs != rhs.exposureTimeSecs {
+            return false
+        }
+        if lhs.isoSpeed != rhs.isoSpeed {
+            return false
+        }
+        if lhs.dateTimeOriginal != rhs.dateTimeOriginal {
+            return false
+        }
+        if lhs.iccProfileName != rhs.iccProfileName {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(orientation)
+        hasher.combine(bitDepth)
+        hasher.combine(colorSpace)
+        hasher.combine(hasAlpha)
+        hasher.combine(cameraMake)
+        hasher.combine(cameraModel)
+        hasher.combine(lensModel)
+        hasher.combine(focalLengthMm)
+        hasher.combine(fNumber)
+        hasher.combine(exposureTimeSecs)
+        hasher.combine(isoSpeed)
+        hasher.combine(dateTimeOriginal)
+        hasher.combine(iccProfileName)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeImageMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ImageMetadataRecord {
+        return
+            try ImageMetadataRecord(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                orientation: FfiConverterUInt32.read(from: &buf),
+                bitDepth: FfiConverterUInt32.read(from: &buf),
+                colorSpace: FfiConverterOptionString.read(from: &buf),
+                hasAlpha: FfiConverterBool.read(from: &buf),
+                cameraMake: FfiConverterOptionString.read(from: &buf),
+                cameraModel: FfiConverterOptionString.read(from: &buf),
+                lensModel: FfiConverterOptionString.read(from: &buf),
+                focalLengthMm: FfiConverterOptionDouble.read(from: &buf),
+                fNumber: FfiConverterOptionDouble.read(from: &buf),
+                exposureTimeSecs: FfiConverterOptionDouble.read(from: &buf),
+                isoSpeed: FfiConverterOptionUInt32.read(from: &buf),
+                dateTimeOriginal: FfiConverterOptionString.read(from: &buf),
+                iccProfileName: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: ImageMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterUInt32.write(value.orientation, into: &buf)
+        FfiConverterUInt32.write(value.bitDepth, into: &buf)
+        FfiConverterOptionString.write(value.colorSpace, into: &buf)
+        FfiConverterBool.write(value.hasAlpha, into: &buf)
+        FfiConverterOptionString.write(value.cameraMake, into: &buf)
+        FfiConverterOptionString.write(value.cameraModel, into: &buf)
+        FfiConverterOptionString.write(value.lensModel, into: &buf)
+        FfiConverterOptionDouble.write(value.focalLengthMm, into: &buf)
+        FfiConverterOptionDouble.write(value.fNumber, into: &buf)
+        FfiConverterOptionDouble.write(value.exposureTimeSecs, into: &buf)
+        FfiConverterOptionUInt32.write(value.isoSpeed, into: &buf)
+        FfiConverterOptionString.write(value.dateTimeOriginal, into: &buf)
+        FfiConverterOptionString.write(value.iccProfileName, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeImageMetadataRecord_lift(_ buf: RustBuffer) throws -> ImageMetadataRecord {
+    return try FfiConverterTypeImageMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeImageMetadataRecord_lower(_ value: ImageMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeImageMetadataRecord.lower(value)
+}
+
 public struct InPlaceMutationAction {
     public var isDelete: Bool
     public var entryPath: String
@@ -1314,6 +2173,86 @@ public func FfiConverterTypeInPlaceMutationAction_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeInPlaceMutationAction_lower(_ value: InPlaceMutationAction) -> RustBuffer {
     return FfiConverterTypeInPlaceMutationAction.lower(value)
+}
+
+/**
+ * 3D Model metadata properties record exposed to Swift.
+ */
+public struct Model3DMetadataRecord {
+    public var formatName: String
+    public var triangleCount: UInt64?
+    public var vertexCount: UInt64?
+    public var generatorVersion: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(formatName: String, triangleCount: UInt64?, vertexCount: UInt64?, generatorVersion: String?) {
+        self.formatName = formatName
+        self.triangleCount = triangleCount
+        self.vertexCount = vertexCount
+        self.generatorVersion = generatorVersion
+    }
+}
+
+extension Model3DMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: Model3DMetadataRecord, rhs: Model3DMetadataRecord) -> Bool {
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.triangleCount != rhs.triangleCount {
+            return false
+        }
+        if lhs.vertexCount != rhs.vertexCount {
+            return false
+        }
+        if lhs.generatorVersion != rhs.generatorVersion {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatName)
+        hasher.combine(triangleCount)
+        hasher.combine(vertexCount)
+        hasher.combine(generatorVersion)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModel3DMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Model3DMetadataRecord {
+        return
+            try Model3DMetadataRecord(
+                formatName: FfiConverterString.read(from: &buf),
+                triangleCount: FfiConverterOptionUInt64.read(from: &buf),
+                vertexCount: FfiConverterOptionUInt64.read(from: &buf),
+                generatorVersion: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: Model3DMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterOptionUInt64.write(value.triangleCount, into: &buf)
+        FfiConverterOptionUInt64.write(value.vertexCount, into: &buf)
+        FfiConverterOptionString.write(value.generatorVersion, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModel3DMetadataRecord_lift(_ buf: RustBuffer) throws -> Model3DMetadataRecord {
+    return try FfiConverterTypeModel3DMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModel3DMetadataRecord_lower(_ value: Model3DMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeModel3DMetadataRecord.lower(value)
 }
 
 /**
@@ -1653,6 +2592,206 @@ public func FfiConverterTypeUniFFICorruptedEntry_lower(_ value: UniFfiCorruptedE
 }
 
 /**
+ * Extracted DOCX plain text, paragraph list, and metadata.
+ */
+public struct UniFfiDocxExtractResult {
+    public var fullText: String
+    public var paragraphs: [String]
+    public var properties: UniFfiDocxProperties
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(fullText: String, paragraphs: [String], properties: UniFfiDocxProperties) {
+        self.fullText = fullText
+        self.paragraphs = paragraphs
+        self.properties = properties
+    }
+}
+
+extension UniFfiDocxExtractResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxExtractResult, rhs: UniFfiDocxExtractResult) -> Bool {
+        if lhs.fullText != rhs.fullText {
+            return false
+        }
+        if lhs.paragraphs != rhs.paragraphs {
+            return false
+        }
+        if lhs.properties != rhs.properties {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fullText)
+        hasher.combine(paragraphs)
+        hasher.combine(properties)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxExtractResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxExtractResult {
+        return
+            try UniFfiDocxExtractResult(
+                fullText: FfiConverterString.read(from: &buf),
+                paragraphs: FfiConverterSequenceString.read(from: &buf),
+                properties: FfiConverterTypeUniFFIDocxProperties.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxExtractResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fullText, into: &buf)
+        FfiConverterSequenceString.write(value.paragraphs, into: &buf)
+        FfiConverterTypeUniFFIDocxProperties.write(value.properties, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxExtractResult_lift(_ buf: RustBuffer) throws -> UniFfiDocxExtractResult {
+    return try FfiConverterTypeUniFFIDocxExtractResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxExtractResult_lower(_ value: UniFfiDocxExtractResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxExtractResult.lower(value)
+}
+
+/**
+ * Metadata properties extracted from DOCX document.
+ */
+public struct UniFfiDocxProperties {
+    public var title: String?
+    public var creator: String?
+    public var description: String?
+    public var lastModifiedBy: String?
+    public var created: String?
+    public var modified: String?
+    public var revision: String?
+    public var wordCount: UInt32
+    public var characterCount: UInt32
+    public var paragraphCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(title: String?, creator: String?, description: String?, lastModifiedBy: String?, created: String?, modified: String?, revision: String?, wordCount: UInt32, characterCount: UInt32, paragraphCount: UInt32) {
+        self.title = title
+        self.creator = creator
+        self.description = description
+        self.lastModifiedBy = lastModifiedBy
+        self.created = created
+        self.modified = modified
+        self.revision = revision
+        self.wordCount = wordCount
+        self.characterCount = characterCount
+        self.paragraphCount = paragraphCount
+    }
+}
+
+extension UniFfiDocxProperties: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxProperties, rhs: UniFfiDocxProperties) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.creator != rhs.creator {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        if lhs.lastModifiedBy != rhs.lastModifiedBy {
+            return false
+        }
+        if lhs.created != rhs.created {
+            return false
+        }
+        if lhs.modified != rhs.modified {
+            return false
+        }
+        if lhs.revision != rhs.revision {
+            return false
+        }
+        if lhs.wordCount != rhs.wordCount {
+            return false
+        }
+        if lhs.characterCount != rhs.characterCount {
+            return false
+        }
+        if lhs.paragraphCount != rhs.paragraphCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(creator)
+        hasher.combine(description)
+        hasher.combine(lastModifiedBy)
+        hasher.combine(created)
+        hasher.combine(modified)
+        hasher.combine(revision)
+        hasher.combine(wordCount)
+        hasher.combine(characterCount)
+        hasher.combine(paragraphCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxProperties: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxProperties {
+        return
+            try UniFfiDocxProperties(
+                title: FfiConverterOptionString.read(from: &buf),
+                creator: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterOptionString.read(from: &buf),
+                lastModifiedBy: FfiConverterOptionString.read(from: &buf),
+                created: FfiConverterOptionString.read(from: &buf),
+                modified: FfiConverterOptionString.read(from: &buf),
+                revision: FfiConverterOptionString.read(from: &buf),
+                wordCount: FfiConverterUInt32.read(from: &buf),
+                characterCount: FfiConverterUInt32.read(from: &buf),
+                paragraphCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxProperties, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.creator, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.lastModifiedBy, into: &buf)
+        FfiConverterOptionString.write(value.created, into: &buf)
+        FfiConverterOptionString.write(value.modified, into: &buf)
+        FfiConverterOptionString.write(value.revision, into: &buf)
+        FfiConverterUInt32.write(value.wordCount, into: &buf)
+        FfiConverterUInt32.write(value.characterCount, into: &buf)
+        FfiConverterUInt32.write(value.paragraphCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxProperties_lift(_ buf: RustBuffer) throws -> UniFfiDocxProperties {
+    return try FfiConverterTypeUniFFIDocxProperties.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxProperties_lower(_ value: UniFfiDocxProperties) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxProperties.lower(value)
+}
+
+/**
  * Metadata record for a single archive entry exposed via UniFFI.
  */
 public struct UniFfiEntryMetadata {
@@ -1911,6 +3050,374 @@ public func FfiConverterTypeUniFFIEpubChapter_lower(_ value: UniFfiEpubChapter) 
 }
 
 /**
+ * A chapter in an EPUB book exposed to UniFFI.
+ */
+public struct UniFfiEpubChapterItem {
+    public var id: String
+    public var title: String
+    public var href: String
+    public var mediaType: String
+    public var playOrder: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(id: String, title: String, href: String, mediaType: String, playOrder: UInt32) {
+        self.id = id
+        self.title = title
+        self.href = href
+        self.mediaType = mediaType
+        self.playOrder = playOrder
+    }
+}
+
+extension UniFfiEpubChapterItem: Equatable, Hashable {
+    public static func == (lhs: UniFfiEpubChapterItem, rhs: UniFfiEpubChapterItem) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.href != rhs.href {
+            return false
+        }
+        if lhs.mediaType != rhs.mediaType {
+            return false
+        }
+        if lhs.playOrder != rhs.playOrder {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(title)
+        hasher.combine(href)
+        hasher.combine(mediaType)
+        hasher.combine(playOrder)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEpubChapterItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEpubChapterItem {
+        return
+            try UniFfiEpubChapterItem(
+                id: FfiConverterString.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                href: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                playOrder: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEpubChapterItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterUInt32.write(value.playOrder, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubChapterItem_lift(_ buf: RustBuffer) throws -> UniFfiEpubChapterItem {
+    return try FfiConverterTypeUniFFIEpubChapterItem.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubChapterItem_lower(_ value: UniFfiEpubChapterItem) -> RustBuffer {
+    return FfiConverterTypeUniFFIEpubChapterItem.lower(value)
+}
+
+/**
+ * Raw cover image data and MIME type extracted in memory.
+ */
+public struct UniFfiEpubCoverData {
+    public var filePath: String
+    public var mimeType: String
+    public var data: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(filePath: String, mimeType: String, data: Data) {
+        self.filePath = filePath
+        self.mimeType = mimeType
+        self.data = data
+    }
+}
+
+extension UniFfiEpubCoverData: Equatable, Hashable {
+    public static func == (lhs: UniFfiEpubCoverData, rhs: UniFfiEpubCoverData) -> Bool {
+        if lhs.filePath != rhs.filePath {
+            return false
+        }
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(filePath)
+        hasher.combine(mimeType)
+        hasher.combine(data)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEpubCoverData: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEpubCoverData {
+        return
+            try UniFfiEpubCoverData(
+                filePath: FfiConverterString.read(from: &buf),
+                mimeType: FfiConverterString.read(from: &buf),
+                data: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEpubCoverData, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.filePath, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubCoverData_lift(_ buf: RustBuffer) throws -> UniFfiEpubCoverData {
+    return try FfiConverterTypeUniFFIEpubCoverData.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubCoverData_lower(_ value: UniFfiEpubCoverData) -> RustBuffer {
+    return FfiConverterTypeUniFFIEpubCoverData.lower(value)
+}
+
+/**
+ * Metadata record of an EPUB book.
+ */
+public struct UniFfiEpubMetadata {
+    public var title: String
+    public var authors: [String]
+    public var publisher: String?
+    public var language: String?
+    public var identifier: String?
+    public var description: String?
+    public var publicationDate: String?
+    public var modifiedDate: String?
+    public var rights: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(title: String, authors: [String], publisher: String?, language: String?, identifier: String?, description: String?, publicationDate: String?, modifiedDate: String?, rights: String?) {
+        self.title = title
+        self.authors = authors
+        self.publisher = publisher
+        self.language = language
+        self.identifier = identifier
+        self.description = description
+        self.publicationDate = publicationDate
+        self.modifiedDate = modifiedDate
+        self.rights = rights
+    }
+}
+
+extension UniFfiEpubMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiEpubMetadata, rhs: UniFfiEpubMetadata) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.authors != rhs.authors {
+            return false
+        }
+        if lhs.publisher != rhs.publisher {
+            return false
+        }
+        if lhs.language != rhs.language {
+            return false
+        }
+        if lhs.identifier != rhs.identifier {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        if lhs.publicationDate != rhs.publicationDate {
+            return false
+        }
+        if lhs.modifiedDate != rhs.modifiedDate {
+            return false
+        }
+        if lhs.rights != rhs.rights {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(authors)
+        hasher.combine(publisher)
+        hasher.combine(language)
+        hasher.combine(identifier)
+        hasher.combine(description)
+        hasher.combine(publicationDate)
+        hasher.combine(modifiedDate)
+        hasher.combine(rights)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEpubMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEpubMetadata {
+        return
+            try UniFfiEpubMetadata(
+                title: FfiConverterString.read(from: &buf),
+                authors: FfiConverterSequenceString.read(from: &buf),
+                publisher: FfiConverterOptionString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                identifier: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterOptionString.read(from: &buf),
+                publicationDate: FfiConverterOptionString.read(from: &buf),
+                modifiedDate: FfiConverterOptionString.read(from: &buf),
+                rights: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEpubMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterSequenceString.write(value.authors, into: &buf)
+        FfiConverterOptionString.write(value.publisher, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterOptionString.write(value.identifier, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.publicationDate, into: &buf)
+        FfiConverterOptionString.write(value.modifiedDate, into: &buf)
+        FfiConverterOptionString.write(value.rights, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubMetadata_lift(_ buf: RustBuffer) throws -> UniFfiEpubMetadata {
+    return try FfiConverterTypeUniFFIEpubMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubMetadata_lower(_ value: UniFfiEpubMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIEpubMetadata.lower(value)
+}
+
+/**
+ * Comprehensive EPUB parse result containing metadata, chapters, and cover image.
+ */
+public struct UniFfiEpubParseResult {
+    public var metadata: UniFfiEpubMetadata
+    public var chapters: [UniFfiEpubChapterItem]
+    public var cover: UniFfiEpubCoverData?
+    public var totalChapters: UInt32
+    public var manifestItemsCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(metadata: UniFfiEpubMetadata, chapters: [UniFfiEpubChapterItem], cover: UniFfiEpubCoverData?, totalChapters: UInt32, manifestItemsCount: UInt32) {
+        self.metadata = metadata
+        self.chapters = chapters
+        self.cover = cover
+        self.totalChapters = totalChapters
+        self.manifestItemsCount = manifestItemsCount
+    }
+}
+
+extension UniFfiEpubParseResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiEpubParseResult, rhs: UniFfiEpubParseResult) -> Bool {
+        if lhs.metadata != rhs.metadata {
+            return false
+        }
+        if lhs.chapters != rhs.chapters {
+            return false
+        }
+        if lhs.cover != rhs.cover {
+            return false
+        }
+        if lhs.totalChapters != rhs.totalChapters {
+            return false
+        }
+        if lhs.manifestItemsCount != rhs.manifestItemsCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(metadata)
+        hasher.combine(chapters)
+        hasher.combine(cover)
+        hasher.combine(totalChapters)
+        hasher.combine(manifestItemsCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEpubParseResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEpubParseResult {
+        return
+            try UniFfiEpubParseResult(
+                metadata: FfiConverterTypeUniFFIEpubMetadata.read(from: &buf),
+                chapters: FfiConverterSequenceTypeUniFFIEpubChapterItem.read(from: &buf),
+                cover: FfiConverterOptionTypeUniFFIEpubCoverData.read(from: &buf),
+                totalChapters: FfiConverterUInt32.read(from: &buf),
+                manifestItemsCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEpubParseResult, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFIEpubMetadata.write(value.metadata, into: &buf)
+        FfiConverterSequenceTypeUniFFIEpubChapterItem.write(value.chapters, into: &buf)
+        FfiConverterOptionTypeUniFFIEpubCoverData.write(value.cover, into: &buf)
+        FfiConverterUInt32.write(value.totalChapters, into: &buf)
+        FfiConverterUInt32.write(value.manifestItemsCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubParseResult_lift(_ buf: RustBuffer) throws -> UniFfiEpubParseResult {
+    return try FfiConverterTypeUniFFIEpubParseResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEpubParseResult_lower(_ value: UniFfiEpubParseResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIEpubParseResult.lower(value)
+}
+
+/**
  * Comprehensive archive integrity report.
  */
 public struct UniFfiIntegrityReport {
@@ -2156,6 +3663,158 @@ public func FfiConverterTypeUniFFIParentAndPrefix_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeUniFFIParentAndPrefix_lower(_ value: UniFfiParentAndPrefix) -> RustBuffer {
     return FfiConverterTypeUniFFIParentAndPrefix.lower(value)
+}
+
+/**
+ * Metadata and extracted content of a PDF document exposed to Swift.
+ */
+public struct UniFfiPdfDocumentInfo {
+    public var formatVersion: String
+    public var pageCount: UInt32
+    public var title: String?
+    public var author: String?
+    public var subject: String?
+    public var keywords: String?
+    public var creator: String?
+    public var producer: String?
+    public var creationDate: String?
+    public var modificationDate: String?
+    public var isEncrypted: Bool
+    public var extractedText: String?
+    public var extractedPageCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(formatVersion: String, pageCount: UInt32, title: String?, author: String?, subject: String?, keywords: String?, creator: String?, producer: String?, creationDate: String?, modificationDate: String?, isEncrypted: Bool, extractedText: String?, extractedPageCount: UInt32) {
+        self.formatVersion = formatVersion
+        self.pageCount = pageCount
+        self.title = title
+        self.author = author
+        self.subject = subject
+        self.keywords = keywords
+        self.creator = creator
+        self.producer = producer
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
+        self.isEncrypted = isEncrypted
+        self.extractedText = extractedText
+        self.extractedPageCount = extractedPageCount
+    }
+}
+
+extension UniFfiPdfDocumentInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiPdfDocumentInfo, rhs: UniFfiPdfDocumentInfo) -> Bool {
+        if lhs.formatVersion != rhs.formatVersion {
+            return false
+        }
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.keywords != rhs.keywords {
+            return false
+        }
+        if lhs.creator != rhs.creator {
+            return false
+        }
+        if lhs.producer != rhs.producer {
+            return false
+        }
+        if lhs.creationDate != rhs.creationDate {
+            return false
+        }
+        if lhs.modificationDate != rhs.modificationDate {
+            return false
+        }
+        if lhs.isEncrypted != rhs.isEncrypted {
+            return false
+        }
+        if lhs.extractedText != rhs.extractedText {
+            return false
+        }
+        if lhs.extractedPageCount != rhs.extractedPageCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatVersion)
+        hasher.combine(pageCount)
+        hasher.combine(title)
+        hasher.combine(author)
+        hasher.combine(subject)
+        hasher.combine(keywords)
+        hasher.combine(creator)
+        hasher.combine(producer)
+        hasher.combine(creationDate)
+        hasher.combine(modificationDate)
+        hasher.combine(isEncrypted)
+        hasher.combine(extractedText)
+        hasher.combine(extractedPageCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfDocumentInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfDocumentInfo {
+        return
+            try UniFfiPdfDocumentInfo(
+                formatVersion: FfiConverterString.read(from: &buf),
+                pageCount: FfiConverterUInt32.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                author: FfiConverterOptionString.read(from: &buf),
+                subject: FfiConverterOptionString.read(from: &buf),
+                keywords: FfiConverterOptionString.read(from: &buf),
+                creator: FfiConverterOptionString.read(from: &buf),
+                producer: FfiConverterOptionString.read(from: &buf),
+                creationDate: FfiConverterOptionString.read(from: &buf),
+                modificationDate: FfiConverterOptionString.read(from: &buf),
+                isEncrypted: FfiConverterBool.read(from: &buf),
+                extractedText: FfiConverterOptionString.read(from: &buf),
+                extractedPageCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPdfDocumentInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatVersion, into: &buf)
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.subject, into: &buf)
+        FfiConverterOptionString.write(value.keywords, into: &buf)
+        FfiConverterOptionString.write(value.creator, into: &buf)
+        FfiConverterOptionString.write(value.producer, into: &buf)
+        FfiConverterOptionString.write(value.creationDate, into: &buf)
+        FfiConverterOptionString.write(value.modificationDate, into: &buf)
+        FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterOptionString.write(value.extractedText, into: &buf)
+        FfiConverterUInt32.write(value.extractedPageCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfDocumentInfo_lift(_ buf: RustBuffer) throws -> UniFfiPdfDocumentInfo {
+    return try FfiConverterTypeUniFFIPdfDocumentInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfDocumentInfo_lower(_ value: UniFfiPdfDocumentInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIPdfDocumentInfo.lower(value)
 }
 
 /**
@@ -2756,6 +4415,302 @@ public func FfiConverterTypeUniFFIVfsStats_lower(_ value: UniFfiVfsStats) -> Rus
     return FfiConverterTypeUniFFIVfsStats.lower(value)
 }
 
+/**
+ * WAL atomic commit execution telemetry record exposed via UniFFI.
+ */
+public struct UniFfiWalCommitResult {
+    public var success: Bool
+    public var bytesWritten: UInt64
+    public var cowCloned: Bool
+    public var elapsedMillis: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(success: Bool, bytesWritten: UInt64, cowCloned: Bool, elapsedMillis: UInt64) {
+        self.success = success
+        self.bytesWritten = bytesWritten
+        self.cowCloned = cowCloned
+        self.elapsedMillis = elapsedMillis
+    }
+}
+
+extension UniFfiWalCommitResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiWalCommitResult, rhs: UniFfiWalCommitResult) -> Bool {
+        if lhs.success != rhs.success {
+            return false
+        }
+        if lhs.bytesWritten != rhs.bytesWritten {
+            return false
+        }
+        if lhs.cowCloned != rhs.cowCloned {
+            return false
+        }
+        if lhs.elapsedMillis != rhs.elapsedMillis {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(success)
+        hasher.combine(bytesWritten)
+        hasher.combine(cowCloned)
+        hasher.combine(elapsedMillis)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIWalCommitResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiWalCommitResult {
+        return
+            try UniFfiWalCommitResult(
+                success: FfiConverterBool.read(from: &buf),
+                bytesWritten: FfiConverterUInt64.read(from: &buf),
+                cowCloned: FfiConverterBool.read(from: &buf),
+                elapsedMillis: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiWalCommitResult, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.success, into: &buf)
+        FfiConverterUInt64.write(value.bytesWritten, into: &buf)
+        FfiConverterBool.write(value.cowCloned, into: &buf)
+        FfiConverterUInt64.write(value.elapsedMillis, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWalCommitResult_lift(_ buf: RustBuffer) throws -> UniFfiWalCommitResult {
+    return try FfiConverterTypeUniFFIWalCommitResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWalCommitResult_lower(_ value: UniFfiWalCommitResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIWalCommitResult.lower(value)
+}
+
+/**
+ * WAL journal mutation summary record exposed via UniFFI.
+ */
+public struct UniFfiWalMutationSummary {
+    public var walPath: String
+    public var entryPath: String
+    public var deltaBytes: UInt64
+    public var totalPieces: UInt32
+    public var isStaged: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(walPath: String, entryPath: String, deltaBytes: UInt64, totalPieces: UInt32, isStaged: Bool) {
+        self.walPath = walPath
+        self.entryPath = entryPath
+        self.deltaBytes = deltaBytes
+        self.totalPieces = totalPieces
+        self.isStaged = isStaged
+    }
+}
+
+extension UniFfiWalMutationSummary: Equatable, Hashable {
+    public static func == (lhs: UniFfiWalMutationSummary, rhs: UniFfiWalMutationSummary) -> Bool {
+        if lhs.walPath != rhs.walPath {
+            return false
+        }
+        if lhs.entryPath != rhs.entryPath {
+            return false
+        }
+        if lhs.deltaBytes != rhs.deltaBytes {
+            return false
+        }
+        if lhs.totalPieces != rhs.totalPieces {
+            return false
+        }
+        if lhs.isStaged != rhs.isStaged {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(walPath)
+        hasher.combine(entryPath)
+        hasher.combine(deltaBytes)
+        hasher.combine(totalPieces)
+        hasher.combine(isStaged)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIWalMutationSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiWalMutationSummary {
+        return
+            try UniFfiWalMutationSummary(
+                walPath: FfiConverterString.read(from: &buf),
+                entryPath: FfiConverterString.read(from: &buf),
+                deltaBytes: FfiConverterUInt64.read(from: &buf),
+                totalPieces: FfiConverterUInt32.read(from: &buf),
+                isStaged: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiWalMutationSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.walPath, into: &buf)
+        FfiConverterString.write(value.entryPath, into: &buf)
+        FfiConverterUInt64.write(value.deltaBytes, into: &buf)
+        FfiConverterUInt32.write(value.totalPieces, into: &buf)
+        FfiConverterBool.write(value.isStaged, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWalMutationSummary_lift(_ buf: RustBuffer) throws -> UniFfiWalMutationSummary {
+    return try FfiConverterTypeUniFFIWalMutationSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWalMutationSummary_lower(_ value: UniFfiWalMutationSummary) -> RustBuffer {
+    return FfiConverterTypeUniFFIWalMutationSummary.lower(value)
+}
+
+/**
+ * Video metadata properties record exposed to Swift.
+ */
+public struct VideoMetadataRecord {
+    public var durationSecs: Double
+    public var width: UInt32
+    public var height: UInt32
+    public var frameRate: Double
+    public var videoCodec: String
+    public var audioCodec: String?
+    public var audioSampleRate: UInt32
+    public var audioChannels: UInt32
+    public var bitrateKbps: UInt32
+    public var orientationDegrees: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(durationSecs: Double, width: UInt32, height: UInt32, frameRate: Double, videoCodec: String, audioCodec: String?, audioSampleRate: UInt32, audioChannels: UInt32, bitrateKbps: UInt32, orientationDegrees: UInt32) {
+        self.durationSecs = durationSecs
+        self.width = width
+        self.height = height
+        self.frameRate = frameRate
+        self.videoCodec = videoCodec
+        self.audioCodec = audioCodec
+        self.audioSampleRate = audioSampleRate
+        self.audioChannels = audioChannels
+        self.bitrateKbps = bitrateKbps
+        self.orientationDegrees = orientationDegrees
+    }
+}
+
+extension VideoMetadataRecord: Equatable, Hashable {
+    public static func == (lhs: VideoMetadataRecord, rhs: VideoMetadataRecord) -> Bool {
+        if lhs.durationSecs != rhs.durationSecs {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.frameRate != rhs.frameRate {
+            return false
+        }
+        if lhs.videoCodec != rhs.videoCodec {
+            return false
+        }
+        if lhs.audioCodec != rhs.audioCodec {
+            return false
+        }
+        if lhs.audioSampleRate != rhs.audioSampleRate {
+            return false
+        }
+        if lhs.audioChannels != rhs.audioChannels {
+            return false
+        }
+        if lhs.bitrateKbps != rhs.bitrateKbps {
+            return false
+        }
+        if lhs.orientationDegrees != rhs.orientationDegrees {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(durationSecs)
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(frameRate)
+        hasher.combine(videoCodec)
+        hasher.combine(audioCodec)
+        hasher.combine(audioSampleRate)
+        hasher.combine(audioChannels)
+        hasher.combine(bitrateKbps)
+        hasher.combine(orientationDegrees)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVideoMetadataRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VideoMetadataRecord {
+        return
+            try VideoMetadataRecord(
+                durationSecs: FfiConverterDouble.read(from: &buf),
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                frameRate: FfiConverterDouble.read(from: &buf),
+                videoCodec: FfiConverterString.read(from: &buf),
+                audioCodec: FfiConverterOptionString.read(from: &buf),
+                audioSampleRate: FfiConverterUInt32.read(from: &buf),
+                audioChannels: FfiConverterUInt32.read(from: &buf),
+                bitrateKbps: FfiConverterUInt32.read(from: &buf),
+                orientationDegrees: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: VideoMetadataRecord, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.durationSecs, into: &buf)
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterDouble.write(value.frameRate, into: &buf)
+        FfiConverterString.write(value.videoCodec, into: &buf)
+        FfiConverterOptionString.write(value.audioCodec, into: &buf)
+        FfiConverterUInt32.write(value.audioSampleRate, into: &buf)
+        FfiConverterUInt32.write(value.audioChannels, into: &buf)
+        FfiConverterUInt32.write(value.bitrateKbps, into: &buf)
+        FfiConverterUInt32.write(value.orientationDegrees, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVideoMetadataRecord_lift(_ buf: RustBuffer) throws -> VideoMetadataRecord {
+    return try FfiConverterTypeVideoMetadataRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVideoMetadataRecord_lower(_ value: VideoMetadataRecord) -> RustBuffer {
+    return FfiConverterTypeVideoMetadataRecord.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
@@ -2856,10 +4811,33 @@ public enum ArchiveFormat {
     case tarBz2
     case tarXz
     case tarZstd
+    case tarLz4
+    case tarBrotli
+    case tarLzip
+    case tarLrzip
     case dmg
     case lzfse
     case snappy
+    case gzip
+    case bzip2
+    case xz
+    case zstd
+    case lz4
+    case brotli
+    case iso
+    case cab
     case wim
+    case rar
+    case aar
+    case lzip
+    case lrzip
+    case cpio
+    case ar
+    case deb
+    case rpm
+    case xar
+    case squashfs
+    case lzh
 }
 
 #if swift(>=5.8)
@@ -2887,13 +4865,59 @@ public struct FfiConverterTypeArchiveFormat: FfiConverterRustBuffer {
 
         case 8: return .tarZstd
 
-        case 9: return .dmg
+        case 9: return .tarLz4
 
-        case 10: return .lzfse
+        case 10: return .tarBrotli
 
-        case 11: return .snappy
+        case 11: return .tarLzip
 
-        case 12: return .wim
+        case 12: return .tarLrzip
+
+        case 13: return .dmg
+
+        case 14: return .lzfse
+
+        case 15: return .snappy
+
+        case 16: return .gzip
+
+        case 17: return .bzip2
+
+        case 18: return .xz
+
+        case 19: return .zstd
+
+        case 20: return .lz4
+
+        case 21: return .brotli
+
+        case 22: return .iso
+
+        case 23: return .cab
+
+        case 24: return .wim
+
+        case 25: return .rar
+
+        case 26: return .aar
+
+        case 27: return .lzip
+
+        case 28: return .lrzip
+
+        case 29: return .cpio
+
+        case 30: return .ar
+
+        case 31: return .deb
+
+        case 32: return .rpm
+
+        case 33: return .xar
+
+        case 34: return .squashfs
+
+        case 35: return .lzh
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -2925,17 +4949,86 @@ public struct FfiConverterTypeArchiveFormat: FfiConverterRustBuffer {
         case .tarZstd:
             writeInt(&buf, Int32(8))
 
-        case .dmg:
+        case .tarLz4:
             writeInt(&buf, Int32(9))
 
-        case .lzfse:
+        case .tarBrotli:
             writeInt(&buf, Int32(10))
 
-        case .snappy:
+        case .tarLzip:
             writeInt(&buf, Int32(11))
 
-        case .wim:
+        case .tarLrzip:
             writeInt(&buf, Int32(12))
+
+        case .dmg:
+            writeInt(&buf, Int32(13))
+
+        case .lzfse:
+            writeInt(&buf, Int32(14))
+
+        case .snappy:
+            writeInt(&buf, Int32(15))
+
+        case .gzip:
+            writeInt(&buf, Int32(16))
+
+        case .bzip2:
+            writeInt(&buf, Int32(17))
+
+        case .xz:
+            writeInt(&buf, Int32(18))
+
+        case .zstd:
+            writeInt(&buf, Int32(19))
+
+        case .lz4:
+            writeInt(&buf, Int32(20))
+
+        case .brotli:
+            writeInt(&buf, Int32(21))
+
+        case .iso:
+            writeInt(&buf, Int32(22))
+
+        case .cab:
+            writeInt(&buf, Int32(23))
+
+        case .wim:
+            writeInt(&buf, Int32(24))
+
+        case .rar:
+            writeInt(&buf, Int32(25))
+
+        case .aar:
+            writeInt(&buf, Int32(26))
+
+        case .lzip:
+            writeInt(&buf, Int32(27))
+
+        case .lrzip:
+            writeInt(&buf, Int32(28))
+
+        case .cpio:
+            writeInt(&buf, Int32(29))
+
+        case .ar:
+            writeInt(&buf, Int32(30))
+
+        case .deb:
+            writeInt(&buf, Int32(31))
+
+        case .rpm:
+            writeInt(&buf, Int32(32))
+
+        case .xar:
+            writeInt(&buf, Int32(33))
+
+        case .squashfs:
+            writeInt(&buf, Int32(34))
+
+        case .lzh:
+            writeInt(&buf, Int32(35))
         }
     }
 }
@@ -3010,6 +5103,97 @@ public func FfiConverterTypeByteSizeStandard_lower(_ value: ByteSizeStandard) ->
 }
 
 extension ByteSizeStandard: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * High-level media categorization exposed to Swift.
+ */
+
+public enum FileMediaType {
+    case unknown
+    case image
+    case audio
+    case video
+    case document
+    case font
+    case model3D
+    case archive
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFileMediaType: FfiConverterRustBuffer {
+    typealias SwiftType = FileMediaType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FileMediaType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .unknown
+
+        case 2: return .image
+
+        case 3: return .audio
+
+        case 4: return .video
+
+        case 5: return .document
+
+        case 6: return .font
+
+        case 7: return .model3D
+
+        case 8: return .archive
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FileMediaType, into buf: inout [UInt8]) {
+        switch value {
+        case .unknown:
+            writeInt(&buf, Int32(1))
+
+        case .image:
+            writeInt(&buf, Int32(2))
+
+        case .audio:
+            writeInt(&buf, Int32(3))
+
+        case .video:
+            writeInt(&buf, Int32(4))
+
+        case .document:
+            writeInt(&buf, Int32(5))
+
+        case .font:
+            writeInt(&buf, Int32(6))
+
+        case .model3D:
+            writeInt(&buf, Int32(7))
+
+        case .archive:
+            writeInt(&buf, Int32(8))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileMediaType_lift(_ buf: RustBuffer) throws -> FileMediaType {
+    return try FfiConverterTypeFileMediaType.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileMediaType_lower(_ value: FileMediaType) -> RustBuffer {
+    return FfiConverterTypeFileMediaType.lower(value)
+}
+
+extension FileMediaType: Equatable, Hashable {}
 
 /**
  * Typed error enum mapped directly to Swift `throws TTZipError`.
@@ -3094,6 +5278,67 @@ extension TtZipError: Foundation.LocalizedError {
         String(reflecting: self)
     }
 }
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * High-performance thumbnail downsampling filter algorithms exposed to Swift.
+ */
+
+public enum ThumbnailSamplingFilter {
+    case nearest
+    case bilinear
+    case lanczos3
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeThumbnailSamplingFilter: FfiConverterRustBuffer {
+    typealias SwiftType = ThumbnailSamplingFilter
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ThumbnailSamplingFilter {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .nearest
+
+        case 2: return .bilinear
+
+        case 3: return .lanczos3
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ThumbnailSamplingFilter, into buf: inout [UInt8]) {
+        switch value {
+        case .nearest:
+            writeInt(&buf, Int32(1))
+
+        case .bilinear:
+            writeInt(&buf, Int32(2))
+
+        case .lanczos3:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThumbnailSamplingFilter_lift(_ buf: RustBuffer) throws -> ThumbnailSamplingFilter {
+    return try FfiConverterTypeThumbnailSamplingFilter.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThumbnailSamplingFilter_lower(_ value: ThumbnailSamplingFilter) -> RustBuffer {
+    return FfiConverterTypeThumbnailSamplingFilter.lower(value)
+}
+
+extension ThumbnailSamplingFilter: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -3266,6 +5511,78 @@ extension FfiConverterCallbackInterfaceProgressHandler: FfiConverter {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
+    typealias SwiftType = UInt32?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt32.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt32.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = UInt64?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt64.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = Double?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterDouble.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -3314,6 +5631,126 @@ private struct FfiConverterOptionTypeCancellationToken: FfiConverterRustBuffer {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionTypeAudioMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = AudioMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAudioMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAudioMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeDocumentMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = DocumentMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDocumentMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDocumentMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeFontMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = FontMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFontMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFontMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeImageMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = ImageMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeImageMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeImageMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeModel3DMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = Model3DMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeModel3DMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeModel3DMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionTypeUniFFIEpubBook: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiEpubBook?
 
@@ -3330,6 +5767,78 @@ private struct FfiConverterOptionTypeUniFFIEpubBook: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeUniFFIEpubBook.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFIEpubCoverData: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiEpubCoverData?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFIEpubCoverData.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFIEpubCoverData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFIWalMutationSummary: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiWalMutationSummary?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFIWalMutationSummary.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFIWalMutationSummary.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeVideoMetadataRecord: FfiConverterRustBuffer {
+    typealias SwiftType = VideoMetadataRecord?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeVideoMetadataRecord.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeVideoMetadataRecord.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -3562,6 +6071,31 @@ private struct FfiConverterSequenceTypeUniFFIEpubChapter: FfiConverterRustBuffer
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIEpubChapterItem: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiEpubChapterItem]
+
+    static func write(_ value: [UniFfiEpubChapterItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIEpubChapterItem.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiEpubChapterItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiEpubChapterItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIEpubChapterItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiTokenSpan]
 
@@ -3634,6 +6168,45 @@ private struct FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuf
     }
 }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
+    static func write(_ value: [String: String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for (key, value) in value {
+            FfiConverterString.write(key, into: &buf)
+            FfiConverterString.write(value, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String: String] {
+        let len: Int32 = try readInt(&buf)
+        var dict = [String: String]()
+        dict.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            let key = try FfiConverterString.read(from: &buf)
+            let value = try FfiConverterString.read(from: &buf)
+            dict[key] = value
+        }
+        return dict
+    }
+}
+
+/**
+ * Applies an in-place entry delta mutation recorded into `.ttzip.wal` journal.
+ */
+public func applyInPlaceEntryMutation(archivePath: String, entryPath: String, newData: Data) throws -> UniFfiWalMutationSummary {
+    return try FfiConverterTypeUniFFIWalMutationSummary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_apply_in_place_entry_mutation(
+            FfiConverterString.lower(archivePath),
+            FfiConverterString.lower(entryPath),
+            FfiConverterData.lower(newData), $0
+        )
+    })
+}
+
 /**
  * Fast path autocompletion query based on directory scanning and prefix matching.
  */
@@ -3656,6 +6229,17 @@ public func combineCrc32(crc1: UInt32, crc2: UInt32, len2: UInt64) -> UInt32 {
             FfiConverterUInt32.lower(crc1),
             FfiConverterUInt32.lower(crc2),
             FfiConverterUInt64.lower(len2), $0
+        )
+    })
+}
+
+/**
+ * Atomically commits staged WAL mutations to archive using APFS CoW zero-copy clone and atomic rename.
+ */
+public func commitWalToArchive(archivePath: String) throws -> UniFfiWalCommitResult {
+    return try FfiConverterTypeUniFFIWalCommitResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_commit_wal_to_archive(
+            FfiConverterString.lower(archivePath), $0
         )
     })
 }
@@ -3747,6 +6331,17 @@ public func createArchiveStream(sourcePaths: [String], outputPath: String, forma
 }
 
 /**
+ * Decodes an image from an in-memory buffer (JPEG, PNG, WebP, BMP, PSD, QOI, HDR) into RGBA8 pixels.
+ */
+public func decodeImageRgbaFromMemory(data: Data) throws -> DecodedImageRecord {
+    return try FfiConverterTypeDecodedImageRecord.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
  * Detects archive format from file using the full 16-format magic and SFX sniffer.
  */
 public func detectArchiveFormat(path: String) throws -> ArchiveFormat {
@@ -3764,6 +6359,19 @@ public func detectSplitVolumeChain(seedPath: String) throws -> [String] {
     return try FfiConverterSequenceString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
         uniffi_ttzip_engine_fn_func_detect_split_volume_chain(
             FfiConverterString.lower(seedPath), $0
+        )
+    })
+}
+
+/**
+ * Recursively drills down nested archives in-memory and returns inner archive entries.
+ */
+public func drillDownNestedArchive(archivePath: String, drillPath: [String], password: String?) throws -> [UniFfiEntryMetadata] {
+    return try FfiConverterSequenceTypeUniFFIEntryMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_drill_down_nested_archive(
+            FfiConverterString.lower(archivePath),
+            FfiConverterSequenceString.lower(drillPath),
+            FfiConverterOptionString.lower(password), $0
         )
     })
 }
@@ -3819,6 +6427,51 @@ public func extractAudioWaveformFromMemory(data: Data, bucketCount: UInt32) thro
 }
 
 /**
+ * Convenience function to extract plain text string from DOCX in memory.
+ */
+public func extractDocxFullText(docxBytes: Data) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_docx_full_text(
+            FfiConverterData.lower(docxBytes), $0
+        )
+    })
+}
+
+/**
+ * Extracts DOCX document content from a file path using zero-copy memory mapping.
+ */
+public func extractDocxTextFromFile(docxPath: String) throws -> UniFfiDocxExtractResult {
+    return try FfiConverterTypeUniFFIDocxExtractResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_docx_text_from_file(
+            FfiConverterString.lower(docxPath), $0
+        )
+    })
+}
+
+/**
+ * Extracts DOCX full text, paragraph structure, and core metadata directly from in-memory byte buffer.
+ */
+public func extractDocxTextFromMemory(docxBytes: Data) throws -> UniFfiDocxExtractResult {
+    return try FfiConverterTypeUniFFIDocxExtractResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_docx_text_from_memory(
+            FfiConverterData.lower(docxBytes), $0
+        )
+    })
+}
+
+/**
+ * Extracts clean plain text of a specific EPUB chapter directly from memory without disk extraction.
+ */
+public func extractEpubChapterTextFromMemory(epubBytes: Data, chapterHref: String) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_epub_chapter_text_from_memory(
+            FfiConverterData.lower(epubBytes),
+            FfiConverterString.lower(chapterHref), $0
+        )
+    })
+}
+
+/**
  * Extracts the parent directory to query and the trailing prefix for real-time autocompletion.
  */
 public func extractParentAndPrefix(rawInput: String, baseDirectory: String?) -> UniFfiParentAndPrefix {
@@ -3826,6 +6479,30 @@ public func extractParentAndPrefix(rawInput: String, baseDirectory: String?) -> 
         uniffi_ttzip_engine_fn_func_extract_parent_and_prefix(
             FfiConverterString.lower(rawInput),
             FfiConverterOptionString.lower(baseDirectory), $0
+        )
+    })
+}
+
+/**
+ * Extracts PDF metadata and page text from a file on disk using memory mapping.
+ */
+public func extractPdfInfoFromFile(pdfPath: String, maxPagesText: UInt32?) throws -> UniFfiPdfDocumentInfo {
+    return try FfiConverterTypeUniFFIPdfDocumentInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_pdf_info_from_file(
+            FfiConverterString.lower(pdfPath),
+            FfiConverterOptionUInt32.lower(maxPagesText), $0
+        )
+    })
+}
+
+/**
+ * Extracts PDF metadata (title, author, creation date, etc.) and page text stream directly from memory.
+ */
+public func extractPdfInfoFromMemory(pdfBytes: Data, maxPagesText: UInt32?) throws -> UniFfiPdfDocumentInfo {
+    return try FfiConverterTypeUniFFIPdfDocumentInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_extract_pdf_info_from_memory(
+            FfiConverterData.lower(pdfBytes),
+            FfiConverterOptionUInt32.lower(maxPagesText), $0
         )
     })
 }
@@ -3903,6 +6580,32 @@ public func generateSyntheticBenchmarkDataset(targetPath: String, targetBytes: U
 }
 
 /**
+ * Generates a high-quality downsampled thumbnail from an in-memory image buffer.
+ */
+public func generateThumbnailFromMemory(data: Data, maxWidth: UInt32, maxHeight: UInt32, filter: ThumbnailSamplingFilter) throws -> DecodedImageRecord {
+    return try FfiConverterTypeDecodedImageRecord.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_generate_thumbnail_from_memory(
+            FfiConverterData.lower(data),
+            FfiConverterUInt32.lower(maxWidth),
+            FfiConverterUInt32.lower(maxHeight),
+            FfiConverterTypeThumbnailSamplingFilter.lower(filter), $0
+        )
+    })
+}
+
+/**
+ * Full-file syntax highlight spans using Tree-sitter AST and UTF-16 NSRange offsets.
+ */
+public func highlightCodeSpans(text: String, fileExtension: String) -> [UniFfiTokenSpan] {
+    return try! FfiConverterSequenceTypeUniFFITokenSpan.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_highlight_code_spans(
+            FfiConverterString.lower(text),
+            FfiConverterString.lower(fileExtension), $0
+        )
+    })
+}
+
+/**
  * Atomically mutates archive in-place (append, replace, delete) without full recompression.
  */
 public func inPlaceMutateArchive(archivePath: String, actions: [InPlaceMutationAction]) throws {
@@ -3934,6 +6637,17 @@ public func inspectStagingFileMutation(stagedPath: String, initialHash: String) 
         uniffi_ttzip_engine_fn_func_inspect_staging_file_mutation(
             FfiConverterString.lower(stagedPath),
             FfiConverterString.lower(initialHash), $0
+        )
+    })
+}
+
+/**
+ * Inspects current WAL journal staging status for given archive.
+ */
+public func inspectWalMutationStatus(archivePath: String) throws -> UniFfiWalMutationSummary? {
+    return try FfiConverterOptionTypeUniFFIWalMutationSummary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_inspect_wal_mutation_status(
+            FfiConverterString.lower(archivePath), $0
         )
     })
 }
@@ -3974,12 +6688,71 @@ public func naturalSortPaths(items: [String]) -> [String] {
 }
 
 /**
+ * Recursively drills down nested archives in-memory and returns a streaming VirtualFileStream.
+ */
+public func openVirtualFileStream(archivePath: String, drillPath: [String], targetEntry: String, password: String?) throws -> VirtualFileStream {
+    return try FfiConverterTypeVirtualFileStream.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_open_virtual_file_stream(
+            FfiConverterString.lower(archivePath),
+            FfiConverterSequenceString.lower(drillPath),
+            FfiConverterString.lower(targetEntry),
+            FfiConverterOptionString.lower(password), $0
+        )
+    })
+}
+
+/**
+ * Parses EPUB book metadata, chapters, and cover image from a file on disk using memory mapping.
+ */
+public func parseEpubBookFromFile(epubPath: String) throws -> UniFfiEpubParseResult {
+    return try FfiConverterTypeUniFFIEpubParseResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_parse_epub_book_from_file(
+            FfiConverterString.lower(epubPath), $0
+        )
+    })
+}
+
+/**
+ * Parses EPUB book metadata, spine chapters, TOC, and in-memory cover image bytes directly from memory.
+ */
+public func parseEpubBookFromMemory(epubBytes: Data) throws -> UniFfiEpubParseResult {
+    return try FfiConverterTypeUniFFIEpubParseResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_parse_epub_book_from_memory(
+            FfiConverterData.lower(epubBytes), $0
+        )
+    })
+}
+
+/**
  * Parses EPUB book metadata and chapters with zero temporary disk extraction.
  */
 public func parseEpubMetadata(epubPath: String) -> UniFfiEpubBook? {
     return try! FfiConverterOptionTypeUniFFIEpubBook.lift(try! rustCall {
         uniffi_ttzip_engine_fn_func_parse_epub_metadata(
             FfiConverterString.lower(epubPath), $0
+        )
+    })
+}
+
+/**
+ * Probes file metadata from an in-memory byte buffer.
+ */
+public func probeBufferMetadata(data: Data, filenameHint: String?) throws -> FileMetadataRecord {
+    return try FfiConverterTypeFileMetadataRecord.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_probe_buffer_metadata(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(filenameHint), $0
+        )
+    })
+}
+
+/**
+ * Probes full file metadata from a file on disk using zero-copy memory mapping.
+ */
+public func probeFileMetadata(path: String) throws -> FileMetadataRecord {
+    return try FfiConverterTypeFileMetadataRecord.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_probe_file_metadata(
+            FfiConverterString.lower(path), $0
         )
     })
 }
@@ -4035,6 +6808,17 @@ public func resolveSmartExtractDecision(entryPaths: [String], destinationParent:
             FfiConverterString.lower(destinationParent),
             FfiConverterString.lower(archiveStem),
             FfiConverterString.lower(collisionPolicy), $0
+        )
+    })
+}
+
+/**
+ * Discards staged WAL mutations and cleans up journal files.
+ */
+public func rollbackWalMutation(archivePath: String) throws -> Bool {
+    return try FfiConverterBool.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_rollback_wal_mutation(
+            FfiConverterString.lower(archivePath), $0
         )
     })
 }
@@ -4258,10 +7042,16 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_apply_in_place_entry_mutation() != 39866 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_autocomplete_disk_path() != 33853 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_combine_crc32() != 58739 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_commit_wal_to_archive() != 40531 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_compute_bytes_adler32() != 37371 {
@@ -4285,10 +7075,16 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory() != 12917 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_detect_split_volume_chain() != 23903 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_drill_down_nested_archive() != 57964 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_estimate_shannon_entropy() != 5862 {
@@ -4303,7 +7099,25 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_extract_audio_waveform_from_memory() != 33678 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_extract_docx_full_text() != 928 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_extract_docx_text_from_file() != 28421 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_extract_docx_text_from_memory() != 62397 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_extract_epub_chapter_text_from_memory() != 1931 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_extract_parent_and_prefix() != 51667 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_extract_pdf_info_from_file() != 26683 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_extract_pdf_info_from_memory() != 65104 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_extract_selected_entries() != 9142 {
@@ -4321,6 +7135,12 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory() != 45521 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_highlight_code_spans() != 5283 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_in_place_mutate_archive() != 28841 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4328,6 +7148,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_inspect_staging_file_mutation() != 36811 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_inspect_wal_mutation_status() != 57951 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_join_split_volume_chain() != 52199 {
@@ -4339,7 +7162,22 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_natural_sort_paths() != 11229 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_open_virtual_file_stream() != 21449 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_parse_epub_book_from_file() != 43219 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory() != 15044 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_parse_epub_metadata() != 61296 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_probe_buffer_metadata() != 36698 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_probe_file_metadata() != 18538 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005 {
@@ -4352,6 +7190,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_resolve_smart_extract_decision() != 25103 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_rollback_wal_mutation() != 32085 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_sanitize_posix_path() != 27114 {
@@ -4441,6 +7282,24 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_position() != 61477 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_read() != 26274 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_read_all() != 20680 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_read_exact_at() != 21836 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_seek() != 18203 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_virtualfilestream_size() != 36586 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new() != 62347 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4448,6 +7307,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty() != 64992 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708 {

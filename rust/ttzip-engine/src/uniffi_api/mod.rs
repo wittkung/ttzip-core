@@ -14,9 +14,15 @@ pub mod archive;
 pub mod audio;
 pub mod benchmark;
 pub mod disk_scanner;
+#[cfg(feature = "probe")]
+pub mod document;
 pub mod epub;
 pub mod extraction;
+#[cfg(feature = "probe")]
+pub mod image;
 pub mod integrity;
+#[cfg(feature = "probe")]
+pub mod metadata;
 pub mod smart_extract;
 pub mod syntax;
 pub mod transaction;
@@ -28,15 +34,22 @@ pub use archive::*;
 pub use audio::*;
 pub use benchmark::*;
 pub use disk_scanner::*;
+#[cfg(feature = "probe")]
+pub use document::*;
 pub use epub::*;
 pub use extraction::*;
+#[cfg(feature = "probe")]
+pub use image::*;
 pub use integrity::*;
+#[cfg(feature = "probe")]
+pub use metadata::*;
 pub use smart_extract::*;
 pub use syntax::*;
 pub use transaction::*;
 pub use types::*;
 pub use vault::*;
 pub use vfs::*;
+pub use crate::archive::nested_vfs::VirtualFileStream;
 pub use crate::security::license::*;
 
 pub use crate::i18n::{AppLanguage, ByteSizeStandard, TTZipLocalizationEngine};

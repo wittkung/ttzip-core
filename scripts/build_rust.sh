@@ -95,7 +95,7 @@ EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 
 for target in "${TARGETS[@]}"; do
     echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --features full --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
@@ -144,21 +144,21 @@ fi
 if [ -f "${FIRST_DYLIB}" ]; then
     (
         cd "${RUST_DIR}"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
             --library "${FIRST_DYLIB}" \
             --language swift \
             --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
             --metadata-no-deps
 
         mkdir -p "${REPO_ROOT}/python/ttzip"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
             --library "${FIRST_DYLIB}" \
             --language python \
             --out-dir "${REPO_ROOT}/python/ttzip" \
             --metadata-no-deps
 
         mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen generate \
+        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
             --library "${FIRST_DYLIB}" \
             --language kotlin \
             --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \

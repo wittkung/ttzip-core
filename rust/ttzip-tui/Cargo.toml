@@ -22,7 +22,7 @@ name = "ttzip_tui"
 path = "src/lib.rs"
 
 [dependencies]
-ttzip-engine = { path = "../ttzip-engine", version = "1.0.0" }
+ttzip-engine = { path = "../ttzip-engine", version = "1.0.0", default-features = false, features = ["archive"] }
 ratatui = { version = "0.28", features = ["all-widgets"] }
 crossterm = { version = "0.28", features = ["event-stream"] }
 clap = { version = "4.5", features = ["derive", "cargo"] }

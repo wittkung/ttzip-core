@@ -518,13 +518,23 @@ public enum StandardsComplianceChecker {
         case .zst, .tarZst: return 7
         case .iso: return 10
         case .dmg: return 11
+        case .cab: return 12
+        case .cpio: return 13
+        case .ar: return 14
+        case .deb: return 15
         case .snappy: return 16
-        case .lz4: return 17
-        case .lzip: return 18
-        case .lrzip: return 19
-        case .brotli: return 20
+        case .lz4, .tarLz4: return 17
+        case .lzip, .tarLzip: return 18
+        case .lrzip, .tarLrzip: return 19
+        case .brotli, .tarBrotli: return 20
         case .aar: return 21
         case .wim: return 22
+        case .rpm: return 23
+        case .xar: return 24
+        case .rar: return 25
+        case .squashfs: return 26
+        case .lzfse: return 27
+        case .lzh: return 28
         }
     }
 }

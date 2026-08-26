@@ -31,17 +31,84 @@ pub fn detect_archive_format(path: String) -> Result<ArchiveFormat, TTZipError> 
                 Some(crate::standards::signatures::CompoundFormat::TarBz2) => ArchiveFormat::TarBz2,
                 Some(crate::standards::signatures::CompoundFormat::TarXz) => ArchiveFormat::TarXz,
                 Some(crate::standards::signatures::CompoundFormat::TarZstd) => ArchiveFormat::TarZstd,
+                Some(crate::standards::signatures::CompoundFormat::TarLz4) => ArchiveFormat::TarLz4,
+                Some(crate::standards::signatures::CompoundFormat::TarBrotli) => ArchiveFormat::TarBrotli,
+                Some(crate::standards::signatures::CompoundFormat::TarLzip) => ArchiveFormat::TarLzip,
+                Some(crate::standards::signatures::CompoundFormat::TarLrzip) => ArchiveFormat::TarLrzip,
                 _ => ArchiveFormat::Tar,
             }
         }
-        crate::standards::signatures::DetectedFormat::Gzip => ArchiveFormat::TarGz,
-        crate::standards::signatures::DetectedFormat::Bzip2 => ArchiveFormat::TarBz2,
-        crate::standards::signatures::DetectedFormat::Xz => ArchiveFormat::TarXz,
-        crate::standards::signatures::DetectedFormat::Zstd => ArchiveFormat::TarZstd,
+        crate::standards::signatures::DetectedFormat::Gzip => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarGz) {
+                ArchiveFormat::TarGz
+            } else {
+                ArchiveFormat::Gzip
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Bzip2 => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBz2) {
+                ArchiveFormat::TarBz2
+            } else {
+                ArchiveFormat::Bzip2
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Xz => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarXz) {
+                ArchiveFormat::TarXz
+            } else {
+                ArchiveFormat::Xz
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Zstd => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarZstd) {
+                ArchiveFormat::TarZstd
+            } else {
+                ArchiveFormat::Zstd
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Lz4 => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLz4) {
+                ArchiveFormat::TarLz4
+            } else {
+                ArchiveFormat::Lz4
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Brotli => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBrotli) {
+                ArchiveFormat::TarBrotli
+            } else {
+                ArchiveFormat::Brotli
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Lzip => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLzip) {
+                ArchiveFormat::TarLzip
+            } else {
+                ArchiveFormat::Lzip
+            }
+        }
+        crate::standards::signatures::DetectedFormat::Lrzip => {
+            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLrzip) {
+                ArchiveFormat::TarLrzip
+            } else {
+                ArchiveFormat::Lrzip
+            }
+        }
         crate::standards::signatures::DetectedFormat::Dmg => ArchiveFormat::Dmg,
         crate::standards::signatures::DetectedFormat::Lzfse => ArchiveFormat::Lzfse,
         crate::standards::signatures::DetectedFormat::Snappy => ArchiveFormat::Snappy,
+        crate::standards::signatures::DetectedFormat::Iso => ArchiveFormat::Iso,
+        crate::standards::signatures::DetectedFormat::Cab => ArchiveFormat::Cab,
         crate::standards::signatures::DetectedFormat::Wim => ArchiveFormat::Wim,
+        crate::standards::signatures::DetectedFormat::Rar => ArchiveFormat::Rar,
+        crate::standards::signatures::DetectedFormat::Aar => ArchiveFormat::Aar,
+        crate::standards::signatures::DetectedFormat::Cpio => ArchiveFormat::Cpio,
+        crate::standards::signatures::DetectedFormat::Ar => ArchiveFormat::Ar,
+        crate::standards::signatures::DetectedFormat::Deb => ArchiveFormat::Deb,
+        crate::standards::signatures::DetectedFormat::Rpm => ArchiveFormat::Rpm,
+        crate::standards::signatures::DetectedFormat::Xar => ArchiveFormat::Xar,
+        crate::standards::signatures::DetectedFormat::Squashfs => ArchiveFormat::Squashfs,
+        crate::standards::signatures::DetectedFormat::Lzh => ArchiveFormat::Lzh,
         _ => ArchiveFormat::Auto,
     };
     Ok(fmt)
@@ -300,10 +367,34 @@ pub fn create_archive_stream(
         ArchiveFormat::TarBz2 => crate::types::TTZipArchiveFormat::TarBz2,
         ArchiveFormat::TarXz => crate::types::TTZipArchiveFormat::TarXz,
         ArchiveFormat::TarZstd => crate::types::TTZipArchiveFormat::TarZstd,
+        ArchiveFormat::TarLz4 => crate::types::TTZipArchiveFormat::TarLz4,
+        ArchiveFormat::TarBrotli => crate::types::TTZipArchiveFormat::TarBrotli,
+        ArchiveFormat::TarLzip => crate::types::TTZipArchiveFormat::TarLzip,
+        ArchiveFormat::TarLrzip => crate::types::TTZipArchiveFormat::TarLrzip,
         ArchiveFormat::Dmg => crate::types::TTZipArchiveFormat::Dmg,
         ArchiveFormat::Lzfse => crate::types::TTZipArchiveFormat::Lzfse,
         ArchiveFormat::Snappy => crate::types::TTZipArchiveFormat::Snappy,
-        ArchiveFormat::Auto | ArchiveFormat::Wim => crate::types::TTZipArchiveFormat::Auto,
+        ArchiveFormat::Gzip => crate::types::TTZipArchiveFormat::Gzip,
+        ArchiveFormat::Bzip2 => crate::types::TTZipArchiveFormat::Bzip2,
+        ArchiveFormat::Xz => crate::types::TTZipArchiveFormat::Xz,
+        ArchiveFormat::Zstd => crate::types::TTZipArchiveFormat::Zstd,
+        ArchiveFormat::Lz4 => crate::types::TTZipArchiveFormat::Lz4,
+        ArchiveFormat::Brotli => crate::types::TTZipArchiveFormat::Brotli,
+        ArchiveFormat::Iso => crate::types::TTZipArchiveFormat::Iso,
+        ArchiveFormat::Cab => crate::types::TTZipArchiveFormat::Cab,
+        ArchiveFormat::Wim => crate::types::TTZipArchiveFormat::Wim,
+        ArchiveFormat::Rar => crate::types::TTZipArchiveFormat::Rar,
+        ArchiveFormat::Aar => crate::types::TTZipArchiveFormat::Aar,
+        ArchiveFormat::Lzip => crate::types::TTZipArchiveFormat::Lzip,
+        ArchiveFormat::Lrzip => crate::types::TTZipArchiveFormat::Lrzip,
+        ArchiveFormat::Cpio => crate::types::TTZipArchiveFormat::Cpio,
+        ArchiveFormat::Ar => crate::types::TTZipArchiveFormat::Ar,
+        ArchiveFormat::Deb => crate::types::TTZipArchiveFormat::Deb,
+        ArchiveFormat::Rpm => crate::types::TTZipArchiveFormat::Rpm,
+        ArchiveFormat::Xar => crate::types::TTZipArchiveFormat::Xar,
+        ArchiveFormat::Squashfs => crate::types::TTZipArchiveFormat::Squashfs,
+        ArchiveFormat::Lzh => crate::types::TTZipArchiveFormat::Lzh,
+        ArchiveFormat::Auto => crate::types::TTZipArchiveFormat::Auto,
     };
 
     let comp_level = match level {

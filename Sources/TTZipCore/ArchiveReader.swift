@@ -89,8 +89,7 @@ public final class ArchiveReader: ArchiveReading, Sendable {
                 entries.reserveCapacity(items.count)
                 for meta in items {
                     let sanitizedPath = meta.path
-                    let lastComp = (sanitizedPath as NSString).lastPathComponent
-                    if lastComp.hasPrefix("._") || lastComp == ".DS_Store" || sanitizedPath.hasPrefix("PaxHeader") || sanitizedPath.contains("/PaxHeader") {
+                    if ArchiveFilterOptions.isSystemMetadata(path: sanitizedPath) {
                         continue
                     }
                     let mtimeDate = meta.mtimeEpochSecs > 0 ? Date(timeIntervalSince1970: TimeInterval(meta.mtimeEpochSecs)) : nil

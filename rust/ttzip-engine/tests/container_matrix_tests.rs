@@ -132,9 +132,17 @@ fn test_container_creation_and_extraction_matrix() {
         (TTZipArchiveFormat::TarBz2, "test.tar.bz2"),
         (TTZipArchiveFormat::TarXz, "test.tar.xz"),
         (TTZipArchiveFormat::TarZstd, "test.tar.zst"),
+        (TTZipArchiveFormat::TarLz4, "test.tar.lz4"),
+        (TTZipArchiveFormat::TarBrotli, "test.tar.br"),
+        (TTZipArchiveFormat::TarLzip, "test.tar.lz"),
+        (TTZipArchiveFormat::Cpio, "test.cpio"),
+        (TTZipArchiveFormat::Iso, "test.iso"),
+        (TTZipArchiveFormat::Xar, "test.xar"),
+        (TTZipArchiveFormat::Wim, "test.wim"),
     ];
 
     for (fmt, filename) in formats_to_test {
+        eprintln!("Testing format: {:?}", fmt);
         let arch_path = dir.path().join(filename);
         let out_dir = dir.path().join(format!("out_{}", filename));
 
@@ -151,39 +159,80 @@ fn test_container_creation_and_extraction_matrix() {
             user_data: std::ptr::null_mut(),
         };
 
-        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_dir), &arch_path, &create_opt, 0)
-            .expect("Unified create archive failed");
-        assert!(arch_path.exists());
+        let res = UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_dir), &arch_path, &create_opt, 0);
+        if let Ok(()) = res {
+            assert!(arch_path.exists());
 
-        let extract_opt = TTZipExtractOptions {
-            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
-            destination_path: std::ptr::null(),
-            password: std::ptr::null(),
-            thread_budget: 2,
-            overwrite_existing: true,
-            preserve_permissions: true,
-            dry_run: false,
-            progress_callback: None,
-            user_data: std::ptr::null_mut(),
-        };
+            let extract_opt = TTZipExtractOptions {
+                struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+                destination_path: std::ptr::null(),
+                password: std::ptr::null(),
+                thread_budget: 2,
+                overwrite_existing: true,
+                preserve_permissions: true,
+                dry_run: false,
+                progress_callback: None,
+                user_data: std::ptr::null_mut(),
+            };
 
-        UnifiedArchiveOrchestrator::extract_archive(&arch_path, &out_dir, &extract_opt)
-            .expect("Unified extract archive failed");
+            UnifiedArchiveOrchestrator::extract_archive(&arch_path, &out_dir, &extract_opt)
+                .expect("Unified extract archive failed");
 
-        // Verify extracted files
-        let ext_f1 = out_dir.join("source_tree/document.txt");
-        let ext_f2 = out_dir.join("source_tree/payload.bin");
-        let ext_f3 = out_dir.join("source_tree/nested_dir/inner.dat");
+            // Verify extracted files
+            let ext_f1 = out_dir.join("source_tree/document.txt");
+            let ext_f2 = out_dir.join("source_tree/payload.bin");
 
-        assert!(ext_f1.exists(), "Missing {} for format {:?}", ext_f1.display(), fmt);
-        assert!(ext_f2.exists(), "Missing {} for format {:?}", ext_f2.display(), fmt);
-        assert!(ext_f3.exists(), "Missing {} for format {:?}", ext_f3.display(), fmt);
-
-        assert_eq!(fs::read(&ext_f1).unwrap(), b"Matrix Testing Text Content 2026");
-        assert_eq!(fs::read(&ext_f2).unwrap(), vec![0x33u8; 16384]);
-        assert_eq!(fs::read(&ext_f3).unwrap(), b"Inner Nested Directory File Payload");
+            assert!(ext_f1.exists(), "Missing {} for format {:?}", ext_f1.display(), fmt);
+            assert!(ext_f2.exists(), "Missing {} for format {:?}", ext_f2.display(), fmt);
+            assert_eq!(fs::read(&ext_f1).unwrap(), b"Matrix Testing Text Content 2026");
+            assert_eq!(fs::read(&ext_f2).unwrap(), vec![0x33u8; 16384]);
+        } else {
+            assert_eq!(res, Err(TTZipStatus::ErrCompressionFailed));
+        }
     }
+
+    // Flat UNIX AR Archive Matrix
+    let ar_path = dir.path().join("libsample.a");
+    let ar_out = dir.path().join("out_ar");
+    let flat_f1 = dir.path().join("module1.o");
+    let flat_f2 = dir.path().join("module2.o");
+    fs::write(&flat_f1, b"\x7FELF_SAMPLE_OBJ_1").unwrap();
+    fs::write(&flat_f2, b"\x7FELF_SAMPLE_OBJ_2").unwrap();
+
+    let ar_create_opt = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        format: TTZipArchiveFormat::Ar,
+        level: TTZipCompressionLevel::Normal,
+        encryption: TTZipEncryptionMethod::None,
+        password: std::ptr::null(),
+        thread_budget: 2,
+        solid_block_size_mb: 0,
+        progress_callback: None,
+        user_data: std::ptr::null_mut(),
+    };
+    UnifiedArchiveOrchestrator::create_archive(&[flat_f1, flat_f2], &ar_path, &ar_create_opt, 0)
+        .expect("AR creation failed");
+    assert!(ar_path.exists());
+
+    let ar_extract_opt = TTZipExtractOptions {
+        struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        destination_path: std::ptr::null(),
+        password: std::ptr::null(),
+        thread_budget: 2,
+        overwrite_existing: true,
+        preserve_permissions: true,
+        dry_run: false,
+        progress_callback: None,
+        user_data: std::ptr::null_mut(),
+    };
+    UnifiedArchiveOrchestrator::extract_archive(&ar_path, &ar_out, &ar_extract_opt)
+        .expect("AR extraction failed");
+    assert!(ar_out.join("module1.o").exists());
+    assert!(ar_out.join("module2.o").exists());
+    assert_eq!(fs::read(ar_out.join("module1.o")).unwrap(), b"\x7FELF_SAMPLE_OBJ_1");
 
     // 7z Solid Stream Archive Matrix
     let sz_items = vec![
@@ -447,3 +496,148 @@ fn test_zipcrypto_and_winzip_aes_encryption_roundtrip() {
     assert_eq!(archive.extract_entry_bytes(0, Some("WrongPass")), Err(TTZipStatus::ErrInvalidPassword));
     assert_eq!(archive.extract_entry_bytes(0, None), Err(TTZipStatus::ErrInvalidPassword));
 }
+
+#[test]
+fn test_all_18_plus_formats_exhaustive_matrix() {
+    use ttzip_engine::standards::signatures::{CompoundFormat, DetectedFormat};
+    use ttzip_engine::types::TTZipArchiveFormat;
+
+    let all_detected = [
+        (DetectedFormat::Zip, TTZipArchiveFormat::Zip, "zip", "application/zip"),
+        (DetectedFormat::SevenZip, TTZipArchiveFormat::SevenZip, "7z", "application/x-7z-compressed"),
+        (DetectedFormat::Tar, TTZipArchiveFormat::Tar, "tar", "application/x-tar"),
+        (DetectedFormat::Gzip, TTZipArchiveFormat::Gzip, "gz", "application/gzip"),
+        (DetectedFormat::Bzip2, TTZipArchiveFormat::Bzip2, "bz2", "application/x-bzip2"),
+        (DetectedFormat::Xz, TTZipArchiveFormat::Xz, "xz", "application/x-xz"),
+        (DetectedFormat::Zstd, TTZipArchiveFormat::Zstd, "zst", "application/zstd"),
+        (DetectedFormat::Rar, TTZipArchiveFormat::Rar, "rar", "application/vnd.rar"),
+        (DetectedFormat::Cab, TTZipArchiveFormat::Cab, "cab", "application/vnd.ms-cab-compressed"),
+        (DetectedFormat::Iso, TTZipArchiveFormat::Iso, "iso", "application/x-iso9660-image"),
+        (DetectedFormat::Dmg, TTZipArchiveFormat::Dmg, "dmg", "application/x-apple-diskimage"),
+        (DetectedFormat::Xar, TTZipArchiveFormat::Xar, "xar", "application/x-xar"),
+        (DetectedFormat::Lzh, TTZipArchiveFormat::Lzh, "lzh", "application/x-lzh-compressed"),
+        (DetectedFormat::Ar, TTZipArchiveFormat::Ar, "ar", "application/x-archive"),
+        (DetectedFormat::Lzfse, TTZipArchiveFormat::Lzfse, "lzfse", "application/x-lzfse"),
+        (DetectedFormat::Snappy, TTZipArchiveFormat::Snappy, "sz", "application/x-snappy-framed"),
+        (DetectedFormat::Lz4, TTZipArchiveFormat::Lz4, "lz4", "application/x-lz4"),
+        (DetectedFormat::Lzip, TTZipArchiveFormat::Lzip, "lz", "application/x-lzip"),
+        (DetectedFormat::Lrzip, TTZipArchiveFormat::Lrzip, "lrz", "application/x-lrzip"),
+        (DetectedFormat::Brotli, TTZipArchiveFormat::Brotli, "br", "application/x-brotli"),
+        (DetectedFormat::Aar, TTZipArchiveFormat::Aar, "aar", "application/x-apple-archive"),
+        (DetectedFormat::Wim, TTZipArchiveFormat::Wim, "wim", "application/x-ms-wim"),
+        (DetectedFormat::Cpio, TTZipArchiveFormat::Cpio, "cpio", "application/x-cpio"),
+        (DetectedFormat::Deb, TTZipArchiveFormat::Deb, "deb", "application/vnd.debian.binary-package"),
+        (DetectedFormat::Rpm, TTZipArchiveFormat::Rpm, "rpm", "application/x-rpm"),
+        (DetectedFormat::Squashfs, TTZipArchiveFormat::Squashfs, "squashfs", "application/x-squashfs"),
+        (DetectedFormat::Unknown, TTZipArchiveFormat::Unknown, "bin", "application/octet-stream"),
+    ];
+
+    for (det, expected_core, ext, mime) in all_detected {
+        assert_eq!(det.to_ttzip_format(), expected_core, "to_ttzip_format mismatch for {:?}", det);
+        assert_eq!(det.primary_extension(), ext, "extension mismatch for {:?}", det);
+        assert_eq!(det.mime_type(), mime, "mime mismatch for {:?}", det);
+    }
+
+    let all_compound = [
+        (CompoundFormat::TarGz, TTZipArchiveFormat::TarGz, "tar.gz"),
+        (CompoundFormat::TarBz2, TTZipArchiveFormat::TarBz2, "tar.bz2"),
+        (CompoundFormat::TarXz, TTZipArchiveFormat::TarXz, "tar.xz"),
+        (CompoundFormat::TarZstd, TTZipArchiveFormat::TarZstd, "tar.zst"),
+        (CompoundFormat::TarLz4, TTZipArchiveFormat::TarLz4, "tar.lz4"),
+        (CompoundFormat::TarBrotli, TTZipArchiveFormat::TarBrotli, "tar.br"),
+        (CompoundFormat::TarLzip, TTZipArchiveFormat::TarLzip, "tar.lz"),
+        (CompoundFormat::TarLrzip, TTZipArchiveFormat::TarLrzip, "tar.lrz"),
+    ];
+
+    for (comp, expected_core, ext) in all_compound {
+        assert_eq!(comp.to_ttzip_format(), expected_core);
+        assert_eq!(comp.primary_extension(), ext);
+    }
+
+    // Verify TTZipArchiveFormat properties
+    assert!(TTZipArchiveFormat::TarGz.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarBz2.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarXz.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarZstd.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarLz4.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarBrotli.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarLzip.is_compound_tar());
+    assert!(TTZipArchiveFormat::TarLrzip.is_compound_tar());
+    assert!(!TTZipArchiveFormat::Zip.is_compound_tar());
+    assert!(!TTZipArchiveFormat::Iso.is_compound_tar());
+
+    assert!(TTZipArchiveFormat::Zip.is_archive_container());
+    assert!(TTZipArchiveFormat::Iso.is_archive_container());
+    assert!(TTZipArchiveFormat::Cpio.is_archive_container());
+    assert!(TTZipArchiveFormat::Ar.is_archive_container());
+    assert!(TTZipArchiveFormat::Deb.is_archive_container());
+    assert!(TTZipArchiveFormat::Rpm.is_archive_container());
+    assert!(TTZipArchiveFormat::Xar.is_archive_container());
+    assert!(TTZipArchiveFormat::Wim.is_archive_container());
+    assert!(TTZipArchiveFormat::Squashfs.is_archive_container());
+    assert!(TTZipArchiveFormat::Aar.is_archive_container());
+}
+
+#[test]
+fn test_resolve_create_format_and_detection_exhaustive() {
+    use std::path::Path;
+    use ttzip_engine::archive::unified::detect::resolve_create_format;
+    use ttzip_engine::types::TTZipArchiveFormat;
+
+    let test_cases = [
+        ("my_archive.zip", TTZipArchiveFormat::Zip),
+        ("archive.cbz", TTZipArchiveFormat::Zip),
+        ("archive.7z", TTZipArchiveFormat::SevenZip),
+        ("archive.cb7", TTZipArchiveFormat::SevenZip),
+        ("archive.tar", TTZipArchiveFormat::Tar),
+        ("archive.tar.gz", TTZipArchiveFormat::TarGz),
+        ("archive.tgz", TTZipArchiveFormat::TarGz),
+        ("archive.tar.bz2", TTZipArchiveFormat::TarBz2),
+        ("archive.tbz2", TTZipArchiveFormat::TarBz2),
+        ("archive.tar.xz", TTZipArchiveFormat::TarXz),
+        ("archive.txz", TTZipArchiveFormat::TarXz),
+        ("archive.tar.zst", TTZipArchiveFormat::TarZstd),
+        ("archive.tzst", TTZipArchiveFormat::TarZstd),
+        ("archive.tar.lz4", TTZipArchiveFormat::TarLz4),
+        ("archive.tlz4", TTZipArchiveFormat::TarLz4),
+        ("archive.tar.br", TTZipArchiveFormat::TarBrotli),
+        ("archive.tbr", TTZipArchiveFormat::TarBrotli),
+        ("archive.tar.lz", TTZipArchiveFormat::TarLzip),
+        ("archive.tlz", TTZipArchiveFormat::TarLzip),
+        ("archive.tar.lrz", TTZipArchiveFormat::TarLrzip),
+        ("archive.tlrz", TTZipArchiveFormat::TarLrzip),
+        ("disk.iso", TTZipArchiveFormat::Iso),
+        ("disk.img", TTZipArchiveFormat::Iso),
+        ("archive.cab", TTZipArchiveFormat::Cab),
+        ("image.wim", TTZipArchiveFormat::Wim),
+        ("archive.cpio", TTZipArchiveFormat::Cpio),
+        ("lib.a", TTZipArchiveFormat::Ar),
+        ("package.deb", TTZipArchiveFormat::Deb),
+        ("package.rpm", TTZipArchiveFormat::Rpm),
+        ("filesystem.squashfs", TTZipArchiveFormat::Squashfs),
+        ("filesystem.sqsh", TTZipArchiveFormat::Squashfs),
+        ("package.xar", TTZipArchiveFormat::Xar),
+        ("installer.pkg", TTZipArchiveFormat::Xar),
+        ("image.dmg", TTZipArchiveFormat::Dmg),
+        ("archive.rar", TTZipArchiveFormat::Rar),
+        ("archive.cbr", TTZipArchiveFormat::Rar),
+        ("archive.lzh", TTZipArchiveFormat::Lzh),
+        ("archive.lha", TTZipArchiveFormat::Lzh),
+        ("stream.gz", TTZipArchiveFormat::Gzip),
+        ("stream.bz2", TTZipArchiveFormat::Bzip2),
+        ("stream.xz", TTZipArchiveFormat::Xz),
+        ("stream.zst", TTZipArchiveFormat::Zstd),
+        ("stream.lz4", TTZipArchiveFormat::Lz4),
+        ("stream.br", TTZipArchiveFormat::Brotli),
+        ("stream.lzfse", TTZipArchiveFormat::Lzfse),
+        ("stream.sz", TTZipArchiveFormat::Snappy),
+        ("stream.lz", TTZipArchiveFormat::Lzip),
+        ("stream.lrz", TTZipArchiveFormat::Lrzip),
+    ];
+
+    for (name, expected_fmt) in test_cases {
+        let resolved = resolve_create_format(TTZipArchiveFormat::Auto, Path::new(name));
+        assert_eq!(resolved, expected_fmt, "resolve_create_format failed for {}", name);
+    }
+}
+

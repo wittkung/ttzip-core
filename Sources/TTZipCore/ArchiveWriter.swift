@@ -174,10 +174,25 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         case .tarBz2, .bz2: return .tarBz2
         case .tarXz, .xz: return .tarXz
         case .tarZst, .zst: return .tarZstd
+        case .tarLz4, .lz4: return .tarLz4
+        case .tarBrotli, .brotli: return .tarBrotli
+        case .tarLzip, .lzip: return .tarLzip
+        case .tarLrzip, .lrzip: return .tarLrzip
         case .dmg: return .dmg
+        case .iso: return .iso
+        case .cab: return .cab
+        case .wim: return .wim
+        case .aar: return .aar
+        case .cpio: return .cpio
+        case .ar: return .ar
+        case .deb: return .deb
+        case .rpm: return .rpm
+        case .xar: return .xar
         case .snappy: return .snappy
-        case .aar: return .lzfse
-        default: return .zip
+        case .lzfse: return .lzfse
+        case .squashfs: return .squashfs
+        case .lzh: return .lzh
+        case .rar: return .rar
         }
     }
 

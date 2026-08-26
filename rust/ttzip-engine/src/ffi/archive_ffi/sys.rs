@@ -9,6 +9,7 @@
 
 use libc::{c_char, c_int, c_long, c_uint, c_void, mode_t, size_t, ssize_t, time_t};
 
+#[allow(dead_code)]
 extern "C" {
     pub(crate) fn archive_read_new() -> *mut c_void;
     pub(crate) fn archive_read_support_format_all(a: *mut c_void) -> c_int;
@@ -18,6 +19,11 @@ extern "C" {
         a: *mut c_void,
         filename: *const c_char,
         block_size: size_t,
+    ) -> c_int;
+    pub(crate) fn archive_read_open_memory(
+        a: *mut c_void,
+        buff: *const c_void,
+        size: size_t,
     ) -> c_int;
     pub(crate) fn archive_read_next_header(a: *mut c_void, entry: *mut *mut c_void) -> c_int;
     pub(crate) fn archive_read_data(a: *mut c_void, buff: *mut c_void, len: size_t) -> ssize_t;
@@ -46,11 +52,26 @@ extern "C" {
     pub(crate) fn archive_write_new() -> *mut c_void;
     pub(crate) fn archive_write_set_format_zip(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_set_format_pax_restricted(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_pax(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_gnutar(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_ustar(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_set_format_7zip(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_iso9660(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_cpio(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_cpio_newc(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_ar_bsd(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_ar_svr4(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_xar(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_set_format_raw(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_add_filter_gzip(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_add_filter_bzip2(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_add_filter_xz(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_add_filter_zstd(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_add_filter_lz4(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_add_filter_lzip(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_add_filter_lrzip(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_add_filter_compress(a: *mut c_void) -> c_int;
+    pub(crate) fn archive_write_add_filter_none(a: *mut c_void) -> c_int;
     pub(crate) fn archive_write_set_passphrase(a: *mut c_void, passphrase: *const c_char) -> c_int;
     pub(crate) fn archive_write_set_options(a: *mut c_void, opts: *const c_char) -> c_int;
     pub(crate) fn archive_write_open_filename(a: *mut c_void, filename: *const c_char) -> c_int;

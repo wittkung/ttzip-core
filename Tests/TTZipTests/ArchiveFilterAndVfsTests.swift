@@ -95,4 +95,42 @@ final class ArchiveFilterAndVfsTests: XCTestCase {
         XCTAssertEqual(stats?.totalFiles, 3)
         XCTAssertEqual(stats?.totalSize, 4096 + 2048 + 1024)
     }
+    
+    // MARK: - 3. System Metadata Cleaning & PaxHeader Invariant Tests
+    
+    func testIsSystemMetadataComprehensive() {
+        // macOS & AppleDouble
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "__MACOSX"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "__MACOSX/._file.txt"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "folder/__MACOSX/._image.png"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "._metadata"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "sub/._hidden"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".DS_Store"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "docs/.DS_Store"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".localized"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".VolumeIcon.icns"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".Spotlight-V100/Store"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".Trashes/501/item"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".fseventsd/log"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: ".TemporaryItems/temp"))
+        
+        // POSIX PaxHeader
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "PaxHeader/file.txt"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "PaxHeaders.0/entry"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "subfolder/PaxHeader/data"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "PaxHeader"))
+        
+        // Windows system metadata
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "Thumbs.db"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "sub/thumbs.db"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "desktop.ini"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "ehthumbs.db"))
+        XCTAssertTrue(ArchiveFilterOptions.isSystemMetadata(path: "$RECYCLE.BIN/file"))
+        
+        // Legitimate files MUST NOT be treated as system metadata
+        XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "main.swift"))
+        XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "Sources/PaxHeaderHelper.swift"))
+        XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "Docs/DS_Store.txt"))
+        XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "images/photo.png"))
+    }
 }

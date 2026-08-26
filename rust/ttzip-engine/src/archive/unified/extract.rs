@@ -82,6 +82,44 @@ pub fn extract_archive_with_metrics(
         }
     }
 
+    // 2. Native Pure Rust Brotli & Snappy Decompression Fast Path
+    let name_lower = archive_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if name_lower.ends_with(".tar.br") || name_lower.ends_with(".tbr") || name_lower.ends_with(".br") {
+        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
+        if crate::codecs::brotli::brotli_decompress_file(archive_path, &tmp_tar, None).is_ok() {
+            let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
+            let _ = fs::remove_file(&tmp_tar);
+            if res.is_ok() {
+                return res;
+            }
+        }
+    } else if name_lower.ends_with(".sz") || name_lower.ends_with(".snappy") {
+        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
+        if crate::codecs::snappy::snappy_decompress_file(archive_path, &tmp_tar, None).is_ok() {
+            let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
+            let _ = fs::remove_file(&tmp_tar);
+            if res.is_ok() {
+                return res;
+            }
+        }
+    } else if name_lower.ends_with(".tar.zst") || name_lower.ends_with(".tzst") || name_lower.ends_with(".zst") {
+        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
+        if let (Ok(mut src_f), Ok(mut dst_f)) = (std::fs::File::open(archive_path), std::fs::File::create(&tmp_tar)) {
+            if crate::codecs::zstd::zstd_decompress_stream_pipe(&mut src_f, &mut dst_f, None).is_ok() {
+                let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
+                let _ = fs::remove_file(&tmp_tar);
+                if res.is_ok() {
+                    return res;
+                }
+            }
+            let _ = fs::remove_file(&tmp_tar);
+        }
+    }
+
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
         .map_err(|_| TTZipStatus::ErrInvalidParam)?;
 
@@ -142,8 +180,17 @@ unsafe fn extract_from_archive_handle(
             }
         };
 
+        let mut clean_rel_str = entry_rel_str.trim_start_matches(['/', '\\']);
+        if clean_rel_str.ends_with(";1") {
+            clean_rel_str = &clean_rel_str[..clean_rel_str.len() - 2];
+        }
+        if clean_rel_str.is_empty() || clean_rel_str == "." || clean_rel_str == "./" {
+            archive_read_data_skip(a);
+            continue;
+        }
+
         // Invariant II: ZipSlip & Security Path Sanitization
-        let target_path = sanitize_and_validate_path(destination_path, entry_rel_str)?;
+        let target_path = sanitize_and_validate_path(destination_path, clean_rel_str)?;
 
         let size = archive_entry_size(entry).max(0) as u64;
         let mode = archive_entry_mode(entry) as u32;
