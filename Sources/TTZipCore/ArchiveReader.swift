@@ -24,6 +24,15 @@ public enum ArchiveError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         localizedDescription()
     }
+
+    public var isPasswordRelated: Bool {
+        switch self {
+        case .passwordRequired, .passwordRequiredDetailed, .wrongPassword:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 /// High-performance stream-based archive reader (100% Pure Mozilla UniFFI Engine).

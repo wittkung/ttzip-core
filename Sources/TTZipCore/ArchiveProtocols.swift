@@ -46,30 +46,6 @@ extension ArchiveReading {
 public protocol ArchiveWriting: Sendable {
     func createArchive(_ request: ArchiveWriteRequest) async throws
     func createArchiveSync(_ request: ArchiveWriteRequest) throws
-
-    func createArchive(
-        outputPath: String,
-        format: ArchiveCompressionFormat,
-        level: ArchiveCompressionLevel,
-        inputPaths: [String],
-        options: ArchiveFilterOptions,
-        splitVolumeSizeBytes: Int64?,
-        password: String?,
-        advancedOptions: ArchiveAdvancedOptions,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
-    ) async throws
-
-    func createArchiveSync(
-        outputPath: String,
-        format: ArchiveCompressionFormat,
-        level: ArchiveCompressionLevel,
-        inputPaths: [String],
-        options: ArchiveFilterOptions,
-        password: String?,
-        splitVolumeSizeBytes: Int64?,
-        advancedOptions: ArchiveAdvancedOptions,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
-    ) throws
 }
 
 /// Core archive decompression and extraction engine interface.
@@ -81,7 +57,8 @@ public protocol ArchiveExtracting: Sendable {
         options: ArchiveFilterOptions,
         password: String?,
         advancedOptions: ArchiveAdvancedOptions?,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
     ) async throws -> Int64
 
     func extractSingleFile(
@@ -98,50 +75,51 @@ public protocol ArchiveExtracting: Sendable {
         options: ArchiveFilterOptions,
         password: String?,
         advancedOptions: ArchiveAdvancedOptions?,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)?
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
     ) throws -> Int64
 
     func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool
 }
 
 extension ArchiveExtracting {
-    /// Convenience facade method to extract an archive.
-    @inline(__always)
     @discardableResult
     public func extract(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) async throws -> Int64 {
-        try await extract(
+        return try await extract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
             advancedOptions: advancedOptions,
-            progressHandler: nil
+            progressHandler: progressHandler,
+            token: nil
         )
     }
 
-    /// Convenience facade method to synchronously extract an archive.
-    @inline(__always)
     @discardableResult
     public func extractSync(
         archivePath: String,
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) throws -> Int64 {
-        try extractSync(
+        return try extractSync(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
             advancedOptions: advancedOptions,
-            progressHandler: nil
+            progressHandler: progressHandler,
+            token: nil
         )
     }
 
@@ -153,15 +131,61 @@ extension ArchiveExtracting {
         destinationDir: String,
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
-        advancedOptions: ArchiveAdvancedOptions? = nil
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) async throws -> Int64 {
-        try await extract(
+        return try await extract(
             archivePath: archivePath,
             destinationDir: destinationDir,
             options: options,
             password: password,
             advancedOptions: advancedOptions,
-            progressHandler: nil
+            progressHandler: progressHandler,
+            token: nil
+        )
+    }
+
+    /// Convenience facade method to extract an archive without progress handler.
+    @inline(__always)
+    @discardableResult
+    public func extract(
+        archivePath: String,
+        destinationDir: String,
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions? = nil
+    ) async throws -> Int64 {
+        let noProgress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        return try await extract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            options: options,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: noProgress,
+            token: nil
+        )
+    }
+
+    /// Convenience facade method to synchronously extract an archive without progress handler.
+    @inline(__always)
+    @discardableResult
+    public func extractSync(
+        archivePath: String,
+        destinationDir: String,
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions? = nil
+    ) throws -> Int64 {
+        let noProgress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        return try extractSync(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            options: options,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: noProgress,
+            token: nil
         )
     }
 }

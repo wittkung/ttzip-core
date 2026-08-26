@@ -338,21 +338,37 @@ public final class ArchiveOperationPipeline: Sendable {
         splitVolumeSizeBytes: Int64? = nil,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> ArchiveOperationResult {
         let startTime = Date()
 
-        try await writer.createArchive(
-            outputPath: outputPath,
-            format: format,
-            level: level,
-            inputPaths: inputPaths,
-            options: options,
-            splitVolumeSizeBytes: splitVolumeSizeBytes,
-            password: password,
-            advancedOptions: advancedOptions ?? ArchiveAdvancedOptions(),
-            progressHandler: progress
-        )
+        if let defaultWriter = writer as? ArchiveWriter {
+            try await defaultWriter.createArchive(
+                outputPath: outputPath,
+                format: format,
+                level: level,
+                inputPaths: inputPaths,
+                options: options,
+                splitVolumeSizeBytes: splitVolumeSizeBytes,
+                password: password,
+                advancedOptions: advancedOptions ?? ArchiveAdvancedOptions(),
+                progressHandler: progress,
+                token: token
+            )
+        } else {
+            try await writer.createArchive(
+                outputPath: outputPath,
+                format: format,
+                level: level,
+                inputPaths: inputPaths,
+                options: options,
+                splitVolumeSizeBytes: splitVolumeSizeBytes,
+                password: password,
+                advancedOptions: advancedOptions ?? ArchiveAdvancedOptions(),
+                progressHandler: progress
+            )
+        }
 
         let duration = max(0.001, Date().timeIntervalSince(startTime))
         let totalOriginalBytes = inputPaths.reduce(Int64(0)) { $0 + calculateDirectorySize(at: $1) }
@@ -376,18 +392,32 @@ public final class ArchiveOperationPipeline: Sendable {
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> ArchiveOperationResult {
         let startTime = Date()
 
-        let extractedBytes = try await extractor.extract(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            options: options,
-            password: password,
-            advancedOptions: advancedOptions,
-            progressHandler: progress
-        )
+        let extractedBytes: Int64
+        if let defaultExtractor = extractor as? ArchiveExtractor {
+            extractedBytes = try await defaultExtractor.extract(
+                archivePath: archivePath,
+                destinationDir: destinationDir,
+                options: options,
+                password: password,
+                advancedOptions: advancedOptions,
+                progressHandler: progress,
+                token: token
+            )
+        } else {
+            extractedBytes = try await extractor.extract(
+                archivePath: archivePath,
+                destinationDir: destinationDir,
+                options: options,
+                password: password,
+                advancedOptions: advancedOptions,
+                progressHandler: progress
+            )
+        }
 
         let duration = max(0.001, Date().timeIntervalSince(startTime))
         let throughput = Double(extractedBytes) / (1024.0 * 1024.0 * duration)

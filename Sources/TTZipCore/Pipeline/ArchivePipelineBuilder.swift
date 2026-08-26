@@ -24,6 +24,7 @@ public struct ArchivePipelineBuilder: Sendable {
     public var password: String? = nil
     public var optionsBuilder: ArchiveOptionsBuilder = ArchiveOptionsBuilder()
     public var progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+    public var token: CancellationToken? = nil
     
     public init(writer: ArchiveWriting? = nil, extractor: ArchiveExtracting? = nil) {
         self.writer = writer
@@ -33,6 +34,13 @@ public struct ArchivePipelineBuilder: Sendable {
     public init(pipeline: ArchiveOperationPipeline) {
         self.writer = pipeline.writer
         self.extractor = pipeline.extractor
+    }
+
+    @discardableResult
+    public func withToken(_ token: CancellationToken?) -> ArchivePipelineBuilder {
+        var copy = self
+        copy.token = token
+        return copy
     }
 
     @discardableResult
@@ -98,7 +106,6 @@ public struct ArchivePipelineBuilder: Sendable {
     public func withFormat(_ format: ArchiveCompressionFormat) -> ArchivePipelineBuilder {
         var copy = self
         copy.format = format
-        copy.optionsBuilder = copy.optionsBuilder.withFormat(format)
         return copy
     }
     
@@ -106,7 +113,6 @@ public struct ArchivePipelineBuilder: Sendable {
     public func withLevel(_ level: ArchiveCompressionLevel) -> ArchivePipelineBuilder {
         var copy = self
         copy.level = level
-        copy.optionsBuilder = copy.optionsBuilder.withLevel(level)
         return copy
     }
     
@@ -128,7 +134,6 @@ public struct ArchivePipelineBuilder: Sendable {
     public func withPassword(_ password: String?) -> ArchivePipelineBuilder {
         var copy = self
         copy.password = password
-        copy.optionsBuilder = copy.optionsBuilder.withPassword(password)
         return copy
     }
     
@@ -207,7 +212,8 @@ public struct ArchivePipelineBuilder: Sendable {
             splitVolumeSizeBytes: splitVolumeSizeBytes,
             password: finalPassword,
             advancedOptions: advancedOpts,
-            progress: progressHandler
+            progress: progressHandler,
+            token: token
         )
     }
     
@@ -229,7 +235,8 @@ public struct ArchivePipelineBuilder: Sendable {
             options: filterOptions,
             password: finalPassword,
             advancedOptions: advancedOpts,
-            progress: progressHandler
+            progress: progressHandler,
+            token: token
         )
     }
 }

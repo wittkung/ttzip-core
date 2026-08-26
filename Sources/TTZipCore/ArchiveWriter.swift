@@ -71,7 +71,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         splitVolumeSizeBytes: Int64? = nil,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws {
         guard !inputPaths.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
@@ -90,7 +91,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
                 password: password,
                 splitVolumeSizeBytes: splitVolumeSizeBytes,
                 advancedOptions: advancedOptions,
-                progressHandler: progressHandler
+                progressHandler: progressHandler,
+                token: token
             )
         }.value
     }
@@ -106,7 +108,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         password: String? = nil,
         splitVolumeSizeBytes: Int64? = nil,
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) throws {
         guard !inputPaths.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
@@ -126,7 +129,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
             advancedOptions: advancedOptions,
             progressHandler: progressHandler,
             startTime: startTime,
-            totalBytes: totalBytes
+            totalBytes: totalBytes,
+            token: token
         )
     }
 
@@ -229,7 +233,8 @@ extension ArchiveWriter {
         advancedOptions: ArchiveAdvancedOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)?,
         startTime: Date,
-        totalBytes: Int64
+        totalBytes: Int64,
+        token: CancellationToken? = nil
     ) throws {
         let targetFmt = self.targetFormat ?? format
         let uniffiFmt = ArchiveWriter.mapUniFFIFormat(targetFmt)
@@ -247,7 +252,7 @@ extension ArchiveWriter {
                 level: uniffiLvl,
                 password: password,
                 progress: relay,
-                token: nil
+                token: token
             )
 
             let duration = max(0.001, Date().timeIntervalSince(startTime))
@@ -260,6 +265,9 @@ extension ArchiveWriter {
                 throughputMBs: throughput
             ))
         } catch {
+            if token?.isCancelled() == true {
+                throw ArchiveError.cancelled
+            }
             throw ArchiveError.readFailed(code: -1)
         }
     }

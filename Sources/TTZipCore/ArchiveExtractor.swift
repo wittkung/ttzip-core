@@ -29,7 +29,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) throws -> Int64 {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: archivePath) else {
@@ -51,7 +52,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             destinationDir: destinationDir,
             password: password,
             progressHandler: progressHandler,
-            outExtractedBytes: &extractedBytes
+            outExtractedBytes: &extractedBytes,
+            token: token
         ) {
             return Int64(extractedBytes)
         }
@@ -63,7 +65,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                     destinationDir: destinationDir,
                     password: vaultPwd,
                     progressHandler: progressHandler,
-                    outExtractedBytes: &extractedBytes
+                    outExtractedBytes: &extractedBytes,
+                    token: token
                 ) {
                     return Int64(extractedBytes)
                 }
@@ -89,6 +92,9 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             }
         }
 
+        if token?.isCancelled() == true {
+            throw ArchiveError.cancelled
+        }
         throw ArchiveError.readFailed(code: -1)
     }
 
@@ -100,7 +106,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> Int64 {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: archivePath) else {
@@ -121,7 +128,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 options: options,
                 password: password,
                 advancedOptions: advancedOptions,
-                progressHandler: progressHandler
+                progressHandler: progressHandler,
+                token: token
             )
         }.value
 
@@ -138,7 +146,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         options: ArchiveFilterOptions = .defaultClean,
         password: String? = nil,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> Int64 {
         return try await extract(
             archivePath: archivePath,
@@ -146,7 +155,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             options: options,
             password: password,
             advancedOptions: advancedOptions,
-            progressHandler: progressHandler
+            progressHandler: progressHandler,
+            token: token
         )
     }
 
@@ -236,7 +246,8 @@ extension ArchiveExtractor {
         destinationDir: String,
         password: String?,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        outExtractedBytes: UnsafeMutablePointer<UInt64>? = nil
+        outExtractedBytes: UnsafeMutablePointer<UInt64>? = nil,
+        token: CancellationToken? = nil
     ) -> Bool {
         let startTime = Date()
         let relay = progressHandler.map { ExtractProgressRelay(startTime: startTime, handler: $0) }
@@ -247,7 +258,7 @@ extension ArchiveExtractor {
                 destinationDir: destinationDir,
                 password: password,
                 progress: relay,
-                token: nil
+                token: token
             )
             outExtractedBytes?.pointee = report.uncompressedBytes
             Self.cleanupQuarantineAttributes(at: destinationDir)

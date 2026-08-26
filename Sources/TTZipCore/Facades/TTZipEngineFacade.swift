@@ -79,6 +79,19 @@ public protocol TTZipEngineFacading: Sendable {
         advancedOptions: ArchiveAdvancedOptions?,
         progress: (@Sendable (ArchiveProgress) -> Void)?
     ) async throws -> ArchiveOperationResult
+
+    func quickCompress(
+        inputs: [String],
+        outputPath: String,
+        format: ArchiveCompressionFormat,
+        level: ArchiveCompressionLevel,
+        password: String?,
+        splitSize: Int64?,
+        filterOptions: ArchiveFilterOptions,
+        advancedOptions: ArchiveAdvancedOptions?,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
+    ) async throws -> ArchiveOperationResult
     
     func quickExtract(
         archivePath: String,
@@ -86,6 +99,15 @@ public protocol TTZipEngineFacading: Sendable {
         password: String?,
         autoVaultUnlock: Bool,
         progress: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> ExtractResult
+
+    func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
     ) async throws -> ExtractResult
     
     func extractSingleEntry(
@@ -121,6 +143,47 @@ public protocol TTZipEngineFacading: Sendable {
 }
 
 extension TTZipEngineFacading {
+    public func quickCompress(
+        inputs: [String],
+        outputPath: String,
+        format: ArchiveCompressionFormat,
+        level: ArchiveCompressionLevel,
+        password: String?,
+        splitSize: Int64?,
+        filterOptions: ArchiveFilterOptions,
+        advancedOptions: ArchiveAdvancedOptions?,
+        progress: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> ArchiveOperationResult {
+        return try await quickCompress(
+            inputs: inputs,
+            outputPath: outputPath,
+            format: format,
+            level: level,
+            password: password,
+            splitSize: splitSize,
+            filterOptions: filterOptions,
+            advancedOptions: advancedOptions,
+            progress: progress,
+            token: nil
+        )
+    }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        progress: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> ExtractResult {
+        return try await quickExtract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            autoVaultUnlock: autoVaultUnlock,
+            progress: progress,
+            token: nil
+        )
+    }
     public func quickCompress(
         inputs: [String],
         outputPath: String,
@@ -364,8 +427,6 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
 //
 
 
-// MARK: - Unified Compression Facade
-
 extension TTZipEngineFacade {
     public func quickCompress(
         inputs: [String],
@@ -376,7 +437,8 @@ extension TTZipEngineFacade {
         splitSize: Int64? = nil,
         filterOptions: ArchiveFilterOptions = .defaultClean,
         advancedOptions: ArchiveAdvancedOptions? = nil,
-        progress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> ArchiveOperationResult {
         guard !inputs.isEmpty && !outputPath.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
@@ -441,6 +503,7 @@ extension TTZipEngineFacade {
             .withFilterOptions(filterOptions)
             .withPassword(password)
             .withSplitVolumeSize(splitSize)
+            .withToken(token)
         
         if let adv = advancedOptions {
             builder = builder.withAdvancedOptions(adv)
@@ -454,10 +517,6 @@ extension TTZipEngineFacade {
 
 // MARK: - Extract Facade
 
-//
-//
-
-
 // MARK: - Unified Extraction Facade
 
 extension TTZipEngineFacade {
@@ -466,7 +525,8 @@ extension TTZipEngineFacade {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
-        progress: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) async throws -> ExtractResult {
         guard !archivePath.isEmpty, !destinationDir.isEmpty, FileManager.default.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
@@ -481,7 +541,8 @@ extension TTZipEngineFacade {
                 archivePath: archivePath,
                 destinationDir: destinationDir,
                 password: explicitPwd,
-                progress: combinedProgress
+                progress: combinedProgress,
+                token: token
             )
             ArchivePasswordStore.shared.setPassword(explicitPwd, for: archivePath)
             return ExtractResult(
@@ -497,7 +558,8 @@ extension TTZipEngineFacade {
                     archivePath: archivePath,
                     destinationDir: destinationDir,
                     password: nil,
-                    progress: combinedProgress
+                    progress: combinedProgress,
+                    token: token
                 )
                 return ExtractResult(
                     archivePath: archivePath,
@@ -507,6 +569,9 @@ extension TTZipEngineFacade {
                     isVaultUnlocked: false
                 )
             } catch {
+                if token?.isCancelled() == true {
+                    throw ArchiveError.cancelled
+                }
                 // Password-less extraction failed, try password vault auto-unlock
             }
         }
@@ -531,7 +596,8 @@ extension TTZipEngineFacade {
                     archivePath: archivePath,
                     destinationDir: destinationDir,
                     password: entry.password,
-                    progress: combinedProgress
+                    progress: combinedProgress,
+                    token: token
                 )
                 passwordVault.recordUsage(id: entry.id)
                 ArchivePasswordStore.shared.setPassword(entry.password, for: archivePath)
@@ -572,12 +638,14 @@ extension TTZipEngineFacade {
         archivePath: String,
         destinationDir: String,
         password: String?,
-        progress: (@Sendable (ArchiveProgress) -> Void)?
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken? = nil
     ) async throws -> Double {
         var builder = pipelineBuilderProvider()
             .withArchivePath(archivePath)
             .withDestinationDir(destinationDir)
             .withPassword(password)
+            .withToken(token)
         
         if let progress = progress {
             builder = builder.withProgressHandler(progress)
