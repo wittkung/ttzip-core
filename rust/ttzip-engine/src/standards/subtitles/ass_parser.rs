@@ -58,8 +58,10 @@ pub fn parse_ass_script(content: &str) -> SubtitleScript {
             AssSection::None => {}
         }
     }
+    script.resolve_styles();
     script
 }
+
 
 fn parse_script_info_line(line: &str, script: &mut SubtitleScript) {
     if let Some((k, v)) = line.split_once(':') {

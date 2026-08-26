@@ -14,7 +14,10 @@
 //! - Password Vault NIST SP 800-38D AES-256-GCM, zeroize compiler fences, and tamper defense.
 //! - Hierarchical VFS tree aggregation, ASCII/Unicode rendering, and fuzzy search scoring.
 
+#![allow(deprecated)]
+
 use std::ffi::{CStr, CString};
+
 use std::fs;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;

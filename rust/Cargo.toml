@@ -20,9 +20,10 @@ categories = ["compression", "command-line-utilities", "filesystem"]
 [profile.release]
 opt-level = 3
 lto = "thin"
-codegen-units = 1
+codegen-units = 16
 panic = "unwind"
 strip = true
+
 
 [profile.test]
 opt-level = 1

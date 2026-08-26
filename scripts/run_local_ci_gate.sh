@@ -88,8 +88,9 @@ declare -a STAGE_KEYS=(
 declare -a STAGE_COMMANDS=(
     "./scripts/lint_loc_gate.sh"
     "./scripts/verify_uniffi_symbols.sh"
-    "./scripts/build_sdk_framework.sh --release"
+    "./scripts/build_sdk_framework.sh --release --native"
     "swift test"
+
     "swift run ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz"
 )

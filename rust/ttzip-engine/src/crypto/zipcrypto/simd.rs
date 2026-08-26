@@ -7,7 +7,12 @@
 
 //! Hardware-accelerated CRC-32 instructions and multi-stream SIMD batch processing for ZipCrypto.
 
-use super::scalar::{decrypt_byte_key, ZIPCRYPTO_MULT};
+use super::scalar::decrypt_byte_key;
+
+#[cfg(target_arch = "aarch64")]
+use super::scalar::ZIPCRYPTO_MULT;
+
+
 
 #[cfg(not(target_arch = "aarch64"))]
 use super::scalar::update_keys;

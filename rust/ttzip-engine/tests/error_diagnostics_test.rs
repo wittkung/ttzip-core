@@ -5,7 +5,10 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
+#![allow(deprecated)]
+
 use std::ffi::CStr;
+
 use ttzip_engine::ffi::{
     ttzip_free_string, ttzip_rust_clear_last_error, ttzip_rust_get_last_error_info,
     ttzip_rust_get_last_error_message_owned, ttzip_rust_last_error_message,

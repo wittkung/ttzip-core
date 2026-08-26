@@ -12,9 +12,11 @@ use crate::standards::subtitles::types::{SubtitleDialogue, SubtitleScript};
 /// High-performance time-indexed searchable subtitle timeline.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubtitleTimeline {
-    dialogues: Vec<SubtitleDialogue>,
-    max_duration_ms: i64,
+    pub dialogues: Vec<SubtitleDialogue>,
+    pub max_duration_ms: i64,
 }
+
+
 
 impl SubtitleTimeline {
     /// Builds a new timeline index from a dialogue list, sorting them chronologically.

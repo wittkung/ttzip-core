@@ -150,6 +150,24 @@ pub struct SubtitleStyle {
     pub encoding: u32,
 }
 
+impl SubtitleStyle {
+    /// Cascades base style properties to a subtitle span lacking explicit inline overrides.
+    pub fn apply_to_span(&self, span: &mut SubtitleSpan) {
+        if span.primary_color.is_none() { span.primary_color = Some(self.primary_color); }
+        if span.secondary_color.is_none() { span.secondary_color = Some(self.secondary_color); }
+        if span.outline_color.is_none() { span.outline_color = Some(self.outline_color); }
+        if span.shadow_color.is_none() { span.shadow_color = Some(self.back_color); }
+        if span.font_name.is_none() { span.font_name = Some(self.font_name.clone()); }
+        if span.font_size.is_none() { span.font_size = Some(self.font_size); }
+        if span.bold.is_none() && self.bold { span.bold = Some(true); }
+        if span.italic.is_none() && self.italic { span.italic = Some(true); }
+        if span.underline.is_none() && self.underline { span.underline = Some(true); }
+        if span.strikeout.is_none() && self.strikeout { span.strikeout = Some(true); }
+        if span.alignment.is_none() { span.alignment = Some(self.alignment); }
+    }
+}
+
+
 impl Default for SubtitleStyle {
     fn default() -> Self {
         Self {
@@ -213,4 +231,19 @@ impl SubtitleScript {
             styles: HashMap::new(), dialogues: Vec::new(),
         }
     }
+
+    /// Resolves style cascades across all dialogues.
+    pub fn resolve_styles(&mut self) {
+        for d in &mut self.dialogues {
+            if let Some(style) = self.styles.get(&d.style) {
+                if d.margin_l == 0 { d.margin_l = style.margin_l; }
+                if d.margin_r == 0 { d.margin_r = style.margin_r; }
+                if d.margin_v == 0 { d.margin_v = style.margin_v; }
+                for span in &mut d.spans {
+                    style.apply_to_span(span);
+                }
+            }
+        }
+    }
 }
+

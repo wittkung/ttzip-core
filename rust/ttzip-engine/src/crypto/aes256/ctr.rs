@@ -23,10 +23,9 @@ pub fn aes256_ctr_crypt(
         return Ok(());
     }
 
-    let ctx = Aes256Context::new(key);
-
     #[cfg(target_arch = "aarch64")]
     unsafe {
+        let ctx = Aes256Context::new(key);
         super::simd::aes256_ctr_crypt_neon(
             &ctx,
             initial_counter,
@@ -36,6 +35,7 @@ pub fn aes256_ctr_crypt(
         );
         Ok(())
     }
+
 
     #[cfg(not(target_arch = "aarch64"))]
     {

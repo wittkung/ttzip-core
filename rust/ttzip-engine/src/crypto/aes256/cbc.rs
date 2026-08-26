@@ -26,10 +26,9 @@ pub fn aes256_cbc_decrypt(
         return Ok(());
     }
 
-    let ctx = Aes256Context::new(key);
-
     #[cfg(target_arch = "aarch64")]
     unsafe {
+        let ctx = Aes256Context::new(key);
         super::simd::aes256_cbc_decrypt_neon(
             &ctx,
             iv,
@@ -71,10 +70,9 @@ pub fn aes256_cbc_encrypt(
         return Ok(());
     }
 
-    let ctx = Aes256Context::new(key);
-
     #[cfg(target_arch = "aarch64")]
     unsafe {
+        let ctx = Aes256Context::new(key);
         super::simd::aes256_cbc_encrypt_neon(
             &ctx,
             iv,

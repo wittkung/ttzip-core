@@ -10,18 +10,32 @@
 //! Provides ARM64 PMULL 12-way vector polynomial folding (>65 GB/s on Apple Silicon),
 //! x86_64 PCLMULQDQ folding, and a Slice-by-8 scalar fallback.
 
+#[cfg(target_arch = "aarch64")]
 const CRC32_X1567_MODG: u64 = 0x596c8d81;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X1503_MODG: u64 = 0xf5e48c85;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X799_MODG: u64 = 0xdf068dc2;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X735_MODG: u64 = 0x57c54819;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X543_MODG: u64 = 0x8f352d95;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X479_MODG: u64 = 0x1d9513d7;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X415_MODG: u64 = 0x3db1ecdc;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X351_MODG: u64 = 0xaf449247;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X287_MODG: u64 = 0xf1da05aa;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X223_MODG: u64 = 0x81256527;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X159_MODG: u64 = 0xae689191;
+#[cfg(target_arch = "aarch64")]
 const CRC32_X95_MODG: u64 = 0xccaa009e;
+
+
 
 // ============================================================================
 // 1. ARM64 PMULL 12-Way & 4-Way Vector Folding
