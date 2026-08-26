@@ -13,6 +13,7 @@
 pub mod archive;
 pub mod audio;
 pub mod benchmark;
+pub mod demuxer;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
@@ -24,6 +25,7 @@ pub mod integrity;
 #[cfg(feature = "probe")]
 pub mod metadata;
 pub mod smart_extract;
+pub mod subtitles;
 pub mod syntax;
 pub mod transaction;
 pub mod types;
@@ -33,6 +35,7 @@ pub mod vfs;
 pub use archive::*;
 pub use audio::*;
 pub use benchmark::*;
+pub use demuxer::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;
@@ -44,6 +47,7 @@ pub use integrity::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
 pub use smart_extract::*;
+pub use subtitles::*;
 pub use syntax::*;
 pub use transaction::*;
 pub use types::*;

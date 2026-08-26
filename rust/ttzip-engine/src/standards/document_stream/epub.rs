@@ -60,8 +60,9 @@ pub struct EpubBook {
 struct ManifestItem {
     href: String,
     media_type: String,
-    properties: String,
+    _properties: String,
 }
+
 
 /// Parses an EPUB archive completely in-memory without disk extraction.
 pub fn parse_epub_from_memory(epub_bytes: &[u8]) -> Result<EpubBook, DocumentStreamError> {
@@ -164,7 +165,8 @@ fn parse_manifest(doc: &roxmltree::Document) -> (HashMap<String, ManifestItem>, 
                 if properties.contains("cover-image") || id == "cover" || id == "cover-image" {
                     cover = Some(id.to_string());
                 }
-                manifest.insert(id.to_string(), ManifestItem { href: href.to_string(), media_type, properties });
+                manifest.insert(id.to_string(), ManifestItem { href: href.to_string(), media_type, _properties: properties });
+
             }
         }
     }

@@ -484,6 +484,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory() != 12917:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_demux_media_tracks() != 28944:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_detect_split_volume_chain() != 23903:
@@ -520,6 +522,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_find_active_subtitles_at() != 63255:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory() != 45521:
@@ -547,6 +551,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory() != 15044:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata() != 61296:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_parse_subtitle_script() != 63909:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_probe_buffer_metadata() != 36698:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1011,6 +1017,11 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory.argtypes = 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_demux_media_tracks.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_demux_media_tracks.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_detect_archive_format.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1125,6 +1136,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded.argty
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_find_active_subtitles_at.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_find_active_subtitles_at.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint64,
@@ -1209,6 +1226,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_parse_epub_metadata.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_parse_epub_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_parse_subtitle_script.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_parse_subtitle_script.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_probe_buffer_metadata.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1658,6 +1681,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_create_archive_stream.restype = cty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_demux_media_tracks.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_demux_media_tracks.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_detect_archive_format.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_detect_archive_format.restype = ctypes.c_uint16
@@ -1712,6 +1738,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream.restype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_find_active_subtitles_at.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_find_active_subtitles_at.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset.restype = ctypes.c_uint16
@@ -1754,6 +1783,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory.restype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_parse_subtitle_script.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_parse_subtitle_script.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_probe_buffer_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_probe_buffer_metadata.restype = ctypes.c_uint16
@@ -1904,6 +1936,32 @@ _uniffi_check_contract_api_version(_UniffiLib)
 
 # Public interface members begin here.
 
+
+class _UniffiConverterUInt8(_UniffiConverterPrimitiveInt):
+    CLASS_NAME = "u8"
+    VALUE_MIN = 0
+    VALUE_MAX = 2**8
+
+    @staticmethod
+    def read(buf):
+        return buf.read_u8()
+
+    @staticmethod
+    def write(value, buf):
+        buf.write_u8(value)
+
+class _UniffiConverterUInt16(_UniffiConverterPrimitiveInt):
+    CLASS_NAME = "u16"
+    VALUE_MIN = 0
+    VALUE_MAX = 2**16
+
+    @staticmethod
+    def read(buf):
+        return buf.read_u16()
+
+    @staticmethod
+    def write(value, buf):
+        buf.write_u16(value)
 
 class _UniffiConverterUInt32(_UniffiConverterPrimitiveInt):
     CLASS_NAME = "u32"
@@ -4330,6 +4388,264 @@ class _UniffiConverterTypeUniFfiLicensePayload(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.order_id, buf)
 
 
+class UniFfiMediaAttachment:
+    """
+    An embedded binary attachment (such as cover art, fonts, or poster images).
+    """
+
+    file_name: "str"
+    mime_type: "str"
+    data: "bytes"
+    def __init__(self, *, file_name: "str", mime_type: "str", data: "bytes"):
+        self.file_name = file_name
+        self.mime_type = mime_type
+        self.data = data
+
+    def __str__(self):
+        return "UniFfiMediaAttachment(file_name={}, mime_type={}, data={})".format(self.file_name, self.mime_type, self.data)
+
+    def __eq__(self, other):
+        if self.file_name != other.file_name:
+            return False
+        if self.mime_type != other.mime_type:
+            return False
+        if self.data != other.data:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMediaAttachment(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMediaAttachment(
+            file_name=_UniffiConverterString.read(buf),
+            mime_type=_UniffiConverterString.read(buf),
+            data=_UniffiConverterBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.file_name)
+        _UniffiConverterString.check_lower(value.mime_type)
+        _UniffiConverterBytes.check_lower(value.data)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.file_name, buf)
+        _UniffiConverterString.write(value.mime_type, buf)
+        _UniffiConverterBytes.write(value.data, buf)
+
+
+class UniFfiMediaChapter:
+    """
+    A chapter entry denoting a structured segment within the media timeline.
+    """
+
+    start_time_ms: "int"
+    end_time_ms: "typing.Optional[int]"
+    title: "str"
+    def __init__(self, *, start_time_ms: "int", end_time_ms: "typing.Optional[int]", title: "str"):
+        self.start_time_ms = start_time_ms
+        self.end_time_ms = end_time_ms
+        self.title = title
+
+    def __str__(self):
+        return "UniFfiMediaChapter(start_time_ms={}, end_time_ms={}, title={})".format(self.start_time_ms, self.end_time_ms, self.title)
+
+    def __eq__(self, other):
+        if self.start_time_ms != other.start_time_ms:
+            return False
+        if self.end_time_ms != other.end_time_ms:
+            return False
+        if self.title != other.title:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMediaChapter(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMediaChapter(
+            start_time_ms=_UniffiConverterUInt64.read(buf),
+            end_time_ms=_UniffiConverterOptionalUInt64.read(buf),
+            title=_UniffiConverterString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.start_time_ms)
+        _UniffiConverterOptionalUInt64.check_lower(value.end_time_ms)
+        _UniffiConverterString.check_lower(value.title)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.start_time_ms, buf)
+        _UniffiConverterOptionalUInt64.write(value.end_time_ms, buf)
+        _UniffiConverterString.write(value.title, buf)
+
+
+class UniFfiMediaDemuxSummary:
+    """
+    Comprehensive summary of a demuxed media container.
+    """
+
+    container_format: "str"
+    duration_ms: "typing.Optional[int]"
+    title: "typing.Optional[str]"
+    tracks: "typing.List[UniFfiMediaTrackInfo]"
+    chapters: "typing.List[UniFfiMediaChapter]"
+    attachments: "typing.List[UniFfiMediaAttachment]"
+    def __init__(self, *, container_format: "str", duration_ms: "typing.Optional[int]", title: "typing.Optional[str]", tracks: "typing.List[UniFfiMediaTrackInfo]", chapters: "typing.List[UniFfiMediaChapter]", attachments: "typing.List[UniFfiMediaAttachment]"):
+        self.container_format = container_format
+        self.duration_ms = duration_ms
+        self.title = title
+        self.tracks = tracks
+        self.chapters = chapters
+        self.attachments = attachments
+
+    def __str__(self):
+        return "UniFfiMediaDemuxSummary(container_format={}, duration_ms={}, title={}, tracks={}, chapters={}, attachments={})".format(self.container_format, self.duration_ms, self.title, self.tracks, self.chapters, self.attachments)
+
+    def __eq__(self, other):
+        if self.container_format != other.container_format:
+            return False
+        if self.duration_ms != other.duration_ms:
+            return False
+        if self.title != other.title:
+            return False
+        if self.tracks != other.tracks:
+            return False
+        if self.chapters != other.chapters:
+            return False
+        if self.attachments != other.attachments:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMediaDemuxSummary(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMediaDemuxSummary(
+            container_format=_UniffiConverterString.read(buf),
+            duration_ms=_UniffiConverterOptionalUInt64.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            tracks=_UniffiConverterSequenceTypeUniFfiMediaTrackInfo.read(buf),
+            chapters=_UniffiConverterSequenceTypeUniFfiMediaChapter.read(buf),
+            attachments=_UniffiConverterSequenceTypeUniFfiMediaAttachment.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.container_format)
+        _UniffiConverterOptionalUInt64.check_lower(value.duration_ms)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterSequenceTypeUniFfiMediaTrackInfo.check_lower(value.tracks)
+        _UniffiConverterSequenceTypeUniFfiMediaChapter.check_lower(value.chapters)
+        _UniffiConverterSequenceTypeUniFfiMediaAttachment.check_lower(value.attachments)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.container_format, buf)
+        _UniffiConverterOptionalUInt64.write(value.duration_ms, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterSequenceTypeUniFfiMediaTrackInfo.write(value.tracks, buf)
+        _UniffiConverterSequenceTypeUniFfiMediaChapter.write(value.chapters, buf)
+        _UniffiConverterSequenceTypeUniFfiMediaAttachment.write(value.attachments, buf)
+
+
+class UniFfiMediaTrackInfo:
+    """
+    Metadata describing a specific elementary stream/track inside a media container.
+    """
+
+    track_id: "int"
+    track_type: "UniFfiMediaTrackType"
+    codec: "str"
+    language: "typing.Optional[str]"
+    title: "typing.Optional[str]"
+    is_default: "bool"
+    channels: "typing.Optional[int]"
+    sample_rate: "typing.Optional[int]"
+    width: "typing.Optional[int]"
+    height: "typing.Optional[int]"
+    def __init__(self, *, track_id: "int", track_type: "UniFfiMediaTrackType", codec: "str", language: "typing.Optional[str]", title: "typing.Optional[str]", is_default: "bool", channels: "typing.Optional[int]", sample_rate: "typing.Optional[int]", width: "typing.Optional[int]", height: "typing.Optional[int]"):
+        self.track_id = track_id
+        self.track_type = track_type
+        self.codec = codec
+        self.language = language
+        self.title = title
+        self.is_default = is_default
+        self.channels = channels
+        self.sample_rate = sample_rate
+        self.width = width
+        self.height = height
+
+    def __str__(self):
+        return "UniFfiMediaTrackInfo(track_id={}, track_type={}, codec={}, language={}, title={}, is_default={}, channels={}, sample_rate={}, width={}, height={})".format(self.track_id, self.track_type, self.codec, self.language, self.title, self.is_default, self.channels, self.sample_rate, self.width, self.height)
+
+    def __eq__(self, other):
+        if self.track_id != other.track_id:
+            return False
+        if self.track_type != other.track_type:
+            return False
+        if self.codec != other.codec:
+            return False
+        if self.language != other.language:
+            return False
+        if self.title != other.title:
+            return False
+        if self.is_default != other.is_default:
+            return False
+        if self.channels != other.channels:
+            return False
+        if self.sample_rate != other.sample_rate:
+            return False
+        if self.width != other.width:
+            return False
+        if self.height != other.height:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMediaTrackInfo(
+            track_id=_UniffiConverterUInt32.read(buf),
+            track_type=_UniffiConverterTypeUniFfiMediaTrackType.read(buf),
+            codec=_UniffiConverterString.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            is_default=_UniffiConverterBool.read(buf),
+            channels=_UniffiConverterOptionalUInt16.read(buf),
+            sample_rate=_UniffiConverterOptionalUInt32.read(buf),
+            width=_UniffiConverterOptionalUInt32.read(buf),
+            height=_UniffiConverterOptionalUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.track_id)
+        _UniffiConverterTypeUniFfiMediaTrackType.check_lower(value.track_type)
+        _UniffiConverterString.check_lower(value.codec)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterBool.check_lower(value.is_default)
+        _UniffiConverterOptionalUInt16.check_lower(value.channels)
+        _UniffiConverterOptionalUInt32.check_lower(value.sample_rate)
+        _UniffiConverterOptionalUInt32.check_lower(value.width)
+        _UniffiConverterOptionalUInt32.check_lower(value.height)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.track_id, buf)
+        _UniffiConverterTypeUniFfiMediaTrackType.write(value.track_type, buf)
+        _UniffiConverterString.write(value.codec, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterBool.write(value.is_default, buf)
+        _UniffiConverterOptionalUInt16.write(value.channels, buf)
+        _UniffiConverterOptionalUInt32.write(value.sample_rate, buf)
+        _UniffiConverterOptionalUInt32.write(value.width, buf)
+        _UniffiConverterOptionalUInt32.write(value.height, buf)
+
+
 class UniFfiParentAndPrefix:
     """
     Parent directory and autocompletion prefix record.
@@ -4555,6 +4871,603 @@ class _UniffiConverterTypeUniFfiSmartExtractDecision(_UniffiConverterRustBuffer)
         _UniffiConverterUInt32.write(value.effective_root_count, buf)
         _UniffiConverterOptionalString.write(value.single_root_name, buf)
         _UniffiConverterString.write(value.destination_folder, buf)
+
+
+class UniFfiSubtitleColor:
+    """
+    8-bit RGBA color representation for subtitle styling across FFI boundary.
+    """
+
+    r: "int"
+    g: "int"
+    b: "int"
+    a: "int"
+    def __init__(self, *, r: "int", g: "int", b: "int", a: "int"):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+
+    def __str__(self):
+        return "UniFfiSubtitleColor(r={}, g={}, b={}, a={})".format(self.r, self.g, self.b, self.a)
+
+    def __eq__(self, other):
+        if self.r != other.r:
+            return False
+        if self.g != other.g:
+            return False
+        if self.b != other.b:
+            return False
+        if self.a != other.a:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleColor(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleColor(
+            r=_UniffiConverterUInt8.read(buf),
+            g=_UniffiConverterUInt8.read(buf),
+            b=_UniffiConverterUInt8.read(buf),
+            a=_UniffiConverterUInt8.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt8.check_lower(value.r)
+        _UniffiConverterUInt8.check_lower(value.g)
+        _UniffiConverterUInt8.check_lower(value.b)
+        _UniffiConverterUInt8.check_lower(value.a)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt8.write(value.r, buf)
+        _UniffiConverterUInt8.write(value.g, buf)
+        _UniffiConverterUInt8.write(value.b, buf)
+        _UniffiConverterUInt8.write(value.a, buf)
+
+
+class UniFfiSubtitleDialogue:
+    """
+    A parsed subtitle dialogue event.
+    """
+
+    layer: "int"
+    start_ms: "int"
+    end_ms: "int"
+    style: "str"
+    actor: "str"
+    margin_l: "int"
+    margin_r: "int"
+    margin_v: "int"
+    effect: "str"
+    raw_text: "str"
+    plain_text: "str"
+    spans: "typing.List[UniFfiSubtitleSpan]"
+    def __init__(self, *, layer: "int", start_ms: "int", end_ms: "int", style: "str", actor: "str", margin_l: "int", margin_r: "int", margin_v: "int", effect: "str", raw_text: "str", plain_text: "str", spans: "typing.List[UniFfiSubtitleSpan]"):
+        self.layer = layer
+        self.start_ms = start_ms
+        self.end_ms = end_ms
+        self.style = style
+        self.actor = actor
+        self.margin_l = margin_l
+        self.margin_r = margin_r
+        self.margin_v = margin_v
+        self.effect = effect
+        self.raw_text = raw_text
+        self.plain_text = plain_text
+        self.spans = spans
+
+    def __str__(self):
+        return "UniFfiSubtitleDialogue(layer={}, start_ms={}, end_ms={}, style={}, actor={}, margin_l={}, margin_r={}, margin_v={}, effect={}, raw_text={}, plain_text={}, spans={})".format(self.layer, self.start_ms, self.end_ms, self.style, self.actor, self.margin_l, self.margin_r, self.margin_v, self.effect, self.raw_text, self.plain_text, self.spans)
+
+    def __eq__(self, other):
+        if self.layer != other.layer:
+            return False
+        if self.start_ms != other.start_ms:
+            return False
+        if self.end_ms != other.end_ms:
+            return False
+        if self.style != other.style:
+            return False
+        if self.actor != other.actor:
+            return False
+        if self.margin_l != other.margin_l:
+            return False
+        if self.margin_r != other.margin_r:
+            return False
+        if self.margin_v != other.margin_v:
+            return False
+        if self.effect != other.effect:
+            return False
+        if self.raw_text != other.raw_text:
+            return False
+        if self.plain_text != other.plain_text:
+            return False
+        if self.spans != other.spans:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleDialogue(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleDialogue(
+            layer=_UniffiConverterUInt32.read(buf),
+            start_ms=_UniffiConverterInt64.read(buf),
+            end_ms=_UniffiConverterInt64.read(buf),
+            style=_UniffiConverterString.read(buf),
+            actor=_UniffiConverterString.read(buf),
+            margin_l=_UniffiConverterUInt32.read(buf),
+            margin_r=_UniffiConverterUInt32.read(buf),
+            margin_v=_UniffiConverterUInt32.read(buf),
+            effect=_UniffiConverterString.read(buf),
+            raw_text=_UniffiConverterString.read(buf),
+            plain_text=_UniffiConverterString.read(buf),
+            spans=_UniffiConverterSequenceTypeUniFfiSubtitleSpan.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.layer)
+        _UniffiConverterInt64.check_lower(value.start_ms)
+        _UniffiConverterInt64.check_lower(value.end_ms)
+        _UniffiConverterString.check_lower(value.style)
+        _UniffiConverterString.check_lower(value.actor)
+        _UniffiConverterUInt32.check_lower(value.margin_l)
+        _UniffiConverterUInt32.check_lower(value.margin_r)
+        _UniffiConverterUInt32.check_lower(value.margin_v)
+        _UniffiConverterString.check_lower(value.effect)
+        _UniffiConverterString.check_lower(value.raw_text)
+        _UniffiConverterString.check_lower(value.plain_text)
+        _UniffiConverterSequenceTypeUniFfiSubtitleSpan.check_lower(value.spans)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.layer, buf)
+        _UniffiConverterInt64.write(value.start_ms, buf)
+        _UniffiConverterInt64.write(value.end_ms, buf)
+        _UniffiConverterString.write(value.style, buf)
+        _UniffiConverterString.write(value.actor, buf)
+        _UniffiConverterUInt32.write(value.margin_l, buf)
+        _UniffiConverterUInt32.write(value.margin_r, buf)
+        _UniffiConverterUInt32.write(value.margin_v, buf)
+        _UniffiConverterString.write(value.effect, buf)
+        _UniffiConverterString.write(value.raw_text, buf)
+        _UniffiConverterString.write(value.plain_text, buf)
+        _UniffiConverterSequenceTypeUniFfiSubtitleSpan.write(value.spans, buf)
+
+
+class UniFfiSubtitlePosition:
+    """
+    2D Cartesian coordinates for explicit subtitle positioning.
+    """
+
+    x: "float"
+    y: "float"
+    def __init__(self, *, x: "float", y: "float"):
+        self.x = x
+        self.y = y
+
+    def __str__(self):
+        return "UniFfiSubtitlePosition(x={}, y={})".format(self.x, self.y)
+
+    def __eq__(self, other):
+        if self.x != other.x:
+            return False
+        if self.y != other.y:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitlePosition(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitlePosition(
+            x=_UniffiConverterFloat.read(buf),
+            y=_UniffiConverterFloat.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterFloat.check_lower(value.x)
+        _UniffiConverterFloat.check_lower(value.y)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterFloat.write(value.x, buf)
+        _UniffiConverterFloat.write(value.y, buf)
+
+
+class UniFfiSubtitleScript:
+    """
+    Complete parsed subtitle script AST document exposed to Swift.
+    """
+
+    format: "UniFfiSubtitleFormat"
+    title: "typing.Optional[str]"
+    script_type: "typing.Optional[str]"
+    play_res_x: "typing.Optional[int]"
+    play_res_y: "typing.Optional[int]"
+    wrap_style: "typing.Optional[int]"
+    scaled_border_and_shadow: "typing.Optional[bool]"
+    styles: "dict[str, UniFfiSubtitleStyle]"
+    dialogues: "typing.List[UniFfiSubtitleDialogue]"
+    def __init__(self, *, format: "UniFfiSubtitleFormat", title: "typing.Optional[str]", script_type: "typing.Optional[str]", play_res_x: "typing.Optional[int]", play_res_y: "typing.Optional[int]", wrap_style: "typing.Optional[int]", scaled_border_and_shadow: "typing.Optional[bool]", styles: "dict[str, UniFfiSubtitleStyle]", dialogues: "typing.List[UniFfiSubtitleDialogue]"):
+        self.format = format
+        self.title = title
+        self.script_type = script_type
+        self.play_res_x = play_res_x
+        self.play_res_y = play_res_y
+        self.wrap_style = wrap_style
+        self.scaled_border_and_shadow = scaled_border_and_shadow
+        self.styles = styles
+        self.dialogues = dialogues
+
+    def __str__(self):
+        return "UniFfiSubtitleScript(format={}, title={}, script_type={}, play_res_x={}, play_res_y={}, wrap_style={}, scaled_border_and_shadow={}, styles={}, dialogues={})".format(self.format, self.title, self.script_type, self.play_res_x, self.play_res_y, self.wrap_style, self.scaled_border_and_shadow, self.styles, self.dialogues)
+
+    def __eq__(self, other):
+        if self.format != other.format:
+            return False
+        if self.title != other.title:
+            return False
+        if self.script_type != other.script_type:
+            return False
+        if self.play_res_x != other.play_res_x:
+            return False
+        if self.play_res_y != other.play_res_y:
+            return False
+        if self.wrap_style != other.wrap_style:
+            return False
+        if self.scaled_border_and_shadow != other.scaled_border_and_shadow:
+            return False
+        if self.styles != other.styles:
+            return False
+        if self.dialogues != other.dialogues:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleScript(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleScript(
+            format=_UniffiConverterTypeUniFfiSubtitleFormat.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            script_type=_UniffiConverterOptionalString.read(buf),
+            play_res_x=_UniffiConverterOptionalUInt32.read(buf),
+            play_res_y=_UniffiConverterOptionalUInt32.read(buf),
+            wrap_style=_UniffiConverterOptionalUInt32.read(buf),
+            scaled_border_and_shadow=_UniffiConverterOptionalBool.read(buf),
+            styles=_UniffiConverterMapStringTypeUniFfiSubtitleStyle.read(buf),
+            dialogues=_UniffiConverterSequenceTypeUniFfiSubtitleDialogue.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeUniFfiSubtitleFormat.check_lower(value.format)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterOptionalString.check_lower(value.script_type)
+        _UniffiConverterOptionalUInt32.check_lower(value.play_res_x)
+        _UniffiConverterOptionalUInt32.check_lower(value.play_res_y)
+        _UniffiConverterOptionalUInt32.check_lower(value.wrap_style)
+        _UniffiConverterOptionalBool.check_lower(value.scaled_border_and_shadow)
+        _UniffiConverterMapStringTypeUniFfiSubtitleStyle.check_lower(value.styles)
+        _UniffiConverterSequenceTypeUniFfiSubtitleDialogue.check_lower(value.dialogues)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeUniFfiSubtitleFormat.write(value.format, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterOptionalString.write(value.script_type, buf)
+        _UniffiConverterOptionalUInt32.write(value.play_res_x, buf)
+        _UniffiConverterOptionalUInt32.write(value.play_res_y, buf)
+        _UniffiConverterOptionalUInt32.write(value.wrap_style, buf)
+        _UniffiConverterOptionalBool.write(value.scaled_border_and_shadow, buf)
+        _UniffiConverterMapStringTypeUniFfiSubtitleStyle.write(value.styles, buf)
+        _UniffiConverterSequenceTypeUniFfiSubtitleDialogue.write(value.dialogues, buf)
+
+
+class UniFfiSubtitleSpan:
+    """
+    An inline styled span of text inside a subtitle dialogue line.
+    """
+
+    text: "str"
+    bold: "typing.Optional[bool]"
+    italic: "typing.Optional[bool]"
+    underline: "typing.Optional[bool]"
+    strikeout: "typing.Optional[bool]"
+    primary_color: "typing.Optional[UniFfiSubtitleColor]"
+    secondary_color: "typing.Optional[UniFfiSubtitleColor]"
+    outline_color: "typing.Optional[UniFfiSubtitleColor]"
+    shadow_color: "typing.Optional[UniFfiSubtitleColor]"
+    font_name: "typing.Optional[str]"
+    font_size: "typing.Optional[float]"
+    position: "typing.Optional[UniFfiSubtitlePosition]"
+    alignment: "typing.Optional[UniFfiSubtitleAlignment]"
+    def __init__(self, *, text: "str", bold: "typing.Optional[bool]", italic: "typing.Optional[bool]", underline: "typing.Optional[bool]", strikeout: "typing.Optional[bool]", primary_color: "typing.Optional[UniFfiSubtitleColor]", secondary_color: "typing.Optional[UniFfiSubtitleColor]", outline_color: "typing.Optional[UniFfiSubtitleColor]", shadow_color: "typing.Optional[UniFfiSubtitleColor]", font_name: "typing.Optional[str]", font_size: "typing.Optional[float]", position: "typing.Optional[UniFfiSubtitlePosition]", alignment: "typing.Optional[UniFfiSubtitleAlignment]"):
+        self.text = text
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+        self.strikeout = strikeout
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+        self.outline_color = outline_color
+        self.shadow_color = shadow_color
+        self.font_name = font_name
+        self.font_size = font_size
+        self.position = position
+        self.alignment = alignment
+
+    def __str__(self):
+        return "UniFfiSubtitleSpan(text={}, bold={}, italic={}, underline={}, strikeout={}, primary_color={}, secondary_color={}, outline_color={}, shadow_color={}, font_name={}, font_size={}, position={}, alignment={})".format(self.text, self.bold, self.italic, self.underline, self.strikeout, self.primary_color, self.secondary_color, self.outline_color, self.shadow_color, self.font_name, self.font_size, self.position, self.alignment)
+
+    def __eq__(self, other):
+        if self.text != other.text:
+            return False
+        if self.bold != other.bold:
+            return False
+        if self.italic != other.italic:
+            return False
+        if self.underline != other.underline:
+            return False
+        if self.strikeout != other.strikeout:
+            return False
+        if self.primary_color != other.primary_color:
+            return False
+        if self.secondary_color != other.secondary_color:
+            return False
+        if self.outline_color != other.outline_color:
+            return False
+        if self.shadow_color != other.shadow_color:
+            return False
+        if self.font_name != other.font_name:
+            return False
+        if self.font_size != other.font_size:
+            return False
+        if self.position != other.position:
+            return False
+        if self.alignment != other.alignment:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleSpan(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleSpan(
+            text=_UniffiConverterString.read(buf),
+            bold=_UniffiConverterOptionalBool.read(buf),
+            italic=_UniffiConverterOptionalBool.read(buf),
+            underline=_UniffiConverterOptionalBool.read(buf),
+            strikeout=_UniffiConverterOptionalBool.read(buf),
+            primary_color=_UniffiConverterOptionalTypeUniFfiSubtitleColor.read(buf),
+            secondary_color=_UniffiConverterOptionalTypeUniFfiSubtitleColor.read(buf),
+            outline_color=_UniffiConverterOptionalTypeUniFfiSubtitleColor.read(buf),
+            shadow_color=_UniffiConverterOptionalTypeUniFfiSubtitleColor.read(buf),
+            font_name=_UniffiConverterOptionalString.read(buf),
+            font_size=_UniffiConverterOptionalFloat.read(buf),
+            position=_UniffiConverterOptionalTypeUniFfiSubtitlePosition.read(buf),
+            alignment=_UniffiConverterOptionalTypeUniFfiSubtitleAlignment.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.text)
+        _UniffiConverterOptionalBool.check_lower(value.bold)
+        _UniffiConverterOptionalBool.check_lower(value.italic)
+        _UniffiConverterOptionalBool.check_lower(value.underline)
+        _UniffiConverterOptionalBool.check_lower(value.strikeout)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.check_lower(value.primary_color)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.check_lower(value.secondary_color)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.check_lower(value.outline_color)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.check_lower(value.shadow_color)
+        _UniffiConverterOptionalString.check_lower(value.font_name)
+        _UniffiConverterOptionalFloat.check_lower(value.font_size)
+        _UniffiConverterOptionalTypeUniFfiSubtitlePosition.check_lower(value.position)
+        _UniffiConverterOptionalTypeUniFfiSubtitleAlignment.check_lower(value.alignment)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.text, buf)
+        _UniffiConverterOptionalBool.write(value.bold, buf)
+        _UniffiConverterOptionalBool.write(value.italic, buf)
+        _UniffiConverterOptionalBool.write(value.underline, buf)
+        _UniffiConverterOptionalBool.write(value.strikeout, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.write(value.primary_color, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.write(value.secondary_color, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.write(value.outline_color, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitleColor.write(value.shadow_color, buf)
+        _UniffiConverterOptionalString.write(value.font_name, buf)
+        _UniffiConverterOptionalFloat.write(value.font_size, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitlePosition.write(value.position, buf)
+        _UniffiConverterOptionalTypeUniFfiSubtitleAlignment.write(value.alignment, buf)
+
+
+class UniFfiSubtitleStyle:
+    """
+    V4+ Style definition for ASS subtitle scripts.
+    """
+
+    name: "str"
+    font_name: "str"
+    font_size: "float"
+    primary_color: "UniFfiSubtitleColor"
+    secondary_color: "UniFfiSubtitleColor"
+    outline_color: "UniFfiSubtitleColor"
+    back_color: "UniFfiSubtitleColor"
+    bold: "bool"
+    italic: "bool"
+    underline: "bool"
+    strikeout: "bool"
+    scale_x: "float"
+    scale_y: "float"
+    spacing: "float"
+    angle: "float"
+    border_style: "int"
+    outline: "float"
+    shadow: "float"
+    alignment: "UniFfiSubtitleAlignment"
+    margin_l: "int"
+    margin_r: "int"
+    margin_v: "int"
+    encoding: "int"
+    def __init__(self, *, name: "str", font_name: "str", font_size: "float", primary_color: "UniFfiSubtitleColor", secondary_color: "UniFfiSubtitleColor", outline_color: "UniFfiSubtitleColor", back_color: "UniFfiSubtitleColor", bold: "bool", italic: "bool", underline: "bool", strikeout: "bool", scale_x: "float", scale_y: "float", spacing: "float", angle: "float", border_style: "int", outline: "float", shadow: "float", alignment: "UniFfiSubtitleAlignment", margin_l: "int", margin_r: "int", margin_v: "int", encoding: "int"):
+        self.name = name
+        self.font_name = font_name
+        self.font_size = font_size
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+        self.outline_color = outline_color
+        self.back_color = back_color
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+        self.strikeout = strikeout
+        self.scale_x = scale_x
+        self.scale_y = scale_y
+        self.spacing = spacing
+        self.angle = angle
+        self.border_style = border_style
+        self.outline = outline
+        self.shadow = shadow
+        self.alignment = alignment
+        self.margin_l = margin_l
+        self.margin_r = margin_r
+        self.margin_v = margin_v
+        self.encoding = encoding
+
+    def __str__(self):
+        return "UniFfiSubtitleStyle(name={}, font_name={}, font_size={}, primary_color={}, secondary_color={}, outline_color={}, back_color={}, bold={}, italic={}, underline={}, strikeout={}, scale_x={}, scale_y={}, spacing={}, angle={}, border_style={}, outline={}, shadow={}, alignment={}, margin_l={}, margin_r={}, margin_v={}, encoding={})".format(self.name, self.font_name, self.font_size, self.primary_color, self.secondary_color, self.outline_color, self.back_color, self.bold, self.italic, self.underline, self.strikeout, self.scale_x, self.scale_y, self.spacing, self.angle, self.border_style, self.outline, self.shadow, self.alignment, self.margin_l, self.margin_r, self.margin_v, self.encoding)
+
+    def __eq__(self, other):
+        if self.name != other.name:
+            return False
+        if self.font_name != other.font_name:
+            return False
+        if self.font_size != other.font_size:
+            return False
+        if self.primary_color != other.primary_color:
+            return False
+        if self.secondary_color != other.secondary_color:
+            return False
+        if self.outline_color != other.outline_color:
+            return False
+        if self.back_color != other.back_color:
+            return False
+        if self.bold != other.bold:
+            return False
+        if self.italic != other.italic:
+            return False
+        if self.underline != other.underline:
+            return False
+        if self.strikeout != other.strikeout:
+            return False
+        if self.scale_x != other.scale_x:
+            return False
+        if self.scale_y != other.scale_y:
+            return False
+        if self.spacing != other.spacing:
+            return False
+        if self.angle != other.angle:
+            return False
+        if self.border_style != other.border_style:
+            return False
+        if self.outline != other.outline:
+            return False
+        if self.shadow != other.shadow:
+            return False
+        if self.alignment != other.alignment:
+            return False
+        if self.margin_l != other.margin_l:
+            return False
+        if self.margin_r != other.margin_r:
+            return False
+        if self.margin_v != other.margin_v:
+            return False
+        if self.encoding != other.encoding:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleStyle(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleStyle(
+            name=_UniffiConverterString.read(buf),
+            font_name=_UniffiConverterString.read(buf),
+            font_size=_UniffiConverterFloat.read(buf),
+            primary_color=_UniffiConverterTypeUniFfiSubtitleColor.read(buf),
+            secondary_color=_UniffiConverterTypeUniFfiSubtitleColor.read(buf),
+            outline_color=_UniffiConverterTypeUniFfiSubtitleColor.read(buf),
+            back_color=_UniffiConverterTypeUniFfiSubtitleColor.read(buf),
+            bold=_UniffiConverterBool.read(buf),
+            italic=_UniffiConverterBool.read(buf),
+            underline=_UniffiConverterBool.read(buf),
+            strikeout=_UniffiConverterBool.read(buf),
+            scale_x=_UniffiConverterFloat.read(buf),
+            scale_y=_UniffiConverterFloat.read(buf),
+            spacing=_UniffiConverterFloat.read(buf),
+            angle=_UniffiConverterFloat.read(buf),
+            border_style=_UniffiConverterUInt32.read(buf),
+            outline=_UniffiConverterFloat.read(buf),
+            shadow=_UniffiConverterFloat.read(buf),
+            alignment=_UniffiConverterTypeUniFfiSubtitleAlignment.read(buf),
+            margin_l=_UniffiConverterUInt32.read(buf),
+            margin_r=_UniffiConverterUInt32.read(buf),
+            margin_v=_UniffiConverterUInt32.read(buf),
+            encoding=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterString.check_lower(value.font_name)
+        _UniffiConverterFloat.check_lower(value.font_size)
+        _UniffiConverterTypeUniFfiSubtitleColor.check_lower(value.primary_color)
+        _UniffiConverterTypeUniFfiSubtitleColor.check_lower(value.secondary_color)
+        _UniffiConverterTypeUniFfiSubtitleColor.check_lower(value.outline_color)
+        _UniffiConverterTypeUniFfiSubtitleColor.check_lower(value.back_color)
+        _UniffiConverterBool.check_lower(value.bold)
+        _UniffiConverterBool.check_lower(value.italic)
+        _UniffiConverterBool.check_lower(value.underline)
+        _UniffiConverterBool.check_lower(value.strikeout)
+        _UniffiConverterFloat.check_lower(value.scale_x)
+        _UniffiConverterFloat.check_lower(value.scale_y)
+        _UniffiConverterFloat.check_lower(value.spacing)
+        _UniffiConverterFloat.check_lower(value.angle)
+        _UniffiConverterUInt32.check_lower(value.border_style)
+        _UniffiConverterFloat.check_lower(value.outline)
+        _UniffiConverterFloat.check_lower(value.shadow)
+        _UniffiConverterTypeUniFfiSubtitleAlignment.check_lower(value.alignment)
+        _UniffiConverterUInt32.check_lower(value.margin_l)
+        _UniffiConverterUInt32.check_lower(value.margin_r)
+        _UniffiConverterUInt32.check_lower(value.margin_v)
+        _UniffiConverterUInt32.check_lower(value.encoding)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterString.write(value.font_name, buf)
+        _UniffiConverterFloat.write(value.font_size, buf)
+        _UniffiConverterTypeUniFfiSubtitleColor.write(value.primary_color, buf)
+        _UniffiConverterTypeUniFfiSubtitleColor.write(value.secondary_color, buf)
+        _UniffiConverterTypeUniFfiSubtitleColor.write(value.outline_color, buf)
+        _UniffiConverterTypeUniFfiSubtitleColor.write(value.back_color, buf)
+        _UniffiConverterBool.write(value.bold, buf)
+        _UniffiConverterBool.write(value.italic, buf)
+        _UniffiConverterBool.write(value.underline, buf)
+        _UniffiConverterBool.write(value.strikeout, buf)
+        _UniffiConverterFloat.write(value.scale_x, buf)
+        _UniffiConverterFloat.write(value.scale_y, buf)
+        _UniffiConverterFloat.write(value.spacing, buf)
+        _UniffiConverterFloat.write(value.angle, buf)
+        _UniffiConverterUInt32.write(value.border_style, buf)
+        _UniffiConverterFloat.write(value.outline, buf)
+        _UniffiConverterFloat.write(value.shadow, buf)
+        _UniffiConverterTypeUniFfiSubtitleAlignment.write(value.alignment, buf)
+        _UniffiConverterUInt32.write(value.margin_l, buf)
+        _UniffiConverterUInt32.write(value.margin_r, buf)
+        _UniffiConverterUInt32.write(value.margin_v, buf)
+        _UniffiConverterUInt32.write(value.encoding, buf)
 
 
 class UniFfiTokenSpan:
@@ -5966,6 +6879,204 @@ class _UniffiConverterTypeUniFfiLicenseResult(_UniffiConverterRustBuffer):
 
 
 
+
+
+class UniFfiMediaTrackType(enum.Enum):
+    """
+    Type classification for a media container track exposed to Swift.
+    """
+
+    AUDIO = 0
+    
+    VIDEO = 1
+    
+    SUBTITLE = 2
+    
+
+
+class _UniffiConverterTypeUniFfiMediaTrackType(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiMediaTrackType.AUDIO
+        if variant == 2:
+            return UniFfiMediaTrackType.VIDEO
+        if variant == 3:
+            return UniFfiMediaTrackType.SUBTITLE
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiMediaTrackType.AUDIO:
+            return
+        if value == UniFfiMediaTrackType.VIDEO:
+            return
+        if value == UniFfiMediaTrackType.SUBTITLE:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiMediaTrackType.AUDIO:
+            buf.write_i32(1)
+        if value == UniFfiMediaTrackType.VIDEO:
+            buf.write_i32(2)
+        if value == UniFfiMediaTrackType.SUBTITLE:
+            buf.write_i32(3)
+
+
+
+
+
+
+
+class UniFfiSubtitleAlignment(enum.Enum):
+    """
+    Subtitle alignment on screen (numpad mapping 1-9).
+    """
+
+    BOTTOM_LEFT = 0
+    
+    BOTTOM_CENTER = 1
+    
+    BOTTOM_RIGHT = 2
+    
+    MIDDLE_LEFT = 3
+    
+    MIDDLE_CENTER = 4
+    
+    MIDDLE_RIGHT = 5
+    
+    TOP_LEFT = 6
+    
+    TOP_CENTER = 7
+    
+    TOP_RIGHT = 8
+    
+
+
+class _UniffiConverterTypeUniFfiSubtitleAlignment(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiSubtitleAlignment.BOTTOM_LEFT
+        if variant == 2:
+            return UniFfiSubtitleAlignment.BOTTOM_CENTER
+        if variant == 3:
+            return UniFfiSubtitleAlignment.BOTTOM_RIGHT
+        if variant == 4:
+            return UniFfiSubtitleAlignment.MIDDLE_LEFT
+        if variant == 5:
+            return UniFfiSubtitleAlignment.MIDDLE_CENTER
+        if variant == 6:
+            return UniFfiSubtitleAlignment.MIDDLE_RIGHT
+        if variant == 7:
+            return UniFfiSubtitleAlignment.TOP_LEFT
+        if variant == 8:
+            return UniFfiSubtitleAlignment.TOP_CENTER
+        if variant == 9:
+            return UniFfiSubtitleAlignment.TOP_RIGHT
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiSubtitleAlignment.BOTTOM_LEFT:
+            return
+        if value == UniFfiSubtitleAlignment.BOTTOM_CENTER:
+            return
+        if value == UniFfiSubtitleAlignment.BOTTOM_RIGHT:
+            return
+        if value == UniFfiSubtitleAlignment.MIDDLE_LEFT:
+            return
+        if value == UniFfiSubtitleAlignment.MIDDLE_CENTER:
+            return
+        if value == UniFfiSubtitleAlignment.MIDDLE_RIGHT:
+            return
+        if value == UniFfiSubtitleAlignment.TOP_LEFT:
+            return
+        if value == UniFfiSubtitleAlignment.TOP_CENTER:
+            return
+        if value == UniFfiSubtitleAlignment.TOP_RIGHT:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiSubtitleAlignment.BOTTOM_LEFT:
+            buf.write_i32(1)
+        if value == UniFfiSubtitleAlignment.BOTTOM_CENTER:
+            buf.write_i32(2)
+        if value == UniFfiSubtitleAlignment.BOTTOM_RIGHT:
+            buf.write_i32(3)
+        if value == UniFfiSubtitleAlignment.MIDDLE_LEFT:
+            buf.write_i32(4)
+        if value == UniFfiSubtitleAlignment.MIDDLE_CENTER:
+            buf.write_i32(5)
+        if value == UniFfiSubtitleAlignment.MIDDLE_RIGHT:
+            buf.write_i32(6)
+        if value == UniFfiSubtitleAlignment.TOP_LEFT:
+            buf.write_i32(7)
+        if value == UniFfiSubtitleAlignment.TOP_CENTER:
+            buf.write_i32(8)
+        if value == UniFfiSubtitleAlignment.TOP_RIGHT:
+            buf.write_i32(9)
+
+
+
+
+
+
+
+class UniFfiSubtitleFormat(enum.Enum):
+    """
+    Supported subtitle formats exposed to Swift.
+    """
+
+    ASS = 0
+    
+    SRT = 1
+    
+    VTT = 2
+    
+
+
+class _UniffiConverterTypeUniFfiSubtitleFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiSubtitleFormat.ASS
+        if variant == 2:
+            return UniFfiSubtitleFormat.SRT
+        if variant == 3:
+            return UniFfiSubtitleFormat.VTT
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiSubtitleFormat.ASS:
+            return
+        if value == UniFfiSubtitleFormat.SRT:
+            return
+        if value == UniFfiSubtitleFormat.VTT:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiSubtitleFormat.ASS:
+            buf.write_i32(1)
+        if value == UniFfiSubtitleFormat.SRT:
+            buf.write_i32(2)
+        if value == UniFfiSubtitleFormat.VTT:
+            buf.write_i32(3)
+
+
+
+
+
 class ProgressHandler(typing.Protocol):
     """
     Callback interface protocol implemented in Swift.
@@ -6052,6 +7163,33 @@ _UniffiConverterTypeProgressHandler = _UniffiCallbackInterfaceFfiConverter()
 
 
 
+class _UniffiConverterOptionalUInt16(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterUInt16.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterUInt16.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterUInt16.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalUInt32(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -6106,6 +7244,33 @@ class _UniffiConverterOptionalUInt64(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterOptionalFloat(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterFloat.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterFloat.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterFloat.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalDouble(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -6128,6 +7293,33 @@ class _UniffiConverterOptionalDouble(_UniffiConverterRustBuffer):
             return None
         elif flag == 1:
             return _UniffiConverterDouble.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalBool(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterBool.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterBool.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterBool.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -6376,6 +7568,60 @@ class _UniffiConverterOptionalTypeUniFfiEpubCoverData(_UniffiConverterRustBuffer
 
 
 
+class _UniffiConverterOptionalTypeUniFfiSubtitleColor(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiSubtitleColor.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiSubtitleColor.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiSubtitleColor.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeUniFfiSubtitlePosition(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiSubtitlePosition.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiSubtitlePosition.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiSubtitlePosition.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalTypeUniFfiWalMutationSummary(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -6425,6 +7671,33 @@ class _UniffiConverterOptionalTypeVideoMetadataRecord(_UniffiConverterRustBuffer
             return None
         elif flag == 1:
             return _UniffiConverterTypeVideoMetadataRecord.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeUniFfiSubtitleAlignment(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiSubtitleAlignment.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiSubtitleAlignment.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiSubtitleAlignment.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -6682,6 +7955,131 @@ class _UniffiConverterSequenceTypeUniFfiEpubChapterItem(_UniffiConverterRustBuff
 
 
 
+class _UniffiConverterSequenceTypeUniFfiMediaAttachment(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaAttachment.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaAttachment.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiMediaAttachment.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiMediaChapter(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaChapter.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaChapter.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiMediaChapter.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaTrackInfo.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiMediaTrackInfo.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiMediaTrackInfo.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiSubtitleDialogue(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleDialogue.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleDialogue.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiSubtitleDialogue.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiSubtitleSpan(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleSpan.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleSpan.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiSubtitleSpan.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiTokenSpan(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -6785,6 +8183,39 @@ class _UniffiConverterMapStringString(_UniffiConverterRustBuffer):
         for i in range(count):
             key = _UniffiConverterString.read(buf)
             val = _UniffiConverterString.read(buf)
+            d[key] = val
+        return d
+
+
+
+class _UniffiConverterMapStringTypeUniFfiSubtitleStyle(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, items):
+        for (key, value) in items.items():
+            _UniffiConverterString.check_lower(key)
+            _UniffiConverterTypeUniFfiSubtitleStyle.check_lower(value)
+
+    @classmethod
+    def write(cls, items, buf):
+        buf.write_i32(len(items))
+        for (key, value) in items.items():
+            _UniffiConverterString.write(key, buf)
+            _UniffiConverterTypeUniFfiSubtitleStyle.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative map size")
+
+        # It would be nice to use a dict comprehension,
+        # but in Python 3.7 and before the evaluation order is not according to spec,
+        # so we we're reading the value before the key.
+        # This loop makes the order explicit: first reading the key, then the value.
+        d = {}
+        for i in range(count):
+            key = _UniffiConverterString.read(buf)
+            val = _UniffiConverterTypeUniFfiSubtitleStyle.read(buf)
             d[key] = val
         return d
 
@@ -6960,6 +8391,17 @@ def decode_image_rgba_from_memory(data: "bytes") -> "DecodedImageRecord":
     _UniffiConverterBytes.check_lower(data)
     
     return _UniffiConverterTypeDecodedImageRecord.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory,
+        _UniffiConverterBytes.lower(data)))
+
+
+def demux_media_tracks(data: "bytes") -> "UniFfiMediaDemuxSummary":
+    """
+    Demuxes tracks, chapters, and embedded attachments from an in-memory media buffer.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterTypeUniFfiMediaDemuxSummary.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_demux_media_tracks,
         _UniffiConverterBytes.lower(data)))
 
 
@@ -7233,6 +8675,20 @@ def extract_single_entry_stream_guarded(archive_path: "str",entry_index: "int",p
         _UniffiConverterUInt32.lower(max_preceding_budget_mb)))
 
 
+def find_active_subtitles_at(script: "UniFfiSubtitleScript",timestamp_ms: "int") -> "typing.List[UniFfiSubtitleDialogue]":
+    """
+    Retrieves all active subtitle dialogues at a specific millisecond timestamp using binary search.
+    """
+
+    _UniffiConverterTypeUniFfiSubtitleScript.check_lower(script)
+    
+    _UniffiConverterUInt64.check_lower(timestamp_ms)
+    
+    return _UniffiConverterSequenceTypeUniFfiSubtitleDialogue.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_find_active_subtitles_at,
+        _UniffiConverterTypeUniFfiSubtitleScript.lower(script),
+        _UniffiConverterUInt64.lower(timestamp_ms)))
+
+
 def generate_synthetic_benchmark_dataset(target_path: "str",target_bytes: "int",profile_name: "str") -> None:
     """
     Generates a synthetic benchmark dataset file at high throughput.
@@ -7430,6 +8886,20 @@ def parse_epub_metadata(epub_path: "str") -> "typing.Optional[UniFfiEpubBook]":
     
     return _UniffiConverterOptionalTypeUniFfiEpubBook.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_parse_epub_metadata,
         _UniffiConverterString.lower(epub_path)))
+
+
+def parse_subtitle_script(content: "str",format_name: "str") -> "UniFfiSubtitleScript":
+    """
+    Parses subtitle content with an optional format hint into a strongly-typed AST script.
+    """
+
+    _UniffiConverterString.check_lower(content)
+    
+    _UniffiConverterString.check_lower(format_name)
+    
+    return _UniffiConverterTypeUniFfiSubtitleScript.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_parse_subtitle_script,
+        _UniffiConverterString.lower(content),
+        _UniffiConverterString.lower(format_name)))
 
 
 def probe_buffer_metadata(data: "bytes",filename_hint: "typing.Optional[str]") -> "FileMetadataRecord":
@@ -7793,6 +9263,9 @@ __all__ = [
     "ThumbnailSamplingFilter",
     "TtZipError",
     "UniFfiLicenseResult",
+    "UniFfiMediaTrackType",
+    "UniFfiSubtitleAlignment",
+    "UniFfiSubtitleFormat",
     "AudioMetadataRecord",
     "CompressionReport",
     "DecodedImageRecord",
@@ -7818,9 +9291,19 @@ __all__ = [
     "UniFfiEpubParseResult",
     "UniFfiIntegrityReport",
     "UniFfiLicensePayload",
+    "UniFfiMediaAttachment",
+    "UniFfiMediaChapter",
+    "UniFfiMediaDemuxSummary",
+    "UniFfiMediaTrackInfo",
     "UniFfiParentAndPrefix",
     "UniFfiPdfDocumentInfo",
     "UniFfiSmartExtractDecision",
+    "UniFfiSubtitleColor",
+    "UniFfiSubtitleDialogue",
+    "UniFfiSubtitlePosition",
+    "UniFfiSubtitleScript",
+    "UniFfiSubtitleSpan",
+    "UniFfiSubtitleStyle",
     "UniFfiTokenSpan",
     "UniFfiTransactionDiff",
     "UniFfiVfsMatch",
@@ -7842,6 +9325,7 @@ __all__ = [
     "compute_file_sha256",
     "create_archive_stream",
     "decode_image_rgba_from_memory",
+    "demux_media_tracks",
     "detect_archive_format",
     "detect_split_volume_chain",
     "drill_down_nested_archive",
@@ -7860,6 +9344,7 @@ __all__ = [
     "extract_single_entry_by_path",
     "extract_single_entry_stream",
     "extract_single_entry_stream_guarded",
+    "find_active_subtitles_at",
     "generate_synthetic_benchmark_dataset",
     "generate_thumbnail_from_memory",
     "highlight_code_spans",
@@ -7874,6 +9359,7 @@ __all__ = [
     "parse_epub_book_from_file",
     "parse_epub_book_from_memory",
     "parse_epub_metadata",
+    "parse_subtitle_script",
     "probe_buffer_metadata",
     "probe_file_metadata",
     "recommend_codec",

@@ -396,6 +396,38 @@ private class UniffiHandleMap<T> {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterUInt16: FfiConverterPrimitive {
+    typealias FfiType = UInt16
+    typealias SwiftType = UInt16
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt16 {
+        return try lift(readInt(&buf))
+    }
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -3602,6 +3634,374 @@ public func FfiConverterTypeUniFFILicensePayload_lower(_ value: UniFfiLicensePay
 }
 
 /**
+ * An embedded binary attachment (such as cover art, fonts, or poster images).
+ */
+public struct UniFfiMediaAttachment {
+    public var fileName: String
+    public var mimeType: String
+    public var data: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(fileName: String, mimeType: String, data: Data) {
+        self.fileName = fileName
+        self.mimeType = mimeType
+        self.data = data
+    }
+}
+
+extension UniFfiMediaAttachment: Equatable, Hashable {
+    public static func == (lhs: UniFfiMediaAttachment, rhs: UniFfiMediaAttachment) -> Bool {
+        if lhs.fileName != rhs.fileName {
+            return false
+        }
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fileName)
+        hasher.combine(mimeType)
+        hasher.combine(data)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMediaAttachment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMediaAttachment {
+        return
+            try UniFfiMediaAttachment(
+                fileName: FfiConverterString.read(from: &buf),
+                mimeType: FfiConverterString.read(from: &buf),
+                data: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMediaAttachment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileName, into: &buf)
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaAttachment_lift(_ buf: RustBuffer) throws -> UniFfiMediaAttachment {
+    return try FfiConverterTypeUniFFIMediaAttachment.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaAttachment_lower(_ value: UniFfiMediaAttachment) -> RustBuffer {
+    return FfiConverterTypeUniFFIMediaAttachment.lower(value)
+}
+
+/**
+ * A chapter entry denoting a structured segment within the media timeline.
+ */
+public struct UniFfiMediaChapter {
+    public var startTimeMs: UInt64
+    public var endTimeMs: UInt64?
+    public var title: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(startTimeMs: UInt64, endTimeMs: UInt64?, title: String) {
+        self.startTimeMs = startTimeMs
+        self.endTimeMs = endTimeMs
+        self.title = title
+    }
+}
+
+extension UniFfiMediaChapter: Equatable, Hashable {
+    public static func == (lhs: UniFfiMediaChapter, rhs: UniFfiMediaChapter) -> Bool {
+        if lhs.startTimeMs != rhs.startTimeMs {
+            return false
+        }
+        if lhs.endTimeMs != rhs.endTimeMs {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(startTimeMs)
+        hasher.combine(endTimeMs)
+        hasher.combine(title)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMediaChapter: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMediaChapter {
+        return
+            try UniFfiMediaChapter(
+                startTimeMs: FfiConverterUInt64.read(from: &buf),
+                endTimeMs: FfiConverterOptionUInt64.read(from: &buf),
+                title: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMediaChapter, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.startTimeMs, into: &buf)
+        FfiConverterOptionUInt64.write(value.endTimeMs, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaChapter_lift(_ buf: RustBuffer) throws -> UniFfiMediaChapter {
+    return try FfiConverterTypeUniFFIMediaChapter.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaChapter_lower(_ value: UniFfiMediaChapter) -> RustBuffer {
+    return FfiConverterTypeUniFFIMediaChapter.lower(value)
+}
+
+/**
+ * Comprehensive summary of a demuxed media container.
+ */
+public struct UniFfiMediaDemuxSummary {
+    public var containerFormat: String
+    public var durationMs: UInt64?
+    public var title: String?
+    public var tracks: [UniFfiMediaTrackInfo]
+    public var chapters: [UniFfiMediaChapter]
+    public var attachments: [UniFfiMediaAttachment]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(containerFormat: String, durationMs: UInt64?, title: String?, tracks: [UniFfiMediaTrackInfo], chapters: [UniFfiMediaChapter], attachments: [UniFfiMediaAttachment]) {
+        self.containerFormat = containerFormat
+        self.durationMs = durationMs
+        self.title = title
+        self.tracks = tracks
+        self.chapters = chapters
+        self.attachments = attachments
+    }
+}
+
+extension UniFfiMediaDemuxSummary: Equatable, Hashable {
+    public static func == (lhs: UniFfiMediaDemuxSummary, rhs: UniFfiMediaDemuxSummary) -> Bool {
+        if lhs.containerFormat != rhs.containerFormat {
+            return false
+        }
+        if lhs.durationMs != rhs.durationMs {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.tracks != rhs.tracks {
+            return false
+        }
+        if lhs.chapters != rhs.chapters {
+            return false
+        }
+        if lhs.attachments != rhs.attachments {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(containerFormat)
+        hasher.combine(durationMs)
+        hasher.combine(title)
+        hasher.combine(tracks)
+        hasher.combine(chapters)
+        hasher.combine(attachments)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMediaDemuxSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMediaDemuxSummary {
+        return
+            try UniFfiMediaDemuxSummary(
+                containerFormat: FfiConverterString.read(from: &buf),
+                durationMs: FfiConverterOptionUInt64.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                tracks: FfiConverterSequenceTypeUniFFIMediaTrackInfo.read(from: &buf),
+                chapters: FfiConverterSequenceTypeUniFFIMediaChapter.read(from: &buf),
+                attachments: FfiConverterSequenceTypeUniFFIMediaAttachment.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMediaDemuxSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.containerFormat, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMs, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterSequenceTypeUniFFIMediaTrackInfo.write(value.tracks, into: &buf)
+        FfiConverterSequenceTypeUniFFIMediaChapter.write(value.chapters, into: &buf)
+        FfiConverterSequenceTypeUniFFIMediaAttachment.write(value.attachments, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaDemuxSummary_lift(_ buf: RustBuffer) throws -> UniFfiMediaDemuxSummary {
+    return try FfiConverterTypeUniFFIMediaDemuxSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaDemuxSummary_lower(_ value: UniFfiMediaDemuxSummary) -> RustBuffer {
+    return FfiConverterTypeUniFFIMediaDemuxSummary.lower(value)
+}
+
+/**
+ * Metadata describing a specific elementary stream/track inside a media container.
+ */
+public struct UniFfiMediaTrackInfo {
+    public var trackId: UInt32
+    public var trackType: UniFfiMediaTrackType
+    public var codec: String
+    public var language: String?
+    public var title: String?
+    public var isDefault: Bool
+    public var channels: UInt16?
+    public var sampleRate: UInt32?
+    public var width: UInt32?
+    public var height: UInt32?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(trackId: UInt32, trackType: UniFfiMediaTrackType, codec: String, language: String?, title: String?, isDefault: Bool, channels: UInt16?, sampleRate: UInt32?, width: UInt32?, height: UInt32?) {
+        self.trackId = trackId
+        self.trackType = trackType
+        self.codec = codec
+        self.language = language
+        self.title = title
+        self.isDefault = isDefault
+        self.channels = channels
+        self.sampleRate = sampleRate
+        self.width = width
+        self.height = height
+    }
+}
+
+extension UniFfiMediaTrackInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiMediaTrackInfo, rhs: UniFfiMediaTrackInfo) -> Bool {
+        if lhs.trackId != rhs.trackId {
+            return false
+        }
+        if lhs.trackType != rhs.trackType {
+            return false
+        }
+        if lhs.codec != rhs.codec {
+            return false
+        }
+        if lhs.language != rhs.language {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.isDefault != rhs.isDefault {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(trackId)
+        hasher.combine(trackType)
+        hasher.combine(codec)
+        hasher.combine(language)
+        hasher.combine(title)
+        hasher.combine(isDefault)
+        hasher.combine(channels)
+        hasher.combine(sampleRate)
+        hasher.combine(width)
+        hasher.combine(height)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMediaTrackInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMediaTrackInfo {
+        return
+            try UniFfiMediaTrackInfo(
+                trackId: FfiConverterUInt32.read(from: &buf),
+                trackType: FfiConverterTypeUniFFIMediaTrackType.read(from: &buf),
+                codec: FfiConverterString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                isDefault: FfiConverterBool.read(from: &buf),
+                channels: FfiConverterOptionUInt16.read(from: &buf),
+                sampleRate: FfiConverterOptionUInt32.read(from: &buf),
+                width: FfiConverterOptionUInt32.read(from: &buf),
+                height: FfiConverterOptionUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMediaTrackInfo, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.trackId, into: &buf)
+        FfiConverterTypeUniFFIMediaTrackType.write(value.trackType, into: &buf)
+        FfiConverterString.write(value.codec, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterBool.write(value.isDefault, into: &buf)
+        FfiConverterOptionUInt16.write(value.channels, into: &buf)
+        FfiConverterOptionUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterOptionUInt32.write(value.width, into: &buf)
+        FfiConverterOptionUInt32.write(value.height, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaTrackInfo_lift(_ buf: RustBuffer) throws -> UniFfiMediaTrackInfo {
+    return try FfiConverterTypeUniFFIMediaTrackInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaTrackInfo_lower(_ value: UniFfiMediaTrackInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIMediaTrackInfo.lower(value)
+}
+
+/**
  * Parent directory and autocompletion prefix record.
  */
 public struct UniFfiParentAndPrefix {
@@ -3920,6 +4320,798 @@ public func FfiConverterTypeUniFFISmartExtractDecision_lift(_ buf: RustBuffer) t
 #endif
 public func FfiConverterTypeUniFFISmartExtractDecision_lower(_ value: UniFfiSmartExtractDecision) -> RustBuffer {
     return FfiConverterTypeUniFFISmartExtractDecision.lower(value)
+}
+
+/**
+ * 8-bit RGBA color representation for subtitle styling across FFI boundary.
+ */
+public struct UniFfiSubtitleColor {
+    public var r: UInt8
+    public var g: UInt8
+    public var b: UInt8
+    public var a: UInt8
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+    }
+}
+
+extension UniFfiSubtitleColor: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleColor, rhs: UniFfiSubtitleColor) -> Bool {
+        if lhs.r != rhs.r {
+            return false
+        }
+        if lhs.g != rhs.g {
+            return false
+        }
+        if lhs.b != rhs.b {
+            return false
+        }
+        if lhs.a != rhs.a {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(r)
+        hasher.combine(g)
+        hasher.combine(b)
+        hasher.combine(a)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleColor: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleColor {
+        return
+            try UniFfiSubtitleColor(
+                r: FfiConverterUInt8.read(from: &buf),
+                g: FfiConverterUInt8.read(from: &buf),
+                b: FfiConverterUInt8.read(from: &buf),
+                a: FfiConverterUInt8.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleColor, into buf: inout [UInt8]) {
+        FfiConverterUInt8.write(value.r, into: &buf)
+        FfiConverterUInt8.write(value.g, into: &buf)
+        FfiConverterUInt8.write(value.b, into: &buf)
+        FfiConverterUInt8.write(value.a, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleColor_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleColor {
+    return try FfiConverterTypeUniFFISubtitleColor.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleColor_lower(_ value: UniFfiSubtitleColor) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleColor.lower(value)
+}
+
+/**
+ * A parsed subtitle dialogue event.
+ */
+public struct UniFfiSubtitleDialogue {
+    public var layer: UInt32
+    public var startMs: Int64
+    public var endMs: Int64
+    public var style: String
+    public var actor: String
+    public var marginL: UInt32
+    public var marginR: UInt32
+    public var marginV: UInt32
+    public var effect: String
+    public var rawText: String
+    public var plainText: String
+    public var spans: [UniFfiSubtitleSpan]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(layer: UInt32, startMs: Int64, endMs: Int64, style: String, actor: String, marginL: UInt32, marginR: UInt32, marginV: UInt32, effect: String, rawText: String, plainText: String, spans: [UniFfiSubtitleSpan]) {
+        self.layer = layer
+        self.startMs = startMs
+        self.endMs = endMs
+        self.style = style
+        self.actor = actor
+        self.marginL = marginL
+        self.marginR = marginR
+        self.marginV = marginV
+        self.effect = effect
+        self.rawText = rawText
+        self.plainText = plainText
+        self.spans = spans
+    }
+}
+
+extension UniFfiSubtitleDialogue: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleDialogue, rhs: UniFfiSubtitleDialogue) -> Bool {
+        if lhs.layer != rhs.layer {
+            return false
+        }
+        if lhs.startMs != rhs.startMs {
+            return false
+        }
+        if lhs.endMs != rhs.endMs {
+            return false
+        }
+        if lhs.style != rhs.style {
+            return false
+        }
+        if lhs.actor != rhs.actor {
+            return false
+        }
+        if lhs.marginL != rhs.marginL {
+            return false
+        }
+        if lhs.marginR != rhs.marginR {
+            return false
+        }
+        if lhs.marginV != rhs.marginV {
+            return false
+        }
+        if lhs.effect != rhs.effect {
+            return false
+        }
+        if lhs.rawText != rhs.rawText {
+            return false
+        }
+        if lhs.plainText != rhs.plainText {
+            return false
+        }
+        if lhs.spans != rhs.spans {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(layer)
+        hasher.combine(startMs)
+        hasher.combine(endMs)
+        hasher.combine(style)
+        hasher.combine(actor)
+        hasher.combine(marginL)
+        hasher.combine(marginR)
+        hasher.combine(marginV)
+        hasher.combine(effect)
+        hasher.combine(rawText)
+        hasher.combine(plainText)
+        hasher.combine(spans)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleDialogue: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleDialogue {
+        return
+            try UniFfiSubtitleDialogue(
+                layer: FfiConverterUInt32.read(from: &buf),
+                startMs: FfiConverterInt64.read(from: &buf),
+                endMs: FfiConverterInt64.read(from: &buf),
+                style: FfiConverterString.read(from: &buf),
+                actor: FfiConverterString.read(from: &buf),
+                marginL: FfiConverterUInt32.read(from: &buf),
+                marginR: FfiConverterUInt32.read(from: &buf),
+                marginV: FfiConverterUInt32.read(from: &buf),
+                effect: FfiConverterString.read(from: &buf),
+                rawText: FfiConverterString.read(from: &buf),
+                plainText: FfiConverterString.read(from: &buf),
+                spans: FfiConverterSequenceTypeUniFFISubtitleSpan.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleDialogue, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.layer, into: &buf)
+        FfiConverterInt64.write(value.startMs, into: &buf)
+        FfiConverterInt64.write(value.endMs, into: &buf)
+        FfiConverterString.write(value.style, into: &buf)
+        FfiConverterString.write(value.actor, into: &buf)
+        FfiConverterUInt32.write(value.marginL, into: &buf)
+        FfiConverterUInt32.write(value.marginR, into: &buf)
+        FfiConverterUInt32.write(value.marginV, into: &buf)
+        FfiConverterString.write(value.effect, into: &buf)
+        FfiConverterString.write(value.rawText, into: &buf)
+        FfiConverterString.write(value.plainText, into: &buf)
+        FfiConverterSequenceTypeUniFFISubtitleSpan.write(value.spans, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleDialogue_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleDialogue {
+    return try FfiConverterTypeUniFFISubtitleDialogue.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleDialogue_lower(_ value: UniFfiSubtitleDialogue) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleDialogue.lower(value)
+}
+
+/**
+ * 2D Cartesian coordinates for explicit subtitle positioning.
+ */
+public struct UniFfiSubtitlePosition {
+    public var x: Float
+    public var y: Float
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(x: Float, y: Float) {
+        self.x = x
+        self.y = y
+    }
+}
+
+extension UniFfiSubtitlePosition: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitlePosition, rhs: UniFfiSubtitlePosition) -> Bool {
+        if lhs.x != rhs.x {
+            return false
+        }
+        if lhs.y != rhs.y {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitlePosition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitlePosition {
+        return
+            try UniFfiSubtitlePosition(
+                x: FfiConverterFloat.read(from: &buf),
+                y: FfiConverterFloat.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitlePosition, into buf: inout [UInt8]) {
+        FfiConverterFloat.write(value.x, into: &buf)
+        FfiConverterFloat.write(value.y, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitlePosition_lift(_ buf: RustBuffer) throws -> UniFfiSubtitlePosition {
+    return try FfiConverterTypeUniFFISubtitlePosition.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitlePosition_lower(_ value: UniFfiSubtitlePosition) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitlePosition.lower(value)
+}
+
+/**
+ * Complete parsed subtitle script AST document exposed to Swift.
+ */
+public struct UniFfiSubtitleScript {
+    public var format: UniFfiSubtitleFormat
+    public var title: String?
+    public var scriptType: String?
+    public var playResX: UInt32?
+    public var playResY: UInt32?
+    public var wrapStyle: UInt32?
+    public var scaledBorderAndShadow: Bool?
+    public var styles: [String: UniFfiSubtitleStyle]
+    public var dialogues: [UniFfiSubtitleDialogue]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(format: UniFfiSubtitleFormat, title: String?, scriptType: String?, playResX: UInt32?, playResY: UInt32?, wrapStyle: UInt32?, scaledBorderAndShadow: Bool?, styles: [String: UniFfiSubtitleStyle], dialogues: [UniFfiSubtitleDialogue]) {
+        self.format = format
+        self.title = title
+        self.scriptType = scriptType
+        self.playResX = playResX
+        self.playResY = playResY
+        self.wrapStyle = wrapStyle
+        self.scaledBorderAndShadow = scaledBorderAndShadow
+        self.styles = styles
+        self.dialogues = dialogues
+    }
+}
+
+extension UniFfiSubtitleScript: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleScript, rhs: UniFfiSubtitleScript) -> Bool {
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.scriptType != rhs.scriptType {
+            return false
+        }
+        if lhs.playResX != rhs.playResX {
+            return false
+        }
+        if lhs.playResY != rhs.playResY {
+            return false
+        }
+        if lhs.wrapStyle != rhs.wrapStyle {
+            return false
+        }
+        if lhs.scaledBorderAndShadow != rhs.scaledBorderAndShadow {
+            return false
+        }
+        if lhs.styles != rhs.styles {
+            return false
+        }
+        if lhs.dialogues != rhs.dialogues {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(format)
+        hasher.combine(title)
+        hasher.combine(scriptType)
+        hasher.combine(playResX)
+        hasher.combine(playResY)
+        hasher.combine(wrapStyle)
+        hasher.combine(scaledBorderAndShadow)
+        hasher.combine(styles)
+        hasher.combine(dialogues)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleScript: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleScript {
+        return
+            try UniFfiSubtitleScript(
+                format: FfiConverterTypeUniFFISubtitleFormat.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                scriptType: FfiConverterOptionString.read(from: &buf),
+                playResX: FfiConverterOptionUInt32.read(from: &buf),
+                playResY: FfiConverterOptionUInt32.read(from: &buf),
+                wrapStyle: FfiConverterOptionUInt32.read(from: &buf),
+                scaledBorderAndShadow: FfiConverterOptionBool.read(from: &buf),
+                styles: FfiConverterDictionaryStringTypeUniFFISubtitleStyle.read(from: &buf),
+                dialogues: FfiConverterSequenceTypeUniFFISubtitleDialogue.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleScript, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFISubtitleFormat.write(value.format, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.scriptType, into: &buf)
+        FfiConverterOptionUInt32.write(value.playResX, into: &buf)
+        FfiConverterOptionUInt32.write(value.playResY, into: &buf)
+        FfiConverterOptionUInt32.write(value.wrapStyle, into: &buf)
+        FfiConverterOptionBool.write(value.scaledBorderAndShadow, into: &buf)
+        FfiConverterDictionaryStringTypeUniFFISubtitleStyle.write(value.styles, into: &buf)
+        FfiConverterSequenceTypeUniFFISubtitleDialogue.write(value.dialogues, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleScript_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleScript {
+    return try FfiConverterTypeUniFFISubtitleScript.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleScript_lower(_ value: UniFfiSubtitleScript) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleScript.lower(value)
+}
+
+/**
+ * An inline styled span of text inside a subtitle dialogue line.
+ */
+public struct UniFfiSubtitleSpan {
+    public var text: String
+    public var bold: Bool?
+    public var italic: Bool?
+    public var underline: Bool?
+    public var strikeout: Bool?
+    public var primaryColor: UniFfiSubtitleColor?
+    public var secondaryColor: UniFfiSubtitleColor?
+    public var outlineColor: UniFfiSubtitleColor?
+    public var shadowColor: UniFfiSubtitleColor?
+    public var fontName: String?
+    public var fontSize: Float?
+    public var position: UniFfiSubtitlePosition?
+    public var alignment: UniFfiSubtitleAlignment?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(text: String, bold: Bool?, italic: Bool?, underline: Bool?, strikeout: Bool?, primaryColor: UniFfiSubtitleColor?, secondaryColor: UniFfiSubtitleColor?, outlineColor: UniFfiSubtitleColor?, shadowColor: UniFfiSubtitleColor?, fontName: String?, fontSize: Float?, position: UniFfiSubtitlePosition?, alignment: UniFfiSubtitleAlignment?) {
+        self.text = text
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+        self.strikeout = strikeout
+        self.primaryColor = primaryColor
+        self.secondaryColor = secondaryColor
+        self.outlineColor = outlineColor
+        self.shadowColor = shadowColor
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.position = position
+        self.alignment = alignment
+    }
+}
+
+extension UniFfiSubtitleSpan: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleSpan, rhs: UniFfiSubtitleSpan) -> Bool {
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.bold != rhs.bold {
+            return false
+        }
+        if lhs.italic != rhs.italic {
+            return false
+        }
+        if lhs.underline != rhs.underline {
+            return false
+        }
+        if lhs.strikeout != rhs.strikeout {
+            return false
+        }
+        if lhs.primaryColor != rhs.primaryColor {
+            return false
+        }
+        if lhs.secondaryColor != rhs.secondaryColor {
+            return false
+        }
+        if lhs.outlineColor != rhs.outlineColor {
+            return false
+        }
+        if lhs.shadowColor != rhs.shadowColor {
+            return false
+        }
+        if lhs.fontName != rhs.fontName {
+            return false
+        }
+        if lhs.fontSize != rhs.fontSize {
+            return false
+        }
+        if lhs.position != rhs.position {
+            return false
+        }
+        if lhs.alignment != rhs.alignment {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(text)
+        hasher.combine(bold)
+        hasher.combine(italic)
+        hasher.combine(underline)
+        hasher.combine(strikeout)
+        hasher.combine(primaryColor)
+        hasher.combine(secondaryColor)
+        hasher.combine(outlineColor)
+        hasher.combine(shadowColor)
+        hasher.combine(fontName)
+        hasher.combine(fontSize)
+        hasher.combine(position)
+        hasher.combine(alignment)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleSpan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleSpan {
+        return
+            try UniFfiSubtitleSpan(
+                text: FfiConverterString.read(from: &buf),
+                bold: FfiConverterOptionBool.read(from: &buf),
+                italic: FfiConverterOptionBool.read(from: &buf),
+                underline: FfiConverterOptionBool.read(from: &buf),
+                strikeout: FfiConverterOptionBool.read(from: &buf),
+                primaryColor: FfiConverterOptionTypeUniFFISubtitleColor.read(from: &buf),
+                secondaryColor: FfiConverterOptionTypeUniFFISubtitleColor.read(from: &buf),
+                outlineColor: FfiConverterOptionTypeUniFFISubtitleColor.read(from: &buf),
+                shadowColor: FfiConverterOptionTypeUniFFISubtitleColor.read(from: &buf),
+                fontName: FfiConverterOptionString.read(from: &buf),
+                fontSize: FfiConverterOptionFloat.read(from: &buf),
+                position: FfiConverterOptionTypeUniFFISubtitlePosition.read(from: &buf),
+                alignment: FfiConverterOptionTypeUniFFISubtitleAlignment.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleSpan, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterOptionBool.write(value.bold, into: &buf)
+        FfiConverterOptionBool.write(value.italic, into: &buf)
+        FfiConverterOptionBool.write(value.underline, into: &buf)
+        FfiConverterOptionBool.write(value.strikeout, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitleColor.write(value.primaryColor, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitleColor.write(value.secondaryColor, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitleColor.write(value.outlineColor, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitleColor.write(value.shadowColor, into: &buf)
+        FfiConverterOptionString.write(value.fontName, into: &buf)
+        FfiConverterOptionFloat.write(value.fontSize, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitlePosition.write(value.position, into: &buf)
+        FfiConverterOptionTypeUniFFISubtitleAlignment.write(value.alignment, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleSpan_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleSpan {
+    return try FfiConverterTypeUniFFISubtitleSpan.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleSpan_lower(_ value: UniFfiSubtitleSpan) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleSpan.lower(value)
+}
+
+/**
+ * V4+ Style definition for ASS subtitle scripts.
+ */
+public struct UniFfiSubtitleStyle {
+    public var name: String
+    public var fontName: String
+    public var fontSize: Float
+    public var primaryColor: UniFfiSubtitleColor
+    public var secondaryColor: UniFfiSubtitleColor
+    public var outlineColor: UniFfiSubtitleColor
+    public var backColor: UniFfiSubtitleColor
+    public var bold: Bool
+    public var italic: Bool
+    public var underline: Bool
+    public var strikeout: Bool
+    public var scaleX: Float
+    public var scaleY: Float
+    public var spacing: Float
+    public var angle: Float
+    public var borderStyle: UInt32
+    public var outline: Float
+    public var shadow: Float
+    public var alignment: UniFfiSubtitleAlignment
+    public var marginL: UInt32
+    public var marginR: UInt32
+    public var marginV: UInt32
+    public var encoding: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(name: String, fontName: String, fontSize: Float, primaryColor: UniFfiSubtitleColor, secondaryColor: UniFfiSubtitleColor, outlineColor: UniFfiSubtitleColor, backColor: UniFfiSubtitleColor, bold: Bool, italic: Bool, underline: Bool, strikeout: Bool, scaleX: Float, scaleY: Float, spacing: Float, angle: Float, borderStyle: UInt32, outline: Float, shadow: Float, alignment: UniFfiSubtitleAlignment, marginL: UInt32, marginR: UInt32, marginV: UInt32, encoding: UInt32) {
+        self.name = name
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.primaryColor = primaryColor
+        self.secondaryColor = secondaryColor
+        self.outlineColor = outlineColor
+        self.backColor = backColor
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+        self.strikeout = strikeout
+        self.scaleX = scaleX
+        self.scaleY = scaleY
+        self.spacing = spacing
+        self.angle = angle
+        self.borderStyle = borderStyle
+        self.outline = outline
+        self.shadow = shadow
+        self.alignment = alignment
+        self.marginL = marginL
+        self.marginR = marginR
+        self.marginV = marginV
+        self.encoding = encoding
+    }
+}
+
+extension UniFfiSubtitleStyle: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleStyle, rhs: UniFfiSubtitleStyle) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.fontName != rhs.fontName {
+            return false
+        }
+        if lhs.fontSize != rhs.fontSize {
+            return false
+        }
+        if lhs.primaryColor != rhs.primaryColor {
+            return false
+        }
+        if lhs.secondaryColor != rhs.secondaryColor {
+            return false
+        }
+        if lhs.outlineColor != rhs.outlineColor {
+            return false
+        }
+        if lhs.backColor != rhs.backColor {
+            return false
+        }
+        if lhs.bold != rhs.bold {
+            return false
+        }
+        if lhs.italic != rhs.italic {
+            return false
+        }
+        if lhs.underline != rhs.underline {
+            return false
+        }
+        if lhs.strikeout != rhs.strikeout {
+            return false
+        }
+        if lhs.scaleX != rhs.scaleX {
+            return false
+        }
+        if lhs.scaleY != rhs.scaleY {
+            return false
+        }
+        if lhs.spacing != rhs.spacing {
+            return false
+        }
+        if lhs.angle != rhs.angle {
+            return false
+        }
+        if lhs.borderStyle != rhs.borderStyle {
+            return false
+        }
+        if lhs.outline != rhs.outline {
+            return false
+        }
+        if lhs.shadow != rhs.shadow {
+            return false
+        }
+        if lhs.alignment != rhs.alignment {
+            return false
+        }
+        if lhs.marginL != rhs.marginL {
+            return false
+        }
+        if lhs.marginR != rhs.marginR {
+            return false
+        }
+        if lhs.marginV != rhs.marginV {
+            return false
+        }
+        if lhs.encoding != rhs.encoding {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(fontName)
+        hasher.combine(fontSize)
+        hasher.combine(primaryColor)
+        hasher.combine(secondaryColor)
+        hasher.combine(outlineColor)
+        hasher.combine(backColor)
+        hasher.combine(bold)
+        hasher.combine(italic)
+        hasher.combine(underline)
+        hasher.combine(strikeout)
+        hasher.combine(scaleX)
+        hasher.combine(scaleY)
+        hasher.combine(spacing)
+        hasher.combine(angle)
+        hasher.combine(borderStyle)
+        hasher.combine(outline)
+        hasher.combine(shadow)
+        hasher.combine(alignment)
+        hasher.combine(marginL)
+        hasher.combine(marginR)
+        hasher.combine(marginV)
+        hasher.combine(encoding)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleStyle: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleStyle {
+        return
+            try UniFfiSubtitleStyle(
+                name: FfiConverterString.read(from: &buf),
+                fontName: FfiConverterString.read(from: &buf),
+                fontSize: FfiConverterFloat.read(from: &buf),
+                primaryColor: FfiConverterTypeUniFFISubtitleColor.read(from: &buf),
+                secondaryColor: FfiConverterTypeUniFFISubtitleColor.read(from: &buf),
+                outlineColor: FfiConverterTypeUniFFISubtitleColor.read(from: &buf),
+                backColor: FfiConverterTypeUniFFISubtitleColor.read(from: &buf),
+                bold: FfiConverterBool.read(from: &buf),
+                italic: FfiConverterBool.read(from: &buf),
+                underline: FfiConverterBool.read(from: &buf),
+                strikeout: FfiConverterBool.read(from: &buf),
+                scaleX: FfiConverterFloat.read(from: &buf),
+                scaleY: FfiConverterFloat.read(from: &buf),
+                spacing: FfiConverterFloat.read(from: &buf),
+                angle: FfiConverterFloat.read(from: &buf),
+                borderStyle: FfiConverterUInt32.read(from: &buf),
+                outline: FfiConverterFloat.read(from: &buf),
+                shadow: FfiConverterFloat.read(from: &buf),
+                alignment: FfiConverterTypeUniFFISubtitleAlignment.read(from: &buf),
+                marginL: FfiConverterUInt32.read(from: &buf),
+                marginR: FfiConverterUInt32.read(from: &buf),
+                marginV: FfiConverterUInt32.read(from: &buf),
+                encoding: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleStyle, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.fontName, into: &buf)
+        FfiConverterFloat.write(value.fontSize, into: &buf)
+        FfiConverterTypeUniFFISubtitleColor.write(value.primaryColor, into: &buf)
+        FfiConverterTypeUniFFISubtitleColor.write(value.secondaryColor, into: &buf)
+        FfiConverterTypeUniFFISubtitleColor.write(value.outlineColor, into: &buf)
+        FfiConverterTypeUniFFISubtitleColor.write(value.backColor, into: &buf)
+        FfiConverterBool.write(value.bold, into: &buf)
+        FfiConverterBool.write(value.italic, into: &buf)
+        FfiConverterBool.write(value.underline, into: &buf)
+        FfiConverterBool.write(value.strikeout, into: &buf)
+        FfiConverterFloat.write(value.scaleX, into: &buf)
+        FfiConverterFloat.write(value.scaleY, into: &buf)
+        FfiConverterFloat.write(value.spacing, into: &buf)
+        FfiConverterFloat.write(value.angle, into: &buf)
+        FfiConverterUInt32.write(value.borderStyle, into: &buf)
+        FfiConverterFloat.write(value.outline, into: &buf)
+        FfiConverterFloat.write(value.shadow, into: &buf)
+        FfiConverterTypeUniFFISubtitleAlignment.write(value.alignment, into: &buf)
+        FfiConverterUInt32.write(value.marginL, into: &buf)
+        FfiConverterUInt32.write(value.marginR, into: &buf)
+        FfiConverterUInt32.write(value.marginV, into: &buf)
+        FfiConverterUInt32.write(value.encoding, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleStyle_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleStyle {
+    return try FfiConverterTypeUniFFISubtitleStyle.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleStyle_lower(_ value: UniFfiSubtitleStyle) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleStyle.lower(value)
 }
 
 /**
@@ -5403,6 +6595,225 @@ public func FfiConverterTypeUniFFILicenseResult_lower(_ value: UniFfiLicenseResu
 
 extension UniFfiLicenseResult: Equatable, Hashable {}
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Type classification for a media container track exposed to Swift.
+ */
+
+public enum UniFfiMediaTrackType {
+    case audio
+    case video
+    case subtitle
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMediaTrackType: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiMediaTrackType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMediaTrackType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .audio
+
+        case 2: return .video
+
+        case 3: return .subtitle
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiMediaTrackType, into buf: inout [UInt8]) {
+        switch value {
+        case .audio:
+            writeInt(&buf, Int32(1))
+
+        case .video:
+            writeInt(&buf, Int32(2))
+
+        case .subtitle:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaTrackType_lift(_ buf: RustBuffer) throws -> UniFfiMediaTrackType {
+    return try FfiConverterTypeUniFFIMediaTrackType.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMediaTrackType_lower(_ value: UniFfiMediaTrackType) -> RustBuffer {
+    return FfiConverterTypeUniFFIMediaTrackType.lower(value)
+}
+
+extension UniFfiMediaTrackType: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Subtitle alignment on screen (numpad mapping 1-9).
+ */
+
+public enum UniFfiSubtitleAlignment {
+    case bottomLeft
+    case bottomCenter
+    case bottomRight
+    case middleLeft
+    case middleCenter
+    case middleRight
+    case topLeft
+    case topCenter
+    case topRight
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleAlignment: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSubtitleAlignment
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleAlignment {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .bottomLeft
+
+        case 2: return .bottomCenter
+
+        case 3: return .bottomRight
+
+        case 4: return .middleLeft
+
+        case 5: return .middleCenter
+
+        case 6: return .middleRight
+
+        case 7: return .topLeft
+
+        case 8: return .topCenter
+
+        case 9: return .topRight
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiSubtitleAlignment, into buf: inout [UInt8]) {
+        switch value {
+        case .bottomLeft:
+            writeInt(&buf, Int32(1))
+
+        case .bottomCenter:
+            writeInt(&buf, Int32(2))
+
+        case .bottomRight:
+            writeInt(&buf, Int32(3))
+
+        case .middleLeft:
+            writeInt(&buf, Int32(4))
+
+        case .middleCenter:
+            writeInt(&buf, Int32(5))
+
+        case .middleRight:
+            writeInt(&buf, Int32(6))
+
+        case .topLeft:
+            writeInt(&buf, Int32(7))
+
+        case .topCenter:
+            writeInt(&buf, Int32(8))
+
+        case .topRight:
+            writeInt(&buf, Int32(9))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleAlignment_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleAlignment {
+    return try FfiConverterTypeUniFFISubtitleAlignment.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleAlignment_lower(_ value: UniFfiSubtitleAlignment) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleAlignment.lower(value)
+}
+
+extension UniFfiSubtitleAlignment: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Supported subtitle formats exposed to Swift.
+ */
+
+public enum UniFfiSubtitleFormat {
+    case ass
+    case srt
+    case vtt
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleFormat: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSubtitleFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .ass
+
+        case 2: return .srt
+
+        case 3: return .vtt
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiSubtitleFormat, into buf: inout [UInt8]) {
+        switch value {
+        case .ass:
+            writeInt(&buf, Int32(1))
+
+        case .srt:
+            writeInt(&buf, Int32(2))
+
+        case .vtt:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleFormat_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleFormat {
+    return try FfiConverterTypeUniFFISubtitleFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleFormat_lower(_ value: UniFfiSubtitleFormat) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleFormat.lower(value)
+}
+
+extension UniFfiSubtitleFormat: Equatable, Hashable {}
+
 /**
  * Callback interface protocol implemented in Swift.
  */
@@ -5511,6 +6922,30 @@ extension FfiConverterCallbackInterfaceProgressHandler: FfiConverter {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
+    typealias SwiftType = UInt16?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt16.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt16.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     typealias SwiftType = UInt32?
 
@@ -5559,6 +6994,30 @@ private struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionFloat: FfiConverterRustBuffer {
+    typealias SwiftType = Float?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterFloat.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterFloat.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
     typealias SwiftType = Double?
 
@@ -5575,6 +7034,30 @@ private struct FfiConverterOptionDouble: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionBool: FfiConverterRustBuffer {
+    typealias SwiftType = Bool?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterBool.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterBool.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -5799,6 +7282,54 @@ private struct FfiConverterOptionTypeUniFFIEpubCoverData: FfiConverterRustBuffer
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionTypeUniFFISubtitleColor: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSubtitleColor?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFISubtitleColor.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFISubtitleColor.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFISubtitlePosition: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSubtitlePosition?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFISubtitlePosition.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFISubtitlePosition.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionTypeUniFFIWalMutationSummary: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiWalMutationSummary?
 
@@ -5839,6 +7370,30 @@ private struct FfiConverterOptionTypeVideoMetadataRecord: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeVideoMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFISubtitleAlignment: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSubtitleAlignment?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFISubtitleAlignment.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFISubtitleAlignment.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -6096,6 +7651,131 @@ private struct FfiConverterSequenceTypeUniFFIEpubChapterItem: FfiConverterRustBu
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIMediaAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiMediaAttachment]
+
+    static func write(_ value: [UniFfiMediaAttachment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIMediaAttachment.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiMediaAttachment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiMediaAttachment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIMediaAttachment.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIMediaChapter: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiMediaChapter]
+
+    static func write(_ value: [UniFfiMediaChapter], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIMediaChapter.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiMediaChapter] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiMediaChapter]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIMediaChapter.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIMediaTrackInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiMediaTrackInfo]
+
+    static func write(_ value: [UniFfiMediaTrackInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIMediaTrackInfo.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiMediaTrackInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiMediaTrackInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIMediaTrackInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFISubtitleDialogue: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiSubtitleDialogue]
+
+    static func write(_ value: [UniFfiSubtitleDialogue], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFISubtitleDialogue.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiSubtitleDialogue] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiSubtitleDialogue]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFISubtitleDialogue.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFISubtitleSpan: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiSubtitleSpan]
+
+    static func write(_ value: [UniFfiSubtitleSpan], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFISubtitleSpan.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiSubtitleSpan] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiSubtitleSpan]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFISubtitleSpan.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiTokenSpan]
 
@@ -6188,6 +7868,32 @@ private struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
         for _ in 0 ..< len {
             let key = try FfiConverterString.read(from: &buf)
             let value = try FfiConverterString.read(from: &buf)
+            dict[key] = value
+        }
+        return dict
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterDictionaryStringTypeUniFFISubtitleStyle: FfiConverterRustBuffer {
+    static func write(_ value: [String: UniFfiSubtitleStyle], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for (key, value) in value {
+            FfiConverterString.write(key, into: &buf)
+            FfiConverterTypeUniFFISubtitleStyle.write(value, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String: UniFfiSubtitleStyle] {
+        let len: Int32 = try readInt(&buf)
+        var dict = [String: UniFfiSubtitleStyle]()
+        dict.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            let key = try FfiConverterString.read(from: &buf)
+            let value = try FfiConverterTypeUniFFISubtitleStyle.read(from: &buf)
             dict[key] = value
         }
         return dict
@@ -6336,6 +8042,17 @@ public func createArchiveStream(sourcePaths: [String], outputPath: String, forma
 public func decodeImageRgbaFromMemory(data: Data) throws -> DecodedImageRecord {
     return try FfiConverterTypeDecodedImageRecord.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
         uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Demuxes tracks, chapters, and embedded attachments from an in-memory media buffer.
+ */
+public func demuxMediaTracks(data: Data) throws -> UniFfiMediaDemuxSummary {
+    return try FfiConverterTypeUniFFIMediaDemuxSummary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_demux_media_tracks(
             FfiConverterData.lower(data), $0
         )
     })
@@ -6564,6 +8281,18 @@ public func extractSingleEntryStreamGuarded(archivePath: String, entryIndex: UIn
 }
 
 /**
+ * Retrieves all active subtitle dialogues at a specific millisecond timestamp using binary search.
+ */
+public func findActiveSubtitlesAt(script: UniFfiSubtitleScript, timestampMs: UInt64) -> [UniFfiSubtitleDialogue] {
+    return try! FfiConverterSequenceTypeUniFFISubtitleDialogue.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_find_active_subtitles_at(
+            FfiConverterTypeUniFFISubtitleScript.lower(script),
+            FfiConverterUInt64.lower(timestampMs), $0
+        )
+    })
+}
+
+/**
  * Generates a synthetic benchmark dataset file at high throughput.
  *
  * Uses buffered I/O, reusable 4MB chunk memory, and non-blocking SIMD-friendly
@@ -6730,6 +8459,18 @@ public func parseEpubMetadata(epubPath: String) -> UniFfiEpubBook? {
     return try! FfiConverterOptionTypeUniFFIEpubBook.lift(try! rustCall {
         uniffi_ttzip_engine_fn_func_parse_epub_metadata(
             FfiConverterString.lower(epubPath), $0
+        )
+    })
+}
+
+/**
+ * Parses subtitle content with an optional format hint into a strongly-typed AST script.
+ */
+public func parseSubtitleScript(content: String, formatName: String) throws -> UniFfiSubtitleScript {
+    return try FfiConverterTypeUniFFISubtitleScript.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_parse_subtitle_script(
+            FfiConverterString.lower(content),
+            FfiConverterString.lower(formatName), $0
         )
     })
 }
@@ -7078,6 +8819,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory() != 12917 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_demux_media_tracks() != 28944 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7132,6 +8876,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_find_active_subtitles_at() != 63255 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7172,6 +8919,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_parse_epub_metadata() != 61296 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_parse_subtitle_script() != 63909 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_probe_buffer_metadata() != 36698 {

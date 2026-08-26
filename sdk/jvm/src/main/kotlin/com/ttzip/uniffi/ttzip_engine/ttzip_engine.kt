@@ -921,6 +921,12 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1029,6 +1035,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_demux_media_tracks(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_detect_archive_format(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_detect_split_volume_chain(`seedPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1065,6 +1073,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded(`archivePath`: RustBuffer.ByValue,`entryIndex`: Long,`password`: RustBuffer.ByValue,`maxPrecedingBudgetMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_find_active_subtitles_at(`script`: RustBuffer.ByValue,`timestampMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset(`targetPath`: RustBuffer.ByValue,`targetBytes`: Long,`profileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_ttzip_engine_fn_func_generate_thumbnail_from_memory(`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filter`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1092,6 +1102,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_parse_epub_book_from_memory(`epubBytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_parse_epub_metadata(`epubPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_parse_subtitle_script(`content`: RustBuffer.ByValue,`formatName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_probe_buffer_metadata(`data`: RustBuffer.ByValue,`filenameHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1275,6 +1287,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_demux_media_tracks(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_detect_archive_format(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_detect_split_volume_chain(
@@ -1311,6 +1325,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_find_active_subtitles_at(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory(
@@ -1338,6 +1354,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_parse_epub_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_parse_subtitle_script(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_probe_buffer_metadata(
     ): Short
@@ -1486,6 +1504,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory() != 12917.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_demux_media_tracks() != 28944.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1540,6 +1561,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_find_active_subtitles_at() != 63255.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1580,6 +1604,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata() != 61296.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_parse_subtitle_script() != 63909.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_probe_buffer_metadata() != 36698.toShort()) {
@@ -1769,6 +1796,52 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
  * @suppress
  * */
 object NoPointer
+
+/**
+ * @suppress
+ */
+public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+    override fun lift(value: Byte): UByte {
+        return value.toUByte()
+    }
+
+    override fun read(buf: ByteBuffer): UByte {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: UByte): Byte {
+        return value.toByte()
+    }
+
+    override fun allocationSize(value: UByte) = 1UL
+
+    override fun write(value: UByte, buf: ByteBuffer) {
+        buf.put(value.toByte())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUShort: FfiConverter<UShort, Short> {
+    override fun lift(value: Short): UShort {
+        return value.toUShort()
+    }
+
+    override fun read(buf: ByteBuffer): UShort {
+        return lift(buf.getShort())
+    }
+
+    override fun lower(value: UShort): Short {
+        return value.toShort()
+    }
+
+    override fun allocationSize(value: UShort) = 2UL
+
+    override fun write(value: UShort, buf: ByteBuffer) {
+        buf.putShort(value.toShort())
+    }
+}
 
 /**
  * @suppress
@@ -4574,6 +4647,202 @@ public object FfiConverterTypeUniFFILicensePayload: FfiConverterRustBuffer<UniFf
 
 
 /**
+ * An embedded binary attachment (such as cover art, fonts, or poster images).
+ */
+data class UniFfiMediaAttachment (
+    var `fileName`: kotlin.String, 
+    var `mimeType`: kotlin.String, 
+    var `data`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMediaAttachment: FfiConverterRustBuffer<UniFfiMediaAttachment> {
+    override fun read(buf: ByteBuffer): UniFfiMediaAttachment {
+        return UniFfiMediaAttachment(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMediaAttachment) = (
+            FfiConverterString.allocationSize(value.`fileName`) +
+            FfiConverterString.allocationSize(value.`mimeType`) +
+            FfiConverterByteArray.allocationSize(value.`data`)
+    )
+
+    override fun write(value: UniFfiMediaAttachment, buf: ByteBuffer) {
+            FfiConverterString.write(value.`fileName`, buf)
+            FfiConverterString.write(value.`mimeType`, buf)
+            FfiConverterByteArray.write(value.`data`, buf)
+    }
+}
+
+
+
+/**
+ * A chapter entry denoting a structured segment within the media timeline.
+ */
+data class UniFfiMediaChapter (
+    var `startTimeMs`: kotlin.ULong, 
+    var `endTimeMs`: kotlin.ULong?, 
+    var `title`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMediaChapter: FfiConverterRustBuffer<UniFfiMediaChapter> {
+    override fun read(buf: ByteBuffer): UniFfiMediaChapter {
+        return UniFfiMediaChapter(
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMediaChapter) = (
+            FfiConverterULong.allocationSize(value.`startTimeMs`) +
+            FfiConverterOptionalULong.allocationSize(value.`endTimeMs`) +
+            FfiConverterString.allocationSize(value.`title`)
+    )
+
+    override fun write(value: UniFfiMediaChapter, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`startTimeMs`, buf)
+            FfiConverterOptionalULong.write(value.`endTimeMs`, buf)
+            FfiConverterString.write(value.`title`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive summary of a demuxed media container.
+ */
+data class UniFfiMediaDemuxSummary (
+    var `containerFormat`: kotlin.String, 
+    var `durationMs`: kotlin.ULong?, 
+    var `title`: kotlin.String?, 
+    var `tracks`: List<UniFfiMediaTrackInfo>, 
+    var `chapters`: List<UniFfiMediaChapter>, 
+    var `attachments`: List<UniFfiMediaAttachment>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMediaDemuxSummary: FfiConverterRustBuffer<UniFfiMediaDemuxSummary> {
+    override fun read(buf: ByteBuffer): UniFfiMediaDemuxSummary {
+        return UniFfiMediaDemuxSummary(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeUniFFIMediaTrackInfo.read(buf),
+            FfiConverterSequenceTypeUniFFIMediaChapter.read(buf),
+            FfiConverterSequenceTypeUniFFIMediaAttachment.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMediaDemuxSummary) = (
+            FfiConverterString.allocationSize(value.`containerFormat`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMs`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterSequenceTypeUniFFIMediaTrackInfo.allocationSize(value.`tracks`) +
+            FfiConverterSequenceTypeUniFFIMediaChapter.allocationSize(value.`chapters`) +
+            FfiConverterSequenceTypeUniFFIMediaAttachment.allocationSize(value.`attachments`)
+    )
+
+    override fun write(value: UniFfiMediaDemuxSummary, buf: ByteBuffer) {
+            FfiConverterString.write(value.`containerFormat`, buf)
+            FfiConverterOptionalULong.write(value.`durationMs`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterSequenceTypeUniFFIMediaTrackInfo.write(value.`tracks`, buf)
+            FfiConverterSequenceTypeUniFFIMediaChapter.write(value.`chapters`, buf)
+            FfiConverterSequenceTypeUniFFIMediaAttachment.write(value.`attachments`, buf)
+    }
+}
+
+
+
+/**
+ * Metadata describing a specific elementary stream/track inside a media container.
+ */
+data class UniFfiMediaTrackInfo (
+    var `trackId`: kotlin.UInt, 
+    var `trackType`: UniFfiMediaTrackType, 
+    var `codec`: kotlin.String, 
+    var `language`: kotlin.String?, 
+    var `title`: kotlin.String?, 
+    var `isDefault`: kotlin.Boolean, 
+    var `channels`: kotlin.UShort?, 
+    var `sampleRate`: kotlin.UInt?, 
+    var `width`: kotlin.UInt?, 
+    var `height`: kotlin.UInt?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMediaTrackInfo: FfiConverterRustBuffer<UniFfiMediaTrackInfo> {
+    override fun read(buf: ByteBuffer): UniFfiMediaTrackInfo {
+        return UniFfiMediaTrackInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeUniFFIMediaTrackType.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMediaTrackInfo) = (
+            FfiConverterUInt.allocationSize(value.`trackId`) +
+            FfiConverterTypeUniFFIMediaTrackType.allocationSize(value.`trackType`) +
+            FfiConverterString.allocationSize(value.`codec`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterBoolean.allocationSize(value.`isDefault`) +
+            FfiConverterOptionalUShort.allocationSize(value.`channels`) +
+            FfiConverterOptionalUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterOptionalUInt.allocationSize(value.`width`) +
+            FfiConverterOptionalUInt.allocationSize(value.`height`)
+    )
+
+    override fun write(value: UniFfiMediaTrackInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`trackId`, buf)
+            FfiConverterTypeUniFFIMediaTrackType.write(value.`trackType`, buf)
+            FfiConverterString.write(value.`codec`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterBoolean.write(value.`isDefault`, buf)
+            FfiConverterOptionalUShort.write(value.`channels`, buf)
+            FfiConverterOptionalUInt.write(value.`sampleRate`, buf)
+            FfiConverterOptionalUInt.write(value.`width`, buf)
+            FfiConverterOptionalUInt.write(value.`height`, buf)
+    }
+}
+
+
+
+/**
  * Parent directory and autocompletion prefix record.
  */
 data class UniFfiParentAndPrefix (
@@ -4737,6 +5006,420 @@ public object FfiConverterTypeUniFFISmartExtractDecision: FfiConverterRustBuffer
             FfiConverterUInt.write(value.`effectiveRootCount`, buf)
             FfiConverterOptionalString.write(value.`singleRootName`, buf)
             FfiConverterString.write(value.`destinationFolder`, buf)
+    }
+}
+
+
+
+/**
+ * 8-bit RGBA color representation for subtitle styling across FFI boundary.
+ */
+data class UniFfiSubtitleColor (
+    var `r`: kotlin.UByte, 
+    var `g`: kotlin.UByte, 
+    var `b`: kotlin.UByte, 
+    var `a`: kotlin.UByte
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleColor: FfiConverterRustBuffer<UniFfiSubtitleColor> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleColor {
+        return UniFfiSubtitleColor(
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+            FfiConverterUByte.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleColor) = (
+            FfiConverterUByte.allocationSize(value.`r`) +
+            FfiConverterUByte.allocationSize(value.`g`) +
+            FfiConverterUByte.allocationSize(value.`b`) +
+            FfiConverterUByte.allocationSize(value.`a`)
+    )
+
+    override fun write(value: UniFfiSubtitleColor, buf: ByteBuffer) {
+            FfiConverterUByte.write(value.`r`, buf)
+            FfiConverterUByte.write(value.`g`, buf)
+            FfiConverterUByte.write(value.`b`, buf)
+            FfiConverterUByte.write(value.`a`, buf)
+    }
+}
+
+
+
+/**
+ * A parsed subtitle dialogue event.
+ */
+data class UniFfiSubtitleDialogue (
+    var `layer`: kotlin.UInt, 
+    var `startMs`: kotlin.Long, 
+    var `endMs`: kotlin.Long, 
+    var `style`: kotlin.String, 
+    var `actor`: kotlin.String, 
+    var `marginL`: kotlin.UInt, 
+    var `marginR`: kotlin.UInt, 
+    var `marginV`: kotlin.UInt, 
+    var `effect`: kotlin.String, 
+    var `rawText`: kotlin.String, 
+    var `plainText`: kotlin.String, 
+    var `spans`: List<UniFfiSubtitleSpan>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleDialogue: FfiConverterRustBuffer<UniFfiSubtitleDialogue> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleDialogue {
+        return UniFfiSubtitleDialogue(
+            FfiConverterUInt.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeUniFFISubtitleSpan.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleDialogue) = (
+            FfiConverterUInt.allocationSize(value.`layer`) +
+            FfiConverterLong.allocationSize(value.`startMs`) +
+            FfiConverterLong.allocationSize(value.`endMs`) +
+            FfiConverterString.allocationSize(value.`style`) +
+            FfiConverterString.allocationSize(value.`actor`) +
+            FfiConverterUInt.allocationSize(value.`marginL`) +
+            FfiConverterUInt.allocationSize(value.`marginR`) +
+            FfiConverterUInt.allocationSize(value.`marginV`) +
+            FfiConverterString.allocationSize(value.`effect`) +
+            FfiConverterString.allocationSize(value.`rawText`) +
+            FfiConverterString.allocationSize(value.`plainText`) +
+            FfiConverterSequenceTypeUniFFISubtitleSpan.allocationSize(value.`spans`)
+    )
+
+    override fun write(value: UniFfiSubtitleDialogue, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`layer`, buf)
+            FfiConverterLong.write(value.`startMs`, buf)
+            FfiConverterLong.write(value.`endMs`, buf)
+            FfiConverterString.write(value.`style`, buf)
+            FfiConverterString.write(value.`actor`, buf)
+            FfiConverterUInt.write(value.`marginL`, buf)
+            FfiConverterUInt.write(value.`marginR`, buf)
+            FfiConverterUInt.write(value.`marginV`, buf)
+            FfiConverterString.write(value.`effect`, buf)
+            FfiConverterString.write(value.`rawText`, buf)
+            FfiConverterString.write(value.`plainText`, buf)
+            FfiConverterSequenceTypeUniFFISubtitleSpan.write(value.`spans`, buf)
+    }
+}
+
+
+
+/**
+ * 2D Cartesian coordinates for explicit subtitle positioning.
+ */
+data class UniFfiSubtitlePosition (
+    var `x`: kotlin.Float, 
+    var `y`: kotlin.Float
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitlePosition: FfiConverterRustBuffer<UniFfiSubtitlePosition> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitlePosition {
+        return UniFfiSubtitlePosition(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitlePosition) = (
+            FfiConverterFloat.allocationSize(value.`x`) +
+            FfiConverterFloat.allocationSize(value.`y`)
+    )
+
+    override fun write(value: UniFfiSubtitlePosition, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`x`, buf)
+            FfiConverterFloat.write(value.`y`, buf)
+    }
+}
+
+
+
+/**
+ * Complete parsed subtitle script AST document exposed to Swift.
+ */
+data class UniFfiSubtitleScript (
+    var `format`: UniFfiSubtitleFormat, 
+    var `title`: kotlin.String?, 
+    var `scriptType`: kotlin.String?, 
+    var `playResX`: kotlin.UInt?, 
+    var `playResY`: kotlin.UInt?, 
+    var `wrapStyle`: kotlin.UInt?, 
+    var `scaledBorderAndShadow`: kotlin.Boolean?, 
+    var `styles`: Map<kotlin.String, UniFfiSubtitleStyle>, 
+    var `dialogues`: List<UniFfiSubtitleDialogue>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleScript: FfiConverterRustBuffer<UniFfiSubtitleScript> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleScript {
+        return UniFfiSubtitleScript(
+            FfiConverterTypeUniFFISubtitleFormat.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterMapStringTypeUniFFISubtitleStyle.read(buf),
+            FfiConverterSequenceTypeUniFFISubtitleDialogue.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleScript) = (
+            FfiConverterTypeUniFFISubtitleFormat.allocationSize(value.`format`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`scriptType`) +
+            FfiConverterOptionalUInt.allocationSize(value.`playResX`) +
+            FfiConverterOptionalUInt.allocationSize(value.`playResY`) +
+            FfiConverterOptionalUInt.allocationSize(value.`wrapStyle`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`scaledBorderAndShadow`) +
+            FfiConverterMapStringTypeUniFFISubtitleStyle.allocationSize(value.`styles`) +
+            FfiConverterSequenceTypeUniFFISubtitleDialogue.allocationSize(value.`dialogues`)
+    )
+
+    override fun write(value: UniFfiSubtitleScript, buf: ByteBuffer) {
+            FfiConverterTypeUniFFISubtitleFormat.write(value.`format`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`scriptType`, buf)
+            FfiConverterOptionalUInt.write(value.`playResX`, buf)
+            FfiConverterOptionalUInt.write(value.`playResY`, buf)
+            FfiConverterOptionalUInt.write(value.`wrapStyle`, buf)
+            FfiConverterOptionalBoolean.write(value.`scaledBorderAndShadow`, buf)
+            FfiConverterMapStringTypeUniFFISubtitleStyle.write(value.`styles`, buf)
+            FfiConverterSequenceTypeUniFFISubtitleDialogue.write(value.`dialogues`, buf)
+    }
+}
+
+
+
+/**
+ * An inline styled span of text inside a subtitle dialogue line.
+ */
+data class UniFfiSubtitleSpan (
+    var `text`: kotlin.String, 
+    var `bold`: kotlin.Boolean?, 
+    var `italic`: kotlin.Boolean?, 
+    var `underline`: kotlin.Boolean?, 
+    var `strikeout`: kotlin.Boolean?, 
+    var `primaryColor`: UniFfiSubtitleColor?, 
+    var `secondaryColor`: UniFfiSubtitleColor?, 
+    var `outlineColor`: UniFfiSubtitleColor?, 
+    var `shadowColor`: UniFfiSubtitleColor?, 
+    var `fontName`: kotlin.String?, 
+    var `fontSize`: kotlin.Float?, 
+    var `position`: UniFfiSubtitlePosition?, 
+    var `alignment`: UniFfiSubtitleAlignment?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleSpan: FfiConverterRustBuffer<UniFfiSubtitleSpan> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleSpan {
+        return UniFfiSubtitleSpan(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitleColor.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitleColor.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitleColor.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitleColor.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalFloat.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitlePosition.read(buf),
+            FfiConverterOptionalTypeUniFFISubtitleAlignment.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleSpan) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`bold`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`italic`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`underline`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`strikeout`) +
+            FfiConverterOptionalTypeUniFFISubtitleColor.allocationSize(value.`primaryColor`) +
+            FfiConverterOptionalTypeUniFFISubtitleColor.allocationSize(value.`secondaryColor`) +
+            FfiConverterOptionalTypeUniFFISubtitleColor.allocationSize(value.`outlineColor`) +
+            FfiConverterOptionalTypeUniFFISubtitleColor.allocationSize(value.`shadowColor`) +
+            FfiConverterOptionalString.allocationSize(value.`fontName`) +
+            FfiConverterOptionalFloat.allocationSize(value.`fontSize`) +
+            FfiConverterOptionalTypeUniFFISubtitlePosition.allocationSize(value.`position`) +
+            FfiConverterOptionalTypeUniFFISubtitleAlignment.allocationSize(value.`alignment`)
+    )
+
+    override fun write(value: UniFfiSubtitleSpan, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterOptionalBoolean.write(value.`bold`, buf)
+            FfiConverterOptionalBoolean.write(value.`italic`, buf)
+            FfiConverterOptionalBoolean.write(value.`underline`, buf)
+            FfiConverterOptionalBoolean.write(value.`strikeout`, buf)
+            FfiConverterOptionalTypeUniFFISubtitleColor.write(value.`primaryColor`, buf)
+            FfiConverterOptionalTypeUniFFISubtitleColor.write(value.`secondaryColor`, buf)
+            FfiConverterOptionalTypeUniFFISubtitleColor.write(value.`outlineColor`, buf)
+            FfiConverterOptionalTypeUniFFISubtitleColor.write(value.`shadowColor`, buf)
+            FfiConverterOptionalString.write(value.`fontName`, buf)
+            FfiConverterOptionalFloat.write(value.`fontSize`, buf)
+            FfiConverterOptionalTypeUniFFISubtitlePosition.write(value.`position`, buf)
+            FfiConverterOptionalTypeUniFFISubtitleAlignment.write(value.`alignment`, buf)
+    }
+}
+
+
+
+/**
+ * V4+ Style definition for ASS subtitle scripts.
+ */
+data class UniFfiSubtitleStyle (
+    var `name`: kotlin.String, 
+    var `fontName`: kotlin.String, 
+    var `fontSize`: kotlin.Float, 
+    var `primaryColor`: UniFfiSubtitleColor, 
+    var `secondaryColor`: UniFfiSubtitleColor, 
+    var `outlineColor`: UniFfiSubtitleColor, 
+    var `backColor`: UniFfiSubtitleColor, 
+    var `bold`: kotlin.Boolean, 
+    var `italic`: kotlin.Boolean, 
+    var `underline`: kotlin.Boolean, 
+    var `strikeout`: kotlin.Boolean, 
+    var `scaleX`: kotlin.Float, 
+    var `scaleY`: kotlin.Float, 
+    var `spacing`: kotlin.Float, 
+    var `angle`: kotlin.Float, 
+    var `borderStyle`: kotlin.UInt, 
+    var `outline`: kotlin.Float, 
+    var `shadow`: kotlin.Float, 
+    var `alignment`: UniFfiSubtitleAlignment, 
+    var `marginL`: kotlin.UInt, 
+    var `marginR`: kotlin.UInt, 
+    var `marginV`: kotlin.UInt, 
+    var `encoding`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleStyle: FfiConverterRustBuffer<UniFfiSubtitleStyle> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleStyle {
+        return UniFfiSubtitleStyle(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterTypeUniFFISubtitleColor.read(buf),
+            FfiConverterTypeUniFFISubtitleColor.read(buf),
+            FfiConverterTypeUniFFISubtitleColor.read(buf),
+            FfiConverterTypeUniFFISubtitleColor.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterTypeUniFFISubtitleAlignment.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleStyle) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`fontName`) +
+            FfiConverterFloat.allocationSize(value.`fontSize`) +
+            FfiConverterTypeUniFFISubtitleColor.allocationSize(value.`primaryColor`) +
+            FfiConverterTypeUniFFISubtitleColor.allocationSize(value.`secondaryColor`) +
+            FfiConverterTypeUniFFISubtitleColor.allocationSize(value.`outlineColor`) +
+            FfiConverterTypeUniFFISubtitleColor.allocationSize(value.`backColor`) +
+            FfiConverterBoolean.allocationSize(value.`bold`) +
+            FfiConverterBoolean.allocationSize(value.`italic`) +
+            FfiConverterBoolean.allocationSize(value.`underline`) +
+            FfiConverterBoolean.allocationSize(value.`strikeout`) +
+            FfiConverterFloat.allocationSize(value.`scaleX`) +
+            FfiConverterFloat.allocationSize(value.`scaleY`) +
+            FfiConverterFloat.allocationSize(value.`spacing`) +
+            FfiConverterFloat.allocationSize(value.`angle`) +
+            FfiConverterUInt.allocationSize(value.`borderStyle`) +
+            FfiConverterFloat.allocationSize(value.`outline`) +
+            FfiConverterFloat.allocationSize(value.`shadow`) +
+            FfiConverterTypeUniFFISubtitleAlignment.allocationSize(value.`alignment`) +
+            FfiConverterUInt.allocationSize(value.`marginL`) +
+            FfiConverterUInt.allocationSize(value.`marginR`) +
+            FfiConverterUInt.allocationSize(value.`marginV`) +
+            FfiConverterUInt.allocationSize(value.`encoding`)
+    )
+
+    override fun write(value: UniFfiSubtitleStyle, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`fontName`, buf)
+            FfiConverterFloat.write(value.`fontSize`, buf)
+            FfiConverterTypeUniFFISubtitleColor.write(value.`primaryColor`, buf)
+            FfiConverterTypeUniFFISubtitleColor.write(value.`secondaryColor`, buf)
+            FfiConverterTypeUniFFISubtitleColor.write(value.`outlineColor`, buf)
+            FfiConverterTypeUniFFISubtitleColor.write(value.`backColor`, buf)
+            FfiConverterBoolean.write(value.`bold`, buf)
+            FfiConverterBoolean.write(value.`italic`, buf)
+            FfiConverterBoolean.write(value.`underline`, buf)
+            FfiConverterBoolean.write(value.`strikeout`, buf)
+            FfiConverterFloat.write(value.`scaleX`, buf)
+            FfiConverterFloat.write(value.`scaleY`, buf)
+            FfiConverterFloat.write(value.`spacing`, buf)
+            FfiConverterFloat.write(value.`angle`, buf)
+            FfiConverterUInt.write(value.`borderStyle`, buf)
+            FfiConverterFloat.write(value.`outline`, buf)
+            FfiConverterFloat.write(value.`shadow`, buf)
+            FfiConverterTypeUniFFISubtitleAlignment.write(value.`alignment`, buf)
+            FfiConverterUInt.write(value.`marginL`, buf)
+            FfiConverterUInt.write(value.`marginR`, buf)
+            FfiConverterUInt.write(value.`marginV`, buf)
+            FfiConverterUInt.write(value.`encoding`, buf)
     }
 }
 
@@ -5640,6 +6323,114 @@ public object FfiConverterTypeUniFFILicenseResult : FfiConverterRustBuffer<UniFf
 
 
 
+/**
+ * Type classification for a media container track exposed to Swift.
+ */
+
+enum class UniFfiMediaTrackType {
+    
+    AUDIO,
+    VIDEO,
+    SUBTITLE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMediaTrackType: FfiConverterRustBuffer<UniFfiMediaTrackType> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiMediaTrackType.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiMediaTrackType) = 4UL
+
+    override fun write(value: UniFfiMediaTrackType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Subtitle alignment on screen (numpad mapping 1-9).
+ */
+
+enum class UniFfiSubtitleAlignment {
+    
+    BOTTOM_LEFT,
+    BOTTOM_CENTER,
+    BOTTOM_RIGHT,
+    MIDDLE_LEFT,
+    MIDDLE_CENTER,
+    MIDDLE_RIGHT,
+    TOP_LEFT,
+    TOP_CENTER,
+    TOP_RIGHT;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleAlignment: FfiConverterRustBuffer<UniFfiSubtitleAlignment> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiSubtitleAlignment.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleAlignment) = 4UL
+
+    override fun write(value: UniFfiSubtitleAlignment, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Supported subtitle formats exposed to Swift.
+ */
+
+enum class UniFfiSubtitleFormat {
+    
+    ASS,
+    SRT,
+    VTT;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleFormat: FfiConverterRustBuffer<UniFfiSubtitleFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiSubtitleFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleFormat) = 4UL
+
+    override fun write(value: UniFfiSubtitleFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -5733,6 +6524,38 @@ public object FfiConverterTypeProgressHandler: FfiConverterCallbackInterface<Pro
 /**
  * @suppress
  */
+public object FfiConverterOptionalUShort: FfiConverterRustBuffer<kotlin.UShort?> {
+    override fun read(buf: ByteBuffer): kotlin.UShort? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUShort.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UShort?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUShort.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UShort?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUShort.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
     override fun read(buf: ByteBuffer): kotlin.UInt? {
         if (buf.get().toInt() == 0) {
@@ -5797,6 +6620,38 @@ public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
+    override fun read(buf: ByteBuffer): kotlin.Float? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterFloat.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Float?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterFloat.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?> {
     override fun read(buf: ByteBuffer): kotlin.Double? {
         if (buf.get().toInt() == 0) {
@@ -5819,6 +6674,38 @@ public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?>
         } else {
             buf.put(1)
             FfiConverterDouble.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
+    override fun read(buf: ByteBuffer): kotlin.Boolean? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterBoolean.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Boolean?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterBoolean.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterBoolean.write(value, buf)
         }
     }
 }
@@ -6117,6 +7004,70 @@ public object FfiConverterOptionalTypeUniFFIEpubCoverData: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUniFFISubtitleColor: FfiConverterRustBuffer<UniFfiSubtitleColor?> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleColor? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFISubtitleColor.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleColor?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFISubtitleColor.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiSubtitleColor?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFISubtitleColor.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUniFFISubtitlePosition: FfiConverterRustBuffer<UniFfiSubtitlePosition?> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitlePosition? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFISubtitlePosition.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiSubtitlePosition?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFISubtitlePosition.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiSubtitlePosition?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFISubtitlePosition.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeUniFFIWalMutationSummary: FfiConverterRustBuffer<UniFfiWalMutationSummary?> {
     override fun read(buf: ByteBuffer): UniFfiWalMutationSummary? {
         if (buf.get().toInt() == 0) {
@@ -6171,6 +7122,38 @@ public object FfiConverterOptionalTypeVideoMetadataRecord: FfiConverterRustBuffe
         } else {
             buf.put(1)
             FfiConverterTypeVideoMetadataRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUniFFISubtitleAlignment: FfiConverterRustBuffer<UniFfiSubtitleAlignment?> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleAlignment? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFISubtitleAlignment.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleAlignment?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFISubtitleAlignment.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiSubtitleAlignment?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFISubtitleAlignment.write(value, buf)
         }
     }
 }
@@ -6465,6 +7448,146 @@ public object FfiConverterSequenceTypeUniFFIEpubChapterItem: FfiConverterRustBuf
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIMediaAttachment: FfiConverterRustBuffer<List<UniFfiMediaAttachment>> {
+    override fun read(buf: ByteBuffer): List<UniFfiMediaAttachment> {
+        val len = buf.getInt()
+        return List<UniFfiMediaAttachment>(len) {
+            FfiConverterTypeUniFFIMediaAttachment.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiMediaAttachment>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIMediaAttachment.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiMediaAttachment>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIMediaAttachment.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIMediaChapter: FfiConverterRustBuffer<List<UniFfiMediaChapter>> {
+    override fun read(buf: ByteBuffer): List<UniFfiMediaChapter> {
+        val len = buf.getInt()
+        return List<UniFfiMediaChapter>(len) {
+            FfiConverterTypeUniFFIMediaChapter.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiMediaChapter>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIMediaChapter.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiMediaChapter>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIMediaChapter.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIMediaTrackInfo: FfiConverterRustBuffer<List<UniFfiMediaTrackInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiMediaTrackInfo> {
+        val len = buf.getInt()
+        return List<UniFfiMediaTrackInfo>(len) {
+            FfiConverterTypeUniFFIMediaTrackInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiMediaTrackInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIMediaTrackInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiMediaTrackInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIMediaTrackInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFISubtitleDialogue: FfiConverterRustBuffer<List<UniFfiSubtitleDialogue>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSubtitleDialogue> {
+        val len = buf.getInt()
+        return List<UniFfiSubtitleDialogue>(len) {
+            FfiConverterTypeUniFFISubtitleDialogue.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSubtitleDialogue>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISubtitleDialogue.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSubtitleDialogue>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISubtitleDialogue.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFISubtitleSpan: FfiConverterRustBuffer<List<UniFfiSubtitleSpan>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSubtitleSpan> {
+        val len = buf.getInt()
+        return List<UniFfiSubtitleSpan>(len) {
+            FfiConverterTypeUniFFISubtitleSpan.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSubtitleSpan>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISubtitleSpan.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSubtitleSpan>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISubtitleSpan.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer<List<UniFfiTokenSpan>> {
     override fun read(buf: ByteBuffer): List<UniFfiTokenSpan> {
         val len = buf.getInt()
@@ -6578,6 +7701,45 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         value.forEach { (k, v) ->
             FfiConverterString.write(k, buf)
             FfiConverterString.write(v, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuffer<Map<kotlin.String, UniFfiSubtitleStyle>> {
+    override fun read(buf: ByteBuffer): Map<kotlin.String, UniFfiSubtitleStyle> {
+        val len = buf.getInt()
+        return buildMap<kotlin.String, UniFfiSubtitleStyle>(len) {
+            repeat(len) {
+                val k = FfiConverterString.read(buf)
+                val v = FfiConverterTypeUniFFISubtitleStyle.read(buf)
+                this[k] = v
+            }
+        }
+    }
+
+    override fun allocationSize(value: Map<kotlin.String, UniFfiSubtitleStyle>): ULong {
+        val spaceForMapSize = 4UL
+        val spaceForChildren = value.map { (k, v) ->
+            FfiConverterString.allocationSize(k) +
+            FfiConverterTypeUniFFISubtitleStyle.allocationSize(v)
+        }.sum()
+        return spaceForMapSize + spaceForChildren
+    }
+
+    override fun write(value: Map<kotlin.String, UniFfiSubtitleStyle>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        // The parens on `(k, v)` here ensure we're calling the right method,
+        // which is important for compatibility with older android devices.
+        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
+        value.forEach { (k, v) ->
+            FfiConverterString.write(k, buf)
+            FfiConverterTypeUniFFISubtitleStyle.write(v, buf)
         }
     }
 }
@@ -6728,6 +7890,19 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
             return FfiConverterTypeDecodedImageRecord.lift(
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Demuxes tracks, chapters, and embedded attachments from an in-memory media buffer.
+         */
+    @Throws(TtZipException::class) fun `demuxMediaTracks`(`data`: kotlin.ByteArray): UniFfiMediaDemuxSummary {
+            return FfiConverterTypeUniFFIMediaDemuxSummary.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_demux_media_tracks(
         FfiConverterByteArray.lower(`data`),_status)
 }
     )
@@ -6967,6 +8142,18 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     
 
         /**
+         * Retrieves all active subtitle dialogues at a specific millisecond timestamp using binary search.
+         */ fun `findActiveSubtitlesAt`(`script`: UniFfiSubtitleScript, `timestampMs`: kotlin.ULong): List<UniFfiSubtitleDialogue> {
+            return FfiConverterSequenceTypeUniFFISubtitleDialogue.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_find_active_subtitles_at(
+        FfiConverterTypeUniFFISubtitleScript.lower(`script`),FfiConverterULong.lower(`timestampMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Generates a synthetic benchmark dataset file at high throughput.
          *
          * Uses buffered I/O, reusable 4MB chunk memory, and non-blocking SIMD-friendly
@@ -7139,6 +8326,19 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_parse_epub_metadata(
         FfiConverterString.lower(`epubPath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Parses subtitle content with an optional format hint into a strongly-typed AST script.
+         */
+    @Throws(TtZipException::class) fun `parseSubtitleScript`(`content`: kotlin.String, `formatName`: kotlin.String): UniFfiSubtitleScript {
+            return FfiConverterTypeUniFFISubtitleScript.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_parse_subtitle_script(
+        FfiConverterString.lower(`content`),FfiConverterString.lower(`formatName`),_status)
 }
     )
     }

@@ -489,6 +489,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_create_archive_stream(RustBuffer source_p
 RustBuffer uniffi_ttzip_engine_fn_func_decode_image_rgba_from_memory(RustBuffer data, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DEMUX_MEDIA_TRACKS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DEMUX_MEDIA_TRACKS
+RustBuffer uniffi_ttzip_engine_fn_func_demux_media_tracks(RustBuffer data, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DETECT_ARCHIVE_FORMAT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_DETECT_ARCHIVE_FORMAT
 RustBuffer uniffi_ttzip_engine_fn_func_detect_archive_format(RustBuffer path, RustCallStatus *_Nonnull out_status
@@ -579,6 +584,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_extract_single_entry_stream(RustBuffer ar
 RustBuffer uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded(RustBuffer archive_path, uint64_t entry_index, RustBuffer password, uint32_t max_preceding_budget_mb, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_FIND_ACTIVE_SUBTITLES_AT
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_FIND_ACTIVE_SUBTITLES_AT
+RustBuffer uniffi_ttzip_engine_fn_func_find_active_subtitles_at(RustBuffer script, uint64_t timestamp_ms, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_GENERATE_SYNTHETIC_BENCHMARK_DATASET
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_GENERATE_SYNTHETIC_BENCHMARK_DATASET
 void uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset(RustBuffer target_path, uint64_t target_bytes, RustBuffer profile_name, RustCallStatus *_Nonnull out_status
@@ -647,6 +657,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_parse_epub_book_from_memory(RustBuffer ep
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_PARSE_EPUB_METADATA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_PARSE_EPUB_METADATA
 RustBuffer uniffi_ttzip_engine_fn_func_parse_epub_metadata(RustBuffer epub_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_PARSE_SUBTITLE_SCRIPT
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_PARSE_SUBTITLE_SCRIPT
+RustBuffer uniffi_ttzip_engine_fn_func_parse_subtitle_script(RustBuffer content, RustBuffer format_name, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_PROBE_BUFFER_METADATA
@@ -1116,6 +1131,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_decode_image_rgba_from_memory(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DEMUX_MEDIA_TRACKS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DEMUX_MEDIA_TRACKS
+uint16_t uniffi_ttzip_engine_checksum_func_demux_media_tracks(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_ARCHIVE_FORMAT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_DETECT_ARCHIVE_FORMAT
 uint16_t uniffi_ttzip_engine_checksum_func_detect_archive_format(void
@@ -1224,6 +1245,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded(v
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_FIND_ACTIVE_SUBTITLES_AT
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_FIND_ACTIVE_SUBTITLES_AT
+uint16_t uniffi_ttzip_engine_checksum_func_find_active_subtitles_at(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_GENERATE_SYNTHETIC_BENCHMARK_DATASET
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_GENERATE_SYNTHETIC_BENCHMARK_DATASET
 uint16_t uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset(void
@@ -1305,6 +1332,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PARSE_EPUB_METADATA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PARSE_EPUB_METADATA
 uint16_t uniffi_ttzip_engine_checksum_func_parse_epub_metadata(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PARSE_SUBTITLE_SCRIPT
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PARSE_SUBTITLE_SCRIPT
+uint16_t uniffi_ttzip_engine_checksum_func_parse_subtitle_script(void
     
 );
 #endif

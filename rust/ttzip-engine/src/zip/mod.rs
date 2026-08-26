@@ -124,13 +124,10 @@ mod tests {
         use crate::types::{TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipExtractOptions};
         use std::fs;
 
-        let temp_src = std::env::temp_dir().join("ttzip_test_store_src");
-        let temp_dst_zip = std::env::temp_dir().join("ttzip_test_store_out.zip");
-        let temp_extract = std::env::temp_dir().join("ttzip_test_store_extracted");
-
-        let _ = fs::remove_dir_all(&temp_src);
-        let _ = fs::remove_file(&temp_dst_zip);
-        let _ = fs::remove_dir_all(&temp_extract);
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let temp_src = tmp_dir.path().join("ttzip_test_store_src");
+        let temp_dst_zip = tmp_dir.path().join("ttzip_test_store_out.zip");
+        let temp_extract = tmp_dir.path().join("ttzip_test_store_extracted");
 
         fs::create_dir_all(temp_src.join("nested")).unwrap();
         fs::write(temp_src.join("file1.txt"), b"Hello Store Stream!").unwrap();
@@ -177,9 +174,5 @@ mod tests {
 
         let c2 = fs::read(temp_extract.join("ttzip_test_store_src/nested/file2.bin")).unwrap();
         assert_eq!(c2, vec![0x33u8; 8192]);
-
-        let _ = fs::remove_dir_all(&temp_src);
-        let _ = fs::remove_file(&temp_dst_zip);
-        let _ = fs::remove_dir_all(&temp_extract);
     }
 }
