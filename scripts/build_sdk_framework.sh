@@ -25,6 +25,7 @@ CARGO_FLAGS="--release"
 VERSION="1.0.0"
 OFFLINE_FLAG=""
 BUILD_NATIVE_ONLY=0
+NO_ZIP=0
 
 if [ "${TTZIP_FAST_SDK:-0}" = "1" ]; then
     BUILD_NATIVE_ONLY=1
@@ -36,6 +37,7 @@ usage() {
     echo "  --release        Build in release mode with LTO and -O3 (default)"
     echo "  --debug          Build in debug mode"
     echo "  --native         Fast path: build only host native architecture (e.g. arm64)"
+    echo "  --no-zip         Skip creating .xcframework.zip archive and sha256 checksum"
     echo "  --version <VER>  Set SDK version (default: 1.0.0)"
     echo "  --offline        Build offline without network access"
     echo "  --help           Show this help message"
@@ -56,6 +58,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --native)
             BUILD_NATIVE_ONLY=1
+            shift
+            ;;
+        --no-zip)
+            NO_ZIP=1
             shift
             ;;
         --version)
@@ -82,6 +88,11 @@ echo "======================================================================"
 
 export PATH="$HOME/.cargo/bin:$PATH"
 export MACOSX_DEPLOYMENT_TARGET="14.0"
+
+if command -v sccache >/dev/null 2>&1; then
+    export RUSTC_WRAPPER="sccache"
+fi
+
 
 if command -v sccache >/dev/null 2>&1; then
     export RUSTC_WRAPPER="sccache"
@@ -169,7 +180,13 @@ if [ ! -f "${FIRST_DYLIB}" ]; then
 fi
 
 UNIFFI_BIN=""
-for candidate in "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" "${RUST_DIR}/target/release/uniffi-bindgen" "${RUST_DIR}/target/debug/uniffi-bindgen"; do
+for candidate in \
+    "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
+    "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/uniffi-bindgen" \
+    "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
+    "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
+    "${RUST_DIR}/target/release/uniffi-bindgen" \
+    "${RUST_DIR}/target/debug/uniffi-bindgen"; do
     if [ -x "${candidate}" ]; then
         UNIFFI_BIN="${candidate}"
         break
@@ -195,8 +212,6 @@ else
             --metadata-no-deps
     )
 fi
-
-
 
 # 执行 Swift 6 并发安全后处理
 if [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ]; then
@@ -256,25 +271,33 @@ cat << 'EOF' > "${XCFRAMEWORK_DIR}/Info.plist"
 </plist>
 EOF
 
-# 7. 打包 XCFramework ZIP 并计算 SHA-256 校验和
-ZIP_NAME="TTZipVendor-v${VERSION}.xcframework.zip"
-ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
+# 7. 打包 XCFramework ZIP 并计算 SHA-256 校验和 (仅在非 --no-zip 模式下执行)
+if [ "${NO_ZIP}" = "0" ]; then
+    ZIP_NAME="TTZipVendor-v${VERSION}.xcframework.zip"
+    ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
+    mkdir -p "${DIST_DIR}"
 
-echo "--> [INFO] Creating ${ZIP_PATH}..."
-rm -f "${ZIP_PATH}"
-(
-    cd "${VENDOR_DIR}"
-    zip -qry "${ZIP_PATH}" "TTZipVendor.xcframework"
-)
+    echo "--> [INFO] Creating ${ZIP_PATH}..."
+    rm -f "${ZIP_PATH}"
+    (
+        cd "${VENDOR_DIR}"
+        zip -qry "${ZIP_PATH}" "TTZipVendor.xcframework"
+    )
 
-CHECKSUM="$(shasum -a 256 "${ZIP_PATH}" | awk '{print $1}')"
-echo "${CHECKSUM}" > "${DIST_DIR}/${ZIP_NAME}.sha256"
+    CHECKSUM="$(shasum -a 256 "${ZIP_PATH}" | awk '{print $1}')"
+    echo "${CHECKSUM}" > "${DIST_DIR}/${ZIP_NAME}.sha256"
 
+    echo "======================================================================"
+    echo "✅ [SUCCESS] TTZipCore Universal SDK built successfully!"
+    echo "   Artifact : ${ZIP_PATH}"
+    echo "   Size     : $(ls -lh "${ZIP_PATH}" | awk '{print $5}')"
+    echo "   SHA-256  : ${CHECKSUM}"
+    echo "   Slices   : $(lipo -info "${SLICE_DIR}/libTTZipVendor.a")"
+    echo "======================================================================"
+else
+    echo "======================================================================"
+    echo "✅ [SUCCESS] TTZipCore SDK ready in ${XCFRAMEWORK_DIR}"
+    echo "   Slices   : $(lipo -info "${SLICE_DIR}/libTTZipVendor.a")"
+    echo "======================================================================"
+fi
 
-echo "======================================================================"
-echo "✅ [SUCCESS] TTZipCore Universal SDK built successfully!"
-echo "   Artifact : ${ZIP_PATH}"
-echo "   Size     : $(ls -lh "${ZIP_PATH}" | awk '{print $5}')"
-echo "   SHA-256  : ${CHECKSUM}"
-echo "   Slices   : $(lipo -info "${SLICE_DIR}/libTTZipVendor.a")"
-echo "======================================================================"

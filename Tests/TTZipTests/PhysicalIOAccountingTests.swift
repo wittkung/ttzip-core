@@ -37,7 +37,7 @@ final class PhysicalIOAccountingTests: XCTestCase {
             inputPaths: [sampleFile]
         )
 
-        let initialTtzipTmpFiles = (try? FileManager.default.contentsOfDirectory(atPath: NSTemporaryDirectory()))?.filter { $0.contains("ttzip_") || $0.contains("probe_") }.count ?? 0
+        let initialTempDirFiles = try FileManager.default.contentsOfDirectory(atPath: tempDir.path)
 
         // Perform 50 in-memory extractions
         for _ in 0..<50 {
@@ -49,9 +49,9 @@ final class PhysicalIOAccountingTests: XCTestCase {
             XCTAssertEqual(String(data: data!, encoding: .utf8), content)
         }
 
-        let finalTtzipTmpFiles = (try? FileManager.default.contentsOfDirectory(atPath: NSTemporaryDirectory()))?.filter { $0.contains("ttzip_") || $0.contains("probe_") }.count ?? 0
+        let finalTempDirFiles = try FileManager.default.contentsOfDirectory(atPath: tempDir.path)
 
         // Assert: No temporary files created on disk
-        XCTAssertEqual(initialTtzipTmpFiles, finalTtzipTmpFiles)
+        XCTAssertEqual(initialTempDirFiles.sorted(), finalTempDirFiles.sorted())
     }
 }

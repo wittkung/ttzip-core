@@ -14,10 +14,12 @@ echo "  ⚡ 启动 TTZip macOS 全量重新构建与运行流水线..."
 echo "  架构: C/Rust 极速内核 (TTZipCore) + Swift 6 原生 macOS App"
 echo "============================================================"
 
-if [ -f "./apple/scripts/bundle_app.sh" ]; then
-    ./apple/scripts/bundle_app.sh --release --open "$@"
-elif [ -f "./scripts/bundle_app.sh" ]; then
+if [ -f "./scripts/bundle_app.sh" ]; then
     ./scripts/bundle_app.sh --release --open "$@"
+elif [ -f "../apple/scripts/bundle_app.sh" ]; then
+    ../apple/scripts/bundle_app.sh --release --open "$@"
+elif [ -f "./apple/scripts/bundle_app.sh" ]; then
+    ./apple/scripts/bundle_app.sh --release --open "$@"
 else
     echo "❌ 未找到 bundle_app.sh 构建脚本！"
     exit 1

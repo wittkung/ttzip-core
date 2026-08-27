@@ -12,6 +12,18 @@ def postprocess(swift_path):
     with open(swift_path, "r", encoding="utf-8") as f:
         content = f.read()
 
+    # 0. Ensure SPDX header is present
+    spdx_header = """// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+//
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// All rights reserved.
+//
+// TTZip: High-performance native archiving and compression engine.
+
+"""
+    if "SPDX-License-Identifier" not in content:
+        content = spdx_header + content
+
     # 1. Add CTTZipBridge import if not present
     if "import CTTZipBridge" not in content:
         content = content.replace(

@@ -23,6 +23,7 @@ BUILD_MODE="release"
 CARGO_FLAGS="--release"
 BUILD_TARGET=""
 OFFLINE_FLAG=""
+SWIFT_ONLY=0
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -30,6 +31,7 @@ usage() {
     echo "  --release        Build in release mode with LTO and -O3 (default)"
     echo "  --debug          Build in debug mode"
     echo "  --target <TRGT>  Build specific target (e.g. aarch64-apple-darwin)"
+    echo "  --swift-only     Generate only Swift UniFFI bindings (skip Python/Kotlin)"
     echo "  --offline        Build offline without network access"
     echo "  --help           Show this help message"
     exit 0
@@ -45,6 +47,10 @@ while [[ $# -gt 0 ]]; do
         --debug)
             BUILD_MODE="debug"
             CARGO_FLAGS=""
+            shift
+            ;;
+        --swift-only)
+            SWIFT_ONLY=1
             shift
             ;;
         --offline)
@@ -64,6 +70,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if command -v sccache >/dev/null 2>&1; then
+    export RUSTC_WRAPPER="sccache"
+fi
+
 
 echo "=========================================="
 echo "📦 Building TTZip Rust Engine (${BUILD_MODE})"
@@ -142,28 +153,71 @@ if [ ! -f "${FIRST_DYLIB}" ]; then
 fi
 
 if [ -f "${FIRST_DYLIB}" ]; then
-    (
-        cd "${RUST_DIR}"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
-            --library "${FIRST_DYLIB}" \
-            --language swift \
-            --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
-            --metadata-no-deps
+    UNIFFI_BIN=""
+    for candidate in \
+        "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
+        "${RUST_DIR}/target/release/uniffi-bindgen" \
+        "${RUST_DIR}/target/debug/uniffi-bindgen"; do
+        if [ -x "${candidate}" ]; then
+            UNIFFI_BIN="${candidate}"
+            break
+        fi
+    done
 
-        mkdir -p "${REPO_ROOT}/python/ttzip"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
-            --library "${FIRST_DYLIB}" \
-            --language python \
-            --out-dir "${REPO_ROOT}/python/ttzip" \
-            --metadata-no-deps
+    if [ -n "${UNIFFI_BIN}" ]; then
+        (
+            cd "${RUST_DIR}"
+            "${UNIFFI_BIN}" generate \
+                --library "${FIRST_DYLIB}" \
+                --language swift \
+                --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
+                --metadata-no-deps
 
-        mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
-            --library "${FIRST_DYLIB}" \
-            --language kotlin \
-            --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
-            --metadata-no-deps
-    )
+            if [ "${SWIFT_ONLY}" = "0" ]; then
+                mkdir -p "${REPO_ROOT}/python/ttzip"
+                "${UNIFFI_BIN}" generate \
+                    --library "${FIRST_DYLIB}" \
+                    --language python \
+                    --out-dir "${REPO_ROOT}/python/ttzip" \
+                    --metadata-no-deps
+
+                mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
+                "${UNIFFI_BIN}" generate \
+                    --library "${FIRST_DYLIB}" \
+                    --language kotlin \
+                    --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
+                    --metadata-no-deps
+            fi
+        )
+    else
+        (
+            cd "${RUST_DIR}"
+            cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                --library "${FIRST_DYLIB}" \
+                --language swift \
+                --out-dir "${REPO_ROOT}/Sources/TTZipCore/Generated" \
+                --metadata-no-deps
+
+            if [ "${SWIFT_ONLY}" = "0" ]; then
+                mkdir -p "${REPO_ROOT}/python/ttzip"
+                cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                    --library "${FIRST_DYLIB}" \
+                    --language python \
+                    --out-dir "${REPO_ROOT}/python/ttzip" \
+                    --metadata-no-deps
+
+                mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
+                cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                    --library "${FIRST_DYLIB}" \
+                    --language kotlin \
+                    --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
+                    --metadata-no-deps
+            fi
+        )
+    fi
     
     # 执行 Swift 6 并发安全后处理
     if [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ]; then
@@ -180,3 +234,4 @@ fi
 echo "=========================================="
 echo "✅ [SUCCESS] Pure UniFFI engine & universal library generated successfully."
 echo "=========================================="
+

@@ -19,7 +19,7 @@ from pathlib import Path
 MAX_LOC_THRESHOLD = 800
 SOURCE_DIRS = ["Sources", "rust"]
 SOURCE_EXTENSIONS = {".swift", ".rs", ".c", ".h", ".cpp", ".hpp", ".m"}
-IGNORED_DIRS = {"target", ".build", "Vendor", ".git", "DerivedData", "Generated"}
+IGNORED_DIRS = {"target", ".build", "Vendor", ".git", "DerivedData", "Generated", "mpv"}
 IGNORED_FILENAMES = {"ttzip_engineFFI.h"}
 
 # Terminal colors
