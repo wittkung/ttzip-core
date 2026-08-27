@@ -115,7 +115,8 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
                 archive_write_add_filter_lz4(a);
             }
             TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
-                archive_write_set_format_pax_restricted(a);
+                // Libarchive C-ABI lacks native Brotli compression filter; reject with ErrInvalidParam
+                return TTZipStatus::ErrInvalidParam;
             }
             TTZipArchiveFormat::TarLzip | TTZipArchiveFormat::Lzip => {
                 archive_write_set_format_pax_restricted(a);

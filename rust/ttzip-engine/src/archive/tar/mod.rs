@@ -30,4 +30,4 @@ pub use header::{
 pub use pax::{build_pax_payload, format_pax_record, parse_pax_data, parse_pax_timestamp, PaxAttributes};
 pub use reader::{TarArchive, TarExtractReport};
 pub use scanner::{TarEntry, TarSeekScanner};
-pub use writer::TarWriter;
+pub use writer::{split_ustar_path, write_tar_to_writer, TarWriter};

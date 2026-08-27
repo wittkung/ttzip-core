@@ -215,3 +215,113 @@ use std::fs;
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
+
+    #[test]
+    fn test_split_ustar_path_logic() {
+        // 1. Short path fits in name (< 100 bytes)
+        assert_eq!(split_ustar_path("short/path.txt"), Some(("", "short/path.txt")));
+        assert_eq!(split_ustar_path(""), Some(("", "")));
+
+        // 100-byte exact path
+        let exact_100 = "a".repeat(100);
+        assert_eq!(split_ustar_path(&exact_100), Some(("", exact_100.as_str())));
+
+        // 2. Splittable path: 155-byte prefix + 100-byte name (total 256 bytes)
+        let prefix_155 = "p".repeat(155);
+        let name_100 = "n".repeat(100);
+        let full_256 = format!("{}/{}", prefix_155, name_100);
+        assert_eq!(split_ustar_path(&full_256), Some((prefix_155.as_str(), name_100.as_str())));
+
+        // 3. Splittable path with multiple slashes: rightmost valid slash within 155 bytes is selected
+        let path = "deep/nested/sub/directory/hierarchy/that/is/quite/long/and/well/organized/structure/with/many/levels/target_filename_12345.txt";
+        assert!(path.len() > 100 && path.len() <= 256);
+        let split = split_ustar_path(path);
+        assert!(split.is_some());
+        let (p, n) = split.unwrap();
+        assert!(!p.is_empty());
+        assert!(!n.is_empty());
+        assert!(p.len() <= 155);
+        assert!(n.len() <= 100);
+        assert_eq!(format!("{}/{}", p, n), path);
+
+        // 4. Unsheltered long component: 120-char filename without slash cannot fit in USTAR
+        let long_no_slash = "x".repeat(120);
+        assert_eq!(split_ustar_path(&long_no_slash), None);
+
+        // 5. Long prefix exceeding 155 bytes before first slash
+        let long_prefix = format!("{}/file.txt", "d".repeat(160));
+        assert_eq!(split_ustar_path(&long_prefix), None);
+
+        // 6. Long name exceeding 100 bytes after last slash
+        let long_suffix = format!("dir/{}", "f".repeat(105));
+        assert_eq!(split_ustar_path(&long_suffix), None);
+
+        // 7. Path exceeding 256 bytes total
+        let path_257 = format!("{}/{}", "p".repeat(156), "n".repeat(100));
+        assert_eq!(split_ustar_path(&path_257), None);
+    }
+
+    #[test]
+    fn test_ustar_prefix_roundtrip_without_pax() {
+        let mut archive_bytes = Vec::new();
+        let mut writer = TarWriter::new(&mut archive_bytes);
+
+        // 80-byte directory prefix + 60-byte filename = 141 bytes total (> 100 bytes, fits in USTAR prefix)
+        let dir = "a".repeat(80);
+        let file = "b".repeat(60);
+        let rel_path = format!("{}/{}", dir, file);
+        let content = b"USTAR Prefix Data Content";
+
+        writer.append_file(&rel_path, content, 0o644, 1700000000).expect("append file");
+        writer.finish().expect("finish archive");
+
+        // Single entry (512 header + 512 payload) + 1024 zero footer = 2048 bytes (NO PAX header emitted)
+        assert_eq!(archive_bytes.len(), 2048);
+
+        // Verify header block fields directly
+        let header_block: &[u8; TAR_BLOCK_SIZE] = archive_bytes[0..512].try_into().unwrap();
+        let header = parse_tar_header_block(header_block).expect("parse ustar header");
+        assert_eq!(header.prefix, dir);
+        assert_eq!(header.name, file);
+        assert_eq!(header.typeflag, TYPE_REGULAR);
+
+        // Verify scanner & reader restores combined path seamlessly
+        let archive = TarArchive::open_slice(&archive_bytes).expect("open ustar archive");
+        assert_eq!(archive.len(), 1);
+        assert_eq!(archive.entries()[0].path.as_ref(), rel_path);
+        let extracted = archive.extract_entry_bytes(0).expect("extract payload");
+        assert_eq!(extracted, content);
+    }
+
+    #[test]
+    fn test_ustar_pax_fallback_when_path_cannot_split() {
+        let mut archive_bytes = Vec::new();
+        let mut writer = TarWriter::new(&mut archive_bytes);
+
+        // 120-char filename without slash cannot fit in USTAR -> must emit PAX extended header
+        let long_name = "single_component_filename_exceeding_one_hundred_bytes_without_slashes_01234567890123456789012345678901234567890123.dat";
+        assert!(long_name.len() > 100);
+        let content = b"PAX fallback payload";
+
+        writer.append_file(long_name, content, 0o644, 1700000000).expect("append file");
+        writer.finish().expect("finish archive");
+
+        // PAX header block + PAX payload + USTAR header block + file payload + 1024 footer
+        let archive = TarArchive::open_slice(&archive_bytes).expect("open pax archive");
+        assert_eq!(archive.len(), 1);
+        assert_eq!(archive.entries()[0].path.as_ref(), long_name);
+        let extracted = archive.extract_entry_bytes(0).expect("extract pax file");
+        assert_eq!(extracted, content);
+    }
+
+    #[test]
+    fn test_archive_ffi_sys_error_helpers() {
+        unsafe {
+            assert_eq!(crate::ffi::archive_ffi::sys::get_archive_error_string(std::ptr::null_mut()), None);
+            assert_eq!(
+                crate::ffi::archive_ffi::sys::format_archive_error(std::ptr::null_mut()),
+                "libarchive handle is null"
+            );
+        }
+    }
+

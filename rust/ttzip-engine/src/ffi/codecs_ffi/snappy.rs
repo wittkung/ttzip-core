@@ -10,7 +10,8 @@
 use crate::codecs::snappy::{
     is_framed_snappy, snappy_compress, snappy_compress_bound, snappy_compress_file,
     snappy_decompress, snappy_decompress_file, snappy_frame_decode, snappy_frame_encode,
-    snappy_frame_max_encoded_length, snappy_uncompressed_length, snappy_validate,
+    snappy_frame_max_encoded_length, snappy_frame_validate, snappy_uncompressed_length,
+    snappy_validate, snappy_validate_bounded,
 };
 use crate::ffi::helpers::{safe_slice, safe_slice_mut};
 use crate::types::{TTZipProgressCallback, TTZipStatus};
@@ -117,6 +118,26 @@ pub extern "C" fn ttzip_rust_snappy_uncompressed_length(
 pub extern "C" fn ttzip_rust_snappy_validate(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(in_slice) => snappy_validate(in_slice),
+        Err(_) => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ttzip_rust_snappy_validate_bounded(
+    src: *const u8,
+    src_len: size_t,
+    max_uncompressed_len: size_t,
+) -> bool {
+    match unsafe { safe_slice(src, src_len) } {
+        Ok(in_slice) => snappy_validate_bounded(in_slice, max_uncompressed_len),
+        Err(_) => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ttzip_rust_snappy_frame_validate(src: *const u8, src_len: size_t) -> bool {
+    match unsafe { safe_slice(src, src_len) } {
+        Ok(in_slice) => snappy_frame_validate(in_slice),
         Err(_) => false,
     }
 }

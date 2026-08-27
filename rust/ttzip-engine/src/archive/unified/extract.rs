@@ -9,7 +9,7 @@
 
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::io::Write;
+use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
@@ -82,42 +82,51 @@ pub fn extract_archive_with_metrics(
         }
     }
 
-    // 2. Native Pure Rust Brotli & Snappy Decompression Fast Path
+    // 2. Native Pure Rust Brotli, Snappy & Zstandard Streaming Decompression Pipeline (0% Disk Write Amplification)
     let name_lower = archive_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("")
         .to_lowercase();
     if name_lower.ends_with(".tar.br") || name_lower.ends_with(".tbr") || name_lower.ends_with(".br") {
-        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
-        if crate::codecs::brotli::brotli_decompress_file(archive_path, &tmp_tar, None).is_ok() {
-            let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
-            let _ = fs::remove_file(&tmp_tar);
-            if res.is_ok() {
-                return res;
-            }
-        }
-    } else if name_lower.ends_with(".sz") || name_lower.ends_with(".snappy") {
-        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
-        if crate::codecs::snappy::snappy_decompress_file(archive_path, &tmp_tar, None).is_ok() {
-            let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
-            let _ = fs::remove_file(&tmp_tar);
-            if res.is_ok() {
-                return res;
-            }
-        }
-    } else if name_lower.ends_with(".tar.zst") || name_lower.ends_with(".tzst") || name_lower.ends_with(".zst") {
-        let tmp_tar = archive_path.with_extension(format!("ttzip_decomp_{}.tar", std::process::id()));
-        if let (Ok(mut src_f), Ok(mut dst_f)) = (std::fs::File::open(archive_path), std::fs::File::create(&tmp_tar)) {
-            if crate::codecs::zstd::zstd_decompress_stream_pipe(&mut src_f, &mut dst_f, None).is_ok() {
-                let res = extract_archive_with_metrics(&tmp_tar, destination_path, options);
-                let _ = fs::remove_file(&tmp_tar);
-                if res.is_ok() {
-                    return res;
+        let src_f = std::fs::File::open(archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        let decomp = crate::codecs::brotli::BrotliDecompressorReader::new(src_f, 65536);
+        let stream_reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(decomp, 65536)?;
+        let raw_a = stream_reader.as_raw_archive();
+        if !options.password.is_null() {
+            if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
+                if !p_str.is_empty() {
+                    unsafe { archive_read_add_passphrase(raw_a, options.password); }
                 }
             }
-            let _ = fs::remove_file(&tmp_tar);
         }
+        return unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options) };
+    } else if name_lower.ends_with(".sz") || name_lower.ends_with(".snappy") {
+        let src_f = std::fs::File::open(archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        let decomp = snap::read::FrameDecoder::new(src_f);
+        let stream_reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(decomp, 65536)?;
+        let raw_a = stream_reader.as_raw_archive();
+        if !options.password.is_null() {
+            if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
+                if !p_str.is_empty() {
+                    unsafe { archive_read_add_passphrase(raw_a, options.password); }
+                }
+            }
+        }
+        return unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options) };
+    } else if name_lower.ends_with(".tar.zst") || name_lower.ends_with(".tzst") || name_lower.ends_with(".zst") {
+        let src_f = std::fs::File::open(archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        let decomp = crate::codecs::zstd::ZstdStreamReader::new(src_f)?;
+        let stream_reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(decomp, 65536)?;
+        let raw_a = stream_reader.as_raw_archive();
+        if !options.password.is_null() {
+            if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
+                if !p_str.is_empty() {
+                    unsafe { archive_read_add_passphrase(raw_a, options.password); }
+                }
+            }
+        }
+        return unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options) };
     }
 
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
@@ -159,7 +168,6 @@ unsafe fn extract_from_archive_handle(
     let mut engine = SafeExtractEngine::new();
     let mut entry: *mut c_void = std::ptr::null_mut();
     let mut total_processed: u64 = 0;
-    let mut buf = vec![0u8; 64 * 1024];
     let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
 
     while archive_read_next_header(a, &mut entry) == 0 {
@@ -203,14 +211,19 @@ unsafe fn extract_from_archive_handle(
 
         if options.dry_run {
             if !is_dir && !is_symlink && size > 0 {
-                let r = archive_read_data(
+                let mut block_ptr: *const c_void = std::ptr::null();
+                let mut block_size: libc::size_t = 0;
+                let mut block_offset: i64 = 0;
+                let r = archive_read_data_block(
                     a,
-                    buf.as_mut_ptr() as *mut c_void,
-                    buf.len().min(size as usize),
+                    &mut block_ptr,
+                    &mut block_size,
+                    &mut block_offset,
                 );
                 if r < 0 {
                     return Err(TTZipStatus::ErrInvalidPassword);
                 }
+                archive_read_data_skip(a);
             } else {
                 archive_read_data_skip(a);
             }
@@ -278,25 +291,39 @@ unsafe fn extract_from_archive_handle(
                 let _ = apfs_preallocate(file.as_raw_fd(), size as i64);
             }
 
-            let mut remaining = size;
-            while remaining > 0 {
-                let to_read = buf.len().min(remaining as usize);
-                let bytes_read = archive_read_data(a, buf.as_mut_ptr() as *mut c_void, to_read);
-                if bytes_read < 0 {
-                    return Err(TTZipStatus::ErrExtractionFailed);
-                }
-                if bytes_read == 0 {
+            let mut block_ptr: *const c_void = std::ptr::null();
+            let mut block_size: libc::size_t = 0;
+            let mut block_offset: i64 = 0;
+
+            loop {
+                let rc = archive_read_data_block(
+                    a,
+                    &mut block_ptr,
+                    &mut block_size,
+                    &mut block_offset,
+                );
+                if rc == 1 { // ARCHIVE_EOF (1)
                     break;
                 }
-                if file.write_all(&buf[..bytes_read as usize]).is_err() {
+                if rc != 0 {
                     return Err(TTZipStatus::ErrExtractionFailed);
                 }
-                remaining = remaining.saturating_sub(bytes_read as u64);
-                total_processed = total_processed.saturating_add(bytes_read as u64);
-                bomb_guard.check(total_processed, total_processed / 1000 + 1)?;
-                if let Some(cb) = options.progress_callback {
-                    if !cb(total_processed, total_processed, raw_path, options.user_data) {
-                        return Err(TTZipStatus::Cancelled);
+                if block_size > 0 && !block_ptr.is_null() {
+                    if block_offset >= 0 {
+                        if file.seek(SeekFrom::Start(block_offset as u64)).is_err() {
+                            return Err(TTZipStatus::ErrExtractionFailed);
+                        }
+                    }
+                    let chunk = std::slice::from_raw_parts(block_ptr as *const u8, block_size);
+                    if file.write_all(chunk).is_err() {
+                        return Err(TTZipStatus::ErrExtractionFailed);
+                    }
+                    total_processed = total_processed.saturating_add(block_size as u64);
+                    bomb_guard.check(total_processed, total_processed / 1000 + 1)?;
+                    if let Some(cb) = options.progress_callback {
+                        if !cb(total_processed, total_processed, raw_path, options.user_data) {
+                            return Err(TTZipStatus::Cancelled);
+                        }
                     }
                 }
             }

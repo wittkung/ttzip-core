@@ -7,7 +7,7 @@
 
 //! 7-Zip Solid Stream selective entry decoding with Bounded Memory and Early Termination.
 
-use super::payload::decode_7z_solid_streaming;
+use super::payload::decode_7z_folder_streaming;
 use crate::crypto::crc32::crc32_fast;
 use crate::sevenz::header::{SevenZHeaderInfo, SevenZSeekIndex};
 use crate::types::TTZipStatus;
@@ -40,8 +40,9 @@ pub fn extract_entry_bytes_stream_bounded(
 
     let mut current_offset: u64 = 0;
     let mut result_vec = Vec::with_capacity(target_len as usize);
+    let folder_idx = loc.folder_index.unwrap_or(0);
 
-    decode_7z_solid_streaming(mapped, info, password, 1, |chunk| -> Result<(), TTZipStatus> {
+    decode_7z_folder_streaming(mapped, info, folder_idx, password, 1, |chunk| -> Result<(), TTZipStatus> {
         let chunk_start = current_offset;
         let chunk_len = chunk.len() as u64;
         let chunk_end = chunk_start + chunk_len;

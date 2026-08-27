@@ -44,20 +44,25 @@ mod tests {
     }
 
     #[test]
-    fn test_brotli_pipe_large_payload() {
+    fn test_brotli_pipe_exact_byte_counts_and_compression_ratio() {
         let payload = vec![0xFEu8; 5 * 1024 * 1024]; // 5MB payload (spans across 4MB pipe boundary)
         let mut reader = Cursor::new(&payload);
         let mut compressed = Vec::new();
 
-        let (read_bytes, _) = brotli_compress_stream_pipe(&mut reader, &mut compressed, 4, 20, None)
+        let (read_bytes, written_bytes) = brotli_compress_stream_pipe(&mut reader, &mut compressed, 4, 20, None)
             .expect("brotli compress pipe failed");
         assert_eq!(read_bytes, payload.len() as u64);
-        assert!(!compressed.is_empty());
+        assert_eq!(written_bytes, compressed.len() as u64);
+        assert!(written_bytes < read_bytes, "Compressed size must be less than raw size");
+
+        let ratio = (written_bytes as f64) / (read_bytes as f64);
+        assert!(ratio < 0.01, "Highly repetitive data ratio must be < 1%, got {}", ratio);
 
         let mut comp_reader = Cursor::new(&compressed);
         let mut decompressed = Vec::new();
-        let (_, dec_written) = brotli_decompress_stream_pipe(&mut comp_reader, &mut decompressed, None)
+        let (dec_read, dec_written) = brotli_decompress_stream_pipe(&mut comp_reader, &mut decompressed, None)
             .expect("brotli decompress pipe failed");
+        assert_eq!(dec_read, compressed.len() as u64);
         assert_eq!(dec_written, payload.len() as u64);
         assert_eq!(decompressed, payload);
     }

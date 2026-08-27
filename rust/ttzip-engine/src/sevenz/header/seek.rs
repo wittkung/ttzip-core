@@ -33,9 +33,10 @@ impl SevenZSeekIndex {
     /// Builds a random-access seek table index from parsed 7z metadata header.
     pub fn build(info: &SevenZHeaderInfo) -> Self {
         let mut entries = Vec::with_capacity(info.files.len());
-        let mut stream_idx = 0usize;
+        let mut global_stream_idx = 0usize;
+        let mut cur_folder_idx = 0usize;
+        let mut streams_in_cur_folder = 0usize;
         let mut current_folder_offset = 0u64;
-        let folder_idx = if !info.folders.is_empty() { Some(0) } else { None };
 
         for (file_idx, f) in info.files.iter().enumerate() {
             if f.is_directory || f.is_empty_stream {
@@ -51,29 +52,55 @@ impl SevenZSeekIndex {
                     crc: None,
                 });
             } else {
-                let sz = if stream_idx < info.stream_sizes.len() {
-                    info.stream_sizes[stream_idx]
-                } else if stream_idx < info.folders.len() {
-                    info.folders[stream_idx].unpack_sizes.first().copied().unwrap_or(0)
-                } else if !info.folders.is_empty() && !info.folders[0].unpack_sizes.is_empty() {
-                    info.folders[0].unpack_sizes[0].saturating_sub(current_folder_offset)
+                // Advance to next folder when current folder's stream budget is exhausted
+                while cur_folder_idx < info.folders.len() {
+                    let folder_streams = info.folders[cur_folder_idx].num_unpack_streams.max(1);
+                    if streams_in_cur_folder < folder_streams {
+                        break;
+                    }
+                    if cur_folder_idx + 1 < info.folders.len() {
+                        cur_folder_idx += 1;
+                        streams_in_cur_folder = 0;
+                        current_folder_offset = 0;
+                    } else {
+                        break;
+                    }
+                }
+
+                let folder_idx = if !info.folders.is_empty() && cur_folder_idx < info.folders.len() {
+                    Some(cur_folder_idx)
+                } else {
+                    None
+                };
+
+                let sz = if global_stream_idx < info.stream_sizes.len() {
+                    info.stream_sizes[global_stream_idx]
+                } else if cur_folder_idx < info.folders.len() {
+                    info.folders[cur_folder_idx]
+                        .unpack_sizes
+                        .last()
+                        .copied()
+                        .unwrap_or(0)
+                        .saturating_sub(current_folder_offset)
                 } else {
                     0
                 };
-                let crc = info.stream_crcs.get(stream_idx).copied();
+
+                let crc = info.stream_crcs.get(global_stream_idx).copied();
                 entries.push(SevenZEntryLocation {
                     file_index: file_idx,
                     rel_path: f.rel_path.clone(),
                     is_directory: false,
                     is_empty_stream: false,
                     folder_index: folder_idx,
-                    stream_index: Some(stream_idx),
+                    stream_index: Some(global_stream_idx),
                     offset_in_folder: current_folder_offset,
                     uncompressed_size: sz,
                     crc,
                 });
                 current_folder_offset += sz;
-                stream_idx += 1;
+                streams_in_cur_folder += 1;
+                global_stream_idx += 1;
             }
         }
 

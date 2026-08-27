@@ -108,6 +108,7 @@ pub fn zstd_decompress_stream_pipe<R: Read, W: Write>(
 
     let mut total_read: u64 = 0;
     let mut total_written: u64 = 0;
+    let mut last_ret: usize = 0;
 
     loop {
         let bytes_read = reader.read(&mut in_buf).map_err(|_| TTZipStatus::ErrOpenFailed)?;
@@ -128,14 +129,22 @@ pub fn zstd_decompress_stream_pipe<R: Read, W: Write>(
                 capacity: out_buf.len(),
                 pos: 0,
             };
-            let prev_in_pos = in_struct.pos;
-            let _ = dctx.decompress_stream(&mut in_struct, &mut out_struct)?;
+            last_ret = dctx.decompress_stream(&mut in_struct, &mut out_struct)?;
             if out_struct.pos > 0 {
                 writer.write_all(&out_buf[..out_struct.pos]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
                 total_written += out_struct.pos as u64;
             }
-            if in_struct.pos == prev_in_pos && out_struct.pos == 0 {
-                break;
+
+            // Drain remaining buffered data if output buffer was filled to capacity while consuming input
+            while in_struct.pos == in_struct.size && out_struct.pos == out_struct.capacity && last_ret > 0 {
+                out_struct.pos = 0;
+                last_ret = dctx.decompress_stream(&mut in_struct, &mut out_struct)?;
+                if out_struct.pos > 0 {
+                    writer.write_all(&out_buf[..out_struct.pos]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    total_written += out_struct.pos as u64;
+                } else {
+                    break;
+                }
             }
         }
 
@@ -144,6 +153,10 @@ pub fn zstd_decompress_stream_pipe<R: Read, W: Write>(
                 return Err(TTZipStatus::Cancelled);
             }
         }
+    }
+
+    if total_read == 0 || last_ret != 0 {
+        return Err(TTZipStatus::ErrCorruptHeader);
     }
 
     writer.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;

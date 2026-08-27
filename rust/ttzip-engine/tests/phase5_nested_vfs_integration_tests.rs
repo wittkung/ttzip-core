@@ -114,7 +114,7 @@ fn test_20gb_bounded_chunk_stream_and_random_seek() {
     });
 
     let chunked = VirtualChunkedStream::new(total_20gb, chunk_size, loader);
-    let mut stream = VirtualFileStream::new(chunked);
+    let stream = VirtualFileStream::new(chunked);
 
     assert_eq!(stream.size(), total_20gb);
 

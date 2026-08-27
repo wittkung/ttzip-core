@@ -26,6 +26,15 @@ pub fn in_place_edit_compound_stream(
     compound_format: CompoundFormat,
     actions: &[InPlaceAction],
 ) -> Result<(), TTZipStatus> {
+    match compound_format {
+        CompoundFormat::TarGz
+        | CompoundFormat::TarBz2
+        | CompoundFormat::TarXz
+        | CompoundFormat::TarZstd
+        | CompoundFormat::TarLz4 => {}
+        _ => return Err(TTZipStatus::ErrUnsupportedFeature),
+    }
+
     let source = crate::archive::source::open_archive_source(archive_path)?;
     let mapped = source.as_slice().ok_or(TTZipStatus::ErrOpenFailed)?;
 
@@ -87,7 +96,7 @@ pub fn in_place_edit_compound_stream(
                 archive_write_add_filter_lz4(writer);
             }
             _ => {
-                archive_write_add_filter_none(writer);
+                return Err(TTZipStatus::ErrUnsupportedFeature);
             }
         }
 

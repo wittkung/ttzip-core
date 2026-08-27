@@ -36,6 +36,7 @@ pub fn parse_7z_metadata(mapped: &[u8], password: Option<&str>) -> Result<SevenZ
     let mut info = SevenZHeaderInfo {
         payload_offset: 32,
         payload_len: sig.next_header_offset as usize,
+        pack_sizes: Vec::new(),
         folders: Vec::new(),
         stream_sizes: Vec::new(),
         stream_crcs: Vec::new(),

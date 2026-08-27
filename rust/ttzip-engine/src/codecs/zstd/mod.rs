@@ -13,6 +13,7 @@
 pub mod cctx;
 pub mod dctx;
 pub mod pipe;
+pub mod stream;
 pub mod types;
 
 pub use cctx::{
@@ -23,12 +24,13 @@ pub use dctx::{
     with_thread_local_zstd_dctx, zstd_decompress, zstd_get_decompressed_size, ZstdDCtx,
 };
 pub use pipe::{zstd_compress_stream_pipe, zstd_decompress_stream_pipe, ZSTD_PIPE_BUFFER_SIZE};
+pub use stream::{ZstdStreamReader, ZstdStreamWriter, ZSTD_STREAM_BUFFER_SIZE};
 pub use types::{ZstdCParameter, ZstdConfig, ZstdEndDirective, ZstdInBuffer, ZstdOutBuffer};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
+    use std::io::{Cursor, Read, Write};
 
     #[test]
     fn test_zstd_basic_roundtrip() {
@@ -111,5 +113,83 @@ mod tests {
         assert_eq!(comp_read, compressed_out.len() as u64);
         assert_eq!(decomp_written, payload.len() as u64);
         assert_eq!(decompressed_out, payload);
+    }
+
+    #[test]
+    fn test_zstd_empty_stream_pipe_error() {
+        let mut empty_reader = Cursor::new(Vec::<u8>::new());
+        let mut decompressed_out = Vec::new();
+        let res = zstd_decompress_stream_pipe(&mut empty_reader, &mut decompressed_out, None);
+        assert_eq!(res, Err(crate::types::TTZipStatus::ErrCorruptHeader));
+    }
+
+    #[test]
+    fn test_zstd_truncated_stream_pipe_error() {
+        let payload = b"Data to be compressed and then intentionally truncated for error checking.";
+        let mut reader = Cursor::new(payload);
+        let mut compressed_out = Vec::new();
+        let config = ZstdConfig::default();
+
+        zstd_compress_stream_pipe(&mut reader, &mut compressed_out, &config, None)
+            .expect("compress failed");
+        assert!(!compressed_out.is_empty());
+
+        // Truncate compressed stream
+        let truncated = &compressed_out[..compressed_out.len() / 2];
+        let mut trunc_reader = Cursor::new(truncated);
+        let mut decompressed_out = Vec::new();
+
+        let res = zstd_decompress_stream_pipe(&mut trunc_reader, &mut decompressed_out, None);
+        assert_eq!(res, Err(crate::types::TTZipStatus::ErrCorruptHeader));
+    }
+
+    #[test]
+    fn test_zstd_stream_reader_writer_roundtrip() {
+        let payload = b"Safe Rust Streaming Writer and Reader Zstandard verification with 64KB buffers.";
+        let mut compressed_buf = Vec::new();
+
+        {
+            let mut writer = ZstdStreamWriter::with_level(&mut compressed_buf, 3)
+                .expect("failed to create ZstdStreamWriter");
+            writer.write_all(payload).expect("write failed");
+            let _ = writer.finish().expect("finish failed");
+        }
+
+        assert!(!compressed_buf.is_empty());
+
+        let mut reader = ZstdStreamReader::new(Cursor::new(&compressed_buf))
+            .expect("failed to create ZstdStreamReader");
+        let mut decompressed = Vec::new();
+        reader.read_to_end(&mut decompressed).expect("read_to_end failed");
+        assert_eq!(decompressed, payload);
+    }
+
+    #[test]
+    fn test_zstd_stream_reader_empty_error() {
+        let mut reader = ZstdStreamReader::new(Cursor::new(Vec::<u8>::new()))
+            .expect("failed to create ZstdStreamReader");
+        let mut decompressed = Vec::new();
+        let res = reader.read_to_end(&mut decompressed);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_zstd_stream_reader_truncated_error() {
+        let payload = b"Another test payload to verify stream reader error handling on truncated inputs.";
+        let mut compressed_buf = Vec::new();
+
+        {
+            let mut writer = ZstdStreamWriter::with_level(&mut compressed_buf, 5)
+                .expect("failed to create ZstdStreamWriter");
+            writer.write_all(payload).expect("write failed");
+            let _ = writer.finish().expect("finish failed");
+        }
+
+        let truncated = &compressed_buf[..compressed_buf.len() / 2];
+        let mut reader = ZstdStreamReader::new(Cursor::new(truncated))
+            .expect("failed to create ZstdStreamReader");
+        let mut decompressed = Vec::new();
+        let res = reader.read_to_end(&mut decompressed);
+        assert!(res.is_err());
     }
 }

@@ -10,7 +10,7 @@
 //! Features multi-threaded Fast-LZMA2 solid compression, Store mode, UTF-16LE metadata encoding,
 //! and accurate 7z SignatureHeader CRC calculations.
 
-use crate::codecs::lzma2::{fl2_compress, fl2_compress_bound};
+use crate::codecs::lzma2::{fl2_compress_bound, Fl2CCtx};
 use crate::crypto::crc32::crc32_fast;
 use crate::sevenz::format::*;
 use crate::types::{TTZipCompressionLevel, TTZipCreateOptions, TTZipStatus};
@@ -18,17 +18,6 @@ use crate::zip::writer::{collect_zip_input_items, ZipCreateReport, ZipInputItem}
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-
-#[inline]
-pub fn lzma2_level_to_dict_prop(level: i32) -> u8 {
-    match level {
-        1 => 14, // 256KB
-        2..=3 => 20, // 2MB
-        4..=6 => 26, // 16MB
-        7..=9 => 28, // 32MB
-        _ => 30, // 64MB
-    }
-}
 
 /// Constructs 7z Metadata Header bytes for a solid block of items.
 pub fn build_7z_metadata_header(
@@ -183,9 +172,15 @@ pub fn create_7z_solid_archive_bytes(
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let mut solid_buf = Vec::new();
-    let mut stream_sizes = Vec::new();
-    let mut stream_crcs = Vec::new();
+    let total_uncompressed_len: usize = items
+        .iter()
+        .filter(|it| !it.is_directory)
+        .map(|it| it.data.len())
+        .sum();
+
+    let mut solid_buf = Vec::with_capacity(total_uncompressed_len);
+    let mut stream_sizes = Vec::with_capacity(items.len());
+    let mut stream_crcs = Vec::with_capacity(items.len());
 
     for item in items {
         if !item.is_directory && !item.data.is_empty() {
@@ -202,10 +197,16 @@ pub fn create_7z_solid_archive_bytes(
     } else {
         let bound = fl2_compress_bound(solid_buf.len()) + 65536;
         let mut comp_buf = vec![0u8; bound];
-        match fl2_compress(&solid_buf, &mut comp_buf, level, threads) {
+        let mut ctx = if threads > 1 {
+            Fl2CCtx::new_mt(threads)?
+        } else {
+            Fl2CCtx::new()?
+        };
+        match ctx.compress(&solid_buf, &mut comp_buf, level) {
             Ok(actual_len) => {
                 comp_buf.truncate(actual_len);
-                let dict_prop = lzma2_level_to_dict_prop(level);
+                let dict_prop = ctx.dict_property();
+                drop(solid_buf);
                 (METHOD_LZMA2, comp_buf, vec![dict_prop])
             }
             Err(_) => {

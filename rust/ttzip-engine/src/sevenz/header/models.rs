@@ -32,6 +32,9 @@ pub struct SevenZFolder {
     pub coders: Vec<SevenZCoder>,
     pub unpack_sizes: Vec<u64>,
     pub crc: Option<u32>,
+    pub num_unpack_streams: usize,
+    pub packed_offset: usize,
+    pub packed_len: usize,
 }
 
 /// Complete parsed 7z Header information.
@@ -39,6 +42,7 @@ pub struct SevenZFolder {
 pub struct SevenZHeaderInfo {
     pub payload_offset: usize,
     pub payload_len: usize,
+    pub pack_sizes: Vec<u64>,
     pub folders: Vec<SevenZFolder>,
     pub stream_sizes: Vec<u64>,
     pub stream_crcs: Vec<u32>,

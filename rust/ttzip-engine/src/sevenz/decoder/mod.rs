@@ -12,5 +12,5 @@ pub mod payload;
 pub mod stream;
 
 pub use archive::SevenZArchive;
-pub use payload::decode_7z_solid_payload;
+pub use payload::{decode_7z_folder_streaming, decode_7z_solid_payload, decode_7z_solid_streaming};
 pub use stream::extract_entry_bytes_stream;

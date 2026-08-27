@@ -258,3 +258,95 @@ fn test_wal_mutation_apfs_atomic_commit_and_crash_rollback() {
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
+
+#[test]
+fn test_in_place_zip_stream_splicing_zero_recompression_and_integrity() {
+    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_splicing_{}", std::process::id()));
+    let _ = fs::create_dir_all(&temp_dir);
+
+    let archive_path = temp_dir.join("splicing_orig.zip");
+
+    // Generate large compressible payloads to test 64KB chunked stream splicing
+    let chunk_payload = vec![0x55u8; 256 * 1024]; // 256 KB
+    let initial_items = vec![
+        ZipInputItem {
+            rel_path: "untouched_large.bin".to_string(),
+            data: chunk_payload.clone(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        },
+        ZipInputItem {
+            rel_path: "to_replace.txt".to_string(),
+            data: b"Old Payload to be replaced".to_vec(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        },
+        ZipInputItem {
+            rel_path: "to_delete.txt".to_string(),
+            data: b"File to be deleted".to_vec(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        },
+    ];
+
+    let compressed = crate::zip::writer::compress_items_parallel(
+        initial_items,
+        6,
+        crate::types::TTZipEncryptionMethod::None,
+        None,
+        2,
+    ).unwrap();
+    let orig_zip_bytes = assemble_zip_archive(&compressed).unwrap();
+    fs::write(&archive_path, &orig_zip_bytes).unwrap();
+
+    let orig_archive = ZipArchive::open_slice(&orig_zip_bytes).unwrap();
+    let orig_e0 = &orig_archive.entries()[0];
+    let (orig_payload_off, _) = crate::zip::parser::parse_local_file_header(&orig_zip_bytes, orig_e0.lfh_offset as usize).unwrap();
+    let orig_raw_payload = orig_zip_bytes[orig_payload_off..orig_payload_off + orig_e0.compressed_size as usize].to_vec();
+
+    // Prepare mutation files
+    let rep_file = temp_dir.join("new_rep.txt");
+    let app_file = temp_dir.join("new_app.bin");
+    fs::write(&rep_file, b"BRAND NEW REPLACED TEXT CONTENT 2026").unwrap();
+    fs::write(&app_file, vec![0x77u8; 128 * 1024]).unwrap();
+
+    let mut session = InPlaceArchiveSession::begin(&archive_path, Some(TTZipArchiveFormat::Zip)).unwrap();
+    session.delete("to_delete.txt").unwrap();
+    session.replace("to_replace.txt", &rep_file).unwrap();
+    session.append("appended_large.bin", &app_file).unwrap();
+    session.commit().unwrap();
+
+    let updated_bytes = fs::read(&archive_path).unwrap();
+    let updated_archive = ZipArchive::open_slice(&updated_bytes).unwrap();
+
+    // Verify entry count and names
+    assert_eq!(updated_archive.len(), 3);
+    let paths: Vec<String> = updated_archive.entries().iter().map(|e| e.rel_path.clone()).collect();
+    assert_eq!(paths, vec![
+        "untouched_large.bin".to_string(),
+        "to_replace.txt".to_string(),
+        "appended_large.bin".to_string(),
+    ]);
+
+    // Verify 1:1 bitstream preservation of untouched compressed stream
+    let updated_e0 = &updated_archive.entries()[0];
+    let (upd_payload_off, _) = crate::zip::parser::parse_local_file_header(&updated_bytes, updated_e0.lfh_offset as usize).unwrap();
+    let upd_raw_payload = &updated_bytes[upd_payload_off..upd_payload_off + updated_e0.compressed_size as usize];
+    assert_eq!(upd_raw_payload, &orig_raw_payload[..]);
+
+    // Verify content extraction
+    let e0_data = updated_archive.extract_entry_bytes(0, None).unwrap();
+    assert_eq!(e0_data, chunk_payload);
+
+    let e1_data = updated_archive.extract_entry_bytes(1, None).unwrap();
+    assert_eq!(e1_data, b"BRAND NEW REPLACED TEXT CONTENT 2026");
+
+    let e2_data = updated_archive.extract_entry_bytes(2, None).unwrap();
+    assert_eq!(e2_data, vec![0x77u8; 128 * 1024]);
+
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+

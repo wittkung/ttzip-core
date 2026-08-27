@@ -9,6 +9,7 @@
 //!
 //! Strictly enforces memory bounds for file-to-file and stream-to-stream processing.
 
+use crate::codecs::{CountingReader, CountingWriter};
 use crate::types::TTZipStatus;
 use snap::read::FrameDecoder;
 use snap::write::FrameEncoder;
@@ -27,9 +28,10 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
 ) -> Result<(u64, u64), TTZipStatus> {
     let mut in_buf = vec![0u8; SNAPPY_PIPE_BUFFER_SIZE];
     let mut total_read: u64 = 0;
-    let mut total_written: u64 = 0;
 
-    let mut encoder = FrameEncoder::new(writer);
+    let mut counting_writer = CountingWriter::new(writer);
+    let written_counter = counting_writer.counter();
+    let mut encoder = FrameEncoder::new(&mut counting_writer);
 
     loop {
         let bytes_read = reader.read(&mut in_buf).map_err(|_| TTZipStatus::ErrOpenFailed)?;
@@ -37,13 +39,13 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
             break;
         }
 
-        total_read += bytes_read as u64;
+        total_read = total_read.saturating_add(bytes_read as u64);
         encoder
             .write_all(&in_buf[..bytes_read])
             .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
         if let Some(cb) = progress_callback {
-            if !cb(total_read, total_written) {
+            if !cb(total_read, written_counter.load(std::sync::atomic::Ordering::Relaxed)) {
                 return Err(TTZipStatus::Cancelled);
             }
         }
@@ -52,7 +54,7 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
     let inner_writer = encoder.into_inner().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
     inner_writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
-    total_written = total_read;
+    let total_written = written_counter.load(std::sync::atomic::Ordering::Relaxed);
     Ok((total_read, total_written))
 }
 
@@ -62,10 +64,11 @@ pub fn snappy_decompress_stream_pipe<R: Read, W: Write>(
     writer: &mut W,
     progress_callback: Option<&dyn Fn(u64, u64) -> bool>,
 ) -> Result<(u64, u64), TTZipStatus> {
-    let mut decoder = FrameDecoder::new(reader);
+    let mut counting_reader = CountingReader::new(reader);
+    let read_counter = counting_reader.counter();
+    let mut decoder = FrameDecoder::new(&mut counting_reader);
     let mut out_buf = vec![0u8; SNAPPY_PIPE_BUFFER_SIZE];
 
-    let mut total_read: u64 = 0;
     let mut total_written: u64 = 0;
 
     loop {
@@ -78,17 +81,17 @@ pub fn snappy_decompress_stream_pipe<R: Read, W: Write>(
         writer
             .write_all(&out_buf[..bytes_decompressed])
             .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-        total_written += bytes_decompressed as u64;
+        total_written = total_written.saturating_add(bytes_decompressed as u64);
 
         if let Some(cb) = progress_callback {
-            if !cb(total_read, total_written) {
+            if !cb(read_counter.load(std::sync::atomic::Ordering::Relaxed), total_written) {
                 return Err(TTZipStatus::Cancelled);
             }
         }
     }
 
     writer.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-    total_read = total_written;
+    let total_read = read_counter.load(std::sync::atomic::Ordering::Relaxed);
     Ok((total_read, total_written))
 }
 

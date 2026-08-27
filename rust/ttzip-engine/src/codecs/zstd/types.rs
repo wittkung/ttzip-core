@@ -91,6 +91,14 @@ extern "C" {
         src_size: libc::size_t,
     ) -> libc::size_t;
 
+    pub fn ZSTD_compress2(
+        cctx: *mut ZstdCCtxOpaque,
+        dst: *mut libc::c_void,
+        dst_capacity: libc::size_t,
+        src: *const libc::c_void,
+        src_size: libc::size_t,
+    ) -> libc::size_t;
+
     pub fn ZSTD_compressStream2(
         cctx: *mut ZstdCCtxOpaque,
         output: *mut ZstdOutBuffer,

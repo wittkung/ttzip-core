@@ -42,6 +42,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     for _ in 0..num_pack_streams {
                         let (sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                         hpos += rd;
+                        out_info.pack_sizes.push(sz);
                         total_pack_size = total_pack_size.saturating_add(sz);
                     }
                 } else if ptag == K_CRC {
@@ -169,16 +170,14 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         }
                     }
                 } else if utag == K_CODERS_UNPACK_SIZE {
-                    let total_coders: usize = out_info.folders.iter().map(|f| f.coders.len()).sum();
-                    let read_limit = total_coders.max(out_info.folders.len()).max(1);
-
-                    for _ in 0..read_limit {
-                        if hpos >= hlen {
-                            break;
-                        }
-                        let (folder_unpack_sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
-                        hpos += rd;
-                        if let Some(folder) = out_info.folders.first_mut() {
+                    for folder in &mut out_info.folders {
+                        let num_out: usize = folder.coders.iter().map(|c| c.num_out_streams as usize).sum::<usize>().max(1);
+                        for _ in 0..num_out {
+                            if hpos >= hlen {
+                                break;
+                            }
+                            let (folder_unpack_sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                            hpos += rd;
                             folder.unpack_sizes.push(folder_unpack_sz);
                         }
                     }
@@ -186,7 +185,27 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     let all_defined = hp[hpos];
                     hpos += 1;
                     if all_defined != 0 {
-                        hpos += out_info.folders.len().max(1) * 4;
+                        for folder in &mut out_info.folders {
+                            if hpos + 4 <= hlen {
+                                folder.crc = Some(u32::from_le_bytes(hp[hpos..hpos + 4].try_into().unwrap()));
+                                hpos += 4;
+                            }
+                        }
+                    } else {
+                        let num_folders = out_info.folders.len();
+                        let bitmask_bytes = (num_folders + 7) / 8;
+                        if hpos + bitmask_bytes <= hlen {
+                            let bitmask = &hp[hpos..hpos + bitmask_bytes];
+                            hpos += bitmask_bytes;
+                            for (i, folder) in out_info.folders.iter_mut().enumerate() {
+                                let byte_idx = i / 8;
+                                let bit_idx = 7 - (i % 8);
+                                if (bitmask[byte_idx] & (1 << bit_idx)) != 0 && hpos + 4 <= hlen {
+                                    folder.crc = Some(u32::from_le_bytes(hp[hpos..hpos + 4].try_into().unwrap()));
+                                    hpos += 4;
+                                }
+                            }
+                        }
                     }
                 } else {
                     let (sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
@@ -194,7 +213,11 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                 }
             }
         } else if tag == K_SUB_STREAMS_INFO {
-            let mut num_streams_val = 1u64;
+            let num_folders = out_info.folders.len();
+            let mut num_unpack_streams_per_folder = vec![1usize; num_folders.max(1)];
+            let mut stream_sizes_per_folder: Vec<Vec<u64>> = vec![Vec::new(); num_folders.max(1)];
+            let mut size_tag_seen = false;
+
             while hpos < hlen {
                 let stag = hp[hpos];
                 hpos += 1;
@@ -202,35 +225,64 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     break;
                 }
                 if stag == K_NUM_UNPACK_STREAM {
-                    let (ns, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
-                    hpos += rd;
-                    num_streams_val = ns;
-                } else if stag == K_SIZE {
-                    let num_explicit = num_streams_val.saturating_sub(1) as usize;
-                    let mut explicit_sum = 0u64;
-                    for _ in 0..num_explicit {
-                        let (sval, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                    let folders_count = if num_folders > 0 { num_folders } else { 1 };
+                    num_unpack_streams_per_folder.resize(folders_count, 1);
+                    for f in 0..folders_count {
+                        let (ns, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                         hpos += rd;
-                        explicit_sum += sval;
-                        out_info.stream_sizes.push(sval);
+                        num_unpack_streams_per_folder[f] = ns as usize;
                     }
-                    if num_streams_val > 1 {
-                        let folder_total = out_info
-                            .folders
-                            .first()
-                            .and_then(|f| f.unpack_sizes.first().copied())
-                            .unwrap_or(0);
-                        out_info.stream_sizes.push(folder_total.saturating_sub(explicit_sum));
+                } else if stag == K_SIZE {
+                    size_tag_seen = true;
+                    let folders_count = if num_folders > 0 { num_folders } else { 1 };
+                    if stream_sizes_per_folder.len() < folders_count {
+                        stream_sizes_per_folder.resize(folders_count, Vec::new());
+                    }
+                    for f in 0..folders_count {
+                        let num_streams = num_unpack_streams_per_folder.get(f).copied().unwrap_or(1);
+                        let num_explicit = num_streams.saturating_sub(1);
+                        let mut explicit_sum = 0u64;
+                        for _ in 0..num_explicit {
+                            let (sval, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                            hpos += rd;
+                            explicit_sum += sval;
+                            stream_sizes_per_folder[f].push(sval);
+                        }
+                        if num_streams > 0 {
+                            let folder_total = out_info
+                                .folders
+                                .get(f)
+                                .and_then(|folder| folder.unpack_sizes.last().copied().or_else(|| folder.unpack_sizes.first().copied()))
+                                .unwrap_or(0);
+                            let last_sz = folder_total.saturating_sub(explicit_sum);
+                            stream_sizes_per_folder[f].push(last_sz);
+                        }
                     }
                 } else if stag == K_CRC {
                     let all_defined = hp[hpos];
                     hpos += 1;
+                    let total_streams: usize = num_unpack_streams_per_folder.iter().sum();
                     if all_defined != 0 {
-                        for _ in 0..num_streams_val as usize {
+                        for _ in 0..total_streams {
                             if hpos + 4 <= hlen {
                                 let c = u32::from_le_bytes(hp[hpos..hpos + 4].try_into().unwrap());
                                 hpos += 4;
                                 out_info.stream_crcs.push(c);
+                            }
+                        }
+                    } else {
+                        let bitmask_bytes = (total_streams + 7) / 8;
+                        if hpos + bitmask_bytes <= hlen {
+                            let bitmask = &hp[hpos..hpos + bitmask_bytes];
+                            hpos += bitmask_bytes;
+                            for i in 0..total_streams {
+                                let byte_idx = i / 8;
+                                let bit_idx = 7 - (i % 8);
+                                if (bitmask[byte_idx] & (1 << bit_idx)) != 0 && hpos + 4 <= hlen {
+                                    let c = u32::from_le_bytes(hp[hpos..hpos + 4].try_into().unwrap());
+                                    hpos += 4;
+                                    out_info.stream_crcs.push(c);
+                                }
                             }
                         }
                     }
@@ -240,11 +292,22 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                 }
             }
 
-            if !out_info.folders.is_empty() && !out_info.folders[0].unpack_sizes.is_empty() {
-                let total_unpack = out_info.folders[0].unpack_sizes[0];
-                let explicit_sum: u64 = out_info.stream_sizes.iter().sum();
-                if total_unpack >= explicit_sum && out_info.stream_sizes.len() < (num_streams_val as usize) {
-                    out_info.stream_sizes.push(total_unpack - explicit_sum);
+            // Sync num_unpack_streams to each folder model
+            for (f, folder) in out_info.folders.iter_mut().enumerate() {
+                folder.num_unpack_streams = num_unpack_streams_per_folder.get(f).copied().unwrap_or(1);
+            }
+
+            if size_tag_seen {
+                for folder_streams in stream_sizes_per_folder {
+                    out_info.stream_sizes.extend(folder_streams);
+                }
+            } else {
+                for (f, folder) in out_info.folders.iter().enumerate() {
+                    let count = num_unpack_streams_per_folder.get(f).copied().unwrap_or(1);
+                    if count == 1 {
+                        let sz = folder.unpack_sizes.last().copied().unwrap_or(0);
+                        out_info.stream_sizes.push(sz);
+                    }
                 }
             }
         } else if tag == K_FILES_INFO {
@@ -334,17 +397,32 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
         }
     }
 
-    // Reconcile stream sizes if folder unpack size is known and last stream size was implicit
-    if !out_info.folders.is_empty() && !out_info.folders[0].unpack_sizes.is_empty() {
-        let total_unpack = out_info.folders[0].unpack_sizes[0];
-        let sum_known: u64 = out_info.stream_sizes.iter().sum();
-        if total_unpack > sum_known {
-            out_info.stream_sizes.push(total_unpack - sum_known);
-        }
-    } else if out_info.stream_sizes.is_empty() && !out_info.folders.is_empty() {
-        for &sz in &out_info.folders[0].unpack_sizes {
+    // If stream_sizes is empty and folders are present, initialize 1 stream per folder from unpack_sizes
+    if out_info.stream_sizes.is_empty() && !out_info.folders.is_empty() {
+        for folder in &mut out_info.folders {
+            if folder.num_unpack_streams == 0 {
+                folder.num_unpack_streams = 1;
+            }
+            let sz = folder.unpack_sizes.last().copied().unwrap_or(0);
             out_info.stream_sizes.push(sz);
         }
+    }
+
+    // Map packed offsets and lengths to folders
+    let mut cur_pack_offset = out_info.payload_offset;
+    let mut pack_idx = 0usize;
+    let num_folders = out_info.folders.len();
+    for folder in &mut out_info.folders {
+        let mut folder_pack_len = 0usize;
+        if pack_idx < out_info.pack_sizes.len() {
+            folder_pack_len = out_info.pack_sizes[pack_idx] as usize;
+            pack_idx += 1;
+        } else if num_folders == 1 {
+            folder_pack_len = out_info.payload_len;
+        }
+        folder.packed_offset = cur_pack_offset;
+        folder.packed_len = folder_pack_len;
+        cur_pack_offset += folder_pack_len;
     }
 
     Ok(())

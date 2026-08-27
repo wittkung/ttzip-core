@@ -51,39 +51,41 @@ pub fn create_archive(
             .map(|_| ());
     }
 
-    // 2. Pure Safe Rust High-Throughput Brotli Pipeline
+    // 2. Pure Safe Rust High-Throughput Brotli Streaming Pipeline (0% Disk Write Amplification)
     if resolved_format == TTZipArchiveFormat::TarBrotli || resolved_format == TTZipArchiveFormat::Brotli {
-        let tmp_tar = destination_path.with_extension(format!("ttzip_tmp_{}.tar", std::process::id()));
-        let mut tar_opts = *options;
-        tar_opts.format = TTZipArchiveFormat::Tar;
-        create_archive(source_paths, &tmp_tar, &tar_opts, 0)?;
-        let res = crate::codecs::brotli::brotli_compress_file(&tmp_tar, destination_path, 6, 22, None);
-        let _ = fs::remove_file(&tmp_tar);
-        return res.map(|_| ());
+        if split_volume_size_bytes > 0 {
+            return Err(TTZipStatus::ErrUnsupportedFeature);
+        }
+        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let q = match options.level {
+            TTZipCompressionLevel::Store => 0,
+            TTZipCompressionLevel::Fastest => 1,
+            TTZipCompressionLevel::Fast => 3,
+            TTZipCompressionLevel::Normal => 6,
+            TTZipCompressionLevel::Maximum => 9,
+            TTZipCompressionLevel::Ultra => 11,
+        };
+        let brotli_writer = brotli::CompressorWriter::new(out_file, 64 * 1024, q, 22);
+        crate::archive::tar::write_tar_to_writer(source_paths, brotli_writer, options)?;
+        return Ok(());
     }
 
-    // 3. Pure Safe Rust High-Throughput Snappy Pipeline
+    // 3. Pure Safe Rust High-Throughput Snappy Streaming Pipeline (0% Disk Write Amplification)
     if resolved_format == TTZipArchiveFormat::Snappy {
-        let tmp_tar = destination_path.with_extension(format!("ttzip_tmp_{}.tar", std::process::id()));
-        let mut tar_opts = *options;
-        tar_opts.format = TTZipArchiveFormat::Tar;
-        create_archive(source_paths, &tmp_tar, &tar_opts, 0)?;
-        let res = crate::codecs::snappy::snappy_compress_file(&tmp_tar, destination_path, None);
-        let _ = fs::remove_file(&tmp_tar);
-        return res.map(|_| ());
+        if split_volume_size_bytes > 0 {
+            return Err(TTZipStatus::ErrUnsupportedFeature);
+        }
+        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let snappy_encoder = snap::write::FrameEncoder::new(out_file);
+        crate::archive::tar::write_tar_to_writer(source_paths, snappy_encoder, options)?;
+        return Ok(());
     }
 
-    // 4. Native Multi-Core High-Throughput Zstandard Pipeline
+    // 4. Native Streaming High-Throughput Zstandard Pipeline (0% Disk Write Amplification)
     if (resolved_format == TTZipArchiveFormat::TarZstd || resolved_format == TTZipArchiveFormat::Zstd)
         && split_volume_size_bytes == 0
     {
-        let tmp_tar = destination_path.with_extension(format!("ttzip_tmp_{}.tar", std::process::id()));
-        let mut tar_opts = *options;
-        tar_opts.format = TTZipArchiveFormat::Tar;
-        create_archive(source_paths, &tmp_tar, &tar_opts, 0)?;
-
-        let mut src_f = File::open(&tmp_tar).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let mut dst_f = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
         let z_lvl = match options.level {
             TTZipCompressionLevel::Store => 1,
             TTZipCompressionLevel::Fastest => 1,
@@ -92,13 +94,9 @@ pub fn create_archive(
             TTZipCompressionLevel::Maximum => 19,
             TTZipCompressionLevel::Ultra => 22,
         };
-        let cfg = crate::codecs::zstd::ZstdConfig {
-            level: z_lvl,
-            ..Default::default()
-        };
-        let res = crate::codecs::zstd::zstd_compress_stream_pipe(&mut src_f, &mut dst_f, &cfg, None);
-        let _ = fs::remove_file(&tmp_tar);
-        return res.map(|_| ());
+        let zstd_writer = crate::codecs::zstd::ZstdStreamWriter::with_level(out_file, z_lvl)?;
+        crate::archive::tar::write_tar_to_writer(source_paths, zstd_writer, options)?;
+        return Ok(());
     }
 
 unsafe extern "C" fn split_write_cb(
@@ -178,30 +176,35 @@ unsafe extern "C" fn split_free_cb(
             TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => {
                 let r1 = archive_write_set_format_pax_restricted(a);
                 let r2 = archive_write_add_filter_gzip(a);
+                apply_filter_compression_level(a, resolved_format, options.level);
                 if r1 != 0 { r1 } else { r2 }
             }
             TTZipArchiveFormat::TarBz2 | TTZipArchiveFormat::Bzip2 => {
                 let r1 = archive_write_set_format_pax_restricted(a);
                 let r2 = archive_write_add_filter_bzip2(a);
+                apply_filter_compression_level(a, resolved_format, options.level);
                 if r1 != 0 { r1 } else { r2 }
             }
             TTZipArchiveFormat::TarXz | TTZipArchiveFormat::Xz => {
                 let r1 = archive_write_set_format_pax_restricted(a);
                 let r2 = archive_write_add_filter_xz(a);
+                apply_filter_compression_level(a, resolved_format, options.level);
                 if r1 != 0 { r1 } else { r2 }
             }
             TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => {
                 let r1 = archive_write_set_format_pax_restricted(a);
                 let r2 = archive_write_add_filter_zstd(a);
+                apply_filter_compression_level(a, resolved_format, options.level);
                 if r1 != 0 { r1 } else { r2 }
             }
             TTZipArchiveFormat::TarLz4 | TTZipArchiveFormat::Lz4 => {
                 let r1 = archive_write_set_format_pax_restricted(a);
                 let r2 = archive_write_add_filter_lz4(a);
+                apply_filter_compression_level(a, resolved_format, options.level);
                 if r1 != 0 { r1 } else { r2 }
             }
             TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
-                archive_write_set_format_pax_restricted(a)
+                return Err(TTZipStatus::ErrUnsupportedFeature);
             }
             TTZipArchiveFormat::TarLzip | TTZipArchiveFormat::Lzip => {
                 let r1 = archive_write_set_format_pax_restricted(a);
@@ -410,3 +413,73 @@ fn collect_entries_recursive(
     }
     Ok(())
 }
+
+unsafe fn apply_filter_compression_level(
+    a: *mut c_void,
+    format: TTZipArchiveFormat,
+    level: TTZipCompressionLevel,
+) {
+    let (module_name, lvl_num) = match format {
+        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => {
+            let n = match level {
+                TTZipCompressionLevel::Store => 1,
+                TTZipCompressionLevel::Fastest => 1,
+                TTZipCompressionLevel::Fast => 3,
+                TTZipCompressionLevel::Normal => 6,
+                TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => 9,
+            };
+            ("gzip", n)
+        }
+        TTZipArchiveFormat::TarBz2 | TTZipArchiveFormat::Bzip2 => {
+            let n = match level {
+                TTZipCompressionLevel::Store => 1,
+                TTZipCompressionLevel::Fastest => 1,
+                TTZipCompressionLevel::Fast => 3,
+                TTZipCompressionLevel::Normal => 6,
+                TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => 9,
+            };
+            ("bzip2", n)
+        }
+        TTZipArchiveFormat::TarXz | TTZipArchiveFormat::Xz => {
+            let n = match level {
+                TTZipCompressionLevel::Store => 0,
+                TTZipCompressionLevel::Fastest => 1,
+                TTZipCompressionLevel::Fast => 3,
+                TTZipCompressionLevel::Normal => 6,
+                TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => 9,
+            };
+            ("xz", n)
+        }
+        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => {
+            let n = match level {
+                TTZipCompressionLevel::Store => 1,
+                TTZipCompressionLevel::Fastest => 1,
+                TTZipCompressionLevel::Fast => 3,
+                TTZipCompressionLevel::Normal => 6,
+                TTZipCompressionLevel::Maximum => 19,
+                TTZipCompressionLevel::Ultra => 22,
+            };
+            ("zstd", n)
+        }
+        TTZipArchiveFormat::TarLz4 | TTZipArchiveFormat::Lz4 => {
+            let n = match level {
+                TTZipCompressionLevel::Store => 1,
+                TTZipCompressionLevel::Fastest => 1,
+                TTZipCompressionLevel::Fast => 3,
+                TTZipCompressionLevel::Normal => 6,
+                TTZipCompressionLevel::Maximum | TTZipCompressionLevel::Ultra => 9,
+            };
+            ("lz4", n)
+        }
+        _ => return,
+    };
+
+    if let (Ok(mod_c), Ok(opt_c), Ok(val_c)) = (
+        CString::new(module_name),
+        CString::new("compression-level"),
+        CString::new(lvl_num.to_string()),
+    ) {
+        archive_write_set_filter_option(a, mod_c.as_ptr(), opt_c.as_ptr(), val_c.as_ptr());
+    }
+}
+

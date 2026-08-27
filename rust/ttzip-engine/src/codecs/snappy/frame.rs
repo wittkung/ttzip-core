@@ -101,6 +101,31 @@ pub fn snappy_frame_decode_to_vec(src: &[u8], max_allowed: usize) -> Result<Vec<
     Ok(out)
 }
 
+/// Validates the integrity of a Snappy framed buffer (.sz) using a 64KB stack buffer with CRC32C verification.
+///
+/// Returns `true` if the stream identifier is valid, all chunk headers are well-formed,
+/// and all uncompressed chunk payloads match their embedded Castagnoli CRC-32C checksums.
+pub fn snappy_frame_validate(src: &[u8]) -> bool {
+    if !is_framed_snappy(src) {
+        return false;
+    }
+    let mut cursor = Cursor::new(src);
+    snappy_frame_validate_reader(&mut cursor)
+}
+
+/// Validates the integrity of a Snappy framed stream (.sz) from a `Read` source using a 64KB stack buffer.
+pub fn snappy_frame_validate_reader<R: Read>(reader: &mut R) -> bool {
+    let mut decoder = FrameDecoder::new(reader);
+    let mut stack_buf = [0u8; SNAPPY_MAX_CHUNK_SIZE];
+    loop {
+        match decoder.read(&mut stack_buf) {
+            Ok(0) => return true,
+            Ok(_) => continue,
+            Err(_) => return false,
+        }
+    }
+}
+
 /// Computes upper bound on encoded framing stream length.
 #[inline]
 pub fn snappy_frame_max_encoded_length(src_len: usize) -> usize {
@@ -110,3 +135,4 @@ pub fn snappy_frame_max_encoded_length(src_len: usize) -> usize {
     let num_chunks = src_len.div_ceil(SNAPPY_MAX_CHUNK_SIZE);
     SNAPPY_STREAM_IDENTIFIER.len() + num_chunks * (8 + crate::codecs::snappy::block::snappy_compress_bound(SNAPPY_MAX_CHUNK_SIZE))
 }
+

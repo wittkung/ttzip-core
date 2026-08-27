@@ -104,6 +104,36 @@ impl ZstdCCtx {
         }
     }
 
+    /// Compresses a buffer in a single pass into destination using parameters already configured on the context (`ZSTD_compress2`).
+    pub fn compress2(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        let in_ptr = if src.is_empty() {
+            std::ptr::null()
+        } else {
+            src.as_ptr() as *const libc::c_void
+        };
+        let out_ptr = if dst.is_empty() {
+            std::ptr::null_mut()
+        } else {
+            dst.as_mut_ptr() as *mut libc::c_void
+        };
+
+        let res = unsafe {
+            ZSTD_compress2(
+                self.handle.as_ptr(),
+                out_ptr,
+                dst.len(),
+                in_ptr,
+                src.len(),
+            )
+        };
+
+        if unsafe { ZSTD_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(res)
+        }
+    }
+
     /// Streams compression data into output buffer.
     pub fn compress_stream(
         &mut self,
@@ -193,5 +223,5 @@ pub fn zstd_compress_advanced(
 ) -> Result<usize, TTZipStatus> {
     let mut cctx = ZstdCCtx::new()?;
     cctx.apply_config(config)?;
-    cctx.compress(src, dst, config.level)
+    cctx.compress2(src, dst)
 }

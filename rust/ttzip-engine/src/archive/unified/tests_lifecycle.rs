@@ -284,4 +284,153 @@ mod tests {
 
         assert_eq!(res, Err(TTZipStatus::Cancelled));
     }
+
+    #[test]
+    fn test_unified_streaming_compound_tar_roundtrips_and_zero_disk_leak() {
+        let dir = tempdir().unwrap();
+        let src_file1 = dir.path().join("file1.txt");
+        let src_file2 = dir.path().join("file2.log");
+        let data1 = b"Pure Streaming TAR and Codec Pipeline payload 1 - eliminating 200% write amplification!";
+        let data2 = b"Secondary file payload in compressed archive for zero-copy block extraction verification.";
+        fs::write(&src_file1, data1).unwrap();
+        fs::write(&src_file2, data2).unwrap();
+
+        let cases = [
+            (TTZipArchiveFormat::TarZstd, "test_stream.tar.zst"),
+            (TTZipArchiveFormat::TarBrotli, "test_stream.tar.br"),
+            (TTZipArchiveFormat::Snappy, "test_stream.sz"),
+        ];
+
+        for (fmt, filename) in cases {
+            let archive_out = dir.path().join(filename);
+            let extract_out = dir.path().join(format!("ext_{}", filename));
+
+            let create_opt = TTZipCreateOptions {
+                struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                format: fmt,
+                level: TTZipCompressionLevel::Normal,
+                encryption: TTZipEncryptionMethod::None,
+                password: std::ptr::null(),
+                thread_budget: 0,
+                solid_block_size_mb: 0,
+                progress_callback: None,
+                user_data: std::ptr::null_mut(),
+            };
+
+            UnifiedArchiveOrchestrator::create_archive(
+                &[src_file1.clone(), src_file2.clone()],
+                &archive_out,
+                &create_opt,
+                0,
+            )
+            .unwrap_or_else(|_| panic!("Failed to stream create {}", filename));
+
+            assert!(archive_out.exists(), "Archive {} must exist", filename);
+
+            // Verify no temporary files exist in the parent folder
+            let mut tmp_files_count = 0;
+            if let Ok(entries) = fs::read_dir(dir.path()) {
+                for e in entries.flatten() {
+                    let name = e.file_name().to_string_lossy().into_owned();
+                    if name.contains("ttzip_tmp_") || name.contains("ttzip_decomp_") {
+                        tmp_files_count += 1;
+                    }
+                }
+            }
+            assert_eq!(tmp_files_count, 0, "No temporary tar files should ever be created on disk");
+
+            let extract_opt = TTZipExtractOptions {
+                struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                destination_path: std::ptr::null(),
+                password: std::ptr::null(),
+                thread_budget: 0,
+                overwrite_existing: true,
+                preserve_permissions: true,
+                dry_run: false,
+                progress_callback: None,
+                user_data: std::ptr::null_mut(),
+            };
+
+            let extracted_bytes = UnifiedArchiveOrchestrator::extract_archive_with_metrics(
+                &archive_out,
+                &extract_out,
+                &extract_opt,
+            )
+            .unwrap_or_else(|_| panic!("Failed to stream extract {}", filename));
+
+            assert!(extracted_bytes >= (data1.len() + data2.len()) as u64);
+
+            let rest1 = extract_out.join("file1.txt");
+            let rest2 = extract_out.join("file2.log");
+            assert!(rest1.exists(), "restored file1 must exist for {}", filename);
+            assert!(rest2.exists(), "restored file2 must exist for {}", filename);
+            assert_eq!(fs::read(&rest1).unwrap(), data1);
+            assert_eq!(fs::read(&rest2).unwrap(), data2);
+        }
+    }
+
+    #[test]
+    fn test_compression_levels_propagation_difference() {
+        let dir = tempdir().unwrap();
+        let payload_file = dir.path().join("repetitive.txt");
+        let rep_data = b"TTZip High-Performance Native Archiving Engine Compression Level Verification 2026! ".repeat(5000);
+        fs::write(&payload_file, &rep_data).unwrap();
+
+        let fast_out = dir.path().join("archive_fast.tar.zst");
+        let ultra_out = dir.path().join("archive_ultra.tar.zst");
+
+        let opt_fast = TTZipCreateOptions {
+            struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            format: TTZipArchiveFormat::TarZstd,
+            level: TTZipCompressionLevel::Fastest,
+            encryption: TTZipEncryptionMethod::None,
+            password: std::ptr::null(),
+            thread_budget: 0,
+            solid_block_size_mb: 0,
+            progress_callback: None,
+            user_data: std::ptr::null_mut(),
+        };
+
+        UnifiedArchiveOrchestrator::create_archive(&[payload_file.clone()], &fast_out, &opt_fast, 0)
+            .expect("create fast archive");
+
+        let mut opt_ultra = opt_fast;
+        opt_ultra.level = TTZipCompressionLevel::Ultra;
+        UnifiedArchiveOrchestrator::create_archive(&[payload_file], &ultra_out, &opt_ultra, 0)
+            .expect("create ultra archive");
+
+        let size_fast = fs::metadata(&fast_out).unwrap().len();
+        let size_ultra = fs::metadata(&ultra_out).unwrap().len();
+
+        assert!(
+            size_ultra <= size_fast,
+            "Ultra compression (level 22) must be <= Fastest (level 1): ultra={}, fast={}",
+            size_ultra,
+            size_fast
+        );
+    }
+
+    #[test]
+    fn test_unsupported_compound_in_place_edit_error() {
+        use crate::archive::in_place_edit::compound::in_place_edit_compound_stream;
+        use crate::standards::signatures::CompoundFormat;
+
+        let dir = tempdir().unwrap();
+        let fake_archive = dir.path().join("fake.tar.br");
+        fs::write(&fake_archive, b"dummy content").unwrap();
+        let shadow = dir.path().join("shadow.tar.br");
+
+        let res = in_place_edit_compound_stream(
+            &fake_archive,
+            &shadow,
+            CompoundFormat::TarBrotli,
+            &[],
+        );
+
+        assert_eq!(res, Err(TTZipStatus::ErrUnsupportedFeature));
+    }
+
 }
