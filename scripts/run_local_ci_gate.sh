@@ -74,6 +74,7 @@ declare -a STAGE_NAMES=(
     "Swift High-Level Facade & CLI Suite"
     "Deflate-Bench 50-Point Matrix Gate"
     "Rust Industrial Suite (Props, Fuzz, Differential)"
+    "Deflate Deep Defense & CPU-Stripping Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -83,6 +84,7 @@ declare -a STAGE_KEYS=(
     "swift-facade"
     "performance"
     "rust-industrial"
+    "deflate-defense"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -93,6 +95,7 @@ declare -a STAGE_COMMANDS=(
 
     "swift run ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz"
+    "./scripts/run_deflate_defense_tests.sh"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
