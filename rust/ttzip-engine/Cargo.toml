@@ -86,7 +86,8 @@ syntax = [
     "dep:tree-sitter-md",
     "dep:tree-sitter-swift",
 ]
-full = ["archive", "probe", "syntax"]
+media-player = []
+full = ["archive", "probe", "syntax", "media-player"]
 
 [dev-dependencies]
 hex = "0.4"

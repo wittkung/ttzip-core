@@ -22,6 +22,7 @@ pub mod extraction;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod integrity;
+pub mod media;
 #[cfg(feature = "probe")]
 pub mod metadata;
 pub mod smart_extract;
@@ -44,6 +45,7 @@ pub use extraction::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use integrity::*;
+pub use media::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
 pub use smart_extract::*;

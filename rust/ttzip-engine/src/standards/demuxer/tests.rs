@@ -8,7 +8,6 @@
 //! Unit tests for Matroska (MKV) and ISO BMFF (MP4) container demuxing.
 
 use crate::types::status::TTZipStatus;
-use super::types::MediaTrackType;
 use super::*;
 
 fn ebml_box(id: u32, data: &[u8]) -> Vec<u8> {

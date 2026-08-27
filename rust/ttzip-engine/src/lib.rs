@@ -26,6 +26,7 @@ pub mod crypto;
 pub mod ffi;
 pub mod fs;
 pub mod i18n;
+pub mod media;
 pub mod platform;
 pub mod runtime;
 pub mod security;
@@ -51,6 +52,7 @@ pub use codecs::*;
 pub use crypto::*;
 pub use fs::*;
 pub use i18n::*;
+pub use media::*;
 pub use platform::*;
 pub use runtime::*;
 pub use security::*;
@@ -61,7 +63,7 @@ pub use sevenz::{
 pub use standards::*;
 pub use types::*;
 pub use uniffi_api::{
-    archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*,
+    archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*, media::*,
     ttzip_i18n_format_bytes, ttzip_i18n_format_throughput, ttzip_i18n_get_string,
     ttzip_i18n_localize_error, vault::*, vfs::*,
 };

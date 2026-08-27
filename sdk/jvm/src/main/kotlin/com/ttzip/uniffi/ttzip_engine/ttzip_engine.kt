@@ -927,6 +927,54 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -973,6 +1021,56 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error(`ptr`: Pointer,`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Float
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Float
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Float
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`durationMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream(`ptr`: Pointer,`stream`: Pointer,`durationMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to(`ptr`: Pointer,`positionMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track(`ptr`: Pointer,`trackId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track(`ptr`: Pointer,`trackId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration(`ptr`: Pointer,`durationMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted(`ptr`: Pointer,`muted`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate(`ptr`: Pointer,`rate`: Float,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume(`ptr`: Pointer,`volume`: Float,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time(`ptr`: Pointer,`currentMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_clone_uniffivfstree(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffivfstree(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1417,6 +1515,50 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children_paged(
@@ -1444,6 +1586,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build(
     ): Short
@@ -1699,6 +1843,72 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate() != 7403.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state() != 20677.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks() != 35668.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info() != 43989.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks() != 43239.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume() != 24943.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted() != 49104.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes() != 29830.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream() != 32311.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause() != 8332.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play() != 1377.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to() != 41770.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track() != 46714.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track() != 29097.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration() != 43335.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted() != 17511.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate() != 54514.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume() != 7621.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop() != 47639.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time() != 4733.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1739,6 +1949,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319.toShort()) {
@@ -2838,6 +3051,680 @@ public object FfiConverterTypeTTZipLocalizationEngine: FfiConverter<TtZipLocaliz
 
 
 /**
+ * Cross-language UniFFI MediaPlayer controller object.
+ */
+public interface UniFfittZipMediaPlayerInterface {
+    
+    /**
+     * Returns effective volume level.
+     */
+    fun `effectiveVolume`(): kotlin.Float
+    
+    /**
+     * Returns all available audio tracks.
+     */
+    fun `getAudioTracks`(): List<UniFfiAudioTrack>
+    
+    /**
+     * Returns playback speed multiplier.
+     */
+    fun `getPlaybackRate`(): kotlin.Float
+    
+    /**
+     * Returns current player state.
+     */
+    fun `getState`(): UniFfiPlayerState
+    
+    /**
+     * Returns all available subtitle tracks.
+     */
+    fun `getSubtitleTracks`(): List<UniFfiSubtitleTrack>
+    
+    /**
+     * Returns current timeline progress.
+     */
+    fun `getTimeInfo`(): UniFfiPlaybackTimeInfo
+    
+    /**
+     * Returns all available video tracks.
+     */
+    fun `getVideoTracks`(): List<UniFfiVideoTrack>
+    
+    /**
+     * Returns configured volume level.
+     */
+    fun `getVolume`(): kotlin.Float
+    
+    /**
+     * Returns mute status.
+     */
+    fun `isMuted`(): kotlin.Boolean
+    
+    /**
+     * Mounts in-memory media payload bytes.
+     */
+    fun `mountBytes`(`data`: kotlin.ByteArray, `durationMs`: kotlin.ULong)
+    
+    /**
+     * Mounts a virtual stream pipeline.
+     */
+    fun `mountVirtualStream`(`stream`: VirtualFileStream, `durationMs`: kotlin.ULong)
+    
+    /**
+     * Pauses active playback.
+     */
+    fun `pause`()
+    
+    /**
+     * Starts or resumes playback.
+     */
+    fun `play`()
+    
+    /**
+     * Seeks playback to target millisecond position.
+     */
+    fun `seekTo`(`positionMs`: kotlin.ULong): kotlin.ULong
+    
+    /**
+     * Selects active audio track by ID.
+     */
+    fun `selectAudioTrack`(`trackId`: kotlin.UInt)
+    
+    /**
+     * Selects active subtitle track by ID or disables subtitles if `None`.
+     */
+    fun `selectSubtitleTrack`(`trackId`: kotlin.UInt?)
+    
+    /**
+     * Sets media duration in milliseconds.
+     */
+    fun `setDuration`(`durationMs`: kotlin.ULong)
+    
+    /**
+     * Sets mute flag.
+     */
+    fun `setMuted`(`muted`: kotlin.Boolean)
+    
+    /**
+     * Sets playback speed multiplier.
+     */
+    fun `setPlaybackRate`(`rate`: kotlin.Float)
+    
+    /**
+     * Sets playback volume in range [0.0, 1.0].
+     */
+    fun `setVolume`(`volume`: kotlin.Float)
+    
+    /**
+     * Stops playback and resets timeline offset.
+     */
+    fun `stop`()
+    
+    /**
+     * Updates playback progress offset.
+     */
+    fun `updatePlaybackTime`(`currentMs`: kotlin.ULong)
+    
+    companion object
+}
+
+/**
+ * Cross-language UniFFI MediaPlayer controller object.
+ */
+open class UniFfittZipMediaPlayer: Disposable, AutoCloseable, UniFfittZipMediaPlayerInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a new media player object.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Returns effective volume level.
+     */override fun `effectiveVolume`(): kotlin.Float {
+            return FfiConverterFloat.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns all available audio tracks.
+     */override fun `getAudioTracks`(): List<UniFfiAudioTrack> {
+            return FfiConverterSequenceTypeUniFFIAudioTrack.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns playback speed multiplier.
+     */override fun `getPlaybackRate`(): kotlin.Float {
+            return FfiConverterFloat.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns current player state.
+     */override fun `getState`(): UniFfiPlayerState {
+            return FfiConverterTypeUniFFIPlayerState.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns all available subtitle tracks.
+     */override fun `getSubtitleTracks`(): List<UniFfiSubtitleTrack> {
+            return FfiConverterSequenceTypeUniFFISubtitleTrack.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns current timeline progress.
+     */override fun `getTimeInfo`(): UniFfiPlaybackTimeInfo {
+            return FfiConverterTypeUniFFIPlaybackTimeInfo.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns all available video tracks.
+     */override fun `getVideoTracks`(): List<UniFfiVideoTrack> {
+            return FfiConverterSequenceTypeUniFFIVideoTrack.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns configured volume level.
+     */override fun `getVolume`(): kotlin.Float {
+            return FfiConverterFloat.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns mute status.
+     */override fun `isMuted`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Mounts in-memory media payload bytes.
+     */
+    @Throws(TtZipException::class)override fun `mountBytes`(`data`: kotlin.ByteArray, `durationMs`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterULong.lower(`durationMs`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Mounts a virtual stream pipeline.
+     */
+    @Throws(TtZipException::class)override fun `mountVirtualStream`(`stream`: VirtualFileStream, `durationMs`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream(
+        it, FfiConverterTypeVirtualFileStream.lower(`stream`),FfiConverterULong.lower(`durationMs`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Pauses active playback.
+     */
+    @Throws(TtZipException::class)override fun `pause`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Starts or resumes playback.
+     */
+    @Throws(TtZipException::class)override fun `play`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Seeks playback to target millisecond position.
+     */
+    @Throws(TtZipException::class)override fun `seekTo`(`positionMs`: kotlin.ULong): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to(
+        it, FfiConverterULong.lower(`positionMs`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Selects active audio track by ID.
+     */
+    @Throws(TtZipException::class)override fun `selectAudioTrack`(`trackId`: kotlin.UInt)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track(
+        it, FfiConverterUInt.lower(`trackId`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Selects active subtitle track by ID or disables subtitles if `None`.
+     */
+    @Throws(TtZipException::class)override fun `selectSubtitleTrack`(`trackId`: kotlin.UInt?)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track(
+        it, FfiConverterOptionalUInt.lower(`trackId`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Sets media duration in milliseconds.
+     */override fun `setDuration`(`durationMs`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration(
+        it, FfiConverterULong.lower(`durationMs`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Sets mute flag.
+     */override fun `setMuted`(`muted`: kotlin.Boolean)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted(
+        it, FfiConverterBoolean.lower(`muted`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Sets playback speed multiplier.
+     */
+    @Throws(TtZipException::class)override fun `setPlaybackRate`(`rate`: kotlin.Float)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate(
+        it, FfiConverterFloat.lower(`rate`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Sets playback volume in range [0.0, 1.0].
+     */override fun `setVolume`(`volume`: kotlin.Float)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume(
+        it, FfiConverterFloat.lower(`volume`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Stops playback and resets timeline offset.
+     */
+    @Throws(TtZipException::class)override fun `stop`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Updates playback progress offset.
+     */override fun `updatePlaybackTime`(`currentMs`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time(
+        it, FfiConverterULong.lower(`currentMs`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITTZipMediaPlayer: FfiConverter<UniFfittZipMediaPlayer, Pointer> {
+
+    override fun lower(value: UniFfittZipMediaPlayer): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfittZipMediaPlayer {
+        return UniFfittZipMediaPlayer(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfittZipMediaPlayer {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfittZipMediaPlayer) = 8UL
+
+    override fun write(value: UniFfittZipMediaPlayer, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
  */
 public interface UniFfiVfsTreeInterface {
@@ -3160,7 +4047,7 @@ public object FfiConverterTypeUniFFIVfsTree: FfiConverter<UniFfiVfsTree, Pointer
 
 
 /**
- * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ * Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
  */
 public interface VirtualFileStreamInterface {
     
@@ -3180,7 +4067,7 @@ public interface VirtualFileStreamInterface {
 }
 
 /**
- * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ * Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
  */
 open class VirtualFileStream: Disposable, AutoCloseable, VirtualFileStreamInterface {
 
@@ -4063,6 +4950,61 @@ public object FfiConverterTypeSniffMetadata: FfiConverterRustBuffer<SniffMetadat
             FfiConverterBoolean.write(value.`isSfx`, buf)
             FfiConverterULong.write(value.`sfxOffset`, buf)
             FfiConverterUInt.write(value.`confidence`, buf)
+    }
+}
+
+
+
+/**
+ * Audio track metadata exposed across UniFFI boundary.
+ */
+data class UniFfiAudioTrack (
+    var `id`: kotlin.UInt, 
+    var `name`: kotlin.String, 
+    var `language`: kotlin.String?, 
+    var `channels`: kotlin.UShort?, 
+    var `sampleRate`: kotlin.UInt?, 
+    var `codec`: kotlin.String, 
+    var `isSelected`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioTrack: FfiConverterRustBuffer<UniFfiAudioTrack> {
+    override fun read(buf: ByteBuffer): UniFfiAudioTrack {
+        return UniFfiAudioTrack(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioTrack) = (
+            FfiConverterUInt.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterOptionalUShort.allocationSize(value.`channels`) +
+            FfiConverterOptionalUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterString.allocationSize(value.`codec`) +
+            FfiConverterBoolean.allocationSize(value.`isSelected`)
+    )
+
+    override fun write(value: UniFfiAudioTrack, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterOptionalUShort.write(value.`channels`, buf)
+            FfiConverterOptionalUInt.write(value.`sampleRate`, buf)
+            FfiConverterString.write(value.`codec`, buf)
+            FfiConverterBoolean.write(value.`isSelected`, buf)
     }
 }
 
@@ -4957,6 +5899,45 @@ public object FfiConverterTypeUniFFIPdfDocumentInfo: FfiConverterRustBuffer<UniF
 
 
 /**
+ * Structured playback timeline progress information exposed across UniFFI boundary.
+ */
+data class UniFfiPlaybackTimeInfo (
+    var `currentMs`: kotlin.ULong, 
+    var `durationMs`: kotlin.ULong, 
+    var `positionRatio`: kotlin.Double
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPlaybackTimeInfo: FfiConverterRustBuffer<UniFfiPlaybackTimeInfo> {
+    override fun read(buf: ByteBuffer): UniFfiPlaybackTimeInfo {
+        return UniFfiPlaybackTimeInfo(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPlaybackTimeInfo) = (
+            FfiConverterULong.allocationSize(value.`currentMs`) +
+            FfiConverterULong.allocationSize(value.`durationMs`) +
+            FfiConverterDouble.allocationSize(value.`positionRatio`)
+    )
+
+    override fun write(value: UniFfiPlaybackTimeInfo, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`currentMs`, buf)
+            FfiConverterULong.write(value.`durationMs`, buf)
+            FfiConverterDouble.write(value.`positionRatio`, buf)
+    }
+}
+
+
+
+/**
  * Smart extraction decision record exposed via UniFFI.
  */
 data class UniFfiSmartExtractDecision (
@@ -5426,6 +6407,57 @@ public object FfiConverterTypeUniFFISubtitleStyle: FfiConverterRustBuffer<UniFfi
 
 
 /**
+ * Subtitle track metadata exposed across UniFFI boundary.
+ */
+data class UniFfiSubtitleTrack (
+    var `id`: kotlin.UInt, 
+    var `name`: kotlin.String, 
+    var `language`: kotlin.String?, 
+    var `format`: kotlin.String, 
+    var `isSelected`: kotlin.Boolean, 
+    var `isExternal`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleTrack: FfiConverterRustBuffer<UniFfiSubtitleTrack> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleTrack {
+        return UniFfiSubtitleTrack(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleTrack) = (
+            FfiConverterUInt.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterString.allocationSize(value.`format`) +
+            FfiConverterBoolean.allocationSize(value.`isSelected`) +
+            FfiConverterBoolean.allocationSize(value.`isExternal`)
+    )
+
+    override fun write(value: UniFfiSubtitleTrack, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterString.write(value.`format`, buf)
+            FfiConverterBoolean.write(value.`isSelected`, buf)
+            FfiConverterBoolean.write(value.`isExternal`, buf)
+    }
+}
+
+
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 data class UniFfiTokenSpan (
@@ -5683,6 +6715,96 @@ public object FfiConverterTypeUniFFIVfsStats: FfiConverterRustBuffer<UniFfiVfsSt
             FfiConverterULong.write(value.`totalFiles`, buf)
             FfiConverterULong.write(value.`totalDirs`, buf)
             FfiConverterULong.write(value.`totalUncompressedBytes`, buf)
+    }
+}
+
+
+
+/**
+ * Video display frame dimension record exposed across UniFFI boundary.
+ */
+data class UniFfiVideoDimension (
+    var `width`: kotlin.UInt, 
+    var `height`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoDimension: FfiConverterRustBuffer<UniFfiVideoDimension> {
+    override fun read(buf: ByteBuffer): UniFfiVideoDimension {
+        return UniFfiVideoDimension(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiVideoDimension) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`)
+    )
+
+    override fun write(value: UniFfiVideoDimension, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+    }
+}
+
+
+
+/**
+ * Video track metadata exposed across UniFFI boundary.
+ */
+data class UniFfiVideoTrack (
+    var `id`: kotlin.UInt, 
+    var `name`: kotlin.String, 
+    var `codec`: kotlin.String, 
+    var `width`: kotlin.UInt, 
+    var `height`: kotlin.UInt, 
+    var `fps`: kotlin.Double, 
+    var `isSelected`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoTrack: FfiConverterRustBuffer<UniFfiVideoTrack> {
+    override fun read(buf: ByteBuffer): UniFfiVideoTrack {
+        return UniFfiVideoTrack(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiVideoTrack) = (
+            FfiConverterUInt.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`codec`) +
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterDouble.allocationSize(value.`fps`) +
+            FfiConverterBoolean.allocationSize(value.`isSelected`)
+    )
+
+    override fun write(value: UniFfiVideoTrack, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`codec`, buf)
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterDouble.write(value.`fps`, buf)
+            FfiConverterBoolean.write(value.`isSelected`, buf)
     }
 }
 
@@ -6349,6 +7471,46 @@ public object FfiConverterTypeUniFFIMediaTrackType: FfiConverterRustBuffer<UniFf
     override fun allocationSize(value: UniFfiMediaTrackType) = 4UL
 
     override fun write(value: UniFfiMediaTrackType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * High-level playback state exposed across UniFFI boundary.
+ */
+
+enum class UniFfiPlayerState {
+    
+    IDLE,
+    LOADING,
+    PLAYING,
+    PAUSED,
+    BUFFERING,
+    SEEKING,
+    COMPLETED,
+    STOPPED,
+    ERROR;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPlayerState: FfiConverterRustBuffer<UniFfiPlayerState> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiPlayerState.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiPlayerState) = 4UL
+
+    override fun write(value: UniFfiPlayerState, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -7336,6 +8498,34 @@ public object FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIAudioTrack: FfiConverterRustBuffer<List<UniFfiAudioTrack>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAudioTrack> {
+        val len = buf.getInt()
+        return List<UniFfiAudioTrack>(len) {
+            FfiConverterTypeUniFFIAudioTrack.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAudioTrack>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAudioTrack.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAudioTrack>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAudioTrack.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer<List<UniFfiCorruptedEntry>> {
     override fun read(buf: ByteBuffer): List<UniFfiCorruptedEntry> {
         val len = buf.getInt()
@@ -7588,6 +8778,34 @@ public object FfiConverterSequenceTypeUniFFISubtitleSpan: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuffer<List<UniFfiSubtitleTrack>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSubtitleTrack> {
+        val len = buf.getInt()
+        return List<UniFfiSubtitleTrack>(len) {
+            FfiConverterTypeUniFFISubtitleTrack.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSubtitleTrack>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISubtitleTrack.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSubtitleTrack>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISubtitleTrack.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer<List<UniFfiTokenSpan>> {
     override fun read(buf: ByteBuffer): List<UniFfiTokenSpan> {
         val len = buf.getInt()
@@ -7662,6 +8880,34 @@ public object FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIVfsNodeSummary.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIVideoTrack: FfiConverterRustBuffer<List<UniFfiVideoTrack>> {
+    override fun read(buf: ByteBuffer): List<UniFfiVideoTrack> {
+        val len = buf.getInt()
+        return List<UniFfiVideoTrack>(len) {
+            FfiConverterTypeUniFFIVideoTrack.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiVideoTrack>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIVideoTrack.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiVideoTrack>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIVideoTrack.write(it, buf)
         }
     }
 }

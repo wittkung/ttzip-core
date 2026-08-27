@@ -614,6 +614,50 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate() != 7403:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state() != 20677:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks() != 35668:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info() != 43989:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks() != 43239:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume() != 24943:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted() != 49104:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes() != 29830:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream() != 32311:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause() != 8332:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play() != 1377:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to() != 41770:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track() != 46714:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track() != 29097:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration() != 43335:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted() != 17511:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate() != 54514:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume() != 7621:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop() != 47639:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time() != 4733:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children_paged() != 50396:
@@ -641,6 +685,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new() != 62347:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -838,6 +884,142 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume.restype = ctypes.c_float
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate.restype = ctypes.c_float
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume.restype = ctypes.c_float
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_int8,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_float,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_float,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffivfstree.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1876,6 +2058,72 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key.r
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children.restype = ctypes.c_uint16
@@ -1918,6 +2166,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new.restyp
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.restype = ctypes.c_uint16
@@ -2564,9 +2815,521 @@ class _UniffiConverterTypeUniFfiVfsTree:
 
 
 
+class UniFfittZipMediaPlayerProtocol(typing.Protocol):
+    """
+    Cross-language UniFFI MediaPlayer controller object.
+    """
+
+    def effective_volume(self, ):
+        """
+        Returns effective volume level.
+        """
+
+        raise NotImplementedError
+    def get_audio_tracks(self, ):
+        """
+        Returns all available audio tracks.
+        """
+
+        raise NotImplementedError
+    def get_playback_rate(self, ):
+        """
+        Returns playback speed multiplier.
+        """
+
+        raise NotImplementedError
+    def get_state(self, ):
+        """
+        Returns current player state.
+        """
+
+        raise NotImplementedError
+    def get_subtitle_tracks(self, ):
+        """
+        Returns all available subtitle tracks.
+        """
+
+        raise NotImplementedError
+    def get_time_info(self, ):
+        """
+        Returns current timeline progress.
+        """
+
+        raise NotImplementedError
+    def get_video_tracks(self, ):
+        """
+        Returns all available video tracks.
+        """
+
+        raise NotImplementedError
+    def get_volume(self, ):
+        """
+        Returns configured volume level.
+        """
+
+        raise NotImplementedError
+    def is_muted(self, ):
+        """
+        Returns mute status.
+        """
+
+        raise NotImplementedError
+    def mount_bytes(self, data: "bytes",duration_ms: "int"):
+        """
+        Mounts in-memory media payload bytes.
+        """
+
+        raise NotImplementedError
+    def mount_virtual_stream(self, stream: "VirtualFileStream",duration_ms: "int"):
+        """
+        Mounts a virtual stream pipeline.
+        """
+
+        raise NotImplementedError
+    def pause(self, ):
+        """
+        Pauses active playback.
+        """
+
+        raise NotImplementedError
+    def play(self, ):
+        """
+        Starts or resumes playback.
+        """
+
+        raise NotImplementedError
+    def seek_to(self, position_ms: "int"):
+        """
+        Seeks playback to target millisecond position.
+        """
+
+        raise NotImplementedError
+    def select_audio_track(self, track_id: "int"):
+        """
+        Selects active audio track by ID.
+        """
+
+        raise NotImplementedError
+    def select_subtitle_track(self, track_id: "typing.Optional[int]"):
+        """
+        Selects active subtitle track by ID or disables subtitles if `None`.
+        """
+
+        raise NotImplementedError
+    def set_duration(self, duration_ms: "int"):
+        """
+        Sets media duration in milliseconds.
+        """
+
+        raise NotImplementedError
+    def set_muted(self, muted: "bool"):
+        """
+        Sets mute flag.
+        """
+
+        raise NotImplementedError
+    def set_playback_rate(self, rate: "float"):
+        """
+        Sets playback speed multiplier.
+        """
+
+        raise NotImplementedError
+    def set_volume(self, volume: "float"):
+        """
+        Sets playback volume in range [0.0, 1.0].
+        """
+
+        raise NotImplementedError
+    def stop(self, ):
+        """
+        Stops playback and resets timeline offset.
+        """
+
+        raise NotImplementedError
+    def update_playback_time(self, current_ms: "int"):
+        """
+        Updates playback progress offset.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfittZipMediaPlayer:
+    """
+    Cross-language UniFFI MediaPlayer controller object.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Creates a new media player object.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def effective_volume(self, ) -> "float":
+        """
+        Returns effective volume level.
+        """
+
+        return _UniffiConverterFloat.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_audio_tracks(self, ) -> "typing.List[UniFfiAudioTrack]":
+        """
+        Returns all available audio tracks.
+        """
+
+        return _UniffiConverterSequenceTypeUniFfiAudioTrack.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_playback_rate(self, ) -> "float":
+        """
+        Returns playback speed multiplier.
+        """
+
+        return _UniffiConverterFloat.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_state(self, ) -> "UniFfiPlayerState":
+        """
+        Returns current player state.
+        """
+
+        return _UniffiConverterTypeUniFfiPlayerState.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_subtitle_tracks(self, ) -> "typing.List[UniFfiSubtitleTrack]":
+        """
+        Returns all available subtitle tracks.
+        """
+
+        return _UniffiConverterSequenceTypeUniFfiSubtitleTrack.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_time_info(self, ) -> "UniFfiPlaybackTimeInfo":
+        """
+        Returns current timeline progress.
+        """
+
+        return _UniffiConverterTypeUniFfiPlaybackTimeInfo.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_video_tracks(self, ) -> "typing.List[UniFfiVideoTrack]":
+        """
+        Returns all available video tracks.
+        """
+
+        return _UniffiConverterSequenceTypeUniFfiVideoTrack.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_volume(self, ) -> "float":
+        """
+        Returns configured volume level.
+        """
+
+        return _UniffiConverterFloat.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def is_muted(self, ) -> "bool":
+        """
+        Returns mute status.
+        """
+
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def mount_bytes(self, data: "bytes",duration_ms: "int") -> None:
+        """
+        Mounts in-memory media payload bytes.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterUInt64.check_lower(duration_ms)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterUInt64.lower(duration_ms))
+
+
+
+
+
+
+    def mount_virtual_stream(self, stream: "VirtualFileStream",duration_ms: "int") -> None:
+        """
+        Mounts a virtual stream pipeline.
+        """
+
+        _UniffiConverterTypeVirtualFileStream.check_lower(stream)
+        
+        _UniffiConverterUInt64.check_lower(duration_ms)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeVirtualFileStream.lower(stream),
+        _UniffiConverterUInt64.lower(duration_ms))
+
+
+
+
+
+
+    def pause(self, ) -> None:
+        """
+        Pauses active playback.
+        """
+
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def play(self, ) -> None:
+        """
+        Starts or resumes playback.
+        """
+
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def seek_to(self, position_ms: "int") -> "int":
+        """
+        Seeks playback to target millisecond position.
+        """
+
+        _UniffiConverterUInt64.check_lower(position_ms)
+        
+        return _UniffiConverterUInt64.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(position_ms))
+        )
+
+
+
+
+
+    def select_audio_track(self, track_id: "int") -> None:
+        """
+        Selects active audio track by ID.
+        """
+
+        _UniffiConverterUInt32.check_lower(track_id)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt32.lower(track_id))
+
+
+
+
+
+
+    def select_subtitle_track(self, track_id: "typing.Optional[int]") -> None:
+        """
+        Selects active subtitle track by ID or disables subtitles if `None`.
+        """
+
+        _UniffiConverterOptionalUInt32.check_lower(track_id)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track,self._uniffi_clone_pointer(),
+        _UniffiConverterOptionalUInt32.lower(track_id))
+
+
+
+
+
+
+    def set_duration(self, duration_ms: "int") -> None:
+        """
+        Sets media duration in milliseconds.
+        """
+
+        _UniffiConverterUInt64.check_lower(duration_ms)
+        
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(duration_ms))
+
+
+
+
+
+
+    def set_muted(self, muted: "bool") -> None:
+        """
+        Sets mute flag.
+        """
+
+        _UniffiConverterBool.check_lower(muted)
+        
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted,self._uniffi_clone_pointer(),
+        _UniffiConverterBool.lower(muted))
+
+
+
+
+
+
+    def set_playback_rate(self, rate: "float") -> None:
+        """
+        Sets playback speed multiplier.
+        """
+
+        _UniffiConverterFloat.check_lower(rate)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate,self._uniffi_clone_pointer(),
+        _UniffiConverterFloat.lower(rate))
+
+
+
+
+
+
+    def set_volume(self, volume: "float") -> None:
+        """
+        Sets playback volume in range [0.0, 1.0].
+        """
+
+        _UniffiConverterFloat.check_lower(volume)
+        
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume,self._uniffi_clone_pointer(),
+        _UniffiConverterFloat.lower(volume))
+
+
+
+
+
+
+    def stop(self, ) -> None:
+        """
+        Stops playback and resets timeline offset.
+        """
+
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def update_playback_time(self, current_ms: "int") -> None:
+        """
+        Updates playback progress offset.
+        """
+
+        _UniffiConverterUInt64.check_lower(current_ms)
+        
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(current_ms))
+
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfittZipMediaPlayer:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfittZipMediaPlayer._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfittZipMediaPlayer):
+        if not isinstance(value, UniFfittZipMediaPlayer):
+            raise TypeError("Expected UniFfittZipMediaPlayer instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfittZipMediaPlayerProtocol):
+        if not isinstance(value, UniFfittZipMediaPlayer):
+            raise TypeError("Expected UniFfittZipMediaPlayer instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfittZipMediaPlayerProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
 class VirtualFileStreamProtocol(typing.Protocol):
     """
-    Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+    Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
     """
 
     def position(self, ):
@@ -2585,7 +3348,7 @@ class VirtualFileStreamProtocol(typing.Protocol):
 
 class VirtualFileStream:
     """
-    Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+    Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
     """
 
     _pointer: ctypes.c_void_p
@@ -3627,6 +4390,81 @@ class _UniffiConverterTypeSniffMetadata(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_sfx, buf)
         _UniffiConverterUInt64.write(value.sfx_offset, buf)
         _UniffiConverterUInt32.write(value.confidence, buf)
+
+
+class UniFfiAudioTrack:
+    """
+    Audio track metadata exposed across UniFFI boundary.
+    """
+
+    id: "int"
+    name: "str"
+    language: "typing.Optional[str]"
+    channels: "typing.Optional[int]"
+    sample_rate: "typing.Optional[int]"
+    codec: "str"
+    is_selected: "bool"
+    def __init__(self, *, id: "int", name: "str", language: "typing.Optional[str]", channels: "typing.Optional[int]", sample_rate: "typing.Optional[int]", codec: "str", is_selected: "bool"):
+        self.id = id
+        self.name = name
+        self.language = language
+        self.channels = channels
+        self.sample_rate = sample_rate
+        self.codec = codec
+        self.is_selected = is_selected
+
+    def __str__(self):
+        return "UniFfiAudioTrack(id={}, name={}, language={}, channels={}, sample_rate={}, codec={}, is_selected={})".format(self.id, self.name, self.language, self.channels, self.sample_rate, self.codec, self.is_selected)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.name != other.name:
+            return False
+        if self.language != other.language:
+            return False
+        if self.channels != other.channels:
+            return False
+        if self.sample_rate != other.sample_rate:
+            return False
+        if self.codec != other.codec:
+            return False
+        if self.is_selected != other.is_selected:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAudioTrack(
+            id=_UniffiConverterUInt32.read(buf),
+            name=_UniffiConverterString.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            channels=_UniffiConverterOptionalUInt16.read(buf),
+            sample_rate=_UniffiConverterOptionalUInt32.read(buf),
+            codec=_UniffiConverterString.read(buf),
+            is_selected=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterOptionalUInt16.check_lower(value.channels)
+        _UniffiConverterOptionalUInt32.check_lower(value.sample_rate)
+        _UniffiConverterString.check_lower(value.codec)
+        _UniffiConverterBool.check_lower(value.is_selected)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.id, buf)
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterOptionalUInt16.write(value.channels, buf)
+        _UniffiConverterOptionalUInt32.write(value.sample_rate, buf)
+        _UniffiConverterString.write(value.codec, buf)
+        _UniffiConverterBool.write(value.is_selected, buf)
 
 
 class UniFfiCorruptedEntry:
@@ -4803,6 +5641,53 @@ class _UniffiConverterTypeUniFfiPdfDocumentInfo(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.extracted_page_count, buf)
 
 
+class UniFfiPlaybackTimeInfo:
+    """
+    Structured playback timeline progress information exposed across UniFFI boundary.
+    """
+
+    current_ms: "int"
+    duration_ms: "int"
+    position_ratio: "float"
+    def __init__(self, *, current_ms: "int", duration_ms: "int", position_ratio: "float"):
+        self.current_ms = current_ms
+        self.duration_ms = duration_ms
+        self.position_ratio = position_ratio
+
+    def __str__(self):
+        return "UniFfiPlaybackTimeInfo(current_ms={}, duration_ms={}, position_ratio={})".format(self.current_ms, self.duration_ms, self.position_ratio)
+
+    def __eq__(self, other):
+        if self.current_ms != other.current_ms:
+            return False
+        if self.duration_ms != other.duration_ms:
+            return False
+        if self.position_ratio != other.position_ratio:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiPlaybackTimeInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiPlaybackTimeInfo(
+            current_ms=_UniffiConverterUInt64.read(buf),
+            duration_ms=_UniffiConverterUInt64.read(buf),
+            position_ratio=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.current_ms)
+        _UniffiConverterUInt64.check_lower(value.duration_ms)
+        _UniffiConverterDouble.check_lower(value.position_ratio)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.current_ms, buf)
+        _UniffiConverterUInt64.write(value.duration_ms, buf)
+        _UniffiConverterDouble.write(value.position_ratio, buf)
+
+
 class UniFfiSmartExtractDecision:
     """
     Smart extraction decision record exposed via UniFFI.
@@ -5470,6 +6355,74 @@ class _UniffiConverterTypeUniFfiSubtitleStyle(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.encoding, buf)
 
 
+class UniFfiSubtitleTrack:
+    """
+    Subtitle track metadata exposed across UniFFI boundary.
+    """
+
+    id: "int"
+    name: "str"
+    language: "typing.Optional[str]"
+    format: "str"
+    is_selected: "bool"
+    is_external: "bool"
+    def __init__(self, *, id: "int", name: "str", language: "typing.Optional[str]", format: "str", is_selected: "bool", is_external: "bool"):
+        self.id = id
+        self.name = name
+        self.language = language
+        self.format = format
+        self.is_selected = is_selected
+        self.is_external = is_external
+
+    def __str__(self):
+        return "UniFfiSubtitleTrack(id={}, name={}, language={}, format={}, is_selected={}, is_external={})".format(self.id, self.name, self.language, self.format, self.is_selected, self.is_external)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.name != other.name:
+            return False
+        if self.language != other.language:
+            return False
+        if self.format != other.format:
+            return False
+        if self.is_selected != other.is_selected:
+            return False
+        if self.is_external != other.is_external:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleTrack(
+            id=_UniffiConverterUInt32.read(buf),
+            name=_UniffiConverterString.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            format=_UniffiConverterString.read(buf),
+            is_selected=_UniffiConverterBool.read(buf),
+            is_external=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterString.check_lower(value.format)
+        _UniffiConverterBool.check_lower(value.is_selected)
+        _UniffiConverterBool.check_lower(value.is_external)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.id, buf)
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterString.write(value.format, buf)
+        _UniffiConverterBool.write(value.is_selected, buf)
+        _UniffiConverterBool.write(value.is_external, buf)
+
+
 class UniFfiTokenSpan:
     """
     Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
@@ -5802,6 +6755,121 @@ class _UniffiConverterTypeUniFfiVfsStats(_UniffiConverterRustBuffer):
         _UniffiConverterUInt64.write(value.total_files, buf)
         _UniffiConverterUInt64.write(value.total_dirs, buf)
         _UniffiConverterUInt64.write(value.total_uncompressed_bytes, buf)
+
+
+class UniFfiVideoDimension:
+    """
+    Video display frame dimension record exposed across UniFFI boundary.
+    """
+
+    width: "int"
+    height: "int"
+    def __init__(self, *, width: "int", height: "int"):
+        self.width = width
+        self.height = height
+
+    def __str__(self):
+        return "UniFfiVideoDimension(width={}, height={})".format(self.width, self.height)
+
+    def __eq__(self, other):
+        if self.width != other.width:
+            return False
+        if self.height != other.height:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiVideoDimension(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiVideoDimension(
+            width=_UniffiConverterUInt32.read(buf),
+            height=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.width)
+        _UniffiConverterUInt32.check_lower(value.height)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.width, buf)
+        _UniffiConverterUInt32.write(value.height, buf)
+
+
+class UniFfiVideoTrack:
+    """
+    Video track metadata exposed across UniFFI boundary.
+    """
+
+    id: "int"
+    name: "str"
+    codec: "str"
+    width: "int"
+    height: "int"
+    fps: "float"
+    is_selected: "bool"
+    def __init__(self, *, id: "int", name: "str", codec: "str", width: "int", height: "int", fps: "float", is_selected: "bool"):
+        self.id = id
+        self.name = name
+        self.codec = codec
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.is_selected = is_selected
+
+    def __str__(self):
+        return "UniFfiVideoTrack(id={}, name={}, codec={}, width={}, height={}, fps={}, is_selected={})".format(self.id, self.name, self.codec, self.width, self.height, self.fps, self.is_selected)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.name != other.name:
+            return False
+        if self.codec != other.codec:
+            return False
+        if self.width != other.width:
+            return False
+        if self.height != other.height:
+            return False
+        if self.fps != other.fps:
+            return False
+        if self.is_selected != other.is_selected:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiVideoTrack(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiVideoTrack(
+            id=_UniffiConverterUInt32.read(buf),
+            name=_UniffiConverterString.read(buf),
+            codec=_UniffiConverterString.read(buf),
+            width=_UniffiConverterUInt32.read(buf),
+            height=_UniffiConverterUInt32.read(buf),
+            fps=_UniffiConverterDouble.read(buf),
+            is_selected=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterString.check_lower(value.codec)
+        _UniffiConverterUInt32.check_lower(value.width)
+        _UniffiConverterUInt32.check_lower(value.height)
+        _UniffiConverterDouble.check_lower(value.fps)
+        _UniffiConverterBool.check_lower(value.is_selected)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.id, buf)
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterString.write(value.codec, buf)
+        _UniffiConverterUInt32.write(value.width, buf)
+        _UniffiConverterUInt32.write(value.height, buf)
+        _UniffiConverterDouble.write(value.fps, buf)
+        _UniffiConverterBool.write(value.is_selected, buf)
 
 
 class UniFfiWalCommitResult:
@@ -6931,6 +7999,104 @@ class _UniffiConverterTypeUniFfiMediaTrackType(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiPlayerState(enum.Enum):
+    """
+    High-level playback state exposed across UniFFI boundary.
+    """
+
+    IDLE = 0
+    
+    LOADING = 1
+    
+    PLAYING = 2
+    
+    PAUSED = 3
+    
+    BUFFERING = 4
+    
+    SEEKING = 5
+    
+    COMPLETED = 6
+    
+    STOPPED = 7
+    
+    ERROR = 8
+    
+
+
+class _UniffiConverterTypeUniFfiPlayerState(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiPlayerState.IDLE
+        if variant == 2:
+            return UniFfiPlayerState.LOADING
+        if variant == 3:
+            return UniFfiPlayerState.PLAYING
+        if variant == 4:
+            return UniFfiPlayerState.PAUSED
+        if variant == 5:
+            return UniFfiPlayerState.BUFFERING
+        if variant == 6:
+            return UniFfiPlayerState.SEEKING
+        if variant == 7:
+            return UniFfiPlayerState.COMPLETED
+        if variant == 8:
+            return UniFfiPlayerState.STOPPED
+        if variant == 9:
+            return UniFfiPlayerState.ERROR
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiPlayerState.IDLE:
+            return
+        if value == UniFfiPlayerState.LOADING:
+            return
+        if value == UniFfiPlayerState.PLAYING:
+            return
+        if value == UniFfiPlayerState.PAUSED:
+            return
+        if value == UniFfiPlayerState.BUFFERING:
+            return
+        if value == UniFfiPlayerState.SEEKING:
+            return
+        if value == UniFfiPlayerState.COMPLETED:
+            return
+        if value == UniFfiPlayerState.STOPPED:
+            return
+        if value == UniFfiPlayerState.ERROR:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiPlayerState.IDLE:
+            buf.write_i32(1)
+        if value == UniFfiPlayerState.LOADING:
+            buf.write_i32(2)
+        if value == UniFfiPlayerState.PLAYING:
+            buf.write_i32(3)
+        if value == UniFfiPlayerState.PAUSED:
+            buf.write_i32(4)
+        if value == UniFfiPlayerState.BUFFERING:
+            buf.write_i32(5)
+        if value == UniFfiPlayerState.SEEKING:
+            buf.write_i32(6)
+        if value == UniFfiPlayerState.COMPLETED:
+            buf.write_i32(7)
+        if value == UniFfiPlayerState.STOPPED:
+            buf.write_i32(8)
+        if value == UniFfiPlayerState.ERROR:
+            buf.write_i32(9)
+
+
+
+
+
+
+
 class UniFfiSubtitleAlignment(enum.Enum):
     """
     Subtitle alignment on screen (numpad mapping 1-9).
@@ -7855,6 +9021,31 @@ class _UniffiConverterSequenceTypePathSuggestionItem(_UniffiConverterRustBuffer)
 
 
 
+class _UniffiConverterSequenceTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiAudioTrack.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiAudioTrack.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiAudioTrack.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiCorruptedEntry(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -8080,6 +9271,31 @@ class _UniffiConverterSequenceTypeUniFfiSubtitleSpan(_UniffiConverterRustBuffer)
 
 
 
+class _UniffiConverterSequenceTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleTrack.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleTrack.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiSubtitleTrack.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiTokenSpan(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -8151,6 +9367,31 @@ class _UniffiConverterSequenceTypeUniFfiVfsNodeSummary(_UniffiConverterRustBuffe
 
         return [
             _UniffiConverterTypeUniFfiVfsNodeSummary.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiVideoTrack(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiVideoTrack.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiVideoTrack.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiVideoTrack.read(buf) for i in range(count)
         ]
 
 
@@ -9264,6 +10505,7 @@ __all__ = [
     "TtZipError",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
+    "UniFfiPlayerState",
     "UniFfiSubtitleAlignment",
     "UniFfiSubtitleFormat",
     "AudioMetadataRecord",
@@ -9279,6 +10521,7 @@ __all__ = [
     "PasswordRecoveryOutcome",
     "PathSuggestionItem",
     "SniffMetadata",
+    "UniFfiAudioTrack",
     "UniFfiCorruptedEntry",
     "UniFfiDocxExtractResult",
     "UniFfiDocxProperties",
@@ -9297,6 +10540,7 @@ __all__ = [
     "UniFfiMediaTrackInfo",
     "UniFfiParentAndPrefix",
     "UniFfiPdfDocumentInfo",
+    "UniFfiPlaybackTimeInfo",
     "UniFfiSmartExtractDecision",
     "UniFfiSubtitleColor",
     "UniFfiSubtitleDialogue",
@@ -9304,12 +10548,15 @@ __all__ = [
     "UniFfiSubtitleScript",
     "UniFfiSubtitleSpan",
     "UniFfiSubtitleStyle",
+    "UniFfiSubtitleTrack",
     "UniFfiTokenSpan",
     "UniFfiTransactionDiff",
     "UniFfiVfsMatch",
     "UniFfiVfsNodeSummary",
     "UniFfiVfsPagedResult",
     "UniFfiVfsStats",
+    "UniFfiVideoDimension",
+    "UniFfiVideoTrack",
     "UniFfiWalCommitResult",
     "UniFfiWalMutationSummary",
     "VideoMetadataRecord",
@@ -9385,6 +10632,7 @@ __all__ = [
     "verify_license_key",
     "CancellationToken",
     "TtZipLocalizationEngine",
+    "UniFfittZipMediaPlayer",
     "UniFfiVfsTree",
     "VirtualFileStream",
     "ProgressHandler",

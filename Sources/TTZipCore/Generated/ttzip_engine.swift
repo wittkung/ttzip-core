@@ -926,6 +926,440 @@ public func FfiConverterTypeTTZipLocalizationEngine_lower(_ value: TtZipLocaliza
 }
 
 /**
+ * Cross-language UniFFI MediaPlayer controller object.
+ */
+public protocol UniFfittZipMediaPlayerProtocol: AnyObject {
+    /**
+     * Returns effective volume level.
+     */
+    func effectiveVolume() -> Float
+
+    /**
+     * Returns all available audio tracks.
+     */
+    func getAudioTracks() -> [UniFfiAudioTrack]
+
+    /**
+     * Returns playback speed multiplier.
+     */
+    func getPlaybackRate() -> Float
+
+    /**
+     * Returns current player state.
+     */
+    func getState() -> UniFfiPlayerState
+
+    /**
+     * Returns all available subtitle tracks.
+     */
+    func getSubtitleTracks() -> [UniFfiSubtitleTrack]
+
+    /**
+     * Returns current timeline progress.
+     */
+    func getTimeInfo() -> UniFfiPlaybackTimeInfo
+
+    /**
+     * Returns all available video tracks.
+     */
+    func getVideoTracks() -> [UniFfiVideoTrack]
+
+    /**
+     * Returns configured volume level.
+     */
+    func getVolume() -> Float
+
+    /**
+     * Returns mute status.
+     */
+    func isMuted() -> Bool
+
+    /**
+     * Mounts in-memory media payload bytes.
+     */
+    func mountBytes(data: Data, durationMs: UInt64) throws
+
+    /**
+     * Mounts a virtual stream pipeline.
+     */
+    func mountVirtualStream(stream: VirtualFileStream, durationMs: UInt64) throws
+
+    /**
+     * Pauses active playback.
+     */
+    func pause() throws
+
+    /**
+     * Starts or resumes playback.
+     */
+    func play() throws
+
+    /**
+     * Seeks playback to target millisecond position.
+     */
+    func seekTo(positionMs: UInt64) throws -> UInt64
+
+    /**
+     * Selects active audio track by ID.
+     */
+    func selectAudioTrack(trackId: UInt32) throws
+
+    /**
+     * Selects active subtitle track by ID or disables subtitles if `None`.
+     */
+    func selectSubtitleTrack(trackId: UInt32?) throws
+
+    /**
+     * Sets media duration in milliseconds.
+     */
+    func setDuration(durationMs: UInt64)
+
+    /**
+     * Sets mute flag.
+     */
+    func setMuted(muted: Bool)
+
+    /**
+     * Sets playback speed multiplier.
+     */
+    func setPlaybackRate(rate: Float) throws
+
+    /**
+     * Sets playback volume in range [0.0, 1.0].
+     */
+    func setVolume(volume: Float)
+
+    /**
+     * Stops playback and resets timeline offset.
+     */
+    func stop() throws
+
+    /**
+     * Updates playback progress offset.
+     */
+    func updatePlaybackTime(currentMs: UInt64)
+}
+
+/**
+ * Cross-language UniFFI MediaPlayer controller object.
+ */
+open class UniFfittZipMediaPlayer:
+    UniFfittZipMediaPlayerProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a new media player object.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffittzipmediaplayer_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(pointer, $0) }
+    }
+
+    /**
+     * Returns effective volume level.
+     */
+    open func effectiveVolume() -> Float {
+        return try! FfiConverterFloat.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_effective_volume(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns all available audio tracks.
+     */
+    open func getAudioTracks() -> [UniFfiAudioTrack] {
+        return try! FfiConverterSequenceTypeUniFFIAudioTrack.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_audio_tracks(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns playback speed multiplier.
+     */
+    open func getPlaybackRate() -> Float {
+        return try! FfiConverterFloat.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_playback_rate(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns current player state.
+     */
+    open func getState() -> UniFfiPlayerState {
+        return try! FfiConverterTypeUniFFIPlayerState.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_state(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns all available subtitle tracks.
+     */
+    open func getSubtitleTracks() -> [UniFfiSubtitleTrack] {
+        return try! FfiConverterSequenceTypeUniFFISubtitleTrack.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_subtitle_tracks(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns current timeline progress.
+     */
+    open func getTimeInfo() -> UniFfiPlaybackTimeInfo {
+        return try! FfiConverterTypeUniFFIPlaybackTimeInfo.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_time_info(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns all available video tracks.
+     */
+    open func getVideoTracks() -> [UniFfiVideoTrack] {
+        return try! FfiConverterSequenceTypeUniFFIVideoTrack.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_video_tracks(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns configured volume level.
+     */
+    open func getVolume() -> Float {
+        return try! FfiConverterFloat.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_get_volume(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns mute status.
+     */
+    open func isMuted() -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_is_muted(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Mounts in-memory media payload bytes.
+     */
+    open func mountBytes(data: Data, durationMs: UInt64) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_bytes(self.uniffiClonePointer(),
+                                                                             FfiConverterData.lower(data),
+                                                                             FfiConverterUInt64.lower(durationMs), $0)
+        }
+    }
+
+    /**
+     * Mounts a virtual stream pipeline.
+     */
+    open func mountVirtualStream(stream: VirtualFileStream, durationMs: UInt64) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_mount_virtual_stream(self.uniffiClonePointer(),
+                                                                                      FfiConverterTypeVirtualFileStream.lower(stream),
+                                                                                      FfiConverterUInt64.lower(durationMs), $0)
+        }
+    }
+
+    /**
+     * Pauses active playback.
+     */
+    open func pause() throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_pause(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Starts or resumes playback.
+     */
+    open func play() throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_play(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Seeks playback to target millisecond position.
+     */
+    open func seekTo(positionMs: UInt64) throws -> UInt64 {
+        return try FfiConverterUInt64.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_seek_to(self.uniffiClonePointer(),
+                                                                         FfiConverterUInt64.lower(positionMs), $0)
+        })
+    }
+
+    /**
+     * Selects active audio track by ID.
+     */
+    open func selectAudioTrack(trackId: UInt32) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_audio_track(self.uniffiClonePointer(),
+                                                                                    FfiConverterUInt32.lower(trackId), $0)
+        }
+    }
+
+    /**
+     * Selects active subtitle track by ID or disables subtitles if `None`.
+     */
+    open func selectSubtitleTrack(trackId: UInt32?) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_select_subtitle_track(self.uniffiClonePointer(),
+                                                                                       FfiConverterOptionUInt32.lower(trackId), $0)
+        }
+    }
+
+    /**
+     * Sets media duration in milliseconds.
+     */
+    open func setDuration(durationMs: UInt64) {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_duration(self.uniffiClonePointer(),
+                                                                              FfiConverterUInt64.lower(durationMs), $0)
+        }
+    }
+
+    /**
+     * Sets mute flag.
+     */
+    open func setMuted(muted: Bool) {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_muted(self.uniffiClonePointer(),
+                                                                           FfiConverterBool.lower(muted), $0)
+        }
+    }
+
+    /**
+     * Sets playback speed multiplier.
+     */
+    open func setPlaybackRate(rate: Float) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_playback_rate(self.uniffiClonePointer(),
+                                                                                   FfiConverterFloat.lower(rate), $0)
+        }
+    }
+
+    /**
+     * Sets playback volume in range [0.0, 1.0].
+     */
+    open func setVolume(volume: Float) {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_set_volume(self.uniffiClonePointer(),
+                                                                            FfiConverterFloat.lower(volume), $0)
+        }
+    }
+
+    /**
+     * Stops playback and resets timeline offset.
+     */
+    open func stop() throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_stop(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Updates playback progress offset.
+     */
+    open func updatePlaybackTime(currentMs: UInt64) {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time(self.uniffiClonePointer(),
+                                                                                      FfiConverterUInt64.lower(currentMs), $0)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITTZipMediaPlayer: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfittZipMediaPlayer
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfittZipMediaPlayer {
+        return UniFfittZipMediaPlayer(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfittZipMediaPlayer) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfittZipMediaPlayer {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfittZipMediaPlayer, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITTZipMediaPlayer_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfittZipMediaPlayer {
+    return try FfiConverterTypeUniFFITTZipMediaPlayer.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITTZipMediaPlayer_lower(_ value: UniFfittZipMediaPlayer) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFITTZipMediaPlayer.lower(value)
+}
+
+/**
  * Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
  */
 public protocol UniFfiVfsTreeProtocol: AnyObject {
@@ -1096,7 +1530,7 @@ public func FfiConverterTypeUniFFIVfsTree_lower(_ value: UniFfiVfsTree) -> Unsaf
 }
 
 /**
- * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ * Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
  */
 public protocol VirtualFileStreamProtocol: AnyObject {
     func position() -> UInt64
@@ -1113,7 +1547,7 @@ public protocol VirtualFileStreamProtocol: AnyObject {
 }
 
 /**
- * Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
+ * Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
  */
 open class VirtualFileStream:
     VirtualFileStreamProtocol
@@ -2541,6 +2975,110 @@ public func FfiConverterTypeSniffMetadata_lift(_ buf: RustBuffer) throws -> Snif
 #endif
 public func FfiConverterTypeSniffMetadata_lower(_ value: SniffMetadata) -> RustBuffer {
     return FfiConverterTypeSniffMetadata.lower(value)
+}
+
+/**
+ * Audio track metadata exposed across UniFFI boundary.
+ */
+public struct UniFfiAudioTrack {
+    public var id: UInt32
+    public var name: String
+    public var language: String?
+    public var channels: UInt16?
+    public var sampleRate: UInt32?
+    public var codec: String
+    public var isSelected: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(id: UInt32, name: String, language: String?, channels: UInt16?, sampleRate: UInt32?, codec: String, isSelected: Bool) {
+        self.id = id
+        self.name = name
+        self.language = language
+        self.channels = channels
+        self.sampleRate = sampleRate
+        self.codec = codec
+        self.isSelected = isSelected
+    }
+}
+
+extension UniFfiAudioTrack: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioTrack, rhs: UniFfiAudioTrack) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.language != rhs.language {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.codec != rhs.codec {
+            return false
+        }
+        if lhs.isSelected != rhs.isSelected {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(language)
+        hasher.combine(channels)
+        hasher.combine(sampleRate)
+        hasher.combine(codec)
+        hasher.combine(isSelected)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioTrack: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioTrack {
+        return
+            try UniFfiAudioTrack(
+                id: FfiConverterUInt32.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                channels: FfiConverterOptionUInt16.read(from: &buf),
+                sampleRate: FfiConverterOptionUInt32.read(from: &buf),
+                codec: FfiConverterString.read(from: &buf),
+                isSelected: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioTrack, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterOptionUInt16.write(value.channels, into: &buf)
+        FfiConverterOptionUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterString.write(value.codec, into: &buf)
+        FfiConverterBool.write(value.isSelected, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioTrack_lift(_ buf: RustBuffer) throws -> UniFfiAudioTrack {
+    return try FfiConverterTypeUniFFIAudioTrack.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioTrack_lower(_ value: UniFfiAudioTrack) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioTrack.lower(value)
 }
 
 /**
@@ -4218,6 +4756,78 @@ public func FfiConverterTypeUniFFIPdfDocumentInfo_lower(_ value: UniFfiPdfDocume
 }
 
 /**
+ * Structured playback timeline progress information exposed across UniFFI boundary.
+ */
+public struct UniFfiPlaybackTimeInfo {
+    public var currentMs: UInt64
+    public var durationMs: UInt64
+    public var positionRatio: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(currentMs: UInt64, durationMs: UInt64, positionRatio: Double) {
+        self.currentMs = currentMs
+        self.durationMs = durationMs
+        self.positionRatio = positionRatio
+    }
+}
+
+extension UniFfiPlaybackTimeInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiPlaybackTimeInfo, rhs: UniFfiPlaybackTimeInfo) -> Bool {
+        if lhs.currentMs != rhs.currentMs {
+            return false
+        }
+        if lhs.durationMs != rhs.durationMs {
+            return false
+        }
+        if lhs.positionRatio != rhs.positionRatio {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(currentMs)
+        hasher.combine(durationMs)
+        hasher.combine(positionRatio)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPlaybackTimeInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPlaybackTimeInfo {
+        return
+            try UniFfiPlaybackTimeInfo(
+                currentMs: FfiConverterUInt64.read(from: &buf),
+                durationMs: FfiConverterUInt64.read(from: &buf),
+                positionRatio: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPlaybackTimeInfo, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.currentMs, into: &buf)
+        FfiConverterUInt64.write(value.durationMs, into: &buf)
+        FfiConverterDouble.write(value.positionRatio, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlaybackTimeInfo_lift(_ buf: RustBuffer) throws -> UniFfiPlaybackTimeInfo {
+    return try FfiConverterTypeUniFFIPlaybackTimeInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlaybackTimeInfo_lower(_ value: UniFfiPlaybackTimeInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIPlaybackTimeInfo.lower(value)
+}
+
+/**
  * Smart extraction decision record exposed via UniFFI.
  */
 public struct UniFfiSmartExtractDecision {
@@ -5115,6 +5725,102 @@ public func FfiConverterTypeUniFFISubtitleStyle_lower(_ value: UniFfiSubtitleSty
 }
 
 /**
+ * Subtitle track metadata exposed across UniFFI boundary.
+ */
+public struct UniFfiSubtitleTrack {
+    public var id: UInt32
+    public var name: String
+    public var language: String?
+    public var format: String
+    public var isSelected: Bool
+    public var isExternal: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(id: UInt32, name: String, language: String?, format: String, isSelected: Bool, isExternal: Bool) {
+        self.id = id
+        self.name = name
+        self.language = language
+        self.format = format
+        self.isSelected = isSelected
+        self.isExternal = isExternal
+    }
+}
+
+extension UniFfiSubtitleTrack: Equatable, Hashable {
+    public static func == (lhs: UniFfiSubtitleTrack, rhs: UniFfiSubtitleTrack) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.language != rhs.language {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.isSelected != rhs.isSelected {
+            return false
+        }
+        if lhs.isExternal != rhs.isExternal {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(language)
+        hasher.combine(format)
+        hasher.combine(isSelected)
+        hasher.combine(isExternal)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISubtitleTrack: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSubtitleTrack {
+        return
+            try UniFfiSubtitleTrack(
+                id: FfiConverterUInt32.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                format: FfiConverterString.read(from: &buf),
+                isSelected: FfiConverterBool.read(from: &buf),
+                isExternal: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSubtitleTrack, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterString.write(value.format, into: &buf)
+        FfiConverterBool.write(value.isSelected, into: &buf)
+        FfiConverterBool.write(value.isExternal, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleTrack_lift(_ buf: RustBuffer) throws -> UniFfiSubtitleTrack {
+    return try FfiConverterTypeUniFFISubtitleTrack.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISubtitleTrack_lower(_ value: UniFfiSubtitleTrack) -> RustBuffer {
+    return FfiConverterTypeUniFFISubtitleTrack.lower(value)
+}
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 public struct UniFfiTokenSpan {
@@ -5605,6 +6311,174 @@ public func FfiConverterTypeUniFFIVfsStats_lift(_ buf: RustBuffer) throws -> Uni
 #endif
 public func FfiConverterTypeUniFFIVfsStats_lower(_ value: UniFfiVfsStats) -> RustBuffer {
     return FfiConverterTypeUniFFIVfsStats.lower(value)
+}
+
+/**
+ * Video display frame dimension record exposed across UniFFI boundary.
+ */
+public struct UniFfiVideoDimension {
+    public var width: UInt32
+    public var height: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(width: UInt32, height: UInt32) {
+        self.width = width
+        self.height = height
+    }
+}
+
+extension UniFfiVideoDimension: Equatable, Hashable {
+    public static func == (lhs: UniFfiVideoDimension, rhs: UniFfiVideoDimension) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIVideoDimension: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiVideoDimension {
+        return
+            try UniFfiVideoDimension(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiVideoDimension, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVideoDimension_lift(_ buf: RustBuffer) throws -> UniFfiVideoDimension {
+    return try FfiConverterTypeUniFFIVideoDimension.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVideoDimension_lower(_ value: UniFfiVideoDimension) -> RustBuffer {
+    return FfiConverterTypeUniFFIVideoDimension.lower(value)
+}
+
+/**
+ * Video track metadata exposed across UniFFI boundary.
+ */
+public struct UniFfiVideoTrack {
+    public var id: UInt32
+    public var name: String
+    public var codec: String
+    public var width: UInt32
+    public var height: UInt32
+    public var fps: Double
+    public var isSelected: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(id: UInt32, name: String, codec: String, width: UInt32, height: UInt32, fps: Double, isSelected: Bool) {
+        self.id = id
+        self.name = name
+        self.codec = codec
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.isSelected = isSelected
+    }
+}
+
+extension UniFfiVideoTrack: Equatable, Hashable {
+    public static func == (lhs: UniFfiVideoTrack, rhs: UniFfiVideoTrack) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.codec != rhs.codec {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.fps != rhs.fps {
+            return false
+        }
+        if lhs.isSelected != rhs.isSelected {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(codec)
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(fps)
+        hasher.combine(isSelected)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIVideoTrack: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiVideoTrack {
+        return
+            try UniFfiVideoTrack(
+                id: FfiConverterUInt32.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                codec: FfiConverterString.read(from: &buf),
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                fps: FfiConverterDouble.read(from: &buf),
+                isSelected: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiVideoTrack, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.codec, into: &buf)
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterDouble.write(value.fps, into: &buf)
+        FfiConverterBool.write(value.isSelected, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVideoTrack_lift(_ buf: RustBuffer) throws -> UniFfiVideoTrack {
+    return try FfiConverterTypeUniFFIVideoTrack.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVideoTrack_lower(_ value: UniFfiVideoTrack) -> RustBuffer {
+    return FfiConverterTypeUniFFIVideoTrack.lower(value)
 }
 
 /**
@@ -6659,6 +7533,103 @@ extension UniFfiMediaTrackType: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * High-level playback state exposed across UniFFI boundary.
+ */
+
+public enum UniFfiPlayerState {
+    case idle
+    case loading
+    case playing
+    case paused
+    case buffering
+    case seeking
+    case completed
+    case stopped
+    case error
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPlayerState: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiPlayerState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPlayerState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .idle
+
+        case 2: return .loading
+
+        case 3: return .playing
+
+        case 4: return .paused
+
+        case 5: return .buffering
+
+        case 6: return .seeking
+
+        case 7: return .completed
+
+        case 8: return .stopped
+
+        case 9: return .error
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiPlayerState, into buf: inout [UInt8]) {
+        switch value {
+        case .idle:
+            writeInt(&buf, Int32(1))
+
+        case .loading:
+            writeInt(&buf, Int32(2))
+
+        case .playing:
+            writeInt(&buf, Int32(3))
+
+        case .paused:
+            writeInt(&buf, Int32(4))
+
+        case .buffering:
+            writeInt(&buf, Int32(5))
+
+        case .seeking:
+            writeInt(&buf, Int32(6))
+
+        case .completed:
+            writeInt(&buf, Int32(7))
+
+        case .stopped:
+            writeInt(&buf, Int32(8))
+
+        case .error:
+            writeInt(&buf, Int32(9))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlayerState_lift(_ buf: RustBuffer) throws -> UniFfiPlayerState {
+    return try FfiConverterTypeUniFFIPlayerState.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlayerState_lower(_ value: UniFfiPlayerState) -> RustBuffer {
+    return FfiConverterTypeUniFFIPlayerState.lower(value)
+}
+
+extension UniFfiPlayerState: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Subtitle alignment on screen (numpad mapping 1-9).
  */
 
@@ -7551,6 +8522,31 @@ private struct FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffe
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIAudioTrack: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiAudioTrack]
+
+    static func write(_ value: [UniFfiAudioTrack], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIAudioTrack.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiAudioTrack] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiAudioTrack]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIAudioTrack.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiCorruptedEntry]
 
@@ -7776,6 +8772,31 @@ private struct FfiConverterSequenceTypeUniFFISubtitleSpan: FfiConverterRustBuffe
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiSubtitleTrack]
+
+    static func write(_ value: [UniFfiSubtitleTrack], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFISubtitleTrack.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiSubtitleTrack] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiSubtitleTrack]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFISubtitleTrack.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFITokenSpan: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiTokenSpan]
 
@@ -7843,6 +8864,31 @@ private struct FfiConverterSequenceTypeUniFFIVfsNodeSummary: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIVfsNodeSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIVideoTrack: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiVideoTrack]
+
+    static func write(_ value: [UniFfiVideoTrack], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIVideoTrack.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiVideoTrack] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiVideoTrack]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIVideoTrack.read(from: &buf))
         }
         return seq
     }
@@ -9014,6 +10060,72 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_playback_rate() != 7403 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_state() != 20677 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_subtitle_tracks() != 35668 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_time_info() != 43989 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_video_tracks() != 43239 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_volume() != 24943 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_is_muted() != 49104 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_bytes() != 29830 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_mount_virtual_stream() != 32311 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_pause() != 8332 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_play() != 1377 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_seek_to() != 41770 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_audio_track() != 46714 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_select_subtitle_track() != 29097 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_duration() != 43335 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_muted() != 17511 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_playback_rate() != 54514 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_set_volume() != 7621 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_stop() != 47639 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time() != 4733 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9054,6 +10166,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319 {
