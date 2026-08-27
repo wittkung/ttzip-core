@@ -27,8 +27,8 @@ pub mod syntax_highlight;
 pub use anchors::Anchor;
 pub use checkers::{check_compliance_buffer, check_compliance_file};
 pub use demuxer::{
-    demux_media_tracks_from_slice, parse_mkv_demux, parse_mp4_demux, MediaAttachment,
-    MediaChapter, MediaDemuxSummary, MediaTrackInfo, MediaTrackType,
+    demux_media_tracks_from_slice, demux_media_tracks_two_pass, parse_mkv_demux, parse_mp4_demux,
+    MediaAttachment, MediaChapter, MediaDemuxSummary, MediaTrackInfo, MediaTrackType,
 };
 #[cfg(feature = "probe")]
 pub use document_stream::*;

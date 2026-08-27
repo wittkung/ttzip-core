@@ -7,326 +7,125 @@
 
 //! In-Memory Nested Archive Recursion, Drill-Down, and Virtual File Stream.
 
-use std::ffi::{CStr, CString};
-use std::io::{Read, Seek, SeekFrom};
+#[path = "nested_vfs/buffer.rs"]
+mod buffer;
+#[path = "nested_vfs/stream.rs"]
+mod stream;
+
 use std::sync::Arc;
-use libc::{c_void, mode_t};
-use parking_lot::Mutex;
+
+pub use buffer::*;
+pub use stream::*;
 
 use crate::archive::tar::reader::TarArchive;
-use crate::ffi::archive_ffi::guards::ArchiveReadGuard;
-use crate::ffi::archive_ffi::sys::*;
-use crate::sevenz::decoder::archive::SevenZArchive;
-use crate::types::TTZipStatus;
 use crate::uniffi_api::types::{TTZipError, UniFFIEntryMetadata};
 use crate::zip::reader::ZipArchive;
 
-/// Thread-safe in-memory virtual file stream supporting seeking and chunked reading.
-#[derive(uniffi::Object)]
-pub struct VirtualFileStream {
-    data: Arc<Vec<u8>>,
-    position: Mutex<usize>,
-}
-
-#[uniffi::export]
-impl VirtualFileStream {
-    #[uniffi::constructor]
-    pub fn new_empty() -> Arc<Self> {
-        Arc::new(Self::from_vec(Vec::new()))
-    }
-
-    pub fn size(&self) -> u64 {
-        self.data.len() as u64
-    }
-
-    pub fn position(&self) -> u64 {
-        *self.position.lock() as u64
-    }
-
-    pub fn seek(&self, offset: u64) -> Result<u64, TTZipError> {
-        let mut pos = self.position.lock();
-        let target = (offset as usize).min(self.data.len());
-        *pos = target;
-        Ok(target as u64)
-    }
-
-    pub fn read(&self, max_bytes: u32) -> Result<Vec<u8>, TTZipError> {
-        let mut pos = self.position.lock();
-        if *pos >= self.data.len() {
-            return Ok(Vec::new());
-        }
-        let to_read = (max_bytes as usize).min(self.data.len() - *pos);
-        let chunk = self.data[*pos..*pos + to_read].to_vec();
-        *pos += to_read;
-        Ok(chunk)
-    }
-
-    pub fn read_exact_at(&self, offset: u64, length: u32) -> Result<Vec<u8>, TTZipError> {
-        let off = offset as usize;
-        if off >= self.data.len() {
-            return Ok(Vec::new());
-        }
-        let to_read = (length as usize).min(self.data.len() - off);
-        Ok(self.data[off..off + to_read].to_vec())
-    }
-
-    pub fn read_all(&self) -> Result<Vec<u8>, TTZipError> {
-        Ok((*self.data).clone())
-    }
-}
-
-impl VirtualFileStream {
-    pub fn from_vec(data: Vec<u8>) -> Self {
-        Self { data: Arc::new(data), position: Mutex::new(0) }
-    }
-    pub fn from_arc(data: Arc<Vec<u8>>) -> Self {
-        Self { data, position: Mutex::new(0) }
-    }
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.data
-    }
-}
-
-impl Read for VirtualFileStream {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut pos = self.position.lock();
-        if *pos >= self.data.len() {
-            return Ok(0);
-        }
-        let to_read = buf.len().min(self.data.len() - *pos);
-        buf[..to_read].copy_from_slice(&self.data[*pos..*pos + to_read]);
-        *pos += to_read;
-        Ok(to_read)
-    }
-}
-
-impl Seek for VirtualFileStream {
-    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        let mut curr = self.position.lock();
-        let new_pos = match pos {
-            SeekFrom::Start(offset) => offset as i64,
-            SeekFrom::Current(offset) => (*curr as i64) + offset,
-            SeekFrom::End(offset) => (self.data.len() as i64) + offset,
-        };
-        if new_pos < 0 {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "negative seek"));
-        }
-        let clamped = (new_pos as usize).min(self.data.len());
-        *curr = clamped;
-        Ok(clamped as u64)
-    }
-}
-
-pub fn matches_entry_path(entry: &str, target: &str) -> bool {
-    let clean_e = entry.replace('\\', "/");
-    let clean_t = target.replace('\\', "/");
-    let e = clean_e.trim_start_matches("./").trim_start_matches('/');
-    let t = clean_t.trim_start_matches("./").trim_start_matches('/');
-    e == t || clean_e == clean_t
-}
-
-pub fn parse_nested_specifier(drill_path: &[String], target_entry: &str) -> (Vec<String>, String) {
-    if !drill_path.is_empty() {
-        return (drill_path.to_vec(), target_entry.to_string());
-    }
-    if target_entry.contains('!') {
-        let p: Vec<&str> = target_entry.split('!').collect();
-        return (p[..p.len() - 1].iter().map(|s| s.to_string()).collect(), p.last().unwrap_or(&"").to_string());
-    }
-    if target_entry.contains("::") {
-        let p: Vec<&str> = target_entry.split("::").collect();
-        return (p[..p.len() - 1].iter().map(|s| s.to_string()).collect(), p.last().unwrap_or(&"").to_string());
-    }
-    (Vec::new(), target_entry.to_string())
-}
-
-pub fn inspect_entries_from_buffer(buf: &[u8], password: Option<&str>) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
-    if buf.starts_with(b"PK\x03\x04") || buf.starts_with(b"PK\x05\x06") {
-        if let Ok(zip) = ZipArchive::open_slice(buf) {
-            return Ok(zip.entries().iter().map(|e| UniFFIEntryMetadata {
-                path: e.rel_path.clone(),
-                uncompressed_size: e.uncompressed_size,
-                compressed_size: e.compressed_size,
-                crc32: e.crc32,
-                mtime_epoch_secs: e.mtime_epoch_secs,
-                mode: e.mode,
-                is_directory: e.is_directory,
-                is_encrypted: e.is_encrypted,
-                compression_method: "deflate".to_string(),
-                detected_encoding: None,
-            }).collect());
-        }
-    }
-    if buf.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        if let Ok(arch) = SevenZArchive::open_slice_with_password(buf, password) {
-            return Ok(arch.files().iter().enumerate().map(|(idx, f)| {
-                let loc = arch.seek_index().entries.get(idx);
-                UniFFIEntryMetadata {
-                    path: f.rel_path.clone(),
-                    uncompressed_size: loc.map(|l| l.uncompressed_size).unwrap_or(0),
-                    compressed_size: 0,
-                    crc32: loc.and_then(|l| l.crc).unwrap_or(0),
-                    mtime_epoch_secs: f.mtime_epoch_secs.unwrap_or(0),
-                    mode: f.mode,
-                    is_directory: f.is_directory,
-                    is_encrypted: arch.info().is_encrypted,
-                    compression_method: "7z".to_string(),
-                    detected_encoding: None,
-                }
-            }).collect());
-        }
-    }
-    if let Ok(tar) = TarArchive::open_slice(buf) {
-        if !tar.is_empty() {
-            return Ok(tar.entries().iter().map(|e| UniFFIEntryMetadata {
-                path: e.path.to_string(),
-                uncompressed_size: e.size,
-                compressed_size: e.size,
-                crc32: 0,
-                mtime_epoch_secs: e.mtime_epoch_secs,
-                mode: e.mode,
-                is_directory: e.is_directory,
-                is_encrypted: false,
-                compression_method: "store".to_string(),
-                detected_encoding: None,
-            }).collect());
-        }
-    }
-    unsafe {
-        let a = archive_read_new();
-        if a.is_null() { return Err(TTZipError::EngineError { code: -1 }); }
-        let _guard = ArchiveReadGuard(a);
-        archive_read_support_format_all(a);
-        archive_read_support_filter_all(a);
-        if let Some(pwd) = password {
-            if let Ok(cp) = CString::new(pwd) { archive_read_add_passphrase(a, cp.as_ptr()); }
-        }
-        if archive_read_open_memory(a, buf.as_ptr() as *const c_void, buf.len()) != 0 {
-            return Err(TTZipError::CorruptHeader { details: "Invalid in-memory archive".to_string(), offset: 0 });
-        }
-        let mut entries = Vec::new();
-        let mut entry: *mut c_void = std::ptr::null_mut();
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if entry.is_null() { break; }
-            let rp = archive_entry_pathname(entry);
-            if rp.is_null() { archive_read_data_skip(a); continue; }
-            let path = CStr::from_ptr(rp).to_string_lossy().into_owned();
-            let sz = archive_entry_size(entry).max(0) as u64;
-            let mode = archive_entry_mode(entry) as u32;
-            let ft = archive_entry_filetype(entry);
-            let is_dir = (ft & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t) || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32) || path.ends_with('/');
-            let is_enc = archive_entry_is_data_encrypted(entry) != 0 || archive_entry_is_metadata_encrypted(entry) != 0;
-            entries.push(UniFFIEntryMetadata {
-                path, uncompressed_size: sz, compressed_size: 0, crc32: 0,
-                mtime_epoch_secs: archive_entry_mtime(entry) as i64, mode, is_directory: is_dir,
-                is_encrypted: is_enc, compression_method: "libarchive".to_string(), detected_encoding: None,
-            });
-            archive_read_data_skip(a);
-        }
-        Ok(entries)
-    }
-}
-
-pub fn extract_entry_from_buffer(buf: &[u8], target: &str, password: Option<&str>) -> Result<Vec<u8>, TTZipError> {
-    if buf.starts_with(b"PK\x03\x04") || buf.starts_with(b"PK\x05\x06") {
-        if let Ok(zip) = ZipArchive::open_slice(buf) {
-            if let Some(idx) = zip.entries().iter().position(|e| matches_entry_path(&e.rel_path, target)) {
-                return zip.extract_entry_bytes(idx, password).map_err(map_ttzip_status);
-            }
-        }
-    }
-    if buf.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        if let Ok(sz) = SevenZArchive::open_slice_with_password(buf, password) {
-            if let Some(idx) = sz.files().iter().position(|f| matches_entry_path(&f.rel_path, target)) {
-                return sz.extract_entry_bytes_stream(idx, password).map_err(map_ttzip_status);
-            }
-        }
-    }
-    if let Ok(tar) = TarArchive::open_slice(buf) {
-        if !tar.is_empty() {
-            if let Some(idx) = tar.entries().iter().position(|e| matches_entry_path(e.path.as_ref(), target)) {
-                return tar.extract_entry_bytes(idx).map(|s| s.to_vec()).map_err(map_ttzip_status);
-            }
-        }
-    }
-    unsafe {
-        let a = archive_read_new();
-        if a.is_null() { return Err(TTZipError::EngineError { code: -1 }); }
-        let _guard = ArchiveReadGuard(a);
-        archive_read_support_format_all(a);
-        archive_read_support_filter_all(a);
-        if let Some(pwd) = password {
-            if let Ok(cp) = CString::new(pwd) { archive_read_add_passphrase(a, cp.as_ptr()); }
-        }
-        if archive_read_open_memory(a, buf.as_ptr() as *const c_void, buf.len()) != 0 {
-            return Err(TTZipError::CorruptHeader { details: "Invalid in-memory archive".to_string(), offset: 0 });
-        }
-        let mut entry: *mut c_void = std::ptr::null_mut();
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if entry.is_null() { break; }
-            let rp = archive_entry_pathname(entry);
-            if rp.is_null() { archive_read_data_skip(a); continue; }
-            if matches_entry_path(&CStr::from_ptr(rp).to_string_lossy(), target) {
-                let sz = archive_entry_size(entry).max(0) as usize;
-                let mut payload = Vec::with_capacity(sz.min(16 * 1024 * 1024));
-                let mut chunk = [0u8; 65536];
-                loop {
-                    let r = archive_read_data(a, chunk.as_mut_ptr() as *mut c_void, chunk.len());
-                    if r < 0 { return Err(TTZipError::EngineError { code: -1 }); }
-                    if r == 0 { break; }
-                    payload.extend_from_slice(&chunk[..r as usize]);
-                }
-                return Ok(payload);
-            }
-            archive_read_data_skip(a);
-        }
-        Err(TTZipError::FileNotFound { path: target.to_string() })
-    }
-}
-
-pub fn drill_down_buffer(root_bytes: &[u8], drill_path: &[String], password: Option<&str>) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
+pub fn drill_down_buffer(
+    root_bytes: &[u8],
+    drill_path: &[String],
+    password: Option<&str>,
+) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
     let mut curr = root_bytes.to_vec();
     for seg in drill_path {
         let clean = seg.trim();
-        if !clean.is_empty() { curr = extract_entry_from_buffer(&curr, clean, password)?; }
+        if !clean.is_empty() {
+            curr = extract_entry_from_buffer(&curr, clean, password)?;
+        }
     }
     inspect_entries_from_buffer(&curr, password)
 }
 
-pub fn extract_nested_entry_buffer(root_bytes: &[u8], drill_path: &[String], target: &str, password: Option<&str>) -> Result<Vec<u8>, TTZipError> {
+pub fn extract_nested_entry_buffer(
+    root_bytes: &[u8],
+    drill_path: &[String],
+    target: &str,
+    password: Option<&str>,
+) -> Result<Vec<u8>, TTZipError> {
     let (drill, eff_target) = parse_nested_specifier(drill_path, target);
     let mut curr = root_bytes.to_vec();
     for seg in &drill {
         let clean = seg.trim();
-        if !clean.is_empty() { curr = extract_entry_from_buffer(&curr, clean, password)?; }
+        if !clean.is_empty() {
+            curr = extract_entry_from_buffer(&curr, clean, password)?;
+        }
     }
     extract_entry_from_buffer(&curr, &eff_target, password)
 }
 
-pub fn drill_down_nested_archive(archive_path: &str, drill_path: &[String], password: Option<&str>) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
+pub fn drill_down_nested_archive(
+    archive_path: &str,
+    drill_path: &[String],
+    password: Option<&str>,
+) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
     let p = std::path::Path::new(archive_path);
-    if !p.exists() { return Err(TTZipError::FileNotFound { path: archive_path.to_string() }); }
-    let source = crate::archive::source::open_archive_source(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError { message: "Failed to map archive bytes".to_string() })?;
+    if !p.exists() {
+        return Err(TTZipError::FileNotFound { path: archive_path.to_string() });
+    }
+    let source = crate::archive::source::open_archive_source(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError {
+        message: "Failed to map archive bytes".to_string(),
+    })?;
     drill_down_buffer(mapped, drill_path, password)
 }
 
-pub fn open_virtual_file_stream(archive_path: &str, drill_path: &[String], target_entry: &str, password: Option<&str>) -> Result<Arc<VirtualFileStream>, TTZipError> {
+pub fn open_virtual_file_stream(
+    archive_path: &str,
+    drill_path: &[String],
+    target_entry: &str,
+    password: Option<&str>,
+) -> Result<Arc<VirtualFileStream>, TTZipError> {
     let p = std::path::Path::new(archive_path);
-    if !p.exists() { return Err(TTZipError::FileNotFound { path: archive_path.to_string() }); }
-    let source = crate::archive::source::open_archive_source(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError { message: "Failed to map archive bytes".to_string() })?;
+    if !p.exists() {
+        return Err(TTZipError::FileNotFound { path: archive_path.to_string() });
+    }
+    let source = Arc::new(crate::archive::source::open_archive_source(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?);
+    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError {
+        message: "Failed to map archive bytes".to_string(),
+    })?;
+    let (drill, eff_target) = parse_nested_specifier(drill_path, target_entry);
+    if drill.is_empty() {
+        if (mapped.starts_with(b"PK\x03\x04") || mapped.starts_with(b"PK\x05\x06")) && password.is_none() {
+            if let Ok(zip) = ZipArchive::open_slice(mapped) {
+                if let Some(entry) = zip.entries().iter().find(|e| matches_entry_path(&e.rel_path, &eff_target)) {
+                    if entry.actual_method == 0 && !entry.is_encrypted {
+                        if let Ok((payload_off, _)) = crate::zip::parser::parse_local_file_header(mapped, entry.lfh_offset as usize) {
+                            let total_size = entry.uncompressed_size;
+                            let chunk_size = calculate_chunk_size(total_size);
+                            let source_arc = Arc::clone(&source);
+                            let base_off = payload_off as u64;
+                            let loader = Arc::new(move |offset: u64, len: usize| {
+                                let mut buf = vec![0u8; len];
+                                let n = source_arc.read_at(&mut buf, base_off + offset)
+                                    .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                                buf.truncate(n);
+                                Ok(buf)
+                            });
+                            return Ok(Arc::new(VirtualFileStream::new(VirtualChunkedStream::new(total_size, chunk_size, loader))));
+                        }
+                    }
+                }
+            }
+        }
+        if let Ok(tar) = TarArchive::open_slice(mapped) {
+            if let Some(entry) = tar.entries().iter().find(|e| matches_entry_path(e.path.as_ref(), &eff_target)) {
+                let total_size = entry.size;
+                let chunk_size = calculate_chunk_size(total_size);
+                let source_arc = Arc::clone(&source);
+                let base_off = entry.data_offset as u64;
+                let loader = Arc::new(move |offset: u64, len: usize| {
+                    let mut buf = vec![0u8; len];
+                    let n = source_arc.read_at(&mut buf, base_off + offset)
+                        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                    buf.truncate(n);
+                    Ok(buf)
+                });
+                return Ok(Arc::new(VirtualFileStream::new(VirtualChunkedStream::new(total_size, chunk_size, loader))));
+            }
+        }
+    }
     let payload = extract_nested_entry_buffer(mapped, drill_path, target_entry, password)?;
     Ok(Arc::new(VirtualFileStream::from_vec(payload)))
-}
-
-fn map_ttzip_status(status: TTZipStatus) -> TTZipError {
-    match status {
-        TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound { path: "Entry not found in archive".to_string() },
-        TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-        TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader { details: "Corrupted archive header or CRC".to_string(), offset: 0 },
-        TTZipStatus::ErrSecurityViolation => TTZipError::SecurityViolation { reason: "Security check violation".to_string() },
-        TTZipStatus::Cancelled => TTZipError::Cancelled,
-        _ => TTZipError::EngineError { code: status as i32 },
-    }
 }

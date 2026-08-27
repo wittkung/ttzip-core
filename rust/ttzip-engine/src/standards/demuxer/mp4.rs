@@ -12,13 +12,18 @@ use super::types::{MediaAttachment, MediaChapter, MediaDemuxSummary, MediaTrackI
 
 /// Parses an MP4/MOV byte stream into a structured `MediaDemuxSummary`.
 pub fn parse_mp4_demux(data: &[u8]) -> Result<MediaDemuxSummary, TTZipStatus> {
-    if data.len() < 8 {
+    demux_mp4_two_pass(data, None)
+}
+
+/// Zero-copy two-pass MP4 demuxer supporting 64-bit mdat skipping and rear moov parsing.
+pub fn demux_mp4_two_pass(head: &[u8], tail: Option<&[u8]>) -> Result<MediaDemuxSummary, TTZipStatus> {
+    if head.len() < 8 {
         return Err(TTZipStatus::ErrInvalidParam);
     }
     let mut summary = MediaDemuxSummary::new("MP4");
     let mut found_valid_box = false;
 
-    for_each_mp4_box(data, |fourcc, payload| match &fourcc {
+    for_each_mp4_box(head, |fourcc, payload| match &fourcc {
         b"ftyp" => {
             found_valid_box = true;
             if payload.len() >= 4 {
@@ -38,13 +43,54 @@ pub fn parse_mp4_demux(data: &[u8]) -> Result<MediaDemuxSummary, TTZipStatus> {
     if !found_valid_box {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
+
+    if summary.tracks.is_empty() {
+        if let Some(tail_data) = tail {
+            parse_moov_from_slice(tail_data, &mut summary);
+        }
+    }
+
     Ok(summary)
+}
+
+fn parse_moov_from_slice(data: &[u8], summary: &mut MediaDemuxSummary) {
+    let mut found = false;
+    for_each_mp4_box(data, |fourcc, payload| {
+        if &fourcc == b"moov" {
+            found = true;
+            parse_moov_box(payload, summary);
+        }
+    });
+    if !found {
+        let mut idx = 0;
+        while idx + 4 <= data.len() {
+            if let Some(pos) = data[idx..].windows(4).position(|w| w == b"moov") {
+                let abs_pos = idx + pos;
+                if abs_pos >= 4 {
+                    let sz = u32::from_be_bytes([data[abs_pos - 4], data[abs_pos - 3], data[abs_pos - 2], data[abs_pos - 1]]) as usize;
+                    if sz >= 8 {
+                        let end = (abs_pos - 4 + sz).min(data.len());
+                        if abs_pos + 4 <= end {
+                            parse_moov_box(&data[abs_pos + 4..end], summary);
+                        }
+                    }
+                }
+                idx = abs_pos + 4;
+            } else {
+                break;
+            }
+        }
+    }
 }
 
 fn parse_moov_box(data: &[u8], summary: &mut MediaDemuxSummary) {
     for_each_mp4_box(data, |fourcc, payload| match &fourcc {
         b"mvhd" => parse_mvhd(payload, summary),
-        b"trak" => if let Some(t) = parse_trak_box(payload, summary) { summary.tracks.push(t); },
+        b"trak" => if let Some(t) = parse_trak_box(payload, summary) {
+            if !summary.tracks.iter().any(|ex| ex.track_id == t.track_id) {
+                summary.tracks.push(t);
+            }
+        },
         b"udta" => parse_udta_box(payload, summary),
         _ => {}
     });
@@ -225,16 +271,37 @@ fn for_each_mp4_box(data: &[u8], mut f: impl FnMut([u8; 4], &[u8])) {
         let mut fourcc = [0u8; 4];
         fourcc.copy_from_slice(&data[off + 4..off + 8]);
         let (hdr, tot) = if size_32 == 1 {
-            if off + 16 > data.len() { break; }
-            (16, u64::from_be_bytes([data[off+8], data[off+9], data[off+10], data[off+11], data[off+12], data[off+13], data[off+14], data[off+15]]) as usize)
+            if off + 16 > data.len() {
+                f(fourcc, &[]);
+                break;
+            }
+            let size_64 = u64::from_be_bytes([
+                data[off + 8], data[off + 9], data[off + 10], data[off + 11],
+                data[off + 12], data[off + 13], data[off + 14], data[off + 15],
+            ]);
+            (16usize, size_64 as usize)
         } else if size_32 == 0 {
-            (8, data.len() - off)
+            (8usize, data.len() - off)
         } else {
-            (8, size_32)
+            (8usize, size_32)
         };
+
         if tot < hdr { break; }
-        let end = (off + tot).min(data.len());
-        f(fourcc, if off + hdr <= end { &data[off + hdr..end] } else { &[] });
-        off = end;
+        let payload_start = off + hdr;
+        let payload_end = if payload_start <= data.len() {
+            (off.saturating_add(tot)).min(data.len())
+        } else {
+            data.len()
+        };
+        let payload = if payload_start <= payload_end { &data[payload_start..payload_end] } else { &[] };
+        f(fourcc, payload);
+
+        match off.checked_add(tot) {
+            Some(next_off) => {
+                if next_off <= off { break; }
+                off = next_off;
+            }
+            None => break,
+        }
     }
 }

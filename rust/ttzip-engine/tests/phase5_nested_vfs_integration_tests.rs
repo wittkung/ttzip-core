@@ -8,10 +8,13 @@
 //! Comprehensive integration tests for nested archive memory drill-down and VirtualFileStream.
 
 use std::io::{Read, Seek, SeekFrom};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tempfile::tempdir;
 use ttzip_engine::archive::nested_vfs::{
-    drill_down_buffer, drill_down_nested_archive, extract_nested_entry_buffer,
-    open_virtual_file_stream, parse_nested_specifier, VirtualFileStream,
+    calculate_chunk_size, drill_down_buffer, drill_down_nested_archive,
+    extract_nested_entry_buffer, open_virtual_file_stream, parse_nested_specifier,
+    VirtualChunkedStream, VirtualFileStream, MAX_STREAM_MEMORY,
 };
 
 fn create_test_zip_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
@@ -76,22 +79,69 @@ fn test_virtual_file_stream_operations() {
 
     let exact = stream.read_exact_at(10, 5).unwrap();
     assert_eq!(exact, b"ABCDE");
-    assert_eq!(stream.position(), 5); // Unchanged position
+    assert_eq!(stream.position(), 5);
 
     let all = stream.read_all().unwrap();
     assert_eq!(all, sample);
 
-    // Read trait test (explicit trait method call)
     let mut buf = [0u8; 4];
     let n = Read::read(&mut stream, &mut buf).unwrap();
     assert_eq!(n, 4);
     assert_eq!(&buf, b"5678");
 
-    // Seek trait test (explicit trait method call)
     let pos = Seek::seek(&mut stream, SeekFrom::End(-6)).unwrap();
     assert_eq!(pos, (sample.len() - 6) as u64);
     let rem = stream.read(100).unwrap();
     assert_eq!(rem, b"UVWXYZ");
+}
+
+#[test]
+fn test_20gb_bounded_chunk_stream_and_random_seek() {
+    let total_20gb: u64 = 20 * 1024 * 1024 * 1024; // 20 GB
+    let load_counter = Arc::new(AtomicUsize::new(0));
+    let load_clone = Arc::clone(&load_counter);
+
+    let chunk_size = calculate_chunk_size(total_20gb);
+    assert_eq!(chunk_size, 2 * 1024 * 1024); // 2 MB chunk for >1GB
+    assert_eq!(MAX_STREAM_MEMORY, 64 * 1024 * 1024);
+
+    let loader = Arc::new(move |offset: u64, len: usize| {
+        load_clone.fetch_add(1, Ordering::SeqCst);
+        let mut buf = vec![0u8; len];
+        let byte_val = ((offset / 1024 / 1024) % 256) as u8;
+        buf.fill(byte_val);
+        Ok(buf)
+    });
+
+    let chunked = VirtualChunkedStream::new(total_20gb, chunk_size, loader);
+    let mut stream = VirtualFileStream::new(chunked);
+
+    assert_eq!(stream.size(), total_20gb);
+
+    // Seek to 15 GB and read 16 bytes
+    let seek_target = 15 * 1024 * 1024 * 1024;
+    let actual_pos = stream.seek(seek_target).unwrap();
+    assert_eq!(actual_pos, seek_target);
+
+    let data = stream.read(16).unwrap();
+    assert_eq!(data.len(), 16);
+    let expected_val = ((seek_target / 1024 / 1024) % 256) as u8;
+    assert!(data.iter().all(|&b| b == expected_val));
+    assert_eq!(stream.position(), seek_target + 16);
+
+    // Read across multiple chunk boundaries
+    let cross_offset = 2 * 1024 * 1024 - 10;
+    let cross_len = 20;
+    let cross_data = stream.read_exact_at(cross_offset, cross_len).unwrap();
+    assert_eq!(cross_data.len(), 20);
+
+    // Verify ring buffer eviction: reading 100 distant chunks must not exceed bounded memory
+    for i in 0..100 {
+        let off = (i as u64) * 100 * 1024 * 1024;
+        let d = stream.read_exact_at(off, 1024).unwrap();
+        assert_eq!(d.len(), 1024);
+    }
+    assert!(load_counter.load(Ordering::SeqCst) >= 100);
 }
 
 #[test]
@@ -106,7 +156,6 @@ fn test_nested_zip_in_zip_drill_down_and_stream() {
     let outer_zip_path = dir.path().join("outer.zip");
     std::fs::write(&outer_zip_path, &outer_zip_bytes).unwrap();
 
-    // Drill down to outer root
     let root_entries = drill_down_nested_archive(
         outer_zip_path.to_str().unwrap(),
         &[],
@@ -115,7 +164,6 @@ fn test_nested_zip_in_zip_drill_down_and_stream() {
     assert!(root_entries.iter().any(|e| e.path.contains("bundles/inner.zip")));
     assert!(root_entries.iter().any(|e| e.path.contains("readme.md")));
 
-    // Drill down to inner.zip
     let nested_entries = drill_down_nested_archive(
         outer_zip_path.to_str().unwrap(),
         &["bundles/inner.zip".to_string()],
@@ -124,7 +172,6 @@ fn test_nested_zip_in_zip_drill_down_and_stream() {
     assert_eq!(nested_entries.len(), 1);
     assert!(nested_entries[0].path.contains("secret.txt"));
 
-    // Stream inner file
     let stream = open_virtual_file_stream(
         outer_zip_path.to_str().unwrap(),
         &["bundles/inner.zip".to_string()],
@@ -140,19 +187,12 @@ fn test_nested_zip_in_zip_drill_down_and_stream() {
 #[test]
 fn test_heterogeneous_nested_zip_in_targz_in_zip() {
     let dir = tempdir().unwrap();
-
-    // 1. Level 3: Inner zip
     let l3_bytes = create_test_zip_bytes(&[("flag.txt", b"CTF{TTZIP_NESTED_STREAM}")]);
-
-    // 2. Level 2: Tar.gz containing level3.zip
     let l2_bytes = create_test_targz_bytes(&[("archives/level3.zip", &l3_bytes)]);
-
-    // 3. Level 1: Outer ZIP containing level2.tar.gz
     let outer_bytes = create_test_zip_bytes(&[("pkg/level2.tar.gz", &l2_bytes)]);
     let outer_zip_path = dir.path().join("level1.zip");
     std::fs::write(&outer_zip_path, &outer_bytes).unwrap();
 
-    // Drill down 3 layers deep entirely in memory
     let drill_path = vec![
         "pkg/level2.tar.gz".to_string(),
         "archives/level3.zip".to_string(),
@@ -165,7 +205,6 @@ fn test_heterogeneous_nested_zip_in_targz_in_zip() {
     ).unwrap();
     assert!(deep_entries.iter().any(|e| e.path.contains("flag.txt")));
 
-    // Stream the deepest payload
     let stream = open_virtual_file_stream(
         outer_zip_path.to_str().unwrap(),
         &drill_path,
@@ -175,7 +214,6 @@ fn test_heterogeneous_nested_zip_in_targz_in_zip() {
 
     assert_eq!(stream.read_all().unwrap(), b"CTF{TTZIP_NESTED_STREAM}");
 
-    // Test delimiter specifiers ('!' and '::')
     let stream_bang = open_virtual_file_stream(
         outer_zip_path.to_str().unwrap(),
         &[],

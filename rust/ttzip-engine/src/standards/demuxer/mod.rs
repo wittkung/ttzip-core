@@ -20,8 +20,8 @@ pub mod types;
 mod tests;
 
 use crate::types::status::TTZipStatus;
-pub use mkv::parse_mkv_demux;
-pub use mp4::parse_mp4_demux;
+pub use mkv::{demux_mkv_two_pass, parse_mkv_demux};
+pub use mp4::{demux_mp4_two_pass, parse_mp4_demux};
 pub use types::{
     MediaAttachment, MediaChapter, MediaDemuxSummary, MediaTrackInfo, MediaTrackType,
 };
@@ -37,20 +37,37 @@ const EBML_MAGIC: [u8; 4] = [0x1A, 0x45, 0xDF, 0xA3];
 /// Returns `TTZipStatus::ErrInvalidParam` if buffer is empty or too short.
 /// Returns `TTZipStatus::ErrCorruptHeader` if header is not recognized or corrupted.
 pub fn demux_media_tracks_from_slice(data: &[u8]) -> Result<MediaDemuxSummary, TTZipStatus> {
-    if data.len() < 8 {
+    demux_media_tracks_two_pass(data, None)
+}
+
+/// Performs zero-copy two-pass demuxing using file head and optional tail slices.
+///
+/// Enables instant probing of multi-gigabyte media containers where indexing structures
+/// (such as MP4 `moov` or MKV `SeekHead` / `Cues` / `Chapters` / `Attachments`) are placed
+/// at the end of the file.
+///
+/// # Errors
+/// Returns `TTZipStatus::ErrInvalidParam` if head is empty or too short.
+/// Returns `TTZipStatus::ErrCorruptHeader` if header is unrecognized or corrupted.
+pub fn demux_media_tracks_two_pass(
+    head: &[u8],
+    tail: Option<&[u8]>,
+) -> Result<MediaDemuxSummary, TTZipStatus> {
+    if head.len() < 4 {
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    if data.starts_with(&EBML_MAGIC) {
-        parse_mkv_demux(data)
-    } else if &data[4..8] == b"ftyp"
-        || &data[4..8] == b"moov"
-        || &data[4..8] == b"mdat"
-        || &data[4..8] == b"free"
-        || &data[4..8] == b"skip"
-        || &data[4..8] == b"wide"
+    if head.starts_with(&EBML_MAGIC) {
+        demux_mkv_two_pass(head, tail)
+    } else if head.len() >= 8
+        && (&head[4..8] == b"ftyp"
+            || &head[4..8] == b"moov"
+            || &head[4..8] == b"mdat"
+            || &head[4..8] == b"free"
+            || &head[4..8] == b"skip"
+            || &head[4..8] == b"wide")
     {
-        parse_mp4_demux(data)
+        demux_mp4_two_pass(head, tail)
     } else {
         Err(TTZipStatus::ErrCorruptHeader)
     }
