@@ -12,7 +12,7 @@
 
 pub mod compressor;
 pub mod decompressor;
-mod ffi;
+pub(crate) mod ffi;
 mod pool;
 
 #[cfg(test)]

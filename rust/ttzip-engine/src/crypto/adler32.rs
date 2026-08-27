@@ -218,6 +218,10 @@ pub fn adler32_fast(adler: u32, data: &[u8]) -> u32 {
         return adler;
     }
 
+    if data.len() < 64 {
+        return scalar::adler32_scalar(adler, data);
+    }
+
     #[cfg(target_arch = "aarch64")]
     {
         unsafe {

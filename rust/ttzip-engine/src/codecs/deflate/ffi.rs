@@ -57,6 +57,8 @@ extern "C" {
     pub fn libdeflate_free_compressor(compressor: *mut LibdeflateCompressorOpaque);
 
     pub fn libdeflate_alloc_decompressor() -> *mut LibdeflateDecompressorOpaque;
+    pub fn libdeflate_free_decompressor(decompressor: *mut LibdeflateDecompressorOpaque);
+
     pub fn libdeflate_deflate_decompress(
         decompressor: *mut LibdeflateDecompressorOpaque,
         in_: *const libc::c_void,
@@ -108,5 +110,4 @@ extern "C" {
         actual_in_nbytes_ret: *mut libc::size_t,
         actual_out_nbytes_ret: *mut libc::size_t,
     ) -> LibdeflateResult;
-    pub fn libdeflate_free_decompressor(decompressor: *mut LibdeflateDecompressorOpaque);
 }

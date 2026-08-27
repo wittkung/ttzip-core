@@ -9,11 +9,17 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 fn compile_native_codecs(repo_root: &Path) {
-    let fast_lzma2_dir = repo_root.join("Vendor/turbobench/fast-lzma2");
-    let lzfse_dir = repo_root.join("Vendor/turbobench/lzfse/src");
-    let libdeflate_dir = repo_root.join("Vendor/libdeflate-upstream");
-    let lz4_dir = repo_root.join("Vendor/lz4-upstream/lib");
-    let zstd_dir = repo_root.join("Vendor/zstd-upstream/lib");
+    let top_vendor = repo_root
+        .parent()
+        .map(|p| p.join("vendor"))
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| repo_root.join("vendor"));
+
+    let fast_lzma2_dir = top_vendor.join("fast-lzma2");
+    let lzfse_dir = top_vendor.join("lzfse/src");
+    let libdeflate_dir = top_vendor.join("libdeflate");
+    let lz4_dir = top_vendor.join("lz4/lib");
+    let zstd_dir = top_vendor.join("zstd/lib");
 
     let mut build = cc::Build::new();
     build.opt_level(3);
@@ -82,12 +88,22 @@ fn compile_native_codecs(repo_root: &Path) {
             "lib/utils.c",
             "lib/zlib_compress.c",
             "lib/zlib_decompress.c",
-            "lib/arm/cpu_features.c",
         ];
         for src in deflate_sources {
             let path = libdeflate_dir.join(src);
             if path.exists() {
                 build.file(path);
+            }
+        }
+        if target.contains("aarch64") || target.contains("arm64") {
+            let arm_cpu = libdeflate_dir.join("lib/arm/cpu_features.c");
+            if arm_cpu.exists() {
+                build.file(arm_cpu);
+            }
+        } else if target.contains("x86_64") {
+            let x86_cpu = libdeflate_dir.join("lib/x86/cpu_features.c");
+            if x86_cpu.exists() {
+                build.file(x86_cpu);
             }
         }
         build.include(libdeflate_dir.join("lib"));

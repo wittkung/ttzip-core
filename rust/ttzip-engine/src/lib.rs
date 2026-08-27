@@ -21,6 +21,7 @@ pub mod audio;
 pub mod benchmark;
 pub use benchmark as bench;
 pub mod charset;
+pub mod checksum;
 pub mod codecs;
 pub mod crypto;
 pub mod ffi;
@@ -35,10 +36,13 @@ pub mod standards;
 pub mod testing;
 pub mod types;
 pub mod uniffi_api;
+pub mod utils;
 pub mod vfs;
 pub mod zip;
 
 pub use analytics::*;
+pub use checksum::{Adler32Hasher, Crc32Hasher};
+pub use utils::*;
 pub use archive::{
     compute_volume_path, detect_volume_chain, drill_down_nested_archive, find_next_pk_signature,
     open_virtual_file_stream, repair_damaged_tar, repair_damaged_zip, ArchiveBuilder,

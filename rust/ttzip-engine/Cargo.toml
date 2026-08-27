@@ -22,6 +22,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "uniffi-bindgen"
 path = "src/bin/uniffi_bindgen.rs"
 
+[[bench]]
+name = "ab_perf_suite"
+harness = false
+
 [dependencies]
 libc = "0.2"
 zeroize = { version = "1.8", features = ["zeroize_derive", "alloc"] }
@@ -32,6 +36,8 @@ crossbeam-utils = "0.8"
 parking_lot = "0.12"
 snap = "1.1"
 brotli = "7.0"
+crc32fast = "1.4"
+adler2 = "2.0"
 encoding_rs = "0.8"
 chardetng = "0.1"
 unicode-normalization = "0.1"
