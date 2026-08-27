@@ -340,6 +340,32 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         }
     }
     
+    /// Minimum valid compression level integer.
+    public var minCompressionLevel: Int { 0 }
+
+    /// Maximum valid compression level integer.
+    public var maxCompressionLevel: Int {
+        switch self {
+        case .tar, .dmg, .iso, .aar, .cpio, .ar, .rar, .squashfs, .lzh:
+            return 0
+        case .zip:
+            return 12
+        case .zst, .tarZst:
+            return 22
+        case .brotli, .tarBrotli:
+            return 11
+        case .sevenZip, .gz, .tarGz, .bz2, .tarBz2, .xz, .tarXz,
+             .lzip, .tarLzip, .lz4, .tarLz4, .lrzip, .tarLrzip,
+             .snappy, .wim, .cab, .deb, .rpm, .xar, .lzfse:
+            return 9
+        }
+    }
+
+    /// Valid compression level integer range for format.
+    public var validCompressionLevelRange: ClosedRange<Int> {
+        minCompressionLevel...maxCompressionLevel
+    }
+    
     /// List of all 17 primary non-proprietary writable creation formats.
     public static let primary17WritableFormats: [ArchiveCompressionFormat] = [
         .sevenZip, .zip, .tar, .tarGz, .tarBz2, .tarXz, .tarZst,
