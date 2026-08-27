@@ -332,7 +332,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .tar, .dmg, .iso, .aar, .cpio, .ar, .rar, .squashfs, .lzh:
             return [.store]
         case .zip:
-            return [.store, .level1, .level2, .level3, .level4, .level5, .level6, .level7]
+            return [.store, .level1, .level6, .level9, .level12]
         case .sevenZip, .zst, .tarZst, .gz, .tarGz, .bz2, .tarBz2, .xz, .tarXz,
              .lzip, .tarLzip, .lz4, .tarLz4, .brotli, .tarBrotli, .lrzip, .tarLrzip,
              .snappy, .wim, .cab, .deb, .rpm, .xar, .lzfse:

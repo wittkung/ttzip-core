@@ -197,15 +197,7 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
     }
 
     internal static func mapUniFFILevel(_ level: ArchiveCompressionLevel) -> Int32 {
-        switch level {
-        case .store: return 0
-        case .fastest: return 1
-        case .fast: return 2
-        case .normal: return 5
-        case .maximum: return 7
-        case .ultra: return 9
-        default: return 5
-        }
+        Int32(max(0, min(12, level.rawValue)))
     }
 }
 

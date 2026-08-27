@@ -400,8 +400,10 @@ pub fn create_archive_stream(
     let comp_level = match level {
         0 => crate::types::TTZipCompressionLevel::Store,
         1 => crate::types::TTZipCompressionLevel::Fastest,
-        2 => crate::types::TTZipCompressionLevel::Fast,
-        9 => crate::types::TTZipCompressionLevel::Ultra,
+        2..=4 => crate::types::TTZipCompressionLevel::Fast,
+        5..=6 => crate::types::TTZipCompressionLevel::Normal,
+        7..=9 => crate::types::TTZipCompressionLevel::Maximum,
+        10..=12 => crate::types::TTZipCompressionLevel::Ultra,
         _ => crate::types::TTZipCompressionLevel::Normal,
     };
 
