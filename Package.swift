@@ -36,7 +36,7 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
-            path: "Vendor/TTZipVendor.xcframework"
+            path: "Frameworks/TTZipVendor.xcframework"
         ),
         .target(
             name: "CTTZipBridge",

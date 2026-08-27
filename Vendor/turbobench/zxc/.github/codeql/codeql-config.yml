@@ -1,7 +1,0 @@
-name: "CodeQL Config"
-
-paths-ignore:
-  - 'src/lib/vendors/rapidhash.h'
-
-queries:
-  - uses: security-and-quality

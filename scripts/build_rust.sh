@@ -16,8 +16,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
-VENDOR_DIR="${REPO_ROOT}/Vendor"
-XCFRAMEWORK_MAC_DIR="${VENDOR_DIR}/TTZipVendor.xcframework/macos-arm64"
+FRAMEWORKS_DIR="${REPO_ROOT}/Frameworks"
+XCFRAMEWORK_MAC_DIR="${FRAMEWORKS_DIR}/TTZipVendor.xcframework/macos-arm64"
 
 BUILD_MODE="release"
 CARGO_FLAGS="--release"
@@ -139,6 +139,37 @@ fi
 
 # In-place strip DWARF debug info to optimize static library size
 strip -S "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
+
+# 自动生成 XCFramework 必需的 Info.plist
+cat > "${FRAMEWORKS_DIR}/TTZipVendor.xcframework/Info.plist" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AvailableLibraries</key>
+	<array>
+		<dict>
+			<key>HeadersPath</key>
+			<string>Headers</string>
+			<key>LibraryIdentifier</key>
+			<string>macos-arm64</string>
+			<key>LibraryPath</key>
+			<string>libTTZipVendor.a</string>
+			<key>SupportedArchitectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>SupportedPlatform</key>
+			<string>macos</string>
+		</dict>
+	</array>
+	<key>CFBundlePackageType</key>
+	<string>XFWK</string>
+	<key>XCFrameworkFormatVersion</key>
+	<string>1.0</string>
+</dict>
+</plist>
+EOF
 
 echo "    libTTZipVendor.a architecture: $(lipo -info "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a")"
 echo "    libTTZipVendor.a size: $(ls -lh "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | awk '{print $5}')"

@@ -16,8 +16,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
-VENDOR_DIR="${REPO_ROOT}/Vendor"
-XCFRAMEWORK_DIR="${VENDOR_DIR}/TTZipVendor.xcframework"
+FRAMEWORKS_DIR="${REPO_ROOT}/Frameworks"
+XCFRAMEWORK_DIR="${FRAMEWORKS_DIR}/TTZipVendor.xcframework"
 DIST_DIR="${REPO_ROOT}/dist"
 
 BUILD_MODE="release"
@@ -280,7 +280,7 @@ if [ "${NO_ZIP}" = "0" ]; then
     echo "--> [INFO] Creating ${ZIP_PATH}..."
     rm -f "${ZIP_PATH}"
     (
-        cd "${VENDOR_DIR}"
+        cd "${FRAMEWORKS_DIR}"
         zip -qry "${ZIP_PATH}" "TTZipVendor.xcframework"
     )
 

@@ -1,3 +1,0 @@
-scikit-build-core>=0.9
-setuptools_scm[toml]>=7.0
-setuptools==83.0.0

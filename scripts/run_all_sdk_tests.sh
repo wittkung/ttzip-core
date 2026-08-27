@@ -113,7 +113,7 @@ run_suite "node" "Node.js & TypeScript SDK" "node node/test.js" "node"
 
 # 5. C11 Native SDK
 echo ">>> [5/9] Testing C11 Native SDK..."
-LIB_VENDOR="Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+LIB_VENDOR="Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
 C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
 run_suite "c" "C11 Native SDK" "${C_CMD}" "clang"
 

@@ -1,3 +1,0 @@
-[submodule "ext/fse"]
-	path = ext/fse
-	url = https://github.com/cyan4973/FiniteStateEntropy.git

@@ -90,14 +90,14 @@ BASELINE_SHA="$(git rev-parse "${BASELINE_REF}" 2>/dev/null || echo "unknown")"
 echo -e "\n\033[1;34m[1/4] Preparing Baseline Worktree (${BASELINE_REF} @ ${BASELINE_SHA:0:8})...\033[0m"
 git worktree add --detach "${WORKTREE_BASE}" "${BASELINE_REF}" >/dev/null
 
-# Link Vendor static libraries into baseline worktree if present in main repository
-if [[ -d "${REPO_ROOT}/Vendor/lib" && ! -d "${WORKTREE_BASE}/Vendor/lib" ]]; then
-    mkdir -p "${WORKTREE_BASE}/Vendor"
-    ln -sf "${REPO_ROOT}/Vendor/lib" "${WORKTREE_BASE}/Vendor/lib"
+# Link Frameworks static libraries into baseline worktree if present in main repository
+if [[ -d "${REPO_ROOT}/Frameworks/lib" && ! -d "${WORKTREE_BASE}/Frameworks/lib" ]]; then
+    mkdir -p "${WORKTREE_BASE}/Frameworks"
+    ln -sf "${REPO_ROOT}/Frameworks/lib" "${WORKTREE_BASE}/Frameworks/lib"
 fi
-if [[ -f "${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" && ! -f "${WORKTREE_BASE}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" ]]; then
-    mkdir -p "${WORKTREE_BASE}/Vendor/TTZipVendor.xcframework/macos-arm64"
-    ln -sf "${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" "${WORKTREE_BASE}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+if [[ -f "${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" && ! -f "${WORKTREE_BASE}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" ]]; then
+    mkdir -p "${WORKTREE_BASE}/Frameworks/TTZipVendor.xcframework/macos-arm64"
+    ln -sf "${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" "${WORKTREE_BASE}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
 fi
 
 cmake -S "${WORKTREE_BASE}" -B "${WORKTREE_BASE}/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-O3 -DNDEBUG" >/dev/null
@@ -116,13 +116,13 @@ else
     echo -e "\033[1;34m[2/4] Preparing Candidate Worktree (${CANDIDATE_REF} @ ${CANDIDATE_SHA:0:8})...\033[0m"
     git worktree add --detach "${WORKTREE_CAND}" "${CANDIDATE_REF}" >/dev/null
 
-    if [[ -d "${REPO_ROOT}/Vendor/lib" && ! -d "${WORKTREE_CAND}/Vendor/lib" ]]; then
-        mkdir -p "${WORKTREE_CAND}/Vendor"
-        ln -sf "${REPO_ROOT}/Vendor/lib" "${WORKTREE_CAND}/Vendor/lib"
+    if [[ -d "${REPO_ROOT}/Frameworks/lib" && ! -d "${WORKTREE_CAND}/Frameworks/lib" ]]; then
+        mkdir -p "${WORKTREE_CAND}/Frameworks"
+        ln -sf "${REPO_ROOT}/Frameworks/lib" "${WORKTREE_CAND}/Frameworks/lib"
     fi
-    if [[ -f "${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" && ! -f "${WORKTREE_CAND}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" ]]; then
-        mkdir -p "${WORKTREE_CAND}/Vendor/TTZipVendor.xcframework/macos-arm64"
-        ln -sf "${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" "${WORKTREE_CAND}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+    if [[ -f "${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" && ! -f "${WORKTREE_CAND}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" ]]; then
+        mkdir -p "${WORKTREE_CAND}/Frameworks/TTZipVendor.xcframework/macos-arm64"
+        ln -sf "${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a" "${WORKTREE_CAND}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
     fi
 
     cmake -S "${WORKTREE_CAND}" -B "${WORKTREE_CAND}/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-O3 -DNDEBUG" >/dev/null

@@ -1,5 +1,0 @@
-dist/
-node_modules/
-*.wasm
-*.mjs
-scripts/build.js

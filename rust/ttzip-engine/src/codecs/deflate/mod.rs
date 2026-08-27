@@ -19,7 +19,7 @@ mod pool;
 mod tests;
 
 pub use compressor::DeflateCompressor;
-pub use decompressor::DeflateDecompressor;
+pub use decompressor::{DeflateDecompressError, DeflateDecompressor};
 pub use ffi::LibdeflateResult;
 pub use pool::*;
 
@@ -63,8 +63,21 @@ pub fn gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus>
     with_thread_local_decompressor(|d| d.gzip_decompress(src, dst))
 }
 
-/// Upper bound calculation for raw DEFLATE compression.
-pub fn deflate_compress_bound(in_len: usize, level: i32) -> usize {
-    with_thread_local_compressor(level, |c| Ok(c.compress_bound(in_len)))
-        .unwrap_or(in_len + (in_len / 7) + 64)
+/// Zero-allocation, constant-time upper bound calculation for raw DEFLATE compression.
+#[inline]
+pub fn deflate_compress_bound(in_len: usize, _level: i32) -> usize {
+    unsafe { ffi::libdeflate_deflate_compress_bound(std::ptr::null_mut(), in_len) }
 }
+
+/// Zero-allocation, constant-time upper bound calculation for zlib compression.
+#[inline]
+pub fn zlib_compress_bound(in_len: usize, _level: i32) -> usize {
+    unsafe { ffi::libdeflate_zlib_compress_bound(std::ptr::null_mut(), in_len) }
+}
+
+/// Zero-allocation, constant-time upper bound calculation for gzip compression.
+#[inline]
+pub fn gzip_compress_bound(in_len: usize, _level: i32) -> usize {
+    unsafe { ffi::libdeflate_gzip_compress_bound(std::ptr::null_mut(), in_len) }
+}
+

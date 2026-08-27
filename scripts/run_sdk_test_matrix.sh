@@ -320,7 +320,7 @@ if check_category_enabled "unit"; then
         5
 
     # 5. C11 Native SDK
-    LIB_VENDOR="Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+    LIB_VENDOR="Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
     C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
     run_sdk_test "c" "C11 Native C-ABI Conformance" "${C_CMD}" 10
 

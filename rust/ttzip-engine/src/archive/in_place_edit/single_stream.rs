@@ -9,7 +9,7 @@
 
 use super::InPlaceAction;
 use crate::codecs::brotli::brotli_compress_to_vec;
-use crate::codecs::deflate::{deflate_compress_bound, gzip_compress};
+use crate::codecs::deflate::{gzip_compress, gzip_compress_bound};
 use crate::codecs::fast_blocks::lzfse_compress;
 use crate::codecs::lzma2::{fl2_compress, fl2_compress_bound};
 use crate::codecs::snappy::snappy_frame_encode_to_vec;
@@ -40,7 +40,7 @@ pub fn in_place_edit_single_stream(
 
     let comp_bytes = match format {
         DetectedFormat::Gzip => {
-            let max_bound = deflate_compress_bound(raw_data.len(), 6) + 64;
+            let max_bound = gzip_compress_bound(raw_data.len(), 6);
             let mut out = vec![0u8; max_bound];
             let len = gzip_compress(&raw_data, &mut out, 6)?;
             out.truncate(len);

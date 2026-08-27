@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 HEADER_FILE="${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
-STATIC_LIB="${REPO_ROOT}/Vendor/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+STATIC_LIB="${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
 
 if [ ! -f "${HEADER_FILE}" ]; then
     echo "❌ [ERROR] UniFFI Header file not found: ${HEADER_FILE}"

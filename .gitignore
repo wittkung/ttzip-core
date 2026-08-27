@@ -14,8 +14,13 @@ xcuserdata/
 *.xcuserstate
 *.xcworkspace
 *.dSYM/
-Vendor/TTZipVendor.xcframework/
+Frameworks/TTZipVendor.xcframework/
+Frameworks/*.dylib
+Frameworks/*.a
+vendor/
+upstream/
 *.a
+
 
 # Rust Cargo & UniFFI
 target/

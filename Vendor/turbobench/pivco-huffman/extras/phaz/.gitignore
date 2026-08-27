@@ -1,7 +1,0 @@
-/phaz
-/build/
-/results/
-# compressed/decompressed test outputs (and whatever the environment auto-generates)
-*.phaz
-*.zst
-*.out
