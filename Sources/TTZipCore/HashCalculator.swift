@@ -103,11 +103,11 @@ public enum HardwareChecksumAdapter {
     }
 }
 
-// MARK: - Libdeflate Accelerator
+// MARK: - Apple Libcompression Accelerator
 
-/// High-performance DEFLATE compression and decompression acceleration infrastructure.
-public final class LibdeflateAccelerator: @unchecked Sendable {
-    public static let shared = LibdeflateAccelerator()
+/// High-performance DEFLATE compression and decompression acceleration infrastructure using Apple's libcompression.
+public final class AppleLibcompressionAccelerator: @unchecked Sendable {
+    public static let shared = AppleLibcompressionAccelerator()
     
     private init() {}
     

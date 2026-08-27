@@ -178,16 +178,46 @@ public actor CommandHistoryManager {
         return Array(sorted.prefix(limit))
     }
     
-    /// Constructs `ArchiveTaskRecord` from command execution.
+    /// Constructs `ArchiveTaskRecord` from command execution with real parameters.
     public func makeRecord(for command: ArchiveCommandProtocol, isSuccess: Bool) -> ArchiveTaskRecord {
+        let archivePath: String
+        let targetPath: String
+        let fileSize: Int64
+        let fileManager = FileManager.default
+
+        if let compressCmd = command as? CompressCommand {
+            archivePath = compressCmd.outputPath
+            targetPath = compressCmd.inputs.first ?? compressCmd.outputPath
+            if let attr = try? fileManager.attributesOfItem(atPath: compressCmd.outputPath),
+               let size = attr[.size] as? Int64 {
+                fileSize = size
+            } else {
+                fileSize = compressCmd.inputs.reduce(Int64(0)) { $0 + ArchiveWriter.recursivePathSize(at: $1) }
+            }
+        } else if let extractCmd = command as? ExtractCommand {
+            archivePath = extractCmd.archivePath
+            targetPath = extractCmd.destinationDir
+            let attr = try? fileManager.attributesOfItem(atPath: extractCmd.archivePath)
+            fileSize = (attr?[.size] as? Int64) ?? 0
+        } else if let repairCmd = command as? RepairCommand {
+            archivePath = repairCmd.damagedPath
+            targetPath = repairCmd.outputPath
+            let attr = (try? fileManager.attributesOfItem(atPath: repairCmd.outputPath)) ?? (try? fileManager.attributesOfItem(atPath: repairCmd.damagedPath))
+            fileSize = (attr?[.size] as? Int64) ?? 0
+        } else {
+            archivePath = command.commandId
+            targetPath = ""
+            fileSize = 0
+        }
+
         return ArchiveTaskRecord(
             id: UUID(),
             commandName: command.description,
-            archivePath: "archive_\(command.commandId.prefix(8)).zip",
-            targetPath: "/tmp/TTZip/Output",
+            archivePath: archivePath,
+            targetPath: targetPath,
             isSuccess: isSuccess,
             timestamp: Date(),
-            fileSizeByte: 1024
+            fileSizeByte: fileSize
         )
     }
     
@@ -200,15 +230,7 @@ public actor CommandHistoryManager {
             self.pushUndo(command)
         }
         
-        let record = ArchiveTaskRecord(
-            id: UUID(),
-            commandName: command.description,
-            archivePath: "archive_\(command.commandId.prefix(8)).zip",
-            targetPath: "/tmp/TTZip/Output",
-            isSuccess: result.success,
-            timestamp: Date(),
-            fileSizeByte: 1024
-        )
+        let record = self.makeRecord(for: command, isSuccess: result.success)
         self.appendRecord(record)
         
         return result

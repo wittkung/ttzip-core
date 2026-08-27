@@ -15,6 +15,9 @@ use pyo3::types::{PyByteArray, PyBytes};
 use std::ffi::{CStr, CString};
 use std::io::Cursor;
 use std::sync::Mutex;
+use ttzip_engine::codecs::deflate::{
+    deflate_compress, deflate_compress_bound, deflate_decompress,
+};
 use ttzip_engine::codecs::fast_blocks::{
     lz4_compress, lz4_compress_bound, lz4_decompress, lzfse_compress, lzfse_decompress,
     snappy_compress, snappy_decompress, snappy_max_compressed_length, snappy_uncompressed_length,
@@ -357,8 +360,19 @@ fn decompress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &st
     let decompressed: Vec<u8> = py.allow_threads(|| -> Result<Vec<u8>, String> {
         match fmt.as_str() {
             "deflate" | "zip" => {
-                miniz_oxide::inflate::decompress_to_vec(input_bytes)
-                    .map_err(|e| format!("Deflate decompression failed: {:?}", e))
+                let mut dst = vec![0u8; (input_bytes.len() * 4 + 4096).max(65536)];
+                loop {
+                    match deflate_decompress(input_bytes, &mut dst) {
+                        Ok(written) => {
+                            dst.truncate(written);
+                            break Ok(dst);
+                        }
+                        Err(TTZipStatus::ErrExtractionFailed) if dst.len() < 2 * 1024 * 1024 * 1024 => {
+                            dst.resize(dst.len() * 2, 0u8);
+                        }
+                        Err(st) => break Err(format!("Deflate decompression failed: code {}", st as i32)),
+                    }
+                }
             }
             "zstd" => {
                 let content_size = zstd_get_decompressed_size(input_bytes).unwrap_or(0);
@@ -437,8 +451,16 @@ fn compress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &str,
     let compressed: Vec<u8> = py.allow_threads(|| -> Result<Vec<u8>, String> {
         match fmt.as_str() {
             "deflate" | "zip" => {
-                let cl = (level.clamp(0, 10)) as u8;
-                Ok(miniz_oxide::deflate::compress_to_vec(input_bytes, cl))
+                let cl = level.clamp(0, 12);
+                let bound = deflate_compress_bound(input_bytes.len(), cl);
+                let mut dst = vec![0u8; bound];
+                match deflate_compress(input_bytes, &mut dst, cl) {
+                    Ok(written) => {
+                        dst.truncate(written);
+                        Ok(dst)
+                    }
+                    Err(st) => Err(format!("Deflate compression failed: code {}", st as i32)),
+                }
             }
             "zstd" => {
                 let bound = zstd_compress_bound(input_bytes.len()) + 128;
@@ -506,13 +528,8 @@ fn decompress_into(py: Python<'_>, data: &Bound<'_, PyAny>, dst_buffer: &Bound<'
         let out_slice = unsafe { std::slice::from_raw_parts_mut(dst_ptr as *mut u8, dst_len) };
         match fmt.as_str() {
             "deflate" | "zip" => {
-                let decomp = miniz_oxide::inflate::decompress_to_vec(input_bytes)
-                    .map_err(|e| format!("Deflate decompression failed: {:?}", e))?;
-                if decomp.len() > out_slice.len() {
-                    return Err("Destination buffer too small for decompressed data".to_string());
-                }
-                out_slice[..decomp.len()].copy_from_slice(&decomp);
-                Ok(decomp.len())
+                deflate_decompress(input_bytes, out_slice)
+                    .map_err(|st| format!("Deflate direct decompression failed: code {}", st as i32))
             }
             "zstd" => {
                 zstd_decompress(input_bytes, out_slice)

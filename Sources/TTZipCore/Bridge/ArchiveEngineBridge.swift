@@ -218,17 +218,18 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         try Task.checkCancellation()
         
         return try await Task.detached(priority: .userInitiated) {
-            let writer = ArchiveWriter(targetFormat: self.supportedFormat)
-            try writer.createArchiveSync(
+            let uniffiFmt = ArchiveWriter.mapUniFFIFormat(self.supportedFormat)
+            let report = try createArchiveStream(
+                sourcePaths: inputPaths,
                 outputPath: outputPath,
-                format: self.supportedFormat,
-                level: .normal,
-                inputPaths: inputPaths,
-                options: .defaultClean,
-                advancedOptions: options
+                format: uniffiFmt,
+                level: 5,
+                password: nil,
+                progress: nil,
+                token: nil
             )
             let attr = try? FileManager.default.attributesOfItem(atPath: outputPath)
-            return (attr?[.size] as? Int64) ?? 0
+            return (attr?[.size] as? Int64) ?? Int64(report.compressedBytes)
         }.value
     }
 
@@ -240,13 +241,14 @@ public final class RustUnifiedArchiveEngineBridgeImplementor: ArchiveEngineImple
         try Task.checkCancellation()
 
         return try await Task.detached(priority: .userInitiated) {
-            let extractor = ArchiveExtractor(targetFormat: self.supportedFormat)
-            return try extractor.extractSync(
+            let report = try extractArchiveStream(
                 archivePath: archivePath,
                 destinationDir: destinationDir,
-                options: .defaultClean,
-                advancedOptions: options
+                password: nil,
+                progress: nil,
+                token: nil
             )
+            return Int64(report.uncompressedBytes)
         }.value
     }
 }

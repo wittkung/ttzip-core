@@ -6,6 +6,7 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
+import os
 
 // MARK: - Internal Closure Context Box
 
@@ -97,41 +98,36 @@ public enum ConcurrencyBridge {
 
     /// High-resolution, zero-allocation lock-free stream bridge connecting worker callbacks to SwiftUI 60fps loops.
     public final class ProgressStreamBridge: @unchecked Sendable {
+        private struct StreamState {
+            var lastEmitNanos: UInt64 = 0
+            var isCancelledFlag: Bool = false
+        }
+
         private let continuation: AsyncStream<ArchiveProgress>.Continuation?
-        private var lastEmitNanos: UInt64 = 0
-        private var isCancelledFlag: Bool = false
-        private let lock = os_unfair_lock_t.allocate(capacity: 1)
+        private let stateLock: OSAllocatedUnfairLock<StreamState>
 
         public init(continuation: AsyncStream<ArchiveProgress>.Continuation? = nil) {
             self.continuation = continuation
-            lock.initialize(to: os_unfair_lock())
-        }
-
-        deinit {
-            lock.deinitialize(count: 1)
-            lock.deallocate()
+            self.stateLock = OSAllocatedUnfairLock(initialState: StreamState())
         }
 
         public var isCancelled: Bool {
-            os_unfair_lock_lock(lock)
-            defer { os_unfair_lock_unlock(lock) }
-            return isCancelledFlag
+            stateLock.withLock { $0.isCancelledFlag }
         }
 
         public func markCancelled() {
-            os_unfair_lock_lock(lock)
-            isCancelledFlag = true
-            os_unfair_lock_unlock(lock)
+            stateLock.withLock { $0.isCancelledFlag = true }
         }
 
         public func cancel() {
-            os_unfair_lock_lock(lock)
-            if isCancelledFlag {
-                os_unfair_lock_unlock(lock)
-                return
+            let alreadyCancelled = stateLock.withLock { s -> Bool in
+                if s.isCancelledFlag {
+                    return true
+                }
+                s.isCancelledFlag = true
+                return false
             }
-            isCancelledFlag = true
-            os_unfair_lock_unlock(lock)
+            if alreadyCancelled { return }
             continuation?.yield(ArchiveProgress(state: .cancelled))
             continuation?.finish()
         }
@@ -144,20 +140,21 @@ public enum ConcurrencyBridge {
             force: Bool = false
         ) {
             let nowNanos = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
-            os_unfair_lock_lock(lock)
-            if isCancelledFlag {
-                os_unfair_lock_unlock(lock)
-                return
+            let shouldEmit = stateLock.withLock { s -> Bool in
+                if s.isCancelledFlag {
+                    return false
+                }
+
+                // 16.6ms throttling window (~16_666_667 nanos) unless force is true or terminal state
+                let elapsed = nowNanos > s.lastEmitNanos ? (nowNanos - s.lastEmitNanos) : 0
+                if !force && state == .processing && elapsed < 16_666_667 {
+                    return false
+                }
+                s.lastEmitNanos = nowNanos
+                return true
             }
 
-            // 16.6ms throttling window (~16_666_667 nanos) unless force is true or terminal state
-            let elapsed = nowNanos > lastEmitNanos ? (nowNanos - lastEmitNanos) : 0
-            if !force && state == .processing && elapsed < 16_666_667 {
-                os_unfair_lock_unlock(lock)
-                return
-            }
-            lastEmitNanos = nowNanos
-            os_unfair_lock_unlock(lock)
+            guard shouldEmit else { return }
 
             let progress = ArchiveProgress(
                 state: state,

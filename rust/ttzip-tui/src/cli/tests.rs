@@ -171,6 +171,9 @@ fn test_completions_generation() {
     assert!(execute_completions("bash").is_ok());
     assert!(execute_completions("zsh").is_ok());
     assert!(execute_completions("fish").is_ok());
+    assert!(execute_completions("powershell").is_ok());
+    assert!(execute_completions("pwsh").is_ok());
+    assert!(execute_completions("elvish").is_ok());
     assert!(execute_completions("unknown_shell").is_err());
 }
 

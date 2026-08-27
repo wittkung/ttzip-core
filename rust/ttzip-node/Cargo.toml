@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ttzip-engine = { path = "../ttzip-engine", version = "1.0.0" }
-napi = { version = "2.16", default-features = false, features = ["napi4", "async", "tokio_rt"] }
+napi = { version = "2.16", default-features = false, features = ["napi4"] }
 napi-derive = "2.16"
 
 [build-dependencies]

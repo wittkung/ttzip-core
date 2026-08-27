@@ -6,7 +6,6 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CryptoKit
 
 public enum ArchiveError: Error, LocalizedError, Equatable {
     case fileNotFound

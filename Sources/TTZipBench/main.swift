@@ -6,7 +6,6 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import Compression
 import TTZipCore
 
 func printHelp() {
@@ -43,7 +42,7 @@ func executeGateBenchmark(jsonOut: String?) -> Bool {
 
     // 2. Real Deflate Benchmark (Hardware-Accelerated In-Memory)
     let tDeflateCompStart = DispatchTime.now().uptimeNanoseconds
-    guard let deflateCompressed = LibdeflateAccelerator.shared.compressData(rawData, level: 6) else {
+    guard let deflateCompressed = AppleLibcompressionAccelerator.shared.compressData(rawData, level: 6) else {
         print("❌ GATE FAILED: Deflate compression failed.")
         return false
     }
@@ -52,7 +51,7 @@ func executeGateBenchmark(jsonOut: String?) -> Bool {
     let deflateCompThroughput = sizeMB / max(0.0001, deflateCompSec)
 
     let tDeflateDecompStart = DispatchTime.now().uptimeNanoseconds
-    guard let deflateDecompressed = LibdeflateAccelerator.shared.decompressData(deflateCompressed, originalSize: rawData.count) else {
+    guard let deflateDecompressed = AppleLibcompressionAccelerator.shared.decompressData(deflateCompressed, originalSize: rawData.count) else {
         print("❌ GATE FAILED: Deflate decompression failed.")
         return false
     }
@@ -168,7 +167,7 @@ func executePipelineBenchmark(jsonOut: String?) {
 
         // 1. Measure Isolated In-Memory Codec speed
         let tIsolatedStart = DispatchTime.now().uptimeNanoseconds
-        let compressed = LibdeflateAccelerator.shared.compressData(rawData)
+        let compressed = AppleLibcompressionAccelerator.shared.compressData(rawData)
         let tIsolatedEnd = DispatchTime.now().uptimeNanoseconds
         guard compressed != nil else {
             print("❌ Failed isolated compression.")
