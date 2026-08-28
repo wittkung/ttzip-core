@@ -403,7 +403,7 @@ pub fn create_archive_stream(
         2..=4 => crate::types::TTZipCompressionLevel::Fast,
         5..=6 => crate::types::TTZipCompressionLevel::Normal,
         7..=9 => crate::types::TTZipCompressionLevel::Maximum,
-        10..=12 => crate::types::TTZipCompressionLevel::Ultra,
+        10..=22 => crate::types::TTZipCompressionLevel::Ultra,
         _ => crate::types::TTZipCompressionLevel::Normal,
     };
 
@@ -435,18 +435,48 @@ pub fn create_archive_stream(
             }
         })?;
 
+    fn calculate_paths_uncompressed_bytes(paths: &[std::path::PathBuf]) -> u64 {
+        fn calculate_single(path: &std::path::Path) -> u64 {
+            if path.is_file() {
+                std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+            } else if path.is_dir() {
+                let mut total = 0;
+                if let Ok(entries) = std::fs::read_dir(path) {
+                    for entry in entries.flatten() {
+                        total += calculate_single(&entry.path());
+                    }
+                }
+                total
+            } else {
+                0
+            }
+        }
+        paths.iter().map(|p| calculate_single(p)).sum()
+    }
+
     let elapsed = start.elapsed();
     let elapsed_nanos = elapsed.as_nanos() as u64;
     let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
     let comp_size = std::fs::metadata(out_p).map(|m| m.len()).unwrap_or(0);
-    let throughput_mbs = (comp_size as f64 / (1024.0 * 1024.0)) / elapsed_secs;
+    let uncompressed_bytes = calculate_paths_uncompressed_bytes(&paths);
+    let benchmark_bytes = if uncompressed_bytes > 0 {
+        uncompressed_bytes
+    } else {
+        comp_size
+    };
+    let throughput_mbs = (benchmark_bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
+    let space_savings_pct = if uncompressed_bytes > 0 && comp_size <= uncompressed_bytes {
+        ((uncompressed_bytes - comp_size) as f64 / uncompressed_bytes as f64) * 100.0
+    } else {
+        0.0
+    };
 
     Ok(CompressionReport {
-        uncompressed_bytes: comp_size,
+        uncompressed_bytes,
         compressed_bytes: comp_size,
         elapsed_nanos,
         throughput_mbs,
-        space_savings_pct: 0.0,
+        space_savings_pct,
         engine_provenance: "Mozilla UniFFI Native Create Pipeline".to_string(),
     })
 }

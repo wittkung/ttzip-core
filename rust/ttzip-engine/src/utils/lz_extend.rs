@@ -39,16 +39,21 @@ pub fn lz_extend(src: &[u8], match_slice: &[u8], start_len: usize) -> usize {
 
     let mut len = start_len;
 
-    // Fast SWAR 8-byte comparison loop
-    while len + 8 <= max_len {
-        let s = u64::from_le_bytes(src[len..len + 8].try_into().unwrap());
-        let m = u64::from_le_bytes(match_slice[len..len + 8].try_into().unwrap());
-        let diff = s ^ m;
-        if diff != 0 {
-            let matched_bytes = (diff.trailing_zeros() / 8) as usize;
-            return len + matched_bytes;
+    // Fast SWAR 8-byte comparison loop with single margin guard
+    if max_len >= 8 {
+        let limit = max_len - 8;
+        let s_ptr = src.as_ptr();
+        let m_ptr = match_slice.as_ptr();
+        while len <= limit {
+            let s = unsafe { (s_ptr.add(len) as *const u64).read_unaligned() }.to_le();
+            let m = unsafe { (m_ptr.add(len) as *const u64).read_unaligned() }.to_le();
+            let diff = s ^ m;
+            if diff != 0 {
+                let matched_bytes = (diff.trailing_zeros() / 8) as usize;
+                return len + matched_bytes;
+            }
+            len += 8;
         }
-        len += 8;
     }
 
     // Scalar tail loop for remaining 0..7 bytes
@@ -77,15 +82,18 @@ pub unsafe fn lz_extend_raw(
 
     let mut len = start_len;
 
-    while len + 8 <= max_len {
-        let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
-        let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
-        let diff = s ^ m;
-        if diff != 0 {
-            let matched_bytes = (diff.trailing_zeros() / 8) as usize;
-            return len + matched_bytes;
+    if max_len >= 8 {
+        let limit = max_len - 8;
+        while len <= limit {
+            let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
+            let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
+            let diff = s ^ m;
+            if diff != 0 {
+                let matched_bytes = (diff.trailing_zeros() / 8) as usize;
+                return len + matched_bytes;
+            }
+            len += 8;
         }
-        len += 8;
     }
 
     while len < max_len && *src_ptr.add(len) == *match_ptr.add(len) {

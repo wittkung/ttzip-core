@@ -113,19 +113,19 @@
 brew install wittkung/ttzip/ttzip-cli
 ```
 
-### 2. 原生一键构建与安装
+### 2. 编译 ttzip CLI 与微内核
 
-一行命令自动编译并将 `TTZip.app` 安装至 `/Applications`，同时将 `ttzip` / `ttzip-cli` 软链至系统环境变量：
+编译纯 Rust 高性能 POSIX CLI 终端工具与微内核库：
 
 ```bash
-git clone https://github.com/wittkung/TTZip.git
-cd TTZip
+git clone https://github.com/wittkung/ttzip-core.git
+cd ttzip-core
 
-# 选项 A: 通过 Makefile 编译并安装
-make reinstall
+# 选项 A: 通过 Makefile 编译 CLI
+make cli
 
-# 选项 B: 在 Finder 中双击运行或在终端中执行
-./Install-TTZip.command
+# 选项 B: 通过 Cargo workspace 直接编译
+cd rust && cargo build --release --bin ttzip
 ```
 
 ### 3. 通过 Swift Package Manager (SwiftPM) 编译

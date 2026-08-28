@@ -143,13 +143,7 @@ impl<'a> TarArchive<'a> {
 
                 if entry.is_symlink {
                     if let Some(target) = &entry.link_target {
-                        if let Some(parent) = safe_path.parent() {
-                            let _ = fs::create_dir_all(parent);
-                        }
-                        if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
-                            let _ = fs::remove_file(&safe_path);
-                        }
-                        let _ = std::os::unix::fs::symlink(target.as_ref(), &safe_path);
+                        validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
                     }
                 } else {
                     if let Some(parent) = safe_path.parent() {
@@ -190,13 +184,7 @@ impl<'a> TarArchive<'a> {
 
                     if entry.is_symlink {
                         if let Some(target) = &entry.link_target {
-                            if let Some(parent) = safe_path.parent() {
-                                let _ = fs::create_dir_all(parent);
-                            }
-                            if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
-                                let _ = fs::remove_file(&safe_path);
-                            }
-                            let _ = std::os::unix::fs::symlink(target.as_ref(), &safe_path);
+                            validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
                         }
                     } else {
                         if let Some(parent) = safe_path.parent() {
@@ -232,4 +220,45 @@ impl<'a> TarArchive<'a> {
             duration_ms: start_time.elapsed().as_millis() as u64,
         })
     }
+}
+
+/// Validates symlink target invariants to prevent sandbox escapes (Zip-Slip via symlink)
+/// and safely extracts the symbolic link to the sanitized destination path.
+fn validate_and_extract_symlink(
+    dest_dir: &Path,
+    safe_path: &Path,
+    target: &str,
+) -> Result<(), TTZipStatus> {
+    // 1. Reject absolute symlink targets
+    if target.starts_with('/') || target.starts_with('\\') {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // 2. Validate that relative symlink target does not escape destination root sandbox
+    let parent_dir = safe_path.parent().unwrap_or(dest_dir);
+    let resolved_target = parent_dir.join(target);
+    match resolved_target.strip_prefix(dest_dir) {
+        Ok(rel_to_dest) => {
+            let rel_str = rel_to_dest.to_string_lossy();
+            if !rel_str.is_empty() && sanitize_and_validate_path(dest_dir, &rel_str).is_err() {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+        }
+        Err(_) => {
+            // Target points outside dest_dir
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+    }
+
+    // 3. Verify that no intermediate path segment is a symlink
+    crate::fs::safe_extract::validate_no_intermediate_symlinks(dest_dir, safe_path)?;
+
+    // 4. Safely ensure parent directory exists and atomically link
+    if let Some(parent) = safe_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if safe_path.exists() || fs::symlink_metadata(safe_path).is_ok() {
+        let _ = fs::remove_file(safe_path);
+    }
+    std::os::unix::fs::symlink(target, safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)
 }

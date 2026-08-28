@@ -12,25 +12,31 @@ public enum EngineProvenanceCollector {
     @inline(__always)
     public static func capture<T>(
         expectedEngine: EngineExecutionTag = .rustStreamingParallelZip,
+        uncompressedBytes: Int64 = 0,
+        compressedBytes: Int64 = 0,
+        kernelDurationNanos: UInt64? = nil,
         operation: () throws -> T
     ) rethrows -> (result: T, provenance: EngineDispatchProvenance) {
         let t0 = DispatchTime.now().uptimeNanoseconds
         let result = try operation()
         let t1 = DispatchTime.now().uptimeNanoseconds
         let totalNanos = t1 - t0
+        let kernelNanos = kernelDurationNanos ?? totalNanos
+        let ffiNanos = totalNanos >= kernelNanos ? (totalNanos - kernelNanos) : 0
 
         let provenance = EngineDispatchProvenance(
             engineTag: expectedEngine,
             threadCount: ProcessInfo.processInfo.activeProcessorCount,
-            uncompressedBytes: 1024 * 1024,
-            compressedBytes: 512 * 1024,
-            kernelDurationNanos: totalNanos,
-            isFallback: false,
+            uncompressedBytes: max(1, uncompressedBytes),
+            compressedBytes: max(1, compressedBytes),
+            kernelDurationNanos: kernelNanos,
+            isFallback: !expectedEngine.isPureRust,
             fallbackReason: nil,
-            ffiBridgeOverheadNanos: 100,
+            ffiBridgeOverheadNanos: ffiNanos,
             totalE2EDurationNanos: totalNanos
         )
 
         return (result, provenance)
     }
 }
+

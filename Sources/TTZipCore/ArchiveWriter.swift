@@ -80,7 +80,7 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
         try Task.checkCancellation()
 
-        try await Task.detached(priority: .userInitiated) { [weak self] in
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
             guard let self = self else { return }
             try self.createArchiveSync(
                 outputPath: outputPath,
@@ -94,7 +94,7 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
                 progressHandler: progressHandler,
                 token: token
             )
-        }.value
+        }
     }
 
     /// Synchronously creates an archive bypassing Task queue context-switches.
@@ -147,7 +147,17 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) throws -> EngineDispatchProvenance {
-        let (_, provenance) = try EngineProvenanceCollector.capture {
+        var totalInputBytes: Int64 = 0
+        for path in inputPaths {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+               let size = attrs[.size] as? Int64 {
+                totalInputBytes += size
+            }
+        }
+        let (_, provenance) = try EngineProvenanceCollector.capture(
+            expectedEngine: format == .sevenZip ? .rustZeroCopy7zDecoder : .rustStreamingParallelZip,
+            uncompressedBytes: totalInputBytes
+        ) {
             try self.createArchiveSync(
                 outputPath: outputPath,
                 format: format,
@@ -160,8 +170,20 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
                 progressHandler: progressHandler
             )
         }
-        return provenance
+        let outputBytes = (try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? Int64) ?? provenance.compressedBytes
+        return EngineDispatchProvenance(
+            engineTag: provenance.engineTag,
+            threadCount: provenance.threadCount,
+            uncompressedBytes: provenance.uncompressedBytes,
+            compressedBytes: max(1, outputBytes),
+            kernelDurationNanos: provenance.kernelDurationNanos,
+            isFallback: provenance.isFallback,
+            fallbackReason: provenance.fallbackReason,
+            ffiBridgeOverheadNanos: provenance.ffiBridgeOverheadNanos,
+            totalE2EDurationNanos: provenance.totalE2EDurationNanos
+        )
     }
+
 
     // MARK: - Format Mappings
 
@@ -197,7 +219,7 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
     }
 
     internal static func mapUniFFILevel(_ level: ArchiveCompressionLevel) -> Int32 {
-        Int32(max(0, min(12, level.rawValue)))
+        Int32(max(0, min(22, level.rawValue)))
     }
 }
 

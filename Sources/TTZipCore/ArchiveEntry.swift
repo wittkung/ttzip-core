@@ -60,11 +60,13 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
         encryptionMethod: String? = nil
     ) {
         self.path = path
-        if let lastSlash = path.lastIndex(of: "/") {
-            self.name = String(path[path.index(after: lastSlash)...])
+        let trimmed = (path.hasSuffix("/") && path.count > 1) ? String(path.dropLast()) : path
+        if let lastSlash = trimmed.lastIndex(of: "/") {
+            self.name = String(trimmed[trimmed.index(after: lastSlash)...])
         } else {
-            self.name = path
+            self.name = trimmed
         }
+
         self.uncompressedSize = uncompressedSize
         self.isDirectory = isDirectory
         self.detectedEncoding = detectedEncoding

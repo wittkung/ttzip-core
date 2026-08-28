@@ -333,6 +333,77 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result, 5050)
     }
+
+    // MARK: - 9. Zstd Ultra-Extreme Levels (19 & 22) End-to-End Roundtrip
+
+    func testArchiveWriterZstdUltraLevelsEndToEndRoundtrip() async throws {
+        let writer = ArchiveWriter()
+        let extractor = ArchiveExtractor()
+        let srcFile = sandbox.fileURL(named: "repetitive_payload.txt")
+        let repData = Data(repeating: 0x42, count: 512 * 1024) // 512KB
+        try repData.write(to: srcFile)
+
+        // 1. Test Level 19 (Extreme Opt-Parser)
+        let zst19URL = sandbox.fileURL(named: "archive_lvl19.tar.zst")
+        let dest19 = try sandbox.createSubdirectory("ext_19")
+        try await writer.createArchive(
+            outputPath: zst19URL.path,
+            format: .tarZst,
+            level: ArchiveCompressionLevel(levelInt: 19),
+            inputPaths: [srcFile.path]
+        )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: zst19URL.path))
+        try await extractor.extractArchive(archivePath: zst19URL.path, destinationDir: dest19.path)
+        XCTAssertEqual(try Data(contentsOf: dest19.appendingPathComponent("repetitive_payload.txt")), repData)
+
+        // 2. Test Level 22 (Ultra-Extreme Maximum)
+        let zst22URL = sandbox.fileURL(named: "archive_lvl22.tar.zst")
+        let dest22 = try sandbox.createSubdirectory("ext_22")
+        try await writer.createArchive(
+            outputPath: zst22URL.path,
+            format: .tarZst,
+            level: ArchiveCompressionLevel(levelInt: 22),
+            inputPaths: [srcFile.path]
+        )
+        XCTAssertTrue(FileManager.default.fileExists(atPath: zst22URL.path))
+        try await extractor.extractArchive(archivePath: zst22URL.path, destinationDir: dest22.path)
+        XCTAssertEqual(try Data(contentsOf: dest22.appendingPathComponent("repetitive_payload.txt")), repData)
+    }
+
+    // MARK: - 10. ArchiveWriter Cancellation & Empty Paths Validation
+
+    func testArchiveWriterCancellationAndEmptyPathsValidation() async throws {
+        let writer = ArchiveWriter()
+        let outURL = sandbox.fileURL(named: "cancelled.zip")
+
+        // 1. Empty input paths validation
+        do {
+            try await writer.createArchive(outputPath: outURL.path, format: .zip, inputPaths: [])
+            XCTFail("Should throw error on empty inputPaths")
+        } catch {
+            XCTAssertTrue(error is ArchiveError)
+        }
+
+        // 2. Pre-cancelled token validation
+        let token = CancellationToken()
+        token.cancel()
+        let sampleFile = sandbox.fileURL(named: "sample.txt")
+        try "data".write(to: sampleFile, atomically: true, encoding: .utf8)
+
+        do {
+            try await writer.createArchive(
+                outputPath: outURL.path,
+                format: .zip,
+                inputPaths: [sampleFile.path],
+                token: token
+            )
+            XCTFail("Should throw cancelled error")
+        } catch ArchiveError.cancelled {
+            // Expected
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
 }
 
 private final class LockedCounter: @unchecked Sendable {

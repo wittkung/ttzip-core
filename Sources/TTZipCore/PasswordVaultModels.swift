@@ -316,16 +316,26 @@ public final class ArchivePasswordStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         for key in passwords.keys {
-            passwords[key] = ""
+            if var pwd = passwords[key] {
+                eraseSensitiveString(&pwd)
+            }
         }
         passwords.removeAll(keepingCapacity: false)
         lruOrder.removeAll(keepingCapacity: false)
     }
 }
 
-/// Helper function to overwrite sensitive string contents in memory.
+/// Helper function to overwrite sensitive string contents with zeroed memory (memset_s).
 @inline(__always)
 public func eraseSensitiveString(_ str: inout String) {
-    str.replaceSubrange(str.startIndex..<str.endIndex, with: repeatElement("\0", count: str.count))
-    str = ""
+    let count = str.utf8.count
+    if count > 0 {
+        var mutableStr = str
+        mutableStr.withUTF8 { buffer in
+            if let base = buffer.baseAddress {
+                memset_s(UnsafeMutableRawPointer(mutating: base), buffer.count, 0, buffer.count)
+            }
+        }
+        str = ""
+    }
 }

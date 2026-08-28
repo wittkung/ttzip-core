@@ -350,3 +350,37 @@ fn test_in_place_zip_stream_splicing_zero_recompression_and_integrity() {
     let _ = fs::remove_dir_all(&temp_dir);
 }
 
+#[test]
+fn test_in_place_single_stream_multi_codec_and_zstd_streaming() {
+    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_single_multi_{}", std::process::id()));
+    let _ = fs::create_dir_all(&temp_dir);
+
+    // 1. Test Zstandard in-place update
+    let zst_path = temp_dir.join("test_file.txt.zst");
+    let initial_data = b"Initial Zstandard Single Stream Payload 2026";
+    let mut zst_buf = vec![0u8; crate::codecs::zstd::zstd_compress_bound(initial_data.len())];
+    let c_len = crate::codecs::zstd::zstd_compress(initial_data, &mut zst_buf, 3).unwrap();
+    zst_buf.truncate(c_len);
+    fs::write(&zst_path, &zst_buf).unwrap();
+
+    let rep_file = temp_dir.join("rep_zstd.txt");
+    fs::write(&rep_file, b"Updated Zstandard Single Stream Content Successfully!").unwrap();
+
+    let mut session = InPlaceArchiveSession::begin(&zst_path, None).unwrap();
+    session.replace("test_file.txt", &rep_file).unwrap();
+    session.commit().unwrap();
+
+    let updated_zst = fs::read(&zst_path).unwrap();
+    let mut decomp = vec![0u8; 1024];
+    let d_len = crate::codecs::zstd::zstd_decompress(&updated_zst, &mut decomp).unwrap();
+    assert_eq!(&decomp[..d_len], b"Updated Zstandard Single Stream Content Successfully!");
+
+    // 2. Test Invalid Action (Delete only on single-file stream -> ErrInvalidParam)
+    let mut bad_session = InPlaceArchiveSession::begin(&zst_path, None).unwrap();
+    bad_session.delete("test_file.txt").unwrap();
+    let res = bad_session.commit();
+    assert_eq!(res, Err(TTZipStatus::ErrInvalidParam));
+
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+

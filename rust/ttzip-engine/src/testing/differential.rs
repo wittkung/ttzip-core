@@ -6,7 +6,7 @@
 // TTZip: High-performance native archiving and compression engine.
 
 //! Rayon-accelerated multi-core concurrent directory tree scanner, 5-dimension manifest
-//! comparison engine, and libarchive Golden Oracle differential verifier.
+//! comparison engine, and libarchive/system-tool Golden Oracle differential verifier.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
@@ -17,13 +17,12 @@ use std::slice;
 
 use libc::{c_char, mode_t, readlink, stat, PATH_MAX, S_IFDIR, S_IFLNK, S_IFMT};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::crypto::sha256::FastSha256;
 use crate::testing::hex_diff::generate_hex_diff;
 use crate::types::TTZipStatus;
-
-use serde::{Deserialize, Serialize};
 
 // MARK: - Entry Types and Manifest Models
 
@@ -50,18 +49,12 @@ impl EntryType {
             EntryType::HardLink => "hardlink",
         }
     }
-
-    pub fn parse_type(s: &str) -> Self {
-        s.parse().unwrap_or(EntryType::RegularFile)
-    }
 }
 
 impl std::str::FromStr for EntryType {
     type Err = std::convert::Infallible;
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
-            "regular" | "regularFile" => EntryType::RegularFile,
             "directory" => EntryType::Directory,
             "symlink" | "symbolicLink" => EntryType::SymbolicLink,
             "hardlink" | "hardLink" => EntryType::HardLink,
@@ -91,14 +84,7 @@ impl ManifestEntry {
         posix_mode: u16,
         symlink_target: Option<String>,
     ) -> Self {
-        Self {
-            relative_path,
-            entry_type,
-            byte_size,
-            sha256_checksum,
-            posix_mode,
-            symlink_target,
-        }
+        Self { relative_path, entry_type, byte_size, sha256_checksum, posix_mode, symlink_target }
     }
 }
 
@@ -162,14 +148,11 @@ pub fn compute_file_sha256(path: &Path, file_size: u64) -> String {
     if file_size == 0 {
         return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string();
     }
-
     if file_size <= 64 * 1024 * 1024 {
         if let Ok(bytes) = fs::read(path) {
-            let digest = FastSha256::digest(&bytes);
-            return hex_string(&digest);
+            return hex_string(&FastSha256::digest(&bytes));
         }
     }
-
     use std::io::Read;
     if let Ok(mut file) = fs::File::open(path) {
         let mut hasher = FastSha256::new();
@@ -178,10 +161,8 @@ pub fn compute_file_sha256(path: &Path, file_size: u64) -> String {
             if n == 0 { break; }
             hasher.update(&buffer[..n]);
         }
-        let digest = hasher.finalize();
-        return hex_string(&digest);
+        return hex_string(&hasher.finalize());
     }
-
     String::new()
 }
 
@@ -207,8 +188,7 @@ struct RawFsItem {
     symlink_target: Option<String>,
 }
 
-/// Recursively traverses a directory and returns a normalized `FileTreeManifest`
-/// using Rayon multi-core work-stealing for SHA-256 calculation.
+/// Recursively traverses a directory and returns a normalized `FileTreeManifest`.
 pub fn scan_directory_tree(root_path: &Path) -> Result<FileTreeManifest, TTZipStatus> {
     if !root_path.exists() || !root_path.is_dir() {
         return Err(TTZipStatus::ErrFileNotFound);
@@ -268,7 +248,6 @@ pub fn scan_directory_tree(root_path: &Path) -> Result<FileTreeManifest, TTZipSt
                 } else {
                     None
                 };
-
                 raw_items.push(RawFsItem {
                     full_path,
                     normalized_rel_path: normalized_rel,
@@ -308,7 +287,6 @@ pub fn scan_directory_tree(root_path: &Path) -> Result<FileTreeManifest, TTZipSt
             } else {
                 String::new()
             };
-
             ManifestEntry::new(
                 item.normalized_rel_path,
                 item.entry_type,
@@ -328,19 +306,12 @@ pub fn scan_directory_tree(root_path: &Path) -> Result<FileTreeManifest, TTZipSt
 
     for entry in manifest_entries {
         match entry.entry_type {
-            EntryType::RegularFile => {
+            EntryType::RegularFile | EntryType::HardLink => {
                 total_byte_size += entry.byte_size;
                 total_file_count += 1;
             }
-            EntryType::Directory => {
-                total_directory_count += 1;
-            }
-            EntryType::SymbolicLink => {
-                total_symlink_count += 1;
-            }
-            EntryType::HardLink => {
-                total_file_count += 1;
-            }
+            EntryType::Directory => total_directory_count += 1,
+            EntryType::SymbolicLink => total_symlink_count += 1,
         }
         entries.insert(entry.relative_path.clone(), entry);
     }
@@ -371,47 +342,36 @@ pub fn compare_manifests(
     let ttzip_keys: BTreeSet<&String> = ttzip.entries.keys().collect();
     let oracle_keys: BTreeSet<&String> = oracle.entries.keys().collect();
 
-    // 1. Missing entries
     for missing_key in oracle_keys.difference(&ttzip_keys) {
         if let Some(oracle_entry) = oracle.entries.get(*missing_key) {
             divergence_errors.push(format!(
                 "Missing entry in TTZip output: '{}' (oracle type: {}, size: {}B)",
-                missing_key,
-                oracle_entry.entry_type.as_str(),
-                oracle_entry.byte_size
+                missing_key, oracle_entry.entry_type.as_str(), oracle_entry.byte_size
             ));
         }
     }
 
-    // 2. Extra entries
     for extra_key in ttzip_keys.difference(&oracle_keys) {
         if let Some(ttzip_entry) = ttzip.entries.get(*extra_key) {
             divergence_errors.push(format!(
                 "Unexpected extra entry in TTZip output: '{}' (ttzip type: {}, size: {}B)",
-                extra_key,
-                ttzip_entry.entry_type.as_str(),
-                ttzip_entry.byte_size
+                extra_key, ttzip_entry.entry_type.as_str(), ttzip_entry.byte_size
             ));
         }
     }
 
-    // 3. 5-dimension comparison across common entries
     for common_key in ttzip_keys.intersection(&oracle_keys) {
         let ttzip_entry = &ttzip.entries[*common_key];
         let oracle_entry = &oracle.entries[*common_key];
 
-        // Dimension 1: Entry type
         if ttzip_entry.entry_type != oracle_entry.entry_type {
             divergence_errors.push(format!(
                 "Entry '{}' type mismatch: TTZip is {}, Oracle is {}",
-                common_key,
-                ttzip_entry.entry_type.as_str(),
-                oracle_entry.entry_type.as_str()
+                common_key, ttzip_entry.entry_type.as_str(), oracle_entry.entry_type.as_str()
             ));
             continue;
         }
 
-        // Dimension 2: File size & SHA-256
         if ttzip_entry.entry_type == EntryType::RegularFile {
             if ttzip_entry.byte_size != oracle_entry.byte_size {
                 divergence_errors.push(format!(
@@ -419,35 +379,29 @@ pub fn compare_manifests(
                     common_key, ttzip_entry.byte_size, oracle_entry.byte_size
                 ));
             }
-
             if ttzip_entry.sha256_checksum != oracle_entry.sha256_checksum {
                 divergence_errors.push(format!(
                     "Entry '{}' SHA-256 checksum mismatch: TTZip={}, Oracle={}",
                     common_key, ttzip_entry.sha256_checksum, oracle_entry.sha256_checksum
                 ));
-
                 if hex_diff_output.is_none() {
                     let ttzip_path = Path::new(&ttzip.root_directory).join(common_key);
                     let oracle_path = Path::new(&oracle.root_directory).join(common_key);
-                    if let (Ok(ttzip_bytes), Ok(oracle_bytes)) = (fs::read(&ttzip_path), fs::read(&oracle_path)) {
-                        hex_diff_output = generate_hex_diff(&oracle_bytes, &ttzip_bytes, 256, true);
+                    if let (Ok(tb), Ok(ob)) = (fs::read(&ttzip_path), fs::read(&oracle_path)) {
+                        hex_diff_output = generate_hex_diff(&ob, &tb, 256, true);
                     }
                 }
             }
         }
 
-        // Dimension 3: Symlink target
-        if ttzip_entry.entry_type == EntryType::SymbolicLink
-            && ttzip_entry.symlink_target != oracle_entry.symlink_target {
-                divergence_errors.push(format!(
-                    "Entry '{}' symlink target mismatch: TTZip target='{}', Oracle target='{}'",
-                    common_key,
-                    ttzip_entry.symlink_target.as_deref().unwrap_or("nil"),
-                    oracle_entry.symlink_target.as_deref().unwrap_or("nil")
-                ));
-            }
+        if ttzip_entry.entry_type == EntryType::SymbolicLink && ttzip_entry.symlink_target != oracle_entry.symlink_target {
+            divergence_errors.push(format!(
+                "Entry '{}' symlink target mismatch: TTZip='{}', Oracle='{}'",
+                common_key, ttzip_entry.symlink_target.as_deref().unwrap_or("nil"),
+                oracle_entry.symlink_target.as_deref().unwrap_or("nil")
+            ));
+        }
 
-        // Dimension 4: POSIX permissions
         if is_tar_format {
             if ttzip_entry.posix_mode != oracle_entry.posix_mode {
                 divergence_errors.push(format!(
@@ -455,22 +409,18 @@ pub fn compare_manifests(
                     common_key, ttzip_entry.posix_mode, oracle_entry.posix_mode
                 ));
             }
-        } else {
-            if (ttzip_entry.posix_mode & 0o111) != (oracle_entry.posix_mode & 0o111) {
-                divergence_errors.push(format!(
-                    "Entry '{}' executable permission bit mismatch: TTZip=0o{:o}, Oracle=0o{:o}",
-                    common_key, ttzip_entry.posix_mode, oracle_entry.posix_mode
-                ));
-            }
+        } else if (ttzip_entry.posix_mode & 0o111) != (oracle_entry.posix_mode & 0o111) {
+            divergence_errors.push(format!(
+                "Entry '{}' executable bit mismatch: TTZip=0o{:o}, Oracle=0o{:o}",
+                common_key, ttzip_entry.posix_mode, oracle_entry.posix_mode
+            ));
         }
     }
-
-    let is_passed = divergence_errors.is_empty();
 
     DifferentialReport {
         format_name: format_name.to_string(),
         target_oracle: oracle_name.to_string(),
-        is_passed,
+        is_passed: divergence_errors.is_empty(),
         ttzip_manifest: ttzip.clone(),
         oracle_manifest: oracle.clone(),
         divergence_errors,
@@ -478,7 +428,9 @@ pub fn compare_manifests(
     }
 }
 
-/// C-ABI: Scans directory recursively using Rayon multi-core processing and generates JSON FileTreeManifest.
+// MARK: - C-ABI FFI Exports
+
+/// C-ABI: Scans directory recursively using Rayon and generates JSON FileTreeManifest.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_differential_scan_directory(
     path: *const c_char,
@@ -489,13 +441,10 @@ pub unsafe extern "C" fn ttzip_rust_differential_scan_directory(
             return TTZipStatus::ErrInvalidParam;
         }
         *out_manifest_json = std::ptr::null_mut();
-
-        let c_str = CStr::from_ptr(path);
-        let path_str = match c_str.to_str() {
+        let path_str = match CStr::from_ptr(path).to_str() {
             Ok(s) => s,
             Err(_) => return TTZipStatus::ErrInvalidParam,
         };
-
         match scan_directory_tree(Path::new(path_str)) {
             Ok(manifest) => {
                 let json = manifest.to_json();
@@ -509,7 +458,6 @@ pub unsafe extern "C" fn ttzip_rust_differential_scan_directory(
             Err(status) => status,
         }
     });
-
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
@@ -529,7 +477,6 @@ pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
             return TTZipStatus::ErrInvalidParam;
         }
         *out_report_json = std::ptr::null_mut();
-
         let ttzip_str = match CStr::from_ptr(ttzip_json).to_str() {
             Ok(s) => s,
             Err(_) => return TTZipStatus::ErrInvalidParam,
@@ -538,18 +485,8 @@ pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
             Ok(s) => s,
             Err(_) => return TTZipStatus::ErrInvalidParam,
         };
-
-        let or_name = if !oracle_name.is_null() {
-            CStr::from_ptr(oracle_name).to_str().unwrap_or("oracle")
-        } else {
-            "oracle"
-        };
-
-        let fmt_name = if !format_name.is_null() {
-            CStr::from_ptr(format_name).to_str().unwrap_or("zip")
-        } else {
-            "zip"
-        };
+        let or_name = if !oracle_name.is_null() { CStr::from_ptr(oracle_name).to_str().unwrap_or("oracle") } else { "oracle" };
+        let fmt_name = if !format_name.is_null() { CStr::from_ptr(format_name).to_str().unwrap_or("zip") } else { "zip" };
 
         let ttzip_manifest = match FileTreeManifest::from_json(ttzip_str) {
             Some(m) => m,
@@ -561,20 +498,16 @@ pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
         };
 
         let report = compare_manifests(&ttzip_manifest, &oracle_manifest, is_tar_format, or_name, fmt_name);
-
         if !out_is_passed.is_null() {
             *out_is_passed = report.is_passed;
         }
-
-        let report_json = report.to_json();
-        if let Ok(c_json) = CString::new(report_json) {
+        if let Ok(c_json) = CString::new(report.to_json()) {
             *out_report_json = c_json.into_raw();
             TTZipStatus::Ok
         } else {
             TTZipStatus::ErrOutOfMemory
         }
     });
-
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
@@ -583,6 +516,149 @@ pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
 pub unsafe extern "C" fn ttzip_rust_free_differential_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);
+    }
+}
+
+// MARK: - Differential Oracle Test Runner
+
+/// Lightweight RAII temporary directory manager for differential test isolation.
+pub struct AutoCleanTempDir {
+    path: PathBuf,
+}
+
+impl AutoCleanTempDir {
+    pub fn new(prefix: &str) -> Result<Self, TTZipStatus> {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(1);
+        let count = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let pid = std::process::id();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let dir_name = format!("{}_{}_{}_{}", prefix, pid, nanos, count);
+        let path = std::env::temp_dir().join(dir_name);
+        fs::create_dir_all(&path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        Ok(Self { path })
+    }
+
+    #[inline]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for AutoCleanTempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+/// Automated System-Level Differential Oracle Test Runner.
+pub struct DifferentialOracleTestRunner;
+
+impl DifferentialOracleTestRunner {
+    /// Executes bidirectional differential test for ZIP archives using system `/usr/bin/unzip`.
+    pub fn run_zip_differential(
+        items: &[crate::zip::writer::ZipInputItem],
+        compression_level: i32,
+    ) -> Result<DifferentialReport, TTZipStatus> {
+        let temp_dir = AutoCleanTempDir::new("ttzip_diff_zip_runner")?;
+        let temp_path = temp_dir.path();
+
+        let compressed = crate::zip::writer::compress_items_parallel(
+            items.to_vec(),
+            compression_level,
+            crate::types::TTZipEncryptionMethod::None,
+            None,
+            4,
+        )?;
+        let zip_bytes = crate::zip::writer::assemble_zip_archive(&compressed)?;
+        let zip_file = temp_path.join("archive.zip");
+        fs::write(&zip_file, &zip_bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+        let oracle_dir = temp_path.join("oracle_extract");
+        let ttzip_dir = temp_path.join("ttzip_extract");
+        fs::create_dir_all(&oracle_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        fs::create_dir_all(&ttzip_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+        let output = std::process::Command::new("/usr/bin/unzip")
+            .arg("-q")
+            .arg("-o")
+            .arg(&zip_file)
+            .arg("-d")
+            .arg(&oracle_dir)
+            .output();
+
+        if let Ok(out) = output {
+            if !out.status.success() && out.status.code().unwrap_or(0) > 1 {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+        } else {
+            return Err(TTZipStatus::ErrOpenFailed);
+        }
+
+        let archive = crate::zip::reader::ZipArchive::open_slice(&zip_bytes)?;
+        let options = crate::types::TTZipExtractOptions::default();
+        archive.extract_all(&ttzip_dir, &options)?;
+
+        let oracle_manifest = scan_directory_tree(&oracle_dir)?;
+        let ttzip_manifest = scan_directory_tree(&ttzip_dir)?;
+
+        Ok(compare_manifests(&ttzip_manifest, &oracle_manifest, false, "/usr/bin/unzip", "zip"))
+    }
+
+    /// Executes bidirectional differential test for TAR archives using system `/usr/bin/tar`.
+    pub fn run_tar_differential(
+        items: &[crate::zip::writer::ZipInputItem],
+    ) -> Result<DifferentialReport, TTZipStatus> {
+        let temp_dir = AutoCleanTempDir::new("ttzip_diff_tar_runner")?;
+        let temp_path = temp_dir.path();
+
+        let tar_file = temp_path.join("archive.tar");
+        let mut tar_bytes = Vec::new();
+        {
+            let mut writer = crate::archive::tar::writer::TarWriter::new(&mut tar_bytes);
+            for item in items {
+                let mtime = item.mtime_epoch_secs as i64;
+                if item.is_directory {
+                    writer.append_dir(&item.rel_path, item.mode as u32, mtime)?;
+                } else {
+                    writer.append_file(&item.rel_path, &item.data, item.mode as u32, mtime)?;
+                }
+            }
+            writer.finish()?;
+        }
+        fs::write(&tar_file, &tar_bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+        let oracle_dir = temp_path.join("oracle_extract");
+        let ttzip_dir = temp_path.join("ttzip_extract");
+        fs::create_dir_all(&oracle_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        fs::create_dir_all(&ttzip_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+        let output = std::process::Command::new("/usr/bin/tar")
+            .arg("-xf")
+            .arg(&tar_file)
+            .arg("-C")
+            .arg(&oracle_dir)
+            .output();
+
+        if let Ok(out) = output {
+            if !out.status.success() {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+        } else {
+            return Err(TTZipStatus::ErrOpenFailed);
+        }
+
+        let tar_arch = crate::archive::tar::reader::TarArchive::open_slice(&tar_bytes)?;
+        let options = crate::types::TTZipExtractOptions::default();
+        tar_arch.extract_all(&ttzip_dir, &options)?;
+
+        let oracle_manifest = scan_directory_tree(&oracle_dir)?;
+        let ttzip_manifest = scan_directory_tree(&ttzip_dir)?;
+
+        Ok(compare_manifests(&ttzip_manifest, &oracle_manifest, true, "/usr/bin/tar", "tar"))
     }
 }
 
@@ -638,12 +714,10 @@ mod tests {
             total_symlink_count: 0,
         };
 
-        // Identical comparison passes
         let report_pass = compare_manifests(&manifest_a, &manifest_a, true, "oracle", "tar");
         assert!(report_pass.is_passed);
         assert!(report_pass.divergence_errors.is_empty());
 
-        // Checksum mismatch
         let mut entries_b = BTreeMap::new();
         entries_b.insert(
             "file.txt".to_string(),
@@ -664,4 +738,33 @@ mod tests {
         assert_eq!(report_diff.divergence_errors.len(), 1);
         assert!(report_diff.divergence_errors[0].contains("SHA-256 checksum mismatch"));
     }
+
+    #[test]
+    fn test_differential_oracle_runner_zip_and_tar() {
+        let items = vec![
+            crate::zip::writer::ZipInputItem {
+                rel_path: "doc1.txt".to_string(),
+                data: b"TTZip Differential Oracle Zip File 1".to_vec(),
+                mtime_epoch_secs: 1700000000,
+                mode: 0o644,
+                is_directory: false,
+            },
+            crate::zip::writer::ZipInputItem {
+                rel_path: "sub/nested.bin".to_string(),
+                data: vec![0x42; 2048],
+                mtime_epoch_secs: 1700000000,
+                mode: 0o644,
+                is_directory: false,
+            },
+        ];
+
+        let zip_report = DifferentialOracleTestRunner::run_zip_differential(&items, 6)
+            .expect("zip differential test failed");
+        assert!(zip_report.is_passed, "Zip differential errors: {:?}", zip_report.divergence_errors);
+
+        let tar_report = DifferentialOracleTestRunner::run_tar_differential(&items)
+            .expect("tar differential test failed");
+        assert!(tar_report.is_passed, "Tar differential errors: {:?}", tar_report.divergence_errors);
+    }
 }
+

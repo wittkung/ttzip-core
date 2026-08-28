@@ -144,7 +144,7 @@ class SdkRunner:
 class PythonSdkRunner(SdkRunner):
     def __init__(self):
         super().__init__("python")
-        self.cli_path = REPO_ROOT / "python" / "interop_cli.py"
+        self.cli_path = REPO_ROOT / "sdk" / "python" / "interop_cli.py"
 
     def is_available(self) -> bool:
         return self.cli_path.exists() and shutil.which("python3") is not None

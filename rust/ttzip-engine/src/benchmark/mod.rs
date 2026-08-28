@@ -9,9 +9,11 @@
 
 pub mod clock;
 pub mod codecs_driver;
+pub mod container_driver;
 pub mod corpus;
 pub mod delta;
 pub mod mips;
+pub mod multimodal_loader;
 pub mod pareto;
 pub mod plotter;
 pub mod runner;
@@ -22,10 +24,23 @@ pub mod spline;
 mod tests;
 
 pub use clock::MonotonicStopwatch;
-pub use codecs_driver::{MatrixCodecConfig, MatrixCodecDriver};
+pub use codecs_driver::{
+    BrotliBenchmarkDriver, Bzip2BenchmarkDriver, CodecBenchmarkDriver, DeflateBenchmarkDriver,
+    Lz4BenchmarkDriver, LzfseBenchmarkDriver, Lzma2BenchmarkDriver, MatrixCodecConfig,
+    MatrixCodecDriver, SnappyBenchmarkDriver, ZstdBenchmarkDriver,
+};
+pub use container_driver::{
+    AarContainerDriver, ContainerBenchmarkDriver, SevenZContainerDriver, TarBrotliContainerDriver,
+    TarContainerDriver, TarGzContainerDriver, TarSnappyContainerDriver, TarZstContainerDriver,
+    ZipContainerDriver,
+};
 pub use corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
 pub use delta::{BinaryDeltaAuditor, BinaryDeltaReport, SegmentDeltaAudit};
 pub use mips::{MIPSHardwareBenchmarkEngine, MIPSResult, SplitMix64};
+pub use multimodal_loader::{
+    compute_shannon_entropy, MultimodalCorpusEntry, MultimodalCorpusKind, MultimodalCorpusLoader,
+    SILESIA_STANDARD_FILES,
+};
 pub use pareto::{
     calculate_pareto_frontier, compute_codec_pareto_frontier_raw, compute_pareto_frontier_raw,
     ParetoCodecPoint, ParetoPointRaw, TTZipParetoCodecPointRaw,
@@ -34,3 +49,4 @@ pub use plotter::BenchmarkPlotter;
 pub use runner::{BenchmarkMatrixReport, BenchmarkMatrixRunner, BenchmarkPointResult};
 pub use scenario_driver::{ScenarioBenchmarkDriver, ScenarioBenchmarkPoint, ScenarioMatrixReport};
 pub use spline::{FritschCarlsonSpline, SplinePoint};
+

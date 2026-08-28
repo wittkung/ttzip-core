@@ -77,11 +77,12 @@ pub fn create_archive(
         }
         let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
         let snappy_encoder = snap::write::FrameEncoder::new(out_file);
-        crate::archive::tar::write_tar_to_writer(source_paths, snappy_encoder, options)?;
+        let mut snappy_encoder = crate::archive::tar::write_tar_to_writer(source_paths, snappy_encoder, options)?;
+        snappy_encoder.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         return Ok(());
     }
 
-    // 4. Native Streaming High-Throughput Zstandard Pipeline (0% Disk Write Amplification)
+    // 4. Native Streaming High-Throughput Zstandard Multithreaded Pipeline (0% Disk Write Amplification)
     if (resolved_format == TTZipArchiveFormat::TarZstd || resolved_format == TTZipArchiveFormat::Zstd)
         && split_volume_size_bytes == 0
     {
@@ -94,8 +95,22 @@ pub fn create_archive(
             TTZipCompressionLevel::Maximum => 19,
             TTZipCompressionLevel::Ultra => 22,
         };
-        let zstd_writer = crate::codecs::zstd::ZstdStreamWriter::with_level(out_file, z_lvl)?;
-        crate::archive::tar::write_tar_to_writer(source_paths, zstd_writer, options)?;
+        let nb_workers = if options.thread_budget > 0 {
+            options.thread_budget
+        } else {
+            std::thread::available_parallelism()
+                .map(|n| n.get() as u32)
+                .unwrap_or(4)
+        };
+        let config = crate::codecs::zstd::types::ZstdConfig {
+            level: z_lvl,
+            nb_workers,
+            enable_checksum: true,
+            ..Default::default()
+        };
+        let zstd_writer = crate::codecs::zstd::ZstdStreamWriter::new(out_file, &config)?;
+        let zstd_writer = crate::archive::tar::write_tar_to_writer(source_paths, zstd_writer, options)?;
+        zstd_writer.finish()?;
         return Ok(());
     }
 

@@ -53,7 +53,7 @@ fi
 # 4. Node.js SDK Validation
 echo ">>> [4/4] Validating Node.js SDK..."
 if command -v node >/dev/null 2>&1; then
-    node "${REPO_ROOT}/node/test.js" >/dev/null
+    node "${REPO_ROOT}/sdk/node/test.js" >/dev/null
     echo "  [PASS] Node.js SDK tests passed."
 else
     echo "  [SKIP] node binary not found."

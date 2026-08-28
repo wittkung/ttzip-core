@@ -48,15 +48,17 @@ __pycache__/
 .pytest_cache/
 .coverage
 
-# Compiled Multi-Language SDK Test Binaries
-sdk/c/test_c_sdk
-sdk/c/asan_stress_test
-sdk/c/asan_stress_test.dSYM
-sdk/c/interop_cli
-sdk/cpp/test_cpp_sdk
-sdk/cpp/interop_cli
-sdk/go/interop_cli
-sdk/jvm/bin/
+# Compiled Multi-Language SDK Test Binaries & Intermediate Artifacts
+sdk/**/bin/
+!sdk/dart/bin/
+!sdk/dart/bin/*.dart
+sdk/**/test_*
+sdk/**/asan_*
+sdk/**/interop_cli
+sdk/**/*.dSYM/
+*.dSYM
+*.dSYM/
+*.node
 
 # Generated Test Corpus & Dynamic Fixtures
 Tests/fixtures/canonical/

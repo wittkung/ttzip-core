@@ -30,6 +30,19 @@ typedef enum {
     TTZIP_KIND_BINARY  = 6
 } ttzip_file_kind_t;
 
+// Hardware-accelerated direct C-ABI checksum functions
+uint32_t ttzip_rust_crc32(uint32_t crc, const uint8_t *data, size_t len);
+uint32_t ttzip_rust_adler32(uint32_t adler, const uint8_t *data, size_t len);
+uint64_t ttzip_rust_crc64(uint64_t seed, const uint8_t *data, size_t len);
+
+static inline uint32_t ttzip_fast_crc32(const uint8_t *ptr, size_t count) {
+    return ttzip_rust_crc32(0, ptr, count);
+}
+
+static inline uint32_t ttzip_fast_adler32(const uint8_t *ptr, size_t count) {
+    return ttzip_rust_adler32(1, ptr, count);
+}
+
 #ifdef __cplusplus
 }
 #endif

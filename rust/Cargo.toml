@@ -3,6 +3,7 @@ members = [
     "ttzip-engine",
     "ttzip-tui",
     "ttzip-python",
+    "ttzip-node",
 ]
 resolver = "2"
 
@@ -19,9 +20,9 @@ categories = ["compression", "command-line-utilities", "filesystem"]
 
 [profile.release]
 opt-level = 3
-lto = "thin"
-codegen-units = 16
-panic = "unwind"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 strip = true
 
 

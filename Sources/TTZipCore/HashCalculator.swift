@@ -7,6 +7,7 @@
 
 import Foundation
 import Compression
+import CTTZipBridge
 
 /// Supported cryptographic and verification hash algorithms.
 public enum HashType: String, Sendable {
@@ -67,28 +68,34 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func adler32(for data: Data, initial: UInt32 = 1) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return computeBytesAdler32(data: data)
+        return data.withUnsafeBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else { return initial }
+            return ttzip_rust_adler32(initial, base.assumingMemoryBound(to: UInt8.self), rawBuffer.count)
+        }
     }
     
     /// Computes 32-bit Adler-32 checksum via direct pointer access.
     @inlinable
     public static func adler32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 1) -> UInt32 {
         guard count > 0 else { return initial }
-        return computeBytesAdler32(data: Data(bytes: ptr, count: count))
+        return ttzip_rust_adler32(initial, ptr, count)
     }
 
     /// Computes 32-bit CRC-32 checksum.
     @inlinable
     public static func crc32(for data: Data, initial: UInt32 = 0) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return computeBytesCrc32(data: data)
+        return data.withUnsafeBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else { return initial }
+            return ttzip_rust_crc32(initial, base.assumingMemoryBound(to: UInt8.self), rawBuffer.count)
+        }
     }
 
     /// Computes 32-bit CRC-32 checksum via direct pointer access.
     @inlinable
     public static func crc32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 0) -> UInt32 {
         guard count > 0 else { return initial }
-        return computeBytesCrc32(data: Data(bytes: ptr, count: count))
+        return ttzip_rust_crc32(initial, ptr, count)
     }
 
     @inlinable
@@ -151,8 +158,9 @@ public final class AppleLibcompressionAccelerator: @unchecked Sendable {
     /// Convenience helper compressing Swift `Data` buffers.
     public func compressData(_ data: Data, level: Int = 6) -> Data? {
         guard !data.isEmpty else { return Data() }
-        let maxBound = data.count + 512
+        let maxBound = max(data.count + 4096, Int(Double(data.count) * 1.05) + 1024)
         var dstBuffer = [UInt8](repeating: 0, count: maxBound)
+
         let written = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
             guard let base = dstPtr.baseAddress else { return 0 }
             return CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in

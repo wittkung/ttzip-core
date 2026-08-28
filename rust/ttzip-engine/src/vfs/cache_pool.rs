@@ -30,9 +30,28 @@ pub struct VFSCacheBlockMeta {
     pub access_timestamp: u64,
 }
 
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct CacheKey(pub u64, pub u64);
+
+impl CacheKey {
+    #[inline]
+    pub fn new(session_id: &str, chunk_index: u64) -> Self {
+        let mut hasher = DefaultHasher::new();
+        session_id.hash(&mut hasher);
+        Self(hasher.finish(), chunk_index)
+    }
+
+    #[inline]
+    pub fn session_hash(session_id: &str) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        session_id.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
 #[derive(Clone)]
 struct LruNode {
-    key: String,
+    key: CacheKey,
     raw_size: usize,
     compressed_size: usize,
     in_ram: bool,
@@ -46,7 +65,7 @@ struct LruNode {
 
 #[derive(Default)]
 struct LruShard {
-    map: HashMap<String, usize>,
+    map: HashMap<CacheKey, usize>,
     nodes: Vec<LruNode>,
     free_indices: Vec<usize>,
     head: Option<usize>,
@@ -132,7 +151,7 @@ impl LruShard {
             let prev = self.nodes[idx].prev;
             if self.nodes[idx].active && self.nodes[idx].in_ram {
                 if let Some(data) = self.nodes[idx].ram_data.clone() {
-                    let safe_filename = format!("{}.lz4", self.nodes[idx].key.replace(':', "_"));
+                    let safe_filename = format!("{:016x}_{:016x}.lz4", self.nodes[idx].key.0, self.nodes[idx].key.1);
                     let spill_file = spill_dir.join(safe_filename);
                     self.nodes[idx].in_ram = false;
                     self.nodes[idx].ram_data = None;
@@ -198,7 +217,7 @@ impl VFSLz4CachePool {
     }
 
     #[inline]
-    fn shard_idx(&self, key: &str) -> usize {
+    fn shard_idx(&self, key: &CacheKey) -> usize {
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
         (hasher.finish() as usize) % NUM_SHARDS
@@ -224,7 +243,7 @@ impl VFSLz4CachePool {
         compressed.truncate(comp_len);
         let comp_arc: Arc<[u8]> = Arc::from(compressed.into_boxed_slice());
 
-        let key = format!("{}:{}", session_id, chunk_index);
+        let key = CacheKey::new(session_id, chunk_index);
         let s_idx = self.shard_idx(&key);
         let now = self.current_timestamp();
 
@@ -255,7 +274,7 @@ impl VFSLz4CachePool {
                     shard.nodes[node_idx].disk_path = None;
                     shard.ram_bytes += comp_len;
                 } else {
-                    let safe_filename = format!("{}.lz4", key.replace(':', "_"));
+                    let safe_filename = format!("{:016x}_{:016x}.lz4", key.0, key.1);
                     let spill_file = self.spill_dir.join(safe_filename);
                     shard.nodes[node_idx].in_ram = false;
                     shard.nodes[node_idx].ram_data = None;
@@ -268,14 +287,14 @@ impl VFSLz4CachePool {
                     shard.ram_bytes += comp_len;
                     (true, Some(comp_arc.clone()), None)
                 } else {
-                    let safe_filename = format!("{}.lz4", key.replace(':', "_"));
+                    let safe_filename = format!("{:016x}_{:016x}.lz4", key.0, key.1);
                     let spill_file = self.spill_dir.join(safe_filename);
                     direct_spill = Some((spill_file.clone(), comp_arc.clone()));
                     (false, None, Some(spill_file))
                 };
 
                 let new_node = LruNode {
-                    key: key.clone(),
+                    key,
                     raw_size: raw_data.len(),
                     compressed_size: comp_len,
                     in_ram,
@@ -311,7 +330,7 @@ impl VFSLz4CachePool {
 
     /// Retrieves and decompresses chunk into `out_buf` with lock-free decompression & I/O.
     pub fn get(&self, session_id: &str, chunk_index: u64, out_buf: &mut [u8]) -> Result<usize, TTZipStatus> {
-        let key = format!("{}:{}", session_id, chunk_index);
+        let key = CacheKey::new(session_id, chunk_index);
         let s_idx = self.shard_idx(&key);
         let now = self.current_timestamp();
 
@@ -376,15 +395,15 @@ impl VFSLz4CachePool {
 
     /// Clears all cached chunks associated with a specific session ID with lock-free file deletion.
     pub fn clear_session(&self, session_id: &str) {
-        let prefix = format!("{}:", session_id);
+        let session_hash = CacheKey::session_hash(session_id);
         let mut paths_to_delete = Vec::new();
 
         for shard_lock in &self.shards {
             let mut shard = shard_lock.write();
-            let keys_to_remove: Vec<String> = shard
+            let keys_to_remove: Vec<CacheKey> = shard
                 .map
                 .keys()
-                .filter(|k| k.starts_with(&prefix))
+                .filter(|k| k.0 == session_hash)
                 .cloned()
                 .collect();
             for key in keys_to_remove {

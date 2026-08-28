@@ -88,13 +88,19 @@ pub fn extract_archive_stream(
     let elapsed_nanos = elapsed.as_nanos() as u64;
     let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
     let throughput_mbs = (bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
+    let comp_bytes = std::fs::metadata(src).map(|m| m.len()).unwrap_or(bytes);
+    let space_savings_pct = if bytes > 0 && comp_bytes <= bytes {
+        ((bytes - comp_bytes) as f64 / bytes as f64) * 100.0
+    } else {
+        0.0
+    };
 
     Ok(CompressionReport {
         uncompressed_bytes: bytes,
-        compressed_bytes: std::fs::metadata(src).map(|m| m.len()).unwrap_or(bytes),
+        compressed_bytes: comp_bytes,
         elapsed_nanos,
         throughput_mbs,
-        space_savings_pct: 0.0,
+        space_savings_pct,
         engine_provenance: "Mozilla UniFFI Native Core Pipeline".to_string(),
     })
 }

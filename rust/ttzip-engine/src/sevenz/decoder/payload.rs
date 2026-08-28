@@ -198,7 +198,7 @@ where
     }
 
     let mut raw_payload = &mapped[packed_offset..payload_end];
-    let mut decrypted_storage = Vec::new();
+    let mut decrypted_storage = zeroize::Zeroizing::new(Vec::new());
 
     if info.is_encrypted || method_id == METHOD_AES {
         let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
@@ -206,7 +206,7 @@ where
             return Err(TTZipStatus::ErrInvalidPassword);
         }
 
-        let key = sha256_7z_kdf(pass, &info.aes_salt[..info.aes_salt_len], info.aes_num_cycles_power);
+        let key = zeroize::Zeroizing::new(sha256_7z_kdf(pass, &info.aes_salt[..info.aes_salt_len], info.aes_num_cycles_power));
 
         if !raw_payload.len().is_multiple_of(16) {
             return Err(TTZipStatus::ErrCorruptHeader);

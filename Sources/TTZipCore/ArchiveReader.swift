@@ -76,7 +76,7 @@ public final class ArchiveReader: ArchiveReading, Sendable {
         
         try Task.checkCancellation()
         
-        return try await Task.detached(priority: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             let lower = archivePath.lowercased()
             let targetInspectPath = archivePath
             
@@ -127,7 +127,7 @@ public final class ArchiveReader: ArchiveReading, Sendable {
             }
             
             throw ArchiveError.readFailed(code: -1)
-        }.value
+        }
     }
     
     /// Inspects archive and builds a unified hierarchical VFS tree.
@@ -199,7 +199,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
             throw ArchiveError.fileNotFound
         }
 
-        return await Task.detached(priority: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             final class ProgressRelay: ProgressHandler, @unchecked Sendable {
                 let handler: (@Sendable (Double, String) -> Void)?
                 init(handler: (@Sendable (Double, String) -> Void)?) {
@@ -258,7 +258,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
                     ]
                 )
             }
-        }.value
+        }
     }
 
     /// Verifies extracted directory contents: asserts byte totals and CRC32 digests against expectations.
@@ -376,10 +376,10 @@ public final class ArchiveRepairEngine: Sendable {
             throw ArchiveError.fileNotFound
         }
         
-        return try await Task.detached(priority: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             let salvaged = try repairArchiveFile(damagedPath: damagedArchivePath, outputPath: repairedOutputPath)
             return Int(salvaged)
-        }.value
+        }
     }
     
     /// Direct archive repair via UniFFI.

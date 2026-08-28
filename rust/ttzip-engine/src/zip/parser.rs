@@ -44,6 +44,34 @@ pub struct ZipEntry {
     pub flag: u16,
 }
 
+fn read_u16_le(slice: &[u8], offset: usize) -> u16 {
+    u16::from_le_bytes([slice[offset], slice[offset + 1]])
+}
+
+#[inline(always)]
+fn read_u32_le(slice: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes([
+        slice[offset],
+        slice[offset + 1],
+        slice[offset + 2],
+        slice[offset + 3],
+    ])
+}
+
+#[inline(always)]
+fn read_u64_le(slice: &[u8], offset: usize) -> u64 {
+    u64::from_le_bytes([
+        slice[offset],
+        slice[offset + 1],
+        slice[offset + 2],
+        slice[offset + 3],
+        slice[offset + 4],
+        slice[offset + 5],
+        slice[offset + 6],
+        slice[offset + 7],
+    ])
+}
+
 /// Finds End of Central Directory (EOCD) and optional Zip64 EOCD structures.
 pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
     let file_size = mapped.len();
@@ -62,10 +90,10 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
         if pos < search_start {
             break;
         }
-        let sig = u32::from_le_bytes(mapped[pos..pos + 4].try_into().unwrap());
+        let sig = read_u32_le(mapped, pos);
         if sig == MAGIC_EOCD {
             // Validate comment length matches remaining bytes
-            let comment_len = u16::from_le_bytes(mapped[pos + 20..pos + 22].try_into().unwrap()) as usize;
+            let comment_len = read_u16_le(mapped, pos + 20) as usize;
             if pos + 22 + comment_len <= file_size {
                 eocd_pos = Some(pos);
                 break;
@@ -79,9 +107,9 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
 
     let p = eocd_pos.ok_or(TTZipStatus::ErrCorruptHeader)?;
 
-    let entries16 = u16::from_le_bytes(mapped[p + 10..p + 12].try_into().unwrap()) as u64;
-    let cd_size32 = u32::from_le_bytes(mapped[p + 12..p + 16].try_into().unwrap()) as u64;
-    let cd_off32 = u32::from_le_bytes(mapped[p + 16..p + 20].try_into().unwrap()) as u64;
+    let entries16 = read_u16_le(mapped, p + 10) as u64;
+    let cd_size32 = read_u32_le(mapped, p + 12) as u64;
+    let cd_off32 = read_u32_le(mapped, p + 16) as u64;
 
     let mut info = EocdInfo {
         total_entries: entries16,
@@ -94,16 +122,16 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
     // Check for Zip64 EOCD Locator (20 bytes before standard EOCD)
     if p >= 20 {
         let locator_pos = p - 20;
-        let locator_sig = u32::from_le_bytes(mapped[locator_pos..locator_pos + 4].try_into().unwrap());
+        let locator_sig = read_u32_le(mapped, locator_pos);
         if locator_sig == MAGIC_ZIP64_LOCATOR {
-            let z64_eocd_off = u64::from_le_bytes(mapped[locator_pos + 8..locator_pos + 16].try_into().unwrap()) as usize;
+            let z64_eocd_off = read_u64_le(mapped, locator_pos + 8) as usize;
             if z64_eocd_off + 56 <= file_size {
-                let z64_sig = u32::from_le_bytes(mapped[z64_eocd_off..z64_eocd_off + 4].try_into().unwrap());
+                let z64_sig = read_u32_le(mapped, z64_eocd_off);
                 if z64_sig == MAGIC_ZIP64_EOCD {
                     info.is_zip64 = true;
-                    info.total_entries = u64::from_le_bytes(mapped[z64_eocd_off + 32..z64_eocd_off + 40].try_into().unwrap());
-                    info.cd_size = u64::from_le_bytes(mapped[z64_eocd_off + 40..z64_eocd_off + 48].try_into().unwrap());
-                    info.cd_offset = u64::from_le_bytes(mapped[z64_eocd_off + 48..z64_eocd_off + 56].try_into().unwrap());
+                    info.total_entries = read_u64_le(mapped, z64_eocd_off + 32);
+                    info.cd_size = read_u64_le(mapped, z64_eocd_off + 40);
+                    info.cd_offset = read_u64_le(mapped, z64_eocd_off + 48);
                 }
             }
         }
@@ -120,28 +148,40 @@ pub fn dos_to_unix_time(dos_time: u16, dos_date: u16) -> i64 {
 
     let day = (dos_date & 0x1F) as u32;
     let month = ((dos_date >> 5) & 0x0F) as u32;
-    let year = (((dos_date >> 9) & 0x7F) + 1980) as i32;
+    let year = (((dos_date >> 9) & 0x7F) + 1980) as u32;
 
-    // Approximate days calculation for valid DOS dates
-    let month_days = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-
+    // Fast days since epoch calculation
     let mut days_since_1970 = 0i64;
     for y in 1970..year {
-        let leap = (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
-        days_since_1970 += if leap { 366 } else { 365 };
+        days_since_1970 += if (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0) {
+            366
+        } else {
+            365
+        };
     }
 
-    for m in 1..month.clamp(1, 12) {
-        days_since_1970 += month_days[m as usize] as i64;
-        if m == 2 && is_leap {
-            days_since_1970 += 1;
-        }
+    let is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    let month_days = [
+        31,
+        if is_leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+
+    for m in 1..month.min(12) {
+        days_since_1970 += month_days[(m - 1) as usize] as i64;
     }
 
     days_since_1970 += (day.saturating_sub(1)) as i64;
 
-    
     days_since_1970 * 86400 + (hour as i64 * 3600) + (min as i64 * 60) + sec as i64
 }
 
@@ -151,23 +191,24 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let sig = u32::from_le_bytes(mapped[curr_pos..curr_pos + 4].try_into().unwrap());
+    let hdr = &mapped[curr_pos..curr_pos + 46];
+    let sig = read_u32_le(hdr, 0);
     if sig != MAGIC_CDFH {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let flag = u16::from_le_bytes(mapped[curr_pos + 8..curr_pos + 10].try_into().unwrap());
-    let method = u16::from_le_bytes(mapped[curr_pos + 10..curr_pos + 12].try_into().unwrap());
-    let dos_time = u16::from_le_bytes(mapped[curr_pos + 12..curr_pos + 14].try_into().unwrap());
-    let dos_date = u16::from_le_bytes(mapped[curr_pos + 14..curr_pos + 16].try_into().unwrap());
-    let crc32 = u32::from_le_bytes(mapped[curr_pos + 16..curr_pos + 20].try_into().unwrap());
-    let comp_size32 = u32::from_le_bytes(mapped[curr_pos + 20..curr_pos + 24].try_into().unwrap());
-    let uncomp_size32 = u32::from_le_bytes(mapped[curr_pos + 24..curr_pos + 28].try_into().unwrap());
-    let fn_len = u16::from_le_bytes(mapped[curr_pos + 28..curr_pos + 30].try_into().unwrap()) as usize;
-    let extra_len = u16::from_le_bytes(mapped[curr_pos + 30..curr_pos + 32].try_into().unwrap()) as usize;
-    let comment_len = u16::from_le_bytes(mapped[curr_pos + 32..curr_pos + 34].try_into().unwrap()) as usize;
-    let ext_attr = u32::from_le_bytes(mapped[curr_pos + 38..curr_pos + 42].try_into().unwrap());
-    let lfh_offset32 = u32::from_le_bytes(mapped[curr_pos + 42..curr_pos + 46].try_into().unwrap());
+    let flag = read_u16_le(hdr, 8);
+    let method = read_u16_le(hdr, 10);
+    let dos_time = read_u16_le(hdr, 12);
+    let dos_date = read_u16_le(hdr, 14);
+    let crc32 = read_u32_le(hdr, 16);
+    let comp_size32 = read_u32_le(hdr, 20);
+    let uncomp_size32 = read_u32_le(hdr, 24);
+    let fn_len = read_u16_le(hdr, 28) as usize;
+    let extra_len = read_u16_le(hdr, 30) as usize;
+    let comment_len = read_u16_le(hdr, 32) as usize;
+    let ext_attr = read_u32_le(hdr, 38);
+    let lfh_offset32 = read_u32_le(hdr, 42);
 
     let rec_len = 46 + fn_len + extra_len + comment_len;
     if curr_pos + rec_len > mapped.len() {
@@ -275,13 +316,13 @@ pub fn parse_local_file_header(mapped: &[u8], lfh_offset: usize) -> Result<(usiz
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let sig = u32::from_le_bytes(mapped[lfh_offset..lfh_offset + 4].try_into().unwrap());
+    let sig = read_u32_le(mapped, lfh_offset);
     if sig != MAGIC_LFH {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let fn_len = u16::from_le_bytes(mapped[lfh_offset + 26..lfh_offset + 28].try_into().unwrap()) as usize;
-    let extra_len = u16::from_le_bytes(mapped[lfh_offset + 28..lfh_offset + 30].try_into().unwrap()) as usize;
+    let fn_len = read_u16_le(mapped, lfh_offset + 26) as usize;
+    let extra_len = read_u16_le(mapped, lfh_offset + 28) as usize;
 
     let header_size = 30 + fn_len + extra_len;
     let payload_offset = lfh_offset + header_size;

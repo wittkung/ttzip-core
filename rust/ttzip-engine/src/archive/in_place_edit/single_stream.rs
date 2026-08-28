@@ -36,6 +36,19 @@ pub fn in_place_edit_single_stream(
         None => return Err(TTZipStatus::ErrInvalidParam),
     };
 
+    if format == DetectedFormat::Zstd {
+        let meta = fs::metadata(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        if meta.len() > 64 * 1024 * 1024 {
+            let in_f = fs::File::open(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+            let out_f = fs::File::create(shadow_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+            let mut reader = std::io::BufReader::with_capacity(64 * 1024, in_f);
+            let mut writer = crate::codecs::zstd::ZstdStreamWriter::with_level(out_f, 3)?;
+            std::io::copy(&mut reader, &mut writer).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            writer.finish()?;
+            return Ok(());
+        }
+    }
+
     let raw_data = fs::read(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
 
     let comp_bytes = match format {

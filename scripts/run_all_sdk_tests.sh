@@ -105,11 +105,11 @@ run_suite "swift" "Swift 6 TTZipCore Package" "swift test --filter UniFFISymbolG
 
 # 3. Python 3 SDK
 echo ">>> [3/9] Testing Python PyO3 SDK (16 Formats Matrix)..."
-run_suite "python" "Python 3 SDK & 16-Format Matrix" "PYTHONPATH=python python3 -m unittest discover -s python/tests" "python3"
+run_suite "python" "Python 3 SDK & 16-Format Matrix" "PYTHONPATH=sdk/python python3 -m unittest discover -s sdk/python/tests" "python3"
 
 # 4. Node.js / TypeScript SDK
 echo ">>> [4/9] Testing Node.js / TypeScript SDK..."
-run_suite "node" "Node.js & TypeScript SDK" "node node/test.js" "node"
+run_suite "node" "Node.js & TypeScript SDK" "node sdk/node/test.js" "node"
 
 # 5. C11 Native SDK
 echo ">>> [5/9] Testing C11 Native SDK..."

@@ -153,12 +153,33 @@ pub fn fl2_find_decompressed_size(src: &[u8]) -> Option<u64> {
     }
 }
 
+use std::cell::RefCell;
+
+thread_local! {
+    static TLS_FL2_DCTX: RefCell<Option<Fl2DCtx>> = const { RefCell::new(None) };
+}
+
+/// Executes closure with thread-local cached `Fl2DCtx`.
+pub fn with_thread_local_fl2_dctx<F, R>(f: F) -> Result<R, TTZipStatus>
+where
+    F: FnOnce(&mut Fl2DCtx) -> Result<R, TTZipStatus>,
+{
+    TLS_FL2_DCTX.with(|cell| {
+        let mut cached = cell.borrow_mut();
+        if cached.is_none() {
+            *cached = Some(Fl2DCtx::new()?);
+        }
+        let ctx = cached.as_mut().unwrap();
+        f(ctx)
+    })
+}
+
 /// High-level single-pass fast-lzma2 decompression with thread budget.
 pub fn fl2_decompress(src: &[u8], dst: &mut [u8], threads: u32) -> Result<usize, TTZipStatus> {
-    let mut ctx = if threads > 1 {
-        Fl2DCtx::new_mt(threads)?
+    if threads <= 1 {
+        with_thread_local_fl2_dctx(|ctx| ctx.decompress(src, dst))
     } else {
-        Fl2DCtx::new()?
-    };
-    ctx.decompress(src, dst)
+        let mut ctx = Fl2DCtx::new_mt(threads)?;
+        ctx.decompress(src, dst)
+    }
 }

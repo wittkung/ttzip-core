@@ -185,34 +185,11 @@ pub fn zstd_compress_bound(src_size: usize) -> usize {
     unsafe { ZSTD_compressBound(src_size) }
 }
 
-/// Zero-copy Zstandard compression using stateless direct C-API.
+/// Zero-copy Zstandard compression using thread-local cached CCtx.
 pub fn zstd_compress(src: &[u8], dst: &mut [u8], level: i32) -> Result<usize, TTZipStatus> {
-    let in_ptr = if src.is_empty() {
-        std::ptr::null()
-    } else {
-        src.as_ptr() as *const libc::c_void
-    };
-    let out_ptr = if dst.is_empty() {
-        std::ptr::null_mut()
-    } else {
-        dst.as_mut_ptr() as *mut libc::c_void
-    };
-
-    let res = unsafe {
-        ZSTD_compress(
-            out_ptr,
-            dst.len(),
-            in_ptr,
-            src.len(),
-            level as libc::c_int,
-        )
-    };
-
-    if unsafe { ZSTD_isError(res) } != 0 {
-        Err(TTZipStatus::ErrCompressionFailed)
-    } else {
-        Ok(res)
-    }
+    with_thread_local_zstd_cctx(|cctx| {
+        cctx.compress(src, dst, level)
+    })
 }
 
 /// Zero-copy Zstandard compression with advanced configuration (workers, LDM, etc.).

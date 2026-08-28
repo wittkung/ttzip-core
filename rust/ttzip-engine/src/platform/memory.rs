@@ -216,3 +216,28 @@ pub unsafe extern "C" fn ttzip_rust_memory_usage(
     });
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
+
+/// Safe Rust API: Queries process RSS, peak RSS, and virtual memory snapshot.
+/// Returns `(current_rss_bytes, peak_rss_bytes, virtual_size_bytes)`.
+pub fn get_process_memory_info() -> (u64, u64, u64) {
+    let mut current_rss = 0u64;
+    let mut peak_rss = 0u64;
+    let mut virtual_size = 0u64;
+    unsafe {
+        let _ = ttzip_rust_memory_usage(&mut current_rss, &mut peak_rss, &mut virtual_size);
+    }
+    (current_rss, peak_rss, virtual_size)
+}
+
+/// Returns current resident set size (RSS) in bytes.
+#[inline]
+pub fn get_current_rss_bytes() -> u64 {
+    get_process_memory_info().0
+}
+
+/// Returns peak resident set size (RSS) in bytes.
+#[inline]
+pub fn get_peak_rss_bytes() -> u64 {
+    get_process_memory_info().1
+}
+

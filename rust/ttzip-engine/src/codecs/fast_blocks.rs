@@ -31,6 +31,14 @@ extern "C" {
         acceleration: libc::c_int,
     ) -> libc::c_int;
 
+    fn LZ4_compress_HC(
+        src: *const libc::c_char,
+        dst: *mut libc::c_char,
+        src_size: libc::c_int,
+        dst_capacity: libc::c_int,
+        compression_level: libc::c_int,
+    ) -> libc::c_int;
+
     fn LZ4_decompress_safe(
         src: *const libc::c_char,
         dst: *mut libc::c_char,
@@ -72,6 +80,32 @@ pub fn lz4_compress_fast(src: &[u8], dst: &mut [u8], acceleration: i32) -> Resul
             src.len() as libc::c_int,
             dst.len() as libc::c_int,
             acceleration as libc::c_int,
+        )
+    };
+
+    if written <= 0 {
+        Err(TTZipStatus::ErrCompressionFailed)
+    } else {
+        Ok(written as usize)
+    }
+}
+
+/// Compresses a memory block using LZ4 High Compression (HC) algorithm.
+pub fn lz4_compress_hc(src: &[u8], dst: &mut [u8], level: i32) -> Result<usize, TTZipStatus> {
+    if src.is_empty() {
+        return Ok(0);
+    }
+    if src.len() > i32::MAX as usize || dst.len() > i32::MAX as usize {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+
+    let written = unsafe {
+        LZ4_compress_HC(
+            src.as_ptr() as *const libc::c_char,
+            dst.as_mut_ptr() as *mut libc::c_char,
+            src.len() as libc::c_int,
+            dst.len() as libc::c_int,
+            level.clamp(1, 12) as libc::c_int,
         )
     };
 
@@ -215,6 +249,19 @@ mod tests {
         let input = b"LZ4 fast compression block testing in TTZip native glue layer.";
         let mut comp = vec![0u8; lz4_compress_bound(input.len())];
         let c_len = lz4_compress(input, &mut comp).expect("lz4 compress");
+        assert!(c_len > 0);
+
+        let mut decomp = vec![0u8; input.len()];
+        let d_len = lz4_decompress(&comp[..c_len], &mut decomp).expect("lz4 decompress");
+        assert_eq!(d_len, input.len());
+        assert_eq!(&decomp[..d_len], input);
+    }
+
+    #[test]
+    fn test_lz4_hc_roundtrip() {
+        let input = b"LZ4 High Compression (HC) block testing with higher compression ratio in TTZip.";
+        let mut comp = vec![0u8; lz4_compress_bound(input.len())];
+        let c_len = lz4_compress_hc(input, &mut comp, 9).expect("lz4 hc compress");
         assert!(c_len > 0);
 
         let mut decomp = vec![0u8; input.len()];

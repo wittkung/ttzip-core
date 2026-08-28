@@ -130,6 +130,7 @@ add_library(TTZip::Core ALIAS ttzip_c)
 target_compile_features(ttzip_c INTERFACE c_std_11)
 
 target_include_directories(ttzip_c INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sdk/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ttzip>
@@ -157,6 +158,7 @@ add_library(TTZip::ttzip_cpp ALIAS ttzip_cpp)
 target_compile_features(ttzip_cpp INTERFACE cxx_std_20)
 
 target_include_directories(ttzip_cpp INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sdk/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/ttzip>
@@ -171,17 +173,15 @@ if(TTZIP_INSTALL)
     # 1. Install Header files
     install(
         FILES
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip_rust_glue.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/sdk/include/ttzip.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/sdk/include/ttzip.hpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip_engineFFI.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
     install(
         FILES
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip.hpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip_rust_glue.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/sdk/include/ttzip.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/sdk/include/ttzip.hpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Sources/CTTZipBridge/include/ttzip_engineFFI.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ttzip
     )

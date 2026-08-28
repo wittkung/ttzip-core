@@ -87,8 +87,10 @@ impl InPlaceArchiveSession {
             _ => category_to_legacy_format(category),
         };
 
-        let shadow_path = generate_shadow_path(&archive_path);
-        let wal_path = generate_wal_path(&archive_path);
+        let tx_id = INPLACE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let pid = std::process::id();
+        let shadow_path = generate_shadow_path(&archive_path, pid, tx_id);
+        let wal_path = generate_wal_path(&archive_path, pid, tx_id);
 
         Ok(Self {
             archive_path,
@@ -203,20 +205,16 @@ impl Drop for InPlaceArchiveSession {
     }
 }
 
-fn generate_shadow_path(archive_path: &Path) -> PathBuf {
+fn generate_shadow_path(archive_path: &Path, pid: u32, tx_id: u64) -> PathBuf {
     let parent = archive_path.parent().unwrap_or_else(|| Path::new("."));
     let stem = archive_path.file_name().and_then(|s| s.to_str()).unwrap_or("archive");
-    let count = INPLACE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let pid = std::process::id();
-    parent.join(format!("{}.ttzip_inplace_{}_{}.tmp", stem, pid, count))
+    parent.join(format!("{}.ttzip_inplace_{}_{}.tmp", stem, pid, tx_id))
 }
 
-fn generate_wal_path(archive_path: &Path) -> PathBuf {
+fn generate_wal_path(archive_path: &Path, pid: u32, tx_id: u64) -> PathBuf {
     let parent = archive_path.parent().unwrap_or_else(|| Path::new("."));
     let stem = archive_path.file_name().and_then(|s| s.to_str()).unwrap_or("archive");
-    let count = INPLACE_COUNTER.load(Ordering::Relaxed);
-    let pid = std::process::id();
-    parent.join(format!("{}.ttzip_wal_{}_{}.log", stem, pid, count))
+    parent.join(format!("{}.ttzip_wal_{}_{}.log", stem, pid, tx_id))
 }
 
 /// Classifies archive path and format hint into execution dispatch category.

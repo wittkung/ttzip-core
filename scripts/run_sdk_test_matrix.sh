@@ -311,7 +311,7 @@ if check_category_enabled "unit"; then
 
     # 3. Python 3 SDK
     run_sdk_test "python" "Python 3 Native Extension & 16-Format Matrix" \
-        "PYTHONPATH=python python3 -m unittest discover -s python/tests" \
+        "PYTHONPATH=sdk/python python3 -m unittest discover -s sdk/python/tests" \
         16
 
     # 4. Go SDK

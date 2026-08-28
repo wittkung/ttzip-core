@@ -113,6 +113,10 @@ impl<'a> ZipArchive<'a> {
         };
 
         let uncomp_size = entry.uncompressed_size as usize;
+        // Defense-in-depth: limit single-entry in-memory extraction to 256MB to prevent zip-bomb OOM attacks
+        if uncomp_size > 256 * 1024 * 1024 {
+            return Err(TTZipStatus::ErrOutOfMemory);
+        }
         let mut out_buffer = vec![0u8; uncomp_size];
 
         match entry.actual_method {

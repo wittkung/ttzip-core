@@ -106,19 +106,19 @@
 brew install wittkung/ttzip/ttzip-cli
 ```
 
-### 2. ワンクリック・ネイティブビルド & インストール
+### 2. ttzip CLI & マイクロカーネルのビルド
 
-1行のコマンドで `TTZip.app` を `/Applications` にインストールし、`ttzip` / `ttzip-cli` をシステム PATH に自動登録します：
+純粋な Rust 高性能 POSIX CLI ツールとマイクロカーネルライブラリのビルド：
 
 ```bash
-git clone https://github.com/wittkung/TTZip.git
-cd TTZip
+git clone https://github.com/wittkung/ttzip-core.git
+cd ttzip-core
 
-# 選択肢 A: Makefile 経由でビルド & インストール
-make reinstall
+# 選択肢 A: Makefile 経由で CLI をビルド
+make cli
 
-# 選択肢 B: Finder からダブルクリックまたはターミナルから直接実行
-./Install-TTZip.command
+# 選択肢 B: Cargo workspace から直接ビルド
+cd rust && cargo build --release --bin ttzip
 ```
 
 ### 3. Swift Package Manager (SwiftPM) によるビルド

@@ -199,12 +199,12 @@ extension FfiConverterRustBuffer {
         @_documentation(visibility: private)
     #endif
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
+        defer { buf.deallocate() }
         var reader = createReader(data: Data(rustBuffer: buf))
         let value = try read(from: &reader)
         if hasRemaining(reader) {
             throw UniffiInternalError.incompleteData
         }
-        buf.deallocate()
         return value
     }
 
@@ -675,7 +675,7 @@ open class CancellationToken:
             return
         }
 
-        try! rustCall { uniffi_ttzip_engine_fn_free_cancellationtoken(pointer, $0) }
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_cancellationtoken(pointer, $0) }
     }
 
     open func cancel() {
@@ -823,7 +823,7 @@ open class TtZipLocalizationEngine:
             return
         }
 
-        try! rustCall { uniffi_ttzip_engine_fn_free_ttziplocalizationengine(pointer, $0) }
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_ttziplocalizationengine(pointer, $0) }
     }
 
     /**
@@ -1105,7 +1105,7 @@ open class UniFfittZipMediaPlayer:
             return
         }
 
-        try! rustCall { uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(pointer, $0) }
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(pointer, $0) }
     }
 
     /**
@@ -1432,7 +1432,7 @@ open class UniFfiVfsTree:
             return
         }
 
-        try! rustCall { uniffi_ttzip_engine_fn_free_uniffivfstree(pointer, $0) }
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffivfstree(pointer, $0) }
     }
 
     public static func build(entries: [UniFfiEntryMetadata], rootName: String) -> UniFfiVfsTree {
@@ -1602,7 +1602,7 @@ open class VirtualFileStream:
             return
         }
 
-        try! rustCall { uniffi_ttzip_engine_fn_free_virtualfilestream(pointer, $0) }
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_virtualfilestream(pointer, $0) }
     }
 
     public static func newEmpty() -> VirtualFileStream {
@@ -3089,6 +3089,302 @@ public func FfiConverterTypeUniFFIAudioTrack_lower(_ value: UniFfiAudioTrack) ->
 }
 
 /**
+ * Comprehensive benchmark matrix report across all evaluated codecs.
+ */
+public struct UniFfiBenchmarkMatrixReport {
+    public var corpusType: UniFfiCorpusType
+    public var corpusName: String
+    public var corpusSizeBytes: UInt64
+    public var timestampEpochSecs: UInt64
+    public var totalPointsEvaluated: UInt32
+    public var paretoOptimalCount: UInt32
+    public var peakCompressThroughputMbs: Double
+    public var peakDecompressThroughputMbs: Double
+    public var maxSpaceSavingsPct: Double
+    public var points: [UniFfiBenchmarkPointResult]
+    public var passedGate: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(corpusType: UniFfiCorpusType, corpusName: String, corpusSizeBytes: UInt64, timestampEpochSecs: UInt64, totalPointsEvaluated: UInt32, paretoOptimalCount: UInt32, peakCompressThroughputMbs: Double, peakDecompressThroughputMbs: Double, maxSpaceSavingsPct: Double, points: [UniFfiBenchmarkPointResult], passedGate: Bool) {
+        self.corpusType = corpusType
+        self.corpusName = corpusName
+        self.corpusSizeBytes = corpusSizeBytes
+        self.timestampEpochSecs = timestampEpochSecs
+        self.totalPointsEvaluated = totalPointsEvaluated
+        self.paretoOptimalCount = paretoOptimalCount
+        self.peakCompressThroughputMbs = peakCompressThroughputMbs
+        self.peakDecompressThroughputMbs = peakDecompressThroughputMbs
+        self.maxSpaceSavingsPct = maxSpaceSavingsPct
+        self.points = points
+        self.passedGate = passedGate
+    }
+}
+
+extension UniFfiBenchmarkMatrixReport: Equatable, Hashable {
+    public static func == (lhs: UniFfiBenchmarkMatrixReport, rhs: UniFfiBenchmarkMatrixReport) -> Bool {
+        if lhs.corpusType != rhs.corpusType {
+            return false
+        }
+        if lhs.corpusName != rhs.corpusName {
+            return false
+        }
+        if lhs.corpusSizeBytes != rhs.corpusSizeBytes {
+            return false
+        }
+        if lhs.timestampEpochSecs != rhs.timestampEpochSecs {
+            return false
+        }
+        if lhs.totalPointsEvaluated != rhs.totalPointsEvaluated {
+            return false
+        }
+        if lhs.paretoOptimalCount != rhs.paretoOptimalCount {
+            return false
+        }
+        if lhs.peakCompressThroughputMbs != rhs.peakCompressThroughputMbs {
+            return false
+        }
+        if lhs.peakDecompressThroughputMbs != rhs.peakDecompressThroughputMbs {
+            return false
+        }
+        if lhs.maxSpaceSavingsPct != rhs.maxSpaceSavingsPct {
+            return false
+        }
+        if lhs.points != rhs.points {
+            return false
+        }
+        if lhs.passedGate != rhs.passedGate {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(corpusType)
+        hasher.combine(corpusName)
+        hasher.combine(corpusSizeBytes)
+        hasher.combine(timestampEpochSecs)
+        hasher.combine(totalPointsEvaluated)
+        hasher.combine(paretoOptimalCount)
+        hasher.combine(peakCompressThroughputMbs)
+        hasher.combine(peakDecompressThroughputMbs)
+        hasher.combine(maxSpaceSavingsPct)
+        hasher.combine(points)
+        hasher.combine(passedGate)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIBenchmarkMatrixReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiBenchmarkMatrixReport {
+        return
+            try UniFfiBenchmarkMatrixReport(
+                corpusType: FfiConverterTypeUniFFICorpusType.read(from: &buf),
+                corpusName: FfiConverterString.read(from: &buf),
+                corpusSizeBytes: FfiConverterUInt64.read(from: &buf),
+                timestampEpochSecs: FfiConverterUInt64.read(from: &buf),
+                totalPointsEvaluated: FfiConverterUInt32.read(from: &buf),
+                paretoOptimalCount: FfiConverterUInt32.read(from: &buf),
+                peakCompressThroughputMbs: FfiConverterDouble.read(from: &buf),
+                peakDecompressThroughputMbs: FfiConverterDouble.read(from: &buf),
+                maxSpaceSavingsPct: FfiConverterDouble.read(from: &buf),
+                points: FfiConverterSequenceTypeUniFFIBenchmarkPointResult.read(from: &buf),
+                passedGate: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiBenchmarkMatrixReport, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFICorpusType.write(value.corpusType, into: &buf)
+        FfiConverterString.write(value.corpusName, into: &buf)
+        FfiConverterUInt64.write(value.corpusSizeBytes, into: &buf)
+        FfiConverterUInt64.write(value.timestampEpochSecs, into: &buf)
+        FfiConverterUInt32.write(value.totalPointsEvaluated, into: &buf)
+        FfiConverterUInt32.write(value.paretoOptimalCount, into: &buf)
+        FfiConverterDouble.write(value.peakCompressThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.peakDecompressThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.maxSpaceSavingsPct, into: &buf)
+        FfiConverterSequenceTypeUniFFIBenchmarkPointResult.write(value.points, into: &buf)
+        FfiConverterBool.write(value.passedGate, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBenchmarkMatrixReport_lift(_ buf: RustBuffer) throws -> UniFfiBenchmarkMatrixReport {
+    return try FfiConverterTypeUniFFIBenchmarkMatrixReport.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBenchmarkMatrixReport_lower(_ value: UniFfiBenchmarkMatrixReport) -> RustBuffer {
+    return FfiConverterTypeUniFFIBenchmarkMatrixReport.lower(value)
+}
+
+/**
+ * Metrics for an individual algorithm benchmark point.
+ */
+public struct UniFfiBenchmarkPointResult {
+    public var algorithm: String
+    public var level: Int32
+    public var displayName: String
+    public var originalSizeBytes: UInt64
+    public var compressedSizeBytes: UInt64
+    public var compressionRatio: Double
+    public var spaceSavingsPct: Double
+    public var compressThroughputMbs: Double
+    public var decompressThroughputMbs: Double
+    public var compressTimeNanos: UInt64
+    public var decompressTimeNanos: UInt64
+    public var paretoRank: UInt32
+    public var isParetoOptimal: Bool
+    public var isOnConvexHull: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(algorithm: String, level: Int32, displayName: String, originalSizeBytes: UInt64, compressedSizeBytes: UInt64, compressionRatio: Double, spaceSavingsPct: Double, compressThroughputMbs: Double, decompressThroughputMbs: Double, compressTimeNanos: UInt64, decompressTimeNanos: UInt64, paretoRank: UInt32, isParetoOptimal: Bool, isOnConvexHull: Bool) {
+        self.algorithm = algorithm
+        self.level = level
+        self.displayName = displayName
+        self.originalSizeBytes = originalSizeBytes
+        self.compressedSizeBytes = compressedSizeBytes
+        self.compressionRatio = compressionRatio
+        self.spaceSavingsPct = spaceSavingsPct
+        self.compressThroughputMbs = compressThroughputMbs
+        self.decompressThroughputMbs = decompressThroughputMbs
+        self.compressTimeNanos = compressTimeNanos
+        self.decompressTimeNanos = decompressTimeNanos
+        self.paretoRank = paretoRank
+        self.isParetoOptimal = isParetoOptimal
+        self.isOnConvexHull = isOnConvexHull
+    }
+}
+
+extension UniFfiBenchmarkPointResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiBenchmarkPointResult, rhs: UniFfiBenchmarkPointResult) -> Bool {
+        if lhs.algorithm != rhs.algorithm {
+            return false
+        }
+        if lhs.level != rhs.level {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.originalSizeBytes != rhs.originalSizeBytes {
+            return false
+        }
+        if lhs.compressedSizeBytes != rhs.compressedSizeBytes {
+            return false
+        }
+        if lhs.compressionRatio != rhs.compressionRatio {
+            return false
+        }
+        if lhs.spaceSavingsPct != rhs.spaceSavingsPct {
+            return false
+        }
+        if lhs.compressThroughputMbs != rhs.compressThroughputMbs {
+            return false
+        }
+        if lhs.decompressThroughputMbs != rhs.decompressThroughputMbs {
+            return false
+        }
+        if lhs.compressTimeNanos != rhs.compressTimeNanos {
+            return false
+        }
+        if lhs.decompressTimeNanos != rhs.decompressTimeNanos {
+            return false
+        }
+        if lhs.paretoRank != rhs.paretoRank {
+            return false
+        }
+        if lhs.isParetoOptimal != rhs.isParetoOptimal {
+            return false
+        }
+        if lhs.isOnConvexHull != rhs.isOnConvexHull {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(algorithm)
+        hasher.combine(level)
+        hasher.combine(displayName)
+        hasher.combine(originalSizeBytes)
+        hasher.combine(compressedSizeBytes)
+        hasher.combine(compressionRatio)
+        hasher.combine(spaceSavingsPct)
+        hasher.combine(compressThroughputMbs)
+        hasher.combine(decompressThroughputMbs)
+        hasher.combine(compressTimeNanos)
+        hasher.combine(decompressTimeNanos)
+        hasher.combine(paretoRank)
+        hasher.combine(isParetoOptimal)
+        hasher.combine(isOnConvexHull)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIBenchmarkPointResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiBenchmarkPointResult {
+        return
+            try UniFfiBenchmarkPointResult(
+                algorithm: FfiConverterString.read(from: &buf),
+                level: FfiConverterInt32.read(from: &buf),
+                displayName: FfiConverterString.read(from: &buf),
+                originalSizeBytes: FfiConverterUInt64.read(from: &buf),
+                compressedSizeBytes: FfiConverterUInt64.read(from: &buf),
+                compressionRatio: FfiConverterDouble.read(from: &buf),
+                spaceSavingsPct: FfiConverterDouble.read(from: &buf),
+                compressThroughputMbs: FfiConverterDouble.read(from: &buf),
+                decompressThroughputMbs: FfiConverterDouble.read(from: &buf),
+                compressTimeNanos: FfiConverterUInt64.read(from: &buf),
+                decompressTimeNanos: FfiConverterUInt64.read(from: &buf),
+                paretoRank: FfiConverterUInt32.read(from: &buf),
+                isParetoOptimal: FfiConverterBool.read(from: &buf),
+                isOnConvexHull: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiBenchmarkPointResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.algorithm, into: &buf)
+        FfiConverterInt32.write(value.level, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterUInt64.write(value.originalSizeBytes, into: &buf)
+        FfiConverterUInt64.write(value.compressedSizeBytes, into: &buf)
+        FfiConverterDouble.write(value.compressionRatio, into: &buf)
+        FfiConverterDouble.write(value.spaceSavingsPct, into: &buf)
+        FfiConverterDouble.write(value.compressThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.decompressThroughputMbs, into: &buf)
+        FfiConverterUInt64.write(value.compressTimeNanos, into: &buf)
+        FfiConverterUInt64.write(value.decompressTimeNanos, into: &buf)
+        FfiConverterUInt32.write(value.paretoRank, into: &buf)
+        FfiConverterBool.write(value.isParetoOptimal, into: &buf)
+        FfiConverterBool.write(value.isOnConvexHull, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBenchmarkPointResult_lift(_ buf: RustBuffer) throws -> UniFfiBenchmarkPointResult {
+    return try FfiConverterTypeUniFFIBenchmarkPointResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBenchmarkPointResult_lower(_ value: UniFfiBenchmarkPointResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIBenchmarkPointResult.lower(value)
+}
+
+/**
  * Corrupted entry information in integrity verification.
  */
 public struct UniFfiCorruptedEntry {
@@ -4547,6 +4843,214 @@ public func FfiConverterTypeUniFFIMediaTrackInfo_lower(_ value: UniFfiMediaTrack
 }
 
 /**
+ * Standardized 7-Zip aligned MIPS hardware benchmark telemetry.
+ */
+public struct UniFfiMipsBenchmarkResult {
+    public var dictionarySizeMb: UInt32
+    public var threadCount: UInt32
+    public var compressMips: Double
+    public var decompressMips: Double
+    public var totalMips: Double
+    public var compressSpeedMbs: Double
+    public var decompressSpeedMbs: Double
+    public var cpuUsagePercent: Double
+    public var ratingPerUsageMips: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(dictionarySizeMb: UInt32, threadCount: UInt32, compressMips: Double, decompressMips: Double, totalMips: Double, compressSpeedMbs: Double, decompressSpeedMbs: Double, cpuUsagePercent: Double, ratingPerUsageMips: Double) {
+        self.dictionarySizeMb = dictionarySizeMb
+        self.threadCount = threadCount
+        self.compressMips = compressMips
+        self.decompressMips = decompressMips
+        self.totalMips = totalMips
+        self.compressSpeedMbs = compressSpeedMbs
+        self.decompressSpeedMbs = decompressSpeedMbs
+        self.cpuUsagePercent = cpuUsagePercent
+        self.ratingPerUsageMips = ratingPerUsageMips
+    }
+}
+
+extension UniFfiMipsBenchmarkResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiMipsBenchmarkResult, rhs: UniFfiMipsBenchmarkResult) -> Bool {
+        if lhs.dictionarySizeMb != rhs.dictionarySizeMb {
+            return false
+        }
+        if lhs.threadCount != rhs.threadCount {
+            return false
+        }
+        if lhs.compressMips != rhs.compressMips {
+            return false
+        }
+        if lhs.decompressMips != rhs.decompressMips {
+            return false
+        }
+        if lhs.totalMips != rhs.totalMips {
+            return false
+        }
+        if lhs.compressSpeedMbs != rhs.compressSpeedMbs {
+            return false
+        }
+        if lhs.decompressSpeedMbs != rhs.decompressSpeedMbs {
+            return false
+        }
+        if lhs.cpuUsagePercent != rhs.cpuUsagePercent {
+            return false
+        }
+        if lhs.ratingPerUsageMips != rhs.ratingPerUsageMips {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(dictionarySizeMb)
+        hasher.combine(threadCount)
+        hasher.combine(compressMips)
+        hasher.combine(decompressMips)
+        hasher.combine(totalMips)
+        hasher.combine(compressSpeedMbs)
+        hasher.combine(decompressSpeedMbs)
+        hasher.combine(cpuUsagePercent)
+        hasher.combine(ratingPerUsageMips)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMipsBenchmarkResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMipsBenchmarkResult {
+        return
+            try UniFfiMipsBenchmarkResult(
+                dictionarySizeMb: FfiConverterUInt32.read(from: &buf),
+                threadCount: FfiConverterUInt32.read(from: &buf),
+                compressMips: FfiConverterDouble.read(from: &buf),
+                decompressMips: FfiConverterDouble.read(from: &buf),
+                totalMips: FfiConverterDouble.read(from: &buf),
+                compressSpeedMbs: FfiConverterDouble.read(from: &buf),
+                decompressSpeedMbs: FfiConverterDouble.read(from: &buf),
+                cpuUsagePercent: FfiConverterDouble.read(from: &buf),
+                ratingPerUsageMips: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMipsBenchmarkResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.dictionarySizeMb, into: &buf)
+        FfiConverterUInt32.write(value.threadCount, into: &buf)
+        FfiConverterDouble.write(value.compressMips, into: &buf)
+        FfiConverterDouble.write(value.decompressMips, into: &buf)
+        FfiConverterDouble.write(value.totalMips, into: &buf)
+        FfiConverterDouble.write(value.compressSpeedMbs, into: &buf)
+        FfiConverterDouble.write(value.decompressSpeedMbs, into: &buf)
+        FfiConverterDouble.write(value.cpuUsagePercent, into: &buf)
+        FfiConverterDouble.write(value.ratingPerUsageMips, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMipsBenchmarkResult_lift(_ buf: RustBuffer) throws -> UniFfiMipsBenchmarkResult {
+    return try FfiConverterTypeUniFFIMipsBenchmarkResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMipsBenchmarkResult_lower(_ value: UniFfiMipsBenchmarkResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIMipsBenchmarkResult.lower(value)
+}
+
+/**
+ * Metadata descriptor for a multi-modal corpus entry.
+ */
+public struct UniFfiMultimodalEntryMetadata {
+    public var name: String
+    public var kindName: String
+    public var sizeBytes: UInt64
+    public var shannonEntropy: Double
+    public var isSynthetic: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(name: String, kindName: String, sizeBytes: UInt64, shannonEntropy: Double, isSynthetic: Bool) {
+        self.name = name
+        self.kindName = kindName
+        self.sizeBytes = sizeBytes
+        self.shannonEntropy = shannonEntropy
+        self.isSynthetic = isSynthetic
+    }
+}
+
+extension UniFfiMultimodalEntryMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiMultimodalEntryMetadata, rhs: UniFfiMultimodalEntryMetadata) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.kindName != rhs.kindName {
+            return false
+        }
+        if lhs.sizeBytes != rhs.sizeBytes {
+            return false
+        }
+        if lhs.shannonEntropy != rhs.shannonEntropy {
+            return false
+        }
+        if lhs.isSynthetic != rhs.isSynthetic {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(kindName)
+        hasher.combine(sizeBytes)
+        hasher.combine(shannonEntropy)
+        hasher.combine(isSynthetic)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMultimodalEntryMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMultimodalEntryMetadata {
+        return
+            try UniFfiMultimodalEntryMetadata(
+                name: FfiConverterString.read(from: &buf),
+                kindName: FfiConverterString.read(from: &buf),
+                sizeBytes: FfiConverterUInt64.read(from: &buf),
+                shannonEntropy: FfiConverterDouble.read(from: &buf),
+                isSynthetic: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMultimodalEntryMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.kindName, into: &buf)
+        FfiConverterUInt64.write(value.sizeBytes, into: &buf)
+        FfiConverterDouble.write(value.shannonEntropy, into: &buf)
+        FfiConverterBool.write(value.isSynthetic, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMultimodalEntryMetadata_lift(_ buf: RustBuffer) throws -> UniFfiMultimodalEntryMetadata {
+    return try FfiConverterTypeUniFFIMultimodalEntryMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMultimodalEntryMetadata_lower(_ value: UniFfiMultimodalEntryMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIMultimodalEntryMetadata.lower(value)
+}
+
+/**
  * Parent directory and autocompletion prefix record.
  */
 public struct UniFfiParentAndPrefix {
@@ -4608,6 +5112,110 @@ public func FfiConverterTypeUniFFIParentAndPrefix_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeUniFFIParentAndPrefix_lower(_ value: UniFfiParentAndPrefix) -> RustBuffer {
     return FfiConverterTypeUniFFIParentAndPrefix.lower(value)
+}
+
+/**
+ * 2D Pareto and Upper Convex Hull point representation for compression codecs.
+ */
+public struct UniFfiParetoCodecPoint {
+    public var codecName: String
+    public var compressionRatio: Double
+    public var speedMbS: Double
+    public var memoryMb: Double
+    public var paretoRank: UInt32
+    public var isParetoOptimal: Bool
+    public var isOnConvexHull: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(codecName: String, compressionRatio: Double, speedMbS: Double, memoryMb: Double, paretoRank: UInt32, isParetoOptimal: Bool, isOnConvexHull: Bool) {
+        self.codecName = codecName
+        self.compressionRatio = compressionRatio
+        self.speedMbS = speedMbS
+        self.memoryMb = memoryMb
+        self.paretoRank = paretoRank
+        self.isParetoOptimal = isParetoOptimal
+        self.isOnConvexHull = isOnConvexHull
+    }
+}
+
+extension UniFfiParetoCodecPoint: Equatable, Hashable {
+    public static func == (lhs: UniFfiParetoCodecPoint, rhs: UniFfiParetoCodecPoint) -> Bool {
+        if lhs.codecName != rhs.codecName {
+            return false
+        }
+        if lhs.compressionRatio != rhs.compressionRatio {
+            return false
+        }
+        if lhs.speedMbS != rhs.speedMbS {
+            return false
+        }
+        if lhs.memoryMb != rhs.memoryMb {
+            return false
+        }
+        if lhs.paretoRank != rhs.paretoRank {
+            return false
+        }
+        if lhs.isParetoOptimal != rhs.isParetoOptimal {
+            return false
+        }
+        if lhs.isOnConvexHull != rhs.isOnConvexHull {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(codecName)
+        hasher.combine(compressionRatio)
+        hasher.combine(speedMbS)
+        hasher.combine(memoryMb)
+        hasher.combine(paretoRank)
+        hasher.combine(isParetoOptimal)
+        hasher.combine(isOnConvexHull)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIParetoCodecPoint: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiParetoCodecPoint {
+        return
+            try UniFfiParetoCodecPoint(
+                codecName: FfiConverterString.read(from: &buf),
+                compressionRatio: FfiConverterDouble.read(from: &buf),
+                speedMbS: FfiConverterDouble.read(from: &buf),
+                memoryMb: FfiConverterDouble.read(from: &buf),
+                paretoRank: FfiConverterUInt32.read(from: &buf),
+                isParetoOptimal: FfiConverterBool.read(from: &buf),
+                isOnConvexHull: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiParetoCodecPoint, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.codecName, into: &buf)
+        FfiConverterDouble.write(value.compressionRatio, into: &buf)
+        FfiConverterDouble.write(value.speedMbS, into: &buf)
+        FfiConverterDouble.write(value.memoryMb, into: &buf)
+        FfiConverterUInt32.write(value.paretoRank, into: &buf)
+        FfiConverterBool.write(value.isParetoOptimal, into: &buf)
+        FfiConverterBool.write(value.isOnConvexHull, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIParetoCodecPoint_lift(_ buf: RustBuffer) throws -> UniFfiParetoCodecPoint {
+    return try FfiConverterTypeUniFFIParetoCodecPoint.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIParetoCodecPoint_lower(_ value: UniFfiParetoCodecPoint) -> RustBuffer {
+    return FfiConverterTypeUniFFIParetoCodecPoint.lower(value)
 }
 
 /**
@@ -4832,6 +5440,278 @@ public func FfiConverterTypeUniFFIPlaybackTimeInfo_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeUniFFIPlaybackTimeInfo_lower(_ value: UniFfiPlaybackTimeInfo) -> RustBuffer {
     return FfiConverterTypeUniFFIPlaybackTimeInfo.lower(value)
+}
+
+/**
+ * Metrics for an individual enterprise scenario benchmark point.
+ */
+public struct UniFfiScenarioBenchmarkPoint {
+    public var id: String
+    public var category: String
+    public var format: String
+    public var displayName: String
+    public var optionsSummary: String
+    public var originalSizeBytes: UInt64
+    public var outputSizeBytes: UInt64
+    public var spaceSavingsPct: Double
+    public var createThroughputMbs: Double
+    public var extractThroughputMbs: Double
+    public var createDurationMicros: UInt64
+    public var extractDurationMicros: UInt64
+    public var isEncrypted: Bool
+    public var isSplit: Bool
+    public var isSolid: Bool
+    public var passedInvariants: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(id: String, category: String, format: String, displayName: String, optionsSummary: String, originalSizeBytes: UInt64, outputSizeBytes: UInt64, spaceSavingsPct: Double, createThroughputMbs: Double, extractThroughputMbs: Double, createDurationMicros: UInt64, extractDurationMicros: UInt64, isEncrypted: Bool, isSplit: Bool, isSolid: Bool, passedInvariants: Bool) {
+        self.id = id
+        self.category = category
+        self.format = format
+        self.displayName = displayName
+        self.optionsSummary = optionsSummary
+        self.originalSizeBytes = originalSizeBytes
+        self.outputSizeBytes = outputSizeBytes
+        self.spaceSavingsPct = spaceSavingsPct
+        self.createThroughputMbs = createThroughputMbs
+        self.extractThroughputMbs = extractThroughputMbs
+        self.createDurationMicros = createDurationMicros
+        self.extractDurationMicros = extractDurationMicros
+        self.isEncrypted = isEncrypted
+        self.isSplit = isSplit
+        self.isSolid = isSolid
+        self.passedInvariants = passedInvariants
+    }
+}
+
+extension UniFfiScenarioBenchmarkPoint: Equatable, Hashable {
+    public static func == (lhs: UniFfiScenarioBenchmarkPoint, rhs: UniFfiScenarioBenchmarkPoint) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.category != rhs.category {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.optionsSummary != rhs.optionsSummary {
+            return false
+        }
+        if lhs.originalSizeBytes != rhs.originalSizeBytes {
+            return false
+        }
+        if lhs.outputSizeBytes != rhs.outputSizeBytes {
+            return false
+        }
+        if lhs.spaceSavingsPct != rhs.spaceSavingsPct {
+            return false
+        }
+        if lhs.createThroughputMbs != rhs.createThroughputMbs {
+            return false
+        }
+        if lhs.extractThroughputMbs != rhs.extractThroughputMbs {
+            return false
+        }
+        if lhs.createDurationMicros != rhs.createDurationMicros {
+            return false
+        }
+        if lhs.extractDurationMicros != rhs.extractDurationMicros {
+            return false
+        }
+        if lhs.isEncrypted != rhs.isEncrypted {
+            return false
+        }
+        if lhs.isSplit != rhs.isSplit {
+            return false
+        }
+        if lhs.isSolid != rhs.isSolid {
+            return false
+        }
+        if lhs.passedInvariants != rhs.passedInvariants {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(category)
+        hasher.combine(format)
+        hasher.combine(displayName)
+        hasher.combine(optionsSummary)
+        hasher.combine(originalSizeBytes)
+        hasher.combine(outputSizeBytes)
+        hasher.combine(spaceSavingsPct)
+        hasher.combine(createThroughputMbs)
+        hasher.combine(extractThroughputMbs)
+        hasher.combine(createDurationMicros)
+        hasher.combine(extractDurationMicros)
+        hasher.combine(isEncrypted)
+        hasher.combine(isSplit)
+        hasher.combine(isSolid)
+        hasher.combine(passedInvariants)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIScenarioBenchmarkPoint: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiScenarioBenchmarkPoint {
+        return
+            try UniFfiScenarioBenchmarkPoint(
+                id: FfiConverterString.read(from: &buf),
+                category: FfiConverterString.read(from: &buf),
+                format: FfiConverterString.read(from: &buf),
+                displayName: FfiConverterString.read(from: &buf),
+                optionsSummary: FfiConverterString.read(from: &buf),
+                originalSizeBytes: FfiConverterUInt64.read(from: &buf),
+                outputSizeBytes: FfiConverterUInt64.read(from: &buf),
+                spaceSavingsPct: FfiConverterDouble.read(from: &buf),
+                createThroughputMbs: FfiConverterDouble.read(from: &buf),
+                extractThroughputMbs: FfiConverterDouble.read(from: &buf),
+                createDurationMicros: FfiConverterUInt64.read(from: &buf),
+                extractDurationMicros: FfiConverterUInt64.read(from: &buf),
+                isEncrypted: FfiConverterBool.read(from: &buf),
+                isSplit: FfiConverterBool.read(from: &buf),
+                isSolid: FfiConverterBool.read(from: &buf),
+                passedInvariants: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiScenarioBenchmarkPoint, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.category, into: &buf)
+        FfiConverterString.write(value.format, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterString.write(value.optionsSummary, into: &buf)
+        FfiConverterUInt64.write(value.originalSizeBytes, into: &buf)
+        FfiConverterUInt64.write(value.outputSizeBytes, into: &buf)
+        FfiConverterDouble.write(value.spaceSavingsPct, into: &buf)
+        FfiConverterDouble.write(value.createThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.extractThroughputMbs, into: &buf)
+        FfiConverterUInt64.write(value.createDurationMicros, into: &buf)
+        FfiConverterUInt64.write(value.extractDurationMicros, into: &buf)
+        FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterBool.write(value.isSplit, into: &buf)
+        FfiConverterBool.write(value.isSolid, into: &buf)
+        FfiConverterBool.write(value.passedInvariants, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIScenarioBenchmarkPoint_lift(_ buf: RustBuffer) throws -> UniFfiScenarioBenchmarkPoint {
+    return try FfiConverterTypeUniFFIScenarioBenchmarkPoint.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIScenarioBenchmarkPoint_lower(_ value: UniFfiScenarioBenchmarkPoint) -> RustBuffer {
+    return FfiConverterTypeUniFFIScenarioBenchmarkPoint.lower(value)
+}
+
+/**
+ * Comprehensive 24-point enterprise scenario benchmark report.
+ */
+public struct UniFfiScenarioMatrixReport {
+    public var totalScenariosEvaluated: UInt32
+    public var timestampEpochSecs: UInt64
+    public var peakCreateThroughputMbs: Double
+    public var peakExtractThroughputMbs: Double
+    public var allInvariantsPassed: Bool
+    public var points: [UniFfiScenarioBenchmarkPoint]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(totalScenariosEvaluated: UInt32, timestampEpochSecs: UInt64, peakCreateThroughputMbs: Double, peakExtractThroughputMbs: Double, allInvariantsPassed: Bool, points: [UniFfiScenarioBenchmarkPoint]) {
+        self.totalScenariosEvaluated = totalScenariosEvaluated
+        self.timestampEpochSecs = timestampEpochSecs
+        self.peakCreateThroughputMbs = peakCreateThroughputMbs
+        self.peakExtractThroughputMbs = peakExtractThroughputMbs
+        self.allInvariantsPassed = allInvariantsPassed
+        self.points = points
+    }
+}
+
+extension UniFfiScenarioMatrixReport: Equatable, Hashable {
+    public static func == (lhs: UniFfiScenarioMatrixReport, rhs: UniFfiScenarioMatrixReport) -> Bool {
+        if lhs.totalScenariosEvaluated != rhs.totalScenariosEvaluated {
+            return false
+        }
+        if lhs.timestampEpochSecs != rhs.timestampEpochSecs {
+            return false
+        }
+        if lhs.peakCreateThroughputMbs != rhs.peakCreateThroughputMbs {
+            return false
+        }
+        if lhs.peakExtractThroughputMbs != rhs.peakExtractThroughputMbs {
+            return false
+        }
+        if lhs.allInvariantsPassed != rhs.allInvariantsPassed {
+            return false
+        }
+        if lhs.points != rhs.points {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(totalScenariosEvaluated)
+        hasher.combine(timestampEpochSecs)
+        hasher.combine(peakCreateThroughputMbs)
+        hasher.combine(peakExtractThroughputMbs)
+        hasher.combine(allInvariantsPassed)
+        hasher.combine(points)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIScenarioMatrixReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiScenarioMatrixReport {
+        return
+            try UniFfiScenarioMatrixReport(
+                totalScenariosEvaluated: FfiConverterUInt32.read(from: &buf),
+                timestampEpochSecs: FfiConverterUInt64.read(from: &buf),
+                peakCreateThroughputMbs: FfiConverterDouble.read(from: &buf),
+                peakExtractThroughputMbs: FfiConverterDouble.read(from: &buf),
+                allInvariantsPassed: FfiConverterBool.read(from: &buf),
+                points: FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiScenarioMatrixReport, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.totalScenariosEvaluated, into: &buf)
+        FfiConverterUInt64.write(value.timestampEpochSecs, into: &buf)
+        FfiConverterDouble.write(value.peakCreateThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.peakExtractThroughputMbs, into: &buf)
+        FfiConverterBool.write(value.allInvariantsPassed, into: &buf)
+        FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint.write(value.points, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIScenarioMatrixReport_lift(_ buf: RustBuffer) throws -> UniFfiScenarioMatrixReport {
+    return try FfiConverterTypeUniFFIScenarioMatrixReport.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIScenarioMatrixReport_lower(_ value: UniFfiScenarioMatrixReport) -> RustBuffer {
+    return FfiConverterTypeUniFFIScenarioMatrixReport.lower(value)
 }
 
 /**
@@ -7416,6 +8296,127 @@ extension ThumbnailSamplingFilter: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Strongly typed corpus types for benchmark dataset selection.
+ */
+
+public enum UniFfiCorpusType {
+    case calgary
+    case silesia
+    case xml
+    case random
+    case binary
+    case textData
+    case shortMatch
+    case dna
+    case noise
+    case literals
+    case machOBinary
+    case realisticRgb
+    case stripedRgb
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICorpusType: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCorpusType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCorpusType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .calgary
+
+        case 2: return .silesia
+
+        case 3: return .xml
+
+        case 4: return .random
+
+        case 5: return .binary
+
+        case 6: return .textData
+
+        case 7: return .shortMatch
+
+        case 8: return .dna
+
+        case 9: return .noise
+
+        case 10: return .literals
+
+        case 11: return .machOBinary
+
+        case 12: return .realisticRgb
+
+        case 13: return .stripedRgb
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiCorpusType, into buf: inout [UInt8]) {
+        switch value {
+        case .calgary:
+            writeInt(&buf, Int32(1))
+
+        case .silesia:
+            writeInt(&buf, Int32(2))
+
+        case .xml:
+            writeInt(&buf, Int32(3))
+
+        case .random:
+            writeInt(&buf, Int32(4))
+
+        case .binary:
+            writeInt(&buf, Int32(5))
+
+        case .textData:
+            writeInt(&buf, Int32(6))
+
+        case .shortMatch:
+            writeInt(&buf, Int32(7))
+
+        case .dna:
+            writeInt(&buf, Int32(8))
+
+        case .noise:
+            writeInt(&buf, Int32(9))
+
+        case .literals:
+            writeInt(&buf, Int32(10))
+
+        case .machOBinary:
+            writeInt(&buf, Int32(11))
+
+        case .realisticRgb:
+            writeInt(&buf, Int32(12))
+
+        case .stripedRgb:
+            writeInt(&buf, Int32(13))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICorpusType_lift(_ buf: RustBuffer) throws -> UniFfiCorpusType {
+    return try FfiConverterTypeUniFFICorpusType.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICorpusType_lower(_ value: UniFfiCorpusType) -> RustBuffer {
+    return FfiConverterTypeUniFFICorpusType.lower(value)
+}
+
+extension UniFfiCorpusType: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Verification result enumeration exposed to UniFFI.
  */
 
@@ -8554,6 +9555,31 @@ private struct FfiConverterSequenceTypeUniFFIAudioTrack: FfiConverterRustBuffer 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIBenchmarkPointResult: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiBenchmarkPointResult]
+
+    static func write(_ value: [UniFfiBenchmarkPointResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIBenchmarkPointResult.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiBenchmarkPointResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiBenchmarkPointResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIBenchmarkPointResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiCorruptedEntry]
 
@@ -8721,6 +9747,81 @@ private struct FfiConverterSequenceTypeUniFFIMediaTrackInfo: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIMediaTrackInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIMultimodalEntryMetadata: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiMultimodalEntryMetadata]
+
+    static func write(_ value: [UniFfiMultimodalEntryMetadata], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIMultimodalEntryMetadata.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiMultimodalEntryMetadata] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiMultimodalEntryMetadata]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIMultimodalEntryMetadata.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIParetoCodecPoint: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiParetoCodecPoint]
+
+    static func write(_ value: [UniFfiParetoCodecPoint], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIParetoCodecPoint.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiParetoCodecPoint] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiParetoCodecPoint]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIParetoCodecPoint.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiScenarioBenchmarkPoint]
+
+    static func write(_ value: [UniFfiScenarioBenchmarkPoint], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIScenarioBenchmarkPoint.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiScenarioBenchmarkPoint] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiScenarioBenchmarkPoint]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIScenarioBenchmarkPoint.read(from: &buf))
         }
         return seq
     }
@@ -9346,10 +10447,7 @@ public func findActiveSubtitlesAt(script: UniFfiSubtitleScript, timestampMs: UIn
 }
 
 /**
- * Generates a synthetic benchmark dataset file at high throughput.
- *
- * Uses buffered I/O, reusable 4MB chunk memory, and non-blocking SIMD-friendly
- * pattern synthesis to generate multi-gigabyte datasets in milliseconds.
+ * Generates a synthetic benchmark dataset file using mathematical generators.
  */
 public func generateSyntheticBenchmarkDataset(targetPath: String, targetBytes: UInt64, profileName: String) throws {
     try rustCallWithError(FfiConverterTypeTTZipError.lift) {
@@ -9691,6 +10789,106 @@ public func tokenizeSourceCode(text: String, fileExtension: String, maxLength: U
 }
 
 /**
+ * Calculates 2D Pareto frontier and Upper Convex Hull on codec points.
+ */
+public func ttzipBenchCalculateParetoFrontier(points: [UniFfiParetoCodecPoint]) -> [UniFfiParetoCodecPoint] {
+    return try! FfiConverterSequenceTypeUniFFIParetoCodecPoint.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier(
+            FfiConverterSequenceTypeUniFFIParetoCodecPoint.lower(points), $0
+        )
+    })
+}
+
+/**
+ * Generates in-memory synthetic corpus bytes directly.
+ */
+public func ttzipBenchGenerateCorpusBytes(corpusType: UniFfiCorpusType, sizeBytes: UInt64) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes(
+            FfiConverterTypeUniFFICorpusType.lower(corpusType),
+            FfiConverterUInt64.lower(sizeBytes), $0
+        )
+    })
+}
+
+/**
+ * Generates standalone interactive HTML dashboard for matrix benchmark.
+ */
+public func ttzipBenchGenerateHtmlDashboard(corpusType: UniFfiCorpusType) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_generate_html_dashboard(
+            FfiConverterTypeUniFFICorpusType.lower(corpusType), $0
+        )
+    })
+}
+
+/**
+ * Generates standalone SVG vector scatter plot with Fritsch-Carlson Pareto spline.
+ */
+public func ttzipBenchGenerateSvgPareto(corpusType: UniFfiCorpusType, width: UInt32, height: UInt32) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto(
+            FfiConverterTypeUniFFICorpusType.lower(corpusType),
+            FfiConverterUInt32.lower(width),
+            FfiConverterUInt32.lower(height), $0
+        )
+    })
+}
+
+/**
+ * Lists standard Silesia multi-modal corpus catalog metadata.
+ */
+public func ttzipBenchListSilesiaEntries() -> [UniFfiMultimodalEntryMetadata] {
+    return try! FfiConverterSequenceTypeUniFFIMultimodalEntryMetadata.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries($0)
+    })
+}
+
+/**
+ * Executes all 24 enterprise full-scenario benchmark points.
+ */
+public func ttzipBenchRunAllScenarios() throws -> UniFfiScenarioMatrixReport {
+    return try FfiConverterTypeUniFFIScenarioMatrixReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios($0)
+    })
+}
+
+/**
+ * Executes standard 50-point Matrix Gate pass.
+ */
+public func ttzipBenchRunGate() throws -> UniFfiBenchmarkMatrixReport {
+    return try FfiConverterTypeUniFFIBenchmarkMatrixReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_gate($0)
+    })
+}
+
+/**
+ * Executes matrix benchmark for specified corpus and size.
+ */
+public func ttzipBenchRunMatrix(corpusType: UniFfiCorpusType, corpusSizeBytes: UInt64, iterations: UInt32) throws -> UniFfiBenchmarkMatrixReport {
+    return try FfiConverterTypeUniFFIBenchmarkMatrixReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_matrix(
+            FfiConverterTypeUniFFICorpusType.lower(corpusType),
+            FfiConverterUInt64.lower(corpusSizeBytes),
+            FfiConverterUInt32.lower(iterations), $0
+        )
+    })
+}
+
+/**
+ * Executes a standardized 7-Zip aligned MIPS hardware benchmark pass.
+ */
+public func ttzipBenchRunMips(dictionarySizeMb: UInt32, threadCount: UInt32, iterations: UInt32) throws -> UniFfiMipsBenchmarkResult {
+    return try FfiConverterTypeUniFFIMipsBenchmarkResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_mips(
+            FfiConverterUInt32.lower(dictionarySizeMb),
+            FfiConverterUInt32.lower(threadCount),
+            FfiConverterUInt32.lower(iterations), $0
+        )
+    })
+}
+
+/**
  * Convenient static function to format byte sizes via UniFFI.
  */
 public func ttzipI18nFormatBytes(bytes: Int64, standard: ByteSizeStandard, lang: AppLanguage) -> String {
@@ -9932,7 +11130,7 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_find_active_subtitles_at() != 63255 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313 {
+    if uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 48048 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory() != 45521 {
@@ -10014,6 +11212,33 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_tokenize_source_code() != 14659 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier() != 933 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes() != 39148 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard() != 43856 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto() != 58521 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 29258 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_gate() != 22949 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_matrix() != 8513 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_mips() != 59862 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193 {

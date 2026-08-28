@@ -125,3 +125,114 @@ fn test_binary_delta_auditor() {
     let md = report.to_markdown();
     assert!(md.contains("# Binary Delta & Divergence Audit"));
 }
+
+#[test]
+fn test_benchmark_corpus_8_mathematical_generators() {
+    const N: usize = 65536;
+
+    let text = BenchmarkCorpusGenerator::gen_text_data(N);
+    assert_eq!(text.len(), N);
+    let h_text = compute_shannon_entropy(&text);
+    assert!(h_text > 3.0 && h_text < 5.5, "Text entropy expected ~4.0-5.0, got {}", h_text);
+
+    let short_match = BenchmarkCorpusGenerator::gen_short_match_data(N);
+    assert_eq!(short_match.len(), N);
+    let h_short = compute_shannon_entropy(&short_match);
+    assert!(h_short >= 2.0 && h_short <= 8.0, "Short match entropy expected 2.0-8.0, got {}", h_short);
+
+    let dna = BenchmarkCorpusGenerator::gen_dna_data(N);
+    assert_eq!(dna.len(), N);
+    let h_dna = compute_shannon_entropy(&dna);
+    assert!(h_dna > 1.8 && h_dna < 2.2, "DNA 4-symbol entropy expected ~2.0, got {}", h_dna);
+
+    let noise = BenchmarkCorpusGenerator::gen_incompressible_noise(N);
+    assert_eq!(noise.len(), N);
+    let h_noise = compute_shannon_entropy(&noise);
+    assert!(h_noise > 7.95, "Incompressible noise entropy expected >7.95, got {}", h_noise);
+
+    let literals = BenchmarkCorpusGenerator::gen_literals_data(N);
+    assert_eq!(literals.len(), N);
+    let h_lit = compute_shannon_entropy(&literals);
+    assert!(h_lit > 5.0 && h_lit < 7.5, "Literals entropy expected ~6.5, got {}", h_lit);
+
+    let macho = BenchmarkCorpusGenerator::gen_binary_macho_data(N);
+    assert_eq!(macho.len(), N);
+    assert_eq!(&macho[0..4], &[0xCF, 0xFA, 0xED, 0xFE]); // Mach-O 64-bit magic
+
+    let rgb_real = BenchmarkCorpusGenerator::gen_realistic_rgb_data(N);
+    assert_eq!(rgb_real.len(), N);
+
+    let rgb_striped = BenchmarkCorpusGenerator::gen_striped_rgb_data(N);
+    assert_eq!(rgb_striped.len(), N);
+    let h_striped = compute_shannon_entropy(&rgb_striped);
+    assert!(h_striped < 2.0, "Striped RGB entropy expected low, got {}", h_striped);
+}
+
+#[test]
+fn test_benchmark_corpus_all_enum_types() {
+    let all_types = [
+        BenchmarkCorpusType::Calgary,
+        BenchmarkCorpusType::Silesia,
+        BenchmarkCorpusType::Xml,
+        BenchmarkCorpusType::Random,
+        BenchmarkCorpusType::Binary,
+        BenchmarkCorpusType::TextData,
+        BenchmarkCorpusType::ShortMatch,
+        BenchmarkCorpusType::Dna,
+        BenchmarkCorpusType::Noise,
+        BenchmarkCorpusType::Literals,
+        BenchmarkCorpusType::MachOBinary,
+        BenchmarkCorpusType::RealisticRgb,
+        BenchmarkCorpusType::StripedRgb,
+    ];
+
+    for ct in all_types {
+        assert_eq!(BenchmarkCorpusType::from_i32(ct as i32), ct);
+        assert!(!ct.name().is_empty());
+        assert!(!ct.corpus_id().is_empty());
+        let buf = BenchmarkCorpusGenerator::generate(ct, 4096);
+        assert_eq!(buf.len(), 4096);
+    }
+
+    assert_eq!(BenchmarkCorpusType::from_str_id("text"), Some(BenchmarkCorpusType::TextData));
+    assert_eq!(BenchmarkCorpusType::from_str_id("short_match"), Some(BenchmarkCorpusType::ShortMatch));
+    assert_eq!(BenchmarkCorpusType::from_str_id("dna"), Some(BenchmarkCorpusType::Dna));
+    assert_eq!(BenchmarkCorpusType::from_str_id("noise"), Some(BenchmarkCorpusType::Noise));
+    assert_eq!(BenchmarkCorpusType::from_str_id("literals"), Some(BenchmarkCorpusType::Literals));
+    assert_eq!(BenchmarkCorpusType::from_str_id("mixed"), Some(BenchmarkCorpusType::MachOBinary));
+    assert_eq!(BenchmarkCorpusType::from_str_id("realistic_rgb"), Some(BenchmarkCorpusType::RealisticRgb));
+    assert_eq!(BenchmarkCorpusType::from_str_id("striped_rgb"), Some(BenchmarkCorpusType::StripedRgb));
+}
+
+#[test]
+fn test_multimodal_corpus_loader_functionality() {
+    let loader = MultimodalCorpusLoader::global();
+
+    // 1. Silesia loading (12 files)
+    let silesia_entries = loader.load_all_silesia();
+    assert_eq!(silesia_entries.len(), 12);
+    for entry in &silesia_entries {
+        assert!(!entry.name.is_empty());
+        assert!(entry.size_bytes > 0);
+        assert!(entry.shannon_entropy >= 0.0 && entry.shannon_entropy <= 8.0);
+        assert_eq!(entry.data.len(), entry.size_bytes);
+    }
+
+    // 2. Fat Mach-O archive loading
+    let macho_entry = loader.load_macho_vendor_archive(Some(64 * 1024));
+    assert!(macho_entry.size_bytes > 0);
+    assert!(macho_entry.size_bytes <= 64 * 1024);
+
+    // 3. Test PDF loading
+    let pdf_entry = loader.load_test_pdf(Some(64 * 1024));
+    assert!(pdf_entry.size_bytes > 0);
+    assert!(pdf_entry.size_bytes <= 64 * 1024);
+
+    // 4. 4K image samples loading
+    let img_entries = loader.load_image_samples(5);
+    assert!(!img_entries.is_empty());
+    for img in &img_entries {
+        assert!(img.size_bytes > 0);
+    }
+}
+

@@ -63,9 +63,33 @@ extension CancellationToken: @unchecked Sendable {}
     if "extension UniFfiVfsTree: @unchecked Sendable" not in content:
         content += sendable_extensions
 
+    # 5. Ensure RustBuffer deallocate is inside defer to prevent leak on throw
+    old_lift = """    public static func lift(_ buf: RustBuffer) throws -> SwiftType {
+        var reader = createReader(data: Data(rustBuffer: buf))
+        let value = try read(from: &reader)
+        if hasRemaining(reader) {
+            throw UniffiInternalError.incompleteData
+        }
+        buf.deallocate()
+        return value
+    }"""
+    new_lift = """    public static func lift(_ buf: RustBuffer) throws -> SwiftType {
+        defer { buf.deallocate() }
+        var reader = createReader(data: Data(rustBuffer: buf))
+        let value = try read(from: &reader)
+        if hasRemaining(reader) {
+            throw UniffiInternalError.incompleteData
+        }
+        return value
+    }"""
+    content = content.replace(old_lift, new_lift)
+
+    # 6. Ensure deinit calls do not use try! to prevent fatal crashes
+    content = content.replace("        try! rustCall { uniffi_", "        _ = try? rustCall { uniffi_")
+
     with open(swift_path, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"Postprocessed {swift_path} for Swift 6 concurrency.")
+    print(f"Postprocessed {swift_path} for Swift 6 concurrency and memory safety.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

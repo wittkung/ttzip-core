@@ -474,7 +474,7 @@ pub fn write_tar_to_writer<W: Write>(
     source_paths: &[PathBuf],
     writer: W,
     options: &TTZipCreateOptions,
-) -> Result<(), TTZipStatus> {
+) -> Result<W, TTZipStatus> {
     if source_paths.is_empty() {
         return Err(TTZipStatus::ErrInvalidParam);
     }
@@ -669,5 +669,5 @@ pub fn write_tar_to_writer<W: Write>(
     }
 
     tar_writer.finish()?;
-    Ok(())
+    Ok(tar_writer.into_inner())
 }

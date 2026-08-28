@@ -141,6 +141,7 @@ pub struct VirtualMultiVolumeReader {
     segments: Vec<VolumeSegment>,
     total_size: u64,
     current_virtual_offset: u64,
+    last_seg_idx: usize,
     active_file: Option<(usize, File)>,
 }
 
@@ -181,8 +182,43 @@ impl VirtualMultiVolumeReader {
             segments,
             total_size: current_start,
             current_virtual_offset: 0,
+            last_seg_idx: 0,
             active_file: None,
         })
+    }
+
+    #[inline]
+    fn find_segment_idx(&mut self, offset: u64) -> Option<usize> {
+        if offset >= self.total_size || self.segments.is_empty() {
+            return None;
+        }
+
+        // Fast O(1) cursor check for sequential stream reads
+        if self.last_seg_idx < self.segments.len() {
+            let seg = &self.segments[self.last_seg_idx];
+            if offset >= seg.virtual_start_offset && offset < seg.virtual_end_offset {
+                return Some(self.last_seg_idx);
+            }
+        }
+
+        // Fast O(log N) binary search on random seeks
+        let match_res = self.segments.binary_search_by(|seg| {
+            if offset < seg.virtual_start_offset {
+                std::cmp::Ordering::Greater
+            } else if offset >= seg.virtual_end_offset {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        });
+
+        match match_res {
+            Ok(idx) => {
+                self.last_seg_idx = idx;
+                Some(idx)
+            }
+            Err(_) => None,
+        }
     }
 
     /// Total virtual size across all combined volumes in bytes.
@@ -217,12 +253,7 @@ impl Read for VirtualMultiVolumeReader {
 
         let mut total_read = 0;
         while total_read < buf.len() && self.current_virtual_offset < self.total_size {
-            let seg_idx = self.segments.iter().position(|seg| {
-                self.current_virtual_offset >= seg.virtual_start_offset
-                    && self.current_virtual_offset < seg.virtual_end_offset
-            });
-
-            let segment_idx = match seg_idx {
+            let segment_idx = match self.find_segment_idx(self.current_virtual_offset) {
                 Some(idx) => idx,
                 None => break,
             };

@@ -21,17 +21,17 @@ extension ArchiveError {
             return .engineFailure(code: -403, message: reason)
         case let .EngineError(code):
             switch code {
-            case -2:
+            case RustTTZipStatusCode.errFileNotFound.rawValue:
                 return .fileNotFound
-            case -7:
+            case RustTTZipStatusCode.errOpenFailed.rawValue:
                 return .passwordRequired
-            case -9:
+            case RustTTZipStatusCode.errOutOfMemory.rawValue:
                 return .corruptedData(archivePath: "code_\(code)", entryPath: "header")
             case -21:
                 return .invalidFormat
             case -23:
                 return .cancelled
-            case -24:
+            case RustTTZipStatusCode.errSolidBudgetExceeded.rawValue:
                 return .engineFailure(code: -403, message: "Security violation")
             default:
                 return .readFailed(code: code)
@@ -42,6 +42,29 @@ extension ArchiveError {
             return .cancelled
         }
     }
+
+/// Strongly typed status codes exported by Rust `ttzip-engine` FFI ABI.
+public enum RustTTZipStatusCode: Int32, Sendable {
+    case ok = 0
+    case eof = 1
+    case cancelled = 2
+    case errInvalidParam = -1
+    case errFileNotFound = -2
+    case errMmapFailed = -3
+    case errCorruptHeader = -4
+    case errInvalidOffset = -5
+    case errArchiveInitFailed = -6
+    case errOpenFailed = -7
+    case errPathTooLong = -8
+    case errOutOfMemory = -9
+    case errInvalidPassword = -10
+    case errExtractionFailed = -11
+    case errCompressionFailed = -12
+    case errUnsupportedFeature = -13
+    case errSolidBudgetExceeded = -24
+    case errSecurityViolation = -30
+    case errPanicCaught = -99
+}
 
     /// Maps any generic Swift or UniFFI error to a strongly typed `ArchiveError`.
     public static func from(error: Error) -> ArchiveError {

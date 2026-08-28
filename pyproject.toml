@@ -40,9 +40,9 @@ Issues = "https://github.com/ttzip/ttzip/issues"
 module-name = "ttzip._ttzip"
 features = ["pyo3/extension-module", "pyo3/abi3-py310"]
 manifest-path = "rust/ttzip-python/Cargo.toml"
-python-source = "python"
+python-source = "sdk/python"
 python-packages = ["ttzip"]
 include = [
-    "python/ttzip/py.typed",
-    "python/ttzip/*.pyi",
+    "sdk/python/ttzip/py.typed",
+    "sdk/python/ttzip/*.pyi",
 ]

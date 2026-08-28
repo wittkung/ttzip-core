@@ -6,7 +6,7 @@
 #
 # TTZip: High-performance native archiving and compression engine.
 
-# Builds TTZip native PyO3 C-extension and installs it into local python/ttzip package.
+# Builds TTZip native PyO3 C-extension and installs it into local sdk/python/ttzip package.
 
 set -euo pipefail
 
@@ -30,11 +30,12 @@ if [ ! -f "${TARGET_LIB}" ]; then
 fi
 
 if [ -f "${TARGET_LIB}" ]; then
-    cp "${TARGET_LIB}" "${REPO_ROOT}/python/ttzip/_ttzip.so"
+    mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
+    cp "${TARGET_LIB}" "${REPO_ROOT}/sdk/python/ttzip/_ttzip.so"
     if command -v codesign >/dev/null 2>&1; then
-        codesign --force --sign - "${REPO_ROOT}/python/ttzip/_ttzip.so" >/dev/null 2>&1 || true
+        codesign --force --sign - "${REPO_ROOT}/sdk/python/ttzip/_ttzip.so" >/dev/null 2>&1 || true
     fi
-    echo "✅ Successfully installed & signed native module to python/ttzip/_ttzip.so"
+    echo "✅ Successfully installed & signed native module to sdk/python/ttzip/_ttzip.so"
 else
     echo "❌ Error: Could not locate built dynamic library at ${TARGET_LIB}"
     exit 1

@@ -137,8 +137,8 @@ else
     lipo -create "${BUILT_LIBS[@]}" -output "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"
 fi
 
-# In-place strip DWARF debug info to optimize static library size
-strip -S "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
+# In-place strip non-global symbols to optimize static library size while preserving UniFFI exports
+strip -x "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || true
 
 # 自动生成 XCFramework 必需的 Info.plist
 cat > "${FRAMEWORKS_DIR}/TTZipVendor.xcframework/Info.plist" << 'EOF'
@@ -172,7 +172,7 @@ cat > "${FRAMEWORKS_DIR}/TTZipVendor.xcframework/Info.plist" << 'EOF'
 EOF
 
 echo "    libTTZipVendor.a architecture: $(lipo -info "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a")"
-echo "    libTTZipVendor.a size: $(ls -lh "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | awk '{print $5}')"
+echo "    libTTZipVendor.a size: $(ls -lh "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" | awk '{print $5}') ($(stat -f "%z bytes" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" 2>/dev/null || wc -c < "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"))"
 
 # 3. 生成 Mozilla UniFFI 绑定与 Scaffolding C 头文件
 echo "--> [INFO] Generating Mozilla UniFFI bindings..."
@@ -208,11 +208,11 @@ if [ -f "${FIRST_DYLIB}" ]; then
                 --metadata-no-deps
 
             if [ "${SWIFT_ONLY}" = "0" ]; then
-                mkdir -p "${REPO_ROOT}/python/ttzip"
+                mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
                 "${UNIFFI_BIN}" generate \
                     --library "${FIRST_DYLIB}" \
                     --language python \
-                    --out-dir "${REPO_ROOT}/python/ttzip" \
+                    --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
                     --metadata-no-deps
 
                 mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
@@ -233,11 +233,11 @@ if [ -f "${FIRST_DYLIB}" ]; then
                 --metadata-no-deps
 
             if [ "${SWIFT_ONLY}" = "0" ]; then
-                mkdir -p "${REPO_ROOT}/python/ttzip"
+                mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
                 cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
                     --library "${FIRST_DYLIB}" \
                     --language python \
-                    --out-dir "${REPO_ROOT}/python/ttzip" \
+                    --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
                     --metadata-no-deps
 
                 mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"

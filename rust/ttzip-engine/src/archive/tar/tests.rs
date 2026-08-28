@@ -325,3 +325,22 @@ use std::fs;
         }
     }
 
+    #[test]
+    fn test_tar_writer_long_symlink_target_pax_linkpath() {
+        let mut archive_bytes = Vec::new();
+        let mut writer = TarWriter::new(&mut archive_bytes);
+
+        let long_target = "deeply/nested/target/symlink/destination/directory/hierarchy/that/exceeds/one/hundred/bytes/limit/target_file_end.txt";
+        assert!(long_target.len() > 100);
+
+        writer.append_symlink("short_link.lnk", long_target, 0o777, 1700000000).expect("append long symlink");
+        writer.finish().expect("finish archive");
+
+        let archive = TarArchive::open_slice(&archive_bytes).expect("open tar slice");
+        assert_eq!(archive.len(), 1);
+        let entry = &archive.entries()[0];
+        assert_eq!(entry.path.as_ref(), "short_link.lnk");
+        assert!(entry.is_symlink);
+        assert_eq!(entry.link_target.as_deref(), Some(long_target));
+    }
+

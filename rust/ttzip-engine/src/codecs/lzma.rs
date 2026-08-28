@@ -147,14 +147,37 @@ pub fn lzma1_decompress(
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let mut alone_input = Vec::with_capacity(13 + raw_payload.len());
-    alone_input.extend_from_slice(&coder_props[..5]);
-    alone_input.extend_from_slice(&uncompressed_size.to_le_bytes());
-    alone_input.extend_from_slice(raw_payload);
+    // 1. Stack-allocated 13-byte Alone header (0 heap allocations)
+    let mut header = [0u8; 13];
+    header[..5].copy_from_slice(&coder_props[..5]);
+    header[5..13].copy_from_slice(&uncompressed_size.to_le_bytes());
 
     let mut decoder = LzmaAloneDecoder::new()?;
-    let (_in_consumed, out_produced, _is_end) = decoder.decompress_chunk(&alone_input, dst, true)?;
-    Ok(out_produced)
+
+    // 2. Feed 13-byte header to initialize LZMA model parameters
+    let mut header_slice = &header[..];
+    let mut out_offset = 0;
+    while !header_slice.is_empty() {
+        let (consumed, produced, is_end) = decoder.decompress_chunk(header_slice, &mut dst[out_offset..], false)?;
+        header_slice = &header_slice[consumed..];
+        out_offset += produced;
+        if is_end {
+            return Ok(out_offset);
+        }
+    }
+
+    // 3. Zero-copy stream raw payload directly without intermediate Vec allocation
+    let mut payload_slice = raw_payload;
+    while !payload_slice.is_empty() {
+        let (consumed, produced, is_end) = decoder.decompress_chunk(payload_slice, &mut dst[out_offset..], true)?;
+        payload_slice = &payload_slice[consumed..];
+        out_offset += produced;
+        if is_end || (consumed == 0 && produced == 0) {
+            break;
+        }
+    }
+
+    Ok(out_offset)
 }
 
 #[cfg(test)]

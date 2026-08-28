@@ -46,29 +46,33 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         Self.preventSpotlightIndexing(at: destinationDir)
         defer { Self.cleanupQuarantineAttributes(at: destinationDir) }
 
-        var extractedBytes: UInt64 = 0
-        if dispatchUniFFIExtraction(
-            archivePath: archivePath,
-            destinationDir: destinationDir,
-            password: password,
-            progressHandler: progressHandler,
-            outExtractedBytes: &extractedBytes,
-            token: token
-        ) {
+        var lastExtractionError: Error?
+        do {
+            let extractedBytes = try performUniFFIExtraction(
+                archivePath: archivePath,
+                destinationDir: destinationDir,
+                password: password,
+                progressHandler: progressHandler,
+                token: token
+            )
             return Int64(extractedBytes)
+        } catch {
+            lastExtractionError = error
         }
 
         if password == nil || password?.isEmpty == true {
             for vaultPwd in PasswordVaultManager.shared.candidatePasswordsForAutoUnlock() {
-                if dispatchUniFFIExtraction(
-                    archivePath: archivePath,
-                    destinationDir: destinationDir,
-                    password: vaultPwd,
-                    progressHandler: progressHandler,
-                    outExtractedBytes: &extractedBytes,
-                    token: token
-                ) {
+                do {
+                    let extractedBytes = try performUniFFIExtraction(
+                        archivePath: archivePath,
+                        destinationDir: destinationDir,
+                        password: vaultPwd,
+                        progressHandler: progressHandler,
+                        token: token
+                    )
                     return Int64(extractedBytes)
+                } catch {
+                    lastExtractionError = error
                 }
             }
         }
@@ -94,6 +98,9 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
 
         if token?.isCancelled() == true || Task.isCancelled {
             throw ArchiveError.cancelled
+        }
+        if let err = lastExtractionError {
+            throw ArchiveError.from(error: err)
         }
         throw ArchiveError.readFailed(code: -1)
     }
@@ -125,7 +132,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         let capturedProgress = progressHandler
         let capturedPassword = password
 
-        let bytes = try await Task.detached(priority: .userInitiated) {
+        let bytes = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             try self.extractSync(
                 archivePath: archivePath,
                 destinationDir: destinationDir,
@@ -135,7 +142,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 progressHandler: capturedProgress,
                 token: capturedToken
             )
-        }.value
+        }
 
         Self.cleanupQuarantineAttributes(at: destinationDir)
         return bytes
@@ -171,7 +178,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         destinationDir: String,
         password: String? = nil
     ) async throws {
-        try await Task.detached(priority: .userInitiated) {
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             let fileManager = FileManager.default
             if !fileManager.fileExists(atPath: destinationDir) {
                 try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
@@ -185,18 +192,27 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 progress: nil,
                 token: nil
             )
-        }.value
+        }
 
         Self.cleanupQuarantineAttributes(at: destinationDir)
     }
 
-    /// Joins multi-volume split archive files into a continuous output file via UniFFI.
+    /// Joins multi-volume split archive files into a continuous output file via UniFFI (protocol conformance).
     public func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool {
         do {
-            try joinSplitVolumeChain(firstVolumePath: firstVolumePath, outputPath: outputPath)
+            try joinSplitVolumesThrows(firstVolumePath: firstVolumePath, outputPath: outputPath)
             return true
         } catch {
             return false
+        }
+    }
+
+    /// Joins multi-volume split archive files into a continuous output file with exact ArchiveError propagation.
+    public func joinSplitVolumesThrows(firstVolumePath: String, outputPath: String) throws {
+        do {
+            try joinSplitVolumeChain(firstVolumePath: firstVolumePath, outputPath: outputPath)
+        } catch {
+            throw ArchiveError.from(error: error)
         }
     }
 
@@ -245,31 +261,25 @@ private final class ExtractProgressRelay: ProgressHandler, @unchecked Sendable {
 }
 
 extension ArchiveExtractor {
-    internal func dispatchUniFFIExtraction(
+    internal func performUniFFIExtraction(
         archivePath: String,
         destinationDir: String,
         password: String?,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        outExtractedBytes: UnsafeMutablePointer<UInt64>? = nil,
         token: CancellationToken? = nil
-    ) -> Bool {
+    ) throws -> UInt64 {
         let startTime = Date()
         let relay = progressHandler.map { ExtractProgressRelay(startTime: startTime, handler: $0) }
 
-        do {
-            let report = try extractArchiveStream(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                password: password,
-                progress: relay,
-                token: token
-            )
-            outExtractedBytes?.pointee = report.uncompressedBytes
-            Self.cleanupQuarantineAttributes(at: destinationDir)
-            return true
-        } catch {
-            return false
-        }
+        let report = try extractArchiveStream(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            progress: relay,
+            token: token
+        )
+        Self.cleanupQuarantineAttributes(at: destinationDir)
+        return report.uncompressedBytes
     }
 }
 
@@ -296,7 +306,7 @@ public final class ArchiveSelectiveExtractor: Sendable {
         }
         
         let targetsArray = Array(targetEntryPaths)
-        return try await Task.detached(priority: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             let count = try extractSelectedEntries(
                 archivePath: archivePath,
                 targetEntries: targetsArray,
@@ -306,7 +316,7 @@ public final class ArchiveSelectiveExtractor: Sendable {
                 token: nil
             )
             return Int(count)
-        }.value
+        }
     }
     
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
@@ -320,7 +330,7 @@ public final class ArchiveSelectiveExtractor: Sendable {
             return cached
         }
         
-        return await Task.detached(priority: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             if let bytes = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
                 let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
@@ -339,6 +349,6 @@ public final class ArchiveSelectiveExtractor: Sendable {
                 return data
             }
             return nil
-        }.value
+        }
     }
 }

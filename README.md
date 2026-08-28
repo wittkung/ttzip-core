@@ -113,19 +113,19 @@
 brew install wittkung/ttzip/ttzip-cli
 ```
 
-### 2. One-Click Native Build & Installation
+### 2. Building ttzip CLI & Microkernel
 
-Build and install `TTZip.app` to `/Applications` and `ttzip` / `ttzip-cli` to your PATH with a single command:
+Build the high-performance pure Rust POSIX CLI tool and microkernel libraries:
 
 ```bash
-git clone https://github.com/wittkung/TTZip.git
-cd TTZip
+git clone https://github.com/wittkung/ttzip-core.git
+cd ttzip-core
 
-# Option A: Build and install via Makefile
-make reinstall
+# Option A: Build ttzip CLI binary via Makefile
+make cli
 
-# Option B: Double-click from Finder or execute directly in terminal
-./Install-TTZip.command
+# Option B: Build via Cargo workspace directly
+cd rust && cargo build --release --bin ttzip
 ```
 
 ### 3. Build via Swift Package Manager (SwiftPM)

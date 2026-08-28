@@ -219,10 +219,11 @@ pub mod scalar {
     pub fn compress_blocks_scalar(state: &mut [u32; 8], mut data: *const u8, blocks: usize) {
         for _ in 0..blocks {
             let mut w = [0u32; 64];
-            let raw_p = data as *const u32;
 
             for i in 0..16 {
-                w[i] = u32::from_be(unsafe { *raw_p.add(i) });
+                w[i] = unsafe {
+                    u32::from_be(std::ptr::read_unaligned(data.add(i * 4) as *const u32))
+                };
             }
 
             for i in 16..64 {
@@ -417,6 +418,9 @@ pub fn sha256_7z_kdf(
         let counter_bytes = i.to_le_bytes();
         hasher.update(&counter_bytes);
     }
+
+    use zeroize::Zeroize;
+    utf16_buf.zeroize();
 
     hasher.finalize()
 }

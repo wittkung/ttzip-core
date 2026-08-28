@@ -15,7 +15,9 @@ pub mod decompress;
 pub mod ffi;
 
 pub use compress::{fl2_compress, fl2_compress_bound, Fl2CCtx};
-pub use decompress::{fl2_decompress, fl2_find_decompressed_size, Fl2DCtx, Fl2DStream};
+pub use decompress::{
+    fl2_decompress, fl2_find_decompressed_size, with_thread_local_fl2_dctx, Fl2DCtx, Fl2DStream,
+};
 pub use ffi::{Fl2CParameter, Fl2InBuffer, Fl2OutBuffer};
 
 use crate::types::TTZipCompressionLevel;

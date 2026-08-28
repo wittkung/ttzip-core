@@ -6,6 +6,8 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import XCTest
+import CryptoKit
+import Darwin
 @testable import TTZipCore
 
 final class LargeVolumeStressTests: XCTestCase {
@@ -24,6 +26,8 @@ final class LargeVolumeStressTests: XCTestCase {
         }
         try super.tearDownWithError()
     }
+
+    // MARK: - 1. Differential Rollback Integrity
 
     func testDifferentialRollbackPreservesExistingFiles() throws {
         let destDir = tempWorkingDir.appendingPathComponent("destination")
@@ -68,15 +72,13 @@ final class LargeVolumeStressTests: XCTestCase {
         XCTAssertEqual(remainingContent, existingContent)
     }
 
+    // MARK: - 2. Multi-Volume Split Archive Zero Disk Staging
+
     func testMultiVolumeSplitArchiveInspectionZeroDiskStaging() throws {
         // 1. Generate split volumes using SplitVolumeEngine
         let sourceFile = tempWorkingDir.appendingPathComponent("large_sample_data.bin")
-        let chunk = Data(repeating: 0xAB, count: 64 * 1024)
-        var fullData = Data()
-        for _ in 0..<16 {
-            fullData.append(chunk) // 1MB total
-        }
-        try fullData.write(to: sourceFile)
+        let sampleData = TestFileGenerator.generateMachineCode(byteCount: 1024 * 1024, arch: .mixed, seed: 0x55AA)
+        try sampleData.write(to: sourceFile)
 
         let splitEngine = SplitVolumeEngine()
         try splitEngine.sliceArchive(
@@ -97,7 +99,7 @@ final class LargeVolumeStressTests: XCTestCase {
         )
 
         let reassembledData = try Data(contentsOf: reassembledFile)
-        XCTAssertEqual(reassembledData, fullData)
+        XCTAssertEqual(reassembledData, sampleData)
 
         // 3. Verify zero temp file concatenation created in /tmp
         let tmpFiles = (try? FileManager.default.contentsOfDirectory(atPath: "/tmp")) ?? []
@@ -105,53 +107,7 @@ final class LargeVolumeStressTests: XCTestCase {
         XCTAssertTrue(concatenatedLeaks.isEmpty)
     }
 
-    // MARK: - 3. Synthetic Payload Large Volume & Multi-File Stress with TestFileGenerator
-
-    func testSyntheticPayloadLargeVolumeStressWithGenerator() async throws {
-        let inputDir = tempWorkingDir.appendingPathComponent("synthetic_inputs")
-        let extractDir = tempWorkingDir.appendingPathComponent("synthetic_extracted")
-        let archiveURL = tempWorkingDir.appendingPathComponent("synthetic_stress.zip")
-
-        // 1. Generate batches of small files and structured log files
-        let smallFiles = try TestFileGenerator.createBatchSmallFiles(in: inputDir, count: 20, sizePerFileInKB: 16)
-        let logFileURL = inputDir.appendingPathComponent("server_access.log")
-        try TestFileGenerator.createRealisticLogFile(at: logFileURL, linesCount: 300)
-
-        var allInputs = smallFiles.map(\.path)
-        allInputs.append(logFileURL.path)
-
-        // 2. Compress via ArchiveWriter
-        let writer = ArchiveWriter()
-        try await writer.createArchive(
-            outputPath: archiveURL.path,
-            format: .zip,
-            level: .fast,
-            inputPaths: allInputs
-        )
-        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
-
-        // 3. Extract via ArchiveExtractor
-        let extractor = ArchiveExtractor()
-        try await extractor.extractArchive(
-            archivePath: archiveURL.path,
-            destinationDir: extractDir.path
-        )
-
-        // 4. Verify all extracted files match originals
-        for origURL in smallFiles {
-            let extractedFile = extractDir.appendingPathComponent(origURL.lastPathComponent)
-            XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile.path))
-            let origData = try Data(contentsOf: origURL)
-            TTZipAssertions.assertFileContents(extractedFile, expectedData: origData)
-        }
-
-        let extractedLog = extractDir.appendingPathComponent("server_access.log")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedLog.path))
-        let origLogData = try Data(contentsOf: logFileURL)
-        TTZipAssertions.assertFileContents(extractedLog, expectedData: origLogData)
-    }
-
-    // MARK: - 4. Standard Silesia Corpus Compression & Verification Stress
+    // MARK: - 3. Silesia Corpus Compression & Verification Stress
 
     func testSilesiaCorpusCompressionAndVerificationStress() async throws {
         let dickensURL = try SilesiaFixtureLoader.fileURL(named: "dickens")
@@ -191,5 +147,252 @@ final class LargeVolumeStressTests: XCTestCase {
 
         TTZipAssertions.assertDataEqual(readDickens, originalDickensData, message: "Dickens corpus verification mismatch")
         TTZipAssertions.assertDataEqual(readMozilla, originalMozillaData, message: "Mozilla corpus verification mismatch")
+    }
+
+    // MARK: - 4. 10,000+ Dense Micro-Files 6-Layer Deep Tree Stress
+
+    func testTenThousandDenseMicroFilesTreeStress() async throws {
+        let inputTreeDir = tempWorkingDir.appendingPathComponent("tree_10k_input")
+        let extractDir = tempWorkingDir.appendingPathComponent("tree_10k_extracted")
+        let archiveURL = tempWorkingDir.appendingPathComponent("tree_10k_archive.zip")
+
+        let targetFileCount = 10_000
+        TTLogger.debug("Generating \(targetFileCount) multi-modal micro-files across 6 directory layers...")
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        let generatedURLs = try TestFileGenerator.createMultiModalFileTree(
+            in: inputTreeDir,
+            totalFiles: targetFileCount,
+            maxDepth: 6,
+            minFileSize: 512,
+            maxFileSize: 4096
+        )
+        let genDuration = CFAbsoluteTimeGetCurrent() - startTime
+        XCTAssertEqual(generatedURLs.count, targetFileCount)
+        TTLogger.debug("Generation complete in \(String(format: "%.3f", genDuration)) s")
+
+        // 1. Compress entire 6-layer 10,000-file directory tree via ArchiveWriter
+        let writer = ArchiveWriter()
+        let compressStartTime = CFAbsoluteTimeGetCurrent()
+        try await writer.createArchive(
+            outputPath: archiveURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: [inputTreeDir.path]
+        )
+        let compressDuration = CFAbsoluteTimeGetCurrent() - compressStartTime
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+        let archiveAttrs = try FileManager.default.attributesOfItem(atPath: archiveURL.path)
+        let archiveSize = archiveAttrs[.size] as? Int64 ?? 0
+        TTLogger.debug("Compressed \(targetFileCount) files into \(archiveSize / 1024) KB in \(String(format: "%.3f", compressDuration)) s")
+
+        // 2. Inspect Central Directory structure via ArchiveReader & verify entry count
+        let reader = ArchiveReader()
+        let entries = try await reader.inspect(archivePath: archiveURL.path)
+        XCTAssertGreaterThanOrEqual(entries.count, targetFileCount, "Archive Central Directory must index all generated files and subdirectories")
+
+        // 3. Extract via ArchiveExtractor
+        let extractor = ArchiveExtractor()
+        let extractStartTime = CFAbsoluteTimeGetCurrent()
+        let extractedBytes = try await extractor.extractArchive(
+            archivePath: archiveURL.path,
+            destinationDir: extractDir.path
+        )
+        let extractDuration = CFAbsoluteTimeGetCurrent() - extractStartTime
+        XCTAssertGreaterThan(extractedBytes, 0)
+        TTLogger.debug("Extracted \(extractedBytes / 1024) KB in \(String(format: "%.3f", extractDuration)) s")
+
+        // 4. Verify sampled file content integrity across multiple directory depths
+        var prng = TestFileGenerator.FastPRNG(seed: 0xABCD_1234)
+        for _ in 0..<100 {
+            let sampleIdx = prng.nextInt(in: 0...(generatedURLs.count - 1))
+            let origURL = generatedURLs[sampleIdx]
+            let relativePath = origURL.path.replacingOccurrences(of: inputTreeDir.path + "/", with: "")
+            
+            // Check extracted location (either nested under root folder name or directly extracted)
+            let directURL = extractDir.appendingPathComponent(relativePath)
+            let nestedURL = extractDir.appendingPathComponent(inputTreeDir.lastPathComponent).appendingPathComponent(relativePath)
+            let targetURL = FileManager.default.fileExists(atPath: directURL.path) ? directURL : nestedURL
+
+            XCTAssertTrue(FileManager.default.fileExists(atPath: targetURL.path), "File missing at extracted path: \(targetURL.path)")
+            let origData = try Data(contentsOf: origURL)
+            let extractedData = try Data(contentsOf: targetURL)
+            TTZipAssertions.assertDataEqual(extractedData, origData, message: "Sampled file mismatch for \(relativePath)")
+        }
+    }
+
+    // MARK: - 5. 1GB APFS Sparse Large File Streaming Pipeline Stress
+
+    func testOneGigabyteSparseFileStreamingPipelineStress() async throws {
+        let sparseFileURL = tempWorkingDir.appendingPathComponent("sparse_1gb_payload.img")
+        let archiveURL = tempWorkingDir.appendingPathComponent("sparse_1gb.zip")
+        let extractDir = tempWorkingDir.appendingPathComponent("sparse_1gb_extracted")
+
+        let oneGigabyte: Int64 = 1024 * 1024 * 1024 // 1GB
+        TTLogger.debug("Allocating 1GB APFS sparse file with non-allocated sparse holes...")
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        let sparseInfo = try TestFileGenerator.createSparseHoleFile(
+            at: sparseFileURL,
+            logicalSizeBytes: oneGigabyte,
+            holeIntervalBytes: 64 * 1024 * 1024,
+            chunkSizeBytes: 64 * 1024
+        )
+        let allocDuration = CFAbsoluteTimeGetCurrent() - startTime
+        XCTAssertEqual(sparseInfo.logicalSize, oneGigabyte, "Sparse file logical size must be exactly 1GB")
+        XCTAssertLessThan(sparseInfo.allocatedPhysicalSize, 50 * 1024 * 1024, "APFS physical allocated blocks must be minimal (< 50MB)")
+        TTLogger.debug("1GB sparse file allocated in \(String(format: "%.3f", allocDuration)) s (Physical: \(sparseInfo.allocatedPhysicalSize / 1024) KB)")
+
+        // 1. Stream-compress the 1GB sparse file
+        let writer = ArchiveWriter()
+        let compressStartTime = CFAbsoluteTimeGetCurrent()
+        try await writer.createArchive(
+            outputPath: archiveURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: [sparseFileURL.path]
+        )
+        let compressDuration = CFAbsoluteTimeGetCurrent() - compressStartTime
+        XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
+
+        let archiveAttrs = try FileManager.default.attributesOfItem(atPath: archiveURL.path)
+        let archiveSize = archiveAttrs[.size] as? Int64 ?? 0
+        XCTAssertLessThan(archiveSize, 50 * 1024 * 1024, "Compressed sparse archive must be compact (< 50MB)")
+        TTLogger.debug("1GB sparse archive created (\(archiveSize / 1024) KB) in \(String(format: "%.3f", compressDuration)) s")
+
+        // 2. Stream-extract the archive
+        let extractor = ArchiveExtractor()
+        let extractStartTime = CFAbsoluteTimeGetCurrent()
+        let extractedBytes = try await extractor.extractArchive(
+            archivePath: archiveURL.path,
+            destinationDir: extractDir.path
+        )
+        let extractDuration = CFAbsoluteTimeGetCurrent() - extractStartTime
+        XCTAssertGreaterThanOrEqual(extractedBytes, oneGigabyte)
+        TTLogger.debug("1GB sparse archive extracted in \(String(format: "%.3f", extractDuration)) s")
+
+        // 3. Verify extracted file logical size and boundary chunk SHA-256 signatures
+        let extractedFile = extractDir.appendingPathComponent(sparseFileURL.lastPathComponent)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile.path))
+
+        let extractedAttrs = try FileManager.default.attributesOfItem(atPath: extractedFile.path)
+        let extractedSize = extractedAttrs[.size] as? Int64 ?? 0
+        XCTAssertEqual(extractedSize, oneGigabyte, "Extracted file logical size must be exactly 1GB")
+
+        // Verify header 64KB chunk
+        let fileHandle = try FileHandle(forReadingFrom: extractedFile)
+        defer { try? fileHandle.close() }
+
+        let readHeaderData = fileHandle.readData(ofLength: 64 * 1024)
+        let readHeaderHash = SHA256.hash(data: readHeaderData).compactMap { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(readHeaderHash, sparseInfo.headerSignature, "Extracted header signature mismatch")
+
+        // Verify footer 64KB chunk
+        try fileHandle.seek(toOffset: UInt64(oneGigabyte - 64 * 1024))
+        let readFooterData = fileHandle.readData(ofLength: 64 * 1024)
+        let readFooterHash = SHA256.hash(data: readFooterData).compactMap { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(readFooterHash, sparseInfo.footerSignature, "Extracted footer signature mismatch")
+    }
+
+    // MARK: - 6. Multi-Core Concurrent Read/Write I/O Contention Stress
+
+    func testMultiCoreConcurrentReadWriteIOContentionStress() async throws {
+        let concurrency = 16
+        let workerDir = tempWorkingDir.appendingPathComponent("concurrent_io_workers")
+        try FileManager.default.createDirectory(at: workerDir, withIntermediateDirectories: true)
+
+        // Pre-create a shared seed archive for reader workers
+        let seedDir = workerDir.appendingPathComponent("seed_payload")
+        try FileManager.default.createDirectory(at: seedDir, withIntermediateDirectories: true)
+        let seedFiles = try TestFileGenerator.createMultiModalFileTree(
+            in: seedDir,
+            totalFiles: 200,
+            maxDepth: 3,
+            minFileSize: 1024,
+            maxFileSize: 8192
+        )
+        let seedArchiveURL = workerDir.appendingPathComponent("shared_seed.zip")
+        let writer = ArchiveWriter()
+        try await writer.createArchive(
+            outputPath: seedArchiveURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: seedFiles.map(\.path)
+        )
+
+        TTLogger.debug("Launching \(concurrency) concurrent multi-modal I/O tasks across all CPU cores...")
+        let startTime = CFAbsoluteTimeGetCurrent()
+
+        try await withThrowingTaskGroup(of: Int.self) { group in
+            for workerId in 0..<concurrency {
+                group.addTask {
+                    let taskSubdir = workerDir.appendingPathComponent("worker_\(workerId)")
+                    try FileManager.default.createDirectory(at: taskSubdir, withIntermediateDirectories: true)
+
+                    switch workerId % 4 {
+                    case 0:
+                        // Worker type 0: Multi-modal compression stress
+                        let inputDir = taskSubdir.appendingPathComponent("input")
+                        let files = try TestFileGenerator.createMultiModalFileTree(
+                            in: inputDir,
+                            totalFiles: 100,
+                            maxDepth: 3,
+                            minFileSize: 512,
+                            maxFileSize: 2048
+                        )
+                        let outZip = taskSubdir.appendingPathComponent("compressed.zip")
+                        let taskWriter = ArchiveWriter()
+                        try await taskWriter.createArchive(
+                            outputPath: outZip.path,
+                            format: .zip,
+                            level: .fast,
+                            inputPaths: files.map(\.path)
+                        )
+                        XCTAssertTrue(FileManager.default.fileExists(atPath: outZip.path))
+                        return 1
+
+                    case 1:
+                        // Worker type 1: Concurrent archive extraction
+                        let extractDest = taskSubdir.appendingPathComponent("extracted")
+                        let taskExtractor = ArchiveExtractor()
+                        let extractedBytes = try await taskExtractor.extractArchive(
+                            archivePath: seedArchiveURL.path,
+                            destinationDir: extractDest.path
+                        )
+                        XCTAssertGreaterThan(extractedBytes, 0)
+                        return 2
+
+                    case 2:
+                        // Worker type 2: Concurrent ArchiveReader inspection and metadata queries
+                        let taskReader = ArchiveReader()
+                        let entries = try await taskReader.inspect(archivePath: seedArchiveURL.path)
+                        XCTAssertEqual(entries.count, 200)
+                        return 3
+
+                    default:
+                        // Worker type 3: Parallel stream hashing & vault password generator contention
+                        let hashCalc = HashCalculator()
+                        let hashVal = try await hashCalc.computeHash(filePath: seedArchiveURL.path, type: .sha256)
+                        XCTAssertFalse(hashVal.isEmpty)
+
+                        for _ in 0..<10 {
+                            let pwd = PasswordVaultManager.shared.generateRandomPassword(length: 32, includeSymbols: true)
+                            let evaluation = PasswordVaultManager.shared.evaluatePasswordStrength(pwd)
+                            XCTAssertGreaterThan(evaluation.score, 0)
+                        }
+                        return 4
+                    }
+                }
+            }
+
+            var completedCount = 0
+            for try await _ in group {
+                completedCount += 1
+            }
+            XCTAssertEqual(completedCount, concurrency, "All \(concurrency) concurrent I/O tasks must complete successfully")
+        }
+
+        let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+        TTLogger.debug("All \(concurrency) concurrent tasks successfully executed in \(String(format: "%.3f", elapsed)) s without race conditions or deadlocks")
     }
 }

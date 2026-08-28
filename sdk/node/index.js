@@ -11,11 +11,11 @@ const fs = require('fs');
 function loadNativeBinding() {
   const candidates = [
     path.join(__dirname, 'ttzip.node'),
-    path.join(__dirname, '..', 'rust', 'target', 'release', 'libttzip_node.dylib'),
-    path.join(__dirname, '..', 'rust', 'target', 'release', 'libttzip_node.so'),
-    path.join(__dirname, '..', 'rust', 'target', 'release', 'ttzip_node.dll'),
-    path.join(__dirname, '..', 'rust', 'target', 'debug', 'libttzip_node.dylib'),
-    path.join(__dirname, '..', 'rust', 'target', 'debug', 'libttzip_node.so'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'libttzip_node.dylib'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'libttzip_node.so'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'ttzip_node.dll'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'debug', 'libttzip_node.dylib'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'debug', 'libttzip_node.so'),
   ];
 
   for (const candidate of candidates) {
@@ -115,9 +115,9 @@ const execFileAsync = util.promisify(execFile);
 
 function findCliBinary() {
   const candidates = [
-    path.join(__dirname, '..', 'bin', 'ttzip'),
-    path.join(__dirname, '..', 'rust', 'target', 'release', 'ttzip'),
-    path.join(__dirname, '..', 'rust', 'target', 'debug', 'ttzip'),
+    path.join(__dirname, '..', '..', 'bin', 'ttzip'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'ttzip'),
+    path.join(__dirname, '..', '..', 'rust', 'target', 'debug', 'ttzip'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
