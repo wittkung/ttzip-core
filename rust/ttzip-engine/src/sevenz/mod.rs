@@ -16,7 +16,11 @@ pub mod format;
 pub mod header;
 pub mod writer;
 
-pub use decoder::{decode_7z_solid_payload, extract_entry_bytes_stream, SevenZArchive};
+pub use decoder::{
+    decode_7z_folder_streaming, decode_7z_solid_payload, decode_7z_solid_streaming,
+    extract_entry_bytes_stream, extract_entry_bytes_stream_bounded, extract_single_entry_bounded,
+    get_current_rss_bytes, SevenZArchive,
+};
 pub use format::{
     read_varint, write_varint, SevenZSignatureHeader, K_CODERS_UNPACK_SIZE, K_CRC, K_EMPTY_STREAM,
     K_END, K_ENCODED_HEADER, K_FILES_INFO, K_FOLDER, K_HEADER, K_MAIN_STREAMS_INFO, K_NAME,

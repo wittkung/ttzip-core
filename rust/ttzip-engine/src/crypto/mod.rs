@@ -34,7 +34,9 @@ pub use sha1::{
     hmac_sha1, hmac_sha1_10, pbkdf2_sha1, sha1, winzip_aes256_decrypt_and_verify,
     winzip_aes256_derive_keys, winzip_aes256_encrypt_and_tag, FastSha1, WinZipAes256Keys,
 };
-pub use sha256::{sha256_7z_kdf, FastSha256};
+pub use sha256::{
+    derive_7z_aes_key, sha256_7z_kdf, FastSha256, HardwareSha256, SevenZKeyCache,
+};
 pub use vault::{
     aes256_gcm_decrypt, aes256_gcm_encrypt, constant_time_eq_16, get_random_bytes, hmac_sha256,
     pbkdf2_hmac_sha256, secure_wipe, secure_wipe_slice, GHash,

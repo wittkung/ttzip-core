@@ -86,6 +86,18 @@ extern "C" {
     pub fn FL2_getCCtxDictProp(cctx: *mut Fl2CCtxOpaque) -> libc::c_uchar;
     pub fn FL2_initDCtx(dctx: *mut Fl2DCtxOpaque, prop: libc::c_uchar) -> libc::size_t;
 
+    pub fn FL2_createCStream() -> *mut Fl2CCtxOpaque;
+    pub fn FL2_createCStreamMt(nb_threads: libc::c_uint, dual_buffer: libc::c_int) -> *mut Fl2CCtxOpaque;
+    pub fn FL2_freeCStream(fcs: *mut Fl2CCtxOpaque);
+    pub fn FL2_initCStream(fcs: *mut Fl2CCtxOpaque, compression_level: libc::c_int) -> libc::size_t;
+    pub fn FL2_compressStream(
+        fcs: *mut Fl2CCtxOpaque,
+        output: *mut Fl2OutBuffer,
+        input: *mut Fl2InBuffer,
+    ) -> libc::size_t;
+    pub fn FL2_flushStream(fcs: *mut Fl2CCtxOpaque, output: *mut Fl2OutBuffer) -> libc::size_t;
+    pub fn FL2_endStream(fcs: *mut Fl2CCtxOpaque, output: *mut Fl2OutBuffer) -> libc::size_t;
+
     pub fn FL2_createDStream() -> *mut Fl2DCtxOpaque;
     pub fn FL2_createDStreamMt(nb_threads: libc::c_uint) -> *mut Fl2DCtxOpaque;
     pub fn FL2_freeDStream(fds: *mut Fl2DCtxOpaque) -> libc::size_t;

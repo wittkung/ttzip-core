@@ -108,3 +108,84 @@ pub fn fl2_compress(
     };
     ctx.compress(src, dst, level)
 }
+
+/// Safe RAII wrapper for fast-lzma2 streaming compressor `FL2_CStream`.
+pub struct Fl2CStream {
+    handle: NonNull<Fl2CCtxOpaque>,
+}
+
+unsafe impl Send for Fl2CStream {}
+
+impl Fl2CStream {
+    /// Creates a single-threaded streaming compressor.
+    pub fn new() -> Result<Self, TTZipStatus> {
+        let ptr = unsafe { FL2_createCStream() };
+        let handle = NonNull::new(ptr).ok_or(TTZipStatus::ErrOutOfMemory)?;
+        Ok(Self { handle })
+    }
+
+    /// Creates a multi-threaded streaming compressor with thread budget.
+    pub fn new_mt(threads: u32) -> Result<Self, TTZipStatus> {
+        let ptr = unsafe { FL2_createCStreamMt(threads as libc::c_uint, 0) };
+        let handle = NonNull::new(ptr).ok_or(TTZipStatus::ErrOutOfMemory)?;
+        Ok(Self { handle })
+    }
+
+    /// Initializes streaming compression with given level.
+    pub fn init(&mut self, level: i32) -> Result<(), TTZipStatus> {
+        let res = unsafe { FL2_initCStream(self.handle.as_ptr(), level as libc::c_int) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Sets a specific compression parameter on the CStream.
+    pub fn set_parameter(&mut self, param: Fl2CParameter, value: usize) -> Result<(), TTZipStatus> {
+        let res = unsafe { FL2_CCtx_setParameter(self.handle.as_ptr(), param, value as libc::size_t) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrInvalidParam)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Retrieves the LZMA2 dictionary property byte for 7-zip header encoding.
+    pub fn dict_property(&mut self) -> u8 {
+        unsafe { FL2_getCCtxDictProp(self.handle.as_ptr()) }
+    }
+
+    /// Feeds input chunk and drains compressed data into output buffer.
+    pub fn compress_chunk(
+        &mut self,
+        input: &mut Fl2InBuffer,
+        output: &mut Fl2OutBuffer,
+    ) -> Result<usize, TTZipStatus> {
+        let res = unsafe { FL2_compressStream(self.handle.as_ptr(), output, input) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(res)
+        }
+    }
+
+    /// Flushes remaining compressed data and finalizes the LZMA2 stream.
+    pub fn end_stream(&mut self, output: &mut Fl2OutBuffer) -> Result<usize, TTZipStatus> {
+        let res = unsafe { FL2_endStream(self.handle.as_ptr(), output) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(res)
+        }
+    }
+}
+
+impl Drop for Fl2CStream {
+    fn drop(&mut self) {
+        unsafe {
+            FL2_freeCStream(self.handle.as_ptr());
+        }
+    }
+}
+

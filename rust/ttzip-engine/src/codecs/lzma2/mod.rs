@@ -14,7 +14,7 @@ pub mod compress;
 pub mod decompress;
 pub mod ffi;
 
-pub use compress::{fl2_compress, fl2_compress_bound, Fl2CCtx};
+pub use compress::{fl2_compress, fl2_compress_bound, Fl2CCtx, Fl2CStream};
 pub use decompress::{
     fl2_decompress, fl2_find_decompressed_size, with_thread_local_fl2_dctx, Fl2DCtx, Fl2DStream,
 };

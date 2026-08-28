@@ -7,6 +7,7 @@
 
 //! Safe, RAII-governed single-format compression and character encoding codecs.
 
+pub mod branch;
 pub mod brotli;
 pub mod chardet;
 pub mod deflate;
@@ -139,6 +140,7 @@ impl<R: Read> Read for CountingReader<R> {
     }
 }
 
+pub use branch::*;
 pub use brotli::{
     brotli_compress, brotli_compress_bound, brotli_compress_file, brotli_compress_stream_pipe,
     brotli_compress_to_vec, brotli_decompress, brotli_decompress_file,

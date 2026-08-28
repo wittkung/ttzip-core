@@ -10,7 +10,7 @@
 //! Features multi-threaded Fast-LZMA2 solid compression, Store mode, UTF-16LE metadata encoding,
 //! and accurate 7z SignatureHeader CRC calculations.
 
-use crate::codecs::lzma2::{fl2_compress_bound, Fl2CCtx};
+use crate::codecs::lzma2::{Fl2CStream, Fl2InBuffer, Fl2OutBuffer};
 use crate::crypto::crc32::crc32_fast;
 use crate::sevenz::format::*;
 use crate::types::{TTZipCompressionLevel, TTZipCreateOptions, TTZipStatus};
@@ -162,7 +162,7 @@ pub fn build_7z_metadata_header(
     h
 }
 
-/// Creates a complete 7z Solid archive from input items.
+/// Creates a complete 7z Solid archive from input items using a bounded 2MB chunked streaming pipeline.
 pub fn create_7z_solid_archive_bytes(
     items: &[ZipInputItem],
     level: i32,
@@ -172,47 +172,94 @@ pub fn create_7z_solid_archive_bytes(
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let total_uncompressed_len: usize = items
-        .iter()
-        .filter(|it| !it.is_directory)
-        .map(|it| it.data.len())
-        .sum();
-
-    let mut solid_buf = Vec::with_capacity(total_uncompressed_len);
     let mut stream_sizes = Vec::with_capacity(items.len());
     let mut stream_crcs = Vec::with_capacity(items.len());
+    let mut total_uncompressed_len: u64 = 0;
 
     for item in items {
         if !item.is_directory && !item.data.is_empty() {
             let crc = crc32_fast(0, &item.data);
             stream_sizes.push(item.data.len() as u64);
             stream_crcs.push(crc);
-            solid_buf.extend_from_slice(&item.data);
+            total_uncompressed_len += item.data.len() as u64;
         }
     }
 
-    let uncompressed_len = solid_buf.len() as u64;
-    let (method_id, compressed_payload, coder_props) = if level == 0 || solid_buf.is_empty() {
-        (METHOD_COPY, solid_buf, Vec::new())
-    } else {
-        let bound = fl2_compress_bound(solid_buf.len()) + 65536;
-        let mut comp_buf = vec![0u8; bound];
-        let mut ctx = if threads > 1 {
-            Fl2CCtx::new_mt(threads)?
-        } else {
-            Fl2CCtx::new()?
-        };
-        match ctx.compress(&solid_buf, &mut comp_buf, level) {
-            Ok(actual_len) => {
-                comp_buf.truncate(actual_len);
-                let dict_prop = ctx.dict_property();
-                drop(solid_buf);
-                (METHOD_LZMA2, comp_buf, vec![dict_prop])
-            }
-            Err(_) => {
-                (METHOD_COPY, solid_buf, Vec::new())
+    let uncompressed_len = total_uncompressed_len;
+    let (method_id, compressed_payload, coder_props) = if level == 0 || uncompressed_len == 0 {
+        let mut store_payload = Vec::with_capacity(total_uncompressed_len as usize);
+        for item in items {
+            if !item.is_directory && !item.data.is_empty() {
+                store_payload.extend_from_slice(&item.data);
             }
         }
+        (METHOD_COPY, store_payload, Vec::new())
+    } else {
+        let mut cstream = if threads > 1 {
+            Fl2CStream::new_mt(threads)?
+        } else {
+            Fl2CStream::new()?
+        };
+        cstream.set_parameter(crate::codecs::lzma2::Fl2CParameter::CompressionLevel, level as usize)?;
+        cstream.set_parameter(crate::codecs::lzma2::Fl2CParameter::OmitProperties, 1)?;
+        cstream.init(0)?;
+
+        // 2MB bounded micro-buffer for chunked streaming compression pipeline
+        const CHUNK_SIZE: usize = 2 * 1024 * 1024;
+        let mut out_chunk = vec![0u8; CHUNK_SIZE];
+        let mut comp_payload = Vec::new();
+
+        for item in items {
+            if item.is_directory || item.data.is_empty() {
+                continue;
+            }
+
+            let mut in_offset = 0;
+            while in_offset < item.data.len() {
+                let slice = &item.data[in_offset..];
+                let mut in_buf = Fl2InBuffer {
+                    src: slice.as_ptr() as *const libc::c_void,
+                    size: slice.len(),
+                    pos: 0,
+                };
+
+                while in_buf.pos < in_buf.size {
+                    let mut out_buf = Fl2OutBuffer {
+                        dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
+                        size: out_chunk.len(),
+                        pos: 0,
+                    };
+
+                    let res = cstream.compress_chunk(&mut in_buf, &mut out_buf)?;
+                    if out_buf.pos > 0 {
+                        comp_payload.extend_from_slice(&out_chunk[..out_buf.pos]);
+                    }
+                    if res == 0 && in_buf.pos == 0 {
+                        break;
+                    }
+                }
+                in_offset += in_buf.pos;
+            }
+        }
+
+        // Finalize stream and drain all remaining compressed blocks
+        loop {
+            let mut out_buf = Fl2OutBuffer {
+                dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
+                size: out_chunk.len(),
+                pos: 0,
+            };
+            let remaining = cstream.end_stream(&mut out_buf)?;
+            if out_buf.pos > 0 {
+                comp_payload.extend_from_slice(&out_chunk[..out_buf.pos]);
+            }
+            if remaining == 0 {
+                break;
+            }
+        }
+
+        let dict_prop = cstream.dict_property();
+        (METHOD_LZMA2, comp_payload, vec![dict_prop])
     };
 
     let compressed_len = compressed_payload.len() as u64;
