@@ -26,7 +26,7 @@ CARGO_FLAGS="--release"
 VERSION="1.0.0"
 OFFLINE_FLAG=""
 BUILD_NATIVE_ONLY=0
-NO_ZIP=0
+NO_ZIP=""
 
 if [ "${TTZIP_FAST_SDK:-0}" = "1" ]; then
     BUILD_NATIVE_ONLY=1
@@ -35,10 +35,11 @@ fi
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  --release        Build in release mode with LTO and -O3 (default)"
+    echo "  --release        Build in release mode with ThinLTO and -O3 (default)"
     echo "  --debug          Build in debug mode"
-    echo "  --native         Fast path: build only host native architecture (e.g. arm64)"
+    echo "  --native         Fast path: build only host native architecture (e.g. arm64, skips zip by default)"
     echo "  --force, -f      Force full rebuild regardless of incremental fingerprint cache"
+    echo "  --zip            Force creating .xcframework.zip archive even in native mode"
     echo "  --no-zip         Skip creating .xcframework.zip archive and sha256 checksum"
     echo "  --version <VER>  Set SDK version (default: 1.0.0)"
     echo "  --offline        Build offline without network access"
@@ -66,6 +67,10 @@ while [[ $# -gt 0 ]]; do
             FORCE_REBUILD=1
             shift
             ;;
+        --zip)
+            NO_ZIP=0
+            shift
+            ;;
         --no-zip)
             NO_ZIP=1
             shift
@@ -87,6 +92,15 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Default NO_ZIP behavior: in native mode skip zip unless explicitly requested
+if [ -z "${NO_ZIP}" ]; then
+    if [ "${BUILD_NATIVE_ONLY}" = "1" ]; then
+        NO_ZIP=1
+    else
+        NO_ZIP=0
+    fi
+fi
 
 export PATH="$HOME/.cargo/bin:$PATH"
 export MACOSX_DEPLOYMENT_TARGET="14.0"
@@ -120,14 +134,17 @@ copy_if_changed() {
 # 1. 计算源码与配置增量指纹 (Fast Incrementality Gate)
 # ------------------------------------------------------------------------------
 compute_fingerprint() {
-    local git_tree dirty_diff script_hash
+    local git_tree dirty_diff top_vendor_diff rustc_ver script_hash
     git_tree="$(git -C "${REPO_ROOT}" rev-parse HEAD:rust 2>/dev/null || echo "no-git")"
     dirty_diff="$( (git -C "${REPO_ROOT}" diff HEAD -- rust vendor 2>/dev/null; git -C "${REPO_ROOT}" ls-files --others --exclude-standard rust vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
+    top_vendor_diff="$( (git -C "${REPO_ROOT}/.." diff HEAD -- vendor 2>/dev/null; git -C "${REPO_ROOT}/.." ls-files --others --exclude-standard vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
+    rustc_ver="$(rustc -Vv 2>/dev/null | shasum -a 256 | awk '{print $1}')"
     script_hash="$(shasum -a 256 "${BASH_SOURCE[0]}" "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" 2>/dev/null | shasum -a 256 | awk '{print $1}')"
-    printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s" \
-        "${git_tree}" "${dirty_diff}" "${script_hash}" "${BUILD_MODE}" "${BUILD_NATIVE_ONLY}" "${VERSION}" "${NO_ZIP}" "${HOST_TARGET}" \
+    printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s" \
+        "${git_tree}" "${dirty_diff}" "${top_vendor_diff}" "${rustc_ver}" "${script_hash}" "${BUILD_MODE}" "${BUILD_NATIVE_ONLY}" "${VERSION}" "${NO_ZIP}" "${HOST_TARGET}" \
         | shasum -a 256 | awk '{print $1}'
 }
+
 
 CURRENT_FINGERPRINT="$(compute_fingerprint)"
 
@@ -188,14 +205,12 @@ else
         fi
     done
 
-    echo "--> [INFO] Building ttzip-engine for arm64 & x86_64 in parallel (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "aarch64-apple-darwin" ${CARGO_FLAGS} ${OFFLINE_FLAG} &
-    PID_ARM64=$!
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "x86_64-apple-darwin" ${CARGO_FLAGS} ${OFFLINE_FLAG} &
-    PID_X86=$!
+    echo "--> [INFO] Building ttzip-engine for arm64 & x86_64 via unified Cargo Jobserver (${BUILD_MODE})..."
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine \
+        --target "aarch64-apple-darwin" \
+        --target "x86_64-apple-darwin" \
+        ${CARGO_FLAGS} ${OFFLINE_FLAG}
 
-    wait ${PID_ARM64}
-    wait ${PID_X86}
 
     BUILT_ARM64_LIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.a"
     BUILT_X86_64_LIB="${EFFECTIVE_TARGET_DIR}/x86_64-apple-darwin/${BUILD_MODE}/libttzip_engine.a"

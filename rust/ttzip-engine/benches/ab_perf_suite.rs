@@ -27,7 +27,11 @@ use std::io::Write;
 use std::time::{Duration, Instant};
 use rayon::prelude::*;
 
+#[path = "ab_perf_suite_ext.rs"]
+mod ab_perf_suite_ext;
+
 // Current Commit Real Implementations
+use ttzip_engine::benchmark::corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
 use ttzip_engine::checksum::{adler32 as current_adler32, crc32 as current_crc32};
 use ttzip_engine::codecs::deflate::compressor::DeflateCompressor;
 use ttzip_engine::codecs::deflate::decompressor::DeflateDecompressor;
@@ -140,6 +144,22 @@ where
     best
 }
 
+fn bench_min_dyn(f: &mut dyn FnMut()) -> Duration {
+    for _ in 0..WARMUP_RUNS {
+        black_box(f());
+    }
+    let mut best = Duration::from_secs(999);
+    for _ in 0..MEASURE_RUNS {
+        let start = Instant::now();
+        black_box(f());
+        let elapsed = start.elapsed();
+        if elapsed < best {
+            best = elapsed;
+        }
+    }
+    best
+}
+
 fn format_throughput(bytes: usize, dur: Duration) -> String {
     let secs = dur.as_secs_f64();
     let gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
@@ -172,6 +192,9 @@ fn main() {
     run_ab_bitstream_benchmarks();
     run_ab_multi_corpus_deflate_benchmarks();
     run_ab_multicore_parallel_benchmarks();
+    ab_perf_suite_ext::run_ab_modern_block_codecs_benchmarks(bench_min_dyn, format_throughput);
+    ab_perf_suite_ext::run_ab_zstd_advanced_and_dict_benchmarks(bench_min_dyn, format_throughput);
+    ab_perf_suite_ext::run_ab_crypto_and_hash_matrix_benchmarks(bench_min_dyn, format_throughput);
 
     println!("\n==================================================================================");
     println!("     🏁 Full-Spectrum A/B Benchmark Execution Completed                           ");
@@ -716,3 +739,4 @@ fn run_ab_multicore_parallel_benchmarks() {
     );
     println!();
 }
+
