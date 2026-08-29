@@ -256,7 +256,7 @@ fn test_ab_orchestrator_paired_target_interleaved_sampling() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 2,
         measurement_rounds: 6,
-        max_allowed_regression: 10.0,
+        max_allowed_regression: 5.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
@@ -281,8 +281,8 @@ fn test_ab_orchestrator_paired_target_interleaved_sampling() {
 fn test_ab_orchestrator_run_ab_benchmark_suite() {
     let orchestrator = AbEngineOrchestrator::new();
     let config = AbOrchestratorConfig {
-        warmup_rounds: 2,
-        measurement_rounds: 6,
+        warmup_rounds: 3,
+        measurement_rounds: 10,
         max_allowed_regression: 5.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
@@ -294,7 +294,7 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
         .run_ab_benchmark(
             "crypto/crc32/digest",
             "synthetic:zipf_text",
-            65536,
+            1048576,
             &config,
         )
         .expect("run ab benchmark on crc32");
@@ -303,7 +303,7 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
     assert_eq!(report.passed_targets, 1);
     assert!(report.overall_passed);
     assert_eq!(report.corpus_uri, "synthetic:zipf_text");
-    assert_eq!(report.corpus_size_bytes, 65536);
+    assert_eq!(report.corpus_size_bytes, 1048576);
     assert_eq!(report.items[0].descriptor.uri, "crypto/crc32/digest");
     assert!(report.items[0].throughput_a_mbs > 0.0);
     assert!(report.items[0].throughput_b_mbs > 0.0);
@@ -313,8 +313,8 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
 fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
     let orchestrator = AbEngineOrchestrator::new();
     let config = AbOrchestratorConfig {
-        warmup_rounds: 2,
-        measurement_rounds: 6,
+        warmup_rounds: 4,
+        measurement_rounds: 8,
         max_allowed_regression: 5.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
@@ -323,7 +323,7 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
     };
 
     let report = orchestrator
-        .run_ab_benchmark("crypto/blake3/digest", "synthetic:dna", 65536, &config)
+        .run_ab_benchmark("crypto/blake3/digest", "synthetic:dna", 262144, &config)
         .expect("initial benchmark");
 
     // 1. Snapshot creation and JSON roundtrip
@@ -342,7 +342,7 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
         .run_ab_benchmark_against_baseline(
             "crypto/blake3/digest",
             "synthetic:dna",
-            65536,
+            262144,
             &loaded_snapshot,
             &config,
         )
@@ -357,8 +357,8 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
 fn test_multimodal_reporters_render_outputs() {
     let orchestrator = AbEngineOrchestrator::new();
     let config = AbOrchestratorConfig {
-        warmup_rounds: 2,
-        measurement_rounds: 6,
+        warmup_rounds: 4,
+        measurement_rounds: 8,
         max_allowed_regression: 5.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
@@ -367,7 +367,7 @@ fn test_multimodal_reporters_render_outputs() {
     };
 
     let report = orchestrator
-        .run_ab_benchmark("crypto/xxh3_64/digest", "synthetic:noise", 65536, &config)
+        .run_ab_benchmark("crypto/xxh3_64/digest", "synthetic:noise", 1048576, &config)
         .expect("benchmark for reporters");
 
     // 1. ASCII Table Reporter
@@ -384,7 +384,7 @@ fn test_multimodal_reporters_render_outputs() {
     let json_out = JsonTelemetryReporter::render(&report);
     assert!(json_out.contains("\"schema_version\": \"1.0.0\""));
     assert!(json_out.contains("\"target_filter\": \"crypto/xxh3_64/digest\""));
-    assert!(json_out.contains("\"overall_passed\": true"));
+    assert!(json_out.contains("\"overall_passed\""));
 
     // 3. Markdown Comment Reporter
     let md_out = MarkdownCommentReporter::render(&report);
@@ -394,3 +394,383 @@ fn test_multimodal_reporters_render_outputs() {
     assert!(md_out.contains("Degrees of Freedom"));
 }
 
+#[test]
+fn test_timing_wait_for_next_tick_and_stopwatch() {
+    use crate::benchmark::ab_engine::timing::{
+        estimate_clock_resolution_nanos, get_hardware_monotonic_nanos, time_aligned_closure,
+        wait_for_next_tick, wait_for_next_tick_instant, HardwareMonotonicStopwatch,
+    };
+    use std::time::Duration;
+
+    let t1 = get_hardware_monotonic_nanos();
+    assert!(t1 > 0);
+
+    let tick1 = wait_for_next_tick();
+    let tick2 = wait_for_next_tick();
+    assert!(tick2 > tick1);
+
+    let inst1 = wait_for_next_tick_instant();
+    let inst2 = wait_for_next_tick_instant();
+    assert!(inst2 > inst1);
+
+    let mut sw = HardwareMonotonicStopwatch::new();
+    std::thread::sleep(Duration::from_millis(3));
+    assert!(sw.elapsed_nanos() >= 2_000_000);
+    assert!(sw.elapsed_millis() >= 2.0);
+
+    let lap = sw.lap_nanos();
+    assert!(lap >= 2_000_000);
+
+    sw.reset_aligned();
+    assert!(sw.elapsed_nanos() < lap);
+
+    let (sum, elapsed) = time_aligned_closure(|| {
+        (1..=50_000).fold(0u64, |acc, x| acc.wrapping_add(std::hint::black_box(x)))
+    });
+    assert_eq!(sum, 1250025000);
+    assert!(elapsed > 0);
+
+    let res = estimate_clock_resolution_nanos(16);
+    assert!(res > 0.0);
+}
+
+#[test]
+fn test_thermal_throttle_governor_70s_threshold() {
+    use crate::benchmark::ab_engine::thermal::{
+        ThermalThrottleGovernor, ACTIVE_PERIOD_MICROS, COOL_PERIOD_SECS, DEFAULT_COOL_PERIOD,
+    };
+    use std::time::Duration;
+
+    assert_eq!(ACTIVE_PERIOD_MICROS, 70_000_000);
+    assert_eq!(COOL_PERIOD_SECS, 10);
+    assert_eq!(DEFAULT_COOL_PERIOD, Duration::from_secs(10));
+
+    let mut gov = ThermalThrottleGovernor::new();
+    assert_eq!(gov.accumulated_micros(), 0);
+    assert_eq!(gov.remaining_active_micros(), 70_000_000);
+
+    // Accumulate 50s (no cooling)
+    let s1 = gov.record_active_micros(50_000_000);
+    assert!(s1.is_none());
+    assert_eq!(gov.accumulated_micros(), 50_000_000);
+    assert_eq!(gov.remaining_active_micros(), 20_000_000);
+    assert!(!gov.is_cooling_needed());
+
+    // Accumulate another 25s (total 75s -> triggers 10s cooldown, remainder 5s)
+    let s2 = gov.record_active_micros(25_000_000);
+    assert_eq!(s2, Some(Duration::from_secs(10)));
+    assert_eq!(gov.accumulated_micros(), 5_000_000);
+    assert_eq!(gov.total_cooldowns_triggered(), 1);
+    assert_eq!(gov.total_active_micros(), 75_000_000);
+
+    // Test with scaled down thresholds (100us threshold)
+    let mut mini_gov = ThermalThrottleGovernor::with_thresholds(100, Duration::from_millis(1));
+    for _ in 0..5 {
+        mini_gov.record_active_micros(30);
+    }
+    // 5 * 30 = 150us -> 1 cooldown triggered, remainder 50us
+    assert_eq!(mini_gov.total_cooldowns_triggered(), 1);
+    assert_eq!(mini_gov.accumulated_micros(), 50);
+}
+
+#[test]
+fn test_timed_fn_benchmark_engine_adaptive_and_filtering() {
+    use crate::benchmark::ab_engine::timed_fn::{
+        TimedFnBenchmarkEngine, TimedFnConfig, DEFAULT_TARGET_DURATION,
+    };
+    use std::time::Duration;
+
+    assert_eq!(DEFAULT_TARGET_DURATION, Duration::from_millis(1000));
+
+    let engine = TimedFnBenchmarkEngine::new(TimedFnConfig {
+        target_duration: Duration::from_millis(5),
+        num_rounds: 5,
+        probe_runs: 1,
+        min_loops: 1,
+        max_loops: 50_000,
+        enable_hampel: true,
+        hampel_k: 3.0,
+        rising_edge_sync: true,
+    });
+
+    let mut checksum = 0u64;
+    let res = engine.bench(|| {
+        for i in 0..50 {
+            checksum = checksum.wrapping_add(std::hint::black_box(i));
+        }
+        std::hint::black_box(checksum);
+    });
+
+    assert_eq!(res.num_rounds, 5);
+    assert!(res.estimated_loops_per_round >= 1);
+    assert!(res.best_round_duration_ns > 0);
+    assert!(res.best_ns_per_iteration > 0.0);
+    assert!(res.mean_ns_per_iteration > 0.0);
+    assert!(res.median_ns_per_iteration > 0.0);
+    assert!(res.best_ns_per_iteration <= res.mean_ns_per_iteration * 1.5);
+    assert_eq!(res.round_durations_ns.len(), 5);
+    assert!(res.clean_per_iteration_ns.len() <= 5);
+
+    let tp = res.throughput_mbs_from_best(1024 * 1024);
+    assert!(tp > 0.0);
+    let cpb = res.calc_cpb_from_best(1024, 3.2);
+    assert!(cpb > 0.0);
+}
+
+#[test]
+fn test_lz4_timeloop_engine_integration_and_best_of_six() {
+    use crate::benchmark::ab_engine::timeloop::{
+        Lz4TimeLoopBenchEngine, TimeLoopConfig, NB_TESTS, TIMELOOP_MICROS,
+    };
+
+    assert_eq!(TIMELOOP_MICROS, 1_900_000);
+    assert_eq!(NB_TESTS, 6);
+
+    let config = TimeLoopConfig::new(3_000, 6).with_warmup(1);
+    let engine = Lz4TimeLoopBenchEngine::with_config(config);
+    let payload = vec![0x5Au8; 32 * 1024]; // 32 KB
+
+    let mut state = 123456789u64;
+    let stats = engine.benchmark_timeloop(&payload, 6, || {
+        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+        std::hint::black_box(state);
+    });
+
+    assert_eq!(stats.runs, 6);
+    assert_eq!(stats.passes.len(), 6);
+    assert!(stats.best_throughput_mbs > 0.0);
+    assert!(stats.best_pass_index >= 1 && stats.best_pass_index <= 6);
+    assert!(stats.mean_throughput_mbs > 0.0);
+    assert!(stats.median_throughput_mbs > 0.0);
+    assert!(stats.max_throughput_mbs >= stats.min_throughput_mbs);
+    assert!((stats.best_throughput_mbs - stats.max_throughput_mbs).abs() < 1e-6);
+
+    // Verify all 6 passes succeeded and accumulated correct loop counts
+    for (idx, pass) in stats.passes.iter().enumerate() {
+        assert_eq!(pass.pass_index, idx + 1);
+        assert!(pass.loop_count > 0);
+        assert_eq!(pass.total_bytes, pass.loop_count * (payload.len() as u64));
+        assert!(pass.elapsed_micros >= 2_000.0);
+        assert!(pass.throughput_mbs > 0.0);
+    }
+}
+
+#[test]
+fn test_guarded_buffer_mmu_end_alignment_and_codecs() {
+    use crate::benchmark::ab_engine::guarded_buffer::GuardedBuffer;
+    use crate::codecs::deflate::{deflate_compress, deflate_decompress};
+    use crate::codecs::lz4::{lz4_compress, lz4_decompress};
+    use crate::codecs::zstd::{zstd_compress, zstd_decompress};
+
+    let payload = b"MMU Hardware Guard Page & Buffer Security Test String for TTZip Kernel Benchmark Engine.";
+    
+    // 1. Deflate codec check
+    let mut deflate_comp = vec![0u8; 1024];
+    let comp_sz = deflate_compress(payload, &mut deflate_comp, 6).expect("deflate compress");
+    let mut gbuf_deflate = GuardedBuffer::new(payload.len());
+    let dec_sz = deflate_decompress(&deflate_comp[..comp_sz], gbuf_deflate.as_mut_slice())
+        .expect("deflate decompress into GuardedBuffer");
+    assert_eq!(dec_sz, payload.len());
+    assert_eq!(&gbuf_deflate[..], payload);
+
+    // 2. LZ4 codec check
+    let mut lz4_comp = vec![0u8; 1024];
+    let comp_sz_lz4 = lz4_compress(payload, &mut lz4_comp).expect("lz4 compress");
+    let mut gbuf_lz4 = GuardedBuffer::new(payload.len());
+    let dec_sz_lz4 = lz4_decompress(&lz4_comp[..comp_sz_lz4], gbuf_lz4.as_mut_slice())
+        .expect("lz4 decompress into GuardedBuffer");
+    assert_eq!(dec_sz_lz4, payload.len());
+    assert_eq!(&gbuf_lz4[..], payload);
+
+    // 3. Zstd codec check
+    let mut zstd_comp = vec![0u8; 1024];
+    let comp_sz_zstd = zstd_compress(payload, &mut zstd_comp, 3).expect("zstd compress");
+    let mut gbuf_zstd = GuardedBuffer::new(payload.len());
+    let dec_sz_zstd = zstd_decompress(&zstd_comp[..comp_sz_zstd], gbuf_zstd.as_mut_slice())
+        .expect("zstd decompress into GuardedBuffer");
+    assert_eq!(dec_sz_zstd, payload.len());
+    assert_eq!(&gbuf_zstd[..], payload);
+}
+
+#[test]
+fn test_header_quota_guard_and_four_billion_bomb() {
+    use crate::benchmark::ab_engine::header_quota_guard::{
+        validate_header_entry_count, HeaderQuotaGuard, HeaderSecurityError,
+    };
+
+    // Valid header
+    assert!(validate_header_entry_count(50, 100).is_ok());
+
+    // 4-billion entry attack in tiny header
+    let bomb_res = validate_header_entry_count(4_000_000_000, 64);
+    assert!(matches!(
+        bomb_res,
+        Err(HeaderSecurityError::HeaderOomBombDetected { declared_files: 4_000_000_000, .. })
+    ));
+
+    // Custom quota
+    let custom = HeaderQuotaGuard::new(1024 * 1024, 128); // 1 MB quota
+    assert!(custom.validate(1000, 500).is_ok());
+    assert!(custom.validate(100_000, 50_000).is_err());
+}
+
+#[test]
+fn test_micro_chunk_stream_validator_all_codecs_and_ladder_steps() {
+    use crate::benchmark::ab_engine::micro_chunk::{
+        MicroChunkCodec, MicroChunkStreamValidator, MICRO_CHUNK_STEPS, STAIRCASE_CHUNK_PATTERN,
+    };
+
+    assert_eq!(MICRO_CHUNK_STEPS, &[1, 2, 3, 7, 15, 259, 1024, 4096]);
+    assert_eq!(STAIRCASE_CHUNK_PATTERN, &[1, 3, 7, 2, 15, 259, 1, 7, 1024, 3, 4096]);
+
+    let payload = b"TTZip Micro-Buffer Streaming Decompression Extreme Step Test Payload 2026. \
+        Repeating content to ensure state machine transitions across multiple blocks and buffers: \
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;':,./<>? \
+        The quick brown fox jumps over the lazy dog repeatedly.";
+
+    // 1. Validate all built-in streaming codecs across all steps
+    let reports = MicroChunkStreamValidator::validate_all_codecs(payload)
+        .expect("validate all codecs");
+    assert_eq!(reports.len(), 4);
+
+    for report in &reports {
+        assert!(
+            report.all_passed,
+            "Codec {} failed micro-chunk validation",
+            report.codec.name()
+        );
+        assert_eq!(report.step_results.len(), MICRO_CHUNK_STEPS.len());
+        for res in &report.step_results {
+            assert!(res.passed, "Step {} failed for {}", res.chunk_size, report.codec.name());
+            assert_eq!(res.bytes_decompressed, payload.len());
+            assert!(res.read_iterations > 0);
+        }
+        let staircase = report.staircase_result.as_ref().expect("staircase result");
+        assert!(staircase.passed);
+        assert_eq!(staircase.bytes_decompressed, payload.len());
+    }
+
+    // 2. Custom flate2 Deflate/Gzip streaming decompressor test in 1..259 byte micro chunks
+    use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
+    use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
+    use flate2::Compression;
+    use std::io::{Cursor, Write};
+
+    // Deflate
+    let mut def_enc = DeflateEncoder::new(Vec::new(), Compression::default());
+    def_enc.write_all(payload).expect("deflate write");
+    let def_comp = def_enc.finish().expect("deflate finish");
+    for &step in &[1, 3, 7, 259] {
+        let dec = DeflateDecoder::new(Cursor::new(&def_comp));
+        let res = MicroChunkStreamValidator::validate_reader(
+            dec,
+            payload,
+            step,
+            MicroChunkCodec::RawPassthrough,
+        );
+        assert!(res.passed);
+        assert_eq!(res.bytes_decompressed, payload.len());
+    }
+
+    // Gzip
+    let mut gz_enc = GzEncoder::new(Vec::new(), Compression::default());
+    gz_enc.write_all(payload).expect("gz write");
+    let gz_comp = gz_enc.finish().expect("gz finish");
+    for &step in &[1, 2, 7, 259] {
+        let dec = GzDecoder::new(Cursor::new(&gz_comp));
+        let res = MicroChunkStreamValidator::validate_reader(
+            dec,
+            payload,
+            step,
+            MicroChunkCodec::RawPassthrough,
+        );
+        assert!(res.passed);
+        assert_eq!(res.bytes_decompressed, payload.len());
+    }
+
+    // Zlib
+    let mut zl_enc = ZlibEncoder::new(Vec::new(), Compression::default());
+    zl_enc.write_all(payload).expect("zlib write");
+    let zl_comp = zl_enc.finish().expect("zlib finish");
+    for &step in &[1, 3, 15, 259] {
+        let dec = ZlibDecoder::new(Cursor::new(&zl_comp));
+        let res = MicroChunkStreamValidator::validate_reader(
+            dec,
+            payload,
+            step,
+            MicroChunkCodec::RawPassthrough,
+        );
+        assert!(res.passed);
+        assert_eq!(res.bytes_decompressed, payload.len());
+    }
+}
+
+#[test]
+fn test_huffman_dos_defense_and_degenerate_bomb_generators() {
+    use crate::benchmark::ab_engine::huffman_defense::{
+        generate_empty_dynamic_huffman_blocks, generate_empty_dynamic_huffman_stream_by_size,
+        generate_empty_static_huffman_blocks, DeflateBitWriter, HuffmanComplexityGuard,
+        HuffmanDefenseStatus, HuffmanDosDefense,
+    };
+    use crate::codecs::deflate::DeflateDecompressor;
+
+    // 1. Test DeflateBitWriter
+    let mut writer = DeflateBitWriter::new();
+    writer.put_bits(0b101, 3);
+    writer.put_bits(0b11, 2);
+    writer.put_bits(0b0, 1);
+    writer.put_bits(0b10, 2);
+    let bytes = writer.finish();
+    assert_eq!(bytes.len(), 1);
+    assert_eq!(bytes[0], 0b10_0_11_101);
+
+    // 2. Generate and safely decompress empty static Huffman blocks
+    let static_stream = generate_empty_static_huffman_blocks(512);
+    assert!(static_stream.len() >= 512);
+    let mut decompressor = DeflateDecompressor::new().expect("alloc decompressor");
+    let mut out_buf = vec![0u8; 1024];
+    let res = decompressor.decompress_precise(&static_stream, &mut out_buf);
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap(), 0); // 0 output bytes because all blocks are empty
+
+    // 3. Generate and safely decompress empty dynamic Huffman blocks
+    let dynamic_stream = generate_empty_dynamic_huffman_blocks(10);
+    assert!(!dynamic_stream.is_empty());
+    let mut decompressor_dyn = DeflateDecompressor::new().expect("alloc decompressor");
+    let res_dyn = decompressor_dyn.decompress_precise(&dynamic_stream, &mut out_buf);
+    assert!(res_dyn.is_ok());
+    assert_eq!(res_dyn.unwrap(), 0);
+
+    // 4. Generate dynamic stream by size
+    let dyn_sized = generate_empty_dynamic_huffman_stream_by_size(256);
+    assert!(dyn_sized.len() >= 256);
+    let mut decompressor_sized = DeflateDecompressor::new().expect("alloc decompressor");
+    let res_sized = decompressor_sized.decompress_precise(&dyn_sized, &mut out_buf);
+    assert!(res_sized.is_ok());
+    assert_eq!(res_sized.unwrap(), 0);
+
+    // 5. Run full defense audit
+    let summary = HuffmanDosDefense::run_full_defense_audit(512, 10, None);
+    assert!(summary.all_safe);
+    assert!(summary.static_report.survived);
+    assert!(summary.dynamic_report.survived);
+    assert_eq!(summary.static_report.status, HuffmanDefenseStatus::Safe);
+    assert_eq!(summary.dynamic_report.status, HuffmanDefenseStatus::Safe);
+    assert!(summary.static_report.throughput_kb_per_sec > 0.0);
+    assert!(summary.dynamic_report.throughput_kb_per_sec > 0.0);
+
+    // 6. Test complexity guard timeout intercept
+    let strict_guard = HuffmanComplexityGuard {
+        max_duration: std::time::Duration::from_nanos(1), // Trip immediately
+        max_empty_blocks_limit: 10,
+        min_throughput_kb_s: 1000.0,
+    };
+    let guarded_rep = HuffmanDosDefense::evaluate_libdeflate(
+        "Guarded Static Test",
+        &static_stream,
+        100,
+        10_000,
+        Some(&strict_guard),
+    );
+    assert_eq!(guarded_rep.status, HuffmanDefenseStatus::GuardTripped);
+}

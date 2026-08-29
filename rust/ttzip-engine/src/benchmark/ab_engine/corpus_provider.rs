@@ -487,6 +487,9 @@ impl CorpusRegistry {
         registry.register_alias("image", "real:image");
         registry.register_alias("4k_image", "real:image");
 
+        // 4. Register 12 Google Snappy Industrial Datasets
+        crate::benchmark::ab_engine::snappy_corpora::SnappyIndustrialCorpusProvider::register_all(&registry);
+
         registry
     }
 

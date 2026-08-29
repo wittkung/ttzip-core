@@ -13,7 +13,7 @@ use libc::c_char;
 use super::options::TTZIP_ABI_VERSION_2;
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TTZipStatus {
     Ok = 0,
     Eof = 1,

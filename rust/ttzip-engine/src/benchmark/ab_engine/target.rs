@@ -624,12 +624,40 @@ impl TargetRegistry {
         self.targets.is_empty()
     }
 
-    /// Creates and returns a fully populated default registry containing all matrix drivers.
-    pub fn default_full() -> Self {
+    /// Creates and returns a core representative registry (~48 targets across all 13 codecs, 11 cryptos, 8 containers).
+    pub fn default_core() -> Self {
         let mut registry = Self::new();
 
-        // 1. Register 13 Codec Drivers across all available levels
-        let codec_drivers: Vec<Arc<dyn CodecBenchmarkDriver>> = vec![
+        let core_cfgs: Vec<(Arc<dyn CodecBenchmarkDriver>, &[i32])> = vec![
+            (Arc::new(DeflateBenchmarkDriver), &[1, 6, 9]),
+            (Arc::new(ZstdBenchmarkDriver), &[1, 3, 9, 19]),
+            (Arc::new(ZstdLdmBenchmarkDriver), &[3]),
+            (Arc::new(ZstdDictBenchmarkDriver), &[3]),
+            (Arc::new(FseBenchmarkDriver), &[1]),
+            (Arc::new(Huff0BenchmarkDriver), &[1]),
+            (Arc::new(Lzma2BenchmarkDriver), &[1, 6, 9]),
+            (Arc::new(BrotliBenchmarkDriver), &[1, 6, 11]),
+            (Arc::new(Bzip2BenchmarkDriver), &[1, 9]),
+            (Arc::new(SnappyBenchmarkDriver), &[1, 2]),
+            (Arc::new(Lz4BenchmarkDriver), &[1, 9, 109, 112]),
+            (Arc::new(LzfseBenchmarkDriver), &[1, 2]),
+            (Arc::new(PpmdBenchmarkDriver), &[1, 6]),
+        ];
+
+        for (driver, levels) in core_cfgs {
+            for &level in levels {
+                registry.register_codec_pair(driver.clone(), level);
+            }
+        }
+
+        Self::register_crypto_and_containers(&mut registry);
+        registry
+    }
+
+    /// Creates and returns a fully populated default registry containing all matrix drivers (326 targets).
+    pub fn default_full() -> Self {
+        let mut registry = Self::new();
+        let drivers: [Arc<dyn CodecBenchmarkDriver>; 13] = [
             Arc::new(DeflateBenchmarkDriver),
             Arc::new(ZstdBenchmarkDriver),
             Arc::new(ZstdLdmBenchmarkDriver),
@@ -645,76 +673,93 @@ impl TargetRegistry {
             Arc::new(PpmdBenchmarkDriver),
         ];
 
-        for driver in codec_drivers {
+        for driver in &drivers {
             for level in driver.available_levels() {
-                registry.register_target(Arc::new(CodecTargetAdapter::new(
-                    Arc::clone(&driver),
-                    level,
-                    CodecMode::Compress,
-                )));
-                registry.register_target(Arc::new(CodecTargetAdapter::new(
-                    Arc::clone(&driver),
-                    level,
-                    CodecMode::Decompress,
-                )));
+                registry.register_codec_pair(driver.clone(), level);
             }
         }
 
-        // 2. Register 11 Crypto / Hash Drivers
-        let crypto_drivers: Vec<Arc<dyn CryptoBenchmarkDriver>> = vec![
-            Arc::new(Adler32BenchmarkDriver),
-            Arc::new(Crc32BenchmarkDriver),
-            Arc::new(Crc64BenchmarkDriver),
-            Arc::new(Xxh3_64BenchmarkDriver),
-            Arc::new(Xxh3_128BenchmarkDriver),
-            Arc::new(Blake3BenchmarkDriver),
-            Arc::new(WinZipAes256BenchmarkDriver),
-            Arc::new(SevenZAes256BenchmarkDriver),
-            Arc::new(ZipCryptoBenchmarkDriver),
-            Arc::new(VaultAesGcmBenchmarkDriver),
-            Arc::new(VaultChaChaPolyBenchmarkDriver),
-        ];
-
-        for driver in crypto_drivers {
-            registry.register_target(Arc::new(CryptoTargetAdapter::new(
-                Arc::clone(&driver),
-                CryptoMode::Process,
-            )));
-            registry.register_target(Arc::new(CryptoTargetAdapter::new(
-                Arc::clone(&driver),
-                CryptoMode::VerifyOrDecrypt,
-            )));
-        }
-
-        // 3. Register 8 Container Drivers
-        let container_configs: Vec<(Arc<dyn ContainerBenchmarkDriver>, i32)> = vec![
-            (Arc::new(ZipContainerDriver), 6),
-            (Arc::new(TarContainerDriver), 0),
-            (Arc::new(TarGzContainerDriver), 6),
-            (Arc::new(TarZstContainerDriver), 3),
-            (Arc::new(SevenZContainerDriver), 3),
-            (Arc::new(AarContainerDriver), 1),
-            (Arc::new(TarBrotliContainerDriver), 4),
-            (Arc::new(TarSnappyContainerDriver), 1),
-        ];
-
-        for (driver, level) in container_configs {
-            registry.register_target(Arc::new(ContainerTargetAdapter::new(
-                Arc::clone(&driver),
-                ContainerMode::Create,
-                level,
-                None,
-                None,
-            )));
-            registry.register_target(Arc::new(ContainerTargetAdapter::new(
-                Arc::clone(&driver),
-                ContainerMode::Extract,
-                level,
-                None,
-                None,
-            )));
-        }
-
+        Self::register_crypto_and_containers(&mut registry);
         registry
     }
+
+    fn register_codec_pair(&mut self, driver: Arc<dyn CodecBenchmarkDriver>, level: i32) {
+        self.register_target(Arc::new(CodecTargetAdapter::new(driver.clone(), level, CodecMode::Compress)));
+        self.register_target(Arc::new(CodecTargetAdapter::new(driver, level, CodecMode::Decompress)));
+    }
+
+    fn register_crypto_and_containers(registry: &mut Self) {
+        let crypto_drivers: [Arc<dyn CryptoBenchmarkDriver>; 11] = [
+            Arc::new(Adler32BenchmarkDriver), Arc::new(Crc32BenchmarkDriver), Arc::new(Crc64BenchmarkDriver),
+            Arc::new(Xxh3_64BenchmarkDriver), Arc::new(Xxh3_128BenchmarkDriver), Arc::new(Blake3BenchmarkDriver),
+            Arc::new(WinZipAes256BenchmarkDriver), Arc::new(SevenZAes256BenchmarkDriver),
+            Arc::new(ZipCryptoBenchmarkDriver), Arc::new(VaultAesGcmBenchmarkDriver),
+            Arc::new(VaultChaChaPolyBenchmarkDriver),
+        ];
+        for d in &crypto_drivers {
+            registry.register_target(Arc::new(CryptoTargetAdapter::new(d.clone(), CryptoMode::Process)));
+            registry.register_target(Arc::new(CryptoTargetAdapter::new(d.clone(), CryptoMode::VerifyOrDecrypt)));
+        }
+
+        let container_cfgs: [(Arc<dyn ContainerBenchmarkDriver>, i32); 8] = [
+            (Arc::new(ZipContainerDriver), 6), (Arc::new(TarContainerDriver), 0),
+            (Arc::new(TarGzContainerDriver), 6), (Arc::new(TarZstContainerDriver), 3),
+            (Arc::new(SevenZContainerDriver), 3), (Arc::new(AarContainerDriver), 1),
+            (Arc::new(TarBrotliContainerDriver), 4), (Arc::new(TarSnappyContainerDriver), 1),
+        ];
+        for (d, lvl) in container_cfgs {
+            registry.register_target(Arc::new(ContainerTargetAdapter::new(d.clone(), ContainerMode::Create, lvl, None, None)));
+            registry.register_target(Arc::new(ContainerTargetAdapter::new(d, ContainerMode::Extract, lvl, None, None)));
+        }
+    }
+}
+
+/// Returns the adaptive recommended payload size for a target to prevent excessive execution times on ultra-heavy algorithms.
+#[inline]
+pub fn target_recommended_payload_size(uri: &str, requested_size: usize) -> usize {
+    if uri.starts_with("crypto/") {
+        return requested_size;
+    }
+    let is_ultra_heavy = uri.contains("ppmd")
+        || uri.contains("lzma2/compress/l7")
+        || uri.contains("lzma2/compress/l8")
+        || uri.contains("lzma2/compress/l9")
+        || uri.contains("bzip2/compress/l7")
+        || uri.contains("bzip2/compress/l8")
+        || uri.contains("bzip2/compress/l9")
+        || uri.contains("zstd/compress/l19")
+        || uri.contains("zstd/compress/l20")
+        || uri.contains("zstd/compress/l21")
+        || uri.contains("zstd/compress/l22")
+        || uri.contains("zstd_ldm/compress/l19")
+        || uri.contains("zstd_ldm/compress/l22")
+        || uri.contains("brotli/compress/q10")
+        || uri.contains("brotli/compress/q11")
+        || uri.contains("container/7z")
+        || uri.contains("container/tar_brotli");
+
+    if is_ultra_heavy {
+        return requested_size.min(131072); // 128KB
+    }
+
+    let is_heavy = uri.contains("lzma2")
+        || uri.contains("bzip2")
+        || uri.contains("brotli/compress/q7")
+        || uri.contains("brotli/compress/q8")
+        || uri.contains("brotli/compress/q9")
+        || uri.contains("zstd/compress/l10")
+        || uri.contains("zstd/compress/l11")
+        || uri.contains("zstd/compress/l12")
+        || uri.contains("zstd/compress/l13")
+        || uri.contains("zstd/compress/l14")
+        || uri.contains("zstd/compress/l15")
+        || uri.contains("zstd/compress/l16")
+        || uri.contains("zstd/compress/l17")
+        || uri.contains("zstd/compress/l18");
+
+    if is_heavy {
+        return requested_size.min(524288); // 512KB
+    }
+
+    requested_size
 }

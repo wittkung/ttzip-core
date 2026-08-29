@@ -25,7 +25,9 @@ use crate::benchmark::ab_engine::stats::{
     sync_to_next_tick, ComparisonStats, DecisionVerdict, MeasurementConfig, MeasurementEngine,
     MeasurementStats,
 };
-use crate::benchmark::ab_engine::target::{BenchmarkTarget, TargetDescriptor, TargetRegistry};
+use crate::benchmark::ab_engine::target::{
+    target_recommended_payload_size, BenchmarkTarget, TargetDescriptor, TargetRegistry,
+};
 use crate::types::TTZipStatus;
 
 // ============================================================================
@@ -252,6 +254,7 @@ impl AbEngineOrchestrator {
     }
 
     /// Executes an end-to-end A/B benchmark suite matching target filter and corpus URI.
+    /// Executes an end-to-end A/B benchmark suite matching target filter and corpus URI.
     pub fn run_ab_benchmark(
         &self,
         target_filter: &str,
@@ -259,8 +262,13 @@ impl AbEngineOrchestrator {
         size_bytes: usize,
         config: &AbOrchestratorConfig,
     ) -> Result<AbBenchmarkReport, TTZipStatus> {
-        let registry = TargetRegistry::default_full();
-        let targets = registry.filter_targets(target_filter);
+        let targets = if target_filter == "*" || target_filter == "core" || target_filter == "default" {
+            TargetRegistry::default_core().filter_targets("*")
+        } else if target_filter == "all" || target_filter == "**" {
+            TargetRegistry::default_full().filter_targets("*")
+        } else {
+            TargetRegistry::default_full().filter_targets(target_filter)
+        };
 
         let corpus_bytes = CorpusRegistry::global()
             .generate(corpus_uri, size_bytes)?;
@@ -302,8 +310,13 @@ impl AbEngineOrchestrator {
         baseline: &AbBaselineSnapshot,
         config: &AbOrchestratorConfig,
     ) -> Result<AbBenchmarkReport, TTZipStatus> {
-        let registry = TargetRegistry::default_full();
-        let targets = registry.filter_targets(target_filter);
+        let targets = if target_filter == "*" || target_filter == "core" || target_filter == "default" {
+            TargetRegistry::default_core().filter_targets("*")
+        } else if target_filter == "all" || target_filter == "**" {
+            TargetRegistry::default_full().filter_targets("*")
+        } else {
+            TargetRegistry::default_full().filter_targets(target_filter)
+        };
 
         let corpus_bytes = CorpusRegistry::global()
             .generate(corpus_uri, size_bytes)?;
@@ -314,10 +327,11 @@ impl AbEngineOrchestrator {
             let uri = &target.descriptor().uri;
             if let Some(base_entry) = baseline.get(uri) {
                 let cand_stats = self.run_single_target(target.as_ref(), &corpus_bytes, config)?;
+                let effective_size = target_recommended_payload_size(uri, corpus_bytes.len());
                 let item = self.evaluate_candidate_vs_baseline(
                     target.descriptor(),
                     corpus_uri,
-                    corpus_bytes.len(),
+                    effective_size,
                     base_entry.stats.clone(),
                     cand_stats,
                     config,
@@ -347,14 +361,30 @@ impl AbEngineOrchestrator {
         corpus_uri: &str,
         config: &AbOrchestratorConfig,
     ) -> Result<TargetAbReportItem, TTZipStatus> {
-        // 1. Warmup passes (discard timing)
-        for _ in 0..config.warmup_rounds {
-            target_a.execute_pass(corpus_bytes)?;
-            target_b.execute_pass(corpus_bytes)?;
-        }
+        let effective_size = target_recommended_payload_size(&target_a.descriptor().uri, corpus_bytes.len());
+        let effective_bytes = if effective_size < corpus_bytes.len() {
+            &corpus_bytes[..effective_size]
+        } else {
+            corpus_bytes
+        };
 
-        // 2. Interleaved A/B/B/A sampling to eliminate thermal and frequency drift
-        let rounds = config.measurement_rounds.max(4);
+        // 1. Warmup passes with duration probe
+        let warmup_start = std::time::Instant::now();
+        for _ in 0..config.warmup_rounds.max(1) {
+            target_a.execute_pass(effective_bytes)?;
+            target_b.execute_pass(effective_bytes)?;
+        }
+        let warmup_elapsed = warmup_start.elapsed();
+
+        // 2. Adaptive measurement rounds: if single pass takes > 40ms, scale down rounds to cap total target duration <= 250ms
+        let rounds = if warmup_elapsed > std::time::Duration::from_millis(200) {
+            2
+        } else if warmup_elapsed > std::time::Duration::from_millis(40) {
+            4
+        } else {
+            config.measurement_rounds.max(4)
+        };
+
         let mut samples_a = Vec::with_capacity(rounds);
         let mut samples_b = Vec::with_capacity(rounds);
 
@@ -362,20 +392,20 @@ impl AbEngineOrchestrator {
             if round % 2 == 0 {
                 // A then B
                 let start_a = sync_to_next_tick();
-                target_a.execute_pass(corpus_bytes)?;
+                target_a.execute_pass(effective_bytes)?;
                 samples_a.push(start_a.elapsed().as_nanos() as f64);
 
                 let start_b = sync_to_next_tick();
-                target_b.execute_pass(corpus_bytes)?;
+                target_b.execute_pass(effective_bytes)?;
                 samples_b.push(start_b.elapsed().as_nanos() as f64);
             } else {
                 // B then A
                 let start_b = sync_to_next_tick();
-                target_b.execute_pass(corpus_bytes)?;
+                target_b.execute_pass(effective_bytes)?;
                 samples_b.push(start_b.elapsed().as_nanos() as f64);
 
                 let start_a = sync_to_next_tick();
-                target_a.execute_pass(corpus_bytes)?;
+                target_a.execute_pass(effective_bytes)?;
                 samples_a.push(start_a.elapsed().as_nanos() as f64);
             }
         }
@@ -396,7 +426,7 @@ impl AbEngineOrchestrator {
         Ok(self.evaluate_candidate_vs_baseline(
             target_b.descriptor(),
             corpus_uri,
-            corpus_bytes.len(),
+            effective_bytes.len(),
             stats_a,
             stats_b,
             config,
@@ -410,16 +440,32 @@ impl AbEngineOrchestrator {
         corpus_bytes: &[u8],
         config: &AbOrchestratorConfig,
     ) -> Result<MeasurementStats, TTZipStatus> {
-        for _ in 0..config.warmup_rounds {
-            target.execute_pass(corpus_bytes)?;
-        }
+        let effective_size = target_recommended_payload_size(&target.descriptor().uri, corpus_bytes.len());
+        let effective_bytes = if effective_size < corpus_bytes.len() {
+            &corpus_bytes[..effective_size]
+        } else {
+            corpus_bytes
+        };
 
-        let rounds = config.measurement_rounds.max(4);
+        let warmup_start = std::time::Instant::now();
+        for _ in 0..config.warmup_rounds.max(1) {
+            target.execute_pass(effective_bytes)?;
+        }
+        let warmup_elapsed = warmup_start.elapsed();
+
+        let rounds = if warmup_elapsed > std::time::Duration::from_millis(200) {
+            2
+        } else if warmup_elapsed > std::time::Duration::from_millis(40) {
+            4
+        } else {
+            config.measurement_rounds.max(4)
+        };
+
         let mut samples = Vec::with_capacity(rounds);
 
         for _ in 0..rounds {
             let start = sync_to_next_tick();
-            target.execute_pass(corpus_bytes)?;
+            target.execute_pass(effective_bytes)?;
             samples.push(start.elapsed().as_nanos() as f64);
         }
 

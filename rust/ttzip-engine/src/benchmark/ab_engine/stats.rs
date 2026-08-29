@@ -20,17 +20,12 @@ use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
+use crate::benchmark::ab_engine::timing::wait_for_next_tick_instant;
+
 /// Synchronizes execution with the rising edge of the monotonic clock.
 #[inline]
 pub fn sync_to_next_tick() -> Instant {
-    let start = Instant::now();
-    loop {
-        let now = Instant::now();
-        if now > start {
-            return now;
-        }
-        std::hint::spin_loop();
-    }
+    wait_for_next_tick_instant()
 }
 
 // ============================================================================

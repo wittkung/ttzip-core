@@ -8,10 +8,8 @@
 //! Comprehensive A/B Performance Benchmark Suite for Zstandard Multithreading,
 //! TLS Context Pooling, and Compression Level Range Verification.
 
-use std::fs::File;
 use std::io::Write;
-use std::time::Instant;
-use tempfile::tempdir;
+use std::time::{Duration, Instant};
 use ttzip_engine::codecs::zstd::{
     zstd_compress, zstd_compress_bound, zstd_decompress, ZstdConfig, ZstdStreamWriter,
 };
@@ -44,39 +42,42 @@ fn generate_binary_corpus(size: usize) -> Vec<u8> {
 fn test_ab_zstd_multithread_speedup_100mb() {
     let corpus_size = 100 * 1024 * 1024; // 100 MB
     let corpus = generate_text_corpus(corpus_size);
-    let dir = tempdir().unwrap();
 
     // 1. Baseline: Single-threaded (nb_workers = 1)
-    let single_path = dir.path().join("single.zst");
-    let single_file = File::create(&single_path).unwrap();
     let config_single = ZstdConfig {
         level: 3,
         nb_workers: 1,
         enable_checksum: true,
         ..Default::default()
     };
-    let start_single = Instant::now();
-    let mut writer_single = ZstdStreamWriter::new(single_file, &config_single).unwrap();
-    writer_single.write_all(&corpus).unwrap();
-    writer_single.finish().unwrap();
-    let duration_single = start_single.elapsed();
+    let mut duration_single = Duration::from_secs(999);
+    for _ in 0..2 {
+        let single_buf = std::io::Cursor::new(Vec::with_capacity(corpus_size / 2));
+        let start_single = Instant::now();
+        let mut writer_single = ZstdStreamWriter::new(single_buf, &config_single).unwrap();
+        writer_single.write_all(&corpus).unwrap();
+        writer_single.finish().unwrap();
+        duration_single = duration_single.min(start_single.elapsed());
+    }
     let throughput_single = (corpus_size as f64 / (1024.0 * 1024.0 * 1024.0)) / duration_single.as_secs_f64();
 
     // 2. Candidate: Multithreaded (nb_workers = available_parallelism)
     let workers = std::thread::available_parallelism().map(|n| n.get() as u32).unwrap_or(4);
-    let mt_path = dir.path().join("multithread.zst");
-    let mt_file = File::create(&mt_path).unwrap();
     let config_mt = ZstdConfig {
         level: 3,
         nb_workers: workers,
         enable_checksum: true,
         ..Default::default()
     };
-    let start_mt = Instant::now();
-    let mut writer_mt = ZstdStreamWriter::new(mt_file, &config_mt).unwrap();
-    writer_mt.write_all(&corpus).unwrap();
-    writer_mt.finish().unwrap();
-    let duration_mt = start_mt.elapsed();
+    let mut duration_mt = Duration::from_secs(999);
+    for _ in 0..2 {
+        let mt_buf = std::io::Cursor::new(Vec::with_capacity(corpus_size / 2));
+        let start_mt = Instant::now();
+        let mut writer_mt = ZstdStreamWriter::new(mt_buf, &config_mt).unwrap();
+        writer_mt.write_all(&corpus).unwrap();
+        writer_mt.finish().unwrap();
+        duration_mt = duration_mt.min(start_mt.elapsed());
+    }
     let throughput_mt = (corpus_size as f64 / (1024.0 * 1024.0 * 1024.0)) / duration_mt.as_secs_f64();
 
     let speedup = throughput_mt / throughput_single;

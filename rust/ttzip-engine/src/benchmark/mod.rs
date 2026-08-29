@@ -27,12 +27,15 @@ mod tests;
 
 
 pub use ab_engine::{
-    sync_to_next_tick, BenchmarkCorpusProvider, BenchmarkTarget, CodecMode, CodecTargetAdapter,
-    ComparisonStats, ConfidenceInterval, ContainerMode, ContainerTargetAdapter, CorpusRegistry,
-    CryptoMode, CryptoTargetAdapter, CustomFileCorpusProvider, DecisionVerdict, HampelFilter,
-    HampelFilterResult, MeasurementConfig, MeasurementEngine, MeasurementStats, MetricUnit,
+    sync_to_next_tick, wait_for_next_tick, BenchmarkCorpusProvider, BenchmarkTarget, CodecMode,
+    CodecTargetAdapter, ComparisonStats, ConfidenceInterval, ContainerMode,
+    ContainerTargetAdapter, CorpusRegistry, CryptoMode, CryptoTargetAdapter,
+    CustomFileCorpusProvider, DecisionVerdict, HampelFilter, HampelFilterResult,
+    Lz4TimeLoopBenchEngine, MeasurementConfig, MeasurementEngine, MeasurementStats, MetricUnit,
     RealWorldAssetKind, RealWorldCorpusProvider, SyntheticCorpusProvider, TargetCategory,
-    TargetDescriptor, TargetExecutionOutput, TargetRegistry, WelchStudentTTest, WelchTTestResult,
+    TargetDescriptor, TargetExecutionOutput, TargetRegistry, TimeLoopConfig,
+    TimeLoopPassResult, TimeLoopStats, WelchStudentTTest, WelchTTestResult, NB_TESTS,
+    TIMELOOP_MICROS,
 };
 pub use clock::MonotonicStopwatch;
 pub use codecs_driver::{
