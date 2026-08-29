@@ -1107,6 +1107,26 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1363,13 +1383,33 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier(`points`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline(`targetFilter`: RustBuffer.ByValue,`corpusUri`: RustBuffer.ByValue,`sizeBytes`: Long,`baselineJson`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json(`targetFilter`: RustBuffer.ByValue,`corpusUri`: RustBuffer.ByValue,`sizeBytes`: Long,`baselineJson`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot(`reportJson`: RustBuffer.ByValue,`useCandidate`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus(`corpusId`: RustBuffer.ByValue,`sizeBytes`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_generate_html_dashboard(`corpusType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto(`corpusType`: RustBuffer.ByValue,`width`: Int,`height`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii(`reportJson`: RustBuffer.ByValue,`ansiColor`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json(`reportJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown(`reportJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark(`targetFilter`: RustBuffer.ByValue,`corpusUri`: RustBuffer.ByValue,`sizeBytes`: Long,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json(`targetFilter`: RustBuffer.ByValue,`corpusUri`: RustBuffer.ByValue,`sizeBytes`: Long,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1747,13 +1787,33 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios(
     ): Short
@@ -2191,6 +2251,18 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier() != 933.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline() != 45635.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json() != 9653.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot() != 60136.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus() != 51100.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes() != 39148.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2200,7 +2272,25 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto() != 58521.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids() != 62141.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii() != 55979.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json() != 39665.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown() != 36761.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark() != 18571.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json() != 3270.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 63498.toShort()) {
@@ -5550,6 +5640,132 @@ public object FfiConverterTypeSniffMetadata: FfiConverterRustBuffer<SniffMetadat
 
 
 /**
+ * Comprehensive A/B benchmark execution report for UniFFI boundary.
+ */
+data class UniFfiAbBenchmarkReport (
+    var `timestampEpochSecs`: kotlin.ULong, 
+    var `targetFilter`: kotlin.String, 
+    var `corpusUri`: kotlin.String, 
+    var `corpusSizeBytes`: kotlin.ULong, 
+    var `totalTargets`: kotlin.UInt, 
+    var `passedTargets`: kotlin.UInt, 
+    var `speedupCount`: kotlin.UInt, 
+    var `regressionCount`: kotlin.UInt, 
+    var `neutralCount`: kotlin.UInt, 
+    var `overallPassed`: kotlin.Boolean, 
+    var `items`: List<UniFfiTargetAbReportItem>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAbBenchmarkReport: FfiConverterRustBuffer<UniFfiAbBenchmarkReport> {
+    override fun read(buf: ByteBuffer): UniFfiAbBenchmarkReport {
+        return UniFfiAbBenchmarkReport(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeUniFFITargetAbReportItem.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAbBenchmarkReport) = (
+            FfiConverterULong.allocationSize(value.`timestampEpochSecs`) +
+            FfiConverterString.allocationSize(value.`targetFilter`) +
+            FfiConverterString.allocationSize(value.`corpusUri`) +
+            FfiConverterULong.allocationSize(value.`corpusSizeBytes`) +
+            FfiConverterUInt.allocationSize(value.`totalTargets`) +
+            FfiConverterUInt.allocationSize(value.`passedTargets`) +
+            FfiConverterUInt.allocationSize(value.`speedupCount`) +
+            FfiConverterUInt.allocationSize(value.`regressionCount`) +
+            FfiConverterUInt.allocationSize(value.`neutralCount`) +
+            FfiConverterBoolean.allocationSize(value.`overallPassed`) +
+            FfiConverterSequenceTypeUniFFITargetAbReportItem.allocationSize(value.`items`)
+    )
+
+    override fun write(value: UniFfiAbBenchmarkReport, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`timestampEpochSecs`, buf)
+            FfiConverterString.write(value.`targetFilter`, buf)
+            FfiConverterString.write(value.`corpusUri`, buf)
+            FfiConverterULong.write(value.`corpusSizeBytes`, buf)
+            FfiConverterUInt.write(value.`totalTargets`, buf)
+            FfiConverterUInt.write(value.`passedTargets`, buf)
+            FfiConverterUInt.write(value.`speedupCount`, buf)
+            FfiConverterUInt.write(value.`regressionCount`, buf)
+            FfiConverterUInt.write(value.`neutralCount`, buf)
+            FfiConverterBoolean.write(value.`overallPassed`, buf)
+            FfiConverterSequenceTypeUniFFITargetAbReportItem.write(value.`items`, buf)
+    }
+}
+
+
+
+/**
+ * Strongly typed configuration record for UniFFI A/B benchmark orchestrator.
+ */
+data class UniFfiAbOrchestratorConfig (
+    var `warmupRounds`: kotlin.UInt, 
+    var `measurementRounds`: kotlin.UInt, 
+    var `maxAllowedRegression`: kotlin.Double, 
+    var `pValueThreshold`: kotlin.Double, 
+    var `hampelFilter`: kotlin.Boolean, 
+    var `hampelK`: kotlin.Double, 
+    var `targetRsePct`: kotlin.Double
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAbOrchestratorConfig: FfiConverterRustBuffer<UniFfiAbOrchestratorConfig> {
+    override fun read(buf: ByteBuffer): UniFfiAbOrchestratorConfig {
+        return UniFfiAbOrchestratorConfig(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAbOrchestratorConfig) = (
+            FfiConverterUInt.allocationSize(value.`warmupRounds`) +
+            FfiConverterUInt.allocationSize(value.`measurementRounds`) +
+            FfiConverterDouble.allocationSize(value.`maxAllowedRegression`) +
+            FfiConverterDouble.allocationSize(value.`pValueThreshold`) +
+            FfiConverterBoolean.allocationSize(value.`hampelFilter`) +
+            FfiConverterDouble.allocationSize(value.`hampelK`) +
+            FfiConverterDouble.allocationSize(value.`targetRsePct`)
+    )
+
+    override fun write(value: UniFfiAbOrchestratorConfig, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`warmupRounds`, buf)
+            FfiConverterUInt.write(value.`measurementRounds`, buf)
+            FfiConverterDouble.write(value.`maxAllowedRegression`, buf)
+            FfiConverterDouble.write(value.`pValueThreshold`, buf)
+            FfiConverterBoolean.write(value.`hampelFilter`, buf)
+            FfiConverterDouble.write(value.`hampelK`, buf)
+            FfiConverterDouble.write(value.`targetRsePct`, buf)
+    }
+}
+
+
+
+/**
  * Authenticated Encryption with Associated Data (AEAD) encryption result.
  */
 data class UniFfiAeadResult (
@@ -7595,6 +7811,97 @@ public object FfiConverterTypeUniFFISubtitleTrack: FfiConverterRustBuffer<UniFfi
 
 
 /**
+ * Evaluation result for an individual target in an A/B benchmark suite.
+ */
+data class UniFfiTargetAbReportItem (
+    var `targetUri`: kotlin.String, 
+    var `targetName`: kotlin.String, 
+    var `category`: kotlin.String, 
+    var `corpusUri`: kotlin.String, 
+    var `corpusSizeBytes`: kotlin.ULong, 
+    var `baselineMeanNanos`: kotlin.Double, 
+    var `candidateMeanNanos`: kotlin.Double, 
+    var `baselineThroughputMbs`: kotlin.Double, 
+    var `candidateThroughputMbs`: kotlin.Double, 
+    var `speedupRatio`: kotlin.Double, 
+    var `deltaPct`: kotlin.Double, 
+    var `deltaPctLower`: kotlin.Double, 
+    var `deltaPctUpper`: kotlin.Double, 
+    var `pValue`: kotlin.Double, 
+    var `verdict`: UniFfiDecisionVerdict, 
+    var `passedGate`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITargetAbReportItem: FfiConverterRustBuffer<UniFfiTargetAbReportItem> {
+    override fun read(buf: ByteBuffer): UniFfiTargetAbReportItem {
+        return UniFfiTargetAbReportItem(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterTypeUniFFIDecisionVerdict.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiTargetAbReportItem) = (
+            FfiConverterString.allocationSize(value.`targetUri`) +
+            FfiConverterString.allocationSize(value.`targetName`) +
+            FfiConverterString.allocationSize(value.`category`) +
+            FfiConverterString.allocationSize(value.`corpusUri`) +
+            FfiConverterULong.allocationSize(value.`corpusSizeBytes`) +
+            FfiConverterDouble.allocationSize(value.`baselineMeanNanos`) +
+            FfiConverterDouble.allocationSize(value.`candidateMeanNanos`) +
+            FfiConverterDouble.allocationSize(value.`baselineThroughputMbs`) +
+            FfiConverterDouble.allocationSize(value.`candidateThroughputMbs`) +
+            FfiConverterDouble.allocationSize(value.`speedupRatio`) +
+            FfiConverterDouble.allocationSize(value.`deltaPct`) +
+            FfiConverterDouble.allocationSize(value.`deltaPctLower`) +
+            FfiConverterDouble.allocationSize(value.`deltaPctUpper`) +
+            FfiConverterDouble.allocationSize(value.`pValue`) +
+            FfiConverterTypeUniFFIDecisionVerdict.allocationSize(value.`verdict`) +
+            FfiConverterBoolean.allocationSize(value.`passedGate`)
+    )
+
+    override fun write(value: UniFfiTargetAbReportItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`targetUri`, buf)
+            FfiConverterString.write(value.`targetName`, buf)
+            FfiConverterString.write(value.`category`, buf)
+            FfiConverterString.write(value.`corpusUri`, buf)
+            FfiConverterULong.write(value.`corpusSizeBytes`, buf)
+            FfiConverterDouble.write(value.`baselineMeanNanos`, buf)
+            FfiConverterDouble.write(value.`candidateMeanNanos`, buf)
+            FfiConverterDouble.write(value.`baselineThroughputMbs`, buf)
+            FfiConverterDouble.write(value.`candidateThroughputMbs`, buf)
+            FfiConverterDouble.write(value.`speedupRatio`, buf)
+            FfiConverterDouble.write(value.`deltaPct`, buf)
+            FfiConverterDouble.write(value.`deltaPctLower`, buf)
+            FfiConverterDouble.write(value.`deltaPctUpper`, buf)
+            FfiConverterDouble.write(value.`pValue`, buf)
+            FfiConverterTypeUniFFIDecisionVerdict.write(value.`verdict`, buf)
+            FfiConverterBoolean.write(value.`passedGate`, buf)
+    }
+}
+
+
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 data class UniFfiTokenSpan (
@@ -8659,6 +8966,40 @@ public object FfiConverterTypeUniFFICorpusType: FfiConverterRustBuffer<UniFfiCor
 
 
 /**
+ * Statistical decision verdict for UniFFI boundary.
+ */
+
+enum class UniFfiDecisionVerdict {
+    
+    SIGNIFICANT_SPEEDUP,
+    SIGNIFICANT_REGRESSION,
+    NEUTRAL_NOISE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDecisionVerdict: FfiConverterRustBuffer<UniFfiDecisionVerdict> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiDecisionVerdict.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiDecisionVerdict) = 4UL
+
+    override fun write(value: UniFfiDecisionVerdict, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Verification result enumeration exposed to UniFFI.
  */
 sealed class UniFfiLicenseResult {
@@ -9424,6 +9765,38 @@ public object FfiConverterOptionalTypeModel3DMetadataRecord: FfiConverterRustBuf
         } else {
             buf.put(1)
             FfiConverterTypeModel3DMetadataRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUniFFIAbOrchestratorConfig: FfiConverterRustBuffer<UniFfiAbOrchestratorConfig?> {
+    override fun read(buf: ByteBuffer): UniFfiAbOrchestratorConfig? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFIAbOrchestratorConfig.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiAbOrchestratorConfig?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFIAbOrchestratorConfig.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiAbOrchestratorConfig?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFIAbOrchestratorConfig.write(value, buf)
         }
     }
 }
@@ -10272,6 +10645,34 @@ public object FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuffe
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFISubtitleTrack.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFITargetAbReportItem: FfiConverterRustBuffer<List<UniFfiTargetAbReportItem>> {
+    override fun read(buf: ByteBuffer): List<UniFfiTargetAbReportItem> {
+        val len = buf.getInt()
+        return List<UniFfiTargetAbReportItem>(len) {
+            FfiConverterTypeUniFFITargetAbReportItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiTargetAbReportItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFITargetAbReportItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiTargetAbReportItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFITargetAbReportItem.write(it, buf)
         }
     }
 }
@@ -11245,6 +11646,58 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Compares candidates against an offline baseline JSON snapshot.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchCompareAgainstBaseline`(`targetFilter`: kotlin.String, `corpusUri`: kotlin.String, `sizeBytes`: kotlin.ULong, `baselineJson`: kotlin.String, `config`: UniFfiAbOrchestratorConfig?): UniFfiAbBenchmarkReport {
+            return FfiConverterTypeUniFFIAbBenchmarkReport.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline(
+        FfiConverterString.lower(`targetFilter`),FfiConverterString.lower(`corpusUri`),FfiConverterULong.lower(`sizeBytes`),FfiConverterString.lower(`baselineJson`),FfiConverterOptionalTypeUniFFIAbOrchestratorConfig.lower(`config`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compares candidates against an offline baseline JSON snapshot and directly returns the report JSON string.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchCompareAgainstBaselineJson`(`targetFilter`: kotlin.String, `corpusUri`: kotlin.String, `sizeBytes`: kotlin.ULong, `baselineJson`: kotlin.String, `config`: UniFfiAbOrchestratorConfig?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json(
+        FfiConverterString.lower(`targetFilter`),FfiConverterString.lower(`corpusUri`),FfiConverterULong.lower(`sizeBytes`),FfiConverterString.lower(`baselineJson`),FfiConverterOptionalTypeUniFFIAbOrchestratorConfig.lower(`config`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Creates a baseline snapshot JSON string from a benchmark report JSON string.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchCreateBaselineSnapshot`(`reportJson`: kotlin.String, `useCandidate`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot(
+        FfiConverterString.lower(`reportJson`),FfiConverterBoolean.lower(`useCandidate`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Generates corpus byte buffer by ID/URI and requested size via the declarative registry.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchGenerateCorpus`(`corpusId`: kotlin.String, `sizeBytes`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus(
+        FfiConverterString.lower(`corpusId`),FfiConverterULong.lower(`sizeBytes`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Generates in-memory synthetic corpus bytes directly.
          */ fun `ttzipBenchGenerateCorpusBytes`(`corpusType`: UniFfiCorpusType, `sizeBytes`: kotlin.ULong): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
@@ -11283,12 +11736,89 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Lists all available standard and registered benchmark corpus identifiers and aliases.
+         */ fun `ttzipBenchListCorpusIds`(): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Lists standard Silesia multi-modal corpus catalog metadata.
          */ fun `ttzipBenchListSilesiaEntries`(): List<UniFfiMultimodalEntryMetadata> {
             return FfiConverterSequenceTypeUniFFIMultimodalEntryMetadata.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders benchmark report JSON as an ASCII terminal table.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchRenderAbAscii`(`reportJson`: kotlin.String, `ansiColor`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii(
+        FfiConverterString.lower(`reportJson`),FfiConverterBoolean.lower(`ansiColor`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders benchmark report JSON into RFC 8259 formatted telemetry.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchRenderAbJson`(`reportJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json(
+        FfiConverterString.lower(`reportJson`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Renders benchmark report JSON as a GitHub PR Markdown comment.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchRenderAbMarkdown`(`reportJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown(
+        FfiConverterString.lower(`reportJson`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes an end-to-end A/B benchmark suite matching target filter and corpus URI.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchRunAbBenchmark`(`targetFilter`: kotlin.String, `corpusUri`: kotlin.String, `sizeBytes`: kotlin.ULong, `config`: UniFfiAbOrchestratorConfig?): UniFfiAbBenchmarkReport {
+            return FfiConverterTypeUniFFIAbBenchmarkReport.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark(
+        FfiConverterString.lower(`targetFilter`),FfiConverterString.lower(`corpusUri`),FfiConverterULong.lower(`sizeBytes`),FfiConverterOptionalTypeUniFFIAbOrchestratorConfig.lower(`config`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes an end-to-end A/B benchmark suite and directly returns the serialized report JSON string.
+         */
+    @Throws(TtZipException::class) fun `ttzipBenchRunAbBenchmarkJson`(`targetFilter`: kotlin.String, `corpusUri`: kotlin.String, `sizeBytes`: kotlin.ULong, `config`: UniFfiAbOrchestratorConfig?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json(
+        FfiConverterString.lower(`targetFilter`),FfiConverterString.lower(`corpusUri`),FfiConverterULong.lower(`sizeBytes`),FfiConverterOptionalTypeUniFFIAbOrchestratorConfig.lower(`config`),_status)
 }
     )
     }

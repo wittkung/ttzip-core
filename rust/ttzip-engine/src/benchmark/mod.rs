@@ -7,6 +7,7 @@
 
 //! Benchmarking, MIPS rating, monotonic timing, Pareto frontier, and Matrix Gate suite.
 
+pub mod ab_engine;
 pub mod clock;
 pub mod codecs_driver;
 pub mod container_driver;
@@ -25,6 +26,14 @@ pub mod spline;
 mod tests;
 
 
+pub use ab_engine::{
+    sync_to_next_tick, BenchmarkCorpusProvider, BenchmarkTarget, CodecMode, CodecTargetAdapter,
+    ComparisonStats, ConfidenceInterval, ContainerMode, ContainerTargetAdapter, CorpusRegistry,
+    CryptoMode, CryptoTargetAdapter, CustomFileCorpusProvider, DecisionVerdict, HampelFilter,
+    HampelFilterResult, MeasurementConfig, MeasurementEngine, MeasurementStats, MetricUnit,
+    RealWorldAssetKind, RealWorldCorpusProvider, SyntheticCorpusProvider, TargetCategory,
+    TargetDescriptor, TargetExecutionOutput, TargetRegistry, WelchStudentTTest, WelchTTestResult,
+};
 pub use clock::MonotonicStopwatch;
 pub use codecs_driver::{
     BrotliBenchmarkDriver, Bzip2BenchmarkDriver, CodecBenchmarkDriver, DeflateBenchmarkDriver,

@@ -582,13 +582,33 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier() != 933:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline() != 45635:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json() != 9653:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot() != 60136:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus() != 51100:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes() != 39148:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard() != 43856:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto() != 58521:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids() != 62141:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii() != 55979:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json() != 39665:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown() != 36761:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark() != 18571:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json() != 3270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 63498:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1630,6 +1650,36 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier.arg
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int8,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint64,
@@ -1648,10 +1698,46 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto.argtypes 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int8,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
@@ -2549,6 +2635,18 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_tokenize_source_code.restype = ctyp
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes.restype = ctypes.c_uint16
@@ -2558,9 +2656,27 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios.restype = ctypes.c_uint16
@@ -5127,6 +5243,184 @@ class _UniffiConverterTypeSniffMetadata(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_sfx, buf)
         _UniffiConverterUInt64.write(value.sfx_offset, buf)
         _UniffiConverterUInt32.write(value.confidence, buf)
+
+
+class UniFfiAbBenchmarkReport:
+    """
+    Comprehensive A/B benchmark execution report for UniFFI boundary.
+    """
+
+    timestamp_epoch_secs: "int"
+    target_filter: "str"
+    corpus_uri: "str"
+    corpus_size_bytes: "int"
+    total_targets: "int"
+    passed_targets: "int"
+    speedup_count: "int"
+    regression_count: "int"
+    neutral_count: "int"
+    overall_passed: "bool"
+    items: "typing.List[UniFfiTargetAbReportItem]"
+    def __init__(self, *, timestamp_epoch_secs: "int", target_filter: "str", corpus_uri: "str", corpus_size_bytes: "int", total_targets: "int", passed_targets: "int", speedup_count: "int", regression_count: "int", neutral_count: "int", overall_passed: "bool", items: "typing.List[UniFfiTargetAbReportItem]"):
+        self.timestamp_epoch_secs = timestamp_epoch_secs
+        self.target_filter = target_filter
+        self.corpus_uri = corpus_uri
+        self.corpus_size_bytes = corpus_size_bytes
+        self.total_targets = total_targets
+        self.passed_targets = passed_targets
+        self.speedup_count = speedup_count
+        self.regression_count = regression_count
+        self.neutral_count = neutral_count
+        self.overall_passed = overall_passed
+        self.items = items
+
+    def __str__(self):
+        return "UniFfiAbBenchmarkReport(timestamp_epoch_secs={}, target_filter={}, corpus_uri={}, corpus_size_bytes={}, total_targets={}, passed_targets={}, speedup_count={}, regression_count={}, neutral_count={}, overall_passed={}, items={})".format(self.timestamp_epoch_secs, self.target_filter, self.corpus_uri, self.corpus_size_bytes, self.total_targets, self.passed_targets, self.speedup_count, self.regression_count, self.neutral_count, self.overall_passed, self.items)
+
+    def __eq__(self, other):
+        if self.timestamp_epoch_secs != other.timestamp_epoch_secs:
+            return False
+        if self.target_filter != other.target_filter:
+            return False
+        if self.corpus_uri != other.corpus_uri:
+            return False
+        if self.corpus_size_bytes != other.corpus_size_bytes:
+            return False
+        if self.total_targets != other.total_targets:
+            return False
+        if self.passed_targets != other.passed_targets:
+            return False
+        if self.speedup_count != other.speedup_count:
+            return False
+        if self.regression_count != other.regression_count:
+            return False
+        if self.neutral_count != other.neutral_count:
+            return False
+        if self.overall_passed != other.overall_passed:
+            return False
+        if self.items != other.items:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAbBenchmarkReport(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAbBenchmarkReport(
+            timestamp_epoch_secs=_UniffiConverterUInt64.read(buf),
+            target_filter=_UniffiConverterString.read(buf),
+            corpus_uri=_UniffiConverterString.read(buf),
+            corpus_size_bytes=_UniffiConverterUInt64.read(buf),
+            total_targets=_UniffiConverterUInt32.read(buf),
+            passed_targets=_UniffiConverterUInt32.read(buf),
+            speedup_count=_UniffiConverterUInt32.read(buf),
+            regression_count=_UniffiConverterUInt32.read(buf),
+            neutral_count=_UniffiConverterUInt32.read(buf),
+            overall_passed=_UniffiConverterBool.read(buf),
+            items=_UniffiConverterSequenceTypeUniFfiTargetAbReportItem.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.timestamp_epoch_secs)
+        _UniffiConverterString.check_lower(value.target_filter)
+        _UniffiConverterString.check_lower(value.corpus_uri)
+        _UniffiConverterUInt64.check_lower(value.corpus_size_bytes)
+        _UniffiConverterUInt32.check_lower(value.total_targets)
+        _UniffiConverterUInt32.check_lower(value.passed_targets)
+        _UniffiConverterUInt32.check_lower(value.speedup_count)
+        _UniffiConverterUInt32.check_lower(value.regression_count)
+        _UniffiConverterUInt32.check_lower(value.neutral_count)
+        _UniffiConverterBool.check_lower(value.overall_passed)
+        _UniffiConverterSequenceTypeUniFfiTargetAbReportItem.check_lower(value.items)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.timestamp_epoch_secs, buf)
+        _UniffiConverterString.write(value.target_filter, buf)
+        _UniffiConverterString.write(value.corpus_uri, buf)
+        _UniffiConverterUInt64.write(value.corpus_size_bytes, buf)
+        _UniffiConverterUInt32.write(value.total_targets, buf)
+        _UniffiConverterUInt32.write(value.passed_targets, buf)
+        _UniffiConverterUInt32.write(value.speedup_count, buf)
+        _UniffiConverterUInt32.write(value.regression_count, buf)
+        _UniffiConverterUInt32.write(value.neutral_count, buf)
+        _UniffiConverterBool.write(value.overall_passed, buf)
+        _UniffiConverterSequenceTypeUniFfiTargetAbReportItem.write(value.items, buf)
+
+
+class UniFfiAbOrchestratorConfig:
+    """
+    Strongly typed configuration record for UniFFI A/B benchmark orchestrator.
+    """
+
+    warmup_rounds: "int"
+    measurement_rounds: "int"
+    max_allowed_regression: "float"
+    p_value_threshold: "float"
+    hampel_filter: "bool"
+    hampel_k: "float"
+    target_rse_pct: "float"
+    def __init__(self, *, warmup_rounds: "int", measurement_rounds: "int", max_allowed_regression: "float", p_value_threshold: "float", hampel_filter: "bool", hampel_k: "float", target_rse_pct: "float"):
+        self.warmup_rounds = warmup_rounds
+        self.measurement_rounds = measurement_rounds
+        self.max_allowed_regression = max_allowed_regression
+        self.p_value_threshold = p_value_threshold
+        self.hampel_filter = hampel_filter
+        self.hampel_k = hampel_k
+        self.target_rse_pct = target_rse_pct
+
+    def __str__(self):
+        return "UniFfiAbOrchestratorConfig(warmup_rounds={}, measurement_rounds={}, max_allowed_regression={}, p_value_threshold={}, hampel_filter={}, hampel_k={}, target_rse_pct={})".format(self.warmup_rounds, self.measurement_rounds, self.max_allowed_regression, self.p_value_threshold, self.hampel_filter, self.hampel_k, self.target_rse_pct)
+
+    def __eq__(self, other):
+        if self.warmup_rounds != other.warmup_rounds:
+            return False
+        if self.measurement_rounds != other.measurement_rounds:
+            return False
+        if self.max_allowed_regression != other.max_allowed_regression:
+            return False
+        if self.p_value_threshold != other.p_value_threshold:
+            return False
+        if self.hampel_filter != other.hampel_filter:
+            return False
+        if self.hampel_k != other.hampel_k:
+            return False
+        if self.target_rse_pct != other.target_rse_pct:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAbOrchestratorConfig(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAbOrchestratorConfig(
+            warmup_rounds=_UniffiConverterUInt32.read(buf),
+            measurement_rounds=_UniffiConverterUInt32.read(buf),
+            max_allowed_regression=_UniffiConverterDouble.read(buf),
+            p_value_threshold=_UniffiConverterDouble.read(buf),
+            hampel_filter=_UniffiConverterBool.read(buf),
+            hampel_k=_UniffiConverterDouble.read(buf),
+            target_rse_pct=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.warmup_rounds)
+        _UniffiConverterUInt32.check_lower(value.measurement_rounds)
+        _UniffiConverterDouble.check_lower(value.max_allowed_regression)
+        _UniffiConverterDouble.check_lower(value.p_value_threshold)
+        _UniffiConverterBool.check_lower(value.hampel_filter)
+        _UniffiConverterDouble.check_lower(value.hampel_k)
+        _UniffiConverterDouble.check_lower(value.target_rse_pct)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.warmup_rounds, buf)
+        _UniffiConverterUInt32.write(value.measurement_rounds, buf)
+        _UniffiConverterDouble.write(value.max_allowed_regression, buf)
+        _UniffiConverterDouble.write(value.p_value_threshold, buf)
+        _UniffiConverterBool.write(value.hampel_filter, buf)
+        _UniffiConverterDouble.write(value.hampel_k, buf)
+        _UniffiConverterDouble.write(value.target_rse_pct, buf)
 
 
 class UniFfiAeadResult:
@@ -7919,6 +8213,144 @@ class _UniffiConverterTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_external, buf)
 
 
+class UniFfiTargetAbReportItem:
+    """
+    Evaluation result for an individual target in an A/B benchmark suite.
+    """
+
+    target_uri: "str"
+    target_name: "str"
+    category: "str"
+    corpus_uri: "str"
+    corpus_size_bytes: "int"
+    baseline_mean_nanos: "float"
+    candidate_mean_nanos: "float"
+    baseline_throughput_mbs: "float"
+    candidate_throughput_mbs: "float"
+    speedup_ratio: "float"
+    delta_pct: "float"
+    delta_pct_lower: "float"
+    delta_pct_upper: "float"
+    p_value: "float"
+    verdict: "UniFfiDecisionVerdict"
+    passed_gate: "bool"
+    def __init__(self, *, target_uri: "str", target_name: "str", category: "str", corpus_uri: "str", corpus_size_bytes: "int", baseline_mean_nanos: "float", candidate_mean_nanos: "float", baseline_throughput_mbs: "float", candidate_throughput_mbs: "float", speedup_ratio: "float", delta_pct: "float", delta_pct_lower: "float", delta_pct_upper: "float", p_value: "float", verdict: "UniFfiDecisionVerdict", passed_gate: "bool"):
+        self.target_uri = target_uri
+        self.target_name = target_name
+        self.category = category
+        self.corpus_uri = corpus_uri
+        self.corpus_size_bytes = corpus_size_bytes
+        self.baseline_mean_nanos = baseline_mean_nanos
+        self.candidate_mean_nanos = candidate_mean_nanos
+        self.baseline_throughput_mbs = baseline_throughput_mbs
+        self.candidate_throughput_mbs = candidate_throughput_mbs
+        self.speedup_ratio = speedup_ratio
+        self.delta_pct = delta_pct
+        self.delta_pct_lower = delta_pct_lower
+        self.delta_pct_upper = delta_pct_upper
+        self.p_value = p_value
+        self.verdict = verdict
+        self.passed_gate = passed_gate
+
+    def __str__(self):
+        return "UniFfiTargetAbReportItem(target_uri={}, target_name={}, category={}, corpus_uri={}, corpus_size_bytes={}, baseline_mean_nanos={}, candidate_mean_nanos={}, baseline_throughput_mbs={}, candidate_throughput_mbs={}, speedup_ratio={}, delta_pct={}, delta_pct_lower={}, delta_pct_upper={}, p_value={}, verdict={}, passed_gate={})".format(self.target_uri, self.target_name, self.category, self.corpus_uri, self.corpus_size_bytes, self.baseline_mean_nanos, self.candidate_mean_nanos, self.baseline_throughput_mbs, self.candidate_throughput_mbs, self.speedup_ratio, self.delta_pct, self.delta_pct_lower, self.delta_pct_upper, self.p_value, self.verdict, self.passed_gate)
+
+    def __eq__(self, other):
+        if self.target_uri != other.target_uri:
+            return False
+        if self.target_name != other.target_name:
+            return False
+        if self.category != other.category:
+            return False
+        if self.corpus_uri != other.corpus_uri:
+            return False
+        if self.corpus_size_bytes != other.corpus_size_bytes:
+            return False
+        if self.baseline_mean_nanos != other.baseline_mean_nanos:
+            return False
+        if self.candidate_mean_nanos != other.candidate_mean_nanos:
+            return False
+        if self.baseline_throughput_mbs != other.baseline_throughput_mbs:
+            return False
+        if self.candidate_throughput_mbs != other.candidate_throughput_mbs:
+            return False
+        if self.speedup_ratio != other.speedup_ratio:
+            return False
+        if self.delta_pct != other.delta_pct:
+            return False
+        if self.delta_pct_lower != other.delta_pct_lower:
+            return False
+        if self.delta_pct_upper != other.delta_pct_upper:
+            return False
+        if self.p_value != other.p_value:
+            return False
+        if self.verdict != other.verdict:
+            return False
+        if self.passed_gate != other.passed_gate:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiTargetAbReportItem(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiTargetAbReportItem(
+            target_uri=_UniffiConverterString.read(buf),
+            target_name=_UniffiConverterString.read(buf),
+            category=_UniffiConverterString.read(buf),
+            corpus_uri=_UniffiConverterString.read(buf),
+            corpus_size_bytes=_UniffiConverterUInt64.read(buf),
+            baseline_mean_nanos=_UniffiConverterDouble.read(buf),
+            candidate_mean_nanos=_UniffiConverterDouble.read(buf),
+            baseline_throughput_mbs=_UniffiConverterDouble.read(buf),
+            candidate_throughput_mbs=_UniffiConverterDouble.read(buf),
+            speedup_ratio=_UniffiConverterDouble.read(buf),
+            delta_pct=_UniffiConverterDouble.read(buf),
+            delta_pct_lower=_UniffiConverterDouble.read(buf),
+            delta_pct_upper=_UniffiConverterDouble.read(buf),
+            p_value=_UniffiConverterDouble.read(buf),
+            verdict=_UniffiConverterTypeUniFfiDecisionVerdict.read(buf),
+            passed_gate=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.target_uri)
+        _UniffiConverterString.check_lower(value.target_name)
+        _UniffiConverterString.check_lower(value.category)
+        _UniffiConverterString.check_lower(value.corpus_uri)
+        _UniffiConverterUInt64.check_lower(value.corpus_size_bytes)
+        _UniffiConverterDouble.check_lower(value.baseline_mean_nanos)
+        _UniffiConverterDouble.check_lower(value.candidate_mean_nanos)
+        _UniffiConverterDouble.check_lower(value.baseline_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.candidate_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.speedup_ratio)
+        _UniffiConverterDouble.check_lower(value.delta_pct)
+        _UniffiConverterDouble.check_lower(value.delta_pct_lower)
+        _UniffiConverterDouble.check_lower(value.delta_pct_upper)
+        _UniffiConverterDouble.check_lower(value.p_value)
+        _UniffiConverterTypeUniFfiDecisionVerdict.check_lower(value.verdict)
+        _UniffiConverterBool.check_lower(value.passed_gate)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.target_uri, buf)
+        _UniffiConverterString.write(value.target_name, buf)
+        _UniffiConverterString.write(value.category, buf)
+        _UniffiConverterString.write(value.corpus_uri, buf)
+        _UniffiConverterUInt64.write(value.corpus_size_bytes, buf)
+        _UniffiConverterDouble.write(value.baseline_mean_nanos, buf)
+        _UniffiConverterDouble.write(value.candidate_mean_nanos, buf)
+        _UniffiConverterDouble.write(value.baseline_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.candidate_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.speedup_ratio, buf)
+        _UniffiConverterDouble.write(value.delta_pct, buf)
+        _UniffiConverterDouble.write(value.delta_pct_lower, buf)
+        _UniffiConverterDouble.write(value.delta_pct_upper, buf)
+        _UniffiConverterDouble.write(value.p_value, buf)
+        _UniffiConverterTypeUniFfiDecisionVerdict.write(value.verdict, buf)
+        _UniffiConverterBool.write(value.passed_gate, buf)
+
+
 class UniFfiTokenSpan:
     """
     Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
@@ -9678,6 +10110,56 @@ class _UniffiConverterTypeUniFfiCorpusType(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiDecisionVerdict(enum.Enum):
+    """
+    Statistical decision verdict for UniFFI boundary.
+    """
+
+    SIGNIFICANT_SPEEDUP = 0
+    
+    SIGNIFICANT_REGRESSION = 1
+    
+    NEUTRAL_NOISE = 2
+    
+
+
+class _UniffiConverterTypeUniFfiDecisionVerdict(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDecisionVerdict.SIGNIFICANT_SPEEDUP
+        if variant == 2:
+            return UniFfiDecisionVerdict.SIGNIFICANT_REGRESSION
+        if variant == 3:
+            return UniFfiDecisionVerdict.NEUTRAL_NOISE
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiDecisionVerdict.SIGNIFICANT_SPEEDUP:
+            return
+        if value == UniFfiDecisionVerdict.SIGNIFICANT_REGRESSION:
+            return
+        if value == UniFfiDecisionVerdict.NEUTRAL_NOISE:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiDecisionVerdict.SIGNIFICANT_SPEEDUP:
+            buf.write_i32(1)
+        if value == UniFfiDecisionVerdict.SIGNIFICANT_REGRESSION:
+            buf.write_i32(2)
+        if value == UniFfiDecisionVerdict.NEUTRAL_NOISE:
+            buf.write_i32(3)
+
+
+
+
+
+
+
 class UniFfiLicenseResult:
     """
     Verification result enumeration exposed to UniFFI.
@@ -10558,6 +11040,33 @@ class _UniffiConverterOptionalTypeModel3DMetadataRecord(_UniffiConverterRustBuff
 
 
 
+class _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiAbOrchestratorConfig.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiAbOrchestratorConfig.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiAbOrchestratorConfig.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalTypeUniFfiCompressionOptions(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -11297,6 +11806,31 @@ class _UniffiConverterSequenceTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer
 
         return [
             _UniffiConverterTypeUniFfiSubtitleTrack.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiTargetAbReportItem(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiTargetAbReportItem.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiTargetAbReportItem.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiTargetAbReportItem.read(buf) for i in range(count)
         ]
 
 
@@ -12346,6 +12880,80 @@ def ttzip_bench_calculate_pareto_frontier(points: "typing.List[UniFfiParetoCodec
         _UniffiConverterSequenceTypeUniFfiParetoCodecPoint.lower(points)))
 
 
+def ttzip_bench_compare_against_baseline(target_filter: "str",corpus_uri: "str",size_bytes: "int",baseline_json: "str",config: "typing.Optional[UniFfiAbOrchestratorConfig]") -> "UniFfiAbBenchmarkReport":
+    """
+    Compares candidates against an offline baseline JSON snapshot.
+    """
+
+    _UniffiConverterString.check_lower(target_filter)
+    
+    _UniffiConverterString.check_lower(corpus_uri)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    _UniffiConverterString.check_lower(baseline_json)
+    
+    _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.check_lower(config)
+    
+    return _UniffiConverterTypeUniFfiAbBenchmarkReport.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline,
+        _UniffiConverterString.lower(target_filter),
+        _UniffiConverterString.lower(corpus_uri),
+        _UniffiConverterUInt64.lower(size_bytes),
+        _UniffiConverterString.lower(baseline_json),
+        _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.lower(config)))
+
+
+def ttzip_bench_compare_against_baseline_json(target_filter: "str",corpus_uri: "str",size_bytes: "int",baseline_json: "str",config: "typing.Optional[UniFfiAbOrchestratorConfig]") -> "str":
+    """
+    Compares candidates against an offline baseline JSON snapshot and directly returns the report JSON string.
+    """
+
+    _UniffiConverterString.check_lower(target_filter)
+    
+    _UniffiConverterString.check_lower(corpus_uri)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    _UniffiConverterString.check_lower(baseline_json)
+    
+    _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.check_lower(config)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json,
+        _UniffiConverterString.lower(target_filter),
+        _UniffiConverterString.lower(corpus_uri),
+        _UniffiConverterUInt64.lower(size_bytes),
+        _UniffiConverterString.lower(baseline_json),
+        _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.lower(config)))
+
+
+def ttzip_bench_create_baseline_snapshot(report_json: "str",use_candidate: "bool") -> "str":
+    """
+    Creates a baseline snapshot JSON string from a benchmark report JSON string.
+    """
+
+    _UniffiConverterString.check_lower(report_json)
+    
+    _UniffiConverterBool.check_lower(use_candidate)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot,
+        _UniffiConverterString.lower(report_json),
+        _UniffiConverterBool.lower(use_candidate)))
+
+
+def ttzip_bench_generate_corpus(corpus_id: "str",size_bytes: "int") -> "bytes":
+    """
+    Generates corpus byte buffer by ID/URI and requested size via the declarative registry.
+    """
+
+    _UniffiConverterString.check_lower(corpus_id)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus,
+        _UniffiConverterString.lower(corpus_id),
+        _UniffiConverterUInt64.lower(size_bytes)))
+
+
 def ttzip_bench_generate_corpus_bytes(corpus_type: "UniFfiCorpusType",size_bytes: "int") -> "bytes":
     """
     Generates in-memory synthetic corpus bytes directly.
@@ -12388,12 +12996,96 @@ def ttzip_bench_generate_svg_pareto(corpus_type: "UniFfiCorpusType",width: "int"
         _UniffiConverterUInt32.lower(height)))
 
 
+def ttzip_bench_list_corpus_ids() -> "typing.List[str]":
+    """
+    Lists all available standard and registered benchmark corpus identifiers and aliases.
+    """
+
+    return _UniffiConverterSequenceString.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids,))
+
+
 def ttzip_bench_list_silesia_entries() -> "typing.List[UniFfiMultimodalEntryMetadata]":
     """
     Lists standard Silesia multi-modal corpus catalog metadata.
     """
 
     return _UniffiConverterSequenceTypeUniFfiMultimodalEntryMetadata.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries,))
+
+
+def ttzip_bench_render_ab_ascii(report_json: "str",ansi_color: "bool") -> "str":
+    """
+    Renders benchmark report JSON as an ASCII terminal table.
+    """
+
+    _UniffiConverterString.check_lower(report_json)
+    
+    _UniffiConverterBool.check_lower(ansi_color)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii,
+        _UniffiConverterString.lower(report_json),
+        _UniffiConverterBool.lower(ansi_color)))
+
+
+def ttzip_bench_render_ab_json(report_json: "str") -> "str":
+    """
+    Renders benchmark report JSON into RFC 8259 formatted telemetry.
+    """
+
+    _UniffiConverterString.check_lower(report_json)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json,
+        _UniffiConverterString.lower(report_json)))
+
+
+def ttzip_bench_render_ab_markdown(report_json: "str") -> "str":
+    """
+    Renders benchmark report JSON as a GitHub PR Markdown comment.
+    """
+
+    _UniffiConverterString.check_lower(report_json)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown,
+        _UniffiConverterString.lower(report_json)))
+
+
+def ttzip_bench_run_ab_benchmark(target_filter: "str",corpus_uri: "str",size_bytes: "int",config: "typing.Optional[UniFfiAbOrchestratorConfig]") -> "UniFfiAbBenchmarkReport":
+    """
+    Executes an end-to-end A/B benchmark suite matching target filter and corpus URI.
+    """
+
+    _UniffiConverterString.check_lower(target_filter)
+    
+    _UniffiConverterString.check_lower(corpus_uri)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.check_lower(config)
+    
+    return _UniffiConverterTypeUniFfiAbBenchmarkReport.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark,
+        _UniffiConverterString.lower(target_filter),
+        _UniffiConverterString.lower(corpus_uri),
+        _UniffiConverterUInt64.lower(size_bytes),
+        _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.lower(config)))
+
+
+def ttzip_bench_run_ab_benchmark_json(target_filter: "str",corpus_uri: "str",size_bytes: "int",config: "typing.Optional[UniFfiAbOrchestratorConfig]") -> "str":
+    """
+    Executes an end-to-end A/B benchmark suite and directly returns the serialized report JSON string.
+    """
+
+    _UniffiConverterString.check_lower(target_filter)
+    
+    _UniffiConverterString.check_lower(corpus_uri)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.check_lower(config)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json,
+        _UniffiConverterString.lower(target_filter),
+        _UniffiConverterString.lower(corpus_uri),
+        _UniffiConverterUInt64.lower(size_bytes),
+        _UniffiConverterOptionalTypeUniFfiAbOrchestratorConfig.lower(config)))
 
 
 def ttzip_bench_run_all_scenarios() -> "UniFfiScenarioMatrixReport":
@@ -13465,6 +14157,7 @@ __all__ = [
     "TtZipError",
     "UniFfiCompressionCodec",
     "UniFfiCorpusType",
+    "UniFfiDecisionVerdict",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
     "UniFfiPlayerState",
@@ -13483,6 +14176,8 @@ __all__ = [
     "PasswordRecoveryOutcome",
     "PathSuggestionItem",
     "SniffMetadata",
+    "UniFfiAbBenchmarkReport",
+    "UniFfiAbOrchestratorConfig",
     "UniFfiAeadResult",
     "UniFfiAudioTrack",
     "UniFfiBenchmarkMatrixReport",
@@ -13520,6 +14215,7 @@ __all__ = [
     "UniFfiSubtitleSpan",
     "UniFfiSubtitleStyle",
     "UniFfiSubtitleTrack",
+    "UniFfiTargetAbReportItem",
     "UniFfiTokenSpan",
     "UniFfiTransactionDiff",
     "UniFfiVfsMatch",
@@ -13594,10 +14290,20 @@ __all__ = [
     "sniff_format_file",
     "tokenize_source_code",
     "ttzip_bench_calculate_pareto_frontier",
+    "ttzip_bench_compare_against_baseline",
+    "ttzip_bench_compare_against_baseline_json",
+    "ttzip_bench_create_baseline_snapshot",
+    "ttzip_bench_generate_corpus",
     "ttzip_bench_generate_corpus_bytes",
     "ttzip_bench_generate_html_dashboard",
     "ttzip_bench_generate_svg_pareto",
+    "ttzip_bench_list_corpus_ids",
     "ttzip_bench_list_silesia_entries",
+    "ttzip_bench_render_ab_ascii",
+    "ttzip_bench_render_ab_json",
+    "ttzip_bench_render_ab_markdown",
+    "ttzip_bench_run_ab_benchmark",
+    "ttzip_bench_run_ab_benchmark_json",
     "ttzip_bench_run_all_scenarios",
     "ttzip_bench_run_gate",
     "ttzip_bench_run_matrix",

@@ -15,6 +15,7 @@ func printHelp() {
     USAGE: ttzip-bench <subcommand> [options]
 
     SUBCOMMANDS:
+      ab              Run declarative A/B benchmark suite with Welch's t-test statistical inference
       ffi-tax         Run Swift 6 -> Rust UniFFI cross-language FFI tax & zero-copy latency benchmark
       scenario-matrix Run enterprise 100-scenario high-pressure benchmark matrix (7 industrial categories)
       matrix-gate     Run full matrix benchmark across 8 mathematical synthetic corpus types & codecs
@@ -25,10 +26,18 @@ func printHelp() {
       gate            Run automated regression and hardware stability checks for CI/CD
       help            Display this help message
 
-    OPTIONS:
-      --json-out <path>    Write structured telemetry report to JSON file
-      --lang <bcp47>       Force target language (en, zh-Hans, zh-Hant, ja, de, fr, es)
-      --size-mb <int>      Set corpus payload size in MB (default: 10)
+    A/B BENCHMARK OPTIONS (for 'ab' subcommand):
+      --target <glob>        Wildcard filter pattern matching target URIs (default: "*")
+      --corpus <uri>         Corpus URI identifier (default: "synthetic:zipf_text")
+      --size <bytes>         Corpus payload size in bytes (default: 1048576)
+      --baseline-json <path> Path to offline baseline JSON snapshot for differential regression check
+      --rounds <n>           Number of timed measurement iterations per target (default: 10)
+      --format <fmt>         Output format: table (ASCII table), json (RFC 8259), markdown (GitHub PR)
+
+    GLOBAL OPTIONS:
+      --json-out <path>      Write structured telemetry report to JSON file
+      --lang <bcp47>         Force target language (en, zh-Hans, zh-Hant, ja, de, fr, es)
+      --size-mb <int>        Set corpus payload size in MB (default: 10)
     """)
 }
 
@@ -581,6 +590,89 @@ func executePipelineBenchmark(jsonOut: String?) {
     }
 }
 
+// MARK: - 7. Declarative A/B Microkernel Benchmark Suite
+
+func executeAbBenchmark(
+    targetFilter: String,
+    corpusUri: String,
+    sizeBytes: UInt64,
+    baselineJsonPath: String?,
+    rounds: UInt32,
+    format: String,
+    jsonOut: String?
+) -> Bool {
+    let effectiveRounds = max(4, rounds)
+    let config = UniFfiAbOrchestratorConfig(
+        warmupRounds: min(3, max(1, effectiveRounds / 4)),
+        measurementRounds: effectiveRounds,
+        maxAllowedRegression: 3.0,
+        pValueThreshold: 0.05,
+        hampelFilter: true,
+        hampelK: 3.0,
+        targetRsePct: 0.5
+    )
+
+    do {
+        let reportJson: String
+        if let baselinePath = baselineJsonPath {
+            let baselineData = try Data(contentsOf: URL(fileURLWithPath: baselinePath))
+            guard let baselineStr = String(data: baselineData, encoding: .utf8) else {
+                print("❌ Failed to read baseline JSON from '\(baselinePath)'")
+                return false
+            }
+            reportJson = try ttzipBenchCompareAgainstBaselineJson(
+                targetFilter: targetFilter,
+                corpusUri: corpusUri,
+                sizeBytes: sizeBytes,
+                baselineJson: baselineStr,
+                config: config
+            )
+        } else {
+            reportJson = try ttzipBenchRunAbBenchmarkJson(
+                targetFilter: targetFilter,
+                corpusUri: corpusUri,
+                sizeBytes: sizeBytes,
+                config: config
+            )
+        }
+
+        // Render formatted report using Rust UniFFI exporters
+        let rendered: String
+        switch format.lowercased() {
+        case "json":
+            rendered = try ttzipBenchRenderAbJson(reportJson: reportJson)
+        case "markdown", "md":
+            rendered = try ttzipBenchRenderAbMarkdown(reportJson: reportJson)
+        case "table", "ascii":
+            fallthrough
+        default:
+            rendered = try ttzipBenchRenderAbAscii(reportJson: reportJson, ansiColor: true)
+        }
+
+        print(rendered)
+
+        if let outPath = jsonOut {
+            let formattedJson = try ttzipBenchRenderAbJson(reportJson: reportJson)
+            try formattedJson.write(to: URL(fileURLWithPath: outPath), atomically: true, encoding: .utf8)
+            print("📄 Telemetry JSON exported to: \(outPath)")
+        }
+
+        // Parse overall quality gate verdict from reportJson
+        if let data = reportJson.data(using: .utf8),
+           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let summary = dict["summary"] as? [String: Any]
+            let overallPassed = (dict["overall_passed"] as? Bool) ?? (summary?["overall_passed"] as? Bool) ?? true
+            let regressionCount = (dict["regression_count"] as? Int) ?? (summary?["regression_count"] as? Int) ?? 0
+            return overallPassed && regressionCount == 0
+        }
+
+        return true
+    } catch {
+        print("❌ A/B Benchmark execution error: \(error)")
+        return false
+    }
+}
+
 // MARK: - Entry Point
 
 let args = Array(CommandLine.arguments.dropFirst())
@@ -591,19 +683,45 @@ guard let command = args.first, command != "--help", command != "-h", command !=
 
 var jsonOut: String?
 var corpusSizeMB = 10
+var targetFilter = "*"
+var corpusUri = "synthetic:zipf_text"
+var customSizeBytes: UInt64?
+var baselineJsonPath: String?
+var rounds: UInt32 = 10
+var outputFormat = "table"
+
 var idx = 1
 while idx < args.count {
-    if args[idx] == "--json-out", idx + 1 < args.count {
+    let arg = args[idx]
+    if (arg == "--json-out" || arg == "-o"), idx + 1 < args.count {
         jsonOut = args[idx + 1]
         idx += 2
-    } else if args[idx] == "--lang", idx + 1 < args.count {
+    } else if arg == "--lang", idx + 1 < args.count {
         let langStr = args[idx + 1]
         if let parsed = AppLanguage.from(identifier: langStr) {
             TTZipLocalizationManager.shared.currentLanguage = parsed
         }
         idx += 2
-    } else if args[idx] == "--size-mb", idx + 1 < args.count {
+    } else if arg == "--size-mb", idx + 1 < args.count {
         corpusSizeMB = Int(args[idx + 1]) ?? 10
+        idx += 2
+    } else if (arg == "--target" || arg == "-t"), idx + 1 < args.count {
+        targetFilter = args[idx + 1]
+        idx += 2
+    } else if (arg == "--corpus" || arg == "-c"), idx + 1 < args.count {
+        corpusUri = args[idx + 1]
+        idx += 2
+    } else if (arg == "--size" || arg == "-s"), idx + 1 < args.count {
+        customSizeBytes = UInt64(args[idx + 1])
+        idx += 2
+    } else if (arg == "--baseline-json" || arg == "-b"), idx + 1 < args.count {
+        baselineJsonPath = args[idx + 1]
+        idx += 2
+    } else if (arg == "--rounds" || arg == "-r" || arg == "-n"), idx + 1 < args.count {
+        rounds = UInt32(args[idx + 1]) ?? 10
+        idx += 2
+    } else if (arg == "--format" || arg == "-f"), idx + 1 < args.count {
+        outputFormat = args[idx + 1]
         idx += 2
     } else {
         idx += 1
@@ -611,6 +729,19 @@ while idx < args.count {
 }
 
 switch command {
+case "ab":
+    let effectiveSize = customSizeBytes ?? UInt64(corpusSizeMB * 1024 * 1024)
+    let success = executeAbBenchmark(
+        targetFilter: targetFilter,
+        corpusUri: corpusUri,
+        sizeBytes: effectiveSize,
+        baselineJsonPath: baselineJsonPath,
+        rounds: rounds,
+        format: outputFormat,
+        jsonOut: jsonOut
+    )
+    exit(success ? 0 : 70)
+
 case "ffi-tax":
     let success = executeFfiTaxBenchmark(jsonOut: jsonOut)
     exit(success ? 0 : 70)

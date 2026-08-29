@@ -273,3 +273,18 @@ fn test_zstd_stream_pipe_roundtrip() {
     assert_eq!(decomp_written, payload.len() as u64);
     assert_eq!(decompressed_out, payload);
 }
+
+#[test]
+fn test_zstd_adaptive_ldm_threshold() {
+    // 1. Inputs smaller than 64MB: LDM is disabled to maintain maximum throughput
+    let small_config = ZstdConfig::adaptive_ldm(3, 10 * 1024 * 1024, 64);
+    assert!(!small_config.enable_ldm, "LDM must be disabled for <64MB inputs");
+    assert_eq!(small_config.level, 3);
+
+    // 2. Inputs >= 64MB: LDM is automatically activated with the configured window
+    let large_config = ZstdConfig::adaptive_ldm(3, 128 * 1024 * 1024, 64);
+    assert!(large_config.enable_ldm, "LDM must be enabled for >=64MB inputs");
+    assert_eq!(large_config.level, 3);
+    assert_eq!(large_config.window_log, 26); // 64MB window log = 26
+}
+

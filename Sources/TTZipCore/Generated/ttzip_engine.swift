@@ -2985,6 +2985,246 @@ public func FfiConverterTypeSniffMetadata_lower(_ value: SniffMetadata) -> RustB
 }
 
 /**
+ * Comprehensive A/B benchmark execution report for UniFFI boundary.
+ */
+public struct UniFfiAbBenchmarkReport {
+    public var timestampEpochSecs: UInt64
+    public var targetFilter: String
+    public var corpusUri: String
+    public var corpusSizeBytes: UInt64
+    public var totalTargets: UInt32
+    public var passedTargets: UInt32
+    public var speedupCount: UInt32
+    public var regressionCount: UInt32
+    public var neutralCount: UInt32
+    public var overallPassed: Bool
+    public var items: [UniFfiTargetAbReportItem]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(timestampEpochSecs: UInt64, targetFilter: String, corpusUri: String, corpusSizeBytes: UInt64, totalTargets: UInt32, passedTargets: UInt32, speedupCount: UInt32, regressionCount: UInt32, neutralCount: UInt32, overallPassed: Bool, items: [UniFfiTargetAbReportItem]) {
+        self.timestampEpochSecs = timestampEpochSecs
+        self.targetFilter = targetFilter
+        self.corpusUri = corpusUri
+        self.corpusSizeBytes = corpusSizeBytes
+        self.totalTargets = totalTargets
+        self.passedTargets = passedTargets
+        self.speedupCount = speedupCount
+        self.regressionCount = regressionCount
+        self.neutralCount = neutralCount
+        self.overallPassed = overallPassed
+        self.items = items
+    }
+}
+
+extension UniFfiAbBenchmarkReport: Equatable, Hashable {
+    public static func == (lhs: UniFfiAbBenchmarkReport, rhs: UniFfiAbBenchmarkReport) -> Bool {
+        if lhs.timestampEpochSecs != rhs.timestampEpochSecs {
+            return false
+        }
+        if lhs.targetFilter != rhs.targetFilter {
+            return false
+        }
+        if lhs.corpusUri != rhs.corpusUri {
+            return false
+        }
+        if lhs.corpusSizeBytes != rhs.corpusSizeBytes {
+            return false
+        }
+        if lhs.totalTargets != rhs.totalTargets {
+            return false
+        }
+        if lhs.passedTargets != rhs.passedTargets {
+            return false
+        }
+        if lhs.speedupCount != rhs.speedupCount {
+            return false
+        }
+        if lhs.regressionCount != rhs.regressionCount {
+            return false
+        }
+        if lhs.neutralCount != rhs.neutralCount {
+            return false
+        }
+        if lhs.overallPassed != rhs.overallPassed {
+            return false
+        }
+        if lhs.items != rhs.items {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(timestampEpochSecs)
+        hasher.combine(targetFilter)
+        hasher.combine(corpusUri)
+        hasher.combine(corpusSizeBytes)
+        hasher.combine(totalTargets)
+        hasher.combine(passedTargets)
+        hasher.combine(speedupCount)
+        hasher.combine(regressionCount)
+        hasher.combine(neutralCount)
+        hasher.combine(overallPassed)
+        hasher.combine(items)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAbBenchmarkReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAbBenchmarkReport {
+        return
+            try UniFfiAbBenchmarkReport(
+                timestampEpochSecs: FfiConverterUInt64.read(from: &buf),
+                targetFilter: FfiConverterString.read(from: &buf),
+                corpusUri: FfiConverterString.read(from: &buf),
+                corpusSizeBytes: FfiConverterUInt64.read(from: &buf),
+                totalTargets: FfiConverterUInt32.read(from: &buf),
+                passedTargets: FfiConverterUInt32.read(from: &buf),
+                speedupCount: FfiConverterUInt32.read(from: &buf),
+                regressionCount: FfiConverterUInt32.read(from: &buf),
+                neutralCount: FfiConverterUInt32.read(from: &buf),
+                overallPassed: FfiConverterBool.read(from: &buf),
+                items: FfiConverterSequenceTypeUniFFITargetAbReportItem.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAbBenchmarkReport, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.timestampEpochSecs, into: &buf)
+        FfiConverterString.write(value.targetFilter, into: &buf)
+        FfiConverterString.write(value.corpusUri, into: &buf)
+        FfiConverterUInt64.write(value.corpusSizeBytes, into: &buf)
+        FfiConverterUInt32.write(value.totalTargets, into: &buf)
+        FfiConverterUInt32.write(value.passedTargets, into: &buf)
+        FfiConverterUInt32.write(value.speedupCount, into: &buf)
+        FfiConverterUInt32.write(value.regressionCount, into: &buf)
+        FfiConverterUInt32.write(value.neutralCount, into: &buf)
+        FfiConverterBool.write(value.overallPassed, into: &buf)
+        FfiConverterSequenceTypeUniFFITargetAbReportItem.write(value.items, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAbBenchmarkReport_lift(_ buf: RustBuffer) throws -> UniFfiAbBenchmarkReport {
+    return try FfiConverterTypeUniFFIAbBenchmarkReport.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAbBenchmarkReport_lower(_ value: UniFfiAbBenchmarkReport) -> RustBuffer {
+    return FfiConverterTypeUniFFIAbBenchmarkReport.lower(value)
+}
+
+/**
+ * Strongly typed configuration record for UniFFI A/B benchmark orchestrator.
+ */
+public struct UniFfiAbOrchestratorConfig {
+    public var warmupRounds: UInt32
+    public var measurementRounds: UInt32
+    public var maxAllowedRegression: Double
+    public var pValueThreshold: Double
+    public var hampelFilter: Bool
+    public var hampelK: Double
+    public var targetRsePct: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(warmupRounds: UInt32, measurementRounds: UInt32, maxAllowedRegression: Double, pValueThreshold: Double, hampelFilter: Bool, hampelK: Double, targetRsePct: Double) {
+        self.warmupRounds = warmupRounds
+        self.measurementRounds = measurementRounds
+        self.maxAllowedRegression = maxAllowedRegression
+        self.pValueThreshold = pValueThreshold
+        self.hampelFilter = hampelFilter
+        self.hampelK = hampelK
+        self.targetRsePct = targetRsePct
+    }
+}
+
+extension UniFfiAbOrchestratorConfig: Equatable, Hashable {
+    public static func == (lhs: UniFfiAbOrchestratorConfig, rhs: UniFfiAbOrchestratorConfig) -> Bool {
+        if lhs.warmupRounds != rhs.warmupRounds {
+            return false
+        }
+        if lhs.measurementRounds != rhs.measurementRounds {
+            return false
+        }
+        if lhs.maxAllowedRegression != rhs.maxAllowedRegression {
+            return false
+        }
+        if lhs.pValueThreshold != rhs.pValueThreshold {
+            return false
+        }
+        if lhs.hampelFilter != rhs.hampelFilter {
+            return false
+        }
+        if lhs.hampelK != rhs.hampelK {
+            return false
+        }
+        if lhs.targetRsePct != rhs.targetRsePct {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(warmupRounds)
+        hasher.combine(measurementRounds)
+        hasher.combine(maxAllowedRegression)
+        hasher.combine(pValueThreshold)
+        hasher.combine(hampelFilter)
+        hasher.combine(hampelK)
+        hasher.combine(targetRsePct)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAbOrchestratorConfig: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAbOrchestratorConfig {
+        return
+            try UniFfiAbOrchestratorConfig(
+                warmupRounds: FfiConverterUInt32.read(from: &buf),
+                measurementRounds: FfiConverterUInt32.read(from: &buf),
+                maxAllowedRegression: FfiConverterDouble.read(from: &buf),
+                pValueThreshold: FfiConverterDouble.read(from: &buf),
+                hampelFilter: FfiConverterBool.read(from: &buf),
+                hampelK: FfiConverterDouble.read(from: &buf),
+                targetRsePct: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAbOrchestratorConfig, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.warmupRounds, into: &buf)
+        FfiConverterUInt32.write(value.measurementRounds, into: &buf)
+        FfiConverterDouble.write(value.maxAllowedRegression, into: &buf)
+        FfiConverterDouble.write(value.pValueThreshold, into: &buf)
+        FfiConverterBool.write(value.hampelFilter, into: &buf)
+        FfiConverterDouble.write(value.hampelK, into: &buf)
+        FfiConverterDouble.write(value.targetRsePct, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAbOrchestratorConfig_lift(_ buf: RustBuffer) throws -> UniFfiAbOrchestratorConfig {
+    return try FfiConverterTypeUniFFIAbOrchestratorConfig.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAbOrchestratorConfig_lower(_ value: UniFfiAbOrchestratorConfig) -> RustBuffer {
+    return FfiConverterTypeUniFFIAbOrchestratorConfig.lower(value)
+}
+
+/**
  * Authenticated Encryption with Associated Data (AEAD) encryption result.
  */
 public struct UniFfiAeadResult {
@@ -6860,6 +7100,182 @@ public func FfiConverterTypeUniFFISubtitleTrack_lower(_ value: UniFfiSubtitleTra
 }
 
 /**
+ * Evaluation result for an individual target in an A/B benchmark suite.
+ */
+public struct UniFfiTargetAbReportItem {
+    public var targetUri: String
+    public var targetName: String
+    public var category: String
+    public var corpusUri: String
+    public var corpusSizeBytes: UInt64
+    public var baselineMeanNanos: Double
+    public var candidateMeanNanos: Double
+    public var baselineThroughputMbs: Double
+    public var candidateThroughputMbs: Double
+    public var speedupRatio: Double
+    public var deltaPct: Double
+    public var deltaPctLower: Double
+    public var deltaPctUpper: Double
+    public var pValue: Double
+    public var verdict: UniFfiDecisionVerdict
+    public var passedGate: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(targetUri: String, targetName: String, category: String, corpusUri: String, corpusSizeBytes: UInt64, baselineMeanNanos: Double, candidateMeanNanos: Double, baselineThroughputMbs: Double, candidateThroughputMbs: Double, speedupRatio: Double, deltaPct: Double, deltaPctLower: Double, deltaPctUpper: Double, pValue: Double, verdict: UniFfiDecisionVerdict, passedGate: Bool) {
+        self.targetUri = targetUri
+        self.targetName = targetName
+        self.category = category
+        self.corpusUri = corpusUri
+        self.corpusSizeBytes = corpusSizeBytes
+        self.baselineMeanNanos = baselineMeanNanos
+        self.candidateMeanNanos = candidateMeanNanos
+        self.baselineThroughputMbs = baselineThroughputMbs
+        self.candidateThroughputMbs = candidateThroughputMbs
+        self.speedupRatio = speedupRatio
+        self.deltaPct = deltaPct
+        self.deltaPctLower = deltaPctLower
+        self.deltaPctUpper = deltaPctUpper
+        self.pValue = pValue
+        self.verdict = verdict
+        self.passedGate = passedGate
+    }
+}
+
+extension UniFfiTargetAbReportItem: Equatable, Hashable {
+    public static func == (lhs: UniFfiTargetAbReportItem, rhs: UniFfiTargetAbReportItem) -> Bool {
+        if lhs.targetUri != rhs.targetUri {
+            return false
+        }
+        if lhs.targetName != rhs.targetName {
+            return false
+        }
+        if lhs.category != rhs.category {
+            return false
+        }
+        if lhs.corpusUri != rhs.corpusUri {
+            return false
+        }
+        if lhs.corpusSizeBytes != rhs.corpusSizeBytes {
+            return false
+        }
+        if lhs.baselineMeanNanos != rhs.baselineMeanNanos {
+            return false
+        }
+        if lhs.candidateMeanNanos != rhs.candidateMeanNanos {
+            return false
+        }
+        if lhs.baselineThroughputMbs != rhs.baselineThroughputMbs {
+            return false
+        }
+        if lhs.candidateThroughputMbs != rhs.candidateThroughputMbs {
+            return false
+        }
+        if lhs.speedupRatio != rhs.speedupRatio {
+            return false
+        }
+        if lhs.deltaPct != rhs.deltaPct {
+            return false
+        }
+        if lhs.deltaPctLower != rhs.deltaPctLower {
+            return false
+        }
+        if lhs.deltaPctUpper != rhs.deltaPctUpper {
+            return false
+        }
+        if lhs.pValue != rhs.pValue {
+            return false
+        }
+        if lhs.verdict != rhs.verdict {
+            return false
+        }
+        if lhs.passedGate != rhs.passedGate {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(targetUri)
+        hasher.combine(targetName)
+        hasher.combine(category)
+        hasher.combine(corpusUri)
+        hasher.combine(corpusSizeBytes)
+        hasher.combine(baselineMeanNanos)
+        hasher.combine(candidateMeanNanos)
+        hasher.combine(baselineThroughputMbs)
+        hasher.combine(candidateThroughputMbs)
+        hasher.combine(speedupRatio)
+        hasher.combine(deltaPct)
+        hasher.combine(deltaPctLower)
+        hasher.combine(deltaPctUpper)
+        hasher.combine(pValue)
+        hasher.combine(verdict)
+        hasher.combine(passedGate)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITargetAbReportItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiTargetAbReportItem {
+        return
+            try UniFfiTargetAbReportItem(
+                targetUri: FfiConverterString.read(from: &buf),
+                targetName: FfiConverterString.read(from: &buf),
+                category: FfiConverterString.read(from: &buf),
+                corpusUri: FfiConverterString.read(from: &buf),
+                corpusSizeBytes: FfiConverterUInt64.read(from: &buf),
+                baselineMeanNanos: FfiConverterDouble.read(from: &buf),
+                candidateMeanNanos: FfiConverterDouble.read(from: &buf),
+                baselineThroughputMbs: FfiConverterDouble.read(from: &buf),
+                candidateThroughputMbs: FfiConverterDouble.read(from: &buf),
+                speedupRatio: FfiConverterDouble.read(from: &buf),
+                deltaPct: FfiConverterDouble.read(from: &buf),
+                deltaPctLower: FfiConverterDouble.read(from: &buf),
+                deltaPctUpper: FfiConverterDouble.read(from: &buf),
+                pValue: FfiConverterDouble.read(from: &buf),
+                verdict: FfiConverterTypeUniFFIDecisionVerdict.read(from: &buf),
+                passedGate: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiTargetAbReportItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.targetUri, into: &buf)
+        FfiConverterString.write(value.targetName, into: &buf)
+        FfiConverterString.write(value.category, into: &buf)
+        FfiConverterString.write(value.corpusUri, into: &buf)
+        FfiConverterUInt64.write(value.corpusSizeBytes, into: &buf)
+        FfiConverterDouble.write(value.baselineMeanNanos, into: &buf)
+        FfiConverterDouble.write(value.candidateMeanNanos, into: &buf)
+        FfiConverterDouble.write(value.baselineThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.candidateThroughputMbs, into: &buf)
+        FfiConverterDouble.write(value.speedupRatio, into: &buf)
+        FfiConverterDouble.write(value.deltaPct, into: &buf)
+        FfiConverterDouble.write(value.deltaPctLower, into: &buf)
+        FfiConverterDouble.write(value.deltaPctUpper, into: &buf)
+        FfiConverterDouble.write(value.pValue, into: &buf)
+        FfiConverterTypeUniFFIDecisionVerdict.write(value.verdict, into: &buf)
+        FfiConverterBool.write(value.passedGate, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITargetAbReportItem_lift(_ buf: RustBuffer) throws -> UniFfiTargetAbReportItem {
+    return try FfiConverterTypeUniFFITargetAbReportItem.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITargetAbReportItem_lower(_ value: UniFfiTargetAbReportItem) -> RustBuffer {
+    return FfiConverterTypeUniFFITargetAbReportItem.lower(value)
+}
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 public struct UniFfiTokenSpan {
@@ -8832,6 +9248,67 @@ extension UniFfiCorpusType: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Statistical decision verdict for UniFFI boundary.
+ */
+
+public enum UniFfiDecisionVerdict {
+    case significantSpeedup
+    case significantRegression
+    case neutralNoise
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDecisionVerdict: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDecisionVerdict
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDecisionVerdict {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .significantSpeedup
+
+        case 2: return .significantRegression
+
+        case 3: return .neutralNoise
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDecisionVerdict, into buf: inout [UInt8]) {
+        switch value {
+        case .significantSpeedup:
+            writeInt(&buf, Int32(1))
+
+        case .significantRegression:
+            writeInt(&buf, Int32(2))
+
+        case .neutralNoise:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDecisionVerdict_lift(_ buf: RustBuffer) throws -> UniFfiDecisionVerdict {
+    return try FfiConverterTypeUniFFIDecisionVerdict.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDecisionVerdict_lower(_ value: UniFfiDecisionVerdict) -> RustBuffer {
+    return FfiConverterTypeUniFFIDecisionVerdict.lower(value)
+}
+
+extension UniFfiDecisionVerdict: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Verification result enumeration exposed to UniFFI.
  */
 
@@ -9652,6 +10129,30 @@ private struct FfiConverterOptionTypeModel3DMetadataRecord: FfiConverterRustBuff
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionTypeUniFFIAbOrchestratorConfig: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiAbOrchestratorConfig?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFIAbOrchestratorConfig.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFIAbOrchestratorConfig.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionTypeUniFFICompressionOptions: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiCompressionOptions?
 
@@ -10360,6 +10861,31 @@ private struct FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFISubtitleTrack.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFITargetAbReportItem: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiTargetAbReportItem]
+
+    static func write(_ value: [UniFfiTargetAbReportItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFITargetAbReportItem.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiTargetAbReportItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiTargetAbReportItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFITargetAbReportItem.read(from: &buf))
         }
         return seq
     }
@@ -11263,6 +11789,60 @@ public func ttzipBenchCalculateParetoFrontier(points: [UniFfiParetoCodecPoint]) 
 }
 
 /**
+ * Compares candidates against an offline baseline JSON snapshot.
+ */
+public func ttzipBenchCompareAgainstBaseline(targetFilter: String, corpusUri: String, sizeBytes: UInt64, baselineJson: String, config: UniFfiAbOrchestratorConfig?) throws -> UniFfiAbBenchmarkReport {
+    return try FfiConverterTypeUniFFIAbBenchmarkReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline(
+            FfiConverterString.lower(targetFilter),
+            FfiConverterString.lower(corpusUri),
+            FfiConverterUInt64.lower(sizeBytes),
+            FfiConverterString.lower(baselineJson),
+            FfiConverterOptionTypeUniFFIAbOrchestratorConfig.lower(config), $0
+        )
+    })
+}
+
+/**
+ * Compares candidates against an offline baseline JSON snapshot and directly returns the report JSON string.
+ */
+public func ttzipBenchCompareAgainstBaselineJson(targetFilter: String, corpusUri: String, sizeBytes: UInt64, baselineJson: String, config: UniFfiAbOrchestratorConfig?) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_compare_against_baseline_json(
+            FfiConverterString.lower(targetFilter),
+            FfiConverterString.lower(corpusUri),
+            FfiConverterUInt64.lower(sizeBytes),
+            FfiConverterString.lower(baselineJson),
+            FfiConverterOptionTypeUniFFIAbOrchestratorConfig.lower(config), $0
+        )
+    })
+}
+
+/**
+ * Creates a baseline snapshot JSON string from a benchmark report JSON string.
+ */
+public func ttzipBenchCreateBaselineSnapshot(reportJson: String, useCandidate: Bool) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_create_baseline_snapshot(
+            FfiConverterString.lower(reportJson),
+            FfiConverterBool.lower(useCandidate), $0
+        )
+    })
+}
+
+/**
+ * Generates corpus byte buffer by ID/URI and requested size via the declarative registry.
+ */
+public func ttzipBenchGenerateCorpus(corpusId: String, sizeBytes: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus(
+            FfiConverterString.lower(corpusId),
+            FfiConverterUInt64.lower(sizeBytes), $0
+        )
+    })
+}
+
+/**
  * Generates in-memory synthetic corpus bytes directly.
  */
 public func ttzipBenchGenerateCorpusBytes(corpusType: UniFfiCorpusType, sizeBytes: UInt64) -> Data {
@@ -11299,11 +11879,82 @@ public func ttzipBenchGenerateSvgPareto(corpusType: UniFfiCorpusType, width: UIn
 }
 
 /**
+ * Lists all available standard and registered benchmark corpus identifiers and aliases.
+ */
+public func ttzipBenchListCorpusIds() -> [String] {
+    return try! FfiConverterSequenceString.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_list_corpus_ids($0)
+    })
+}
+
+/**
  * Lists standard Silesia multi-modal corpus catalog metadata.
  */
 public func ttzipBenchListSilesiaEntries() -> [UniFfiMultimodalEntryMetadata] {
     return try! FfiConverterSequenceTypeUniFFIMultimodalEntryMetadata.lift(try! rustCall {
         uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries($0)
+    })
+}
+
+/**
+ * Renders benchmark report JSON as an ASCII terminal table.
+ */
+public func ttzipBenchRenderAbAscii(reportJson: String, ansiColor: Bool) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_ascii(
+            FfiConverterString.lower(reportJson),
+            FfiConverterBool.lower(ansiColor), $0
+        )
+    })
+}
+
+/**
+ * Renders benchmark report JSON into RFC 8259 formatted telemetry.
+ */
+public func ttzipBenchRenderAbJson(reportJson: String) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_json(
+            FfiConverterString.lower(reportJson), $0
+        )
+    })
+}
+
+/**
+ * Renders benchmark report JSON as a GitHub PR Markdown comment.
+ */
+public func ttzipBenchRenderAbMarkdown(reportJson: String) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_render_ab_markdown(
+            FfiConverterString.lower(reportJson), $0
+        )
+    })
+}
+
+/**
+ * Executes an end-to-end A/B benchmark suite matching target filter and corpus URI.
+ */
+public func ttzipBenchRunAbBenchmark(targetFilter: String, corpusUri: String, sizeBytes: UInt64, config: UniFfiAbOrchestratorConfig?) throws -> UniFfiAbBenchmarkReport {
+    return try FfiConverterTypeUniFFIAbBenchmarkReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark(
+            FfiConverterString.lower(targetFilter),
+            FfiConverterString.lower(corpusUri),
+            FfiConverterUInt64.lower(sizeBytes),
+            FfiConverterOptionTypeUniFFIAbOrchestratorConfig.lower(config), $0
+        )
+    })
+}
+
+/**
+ * Executes an end-to-end A/B benchmark suite and directly returns the serialized report JSON string.
+ */
+public func ttzipBenchRunAbBenchmarkJson(targetFilter: String, corpusUri: String, sizeBytes: UInt64, config: UniFfiAbOrchestratorConfig?) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_ttzip_bench_run_ab_benchmark_json(
+            FfiConverterString.lower(targetFilter),
+            FfiConverterString.lower(corpusUri),
+            FfiConverterUInt64.lower(sizeBytes),
+            FfiConverterOptionTypeUniFFIAbOrchestratorConfig.lower(config), $0
+        )
     })
 }
 
@@ -12380,6 +13031,18 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier() != 933 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline() != 45635 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_compare_against_baseline_json() != 9653 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_create_baseline_snapshot() != 60136 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus() != 51100 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes() != 39148 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -12389,7 +13052,25 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto() != 58521 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_list_corpus_ids() != 62141 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_ascii() != 55979 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_json() != 39665 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_render_ab_markdown() != 36761 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark() != 18571 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_ab_benchmark_json() != 3270 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 63498 {

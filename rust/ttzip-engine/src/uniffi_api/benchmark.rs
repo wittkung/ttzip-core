@@ -56,19 +56,19 @@ pub enum UniFFICorpusType {
 impl From<UniFFICorpusType> for BenchmarkCorpusType {
     fn from(c: UniFFICorpusType) -> Self {
         match c {
-            UniFFICorpusType::Calgary => BenchmarkCorpusType::Calgary,
-            UniFFICorpusType::Silesia => BenchmarkCorpusType::Silesia,
-            UniFFICorpusType::Xml => BenchmarkCorpusType::Xml,
-            UniFFICorpusType::Random => BenchmarkCorpusType::Random,
-            UniFFICorpusType::Binary => BenchmarkCorpusType::Binary,
-            UniFFICorpusType::TextData => BenchmarkCorpusType::TextData,
-            UniFFICorpusType::ShortMatch => BenchmarkCorpusType::ShortMatch,
-            UniFFICorpusType::Dna => BenchmarkCorpusType::Dna,
-            UniFFICorpusType::Noise => BenchmarkCorpusType::Noise,
-            UniFFICorpusType::Literals => BenchmarkCorpusType::Literals,
-            UniFFICorpusType::MachOBinary => BenchmarkCorpusType::MachOBinary,
-            UniFFICorpusType::RealisticRgb => BenchmarkCorpusType::RealisticRgb,
-            UniFFICorpusType::StripedRgb => BenchmarkCorpusType::StripedRgb,
+            UniFFICorpusType::Calgary => Self::Calgary,
+            UniFFICorpusType::Silesia => Self::Silesia,
+            UniFFICorpusType::Xml => Self::Xml,
+            UniFFICorpusType::Random => Self::Random,
+            UniFFICorpusType::Binary => Self::Binary,
+            UniFFICorpusType::TextData => Self::TextData,
+            UniFFICorpusType::ShortMatch => Self::ShortMatch,
+            UniFFICorpusType::Dna => Self::Dna,
+            UniFFICorpusType::Noise => Self::Noise,
+            UniFFICorpusType::Literals => Self::Literals,
+            UniFFICorpusType::MachOBinary => Self::MachOBinary,
+            UniFFICorpusType::RealisticRgb => Self::RealisticRgb,
+            UniFFICorpusType::StripedRgb => Self::StripedRgb,
         }
     }
 }
@@ -76,19 +76,19 @@ impl From<UniFFICorpusType> for BenchmarkCorpusType {
 impl From<BenchmarkCorpusType> for UniFFICorpusType {
     fn from(c: BenchmarkCorpusType) -> Self {
         match c {
-            BenchmarkCorpusType::Calgary => UniFFICorpusType::Calgary,
-            BenchmarkCorpusType::Silesia => UniFFICorpusType::Silesia,
-            BenchmarkCorpusType::Xml => UniFFICorpusType::Xml,
-            BenchmarkCorpusType::Random => UniFFICorpusType::Random,
-            BenchmarkCorpusType::Binary => UniFFICorpusType::Binary,
-            BenchmarkCorpusType::TextData => UniFFICorpusType::TextData,
-            BenchmarkCorpusType::ShortMatch => UniFFICorpusType::ShortMatch,
-            BenchmarkCorpusType::Dna => UniFFICorpusType::Dna,
-            BenchmarkCorpusType::Noise => UniFFICorpusType::Noise,
-            BenchmarkCorpusType::Literals => UniFFICorpusType::Literals,
-            BenchmarkCorpusType::MachOBinary => UniFFICorpusType::MachOBinary,
-            BenchmarkCorpusType::RealisticRgb => UniFFICorpusType::RealisticRgb,
-            BenchmarkCorpusType::StripedRgb => UniFFICorpusType::StripedRgb,
+            BenchmarkCorpusType::Calgary => Self::Calgary,
+            BenchmarkCorpusType::Silesia => Self::Silesia,
+            BenchmarkCorpusType::Xml => Self::Xml,
+            BenchmarkCorpusType::Random => Self::Random,
+            BenchmarkCorpusType::Binary => Self::Binary,
+            BenchmarkCorpusType::TextData => Self::TextData,
+            BenchmarkCorpusType::ShortMatch => Self::ShortMatch,
+            BenchmarkCorpusType::Dna => Self::Dna,
+            BenchmarkCorpusType::Noise => Self::Noise,
+            BenchmarkCorpusType::Literals => Self::Literals,
+            BenchmarkCorpusType::MachOBinary => Self::MachOBinary,
+            BenchmarkCorpusType::RealisticRgb => Self::RealisticRgb,
+            BenchmarkCorpusType::StripedRgb => Self::StripedRgb,
         }
     }
 }
@@ -115,19 +115,15 @@ pub struct UniFFIBenchmarkPointResult {
 impl From<BenchmarkPointResult> for UniFFIBenchmarkPointResult {
     fn from(p: BenchmarkPointResult) -> Self {
         Self {
-            algorithm: p.algorithm,
-            level: p.level,
-            display_name: p.display_name,
+            algorithm: p.algorithm, level: p.level, display_name: p.display_name,
             original_size_bytes: p.original_size_bytes as u64,
             compressed_size_bytes: p.compressed_size_bytes as u64,
-            compression_ratio: p.compression_ratio,
-            space_savings_pct: p.space_savings_pct,
+            compression_ratio: p.compression_ratio, space_savings_pct: p.space_savings_pct,
             compress_throughput_mbs: p.compress_throughput_mbs,
             decompress_throughput_mbs: p.decompress_throughput_mbs,
             compress_time_nanos: p.compress_time_nanos,
             decompress_time_nanos: p.decompress_time_nanos,
-            pareto_rank: p.pareto_rank,
-            is_pareto_optimal: p.is_pareto_optimal,
+            pareto_rank: p.pareto_rank, is_pareto_optimal: p.is_pareto_optimal,
             is_on_convex_hull: p.is_on_convex_hull,
         }
     }
@@ -164,12 +160,9 @@ pub struct UniFFIParetoCodecPoint {
 impl From<ParetoCodecPoint> for UniFFIParetoCodecPoint {
     fn from(p: ParetoCodecPoint) -> Self {
         Self {
-            codec_name: p.codec_name,
-            compression_ratio: p.compression_ratio,
-            speed_mb_s: p.speed_mb_s,
-            memory_mb: p.memory_mb,
-            pareto_rank: p.pareto_rank,
-            is_pareto_optimal: p.is_pareto_optimal,
+            codec_name: p.codec_name, compression_ratio: p.compression_ratio,
+            speed_mb_s: p.speed_mb_s, memory_mb: p.memory_mb,
+            pareto_rank: p.pareto_rank, is_pareto_optimal: p.is_pareto_optimal,
             is_on_convex_hull: p.is_on_convex_hull,
         }
     }
@@ -423,21 +416,12 @@ pub fn ttzip_bench_run_all_scenarios() -> Result<UniFFIScenarioMatrixReport, TTZ
         .points
         .into_iter()
         .map(|p| UniFFIScenarioBenchmarkPoint {
-            id: p.id,
-            category: p.category,
-            format: p.format,
-            display_name: p.display_name,
-            options_summary: p.options_summary,
-            original_size_bytes: p.original_size_bytes as u64,
-            output_size_bytes: p.output_size_bytes as u64,
-            space_savings_pct: p.space_savings_pct,
-            create_throughput_mbs: p.create_throughput_mbs,
-            extract_throughput_mbs: p.extract_throughput_mbs,
-            create_duration_micros: p.create_duration_micros,
-            extract_duration_micros: p.extract_duration_micros,
-            is_encrypted: p.is_encrypted,
-            is_split: p.is_split,
-            is_solid: p.is_solid,
+            id: p.id, category: p.category, format: p.format, display_name: p.display_name,
+            options_summary: p.options_summary, original_size_bytes: p.original_size_bytes as u64,
+            output_size_bytes: p.output_size_bytes as u64, space_savings_pct: p.space_savings_pct,
+            create_throughput_mbs: p.create_throughput_mbs, extract_throughput_mbs: p.extract_throughput_mbs,
+            create_duration_micros: p.create_duration_micros, extract_duration_micros: p.extract_duration_micros,
+            is_encrypted: p.is_encrypted, is_split: p.is_split, is_solid: p.is_solid,
             passed_invariants: p.passed_invariants,
         })
         .collect();
@@ -452,9 +436,30 @@ pub fn ttzip_bench_run_all_scenarios() -> Result<UniFFIScenarioMatrixReport, TTZ
     })
 }
 
+/// Generates corpus byte buffer by ID/URI and requested size via the declarative registry.
+#[uniffi::export]
+pub fn ttzip_bench_generate_corpus(
+    corpus_id: String,
+    size_bytes: u64,
+) -> Result<Vec<u8>, TTZipError> {
+    crate::benchmark::ab_engine::CorpusRegistry::global()
+        .generate(&corpus_id, size_bytes as usize)
+        .map_err(|st| match st {
+            crate::types::TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound { path: corpus_id },
+            _ => TTZipError::EngineError { code: st as i32 },
+        })
+}
+
+/// Lists all available standard and registered benchmark corpus identifiers and aliases.
+#[uniffi::export]
+pub fn ttzip_bench_list_corpus_ids() -> Vec<String> {
+    crate::benchmark::ab_engine::CorpusRegistry::global().list_ids()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::uniffi_api::*;
     use tempfile::tempdir;
 
     #[test]
@@ -491,6 +496,52 @@ mod tests {
         );
         assert!(gen_res.is_ok());
         assert_eq!(std::fs::metadata(&target_file).unwrap().len(), 65536);
+
+        // Test Phase 2 Declarative Corpus UniFFI exports
+        let corpus_ids = ttzip_bench_list_corpus_ids();
+        assert!(corpus_ids.contains(&"synthetic:zipf_text".to_string()));
+        assert!(corpus_ids.contains(&"synthetic:dna".to_string()));
+        assert!(corpus_ids.contains(&"silesia:dickens".to_string()));
+        assert!(corpus_ids.contains(&"text".to_string()));
+        assert!(corpus_ids.contains(&"dna".to_string()));
+
+        let text_data = ttzip_bench_generate_corpus("text".to_string(), 4096).unwrap();
+        assert_eq!(text_data.len(), 4096);
+
+        let dna_data = ttzip_bench_generate_corpus("synthetic:dna".to_string(), 2048).unwrap();
+        assert_eq!(dna_data.len(), 2048);
+
+        let silesia_data = ttzip_bench_generate_corpus("silesia:dickens".to_string(), 1024).unwrap();
+        assert_eq!(silesia_data.len(), 1024);
+
+        let missing = ttzip_bench_generate_corpus("unknown_invalid_corpus".to_string(), 1024);
+        assert!(missing.is_err());
+
+        // Test Phase 3 Declarative A/B Orchestrator & Multimodal Exporter UniFFI exports
+        let ab_cfg = UniFFIAbOrchestratorConfig {
+            warmup_rounds: 1, measurement_rounds: 4, max_allowed_regression: 5.0,
+            p_value_threshold: 0.05, hampel_filter: true, hampel_k: 3.0, target_rse_pct: 5.0,
+        };
+
+        let ab_res = ttzip_bench_run_ab_benchmark(
+            "crypto/crc32/digest".to_string(), "synthetic:zipf_text".to_string(), 1024, Some(ab_cfg.clone()),
+        );
+        assert!(ab_res.is_ok());
+        assert!(ab_res.unwrap().overall_passed);
+
+        let report_json = serde_json::to_string(&crate::benchmark::ab_engine::AbEngineOrchestrator::new()
+            .run_ab_benchmark("crypto/crc32/digest", "synthetic:zipf_text", 1024, &ab_cfg.clone().into())
+            .unwrap()).unwrap();
+
+        assert!(ttzip_bench_render_ab_ascii(report_json.clone(), false).unwrap().contains("TTZip Declarative A/B Performance Suite"));
+        assert!(ttzip_bench_render_ab_markdown(report_json.clone()).unwrap().contains("🚀 TTZip Declarative A/B Benchmark Report"));
+        assert!(ttzip_bench_render_ab_json(report_json.clone()).unwrap().contains("\"schema_version\": \"1.0.0\""));
+
+        let snap_json = ttzip_bench_create_baseline_snapshot(report_json, false).unwrap();
+        let comp_res = ttzip_bench_compare_against_baseline(
+            "crypto/crc32/digest".to_string(), "synthetic:zipf_text".to_string(), 1024, snap_json, Some(ab_cfg),
+        );
+        assert!(comp_res.is_ok());
+        assert!(comp_res.unwrap().overall_passed);
     }
 }
-
