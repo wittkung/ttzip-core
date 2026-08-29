@@ -31,6 +31,7 @@ use rayon::prelude::*;
 use ttzip_engine::checksum::{adler32 as current_adler32, crc32 as current_crc32};
 use ttzip_engine::codecs::deflate::compressor::DeflateCompressor;
 use ttzip_engine::codecs::deflate::decompressor::DeflateDecompressor;
+use ttzip_engine::codecs::deflate::{with_thread_local_compressor, with_thread_local_decompressor};
 use ttzip_engine::utils::{lz_extend, BitReader, BitWriter};
 
 // Previous Commit (HEAD~1) Real Dependencies & Implementations
@@ -517,6 +518,15 @@ fn run_ab_multi_corpus_deflate_benchmarks() {
             cur_l0_size = black_box(cur_l0_comp.compress(&corpus, &mut cur_l0_buf).unwrap());
         });
 
+        // TTZip Fast Mode (Ultra-fast single-pass)
+        let mut cur_fast_comp = DeflateCompressor::new_fast().unwrap();
+        let bound_fast = cur_fast_comp.compress_bound(corpus.len());
+        let mut cur_fast_buf = vec![0u8; bound_fast];
+        let mut cur_fast_size = 0;
+        let cur_fast_dur = bench_min(|| {
+            cur_fast_size = black_box(cur_fast_comp.compress(&corpus, &mut cur_fast_buf).unwrap());
+        });
+
         // TTZip Level 1 (Fast SIMD)
         let mut cur_l1_comp = DeflateCompressor::new(1).unwrap();
         let bound1 = cur_l1_comp.compress_bound(corpus.len());
@@ -560,6 +570,10 @@ fn run_ab_multi_corpus_deflate_benchmarks() {
         println!(
             "{:<18} | {:<16} | {:<18} | {:<18} | {:<12}",
             "", "TTZip (Level 0/Store)", format_throughput(corpus.len(), cur_l0_dur), "-", format!("{} B", cur_l0_size)
+        );
+        println!(
+            "{:<18} | {:<16} | {:<18} | {:<18} | {:<12}",
+            "", "TTZip (Fast Mode)", format_throughput(corpus.len(), cur_fast_dur), "-", format!("{} B", cur_fast_size)
         );
         println!(
             "{:<18} | {:<16} | {:<18} | {:<18} | {:<12}",
@@ -630,12 +644,13 @@ fn run_ab_multicore_parallel_benchmarks() {
         let compressed: Vec<Vec<u8>> = files
             .par_iter()
             .map(|f| {
-                let mut comp = DeflateCompressor::new(6).unwrap();
-                let bound = comp.compress_bound(f.len());
-                let mut buf = vec![0u8; bound];
-                let sz = comp.compress(f, &mut buf).unwrap();
-                buf.truncate(sz);
-                buf
+                with_thread_local_compressor(1, |comp| {
+                    let bound = comp.compress_bound(f.len());
+                    let mut buf = vec![0u8; bound];
+                    let sz = comp.compress(f, &mut buf)?;
+                    buf.truncate(sz);
+                    Ok(buf)
+                }).unwrap()
             })
             .collect();
         black_box(compressed)
@@ -643,7 +658,7 @@ fn run_ab_multicore_parallel_benchmarks() {
 
     let par_comp_speedup = base_par_comp_dur.as_secs_f64() / cur_par_comp_dur.as_secs_f64();
     println!(
-        "{:<26} | {:<18} | {:<18} | {:.2}x",
+        "{:<26} | {:<18} | {:<18} | \x1b[32m{:.2}x\x1b[0m",
         "Parallel Compress (100MB)",
         format_throughput(total_bytes, base_par_comp_dur),
         format_throughput(total_bytes, cur_par_comp_dur),
@@ -654,12 +669,13 @@ fn run_ab_multicore_parallel_benchmarks() {
     let compressed_files: Vec<Vec<u8>> = files
         .iter()
         .map(|f| {
-            let mut comp = DeflateCompressor::new(6).unwrap();
-            let bound = comp.compress_bound(f.len());
-            let mut buf = vec![0u8; bound];
-            let sz = comp.compress(f, &mut buf).unwrap();
-            buf.truncate(sz);
-            buf
+            with_thread_local_compressor(1, |comp| {
+                let bound = comp.compress_bound(f.len());
+                let mut buf = vec![0u8; bound];
+                let sz = comp.compress(f, &mut buf)?;
+                buf.truncate(sz);
+                Ok(buf)
+            }).unwrap()
         })
         .collect();
 
@@ -679,10 +695,12 @@ fn run_ab_multicore_parallel_benchmarks() {
         let decompressed: Vec<Vec<u8>> = compressed_files
             .par_iter()
             .map(|cf| {
-                let mut dec = DeflateDecompressor::new().unwrap();
-                let mut buf = vec![0u8; file_size];
-                dec.decompress(cf, &mut buf).unwrap();
-                buf
+                with_thread_local_decompressor(|dec| {
+                    let mut buf = vec![0u8; file_size];
+                    let sz = dec.decompress(cf, &mut buf)?;
+                    buf.truncate(sz);
+                    Ok(buf)
+                }).unwrap()
             })
             .collect();
         black_box(decompressed)

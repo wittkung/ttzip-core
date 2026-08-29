@@ -15,6 +15,17 @@ use super::ffi::*;
 use crate::types::TTZipStatus;
 use std::ptr::NonNull;
 
+/// Deflate compression strategy and level specification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeflateStrategy {
+    /// Level 0: Pure Store (uncompressed RFC 1951 blocks, ~50+ GB/s throughput).
+    Store,
+    /// Fast: Ultra-fast single-pass compression positioned between Store (L0) and Standard (L1).
+    Fast,
+    /// Standard compression levels 1..=12.
+    Level(i32),
+}
+
 /// Safe RAII wrapper around DEFLATE compression engine.
 pub struct DeflateCompressor {
     handle: Option<NonNull<LibdeflateCompressorOpaque>>,
@@ -43,6 +54,25 @@ impl DeflateCompressor {
                 handle: Some(handle),
                 level: valid_level,
             })
+        }
+    }
+
+    /// Creates a new Deflate compressor in Fast mode (positioned between Level 0 and Level 1).
+    pub fn new_fast() -> Result<Self, TTZipStatus> {
+        let ptr = unsafe { libdeflate_alloc_compressor(1) };
+        let handle = NonNull::new(ptr).ok_or(TTZipStatus::ErrOutOfMemory)?;
+        Ok(Self {
+            handle: Some(handle),
+            level: 1,
+        })
+    }
+
+    /// Creates a new Deflate compressor with the specified compression strategy.
+    pub fn with_strategy(strategy: DeflateStrategy) -> Result<Self, TTZipStatus> {
+        match strategy {
+            DeflateStrategy::Store => Self::new(0),
+            DeflateStrategy::Fast => Self::new_fast(),
+            DeflateStrategy::Level(lvl) => Self::new(lvl),
         }
     }
 

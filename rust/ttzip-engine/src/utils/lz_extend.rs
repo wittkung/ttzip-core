@@ -5,18 +5,26 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! SWAR (SIMD Within A Register) 64-bit wide-word XOR + CTZ longest match extension primitive.
+//! Hybrid AArch64 NEON UMAXV vector reduction & SWAR 64-bit wide-word longest match extension.
 //!
-//! Provides ultra-fast byte match extension for LZ-family compression algorithms (LZ4,
-//! Deflate, Snappy, Zstandard, Fast-LZMA2). Reads 8 bytes at a time into 64-bit integer registers,
-//! performs bitwise XOR, and extracts the exact match boundary in a single instruction cycle
-//! via count-trailing-zeros (`trailing_zeros() / 8`).
+//! Directly inspired by upstream zlib-ng PR #2416 architecture:
+//! - Stage 1 (0..16 bytes): Pure 64-bit scalar integer loads + CTZ to eliminate SIMD cross-domain latency on early mismatches.
+//! - Stage 2 (16..48 bytes): 16-byte steps with scalar lane early exit.
+//! - Stage 3 (48+ bytes): 2x unrolled 32-byte chunk loop using ARM64 `vmaxvq_u8` (`umaxv`) reduction to test all 32 bytes in a single instruction.
+//! - Stage 4: Generic SWAR 64-bit / scalar tail fallback.
+
+#[cfg(target_arch = "aarch64")]
+use core::arch::aarch64::*;
+
+#[inline(always)]
+fn first_diff_byte64(diff: u64) -> usize {
+    (diff.to_le().trailing_zeros() / 8) as usize
+}
 
 /// Extends a byte match between `src` and `match_slice` starting from `start_len`.
 ///
-/// Compares 8 bytes per iteration using 64-bit little-endian XOR. When a mismatch
-/// is encountered, computes the exact mismatch offset using `(diff.trailing_zeros() / 8)`.
-/// Handles remaining trailing bytes (0..7) individually.
+/// Compares up to 32 bytes per iteration on AArch64 using vector XOR and `vmaxvq_u8`
+/// single-cycle reduction, falling back to 64-bit SWAR CTZ on scalar platforms.
 ///
 /// # Arguments
 /// * `src` - Input buffer slice at the current coding position.
@@ -26,42 +34,13 @@
 /// # Returns
 /// Total length of contiguous matching bytes between `src` and `match_slice`,
 /// bounded by `min(src.len(), match_slice.len())`.
-#[inline]
+#[inline(always)]
 pub fn lz_extend(src: &[u8], match_slice: &[u8], start_len: usize) -> usize {
     let max_len = src.len().min(match_slice.len());
     if start_len >= max_len {
         return max_len;
     }
-
-    if src[start_len] != match_slice[start_len] {
-        return start_len;
-    }
-
-    let mut len = start_len;
-
-    // Fast SWAR 8-byte comparison loop with single margin guard
-    if max_len >= 8 {
-        let limit = max_len - 8;
-        let s_ptr = src.as_ptr();
-        let m_ptr = match_slice.as_ptr();
-        while len <= limit {
-            let s = unsafe { (s_ptr.add(len) as *const u64).read_unaligned() }.to_le();
-            let m = unsafe { (m_ptr.add(len) as *const u64).read_unaligned() }.to_le();
-            let diff = s ^ m;
-            if diff != 0 {
-                let matched_bytes = (diff.trailing_zeros() / 8) as usize;
-                return len + matched_bytes;
-            }
-            len += 8;
-        }
-    }
-
-    // Scalar tail loop for remaining 0..7 bytes
-    while len < max_len && src[len] == match_slice[len] {
-        len += 1;
-    }
-
-    len
+    unsafe { lz_extend_raw(src.as_ptr(), match_slice.as_ptr(), start_len, max_len) }
 }
 
 /// Raw-pointer fast-path variant of `lz_extend` for high-throughput inner loops.
@@ -69,7 +48,7 @@ pub fn lz_extend(src: &[u8], match_slice: &[u8], start_len: usize) -> usize {
 /// # Safety
 /// The caller must ensure that `src_ptr` and `match_ptr` are valid for reads
 /// up to `max_len` bytes.
-#[inline]
+#[inline(always)]
 pub unsafe fn lz_extend_raw(
     src_ptr: *const u8,
     match_ptr: *const u8,
@@ -82,20 +61,103 @@ pub unsafe fn lz_extend_raw(
 
     let mut len = start_len;
 
-    if max_len >= 8 {
-        let limit = max_len - 8;
-        while len <= limit {
-            let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
-            let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
-            let diff = s ^ m;
-            if diff != 0 {
-                let matched_bytes = (diff.trailing_zeros() / 8) as usize;
-                return len + matched_bytes;
+    // Fast-check first byte to immediately exit on mismatch (0 ns overhead)
+    if *src_ptr.add(len) != *match_ptr.add(len) {
+        return len;
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        // Stage 1: Check initial 16 bytes using 64-bit scalar loads
+        if max_len - len >= 8 {
+            let s0 = (src_ptr.add(len) as *const u64).read_unaligned();
+            let m0 = (match_ptr.add(len) as *const u64).read_unaligned();
+            let diff0 = s0 ^ m0;
+            if diff0 != 0 {
+                return len + first_diff_byte64(diff0);
             }
             len += 8;
+
+            if max_len - len >= 8 {
+                let s1 = (src_ptr.add(len) as *const u64).read_unaligned();
+                let m1 = (match_ptr.add(len) as *const u64).read_unaligned();
+                let diff1 = s1 ^ m1;
+                if diff1 != 0 {
+                    return len + first_diff_byte64(diff1);
+                }
+                len += 8;
+            }
+        }
+
+        // Stage 2 & 3: AArch64 NEON UMAXV vector reduction for long matches
+        while max_len - len >= 32 {
+            let a0 = vld1q_u8(src_ptr.add(len));
+            let b0 = vld1q_u8(match_ptr.add(len));
+            let a1 = vld1q_u8(src_ptr.add(len + 16));
+            let b1 = vld1q_u8(match_ptr.add(len + 16));
+
+            let cmp0 = veorq_u8(a0, b0);
+            let cmp1 = veorq_u8(a1, b1);
+            let any_diff = vorrq_u8(cmp0, cmp1);
+
+            // Single ARM64 UMAXV instruction checks all 32 bytes!
+            if vmaxvq_u8(any_diff) == 0 {
+                len += 32;
+                continue;
+            }
+
+            let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 0);
+            if lane0 != 0 {
+                return len + first_diff_byte64(lane0);
+            }
+            let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 1);
+            if lane1 != 0 {
+                return len + 8 + first_diff_byte64(lane1);
+            }
+            let lane2 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 0);
+            if lane2 != 0 {
+                return len + 16 + first_diff_byte64(lane2);
+            }
+            let lane3 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 1);
+            if lane3 != 0 {
+                return len + 24 + first_diff_byte64(lane3);
+            }
+            len += 32;
+        }
+
+        if max_len - len >= 16 {
+            let a = vld1q_u8(src_ptr.add(len));
+            let b = vld1q_u8(match_ptr.add(len));
+            let cmp = veorq_u8(a, b);
+            let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 0);
+            if lane0 != 0 {
+                return len + first_diff_byte64(lane0);
+            }
+            let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 1);
+            if lane1 != 0 {
+                return len + 8 + first_diff_byte64(lane1);
+            }
+            len += 16;
         }
     }
 
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        if max_len >= 8 {
+            let limit = max_len - 8;
+            while len <= limit {
+                let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
+                let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
+                let diff = s ^ m;
+                if diff != 0 {
+                    return len + first_diff_byte64(diff);
+                }
+                len += 8;
+            }
+        }
+    }
+
+    // Scalar tail loop for remaining 0..7 bytes
     while len < max_len && *src_ptr.add(len) == *match_ptr.add(len) {
         len += 1;
     }

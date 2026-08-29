@@ -97,7 +97,7 @@ mod arm64 {
                 [CRC32_X159_MODG, CRC32_X95_MODG],
             ];
 
-            if len < 64 {
+            if len < 128 {
                 return crc32_arm64_direct_hw(crc, p, len);
             }
 
@@ -232,6 +232,61 @@ mod arm64 {
         crc = __crc32d(crc, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 1));
 
         crc32_arm64_direct_hw(crc, p, len)
+    }
+
+    #[inline]
+    #[target_feature(enable = "crc")]
+    pub(crate) unsafe fn crc32_arm64_small_fast(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
+        if len == 64 {
+            crc = __crc32d(crc, (p as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(32) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(40) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(48) as *const u64).read_unaligned());
+            return __crc32d(crc, (p.add(56) as *const u64).read_unaligned());
+        }
+
+        if len >= 32 {
+            crc = __crc32d(crc, (p as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+            p = p.add(32);
+            len -= 32;
+        }
+
+        if len >= 16 {
+            crc = __crc32d(crc, (p as *const u64).read_unaligned());
+            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+            p = p.add(16);
+            len -= 16;
+        }
+
+        if len >= 8 {
+            crc = __crc32d(crc, (p as *const u64).read_unaligned());
+            p = p.add(8);
+            len -= 8;
+        }
+
+        if len >= 4 {
+            crc = __crc32w(crc, (p as *const u32).read_unaligned());
+            p = p.add(4);
+            len -= 4;
+        }
+
+        if len >= 2 {
+            crc = __crc32h(crc, (p as *const u16).read_unaligned());
+            p = p.add(2);
+            len -= 2;
+        }
+
+        if len == 1 {
+            crc = __crc32b(crc, *p);
+        }
+
+        crc
     }
 
     #[inline]
@@ -394,10 +449,14 @@ pub fn crc32_fast(crc: u32, data: &[u8]) -> u32 {
     #[cfg(target_arch = "aarch64")]
     {
         unsafe {
-            if data.len() < 256 {
-                !arm64::crc32_arm64_direct_hw(!crc, data.as_ptr(), data.len())
+            let len = data.len();
+            let p = data.as_ptr();
+            if len <= 64 {
+                !arm64::crc32_arm64_small_fast(!crc, p, len)
+            } else if len < 256 {
+                !arm64::crc32_arm64_direct_hw(!crc, p, len)
             } else {
-                !arm64::crc32_arm_pmull_raw(!crc, data.as_ptr(), data.len())
+                !arm64::crc32_arm_pmull_raw(!crc, p, len)
             }
         }
     }
