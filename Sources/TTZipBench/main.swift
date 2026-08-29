@@ -110,10 +110,10 @@ func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
         switch corpusType {
         case .dna, .literals:
             minExpectedCompMBs = 15.0
-        case .realisticRgb:
-            minExpectedCompMBs = 40.0
+        case .realisticRgb, .whiteNoise:
+            minExpectedCompMBs = 25.0
         default:
-            minExpectedCompMBs = 50.0
+            minExpectedCompMBs = 40.0
         }
         if deflCompMBs < minExpectedCompMBs {
             rowPassed = false

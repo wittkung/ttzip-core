@@ -93,7 +93,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/build_sdk_framework.sh --release --native"
     "swift test"
 
-    "swift run ttzip-bench gate"
+    "swift run -c release ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz"
     "./scripts/run_deflate_defense_tests.sh"
 )
