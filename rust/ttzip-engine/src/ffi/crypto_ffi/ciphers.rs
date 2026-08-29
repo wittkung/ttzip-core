@@ -55,6 +55,50 @@ pub unsafe extern "C" fn ttzip_rust_aes256_ctr(
     result.unwrap_or(TTZipStatus::ErrPanicCaught.to_i32())
 }
 
+/// C-ABI exported hardware AES-256-CBC encrypt.
+///
+/// # Safety
+/// - `key` must point to 32 bytes of valid readable memory.
+/// - `iv` must point to 16 bytes of valid readable memory.
+/// - `src` must point to `len` bytes of valid readable memory (`len % 16 == 0`).
+/// - `dst` must point to `len` bytes of valid writable memory.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_aes256_cbc_encrypt(
+    key: *const u8,
+    iv: *const u8,
+    src: *const u8,
+    len: usize,
+    dst: *mut u8,
+) -> i32 {
+    let result = catch_unwind(|| {
+        if key.is_null() || iv.is_null() || !len.is_multiple_of(16) {
+            return TTZipStatus::ErrInvalidParam.to_i32();
+        }
+        let src_slice = match unsafe { safe_slice(src, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        let dst_slice = match unsafe { safe_slice_mut(dst, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        if len == 0 {
+            return TTZipStatus::Ok.to_i32();
+        }
+
+        // SAFETY: key and iv are non-null and point to 32 and 16 valid bytes
+        let key_ref = unsafe { &*(key as *const [u8; 32]) };
+        let iv_ref = unsafe { &*(iv as *const [u8; 16]) };
+
+        match aes256::aes256_cbc_encrypt(key_ref, iv_ref, src_slice, dst_slice) {
+            Ok(()) => TTZipStatus::Ok.to_i32(),
+            Err(_) => TTZipStatus::ErrInvalidParam.to_i32(),
+        }
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught.to_i32())
+}
+
 /// C-ABI exported hardware AES-256-CBC decrypt.
 ///
 /// # Safety
@@ -254,6 +298,110 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_encrypt_stream(
             zipcrypto::encrypt_stream_fast(&mut *key0, &mut *key1, &mut *key2, dst_slice);
         }
         TTZipStatus::Ok.to_i32()
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught.to_i32())
+}
+
+/// C-ABI exported ChaCha20-Poly1305 AEAD encryption.
+///
+/// # Safety
+/// - `key` must point to 32 bytes of valid readable memory.
+/// - `nonce` must point to 12 bytes of valid readable memory.
+/// - If `len > 0`, `src` must point to `len` readable bytes.
+/// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
+/// - `dst` must point to `len` writable bytes.
+/// - `out_tag` must point to 16 writable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_chacha20_poly1305_encrypt(
+    key: *const u8,
+    nonce: *const u8,
+    src: *const u8,
+    len: usize,
+    aad: *const u8,
+    aad_len: usize,
+    dst: *mut u8,
+    out_tag: *mut u8,
+) -> i32 {
+    let result = catch_unwind(|| {
+        if key.is_null() || nonce.is_null() || out_tag.is_null() {
+            return TTZipStatus::ErrInvalidParam.to_i32();
+        }
+        let src_slice = match unsafe { safe_slice(src, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        let aad_slice = match unsafe { safe_slice(aad, aad_len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        let dst_slice = match unsafe { safe_slice_mut(dst, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+
+        let key_ref = unsafe { &*(key as *const [u8; 32]) };
+        let nonce_ref = unsafe { &*(nonce as *const [u8; 12]) };
+        let tag_ref = unsafe { &mut *(out_tag as *mut [u8; 16]) };
+
+        match crate::crypto::chacha20poly1305::chacha20_poly1305_encrypt(
+            key_ref, nonce_ref, src_slice, aad_slice, dst_slice, tag_ref,
+        ) {
+            Ok(()) => TTZipStatus::Ok.to_i32(),
+            Err(e) => e.to_i32(),
+        }
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught.to_i32())
+}
+
+/// C-ABI exported ChaCha20-Poly1305 AEAD decryption.
+///
+/// # Safety
+/// - `key` must point to 32 bytes of valid readable memory.
+/// - `nonce` must point to 12 bytes of valid readable memory.
+/// - If `len > 0`, `src` must point to `len` readable bytes.
+/// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
+/// - `tag` must point to 16 readable bytes.
+/// - `dst` must point to `len` writable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_chacha20_poly1305_decrypt(
+    key: *const u8,
+    nonce: *const u8,
+    src: *const u8,
+    len: usize,
+    aad: *const u8,
+    aad_len: usize,
+    tag: *const u8,
+    dst: *mut u8,
+) -> i32 {
+    let result = catch_unwind(|| {
+        if key.is_null() || nonce.is_null() || tag.is_null() {
+            return TTZipStatus::ErrInvalidParam.to_i32();
+        }
+        let src_slice = match unsafe { safe_slice(src, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        let aad_slice = match unsafe { safe_slice(aad, aad_len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+        let dst_slice = match unsafe { safe_slice_mut(dst, len) } {
+            Ok(s) => s,
+            Err(st) => return st.to_i32(),
+        };
+
+        let key_ref = unsafe { &*(key as *const [u8; 32]) };
+        let nonce_ref = unsafe { &*(nonce as *const [u8; 12]) };
+        let tag_ref = unsafe { &*(tag as *const [u8; 16]) };
+
+        match crate::crypto::chacha20poly1305::chacha20_poly1305_decrypt(
+            key_ref, nonce_ref, src_slice, aad_slice, tag_ref, dst_slice,
+        ) {
+            Ok(()) => TTZipStatus::Ok.to_i32(),
+            Err(e) => e.to_i32(),
+        }
     });
 
     result.unwrap_or(TTZipStatus::ErrPanicCaught.to_i32())

@@ -299,3 +299,162 @@ pub unsafe extern "C" fn ttzip_rust_zstd_decompress_file_stream(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
+// MARK: - Zstandard Dictionary C-ABI
+
+/// Trains a Zstandard dictionary from an array of sample buffers.
+///
+/// # Safety
+/// - `sample_ptrs` must point to an array of `sample_count` readable pointers.
+/// - `sample_lens` must point to an array of `sample_count` sizes.
+/// - `out_dict` must point to at least `dict_capacity` writable bytes.
+/// - `out_dict_len` must point to a writable `size_t`.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_zstd_train_dict(
+    sample_ptrs: *const *const u8,
+    sample_lens: *const size_t,
+    sample_count: size_t,
+    target_dict_size: size_t,
+    level: i32,
+    out_dict: *mut u8,
+    dict_capacity: size_t,
+    out_dict_len: *mut size_t,
+) -> TTZipStatus {
+    let result = catch_unwind(|| {
+        if sample_ptrs.is_null() || sample_lens.is_null() || out_dict.is_null() || out_dict_len.is_null() || sample_count == 0 {
+            return TTZipStatus::ErrInvalidParam;
+        }
+
+        let mut samples = Vec::with_capacity(sample_count);
+        for i in 0..sample_count {
+            let ptr = unsafe { *sample_ptrs.add(i) };
+            let len = unsafe { *sample_lens.add(i) };
+            let slice = match unsafe { safe_slice(ptr, len) } {
+                Ok(s) => s,
+                Err(st) => return st,
+            };
+            samples.push(slice);
+        }
+
+        let dict_bytes = match crate::codecs::zstd::dict::zstd_train_dictionary(&samples, target_dict_size, level) {
+            Ok(b) => b,
+            Err(st) => return st,
+        };
+
+        if dict_bytes.len() > dict_capacity {
+            return TTZipStatus::ErrInvalidParam;
+        }
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(dict_bytes.as_ptr(), out_dict, dict_bytes.len());
+            *out_dict_len = dict_bytes.len();
+        }
+
+        TTZipStatus::Ok
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+}
+
+/// Compresses a buffer using a pre-digested Zstandard dictionary.
+///
+/// # Safety
+/// - `src` must point to `src_len` readable bytes.
+/// - `dst` must point to `dst_capacity` writable bytes.
+/// - `dict` must point to `dict_len` readable dictionary bytes.
+/// - `out_len` must point to a writable `size_t`.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_zstd_dict_compress(
+    src: *const u8,
+    src_len: size_t,
+    dst: *mut u8,
+    dst_capacity: size_t,
+    dict: *const u8,
+    dict_len: size_t,
+    level: i32,
+    out_len: *mut size_t,
+) -> TTZipStatus {
+    let result = catch_unwind(|| {
+        if out_len.is_null() {
+            return TTZipStatus::ErrInvalidParam;
+        }
+        let in_slice = match unsafe { safe_slice(src, src_len) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+        let out_slice = match unsafe { safe_slice_mut(dst, dst_capacity) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+        let dict_slice = match unsafe { safe_slice(dict, dict_len) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+
+        let dictionary = match crate::codecs::zstd::dict::ZstdDictionary::from_bytes("ephemeral", dict_slice.to_vec(), level) {
+            Ok(d) => d,
+            Err(st) => return st,
+        };
+
+        match dictionary.compress_small(in_slice, out_slice) {
+            Ok(written) => {
+                unsafe { *out_len = written };
+                TTZipStatus::Ok
+            }
+            Err(st) => st,
+        }
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+}
+
+/// Decompresses a buffer using a pre-digested Zstandard dictionary.
+///
+/// # Safety
+/// - `src` must point to `src_len` readable bytes.
+/// - `dst` must point to `dst_capacity` writable bytes.
+/// - `dict` must point to `dict_len` readable dictionary bytes.
+/// - `out_len` must point to a writable `size_t`.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_zstd_dict_decompress(
+    src: *const u8,
+    src_len: size_t,
+    dst: *mut u8,
+    dst_capacity: size_t,
+    dict: *const u8,
+    dict_len: size_t,
+    out_len: *mut size_t,
+) -> TTZipStatus {
+    let result = catch_unwind(|| {
+        if out_len.is_null() {
+            return TTZipStatus::ErrInvalidParam;
+        }
+        let in_slice = match unsafe { safe_slice(src, src_len) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+        let out_slice = match unsafe { safe_slice_mut(dst, dst_capacity) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+        let dict_slice = match unsafe { safe_slice(dict, dict_len) } {
+            Ok(s) => s,
+            Err(st) => return st,
+        };
+
+        let dictionary = match crate::codecs::zstd::dict::ZstdDictionary::from_bytes("ephemeral", dict_slice.to_vec(), 3) {
+            Ok(d) => d,
+            Err(st) => return st,
+        };
+
+        match dictionary.decompress_small(in_slice, out_slice) {
+            Ok(written) => {
+                unsafe { *out_len = written };
+                TTZipStatus::Ok
+            }
+            Err(st) => st,
+        }
+    });
+
+    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+}
+

@@ -73,11 +73,12 @@ pub fn chacha20_block(key: &[u8; 32], nonce: &[u8; 12], counter: u32, out: &mut 
     working.zeroize();
 }
 
-/// Poly1305 One-Time Authenticator (RFC 8439).
+/// Poly1305 One-Time Authenticator (RFC 8439) using 26-bit limbs.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Poly1305 {
-    r: [u64; 3], // 44-bit limbs
-    h: [u64; 3], // 44-bit limbs
+    r: [u32; 5],
+    s: [u32; 4], // r[1..5] * 5
+    h: [u32; 5],
     pad: [u32; 4],
     buffer: [u8; 16],
     buf_len: usize,
@@ -86,9 +87,9 @@ pub struct Poly1305 {
 impl Poly1305 {
     /// Initializes Poly1305 with a 32-byte one-time key (r: 16 bytes, s: 16 bytes).
     pub fn new(key: &[u8; 32]) -> Self {
+        // Actual standard RFC 8439 clamping & 26-bit slicing:
         let mut r_bytes = [0u8; 16];
         r_bytes.copy_from_slice(&key[0..16]);
-        // Clamp r
         r_bytes[3] &= 15;
         r_bytes[7] &= 15;
         r_bytes[11] &= 15;
@@ -97,12 +98,21 @@ impl Poly1305 {
         r_bytes[8] &= 252;
         r_bytes[12] &= 252;
 
-        let r0 = (u32::from_le_bytes(r_bytes[0..4].try_into().unwrap()) as u64)
-            | (((u32::from_le_bytes(r_bytes[4..8].try_into().unwrap()) as u64) & 0x000F_FFFF) << 32);
-        let r1 = ((u32::from_le_bytes(r_bytes[4..8].try_into().unwrap()) as u64) >> 12)
-            | (((u32::from_le_bytes(r_bytes[8..12].try_into().unwrap()) as u64) & 0x0FFF_FFFF) << 20);
-        let r2 = ((u32::from_le_bytes(r_bytes[8..12].try_into().unwrap()) as u64) >> 24)
-            | (((u32::from_le_bytes(r_bytes[12..16].try_into().unwrap()) as u64) & 0x0FFF_FFFF) << 8);
+        let k0 = u32::from_le_bytes(r_bytes[0..4].try_into().unwrap());
+        let k1 = u32::from_le_bytes(r_bytes[4..8].try_into().unwrap());
+        let k2 = u32::from_le_bytes(r_bytes[8..12].try_into().unwrap());
+        let k3 = u32::from_le_bytes(r_bytes[12..16].try_into().unwrap());
+
+        let r0 = k0 & 0x03FF_FFFF;
+        let r1 = ((k0 >> 26) | (k1 << 6)) & 0x03FF_FFFF;
+        let r2 = ((k1 >> 20) | (k2 << 12)) & 0x03FF_FFFF;
+        let r3 = ((k2 >> 14) | (k3 << 18)) & 0x03FF_FFFF;
+        let r4 = (k3 >> 8) & 0x03FF_FFFF;
+
+        let s1 = r1 * 5;
+        let s2 = r2 * 5;
+        let s3 = r3 * 5;
+        let s4 = r4 * 5;
 
         let mut pad = [0u32; 4];
         for i in 0..4 {
@@ -110,64 +120,86 @@ impl Poly1305 {
         }
 
         Self {
-            r: [r0 & 0x0FFF_FFFF_FFFF, r1 & 0x0FFF_FFFF_FFFF, r2 & 0x0FFF_FFFF_FFFF],
-            h: [0, 0, 0],
+            r: [r0, r1, r2, r3, r4],
+            s: [s1, s2, s3, s4],
+            h: [0, 0, 0, 0, 0],
             pad,
             buffer: [0u8; 16],
             buf_len: 0,
         }
     }
 
-    fn process_block(&mut self, block: &[u8], is_final: bool) {
+    fn process_block(&mut self, block: &[u8], _is_final: bool) {
         let mut b = [0u8; 17];
         b[..block.len()].copy_from_slice(block);
         b[block.len()] = 1;
 
-        let d0 = (u32::from_le_bytes(b[0..4].try_into().unwrap()) as u64)
-            | (((u32::from_le_bytes(b[4..8].try_into().unwrap()) as u64) & 0x000F_FFFF) << 32);
-        let d1 = ((u32::from_le_bytes(b[4..8].try_into().unwrap()) as u64) >> 12)
-            | (((u32::from_le_bytes(b[8..12].try_into().unwrap()) as u64) & 0x0FFF_FFFF) << 20);
-        let d2 = ((u32::from_le_bytes(b[8..12].try_into().unwrap()) as u64) >> 24)
-            | (((u32::from_le_bytes(b[12..16].try_into().unwrap()) as u64) & 0x0FFF_FFFF) << 8)
-            | ((b[16] as u64) << 40);
+        let t0 = u32::from_le_bytes(b[0..4].try_into().unwrap());
+        let t1 = u32::from_le_bytes(b[4..8].try_into().unwrap());
+        let t2 = u32::from_le_bytes(b[8..12].try_into().unwrap());
+        let t3 = u32::from_le_bytes(b[12..16].try_into().unwrap());
+        let t4 = b[16] as u32;
 
-        self.h[0] += d0 & 0x0FFF_FFFF_FFFF;
-        self.h[1] += d1 & 0x0FFF_FFFF_FFFF;
-        self.h[2] += if is_final && block.len() < 16 {
-            d2 & 0x0FFF_FFFF_FFFF
-        } else {
-            d2 | (1 << 40)
-        };
+        let c0 = t0 & 0x03FF_FFFF;
+        let c1 = ((t0 >> 26) | (t1 << 6)) & 0x03FF_FFFF;
+        let c2 = ((t1 >> 20) | (t2 << 12)) & 0x03FF_FFFF;
+        let c3 = ((t2 >> 14) | (t3 << 18)) & 0x03FF_FFFF;
+        let c4 = ((t3 >> 8) | (t4 << 24)) & 0x03FF_FFFF;
 
-        // h * r
-        let r0 = self.r[0];
-        let r1 = self.r[1];
-        let r2 = self.r[2];
-        let s1 = r1 * 20;
-        let s2 = r2 * 20;
+        self.h[0] += c0;
+        self.h[1] += c1;
+        self.h[2] += c2;
+        self.h[3] += c3;
+        self.h[4] += c4;
 
-        let d0 = (self.h[0] as u128) * (r0 as u128)
-            + (self.h[1] as u128) * (s2 as u128)
-            + (self.h[2] as u128) * (s1 as u128);
-        let d1 = (self.h[0] as u128) * (r1 as u128)
-            + (self.h[1] as u128) * (r0 as u128)
-            + (self.h[2] as u128) * (s2 as u128);
-        let d2 = (self.h[0] as u128) * (r2 as u128)
-            + (self.h[1] as u128) * (r1 as u128)
-            + (self.h[2] as u128) * (r0 as u128);
+        // Multiply h * r
+        let h0 = self.h[0] as u64;
+        let h1 = self.h[1] as u64;
+        let h2 = self.h[2] as u64;
+        let h3 = self.h[3] as u64;
+        let h4 = self.h[4] as u64;
 
-        let mut c: u128 = d0 >> 44;
-        self.h[0] = (d0 as u64) & 0x0FFF_FFFF_FFFF;
-        let d1 = d1 + c;
-        c = d1 >> 44;
-        self.h[1] = (d1 as u64) & 0x0FFF_FFFF_FFFF;
-        let d2 = d2 + c;
-        c = d2 >> 42;
-        self.h[2] = (d2 as u64) & 0x03FF_FFFF_FFFF;
-        self.h[0] += (c as u64) * 5;
-        c = (self.h[0] >> 44) as u128;
-        self.h[0] &= 0x0FFF_FFFF_FFFF;
-        self.h[1] += c as u64;
+        let r0 = self.r[0] as u64;
+        let r1 = self.r[1] as u64;
+        let r2 = self.r[2] as u64;
+        let r3 = self.r[3] as u64;
+        let r4 = self.r[4] as u64;
+
+        let s1 = self.s[0] as u64;
+        let s2 = self.s[1] as u64;
+        let s3 = self.s[2] as u64;
+        let s4 = self.s[3] as u64;
+
+        let d0 = h0 * r0 + h1 * s4 + h2 * s3 + h3 * s2 + h4 * s1;
+        let mut d1 = h0 * r1 + h1 * r0 + h2 * s4 + h3 * s3 + h4 * s2;
+        let mut d2 = h0 * r2 + h1 * r1 + h2 * r0 + h3 * s4 + h4 * s3;
+        let mut d3 = h0 * r3 + h1 * r2 + h2 * r1 + h3 * r0 + h4 * s4;
+        let mut d4 = h0 * r4 + h1 * r3 + h2 * r2 + h3 * r1 + h4 * r0;
+
+        // Carry propagation
+        let mut c = d0 >> 26;
+        self.h[0] = (d0 & 0x03FF_FFFF) as u32;
+        d1 += c;
+
+        c = d1 >> 26;
+        self.h[1] = (d1 & 0x03FF_FFFF) as u32;
+        d2 += c;
+
+        c = d2 >> 26;
+        self.h[2] = (d2 & 0x03FF_FFFF) as u32;
+        d3 += c;
+
+        c = d3 >> 26;
+        self.h[3] = (d3 & 0x03FF_FFFF) as u32;
+        d4 += c;
+
+        c = d4 >> 26;
+        self.h[4] = (d4 & 0x03FF_FFFF) as u32;
+        self.h[0] += (c * 5) as u32;
+
+        c = (self.h[0] >> 26) as u64;
+        self.h[0] &= 0x03FF_FFFF;
+        self.h[1] += c as u32;
     }
 
     /// Updates running Poly1305 state with input slice.
@@ -204,49 +236,62 @@ impl Poly1305 {
             self.process_block(&block[..len], true);
         }
 
-        // Full carry
-        let mut c = self.h[1] >> 44;
-        self.h[1] &= 0x0FFF_FFFF_FFFF;
-        self.h[2] += c;
-        c = self.h[2] >> 42;
-        self.h[2] &= 0x03FF_FFFF_FFFF;
-        self.h[0] += c * 5;
-        c = self.h[0] >> 44;
-        self.h[0] &= 0x0FFF_FFFF_FFFF;
+        // Full carry reduction
+        let mut c = self.h[0] >> 26;
+        self.h[0] &= 0x03FF_FFFF;
         self.h[1] += c;
-        c = self.h[1] >> 44;
-        self.h[1] &= 0x0FFF_FFFF_FFFF;
+        c = self.h[1] >> 26;
+        self.h[1] &= 0x03FF_FFFF;
         self.h[2] += c;
+        c = self.h[2] >> 26;
+        self.h[2] &= 0x03FF_FFFF;
+        self.h[3] += c;
+        c = self.h[3] >> 26;
+        self.h[3] &= 0x03FF_FFFF;
+        self.h[4] += c;
+        c = self.h[4] >> 26;
+        self.h[4] &= 0x03FF_FFFF;
+        self.h[0] += c * 5;
+        c = self.h[0] >> 26;
+        self.h[0] &= 0x03FF_FFFF;
+        self.h[1] += c;
 
-        // Compute h + 5
+        // Compute g = h + 5
         let mut g0 = self.h[0] + 5;
-        c = g0 >> 44;
-        g0 &= 0x0FFF_FFFF_FFFF;
+        c = g0 >> 26;
+        g0 &= 0x03FF_FFFF;
         let mut g1 = self.h[1] + c;
-        c = g1 >> 44;
-        g1 &= 0x0FFF_FFFF_FFFF;
+        c = g1 >> 26;
+        g1 &= 0x03FF_FFFF;
         let mut g2 = self.h[2] + c;
+        c = g2 >> 26;
+        g2 &= 0x03FF_FFFF;
+        let mut g3 = self.h[3] + c;
+        c = g3 >> 26;
+        g3 &= 0x03FF_FFFF;
+        let mut g4 = self.h[4] + c;
+        let mask = 0u32.wrapping_sub(g4 >> 26);
+        g4 &= 0x03FF_FFFF;
 
-        // Select h if h < 2^130 - 5, else h - (2^130 - 5)
-        let mask = (g2 >> 42).wrapping_neg();
-        g2 &= 0x03FF_FFFF_FFFF;
+        let not_mask = !mask;
+        self.h[0] = (self.h[0] & not_mask) | (g0 & mask);
+        self.h[1] = (self.h[1] & not_mask) | (g1 & mask);
+        self.h[2] = (self.h[2] & not_mask) | (g2 & mask);
+        self.h[3] = (self.h[3] & not_mask) | (g3 & mask);
+        self.h[4] = (self.h[4] & not_mask) | (g4 & mask);
 
-        self.h[0] = (self.h[0] & !mask) | (g0 & mask);
-        self.h[1] = (self.h[1] & !mask) | (g1 & mask);
-        self.h[2] = (self.h[2] & !mask) | (g2 & mask);
-
-        // Convert 44-bit limbs back to bytes
-        let mut h_words = [0u32; 4];
-        h_words[0] = self.h[0] as u32;
-        h_words[1] = ((self.h[0] >> 32) | (self.h[1] << 12)) as u32;
-        h_words[2] = ((self.h[1] >> 20) | (self.h[2] << 24)) as u32;
-        h_words[3] = (self.h[2] >> 8) as u32;
+        // Convert 26-bit limbs to 32-bit words
+        let w0 = self.h[0] | (self.h[1] << 26);
+        let w1 = (self.h[1] >> 6) | (self.h[2] << 20);
+        let w2 = (self.h[2] >> 12) | (self.h[3] << 14);
+        let w3 = (self.h[3] >> 18) | (self.h[4] << 8);
 
         // Add pad (s)
         let mut carry = 0u64;
         let mut out_words = [0u32; 4];
+        let w = [w0, w1, w2, w3];
         for i in 0..4 {
-            let sum = (h_words[i] as u64) + (self.pad[i] as u64) + carry;
+            let sum = (w[i] as u64) + (self.pad[i] as u64) + carry;
             out_words[i] = sum as u32;
             carry = sum >> 32;
         }

@@ -524,7 +524,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_find_active_subtitles_at() != 63255:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 11313:
+    if lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 48048:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory() != 45521:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -580,6 +580,24 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_tokenize_source_code() != 14659:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier() != 933:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes() != 39148:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard() != 43856:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto() != 58521:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 63498:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_gate() != 22949:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_matrix() != 8513:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_mips() != 59862:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes() != 1193:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_throughput() != 10949:
@@ -587,6 +605,120 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_get_string() != 4343:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error() != 34636:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_decrypt() != 35554:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_derive_key() != 51521:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_encrypt() != 25282:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32() != 19846:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3() != 58283:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed() != 53031:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_compress() != 58724:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_decompress() != 54721:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress() != 11629:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress() != 61807:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound() != 53214:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer() != 35599:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32() != 35952:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine() != 10627:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling() != 3460:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer() != 6970:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress() != 47226:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress() != 43293:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress() != 57781:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc() != 53597:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_decompress() != 22512:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_compress() != 6969:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_decompress() != 18113:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress() != 6203:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress() != 37741:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_decompress() != 28661:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode() != 18366:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_encrypt() != 24735:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt() != 44392:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt() != 53726:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt() != 12928:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_derive_keys() != 58721:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_encrypt() != 9998:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128() != 24342:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128_digest() != 8236:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_64() != 48064:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_decrypt() != 61450:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_encrypt() != 18367:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_compress() != 27649:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress() != 64979:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress() != 39956:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm() != 25800:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_with_named_dict() != 29430:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress() != 7530:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress_with_named_dict() != 58914:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_compress() != 37420:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress() != 3975:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict() != 13515:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1493,6 +1625,55 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_tokenize_source_code.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_tokenize_source_code.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_html_dashboard.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_html_dashboard.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_gate.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_gate.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_matrix.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_matrix.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_mips.argtypes = (
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_mips.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_i18n_format_bytes.argtypes = (
     ctypes.c_int64,
     _UniffiRustBuffer,
@@ -1520,6 +1701,364 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_i18n_localize_error.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_i18n_localize_error.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_derive_key.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_derive_key.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.argtypes = (
+    ctypes.c_uint32,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3_keyed.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3_keyed.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_bound.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_bound.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_buffer.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_buffer.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_combine.argtypes = (
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_combine.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_rolling.argtypes = (
+    ctypes.c_uint32,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_rolling.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_decompress_buffer.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_decompress_buffer.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_derive_keys.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_derive_keys.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128_digest.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128_digest.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_64.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_64.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_ldm.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_ldm.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_with_named_dict.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_with_named_dict.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress_with_named_dict.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress_with_named_dict.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_compress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_vault_compute_verifier.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -2007,6 +2546,33 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_sniff_format_file.restype = ctypes.
 _UniffiLib.uniffi_ttzip_engine_checksum_func_tokenize_source_code.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_tokenize_source_code.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_calculate_pareto_frontier.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_corpus_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_html_dashboard.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_generate_svg_pareto.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_gate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_gate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_matrix.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_matrix.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_mips.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_bench_run_mips.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_format_bytes.restype = ctypes.c_uint16
@@ -2019,6 +2585,177 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_get_string.restype = cty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_derive_key.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_derive_key.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_brotli_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzfse_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_derive_keys.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_derive_keys.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128_digest.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128_digest.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_xxh3_64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_with_named_dict.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_with_named_dict.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress_with_named_dict.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress_with_named_dict.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier.restype = ctypes.c_uint16
@@ -4392,6 +5129,46 @@ class _UniffiConverterTypeSniffMetadata(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.confidence, buf)
 
 
+class UniFfiAeadResult:
+    """
+    Authenticated Encryption with Associated Data (AEAD) encryption result.
+    """
+
+    ciphertext: "bytes"
+    tag: "bytes"
+    def __init__(self, *, ciphertext: "bytes", tag: "bytes"):
+        self.ciphertext = ciphertext
+        self.tag = tag
+
+    def __str__(self):
+        return "UniFfiAeadResult(ciphertext={}, tag={})".format(self.ciphertext, self.tag)
+
+    def __eq__(self, other):
+        if self.ciphertext != other.ciphertext:
+            return False
+        if self.tag != other.tag:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAeadResult(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAeadResult(
+            ciphertext=_UniffiConverterBytes.read(buf),
+            tag=_UniffiConverterBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterBytes.check_lower(value.ciphertext)
+        _UniffiConverterBytes.check_lower(value.tag)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterBytes.write(value.ciphertext, buf)
+        _UniffiConverterBytes.write(value.tag, buf)
+
+
 class UniFfiAudioTrack:
     """
     Audio track metadata exposed across UniFFI boundary.
@@ -4465,6 +5242,294 @@ class _UniffiConverterTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
         _UniffiConverterOptionalUInt32.write(value.sample_rate, buf)
         _UniffiConverterString.write(value.codec, buf)
         _UniffiConverterBool.write(value.is_selected, buf)
+
+
+class UniFfiBenchmarkMatrixReport:
+    """
+    Comprehensive benchmark matrix report across all evaluated codecs.
+    """
+
+    corpus_type: "UniFfiCorpusType"
+    corpus_name: "str"
+    corpus_size_bytes: "int"
+    timestamp_epoch_secs: "int"
+    total_points_evaluated: "int"
+    pareto_optimal_count: "int"
+    peak_compress_throughput_mbs: "float"
+    peak_decompress_throughput_mbs: "float"
+    max_space_savings_pct: "float"
+    points: "typing.List[UniFfiBenchmarkPointResult]"
+    passed_gate: "bool"
+    def __init__(self, *, corpus_type: "UniFfiCorpusType", corpus_name: "str", corpus_size_bytes: "int", timestamp_epoch_secs: "int", total_points_evaluated: "int", pareto_optimal_count: "int", peak_compress_throughput_mbs: "float", peak_decompress_throughput_mbs: "float", max_space_savings_pct: "float", points: "typing.List[UniFfiBenchmarkPointResult]", passed_gate: "bool"):
+        self.corpus_type = corpus_type
+        self.corpus_name = corpus_name
+        self.corpus_size_bytes = corpus_size_bytes
+        self.timestamp_epoch_secs = timestamp_epoch_secs
+        self.total_points_evaluated = total_points_evaluated
+        self.pareto_optimal_count = pareto_optimal_count
+        self.peak_compress_throughput_mbs = peak_compress_throughput_mbs
+        self.peak_decompress_throughput_mbs = peak_decompress_throughput_mbs
+        self.max_space_savings_pct = max_space_savings_pct
+        self.points = points
+        self.passed_gate = passed_gate
+
+    def __str__(self):
+        return "UniFfiBenchmarkMatrixReport(corpus_type={}, corpus_name={}, corpus_size_bytes={}, timestamp_epoch_secs={}, total_points_evaluated={}, pareto_optimal_count={}, peak_compress_throughput_mbs={}, peak_decompress_throughput_mbs={}, max_space_savings_pct={}, points={}, passed_gate={})".format(self.corpus_type, self.corpus_name, self.corpus_size_bytes, self.timestamp_epoch_secs, self.total_points_evaluated, self.pareto_optimal_count, self.peak_compress_throughput_mbs, self.peak_decompress_throughput_mbs, self.max_space_savings_pct, self.points, self.passed_gate)
+
+    def __eq__(self, other):
+        if self.corpus_type != other.corpus_type:
+            return False
+        if self.corpus_name != other.corpus_name:
+            return False
+        if self.corpus_size_bytes != other.corpus_size_bytes:
+            return False
+        if self.timestamp_epoch_secs != other.timestamp_epoch_secs:
+            return False
+        if self.total_points_evaluated != other.total_points_evaluated:
+            return False
+        if self.pareto_optimal_count != other.pareto_optimal_count:
+            return False
+        if self.peak_compress_throughput_mbs != other.peak_compress_throughput_mbs:
+            return False
+        if self.peak_decompress_throughput_mbs != other.peak_decompress_throughput_mbs:
+            return False
+        if self.max_space_savings_pct != other.max_space_savings_pct:
+            return False
+        if self.points != other.points:
+            return False
+        if self.passed_gate != other.passed_gate:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiBenchmarkMatrixReport(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiBenchmarkMatrixReport(
+            corpus_type=_UniffiConverterTypeUniFfiCorpusType.read(buf),
+            corpus_name=_UniffiConverterString.read(buf),
+            corpus_size_bytes=_UniffiConverterUInt64.read(buf),
+            timestamp_epoch_secs=_UniffiConverterUInt64.read(buf),
+            total_points_evaluated=_UniffiConverterUInt32.read(buf),
+            pareto_optimal_count=_UniffiConverterUInt32.read(buf),
+            peak_compress_throughput_mbs=_UniffiConverterDouble.read(buf),
+            peak_decompress_throughput_mbs=_UniffiConverterDouble.read(buf),
+            max_space_savings_pct=_UniffiConverterDouble.read(buf),
+            points=_UniffiConverterSequenceTypeUniFfiBenchmarkPointResult.read(buf),
+            passed_gate=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeUniFfiCorpusType.check_lower(value.corpus_type)
+        _UniffiConverterString.check_lower(value.corpus_name)
+        _UniffiConverterUInt64.check_lower(value.corpus_size_bytes)
+        _UniffiConverterUInt64.check_lower(value.timestamp_epoch_secs)
+        _UniffiConverterUInt32.check_lower(value.total_points_evaluated)
+        _UniffiConverterUInt32.check_lower(value.pareto_optimal_count)
+        _UniffiConverterDouble.check_lower(value.peak_compress_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.peak_decompress_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.max_space_savings_pct)
+        _UniffiConverterSequenceTypeUniFfiBenchmarkPointResult.check_lower(value.points)
+        _UniffiConverterBool.check_lower(value.passed_gate)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeUniFfiCorpusType.write(value.corpus_type, buf)
+        _UniffiConverterString.write(value.corpus_name, buf)
+        _UniffiConverterUInt64.write(value.corpus_size_bytes, buf)
+        _UniffiConverterUInt64.write(value.timestamp_epoch_secs, buf)
+        _UniffiConverterUInt32.write(value.total_points_evaluated, buf)
+        _UniffiConverterUInt32.write(value.pareto_optimal_count, buf)
+        _UniffiConverterDouble.write(value.peak_compress_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.peak_decompress_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.max_space_savings_pct, buf)
+        _UniffiConverterSequenceTypeUniFfiBenchmarkPointResult.write(value.points, buf)
+        _UniffiConverterBool.write(value.passed_gate, buf)
+
+
+class UniFfiBenchmarkPointResult:
+    """
+    Metrics for an individual algorithm benchmark point.
+    """
+
+    algorithm: "str"
+    level: "int"
+    display_name: "str"
+    original_size_bytes: "int"
+    compressed_size_bytes: "int"
+    compression_ratio: "float"
+    space_savings_pct: "float"
+    compress_throughput_mbs: "float"
+    decompress_throughput_mbs: "float"
+    compress_time_nanos: "int"
+    decompress_time_nanos: "int"
+    pareto_rank: "int"
+    is_pareto_optimal: "bool"
+    is_on_convex_hull: "bool"
+    def __init__(self, *, algorithm: "str", level: "int", display_name: "str", original_size_bytes: "int", compressed_size_bytes: "int", compression_ratio: "float", space_savings_pct: "float", compress_throughput_mbs: "float", decompress_throughput_mbs: "float", compress_time_nanos: "int", decompress_time_nanos: "int", pareto_rank: "int", is_pareto_optimal: "bool", is_on_convex_hull: "bool"):
+        self.algorithm = algorithm
+        self.level = level
+        self.display_name = display_name
+        self.original_size_bytes = original_size_bytes
+        self.compressed_size_bytes = compressed_size_bytes
+        self.compression_ratio = compression_ratio
+        self.space_savings_pct = space_savings_pct
+        self.compress_throughput_mbs = compress_throughput_mbs
+        self.decompress_throughput_mbs = decompress_throughput_mbs
+        self.compress_time_nanos = compress_time_nanos
+        self.decompress_time_nanos = decompress_time_nanos
+        self.pareto_rank = pareto_rank
+        self.is_pareto_optimal = is_pareto_optimal
+        self.is_on_convex_hull = is_on_convex_hull
+
+    def __str__(self):
+        return "UniFfiBenchmarkPointResult(algorithm={}, level={}, display_name={}, original_size_bytes={}, compressed_size_bytes={}, compression_ratio={}, space_savings_pct={}, compress_throughput_mbs={}, decompress_throughput_mbs={}, compress_time_nanos={}, decompress_time_nanos={}, pareto_rank={}, is_pareto_optimal={}, is_on_convex_hull={})".format(self.algorithm, self.level, self.display_name, self.original_size_bytes, self.compressed_size_bytes, self.compression_ratio, self.space_savings_pct, self.compress_throughput_mbs, self.decompress_throughput_mbs, self.compress_time_nanos, self.decompress_time_nanos, self.pareto_rank, self.is_pareto_optimal, self.is_on_convex_hull)
+
+    def __eq__(self, other):
+        if self.algorithm != other.algorithm:
+            return False
+        if self.level != other.level:
+            return False
+        if self.display_name != other.display_name:
+            return False
+        if self.original_size_bytes != other.original_size_bytes:
+            return False
+        if self.compressed_size_bytes != other.compressed_size_bytes:
+            return False
+        if self.compression_ratio != other.compression_ratio:
+            return False
+        if self.space_savings_pct != other.space_savings_pct:
+            return False
+        if self.compress_throughput_mbs != other.compress_throughput_mbs:
+            return False
+        if self.decompress_throughput_mbs != other.decompress_throughput_mbs:
+            return False
+        if self.compress_time_nanos != other.compress_time_nanos:
+            return False
+        if self.decompress_time_nanos != other.decompress_time_nanos:
+            return False
+        if self.pareto_rank != other.pareto_rank:
+            return False
+        if self.is_pareto_optimal != other.is_pareto_optimal:
+            return False
+        if self.is_on_convex_hull != other.is_on_convex_hull:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiBenchmarkPointResult(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiBenchmarkPointResult(
+            algorithm=_UniffiConverterString.read(buf),
+            level=_UniffiConverterInt32.read(buf),
+            display_name=_UniffiConverterString.read(buf),
+            original_size_bytes=_UniffiConverterUInt64.read(buf),
+            compressed_size_bytes=_UniffiConverterUInt64.read(buf),
+            compression_ratio=_UniffiConverterDouble.read(buf),
+            space_savings_pct=_UniffiConverterDouble.read(buf),
+            compress_throughput_mbs=_UniffiConverterDouble.read(buf),
+            decompress_throughput_mbs=_UniffiConverterDouble.read(buf),
+            compress_time_nanos=_UniffiConverterUInt64.read(buf),
+            decompress_time_nanos=_UniffiConverterUInt64.read(buf),
+            pareto_rank=_UniffiConverterUInt32.read(buf),
+            is_pareto_optimal=_UniffiConverterBool.read(buf),
+            is_on_convex_hull=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.algorithm)
+        _UniffiConverterInt32.check_lower(value.level)
+        _UniffiConverterString.check_lower(value.display_name)
+        _UniffiConverterUInt64.check_lower(value.original_size_bytes)
+        _UniffiConverterUInt64.check_lower(value.compressed_size_bytes)
+        _UniffiConverterDouble.check_lower(value.compression_ratio)
+        _UniffiConverterDouble.check_lower(value.space_savings_pct)
+        _UniffiConverterDouble.check_lower(value.compress_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.decompress_throughput_mbs)
+        _UniffiConverterUInt64.check_lower(value.compress_time_nanos)
+        _UniffiConverterUInt64.check_lower(value.decompress_time_nanos)
+        _UniffiConverterUInt32.check_lower(value.pareto_rank)
+        _UniffiConverterBool.check_lower(value.is_pareto_optimal)
+        _UniffiConverterBool.check_lower(value.is_on_convex_hull)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.algorithm, buf)
+        _UniffiConverterInt32.write(value.level, buf)
+        _UniffiConverterString.write(value.display_name, buf)
+        _UniffiConverterUInt64.write(value.original_size_bytes, buf)
+        _UniffiConverterUInt64.write(value.compressed_size_bytes, buf)
+        _UniffiConverterDouble.write(value.compression_ratio, buf)
+        _UniffiConverterDouble.write(value.space_savings_pct, buf)
+        _UniffiConverterDouble.write(value.compress_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.decompress_throughput_mbs, buf)
+        _UniffiConverterUInt64.write(value.compress_time_nanos, buf)
+        _UniffiConverterUInt64.write(value.decompress_time_nanos, buf)
+        _UniffiConverterUInt32.write(value.pareto_rank, buf)
+        _UniffiConverterBool.write(value.is_pareto_optimal, buf)
+        _UniffiConverterBool.write(value.is_on_convex_hull, buf)
+
+
+class UniFfiCompressionOptions:
+    """
+    Compression parameters and options container.
+    """
+
+    level: "typing.Optional[int]"
+    acceleration: "typing.Optional[int]"
+    window_mb: "typing.Optional[int]"
+    ppmd_order: "typing.Optional[int]"
+    ppmd_mem_mb: "typing.Optional[int]"
+    def __init__(self, *, level: "typing.Optional[int]", acceleration: "typing.Optional[int]", window_mb: "typing.Optional[int]", ppmd_order: "typing.Optional[int]", ppmd_mem_mb: "typing.Optional[int]"):
+        self.level = level
+        self.acceleration = acceleration
+        self.window_mb = window_mb
+        self.ppmd_order = ppmd_order
+        self.ppmd_mem_mb = ppmd_mem_mb
+
+    def __str__(self):
+        return "UniFfiCompressionOptions(level={}, acceleration={}, window_mb={}, ppmd_order={}, ppmd_mem_mb={})".format(self.level, self.acceleration, self.window_mb, self.ppmd_order, self.ppmd_mem_mb)
+
+    def __eq__(self, other):
+        if self.level != other.level:
+            return False
+        if self.acceleration != other.acceleration:
+            return False
+        if self.window_mb != other.window_mb:
+            return False
+        if self.ppmd_order != other.ppmd_order:
+            return False
+        if self.ppmd_mem_mb != other.ppmd_mem_mb:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiCompressionOptions(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiCompressionOptions(
+            level=_UniffiConverterOptionalInt32.read(buf),
+            acceleration=_UniffiConverterOptionalInt32.read(buf),
+            window_mb=_UniffiConverterOptionalUInt32.read(buf),
+            ppmd_order=_UniffiConverterOptionalUInt32.read(buf),
+            ppmd_mem_mb=_UniffiConverterOptionalUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterOptionalInt32.check_lower(value.level)
+        _UniffiConverterOptionalInt32.check_lower(value.acceleration)
+        _UniffiConverterOptionalUInt32.check_lower(value.window_mb)
+        _UniffiConverterOptionalUInt32.check_lower(value.ppmd_order)
+        _UniffiConverterOptionalUInt32.check_lower(value.ppmd_mem_mb)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterOptionalInt32.write(value.level, buf)
+        _UniffiConverterOptionalInt32.write(value.acceleration, buf)
+        _UniffiConverterOptionalUInt32.write(value.window_mb, buf)
+        _UniffiConverterOptionalUInt32.write(value.ppmd_order, buf)
+        _UniffiConverterOptionalUInt32.write(value.ppmd_mem_mb, buf)
 
 
 class UniFfiCorruptedEntry:
@@ -5484,6 +6549,156 @@ class _UniffiConverterTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffer):
         _UniffiConverterOptionalUInt32.write(value.height, buf)
 
 
+class UniFfiMipsBenchmarkResult:
+    """
+    Standardized 7-Zip aligned MIPS hardware benchmark telemetry.
+    """
+
+    dictionary_size_mb: "int"
+    thread_count: "int"
+    compress_mips: "float"
+    decompress_mips: "float"
+    total_mips: "float"
+    compress_speed_mbs: "float"
+    decompress_speed_mbs: "float"
+    cpu_usage_percent: "float"
+    rating_per_usage_mips: "float"
+    def __init__(self, *, dictionary_size_mb: "int", thread_count: "int", compress_mips: "float", decompress_mips: "float", total_mips: "float", compress_speed_mbs: "float", decompress_speed_mbs: "float", cpu_usage_percent: "float", rating_per_usage_mips: "float"):
+        self.dictionary_size_mb = dictionary_size_mb
+        self.thread_count = thread_count
+        self.compress_mips = compress_mips
+        self.decompress_mips = decompress_mips
+        self.total_mips = total_mips
+        self.compress_speed_mbs = compress_speed_mbs
+        self.decompress_speed_mbs = decompress_speed_mbs
+        self.cpu_usage_percent = cpu_usage_percent
+        self.rating_per_usage_mips = rating_per_usage_mips
+
+    def __str__(self):
+        return "UniFfiMipsBenchmarkResult(dictionary_size_mb={}, thread_count={}, compress_mips={}, decompress_mips={}, total_mips={}, compress_speed_mbs={}, decompress_speed_mbs={}, cpu_usage_percent={}, rating_per_usage_mips={})".format(self.dictionary_size_mb, self.thread_count, self.compress_mips, self.decompress_mips, self.total_mips, self.compress_speed_mbs, self.decompress_speed_mbs, self.cpu_usage_percent, self.rating_per_usage_mips)
+
+    def __eq__(self, other):
+        if self.dictionary_size_mb != other.dictionary_size_mb:
+            return False
+        if self.thread_count != other.thread_count:
+            return False
+        if self.compress_mips != other.compress_mips:
+            return False
+        if self.decompress_mips != other.decompress_mips:
+            return False
+        if self.total_mips != other.total_mips:
+            return False
+        if self.compress_speed_mbs != other.compress_speed_mbs:
+            return False
+        if self.decompress_speed_mbs != other.decompress_speed_mbs:
+            return False
+        if self.cpu_usage_percent != other.cpu_usage_percent:
+            return False
+        if self.rating_per_usage_mips != other.rating_per_usage_mips:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMipsBenchmarkResult(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMipsBenchmarkResult(
+            dictionary_size_mb=_UniffiConverterUInt32.read(buf),
+            thread_count=_UniffiConverterUInt32.read(buf),
+            compress_mips=_UniffiConverterDouble.read(buf),
+            decompress_mips=_UniffiConverterDouble.read(buf),
+            total_mips=_UniffiConverterDouble.read(buf),
+            compress_speed_mbs=_UniffiConverterDouble.read(buf),
+            decompress_speed_mbs=_UniffiConverterDouble.read(buf),
+            cpu_usage_percent=_UniffiConverterDouble.read(buf),
+            rating_per_usage_mips=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.dictionary_size_mb)
+        _UniffiConverterUInt32.check_lower(value.thread_count)
+        _UniffiConverterDouble.check_lower(value.compress_mips)
+        _UniffiConverterDouble.check_lower(value.decompress_mips)
+        _UniffiConverterDouble.check_lower(value.total_mips)
+        _UniffiConverterDouble.check_lower(value.compress_speed_mbs)
+        _UniffiConverterDouble.check_lower(value.decompress_speed_mbs)
+        _UniffiConverterDouble.check_lower(value.cpu_usage_percent)
+        _UniffiConverterDouble.check_lower(value.rating_per_usage_mips)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.dictionary_size_mb, buf)
+        _UniffiConverterUInt32.write(value.thread_count, buf)
+        _UniffiConverterDouble.write(value.compress_mips, buf)
+        _UniffiConverterDouble.write(value.decompress_mips, buf)
+        _UniffiConverterDouble.write(value.total_mips, buf)
+        _UniffiConverterDouble.write(value.compress_speed_mbs, buf)
+        _UniffiConverterDouble.write(value.decompress_speed_mbs, buf)
+        _UniffiConverterDouble.write(value.cpu_usage_percent, buf)
+        _UniffiConverterDouble.write(value.rating_per_usage_mips, buf)
+
+
+class UniFfiMultimodalEntryMetadata:
+    """
+    Metadata descriptor for a multi-modal corpus entry.
+    """
+
+    name: "str"
+    kind_name: "str"
+    size_bytes: "int"
+    shannon_entropy: "float"
+    is_synthetic: "bool"
+    def __init__(self, *, name: "str", kind_name: "str", size_bytes: "int", shannon_entropy: "float", is_synthetic: "bool"):
+        self.name = name
+        self.kind_name = kind_name
+        self.size_bytes = size_bytes
+        self.shannon_entropy = shannon_entropy
+        self.is_synthetic = is_synthetic
+
+    def __str__(self):
+        return "UniFfiMultimodalEntryMetadata(name={}, kind_name={}, size_bytes={}, shannon_entropy={}, is_synthetic={})".format(self.name, self.kind_name, self.size_bytes, self.shannon_entropy, self.is_synthetic)
+
+    def __eq__(self, other):
+        if self.name != other.name:
+            return False
+        if self.kind_name != other.kind_name:
+            return False
+        if self.size_bytes != other.size_bytes:
+            return False
+        if self.shannon_entropy != other.shannon_entropy:
+            return False
+        if self.is_synthetic != other.is_synthetic:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMultimodalEntryMetadata(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMultimodalEntryMetadata(
+            name=_UniffiConverterString.read(buf),
+            kind_name=_UniffiConverterString.read(buf),
+            size_bytes=_UniffiConverterUInt64.read(buf),
+            shannon_entropy=_UniffiConverterDouble.read(buf),
+            is_synthetic=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterString.check_lower(value.kind_name)
+        _UniffiConverterUInt64.check_lower(value.size_bytes)
+        _UniffiConverterDouble.check_lower(value.shannon_entropy)
+        _UniffiConverterBool.check_lower(value.is_synthetic)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterString.write(value.kind_name, buf)
+        _UniffiConverterUInt64.write(value.size_bytes, buf)
+        _UniffiConverterDouble.write(value.shannon_entropy, buf)
+        _UniffiConverterBool.write(value.is_synthetic, buf)
+
+
 class UniFfiParentAndPrefix:
     """
     Parent directory and autocompletion prefix record.
@@ -5522,6 +6737,81 @@ class _UniffiConverterTypeUniFfiParentAndPrefix(_UniffiConverterRustBuffer):
     def write(value, buf):
         _UniffiConverterString.write(value.parent_directory, buf)
         _UniffiConverterString.write(value.prefix, buf)
+
+
+class UniFfiParetoCodecPoint:
+    """
+    2D Pareto and Upper Convex Hull point representation for compression codecs.
+    """
+
+    codec_name: "str"
+    compression_ratio: "float"
+    speed_mb_s: "float"
+    memory_mb: "float"
+    pareto_rank: "int"
+    is_pareto_optimal: "bool"
+    is_on_convex_hull: "bool"
+    def __init__(self, *, codec_name: "str", compression_ratio: "float", speed_mb_s: "float", memory_mb: "float", pareto_rank: "int", is_pareto_optimal: "bool", is_on_convex_hull: "bool"):
+        self.codec_name = codec_name
+        self.compression_ratio = compression_ratio
+        self.speed_mb_s = speed_mb_s
+        self.memory_mb = memory_mb
+        self.pareto_rank = pareto_rank
+        self.is_pareto_optimal = is_pareto_optimal
+        self.is_on_convex_hull = is_on_convex_hull
+
+    def __str__(self):
+        return "UniFfiParetoCodecPoint(codec_name={}, compression_ratio={}, speed_mb_s={}, memory_mb={}, pareto_rank={}, is_pareto_optimal={}, is_on_convex_hull={})".format(self.codec_name, self.compression_ratio, self.speed_mb_s, self.memory_mb, self.pareto_rank, self.is_pareto_optimal, self.is_on_convex_hull)
+
+    def __eq__(self, other):
+        if self.codec_name != other.codec_name:
+            return False
+        if self.compression_ratio != other.compression_ratio:
+            return False
+        if self.speed_mb_s != other.speed_mb_s:
+            return False
+        if self.memory_mb != other.memory_mb:
+            return False
+        if self.pareto_rank != other.pareto_rank:
+            return False
+        if self.is_pareto_optimal != other.is_pareto_optimal:
+            return False
+        if self.is_on_convex_hull != other.is_on_convex_hull:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiParetoCodecPoint(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiParetoCodecPoint(
+            codec_name=_UniffiConverterString.read(buf),
+            compression_ratio=_UniffiConverterDouble.read(buf),
+            speed_mb_s=_UniffiConverterDouble.read(buf),
+            memory_mb=_UniffiConverterDouble.read(buf),
+            pareto_rank=_UniffiConverterUInt32.read(buf),
+            is_pareto_optimal=_UniffiConverterBool.read(buf),
+            is_on_convex_hull=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.codec_name)
+        _UniffiConverterDouble.check_lower(value.compression_ratio)
+        _UniffiConverterDouble.check_lower(value.speed_mb_s)
+        _UniffiConverterDouble.check_lower(value.memory_mb)
+        _UniffiConverterUInt32.check_lower(value.pareto_rank)
+        _UniffiConverterBool.check_lower(value.is_pareto_optimal)
+        _UniffiConverterBool.check_lower(value.is_on_convex_hull)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.codec_name, buf)
+        _UniffiConverterDouble.write(value.compression_ratio, buf)
+        _UniffiConverterDouble.write(value.speed_mb_s, buf)
+        _UniffiConverterDouble.write(value.memory_mb, buf)
+        _UniffiConverterUInt32.write(value.pareto_rank, buf)
+        _UniffiConverterBool.write(value.is_pareto_optimal, buf)
+        _UniffiConverterBool.write(value.is_on_convex_hull, buf)
 
 
 class UniFfiPdfDocumentInfo:
@@ -5686,6 +6976,212 @@ class _UniffiConverterTypeUniFfiPlaybackTimeInfo(_UniffiConverterRustBuffer):
         _UniffiConverterUInt64.write(value.current_ms, buf)
         _UniffiConverterUInt64.write(value.duration_ms, buf)
         _UniffiConverterDouble.write(value.position_ratio, buf)
+
+
+class UniFfiScenarioBenchmarkPoint:
+    """
+    Metrics for an individual enterprise scenario benchmark point.
+    """
+
+    id: "str"
+    category: "str"
+    format: "str"
+    display_name: "str"
+    options_summary: "str"
+    original_size_bytes: "int"
+    output_size_bytes: "int"
+    space_savings_pct: "float"
+    create_throughput_mbs: "float"
+    extract_throughput_mbs: "float"
+    create_duration_micros: "int"
+    extract_duration_micros: "int"
+    is_encrypted: "bool"
+    is_split: "bool"
+    is_solid: "bool"
+    passed_invariants: "bool"
+    def __init__(self, *, id: "str", category: "str", format: "str", display_name: "str", options_summary: "str", original_size_bytes: "int", output_size_bytes: "int", space_savings_pct: "float", create_throughput_mbs: "float", extract_throughput_mbs: "float", create_duration_micros: "int", extract_duration_micros: "int", is_encrypted: "bool", is_split: "bool", is_solid: "bool", passed_invariants: "bool"):
+        self.id = id
+        self.category = category
+        self.format = format
+        self.display_name = display_name
+        self.options_summary = options_summary
+        self.original_size_bytes = original_size_bytes
+        self.output_size_bytes = output_size_bytes
+        self.space_savings_pct = space_savings_pct
+        self.create_throughput_mbs = create_throughput_mbs
+        self.extract_throughput_mbs = extract_throughput_mbs
+        self.create_duration_micros = create_duration_micros
+        self.extract_duration_micros = extract_duration_micros
+        self.is_encrypted = is_encrypted
+        self.is_split = is_split
+        self.is_solid = is_solid
+        self.passed_invariants = passed_invariants
+
+    def __str__(self):
+        return "UniFfiScenarioBenchmarkPoint(id={}, category={}, format={}, display_name={}, options_summary={}, original_size_bytes={}, output_size_bytes={}, space_savings_pct={}, create_throughput_mbs={}, extract_throughput_mbs={}, create_duration_micros={}, extract_duration_micros={}, is_encrypted={}, is_split={}, is_solid={}, passed_invariants={})".format(self.id, self.category, self.format, self.display_name, self.options_summary, self.original_size_bytes, self.output_size_bytes, self.space_savings_pct, self.create_throughput_mbs, self.extract_throughput_mbs, self.create_duration_micros, self.extract_duration_micros, self.is_encrypted, self.is_split, self.is_solid, self.passed_invariants)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.category != other.category:
+            return False
+        if self.format != other.format:
+            return False
+        if self.display_name != other.display_name:
+            return False
+        if self.options_summary != other.options_summary:
+            return False
+        if self.original_size_bytes != other.original_size_bytes:
+            return False
+        if self.output_size_bytes != other.output_size_bytes:
+            return False
+        if self.space_savings_pct != other.space_savings_pct:
+            return False
+        if self.create_throughput_mbs != other.create_throughput_mbs:
+            return False
+        if self.extract_throughput_mbs != other.extract_throughput_mbs:
+            return False
+        if self.create_duration_micros != other.create_duration_micros:
+            return False
+        if self.extract_duration_micros != other.extract_duration_micros:
+            return False
+        if self.is_encrypted != other.is_encrypted:
+            return False
+        if self.is_split != other.is_split:
+            return False
+        if self.is_solid != other.is_solid:
+            return False
+        if self.passed_invariants != other.passed_invariants:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiScenarioBenchmarkPoint(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiScenarioBenchmarkPoint(
+            id=_UniffiConverterString.read(buf),
+            category=_UniffiConverterString.read(buf),
+            format=_UniffiConverterString.read(buf),
+            display_name=_UniffiConverterString.read(buf),
+            options_summary=_UniffiConverterString.read(buf),
+            original_size_bytes=_UniffiConverterUInt64.read(buf),
+            output_size_bytes=_UniffiConverterUInt64.read(buf),
+            space_savings_pct=_UniffiConverterDouble.read(buf),
+            create_throughput_mbs=_UniffiConverterDouble.read(buf),
+            extract_throughput_mbs=_UniffiConverterDouble.read(buf),
+            create_duration_micros=_UniffiConverterUInt64.read(buf),
+            extract_duration_micros=_UniffiConverterUInt64.read(buf),
+            is_encrypted=_UniffiConverterBool.read(buf),
+            is_split=_UniffiConverterBool.read(buf),
+            is_solid=_UniffiConverterBool.read(buf),
+            passed_invariants=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.category)
+        _UniffiConverterString.check_lower(value.format)
+        _UniffiConverterString.check_lower(value.display_name)
+        _UniffiConverterString.check_lower(value.options_summary)
+        _UniffiConverterUInt64.check_lower(value.original_size_bytes)
+        _UniffiConverterUInt64.check_lower(value.output_size_bytes)
+        _UniffiConverterDouble.check_lower(value.space_savings_pct)
+        _UniffiConverterDouble.check_lower(value.create_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.extract_throughput_mbs)
+        _UniffiConverterUInt64.check_lower(value.create_duration_micros)
+        _UniffiConverterUInt64.check_lower(value.extract_duration_micros)
+        _UniffiConverterBool.check_lower(value.is_encrypted)
+        _UniffiConverterBool.check_lower(value.is_split)
+        _UniffiConverterBool.check_lower(value.is_solid)
+        _UniffiConverterBool.check_lower(value.passed_invariants)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.id, buf)
+        _UniffiConverterString.write(value.category, buf)
+        _UniffiConverterString.write(value.format, buf)
+        _UniffiConverterString.write(value.display_name, buf)
+        _UniffiConverterString.write(value.options_summary, buf)
+        _UniffiConverterUInt64.write(value.original_size_bytes, buf)
+        _UniffiConverterUInt64.write(value.output_size_bytes, buf)
+        _UniffiConverterDouble.write(value.space_savings_pct, buf)
+        _UniffiConverterDouble.write(value.create_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.extract_throughput_mbs, buf)
+        _UniffiConverterUInt64.write(value.create_duration_micros, buf)
+        _UniffiConverterUInt64.write(value.extract_duration_micros, buf)
+        _UniffiConverterBool.write(value.is_encrypted, buf)
+        _UniffiConverterBool.write(value.is_split, buf)
+        _UniffiConverterBool.write(value.is_solid, buf)
+        _UniffiConverterBool.write(value.passed_invariants, buf)
+
+
+class UniFfiScenarioMatrixReport:
+    """
+    Comprehensive 24-point enterprise scenario benchmark report.
+    """
+
+    total_scenarios_evaluated: "int"
+    timestamp_epoch_secs: "int"
+    peak_create_throughput_mbs: "float"
+    peak_extract_throughput_mbs: "float"
+    all_invariants_passed: "bool"
+    points: "typing.List[UniFfiScenarioBenchmarkPoint]"
+    def __init__(self, *, total_scenarios_evaluated: "int", timestamp_epoch_secs: "int", peak_create_throughput_mbs: "float", peak_extract_throughput_mbs: "float", all_invariants_passed: "bool", points: "typing.List[UniFfiScenarioBenchmarkPoint]"):
+        self.total_scenarios_evaluated = total_scenarios_evaluated
+        self.timestamp_epoch_secs = timestamp_epoch_secs
+        self.peak_create_throughput_mbs = peak_create_throughput_mbs
+        self.peak_extract_throughput_mbs = peak_extract_throughput_mbs
+        self.all_invariants_passed = all_invariants_passed
+        self.points = points
+
+    def __str__(self):
+        return "UniFfiScenarioMatrixReport(total_scenarios_evaluated={}, timestamp_epoch_secs={}, peak_create_throughput_mbs={}, peak_extract_throughput_mbs={}, all_invariants_passed={}, points={})".format(self.total_scenarios_evaluated, self.timestamp_epoch_secs, self.peak_create_throughput_mbs, self.peak_extract_throughput_mbs, self.all_invariants_passed, self.points)
+
+    def __eq__(self, other):
+        if self.total_scenarios_evaluated != other.total_scenarios_evaluated:
+            return False
+        if self.timestamp_epoch_secs != other.timestamp_epoch_secs:
+            return False
+        if self.peak_create_throughput_mbs != other.peak_create_throughput_mbs:
+            return False
+        if self.peak_extract_throughput_mbs != other.peak_extract_throughput_mbs:
+            return False
+        if self.all_invariants_passed != other.all_invariants_passed:
+            return False
+        if self.points != other.points:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiScenarioMatrixReport(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiScenarioMatrixReport(
+            total_scenarios_evaluated=_UniffiConverterUInt32.read(buf),
+            timestamp_epoch_secs=_UniffiConverterUInt64.read(buf),
+            peak_create_throughput_mbs=_UniffiConverterDouble.read(buf),
+            peak_extract_throughput_mbs=_UniffiConverterDouble.read(buf),
+            all_invariants_passed=_UniffiConverterBool.read(buf),
+            points=_UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.total_scenarios_evaluated)
+        _UniffiConverterUInt64.check_lower(value.timestamp_epoch_secs)
+        _UniffiConverterDouble.check_lower(value.peak_create_throughput_mbs)
+        _UniffiConverterDouble.check_lower(value.peak_extract_throughput_mbs)
+        _UniffiConverterBool.check_lower(value.all_invariants_passed)
+        _UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint.check_lower(value.points)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.total_scenarios_evaluated, buf)
+        _UniffiConverterUInt64.write(value.timestamp_epoch_secs, buf)
+        _UniffiConverterDouble.write(value.peak_create_throughput_mbs, buf)
+        _UniffiConverterDouble.write(value.peak_extract_throughput_mbs, buf)
+        _UniffiConverterBool.write(value.all_invariants_passed, buf)
+        _UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint.write(value.points, buf)
 
 
 class UniFfiSmartExtractDecision:
@@ -6987,6 +8483,93 @@ class _UniffiConverterTypeUniFfiWalMutationSummary(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_staged, buf)
 
 
+class UniFfiWinZipKeys:
+    """
+    Derived WinZip AES-256 key material.
+    """
+
+    enc_key: "bytes"
+    auth_key: "bytes"
+    pvv: "bytes"
+    def __init__(self, *, enc_key: "bytes", auth_key: "bytes", pvv: "bytes"):
+        self.enc_key = enc_key
+        self.auth_key = auth_key
+        self.pvv = pvv
+
+    def __str__(self):
+        return "UniFfiWinZipKeys(enc_key={}, auth_key={}, pvv={})".format(self.enc_key, self.auth_key, self.pvv)
+
+    def __eq__(self, other):
+        if self.enc_key != other.enc_key:
+            return False
+        if self.auth_key != other.auth_key:
+            return False
+        if self.pvv != other.pvv:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiWinZipKeys(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiWinZipKeys(
+            enc_key=_UniffiConverterBytes.read(buf),
+            auth_key=_UniffiConverterBytes.read(buf),
+            pvv=_UniffiConverterBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterBytes.check_lower(value.enc_key)
+        _UniffiConverterBytes.check_lower(value.auth_key)
+        _UniffiConverterBytes.check_lower(value.pvv)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterBytes.write(value.enc_key, buf)
+        _UniffiConverterBytes.write(value.auth_key, buf)
+        _UniffiConverterBytes.write(value.pvv, buf)
+
+
+class UniFfiXxh3128Digest:
+    """
+    Structure representing a 128-bit XXH3 hash digest.
+    """
+
+    low: "int"
+    high: "int"
+    def __init__(self, *, low: "int", high: "int"):
+        self.low = low
+        self.high = high
+
+    def __str__(self):
+        return "UniFfiXxh3128Digest(low={}, high={})".format(self.low, self.high)
+
+    def __eq__(self, other):
+        if self.low != other.low:
+            return False
+        if self.high != other.high:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiXxh3128Digest(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiXxh3128Digest(
+            low=_UniffiConverterUInt64.read(buf),
+            high=_UniffiConverterUInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.low)
+        _UniffiConverterUInt64.check_lower(value.high)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.low, buf)
+        _UniffiConverterUInt64.write(value.high, buf)
+
+
 class VideoMetadataRecord:
     """
     Video metadata properties record exposed to Swift.
@@ -7827,6 +9410,274 @@ class _UniffiConverterTypeTtZipError(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiCompressionCodec(enum.Enum):
+    """
+    Compression codec identifier exposed to Swift and multi-language SDKs.
+    """
+
+    DEFLATE_RAW = 0
+    
+    ZLIB = 1
+    
+    GZIP = 2
+    
+    ZSTD = 3
+    
+    ZSTD_LDM = 4
+    
+    LZ4_FAST = 5
+    
+    LZ4_HC = 6
+    
+    LZFSE = 7
+    
+    LZVN = 8
+    
+    BROTLI = 9
+    
+    SNAPPY_RAW = 10
+    
+    SNAPPY_FRAMED = 11
+    
+    BZIP2 = 12
+    
+    PPMD = 13
+    
+
+
+class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiCompressionCodec.DEFLATE_RAW
+        if variant == 2:
+            return UniFfiCompressionCodec.ZLIB
+        if variant == 3:
+            return UniFfiCompressionCodec.GZIP
+        if variant == 4:
+            return UniFfiCompressionCodec.ZSTD
+        if variant == 5:
+            return UniFfiCompressionCodec.ZSTD_LDM
+        if variant == 6:
+            return UniFfiCompressionCodec.LZ4_FAST
+        if variant == 7:
+            return UniFfiCompressionCodec.LZ4_HC
+        if variant == 8:
+            return UniFfiCompressionCodec.LZFSE
+        if variant == 9:
+            return UniFfiCompressionCodec.LZVN
+        if variant == 10:
+            return UniFfiCompressionCodec.BROTLI
+        if variant == 11:
+            return UniFfiCompressionCodec.SNAPPY_RAW
+        if variant == 12:
+            return UniFfiCompressionCodec.SNAPPY_FRAMED
+        if variant == 13:
+            return UniFfiCompressionCodec.BZIP2
+        if variant == 14:
+            return UniFfiCompressionCodec.PPMD
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiCompressionCodec.DEFLATE_RAW:
+            return
+        if value == UniFfiCompressionCodec.ZLIB:
+            return
+        if value == UniFfiCompressionCodec.GZIP:
+            return
+        if value == UniFfiCompressionCodec.ZSTD:
+            return
+        if value == UniFfiCompressionCodec.ZSTD_LDM:
+            return
+        if value == UniFfiCompressionCodec.LZ4_FAST:
+            return
+        if value == UniFfiCompressionCodec.LZ4_HC:
+            return
+        if value == UniFfiCompressionCodec.LZFSE:
+            return
+        if value == UniFfiCompressionCodec.LZVN:
+            return
+        if value == UniFfiCompressionCodec.BROTLI:
+            return
+        if value == UniFfiCompressionCodec.SNAPPY_RAW:
+            return
+        if value == UniFfiCompressionCodec.SNAPPY_FRAMED:
+            return
+        if value == UniFfiCompressionCodec.BZIP2:
+            return
+        if value == UniFfiCompressionCodec.PPMD:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiCompressionCodec.DEFLATE_RAW:
+            buf.write_i32(1)
+        if value == UniFfiCompressionCodec.ZLIB:
+            buf.write_i32(2)
+        if value == UniFfiCompressionCodec.GZIP:
+            buf.write_i32(3)
+        if value == UniFfiCompressionCodec.ZSTD:
+            buf.write_i32(4)
+        if value == UniFfiCompressionCodec.ZSTD_LDM:
+            buf.write_i32(5)
+        if value == UniFfiCompressionCodec.LZ4_FAST:
+            buf.write_i32(6)
+        if value == UniFfiCompressionCodec.LZ4_HC:
+            buf.write_i32(7)
+        if value == UniFfiCompressionCodec.LZFSE:
+            buf.write_i32(8)
+        if value == UniFfiCompressionCodec.LZVN:
+            buf.write_i32(9)
+        if value == UniFfiCompressionCodec.BROTLI:
+            buf.write_i32(10)
+        if value == UniFfiCompressionCodec.SNAPPY_RAW:
+            buf.write_i32(11)
+        if value == UniFfiCompressionCodec.SNAPPY_FRAMED:
+            buf.write_i32(12)
+        if value == UniFfiCompressionCodec.BZIP2:
+            buf.write_i32(13)
+        if value == UniFfiCompressionCodec.PPMD:
+            buf.write_i32(14)
+
+
+
+
+
+
+
+class UniFfiCorpusType(enum.Enum):
+    """
+    Strongly typed corpus types for benchmark dataset selection.
+    """
+
+    CALGARY = 0
+    
+    SILESIA = 1
+    
+    XML = 2
+    
+    RANDOM = 3
+    
+    BINARY = 4
+    
+    TEXT_DATA = 5
+    
+    SHORT_MATCH = 6
+    
+    DNA = 7
+    
+    NOISE = 8
+    
+    LITERALS = 9
+    
+    MACH_O_BINARY = 10
+    
+    REALISTIC_RGB = 11
+    
+    STRIPED_RGB = 12
+    
+
+
+class _UniffiConverterTypeUniFfiCorpusType(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiCorpusType.CALGARY
+        if variant == 2:
+            return UniFfiCorpusType.SILESIA
+        if variant == 3:
+            return UniFfiCorpusType.XML
+        if variant == 4:
+            return UniFfiCorpusType.RANDOM
+        if variant == 5:
+            return UniFfiCorpusType.BINARY
+        if variant == 6:
+            return UniFfiCorpusType.TEXT_DATA
+        if variant == 7:
+            return UniFfiCorpusType.SHORT_MATCH
+        if variant == 8:
+            return UniFfiCorpusType.DNA
+        if variant == 9:
+            return UniFfiCorpusType.NOISE
+        if variant == 10:
+            return UniFfiCorpusType.LITERALS
+        if variant == 11:
+            return UniFfiCorpusType.MACH_O_BINARY
+        if variant == 12:
+            return UniFfiCorpusType.REALISTIC_RGB
+        if variant == 13:
+            return UniFfiCorpusType.STRIPED_RGB
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiCorpusType.CALGARY:
+            return
+        if value == UniFfiCorpusType.SILESIA:
+            return
+        if value == UniFfiCorpusType.XML:
+            return
+        if value == UniFfiCorpusType.RANDOM:
+            return
+        if value == UniFfiCorpusType.BINARY:
+            return
+        if value == UniFfiCorpusType.TEXT_DATA:
+            return
+        if value == UniFfiCorpusType.SHORT_MATCH:
+            return
+        if value == UniFfiCorpusType.DNA:
+            return
+        if value == UniFfiCorpusType.NOISE:
+            return
+        if value == UniFfiCorpusType.LITERALS:
+            return
+        if value == UniFfiCorpusType.MACH_O_BINARY:
+            return
+        if value == UniFfiCorpusType.REALISTIC_RGB:
+            return
+        if value == UniFfiCorpusType.STRIPED_RGB:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiCorpusType.CALGARY:
+            buf.write_i32(1)
+        if value == UniFfiCorpusType.SILESIA:
+            buf.write_i32(2)
+        if value == UniFfiCorpusType.XML:
+            buf.write_i32(3)
+        if value == UniFfiCorpusType.RANDOM:
+            buf.write_i32(4)
+        if value == UniFfiCorpusType.BINARY:
+            buf.write_i32(5)
+        if value == UniFfiCorpusType.TEXT_DATA:
+            buf.write_i32(6)
+        if value == UniFfiCorpusType.SHORT_MATCH:
+            buf.write_i32(7)
+        if value == UniFfiCorpusType.DNA:
+            buf.write_i32(8)
+        if value == UniFfiCorpusType.NOISE:
+            buf.write_i32(9)
+        if value == UniFfiCorpusType.LITERALS:
+            buf.write_i32(10)
+        if value == UniFfiCorpusType.MACH_O_BINARY:
+            buf.write_i32(11)
+        if value == UniFfiCorpusType.REALISTIC_RGB:
+            buf.write_i32(12)
+        if value == UniFfiCorpusType.STRIPED_RGB:
+            buf.write_i32(13)
+
+
+
+
+
+
+
 class UniFfiLicenseResult:
     """
     Verification result enumeration exposed to UniFFI.
@@ -8383,6 +10234,33 @@ class _UniffiConverterOptionalUInt32(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterOptionalInt32(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterInt32.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterInt32.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterInt32.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalUInt64(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -8675,6 +10553,33 @@ class _UniffiConverterOptionalTypeModel3DMetadataRecord(_UniffiConverterRustBuff
             return None
         elif flag == 1:
             return _UniffiConverterTypeModel3DMetadataRecord.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeUniFfiCompressionOptions(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiCompressionOptions.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiCompressionOptions.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiCompressionOptions.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -9046,6 +10951,31 @@ class _UniffiConverterSequenceTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypeUniFfiBenchmarkPointResult(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiBenchmarkPointResult.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiBenchmarkPointResult.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiBenchmarkPointResult.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiCorruptedEntry(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -9217,6 +11147,81 @@ class _UniffiConverterSequenceTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffe
 
         return [
             _UniffiConverterTypeUniFfiMediaTrackInfo.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiMultimodalEntryMetadata(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiMultimodalEntryMetadata.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiMultimodalEntryMetadata.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiMultimodalEntryMetadata.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiParetoCodecPoint(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiParetoCodecPoint.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiParetoCodecPoint.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiParetoCodecPoint.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiScenarioBenchmarkPoint.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiScenarioBenchmarkPoint.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiScenarioBenchmarkPoint.read(buf) for i in range(count)
         ]
 
 
@@ -9932,10 +11937,7 @@ def find_active_subtitles_at(script: "UniFfiSubtitleScript",timestamp_ms: "int")
 
 def generate_synthetic_benchmark_dataset(target_path: "str",target_bytes: "int",profile_name: "str") -> None:
     """
-    Generates a synthetic benchmark dataset file at high throughput.
-
-    Uses buffered I/O, reusable 4MB chunk memory, and non-blocking SIMD-friendly
-    pattern synthesis to generate multi-gigabyte datasets in milliseconds.
+    Generates a synthetic benchmark dataset file using mathematical generators.
     """
 
     _UniffiConverterString.check_lower(target_path)
@@ -10333,6 +12335,117 @@ def tokenize_source_code(text: "str",file_extension: "str",max_length: "int") ->
         _UniffiConverterUInt32.lower(max_length)))
 
 
+def ttzip_bench_calculate_pareto_frontier(points: "typing.List[UniFfiParetoCodecPoint]") -> "typing.List[UniFfiParetoCodecPoint]":
+    """
+    Calculates 2D Pareto frontier and Upper Convex Hull on codec points.
+    """
+
+    _UniffiConverterSequenceTypeUniFfiParetoCodecPoint.check_lower(points)
+    
+    return _UniffiConverterSequenceTypeUniFfiParetoCodecPoint.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_calculate_pareto_frontier,
+        _UniffiConverterSequenceTypeUniFfiParetoCodecPoint.lower(points)))
+
+
+def ttzip_bench_generate_corpus_bytes(corpus_type: "UniFfiCorpusType",size_bytes: "int") -> "bytes":
+    """
+    Generates in-memory synthetic corpus bytes directly.
+    """
+
+    _UniffiConverterTypeUniFfiCorpusType.check_lower(corpus_type)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_corpus_bytes,
+        _UniffiConverterTypeUniFfiCorpusType.lower(corpus_type),
+        _UniffiConverterUInt64.lower(size_bytes)))
+
+
+def ttzip_bench_generate_html_dashboard(corpus_type: "UniFfiCorpusType") -> "str":
+    """
+    Generates standalone interactive HTML dashboard for matrix benchmark.
+    """
+
+    _UniffiConverterTypeUniFfiCorpusType.check_lower(corpus_type)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_html_dashboard,
+        _UniffiConverterTypeUniFfiCorpusType.lower(corpus_type)))
+
+
+def ttzip_bench_generate_svg_pareto(corpus_type: "UniFfiCorpusType",width: "int",height: "int") -> "str":
+    """
+    Generates standalone SVG vector scatter plot with Fritsch-Carlson Pareto spline.
+    """
+
+    _UniffiConverterTypeUniFfiCorpusType.check_lower(corpus_type)
+    
+    _UniffiConverterUInt32.check_lower(width)
+    
+    _UniffiConverterUInt32.check_lower(height)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_generate_svg_pareto,
+        _UniffiConverterTypeUniFfiCorpusType.lower(corpus_type),
+        _UniffiConverterUInt32.lower(width),
+        _UniffiConverterUInt32.lower(height)))
+
+
+def ttzip_bench_list_silesia_entries() -> "typing.List[UniFfiMultimodalEntryMetadata]":
+    """
+    Lists standard Silesia multi-modal corpus catalog metadata.
+    """
+
+    return _UniffiConverterSequenceTypeUniFfiMultimodalEntryMetadata.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_list_silesia_entries,))
+
+
+def ttzip_bench_run_all_scenarios() -> "UniFfiScenarioMatrixReport":
+    """
+    Executes all 100 enterprise full-scenario benchmark points.
+    """
+
+    return _UniffiConverterTypeUniFfiScenarioMatrixReport.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_all_scenarios,))
+
+
+def ttzip_bench_run_gate() -> "UniFfiBenchmarkMatrixReport":
+    """
+    Executes standard 50-point Matrix Gate pass.
+    """
+
+    return _UniffiConverterTypeUniFfiBenchmarkMatrixReport.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_gate,))
+
+
+def ttzip_bench_run_matrix(corpus_type: "UniFfiCorpusType",corpus_size_bytes: "int",iterations: "int") -> "UniFfiBenchmarkMatrixReport":
+    """
+    Executes matrix benchmark for specified corpus and size.
+    """
+
+    _UniffiConverterTypeUniFfiCorpusType.check_lower(corpus_type)
+    
+    _UniffiConverterUInt64.check_lower(corpus_size_bytes)
+    
+    _UniffiConverterUInt32.check_lower(iterations)
+    
+    return _UniffiConverterTypeUniFfiBenchmarkMatrixReport.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_matrix,
+        _UniffiConverterTypeUniFfiCorpusType.lower(corpus_type),
+        _UniffiConverterUInt64.lower(corpus_size_bytes),
+        _UniffiConverterUInt32.lower(iterations)))
+
+
+def ttzip_bench_run_mips(dictionary_size_mb: "int",thread_count: "int",iterations: "int") -> "UniFfiMipsBenchmarkResult":
+    """
+    Executes a standardized 7-Zip aligned MIPS hardware benchmark pass.
+    """
+
+    _UniffiConverterUInt32.check_lower(dictionary_size_mb)
+    
+    _UniffiConverterUInt32.check_lower(thread_count)
+    
+    _UniffiConverterUInt32.check_lower(iterations)
+    
+    return _UniffiConverterTypeUniFfiMipsBenchmarkResult.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_ttzip_bench_run_mips,
+        _UniffiConverterUInt32.lower(dictionary_size_mb),
+        _UniffiConverterUInt32.lower(thread_count),
+        _UniffiConverterUInt32.lower(iterations)))
+
+
 def ttzip_i18n_format_bytes(bytes: "int",standard: "ByteSizeStandard",lang: "AppLanguage") -> "str":
     """
     Convenient static function to format byte sizes via UniFFI.
@@ -10396,6 +12509,853 @@ def ttzip_i18n_localize_error(error_code: "int",param1: "typing.Optional[str]",p
         _UniffiConverterOptionalString.lower(param1),
         _UniffiConverterOptionalString.lower(param2),
         _UniffiConverterTypeAppLanguage.lower(lang)))
+
+
+def uniffi_7z_aes256_decrypt(key: "bytes",iv: "bytes",ciphertext: "bytes") -> "bytes":
+    """
+    Decrypts AES-256-CBC ciphertext and validates PKCS#7 block padding.
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(ciphertext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_decrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(ciphertext)))
+
+
+def uniffi_7z_aes256_derive_key(password: "str",salt: "bytes",num_cycles_power: "int") -> "bytes":
+    """
+    Derives 7z 256-bit AES key using multi-round SHA-256 KDF (up to 2^19 cycles).
+    """
+
+    _UniffiConverterString.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(salt)
+    
+    _UniffiConverterUInt32.check_lower(num_cycles_power)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_derive_key,
+        _UniffiConverterString.lower(password),
+        _UniffiConverterBytes.lower(salt),
+        _UniffiConverterUInt32.lower(num_cycles_power)))
+
+
+def uniffi_7z_aes256_encrypt(key: "bytes",iv: "bytes",plaintext: "bytes") -> "bytes":
+    """
+    Encrypts plaintext with AES-256-CBC with PKCS#7 block padding.
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_encrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(plaintext)))
+
+
+def uniffi_adler32(data: "bytes") -> "int":
+    """
+    Computes Adler-32 checksum starting from standard initial state 1.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterUInt32.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32,
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_adler32_rolling(initial: "int",data: "bytes") -> "int":
+    """
+    Computes rolling Adler-32 checksum starting from an existing accumulator.
+    """
+
+    _UniffiConverterUInt32.check_lower(initial)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterUInt32.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling,
+        _UniffiConverterUInt32.lower(initial),
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_blake3(data: "bytes") -> "bytes":
+    """
+    Computes unkeyed 256-bit BLAKE3 hash returning 32-byte digest.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3,
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_blake3_keyed(data: "bytes",key: "bytes") -> "bytes":
+    """
+    Computes keyed 256-bit BLAKE3 hash with 32-byte secret key (scrubs key upon return).
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterBytes.check_lower(key)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3_keyed,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterBytes.lower(key)))
+
+
+def uniffi_brotli_compress(src: "bytes",quality: "int",lgwin: "int") -> "bytes":
+    """
+    Compresses buffer with Google Brotli (quality 0..11, lgwin 10..24).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(quality)
+    
+    _UniffiConverterUInt32.check_lower(lgwin)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(quality),
+        _UniffiConverterUInt32.lower(lgwin)))
+
+
+def uniffi_brotli_decompress(src: "bytes",expected_uncompressed_size: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses Google Brotli stream.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_brotli_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_bzip2_compress(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with Bzip2 (levels 1..9).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_bzip2_decompress(src: "bytes",expected_uncompressed_size: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses Bzip2 stream into memory.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_compress_bound(codec: "UniFfiCompressionCodec",src_len: "int",level: "typing.Optional[int]") -> "int":
+    """
+    Computes upper bound on compressed bytes for a given codec and input size.
+    """
+
+    _UniffiConverterTypeUniFfiCompressionCodec.check_lower(codec)
+    
+    _UniffiConverterUInt64.check_lower(src_len)
+    
+    _UniffiConverterOptionalInt32.check_lower(level)
+    
+    return _UniffiConverterUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_bound,
+        _UniffiConverterTypeUniFfiCompressionCodec.lower(codec),
+        _UniffiConverterUInt64.lower(src_len),
+        _UniffiConverterOptionalInt32.lower(level)))
+
+
+def uniffi_compress_buffer(codec: "UniFfiCompressionCodec",src: "bytes",options: "typing.Optional[UniFfiCompressionOptions]") -> "bytes":
+    """
+    Compresses a memory buffer using the specified codec and options.
+    """
+
+    _UniffiConverterTypeUniFfiCompressionCodec.check_lower(codec)
+    
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalTypeUniFfiCompressionOptions.check_lower(options)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_buffer,
+        _UniffiConverterTypeUniFfiCompressionCodec.lower(codec),
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalTypeUniFfiCompressionOptions.lower(options)))
+
+
+def uniffi_crc32(data: "bytes") -> "int":
+    """
+    Computes CRC-32 (IEEE 802.3) checksum.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterUInt32.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32,
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_crc32_combine(crc1: "int",crc2: "int",len2: "int") -> "int":
+    """
+    Combines two separate CRC-32 checksums in O(log N) time using GF(2) matrix multiplication.
+    """
+
+    _UniffiConverterUInt32.check_lower(crc1)
+    
+    _UniffiConverterUInt32.check_lower(crc2)
+    
+    _UniffiConverterUInt64.check_lower(len2)
+    
+    return _UniffiConverterUInt32.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_combine,
+        _UniffiConverterUInt32.lower(crc1),
+        _UniffiConverterUInt32.lower(crc2),
+        _UniffiConverterUInt64.lower(len2)))
+
+
+def uniffi_crc32_rolling(initial: "int",data: "bytes") -> "int":
+    """
+    Computes rolling CRC-32 checksum starting from an existing accumulator.
+    """
+
+    _UniffiConverterUInt32.check_lower(initial)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterUInt32.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32_rolling,
+        _UniffiConverterUInt32.lower(initial),
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_crc64(data: "bytes",seed: "typing.Optional[int]") -> "int":
+    """
+    Computes CRC-64 (ECMA-182) checksum with optional seed (defaults to 0).
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalUInt64.check_lower(seed)
+    
+    return _UniffiConverterUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_decompress_buffer(codec: "UniFfiCompressionCodec",src: "bytes",expected_uncompressed_size: "typing.Optional[int]",options: "typing.Optional[UniFfiCompressionOptions]") -> "bytes":
+    """
+    Decompresses a memory buffer using the specified codec.
+    """
+
+    _UniffiConverterTypeUniFfiCompressionCodec.check_lower(codec)
+    
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    _UniffiConverterOptionalTypeUniFfiCompressionOptions.check_lower(options)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_decompress_buffer,
+        _UniffiConverterTypeUniFfiCompressionCodec.lower(codec),
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size),
+        _UniffiConverterOptionalTypeUniFfiCompressionOptions.lower(options)))
+
+
+def uniffi_deflate_compress(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with raw DEFLATE (RFC 1951, levels 0..12).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_deflate_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses raw DEFLATE buffer into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_gzip_compress(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with gzip format (RFC 1952, levels 0..12).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_gzip_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses gzip buffer into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_lz4_compress_fast(src: "bytes",acceleration: "int") -> "bytes":
+    """
+    Compresses buffer with LZ4 Fast mode (acceleration 1..100).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(acceleration)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(acceleration)))
+
+
+def uniffi_lz4_compress_hc(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with LZ4 High Compression (HC, levels 1..12).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_lz4_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses LZ4 block into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_lzfse_compress(src: "bytes") -> "bytes":
+    """
+    Compresses buffer with Apple LZFSE.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_compress,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_lzfse_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses Apple LZFSE buffer into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzfse_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_lzvn_compress(src: "bytes") -> "bytes":
+    """
+    Compresses buffer with Apple LZVN.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_lzvn_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses Apple LZVN buffer into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_ppmd_compress(src: "bytes",order: "int",mem_mb: "int") -> "bytes":
+    """
+    Compresses buffer with PPMd Model H (orders 2..16, mem_mb 2..256).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt32.check_lower(order)
+    
+    _UniffiConverterUInt32.check_lower(mem_mb)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt32.lower(order),
+        _UniffiConverterUInt32.lower(mem_mb)))
+
+
+def uniffi_ppmd_decompress(src: "bytes",expected_uncompressed_size: "int",order: "int",mem_mb: "int") -> "bytes":
+    """
+    Decompresses PPMd stream into memory.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    _UniffiConverterUInt32.check_lower(order)
+    
+    _UniffiConverterUInt32.check_lower(mem_mb)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size),
+        _UniffiConverterUInt32.lower(order),
+        _UniffiConverterUInt32.lower(mem_mb)))
+
+
+def uniffi_snappy_compress(src: "bytes") -> "bytes":
+    """
+    Compresses buffer with raw Snappy block format.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_compress,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_snappy_decompress(src: "bytes") -> "bytes":
+    """
+    Decompresses raw Snappy block format.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_decompress,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_snappy_frame_decode(src: "bytes") -> "bytes":
+    """
+    Decompresses official Snappy Framed stream format.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_snappy_frame_encode(src: "bytes") -> "bytes":
+    """
+    Compresses buffer into official Snappy Framed stream format.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode,
+        _UniffiConverterBytes.lower(src)))
+
+
+def uniffi_vault_aes_gcm_decrypt(key: "bytes",iv: "bytes",ciphertext: "bytes",aad: "bytes",tag: "bytes") -> "bytes":
+    """
+    Authenticated decryption with AES-256-GCM (NIST SP 800-38D).
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(ciphertext)
+    
+    _UniffiConverterBytes.check_lower(aad)
+    
+    _UniffiConverterBytes.check_lower(tag)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(ciphertext),
+        _UniffiConverterBytes.lower(aad),
+        _UniffiConverterBytes.lower(tag)))
+
+
+def uniffi_vault_aes_gcm_encrypt(key: "bytes",iv: "bytes",plaintext: "bytes",aad: "bytes") -> "UniFfiAeadResult":
+    """
+    Authenticated encryption with AES-256-GCM (NIST SP 800-38D).
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    _UniffiConverterBytes.check_lower(aad)
+    
+    return _UniffiConverterTypeUniFfiAeadResult.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_encrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(plaintext),
+        _UniffiConverterBytes.lower(aad)))
+
+
+def uniffi_vault_chacha20_poly1305_decrypt(key: "bytes",nonce: "bytes",ciphertext: "bytes",aad: "bytes",tag: "bytes") -> "bytes":
+    """
+    Authenticated decryption with ChaCha20-Poly1305 (RFC 8439).
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(nonce)
+    
+    _UniffiConverterBytes.check_lower(ciphertext)
+    
+    _UniffiConverterBytes.check_lower(aad)
+    
+    _UniffiConverterBytes.check_lower(tag)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_decrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(nonce),
+        _UniffiConverterBytes.lower(ciphertext),
+        _UniffiConverterBytes.lower(aad),
+        _UniffiConverterBytes.lower(tag)))
+
+
+def uniffi_vault_chacha20_poly1305_encrypt(key: "bytes",nonce: "bytes",plaintext: "bytes",aad: "bytes") -> "UniFfiAeadResult":
+    """
+    Authenticated encryption with ChaCha20-Poly1305 (RFC 8439).
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(nonce)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    _UniffiConverterBytes.check_lower(aad)
+    
+    return _UniffiConverterTypeUniFfiAeadResult.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(nonce),
+        _UniffiConverterBytes.lower(plaintext),
+        _UniffiConverterBytes.lower(aad)))
+
+
+def uniffi_winzip_aes256_decrypt(password: "str",enc_payload: "bytes") -> "bytes":
+    """
+    Decrypts and authenticates a complete WinZip AES-256 payload.
+    """
+
+    _UniffiConverterString.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(enc_payload)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt,
+        _UniffiConverterString.lower(password),
+        _UniffiConverterBytes.lower(enc_payload)))
+
+
+def uniffi_winzip_aes256_derive_keys(password: "str",salt: "bytes") -> "UniFfiWinZipKeys":
+    """
+    Derives WinZip AES-256 keys (1000 rounds PBKDF2-HMAC-SHA1).
+    """
+
+    _UniffiConverterString.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(salt)
+    
+    return _UniffiConverterTypeUniFfiWinZipKeys.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_derive_keys,
+        _UniffiConverterString.lower(password),
+        _UniffiConverterBytes.lower(salt)))
+
+
+def uniffi_winzip_aes256_encrypt(password: "str",salt: "bytes",plaintext: "bytes") -> "bytes":
+    """
+    Encrypts plaintext into a complete WinZip AES-256 authenticated payload.
+    Format: `[16-byte salt] || [2-byte PVV] || [Ciphertext] || [10-byte HMAC-SHA1]`
+    """
+
+    _UniffiConverterString.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(salt)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_encrypt,
+        _UniffiConverterString.lower(password),
+        _UniffiConverterBytes.lower(salt),
+        _UniffiConverterBytes.lower(plaintext)))
+
+
+def uniffi_xxh3_128(data: "bytes",seed: "typing.Optional[int]") -> "bytes":
+    """
+    Computes XXH3 128-bit hash returning raw 16-byte array.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalUInt64.check_lower(seed)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_xxh3_128_digest(data: "bytes",seed: "typing.Optional[int]") -> "UniFfiXxh3128Digest":
+    """
+    Computes XXH3 128-bit hash returning structured record (low, high).
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalUInt64.check_lower(seed)
+    
+    return _UniffiConverterTypeUniFfiXxh3128Digest.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_128_digest,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_xxh3_64(data: "bytes",seed: "typing.Optional[int]") -> "int":
+    """
+    Computes XXH3 64-bit hash with optional 64-bit seed.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalUInt64.check_lower(seed)
+    
+    return _UniffiConverterUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_xxh3_64,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_zipcrypto_decrypt(password: "bytes",ciphertext: "bytes") -> "bytes":
+    """
+    Decrypts ciphertext buffer in-place using traditional PKZIP 3-key stream cipher.
+    """
+
+    _UniffiConverterBytes.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(ciphertext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_decrypt,
+        _UniffiConverterBytes.lower(password),
+        _UniffiConverterBytes.lower(ciphertext)))
+
+
+def uniffi_zipcrypto_encrypt(password: "bytes",plaintext: "bytes") -> "bytes":
+    """
+    Encrypts plaintext buffer in-place using traditional PKZIP 3-key stream cipher.
+    """
+
+    _UniffiConverterBytes.check_lower(password)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_encrypt,
+        _UniffiConverterBytes.lower(password),
+        _UniffiConverterBytes.lower(plaintext)))
+
+
+def uniffi_zlib_compress(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with zlib format (RFC 1950, levels 0..12).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_zlib_decompress(src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses zlib buffer into expected uncompressed size.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_zstd_compress(src: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer with Zstandard (RFC 8878, levels 1..22).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_zstd_compress_ldm(src: "bytes",level: "int",window_mb: "int") -> "bytes":
+    """
+    Compresses buffer with Zstandard Long Distance Matching (LDM).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    _UniffiConverterUInt32.check_lower(window_mb)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_ldm,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level),
+        _UniffiConverterUInt32.lower(window_mb)))
+
+
+def uniffi_zstd_compress_with_named_dict(src: "bytes",dict_name: "str") -> "bytes":
+    """
+    Compresses a small buffer using a registered named pre-trained dictionary.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterString.check_lower(dict_name)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_with_named_dict,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterString.lower(dict_name)))
+
+
+def uniffi_zstd_decompress(src: "bytes",expected_uncompressed_size: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses Zstandard buffer. If size is omitted, inspects frame header or dynamically allocates.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_zstd_decompress_with_named_dict(src: "bytes",dict_name: "str",expected_uncompressed_size: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses a small buffer using a registered named pre-trained dictionary.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterString.check_lower(dict_name)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress_with_named_dict,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterString.lower(dict_name),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_zstd_dict_compress(src: "bytes",dict_bytes: "bytes",level: "int") -> "bytes":
+    """
+    Compresses buffer using an explicit Zstandard dictionary byte array.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterBytes.check_lower(dict_bytes)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterBytes.lower(dict_bytes),
+        _UniffiConverterInt32.lower(level)))
+
+
+def uniffi_zstd_dict_decompress(src: "bytes",dict_bytes: "bytes",expected_uncompressed_size: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses buffer using an explicit Zstandard dictionary byte array.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterBytes.check_lower(dict_bytes)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterBytes.lower(dict_bytes),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_zstd_get_standard_112kb_dict() -> "bytes":
+    """
+    Returns the raw binary bytes of the built-in 112KB standard corpus dictionary.
+    """
+
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict,))
 
 
 def vault_compute_verifier(key: "bytes",salt: "bytes") -> "str":
@@ -10503,6 +13463,8 @@ __all__ = [
     "FileMediaType",
     "ThumbnailSamplingFilter",
     "TtZipError",
+    "UniFfiCompressionCodec",
+    "UniFfiCorpusType",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
     "UniFfiPlayerState",
@@ -10521,7 +13483,11 @@ __all__ = [
     "PasswordRecoveryOutcome",
     "PathSuggestionItem",
     "SniffMetadata",
+    "UniFfiAeadResult",
     "UniFfiAudioTrack",
+    "UniFfiBenchmarkMatrixReport",
+    "UniFfiBenchmarkPointResult",
+    "UniFfiCompressionOptions",
     "UniFfiCorruptedEntry",
     "UniFfiDocxExtractResult",
     "UniFfiDocxProperties",
@@ -10538,9 +13504,14 @@ __all__ = [
     "UniFfiMediaChapter",
     "UniFfiMediaDemuxSummary",
     "UniFfiMediaTrackInfo",
+    "UniFfiMipsBenchmarkResult",
+    "UniFfiMultimodalEntryMetadata",
     "UniFfiParentAndPrefix",
+    "UniFfiParetoCodecPoint",
     "UniFfiPdfDocumentInfo",
     "UniFfiPlaybackTimeInfo",
+    "UniFfiScenarioBenchmarkPoint",
+    "UniFfiScenarioMatrixReport",
     "UniFfiSmartExtractDecision",
     "UniFfiSubtitleColor",
     "UniFfiSubtitleDialogue",
@@ -10559,6 +13530,8 @@ __all__ = [
     "UniFfiVideoTrack",
     "UniFfiWalCommitResult",
     "UniFfiWalMutationSummary",
+    "UniFfiWinZipKeys",
+    "UniFfiXxh3128Digest",
     "VideoMetadataRecord",
     "apply_in_place_entry_mutation",
     "autocomplete_disk_path",
@@ -10620,10 +13593,76 @@ __all__ = [
     "sniff_format_buffer",
     "sniff_format_file",
     "tokenize_source_code",
+    "ttzip_bench_calculate_pareto_frontier",
+    "ttzip_bench_generate_corpus_bytes",
+    "ttzip_bench_generate_html_dashboard",
+    "ttzip_bench_generate_svg_pareto",
+    "ttzip_bench_list_silesia_entries",
+    "ttzip_bench_run_all_scenarios",
+    "ttzip_bench_run_gate",
+    "ttzip_bench_run_matrix",
+    "ttzip_bench_run_mips",
     "ttzip_i18n_format_bytes",
     "ttzip_i18n_format_throughput",
     "ttzip_i18n_get_string",
     "ttzip_i18n_localize_error",
+    "uniffi_7z_aes256_decrypt",
+    "uniffi_7z_aes256_derive_key",
+    "uniffi_7z_aes256_encrypt",
+    "uniffi_adler32",
+    "uniffi_adler32_rolling",
+    "uniffi_blake3",
+    "uniffi_blake3_keyed",
+    "uniffi_brotli_compress",
+    "uniffi_brotli_decompress",
+    "uniffi_bzip2_compress",
+    "uniffi_bzip2_decompress",
+    "uniffi_compress_bound",
+    "uniffi_compress_buffer",
+    "uniffi_crc32",
+    "uniffi_crc32_combine",
+    "uniffi_crc32_rolling",
+    "uniffi_crc64",
+    "uniffi_decompress_buffer",
+    "uniffi_deflate_compress",
+    "uniffi_deflate_decompress",
+    "uniffi_gzip_compress",
+    "uniffi_gzip_decompress",
+    "uniffi_lz4_compress_fast",
+    "uniffi_lz4_compress_hc",
+    "uniffi_lz4_decompress",
+    "uniffi_lzfse_compress",
+    "uniffi_lzfse_decompress",
+    "uniffi_lzvn_compress",
+    "uniffi_lzvn_decompress",
+    "uniffi_ppmd_compress",
+    "uniffi_ppmd_decompress",
+    "uniffi_snappy_compress",
+    "uniffi_snappy_decompress",
+    "uniffi_snappy_frame_decode",
+    "uniffi_snappy_frame_encode",
+    "uniffi_vault_aes_gcm_decrypt",
+    "uniffi_vault_aes_gcm_encrypt",
+    "uniffi_vault_chacha20_poly1305_decrypt",
+    "uniffi_vault_chacha20_poly1305_encrypt",
+    "uniffi_winzip_aes256_decrypt",
+    "uniffi_winzip_aes256_derive_keys",
+    "uniffi_winzip_aes256_encrypt",
+    "uniffi_xxh3_128",
+    "uniffi_xxh3_128_digest",
+    "uniffi_xxh3_64",
+    "uniffi_zipcrypto_decrypt",
+    "uniffi_zipcrypto_encrypt",
+    "uniffi_zlib_compress",
+    "uniffi_zlib_decompress",
+    "uniffi_zstd_compress",
+    "uniffi_zstd_compress_ldm",
+    "uniffi_zstd_compress_with_named_dict",
+    "uniffi_zstd_decompress",
+    "uniffi_zstd_decompress_with_named_dict",
+    "uniffi_zstd_dict_compress",
+    "uniffi_zstd_dict_decompress",
+    "uniffi_zstd_get_standard_112kb_dict",
     "vault_compute_verifier",
     "vault_decrypt_payload",
     "vault_derive_key",

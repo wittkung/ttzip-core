@@ -233,7 +233,60 @@ int main(void) {
     assert(st == TTZIP_STATUS_OK && decomp_len == raw_len);
     assert(memcmp(decomp_buf, codec_payload, raw_len) == 0);
 
-    printf("  [PASS] C SDK in-memory buffer codecs (DEFLATE, ZSTD, LZ4, Snappy, LZFSE) OK\n");
+    // Brotli
+    st = ttzip_rust_brotli_compress((const uint8_t *)codec_payload, raw_len, comp_buf, sizeof(comp_buf), 6, 22, &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_brotli_decompress(comp_buf, comp_len, decomp_buf, sizeof(decomp_buf), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == raw_len);
+    assert(memcmp(decomp_buf, codec_payload, raw_len) == 0);
+
+    // Fast-LZMA2
+    st = ttzip_rust_fl2_compress((const uint8_t *)codec_payload, raw_len, comp_buf, sizeof(comp_buf), 3, 1, &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_fl2_decompress(comp_buf, comp_len, decomp_buf, sizeof(decomp_buf), 1, &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == raw_len);
+    assert(memcmp(decomp_buf, codec_payload, raw_len) == 0);
+
+    // Bzip2
+    st = ttzip_rust_bzip2_compress((const uint8_t *)codec_payload, raw_len, comp_buf, sizeof(comp_buf), 6, &comp_len);
+    assert(st == TTZIP_STATUS_OK && comp_len > 0);
+    st = ttzip_rust_bzip2_decompress(comp_buf, comp_len, decomp_buf, sizeof(decomp_buf), &decomp_len);
+    assert(st == TTZIP_STATUS_OK && decomp_len == raw_len);
+    assert(memcmp(decomp_buf, codec_payload, raw_len) == 0);
+
+    printf("  [PASS] C SDK in-memory buffer codecs (DEFLATE, ZSTD, LZ4, Snappy, LZFSE, Brotli, FL2, Bzip2) OK\n");
+
+    // 8.1 Advanced Hashes & Ciphers Verification
+    uint64_t xxh64 = ttzip_rust_xxh3_64((const uint8_t *)codec_payload, raw_len, 0);
+    assert(xxh64 != 0);
+
+    uint8_t xxh128[16];
+    assert(ttzip_rust_xxh3_128((const uint8_t *)codec_payload, raw_len, 0, xxh128) == 0);
+
+    uint8_t blake3_out[32];
+    assert(ttzip_rust_blake3((const uint8_t *)codec_payload, raw_len, blake3_out) == 0);
+
+    uint8_t sha256_out[32];
+    assert(ttzip_rust_sha256((const uint8_t *)codec_payload, raw_len, sha256_out) == 0);
+
+    uint8_t md5_out[16];
+    assert(ttzip_rust_md5((const uint8_t *)codec_payload, raw_len, md5_out) == 0);
+
+    uint8_t sha1_out[20];
+    assert(ttzip_rust_sha1((const uint8_t *)codec_payload, raw_len, sha1_out) == 0);
+
+    // ChaCha20-Poly1305 AEAD
+    uint8_t chacha_key[32] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20};
+    uint8_t chacha_nonce[12] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b};
+    uint8_t chacha_cipher[512];
+    uint8_t chacha_tag[16];
+    uint8_t chacha_plain[512];
+
+    assert(ttzip_rust_chacha20_poly1305_encrypt(chacha_key, chacha_nonce, (const uint8_t *)codec_payload, raw_len, NULL, 0, chacha_cipher, chacha_tag) == 0);
+    assert(ttzip_rust_chacha20_poly1305_decrypt(chacha_key, chacha_nonce, chacha_cipher, raw_len, NULL, 0, chacha_tag, chacha_plain) == 0);
+    assert(memcmp(chacha_plain, codec_payload, raw_len) == 0);
+
+    printf("  [PASS] C SDK hardware hashes (XXH3, BLAKE3, SHA256, MD5, SHA1, ChaCha20-Poly1305) OK\n");
 
     // 9. Password-Protected Archive (AES-256)
     const char *pwd_archive = "/tmp/ttzip_c_encrypted.zip";

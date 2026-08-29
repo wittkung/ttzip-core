@@ -215,7 +215,7 @@ pub unsafe extern "C" fn ttzip_rust_bench_run_matrix(
     result.unwrap_or(-99)
 }
 
-/// Executes 24-point enterprise full-scenario benchmark matrix and writes JSON string into buffer.
+/// Executes 100-point enterprise full-scenario benchmark matrix and writes JSON string into buffer.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_bench_run_scenario_matrix(
     out_json: *mut c_char,

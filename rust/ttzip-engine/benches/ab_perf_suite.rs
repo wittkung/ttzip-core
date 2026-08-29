@@ -31,7 +31,6 @@ use rayon::prelude::*;
 mod ab_perf_suite_ext;
 
 // Current Commit Real Implementations
-use ttzip_engine::benchmark::corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
 use ttzip_engine::checksum::{adler32 as current_adler32, crc32 as current_crc32};
 use ttzip_engine::codecs::deflate::compressor::DeflateCompressor;
 use ttzip_engine::codecs::deflate::decompressor::DeflateDecompressor;

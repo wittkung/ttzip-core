@@ -2985,6 +2985,70 @@ public func FfiConverterTypeSniffMetadata_lower(_ value: SniffMetadata) -> RustB
 }
 
 /**
+ * Authenticated Encryption with Associated Data (AEAD) encryption result.
+ */
+public struct UniFfiAeadResult {
+    public var ciphertext: Data
+    public var tag: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(ciphertext: Data, tag: Data) {
+        self.ciphertext = ciphertext
+        self.tag = tag
+    }
+}
+
+extension UniFfiAeadResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiAeadResult, rhs: UniFfiAeadResult) -> Bool {
+        if lhs.ciphertext != rhs.ciphertext {
+            return false
+        }
+        if lhs.tag != rhs.tag {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ciphertext)
+        hasher.combine(tag)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAeadResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAeadResult {
+        return
+            try UniFfiAeadResult(
+                ciphertext: FfiConverterData.read(from: &buf),
+                tag: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAeadResult, into buf: inout [UInt8]) {
+        FfiConverterData.write(value.ciphertext, into: &buf)
+        FfiConverterData.write(value.tag, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAeadResult_lift(_ buf: RustBuffer) throws -> UniFfiAeadResult {
+    return try FfiConverterTypeUniFFIAeadResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAeadResult_lower(_ value: UniFfiAeadResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIAeadResult.lower(value)
+}
+
+/**
  * Audio track metadata exposed across UniFFI boundary.
  */
 public struct UniFfiAudioTrack {
@@ -3382,6 +3446,94 @@ public func FfiConverterTypeUniFFIBenchmarkPointResult_lift(_ buf: RustBuffer) t
 #endif
 public func FfiConverterTypeUniFFIBenchmarkPointResult_lower(_ value: UniFfiBenchmarkPointResult) -> RustBuffer {
     return FfiConverterTypeUniFFIBenchmarkPointResult.lower(value)
+}
+
+/**
+ * Compression parameters and options container.
+ */
+public struct UniFfiCompressionOptions {
+    public var level: Int32?
+    public var acceleration: Int32?
+    public var windowMb: UInt32?
+    public var ppmdOrder: UInt32?
+    public var ppmdMemMb: UInt32?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(level: Int32?, acceleration: Int32?, windowMb: UInt32?, ppmdOrder: UInt32?, ppmdMemMb: UInt32?) {
+        self.level = level
+        self.acceleration = acceleration
+        self.windowMb = windowMb
+        self.ppmdOrder = ppmdOrder
+        self.ppmdMemMb = ppmdMemMb
+    }
+}
+
+extension UniFfiCompressionOptions: Equatable, Hashable {
+    public static func == (lhs: UniFfiCompressionOptions, rhs: UniFfiCompressionOptions) -> Bool {
+        if lhs.level != rhs.level {
+            return false
+        }
+        if lhs.acceleration != rhs.acceleration {
+            return false
+        }
+        if lhs.windowMb != rhs.windowMb {
+            return false
+        }
+        if lhs.ppmdOrder != rhs.ppmdOrder {
+            return false
+        }
+        if lhs.ppmdMemMb != rhs.ppmdMemMb {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(level)
+        hasher.combine(acceleration)
+        hasher.combine(windowMb)
+        hasher.combine(ppmdOrder)
+        hasher.combine(ppmdMemMb)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICompressionOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCompressionOptions {
+        return
+            try UniFfiCompressionOptions(
+                level: FfiConverterOptionInt32.read(from: &buf),
+                acceleration: FfiConverterOptionInt32.read(from: &buf),
+                windowMb: FfiConverterOptionUInt32.read(from: &buf),
+                ppmdOrder: FfiConverterOptionUInt32.read(from: &buf),
+                ppmdMemMb: FfiConverterOptionUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiCompressionOptions, into buf: inout [UInt8]) {
+        FfiConverterOptionInt32.write(value.level, into: &buf)
+        FfiConverterOptionInt32.write(value.acceleration, into: &buf)
+        FfiConverterOptionUInt32.write(value.windowMb, into: &buf)
+        FfiConverterOptionUInt32.write(value.ppmdOrder, into: &buf)
+        FfiConverterOptionUInt32.write(value.ppmdMemMb, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICompressionOptions_lift(_ buf: RustBuffer) throws -> UniFfiCompressionOptions {
+    return try FfiConverterTypeUniFFICompressionOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICompressionOptions_lower(_ value: UniFfiCompressionOptions) -> RustBuffer {
+    return FfiConverterTypeUniFFICompressionOptions.lower(value)
 }
 
 /**
@@ -7537,6 +7689,142 @@ public func FfiConverterTypeUniFFIWalMutationSummary_lower(_ value: UniFfiWalMut
 }
 
 /**
+ * Derived WinZip AES-256 key material.
+ */
+public struct UniFfiWinZipKeys {
+    public var encKey: Data
+    public var authKey: Data
+    public var pvv: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(encKey: Data, authKey: Data, pvv: Data) {
+        self.encKey = encKey
+        self.authKey = authKey
+        self.pvv = pvv
+    }
+}
+
+extension UniFfiWinZipKeys: Equatable, Hashable {
+    public static func == (lhs: UniFfiWinZipKeys, rhs: UniFfiWinZipKeys) -> Bool {
+        if lhs.encKey != rhs.encKey {
+            return false
+        }
+        if lhs.authKey != rhs.authKey {
+            return false
+        }
+        if lhs.pvv != rhs.pvv {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(encKey)
+        hasher.combine(authKey)
+        hasher.combine(pvv)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIWinZipKeys: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiWinZipKeys {
+        return
+            try UniFfiWinZipKeys(
+                encKey: FfiConverterData.read(from: &buf),
+                authKey: FfiConverterData.read(from: &buf),
+                pvv: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiWinZipKeys, into buf: inout [UInt8]) {
+        FfiConverterData.write(value.encKey, into: &buf)
+        FfiConverterData.write(value.authKey, into: &buf)
+        FfiConverterData.write(value.pvv, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWinZipKeys_lift(_ buf: RustBuffer) throws -> UniFfiWinZipKeys {
+    return try FfiConverterTypeUniFFIWinZipKeys.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIWinZipKeys_lower(_ value: UniFfiWinZipKeys) -> RustBuffer {
+    return FfiConverterTypeUniFFIWinZipKeys.lower(value)
+}
+
+/**
+ * Structure representing a 128-bit XXH3 hash digest.
+ */
+public struct UniFfiXxh3128Digest {
+    public var low: UInt64
+    public var high: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(low: UInt64, high: UInt64) {
+        self.low = low
+        self.high = high
+    }
+}
+
+extension UniFfiXxh3128Digest: Equatable, Hashable {
+    public static func == (lhs: UniFfiXxh3128Digest, rhs: UniFfiXxh3128Digest) -> Bool {
+        if lhs.low != rhs.low {
+            return false
+        }
+        if lhs.high != rhs.high {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(low)
+        hasher.combine(high)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIXxh3128Digest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiXxh3128Digest {
+        return
+            try UniFfiXxh3128Digest(
+                low: FfiConverterUInt64.read(from: &buf),
+                high: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiXxh3128Digest, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.low, into: &buf)
+        FfiConverterUInt64.write(value.high, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIXxh3128Digest_lift(_ buf: RustBuffer) throws -> UniFfiXxh3128Digest {
+    return try FfiConverterTypeUniFFIXxh3128Digest.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIXxh3128Digest_lower(_ value: UniFfiXxh3128Digest) -> RustBuffer {
+    return FfiConverterTypeUniFFIXxh3128Digest.lower(value)
+}
+
+/**
  * Video metadata properties record exposed to Swift.
  */
 public struct VideoMetadataRecord {
@@ -8296,6 +8584,133 @@ extension ThumbnailSamplingFilter: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Compression codec identifier exposed to Swift and multi-language SDKs.
+ */
+
+public enum UniFfiCompressionCodec {
+    case deflateRaw
+    case zlib
+    case gzip
+    case zstd
+    case zstdLdm
+    case lz4Fast
+    case lz4Hc
+    case lzfse
+    case lzvn
+    case brotli
+    case snappyRaw
+    case snappyFramed
+    case bzip2
+    case ppmd
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICompressionCodec: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCompressionCodec
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCompressionCodec {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .deflateRaw
+
+        case 2: return .zlib
+
+        case 3: return .gzip
+
+        case 4: return .zstd
+
+        case 5: return .zstdLdm
+
+        case 6: return .lz4Fast
+
+        case 7: return .lz4Hc
+
+        case 8: return .lzfse
+
+        case 9: return .lzvn
+
+        case 10: return .brotli
+
+        case 11: return .snappyRaw
+
+        case 12: return .snappyFramed
+
+        case 13: return .bzip2
+
+        case 14: return .ppmd
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiCompressionCodec, into buf: inout [UInt8]) {
+        switch value {
+        case .deflateRaw:
+            writeInt(&buf, Int32(1))
+
+        case .zlib:
+            writeInt(&buf, Int32(2))
+
+        case .gzip:
+            writeInt(&buf, Int32(3))
+
+        case .zstd:
+            writeInt(&buf, Int32(4))
+
+        case .zstdLdm:
+            writeInt(&buf, Int32(5))
+
+        case .lz4Fast:
+            writeInt(&buf, Int32(6))
+
+        case .lz4Hc:
+            writeInt(&buf, Int32(7))
+
+        case .lzfse:
+            writeInt(&buf, Int32(8))
+
+        case .lzvn:
+            writeInt(&buf, Int32(9))
+
+        case .brotli:
+            writeInt(&buf, Int32(10))
+
+        case .snappyRaw:
+            writeInt(&buf, Int32(11))
+
+        case .snappyFramed:
+            writeInt(&buf, Int32(12))
+
+        case .bzip2:
+            writeInt(&buf, Int32(13))
+
+        case .ppmd:
+            writeInt(&buf, Int32(14))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICompressionCodec_lift(_ buf: RustBuffer) throws -> UniFfiCompressionCodec {
+    return try FfiConverterTypeUniFFICompressionCodec.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICompressionCodec_lower(_ value: UniFfiCompressionCodec) -> RustBuffer {
+    return FfiConverterTypeUniFFICompressionCodec.lower(value)
+}
+
+extension UniFfiCompressionCodec: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Strongly typed corpus types for benchmark dataset selection.
  */
 
@@ -8949,6 +9364,30 @@ private struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionInt32: FfiConverterRustBuffer {
+    typealias SwiftType = Int32?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt32.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt32.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
     typealias SwiftType = UInt64?
 
@@ -9205,6 +9644,30 @@ private struct FfiConverterOptionTypeModel3DMetadataRecord: FfiConverterRustBuff
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeModel3DMetadataRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFICompressionOptions: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCompressionOptions?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFICompressionOptions.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFICompressionOptions.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -10845,7 +11308,7 @@ public func ttzipBenchListSilesiaEntries() -> [UniFfiMultimodalEntryMetadata] {
 }
 
 /**
- * Executes all 24 enterprise full-scenario benchmark points.
+ * Executes all 100 enterprise full-scenario benchmark points.
  */
 public func ttzipBenchRunAllScenarios() throws -> UniFfiScenarioMatrixReport {
     return try FfiConverterTypeUniFFIScenarioMatrixReport.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
@@ -10936,6 +11399,706 @@ public func ttzipI18nLocalizeError(errorCode: Int32, param1: String?, param2: St
             FfiConverterOptionString.lower(param2),
             FfiConverterTypeAppLanguage.lower(lang), $0
         )
+    })
+}
+
+/**
+ * Decrypts AES-256-CBC ciphertext and validates PKCS#7 block padding.
+ */
+public func uniffi7zAes256Decrypt(key: Data, iv: Data, ciphertext: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_decrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(iv),
+            FfiConverterData.lower(ciphertext), $0
+        )
+    })
+}
+
+/**
+ * Derives 7z 256-bit AES key using multi-round SHA-256 KDF (up to 2^19 cycles).
+ */
+public func uniffi7zAes256DeriveKey(password: String, salt: Data, numCyclesPower: UInt32) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_derive_key(
+            FfiConverterString.lower(password),
+            FfiConverterData.lower(salt),
+            FfiConverterUInt32.lower(numCyclesPower), $0
+        )
+    })
+}
+
+/**
+ * Encrypts plaintext with AES-256-CBC with PKCS#7 block padding.
+ */
+public func uniffi7zAes256Encrypt(key: Data, iv: Data, plaintext: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_7z_aes256_encrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(iv),
+            FfiConverterData.lower(plaintext), $0
+        )
+    })
+}
+
+/**
+ * Computes Adler-32 checksum starting from standard initial state 1.
+ */
+public func uniffiAdler32(data: Data) -> UInt32 {
+    return try! FfiConverterUInt32.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_adler32(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Computes rolling Adler-32 checksum starting from an existing accumulator.
+ */
+public func uniffiAdler32Rolling(initial: UInt32, data: Data) -> UInt32 {
+    return try! FfiConverterUInt32.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling(
+            FfiConverterUInt32.lower(initial),
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Computes unkeyed 256-bit BLAKE3 hash returning 32-byte digest.
+ */
+public func uniffiBlake3(data: Data) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_blake3(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Computes keyed 256-bit BLAKE3 hash with 32-byte secret key (scrubs key upon return).
+ */
+public func uniffiBlake3Keyed(data: Data, key: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_blake3_keyed(
+            FfiConverterData.lower(data),
+            FfiConverterData.lower(key), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Google Brotli (quality 0..11, lgwin 10..24).
+ */
+public func uniffiBrotliCompress(src: Data, quality: Int32, lgwin: UInt32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_brotli_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(quality),
+            FfiConverterUInt32.lower(lgwin), $0
+        )
+    })
+}
+
+/**
+ * Decompresses Google Brotli stream.
+ */
+public func uniffiBrotliDecompress(src: Data, expectedUncompressedSize: UInt64?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_brotli_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Bzip2 (levels 1..9).
+ */
+public func uniffiBzip2Compress(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_bzip2_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses Bzip2 stream into memory.
+ */
+public func uniffiBzip2Decompress(src: Data, expectedUncompressedSize: UInt64?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Computes upper bound on compressed bytes for a given codec and input size.
+ */
+public func uniffiCompressBound(codec: UniFfiCompressionCodec, srcLen: UInt64, level: Int32?) -> UInt64 {
+    return try! FfiConverterUInt64.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_compress_bound(
+            FfiConverterTypeUniFFICompressionCodec.lower(codec),
+            FfiConverterUInt64.lower(srcLen),
+            FfiConverterOptionInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Compresses a memory buffer using the specified codec and options.
+ */
+public func uniffiCompressBuffer(codec: UniFfiCompressionCodec, src: Data, options: UniFfiCompressionOptions?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_compress_buffer(
+            FfiConverterTypeUniFFICompressionCodec.lower(codec),
+            FfiConverterData.lower(src),
+            FfiConverterOptionTypeUniFFICompressionOptions.lower(options), $0
+        )
+    })
+}
+
+/**
+ * Computes CRC-32 (IEEE 802.3) checksum.
+ */
+public func uniffiCrc32(data: Data) -> UInt32 {
+    return try! FfiConverterUInt32.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_crc32(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Combines two separate CRC-32 checksums in O(log N) time using GF(2) matrix multiplication.
+ */
+public func uniffiCrc32Combine(crc1: UInt32, crc2: UInt32, len2: UInt64) -> UInt32 {
+    return try! FfiConverterUInt32.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_crc32_combine(
+            FfiConverterUInt32.lower(crc1),
+            FfiConverterUInt32.lower(crc2),
+            FfiConverterUInt64.lower(len2), $0
+        )
+    })
+}
+
+/**
+ * Computes rolling CRC-32 checksum starting from an existing accumulator.
+ */
+public func uniffiCrc32Rolling(initial: UInt32, data: Data) -> UInt32 {
+    return try! FfiConverterUInt32.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_crc32_rolling(
+            FfiConverterUInt32.lower(initial),
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
+ * Computes CRC-64 (ECMA-182) checksum with optional seed (defaults to 0).
+ */
+public func uniffiCrc64(data: Data, seed: UInt64?) -> UInt64 {
+    return try! FfiConverterUInt64.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_crc64(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
+ * Decompresses a memory buffer using the specified codec.
+ */
+public func uniffiDecompressBuffer(codec: UniFfiCompressionCodec, src: Data, expectedUncompressedSize: UInt64?, options: UniFfiCompressionOptions?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_decompress_buffer(
+            FfiConverterTypeUniFFICompressionCodec.lower(codec),
+            FfiConverterData.lower(src),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize),
+            FfiConverterOptionTypeUniFFICompressionOptions.lower(options), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with raw DEFLATE (RFC 1951, levels 0..12).
+ */
+public func uniffiDeflateCompress(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses raw DEFLATE buffer into expected uncompressed size.
+ */
+public func uniffiDeflateDecompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with gzip format (RFC 1952, levels 0..12).
+ */
+public func uniffiGzipCompress(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_gzip_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses gzip buffer into expected uncompressed size.
+ */
+public func uniffiGzipDecompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with LZ4 Fast mode (acceleration 1..100).
+ */
+public func uniffiLz4CompressFast(src: Data, acceleration: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(acceleration), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with LZ4 High Compression (HC, levels 1..12).
+ */
+public func uniffiLz4CompressHc(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses LZ4 block into expected uncompressed size.
+ */
+public func uniffiLz4Decompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lz4_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Apple LZFSE.
+ */
+public func uniffiLzfseCompress(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lzfse_compress(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Decompresses Apple LZFSE buffer into expected uncompressed size.
+ */
+public func uniffiLzfseDecompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lzfse_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Apple LZVN.
+ */
+public func uniffiLzvnCompress(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Decompresses Apple LZVN buffer into expected uncompressed size.
+ */
+public func uniffiLzvnDecompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with PPMd Model H (orders 2..16, mem_mb 2..256).
+ */
+public func uniffiPpmdCompress(src: Data, order: UInt32, memMb: UInt32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_ppmd_compress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt32.lower(order),
+            FfiConverterUInt32.lower(memMb), $0
+        )
+    })
+}
+
+/**
+ * Decompresses PPMd stream into memory.
+ */
+public func uniffiPpmdDecompress(src: Data, expectedUncompressedSize: UInt64, order: UInt32, memMb: UInt32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize),
+            FfiConverterUInt32.lower(order),
+            FfiConverterUInt32.lower(memMb), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with raw Snappy block format.
+ */
+public func uniffiSnappyCompress(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_snappy_compress(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Decompresses raw Snappy block format.
+ */
+public func uniffiSnappyDecompress(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_snappy_decompress(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Decompresses official Snappy Framed stream format.
+ */
+public func uniffiSnappyFrameDecode(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer into official Snappy Framed stream format.
+ */
+public func uniffiSnappyFrameEncode(src: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(
+            FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Authenticated decryption with AES-256-GCM (NIST SP 800-38D).
+ */
+public func uniffiVaultAesGcmDecrypt(key: Data, iv: Data, ciphertext: Data, aad: Data, tag: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(iv),
+            FfiConverterData.lower(ciphertext),
+            FfiConverterData.lower(aad),
+            FfiConverterData.lower(tag), $0
+        )
+    })
+}
+
+/**
+ * Authenticated encryption with AES-256-GCM (NIST SP 800-38D).
+ */
+public func uniffiVaultAesGcmEncrypt(key: Data, iv: Data, plaintext: Data, aad: Data) throws -> UniFfiAeadResult {
+    return try FfiConverterTypeUniFFIAeadResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_encrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(iv),
+            FfiConverterData.lower(plaintext),
+            FfiConverterData.lower(aad), $0
+        )
+    })
+}
+
+/**
+ * Authenticated decryption with ChaCha20-Poly1305 (RFC 8439).
+ */
+public func uniffiVaultChacha20Poly1305Decrypt(key: Data, nonce: Data, ciphertext: Data, aad: Data, tag: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_decrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(nonce),
+            FfiConverterData.lower(ciphertext),
+            FfiConverterData.lower(aad),
+            FfiConverterData.lower(tag), $0
+        )
+    })
+}
+
+/**
+ * Authenticated encryption with ChaCha20-Poly1305 (RFC 8439).
+ */
+public func uniffiVaultChacha20Poly1305Encrypt(key: Data, nonce: Data, plaintext: Data, aad: Data) throws -> UniFfiAeadResult {
+    return try FfiConverterTypeUniFFIAeadResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt(
+            FfiConverterData.lower(key),
+            FfiConverterData.lower(nonce),
+            FfiConverterData.lower(plaintext),
+            FfiConverterData.lower(aad), $0
+        )
+    })
+}
+
+/**
+ * Decrypts and authenticates a complete WinZip AES-256 payload.
+ */
+public func uniffiWinzipAes256Decrypt(password: String, encPayload: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt(
+            FfiConverterString.lower(password),
+            FfiConverterData.lower(encPayload), $0
+        )
+    })
+}
+
+/**
+ * Derives WinZip AES-256 keys (1000 rounds PBKDF2-HMAC-SHA1).
+ */
+public func uniffiWinzipAes256DeriveKeys(password: String, salt: Data) throws -> UniFfiWinZipKeys {
+    return try FfiConverterTypeUniFFIWinZipKeys.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_derive_keys(
+            FfiConverterString.lower(password),
+            FfiConverterData.lower(salt), $0
+        )
+    })
+}
+
+/**
+ * Encrypts plaintext into a complete WinZip AES-256 authenticated payload.
+ * Format: `[16-byte salt] || [2-byte PVV] || [Ciphertext] || [10-byte HMAC-SHA1]`
+ */
+public func uniffiWinzipAes256Encrypt(password: String, salt: Data, plaintext: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_encrypt(
+            FfiConverterString.lower(password),
+            FfiConverterData.lower(salt),
+            FfiConverterData.lower(plaintext), $0
+        )
+    })
+}
+
+/**
+ * Computes XXH3 128-bit hash returning raw 16-byte array.
+ */
+public func uniffiXxh3128(data: Data, seed: UInt64?) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_xxh3_128(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
+ * Computes XXH3 128-bit hash returning structured record (low, high).
+ */
+public func uniffiXxh3128Digest(data: Data, seed: UInt64?) -> UniFfiXxh3128Digest {
+    return try! FfiConverterTypeUniFFIXxh3128Digest.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_xxh3_128_digest(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
+ * Computes XXH3 64-bit hash with optional 64-bit seed.
+ */
+public func uniffiXxh364(data: Data, seed: UInt64?) -> UInt64 {
+    return try! FfiConverterUInt64.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_xxh3_64(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
+ * Decrypts ciphertext buffer in-place using traditional PKZIP 3-key stream cipher.
+ */
+public func uniffiZipcryptoDecrypt(password: Data, ciphertext: Data) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_decrypt(
+            FfiConverterData.lower(password),
+            FfiConverterData.lower(ciphertext), $0
+        )
+    })
+}
+
+/**
+ * Encrypts plaintext buffer in-place using traditional PKZIP 3-key stream cipher.
+ */
+public func uniffiZipcryptoEncrypt(password: Data, plaintext: Data) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_zipcrypto_encrypt(
+            FfiConverterData.lower(password),
+            FfiConverterData.lower(plaintext), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with zlib format (RFC 1950, levels 0..12).
+ */
+public func uniffiZlibCompress(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zlib_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses zlib buffer into expected uncompressed size.
+ */
+public func uniffiZlibDecompress(src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Zstandard (RFC 8878, levels 1..22).
+ */
+public func uniffiZstdCompress(src: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_compress(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer with Zstandard Long Distance Matching (LDM).
+ */
+public func uniffiZstdCompressLdm(src: Data, level: Int32, windowMb: UInt32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_ldm(
+            FfiConverterData.lower(src),
+            FfiConverterInt32.lower(level),
+            FfiConverterUInt32.lower(windowMb), $0
+        )
+    })
+}
+
+/**
+ * Compresses a small buffer using a registered named pre-trained dictionary.
+ */
+public func uniffiZstdCompressWithNamedDict(src: Data, dictName: String) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_with_named_dict(
+            FfiConverterData.lower(src),
+            FfiConverterString.lower(dictName), $0
+        )
+    })
+}
+
+/**
+ * Decompresses Zstandard buffer. If size is omitted, inspects frame header or dynamically allocates.
+ */
+public func uniffiZstdDecompress(src: Data, expectedUncompressedSize: UInt64?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Decompresses a small buffer using a registered named pre-trained dictionary.
+ */
+public func uniffiZstdDecompressWithNamedDict(src: Data, dictName: String, expectedUncompressedSize: UInt64?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_decompress_with_named_dict(
+            FfiConverterData.lower(src),
+            FfiConverterString.lower(dictName),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Compresses buffer using an explicit Zstandard dictionary byte array.
+ */
+public func uniffiZstdDictCompress(src: Data, dictBytes: Data, level: Int32) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_compress(
+            FfiConverterData.lower(src),
+            FfiConverterData.lower(dictBytes),
+            FfiConverterInt32.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses buffer using an explicit Zstandard dictionary byte array.
+ */
+public func uniffiZstdDictDecompress(src: Data, dictBytes: Data, expectedUncompressedSize: UInt64?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_decompress(
+            FfiConverterData.lower(src),
+            FfiConverterData.lower(dictBytes),
+            FfiConverterOptionUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Returns the raw binary bytes of the built-in 112KB standard corpus dictionary.
+ */
+public func uniffiZstdGetStandard112kbDict() -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict($0)
     })
 }
 
@@ -11229,7 +12392,7 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_list_silesia_entries() != 48562 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 29258 {
+    if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_all_scenarios() != 63498 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_bench_run_gate() != 22949 {
@@ -11251,6 +12414,177 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_ttzip_i18n_localize_error() != 34636 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_decrypt() != 35554 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_derive_key() != 51521 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_7z_aes256_encrypt() != 25282 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_adler32() != 19846 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_blake3() != 58283 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed() != 53031 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_brotli_compress() != 58724 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_brotli_decompress() != 54721 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress() != 11629 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress() != 61807 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_compress_bound() != 53214 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer() != 35599 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_crc32() != 35952 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine() != 10627 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling() != 3460 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer() != 6970 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress() != 47226 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress() != 43293 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress() != 57781 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc() != 53597 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lz4_decompress() != 22512 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lzfse_compress() != 6969 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lzfse_decompress() != 18113 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress() != 6203 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress() != 37741 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_snappy_decompress() != 28661 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode() != 18366 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_encrypt() != 24735 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt() != 44392 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt() != 53726 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt() != 12928 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_derive_keys() != 58721 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_encrypt() != 9998 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128() != 24342 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_xxh3_128_digest() != 8236 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_xxh3_64() != 48064 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_decrypt() != 61450 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zipcrypto_encrypt() != 18367 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zlib_compress() != 27649 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress() != 64979 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress() != 39956 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm() != 25800 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_with_named_dict() != 29430 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress() != 7530 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_decompress_with_named_dict() != 58914 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_compress() != 37420 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress() != 3975 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict() != 13515 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757 {

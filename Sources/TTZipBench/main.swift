@@ -15,6 +15,7 @@ func printHelp() {
     USAGE: ttzip-bench <subcommand> [options]
 
     SUBCOMMANDS:
+      scenario-matrix Run enterprise 100-scenario high-pressure benchmark matrix (7 industrial categories)
       matrix-gate     Run full matrix benchmark across 8 mathematical synthetic corpus types & codecs
       scenario-gate   Run real-world scenario gates (Office, Code, Media, Entropy, Deep VFS)
       mips-score      Calculate Apple Silicon MIPS rating, memory bandwidth & hardware efficiency index
@@ -30,7 +31,87 @@ func printHelp() {
     """)
 }
 
-// MARK: - 1. Matrix Gate (8 Mathematical Synthetic Datasets)
+// MARK: - 1. Enterprise 100-Scenario High-Pressure Matrix
+
+func execute100ScenarioMatrix(jsonOut: String?) -> Bool {
+    print("⚡️ Executing TTZip Enterprise 100-Scenario High-Pressure Benchmark Matrix...")
+    print("   Evaluating 7 Industrial Categories | Mach Kernel Task RSS Invariant: Delta <= 64MB")
+    print("----------------------------------------------------------------------------------------------------------------------------------")
+    print(String(format: "%-8@ | %-12@ | %-6@ | %-32@ | %-12@ | %-12@ | %-8@ | %-6@", "ID", "Category", "Fmt", "Scenario Name", "Create MB/s", "Extract MB/s", "Savings", "Status"))
+    print("----------------------------------------------------------------------------------------------------------------------------------")
+
+    do {
+        let report = try ttzipBenchRunAllScenarios()
+        var reportRows: [[String: Any]] = []
+
+        for pt in report.points {
+            let statusStr = pt.passedInvariants ? "✅ PASS" : "❌ FAIL"
+            let savingsStr = String(format: "%5.1f%%", pt.spaceSavingsPct)
+            print(String(
+                format: "%-8@ | %-12@ | %-6@ | %-32@ | %9.1f MB/s | %9.1f MB/s | %-8@ | %@",
+                pt.id,
+                pt.category,
+                pt.format,
+                String(pt.displayName.prefix(32)),
+                pt.createThroughputMbs,
+                pt.extractThroughputMbs,
+                savingsStr,
+                statusStr
+            ))
+
+            reportRows.append([
+                "id": pt.id,
+                "category": pt.category,
+                "format": pt.format,
+                "display_name": pt.displayName,
+                "options_summary": pt.optionsSummary,
+                "original_size_bytes": pt.originalSizeBytes,
+                "output_size_bytes": pt.outputSizeBytes,
+                "space_savings_pct": pt.spaceSavingsPct,
+                "create_throughput_mbs": pt.createThroughputMbs,
+                "extract_throughput_mbs": pt.extractThroughputMbs,
+                "create_duration_micros": pt.createDurationMicros,
+                "extract_duration_micros": pt.extractDurationMicros,
+                "is_encrypted": pt.isEncrypted,
+                "is_split": pt.isSplit,
+                "is_solid": pt.isSolid,
+                "passed_invariants": pt.passedInvariants
+            ])
+        }
+
+        print("----------------------------------------------------------------------------------------------------------------------------------")
+        print(String(
+            format: "📊 Matrix Summary: %d Scenarios Evaluated | Peak Create: %7.1f MB/s | Peak Extract: %7.1f MB/s | Gate: %@",
+            report.totalScenariosEvaluated,
+            report.peakCreateThroughputMbs,
+            report.peakExtractThroughputMbs,
+            report.allInvariantsPassed ? "✅ ALL PASSED" : "❌ GATE FAILED"
+        ))
+        print("----------------------------------------------------------------------------------------------------------------------------------")
+
+        if let path = jsonOut {
+            let telemetryPayload: [String: Any] = [
+                "total_scenarios_evaluated": report.totalScenariosEvaluated,
+                "timestamp_epoch_secs": report.timestampEpochSecs,
+                "peak_create_throughput_mbs": report.peakCreateThroughputMbs,
+                "peak_extract_throughput_mbs": report.peakExtractThroughputMbs,
+                "all_invariants_passed": report.allInvariantsPassed,
+                "scenarios": reportRows
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: telemetryPayload, options: .prettyPrinted) {
+                try? data.write(to: URL(fileURLWithPath: path))
+                print("\n📄 Enterprise 100-Scenario JSON Report written to: \(path)")
+            }
+        }
+
+        return report.allInvariantsPassed && report.totalScenariosEvaluated == 100
+    } catch {
+        print("❌ Fatal error executing 100-scenario matrix: \(error)")
+        return false
+    }
+}
+
+// MARK: - 2. Matrix Gate (8 Mathematical Synthetic Datasets)
 
 func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
     print("⚡️ Executing TTZip Matrix Gate across 8 Mathematical Synthetic Corpus Types...")
@@ -119,11 +200,9 @@ func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
             rowPassed = false
         }
 
-
         let statusStr = rowPassed ? "✅ PASS" : "⚠️ WARN"
         print(String(format: "%-32@ | %-10.2f GB/s | %-10.2f GB/s | %-9.1f MB/s | %-9.1f MB/s | %@",
                      corpusType.rawValue, crcThroughputGBs, adlerThroughputGBs, deflCompMBs, deflDecompMBs, statusStr))
-
 
         if !rowPassed {
             allPassed = false
@@ -159,97 +238,13 @@ func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
     return allPassed
 }
 
-// MARK: - 2. Scenario Gate (Real-World Pipeline Stress)
+// MARK: - 3. Scenario Gate (Real-World Pipeline Stress)
 
 func executeScenarioGate(jsonOut: String?) -> Bool {
-    print("⚡️ Running TTZip Real-World Scenario Gate (Multi-Modal APFS Pipeline)...")
-
-    let scenarios: [(name: String, format: ArchiveCompressionFormat, corpus: SyntheticCorpusType, sizeMB: Int)] = [
-        ("Office Documents Archive", .zip, .zipfText, 15),
-        ("Source Code Repository", .tarZst, .shortMatch, 20),
-        ("Mach-O Binary App Bundle", .sevenZip, .machOBinary, 10),
-        ("Media & Raster Asset Pack", .tarLz4, .realisticRgb, 15),
-        ("High Entropy Data Vault", .zip, .whiteNoise, 10)
-    ]
-
-    var allPassed = true
-    var scenarioReports: [[String: Any]] = []
-
-    for scenario in scenarios {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_scenario_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let inputFile = tempDir.appendingPathComponent("payload.bin")
-        let outputArchive = tempDir.appendingPathComponent("archive.\(scenario.format.rawValue)")
-        let extractDir = tempDir.appendingPathComponent("extracted")
-
-        let rawData = SyntheticCorpusGenerator.generate(type: scenario.corpus, size: scenario.sizeMB * 1024 * 1024)
-        try? rawData.write(to: inputFile)
-
-        let writer = ArchiveWriter()
-        let t0 = DispatchTime.now().uptimeNanoseconds
-        guard (try? writer.createArchiveSync(
-            outputPath: outputArchive.path,
-            format: scenario.format,
-            level: .normal,
-            inputPaths: [inputFile.path]
-        )) != nil else {
-            print("❌ Scenario failed: \(scenario.name) [Compression]")
-            allPassed = false
-            continue
-        }
-        let t1 = DispatchTime.now().uptimeNanoseconds
-        let compDuration = Double(t1 - t0) / 1_000_000_000.0
-        let compThroughput = Double(scenario.sizeMB) / max(0.0001, compDuration)
-
-        let extractor = ArchiveExtractor()
-        let t2 = DispatchTime.now().uptimeNanoseconds
-        guard (try? extractor.extractSync(
-            archivePath: outputArchive.path,
-            destinationDir: extractDir.path
-        )) != nil else {
-            print("❌ Scenario failed: \(scenario.name) [Extraction]")
-            allPassed = false
-            continue
-        }
-        let t3 = DispatchTime.now().uptimeNanoseconds
-        let decompDuration = Double(t3 - t2) / 1_000_000_000.0
-        let decompThroughput = Double(scenario.sizeMB) / max(0.0001, decompDuration)
-
-        let extractedFile = extractDir.appendingPathComponent("payload.bin")
-        let extractedData = (try? Data(contentsOf: extractedFile)) ?? Data()
-        let integrityMatch = (extractedData == rawData)
-
-        if !integrityMatch {
-            print("❌ Scenario integrity mismatch: \(scenario.name)")
-            allPassed = false
-        }
-
-        print(String(format: "  - %-26@ : Compress %6.1f MB/s | Extract %6.1f MB/s | Integrity: %@",
-                     scenario.name, compThroughput, decompThroughput, integrityMatch ? "OK" : "FAIL"))
-
-        scenarioReports.append([
-            "scenario": scenario.name,
-            "format": scenario.format.rawValue,
-            "size_mb": scenario.sizeMB,
-            "compress_mbs": compThroughput,
-            "extract_mbs": decompThroughput,
-            "integrity_passed": integrityMatch
-        ])
-    }
-
-    if let path = jsonOut {
-        if let data = try? JSONSerialization.data(withJSONObject: scenarioReports, options: .prettyPrinted) {
-            try? data.write(to: URL(fileURLWithPath: path))
-            print("\n📄 Scenario Telemetry JSON exported to: \(path)")
-        }
-    }
-
-    return allPassed
+    return execute100ScenarioMatrix(jsonOut: jsonOut)
 }
 
-// MARK: - 3. MIPS Score & Apple Silicon Efficiency Index
+// MARK: - 4. MIPS Score & Apple Silicon Efficiency Index
 
 func executeMipsScore(jsonOut: String?) {
     let cores = ProcessInfo.processInfo.activeProcessorCount
@@ -294,7 +289,6 @@ func executeMipsScore(jsonOut: String?) {
     let deflThroughputMBs = sizeMB / max(0.000001, deflSec)
 
     // 4. MIPS Rating Estimation (Instructions / Second)
-    // PMULL processes 16 bytes per cycle; ARM64 CRC32X is 8 bytes per cycle
     let estimatedMips = (crcThroughputGBs * 1024.0 * 1.5) + (deflThroughputMBs * 2.8) + (memoryBandwidthGBs * 120.0)
     let efficiencyIndex = min(100.0, (estimatedMips / (Double(cores) * 800.0)) * 100.0)
 
@@ -322,7 +316,7 @@ func executeMipsScore(jsonOut: String?) {
     }
 }
 
-// MARK: - 4. A/B Differential Sampling (Baseline vs Hardware Kernel)
+// MARK: - 5. A/B Differential Sampling (Baseline vs Hardware Kernel)
 
 func executeAbSample(jsonOut: String?) {
     print("⚡️ Executing Differential A/B Benchmark (Baseline vs TTZip Microkernel)...")
@@ -389,7 +383,7 @@ func executeAbSample(jsonOut: String?) {
     }
 }
 
-// MARK: - 5. Legacy Gate & Pipeline Subcommands
+// MARK: - 6. Legacy Gate & Pipeline Subcommands
 
 func executeGateBenchmark(jsonOut: String?) -> Bool {
     return executeMatrixGate(corpusSizeMB: 10, jsonOut: jsonOut)
@@ -500,12 +494,12 @@ while idx < args.count {
 }
 
 switch command {
-case "matrix-gate":
-    let success = executeMatrixGate(corpusSizeMB: corpusSizeMB, jsonOut: jsonOut)
+case "scenario-matrix", "scenario-gate":
+    let success = execute100ScenarioMatrix(jsonOut: jsonOut)
     exit(success ? 0 : 70)
 
-case "scenario-gate":
-    let success = executeScenarioGate(jsonOut: jsonOut)
+case "matrix-gate":
+    let success = executeMatrixGate(corpusSizeMB: corpusSizeMB, jsonOut: jsonOut)
     exit(success ? 0 : 70)
 
 case "mips-score":

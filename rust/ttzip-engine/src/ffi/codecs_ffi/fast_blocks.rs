@@ -87,6 +87,11 @@ pub extern "C" fn ttzip_rust_lz4_compress_bound(src_len: size_t) -> size_t {
 }
 
 #[no_mangle]
+pub extern "C" fn ttzip_rust_lzfse_compress_bound(src_len: size_t) -> size_t {
+    crate::codecs::lzfse::lzfse_compress_bound(src_len)
+}
+
+#[no_mangle]
 pub extern "C" fn ttzip_rust_lzfse_compress(
     src: *const u8,
     src_len: size_t,

@@ -413,7 +413,7 @@ pub fn ttzip_bench_list_silesia_entries() -> Vec<UniFFIMultimodalEntryMetadata> 
         .collect()
 }
 
-/// Executes all 24 enterprise full-scenario benchmark points.
+/// Executes all 100 enterprise full-scenario benchmark points.
 #[uniffi::export]
 pub fn ttzip_bench_run_all_scenarios() -> Result<UniFFIScenarioMatrixReport, TTZipError> {
     let report = ScenarioBenchmarkDriver::run_all_scenarios()
@@ -479,7 +479,7 @@ mod tests {
         let scenario_res = ttzip_bench_run_all_scenarios();
         assert!(scenario_res.is_ok());
         let scenario_report = scenario_res.unwrap();
-        assert_eq!(scenario_report.total_scenarios_evaluated, 24);
+        assert_eq!(scenario_report.total_scenarios_evaluated, 100);
         assert!(scenario_report.all_invariants_passed);
 
         let temp = tempdir().unwrap();
