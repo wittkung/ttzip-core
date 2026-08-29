@@ -17,10 +17,12 @@
 use ttzip_engine::analytics::entropy::compute_shannon_entropy;
 use ttzip_engine::benchmark::codecs_driver::{
     BrotliBenchmarkDriver, Bzip2BenchmarkDriver, CodecBenchmarkDriver, DeflateBenchmarkDriver,
-    Lz4BenchmarkDriver, LzfseBenchmarkDriver, Lzma2BenchmarkDriver, MatrixCodecDriver,
-    SnappyBenchmarkDriver, ZstdBenchmarkDriver,
+    FseBenchmarkDriver, Huff0BenchmarkDriver, Lz4BenchmarkDriver, LzfseBenchmarkDriver,
+    Lzma2BenchmarkDriver, MatrixCodecDriver, PpmdBenchmarkDriver, SnappyBenchmarkDriver,
+    ZstdBenchmarkDriver, ZstdDictBenchmarkDriver, ZstdLdmBenchmarkDriver,
 };
 use ttzip_engine::benchmark::corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
+use ttzip_engine::benchmark::crypto_driver::MatrixCryptoDriver;
 use ttzip_engine::benchmark::runner::BenchmarkMatrixRunner;
 
 const BENCH_CORPUS_SIZE: usize = 64 * 1024; // 64KB per test cell
@@ -61,10 +63,10 @@ fn test_all_8_mathematical_corpora_generation_and_entropy_bounds() {
     }
 }
 
-// MARK: - 2. Full 8x8 Matrix Roundtrip Fidelity
+// MARK: - 2. Full 13-Codec Matrix Roundtrip Fidelity Across 8 Corpora
 
 #[test]
-fn test_universal_matrix_8_codecs_by_8_corpora_roundtrip_fidelity() {
+fn test_universal_matrix_13_codecs_by_8_corpora_roundtrip_fidelity() {
     let corpora = [
         BenchmarkCorpusType::TextData,
         BenchmarkCorpusType::ShortMatch,
@@ -78,18 +80,27 @@ fn test_universal_matrix_8_codecs_by_8_corpora_roundtrip_fidelity() {
 
     let deflate = DeflateBenchmarkDriver;
     let zstd = ZstdBenchmarkDriver;
+    let zstd_ldm = ZstdLdmBenchmarkDriver;
+    let zstd_dict = ZstdDictBenchmarkDriver;
+    let fse = FseBenchmarkDriver;
+    let huff0 = Huff0BenchmarkDriver;
     let lzma2 = Lzma2BenchmarkDriver;
     let brotli = BrotliBenchmarkDriver;
     let bzip2 = Bzip2BenchmarkDriver;
     let snappy = SnappyBenchmarkDriver;
     let lz4 = Lz4BenchmarkDriver;
     let lzfse = LzfseBenchmarkDriver;
+    let ppmd = PpmdBenchmarkDriver;
 
     let drivers: Vec<(&str, &dyn CodecBenchmarkDriver, i32)> = vec![
         ("Deflate-L6", &deflate, 6),
         ("Deflate-L12", &deflate, 12),
         ("Zstd-L3", &zstd, 3),
         ("Zstd-L19", &zstd, 19),
+        ("Zstd-LDM", &zstd_ldm, 3),
+        ("Zstd-Dict", &zstd_dict, 3),
+        ("FSE-tANS", &fse, 1),
+        ("Huff0-4X", &huff0, 1),
         ("LZMA2-L3", &lzma2, 3),
         ("LZMA2-L9", &lzma2, 9),
         ("Brotli-Q4", &brotli, 4),
@@ -101,6 +112,7 @@ fn test_universal_matrix_8_codecs_by_8_corpora_roundtrip_fidelity() {
         ("LZ4-Fast", &lz4, 1),
         ("LZ4-HC", &lz4, 19),
         ("LZFSE", &lzfse, 1),
+        ("PPMd-O6", &ppmd, 6),
     ];
 
     for &corpus_type in &corpora {
@@ -226,5 +238,25 @@ fn test_matrix_extreme_boundaries_and_empty_inputs() {
         let c_zeros = MatrixCodecDriver::compress(cfg, &all_zeros).expect("compress zeros");
         let d_zeros = MatrixCodecDriver::decompress(cfg, &c_zeros, all_zeros.len()).expect("decompress zeros");
         assert_eq!(d_zeros, all_zeros);
+    }
+}
+
+// MARK: - 6. All 11 Crypto Drivers Full Roundtrip & Hashing Test
+
+#[test]
+fn test_all_11_crypto_benchmark_drivers_roundtrip() {
+    let test_payload = b"TTZip High-Performance Cryptography and Hashing Universal Benchmark Payload";
+    let drivers = MatrixCryptoDriver::all_drivers();
+    assert_eq!(drivers.len(), 11, "Must register exactly 11 crypto benchmark drivers");
+
+    for driver in drivers {
+        let name = driver.algorithm_id();
+        assert!(!name.is_empty(), "Crypto driver name cannot be empty");
+
+        let processed = driver.bench_process(test_payload).expect("bench_process failed");
+        assert!(!processed.is_empty(), "Processed bytes for {} must not be empty", name);
+
+        let valid = driver.bench_verify_or_decrypt(&processed, test_payload).expect("bench_verify_or_decrypt failed");
+        assert!(valid, "Roundtrip or verification failed for {}", name);
     }
 }

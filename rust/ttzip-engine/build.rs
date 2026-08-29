@@ -152,6 +152,10 @@ fn compile_native_codecs(repo_root: &Path) {
             "decompress/zstd_ddict.c",
             "decompress/zstd_decompress.c",
             "decompress/zstd_decompress_block.c",
+            "dictBuilder/cover.c",
+            "dictBuilder/divsufsort.c",
+            "dictBuilder/fastcover.c",
+            "dictBuilder/zdict.c",
         ];
         for src in zstd_sources {
             let path = zstd_dir.join(src);
@@ -161,6 +165,7 @@ fn compile_native_codecs(repo_root: &Path) {
         }
         build.include(&zstd_dir);
         build.include(zstd_dir.join("common"));
+        build.include(zstd_dir.join("dictBuilder"));
         build.define("ZSTD_MULTITHREAD", None);
     }
 

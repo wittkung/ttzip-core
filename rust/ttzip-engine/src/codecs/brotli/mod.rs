@@ -74,4 +74,40 @@ mod tests {
         let res = brotli_decompress(&corrupt, &mut out);
         assert!(res.is_err());
     }
+
+    #[test]
+    fn test_brotli_quality_and_window_range() {
+        let text = b"Testing Brotli across various quality settings and sliding window sizes in TTZip.";
+        for q in [0, 1, 4, 6, 9, 11] {
+            for lgwin in [10, 16, 22, 24] {
+                let comp = brotli_compress_to_vec(text, q, lgwin).expect("compress");
+                assert!(!comp.is_empty());
+                let decomp = brotli_decompress_to_vec(&comp, 4096).expect("decompress");
+                assert_eq!(decomp.as_slice(), text);
+            }
+        }
+    }
+
+    #[test]
+    fn test_brotli_rfc7932_static_dictionary_efficiency() {
+        // RFC 7932 static dictionary contains standard HTML/HTTP schema and keywords.
+        let web_snippet = b"<html><head><meta charset=\"utf-8\"><title>TTZip RFC 7932</title></head><body><div class=\"container\"><p>http://www.w3.org/1999/xhtml</p></div></body></html>";
+        let comp = brotli_compress_to_vec(web_snippet, 11, 22).expect("brotli rfc7932 compress");
+        assert!(comp.len() < web_snippet.len(), "Static dictionary should compress web snippet efficiently");
+
+        let decomp = brotli_decompress_to_vec(&comp, 4096).expect("brotli rfc7932 decompress");
+        assert_eq!(decomp.as_slice(), web_snippet);
+    }
+
+    #[test]
+    fn test_brotli_empty_slice() {
+        let empty = b"";
+        let mut dst = [0u8; 64];
+        let c_len = brotli_compress(empty, &mut dst, 6, 22).expect("empty compress");
+        assert_eq!(c_len, 0);
+
+        let d_len = brotli_decompress(empty, &mut dst).expect("empty decompress");
+        assert_eq!(d_len, 0);
+    }
 }
+

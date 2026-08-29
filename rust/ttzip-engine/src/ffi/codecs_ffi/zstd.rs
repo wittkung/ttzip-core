@@ -89,7 +89,12 @@ pub extern "C" fn ttzip_rust_zstd_compress_advanced(
             window_log,
             enable_ldm,
             enable_checksum: true,
+            ldm_hash_log: 0,
+            ldm_min_match: 0,
+            ldm_bucket_size_log: 0,
+            ldm_hash_rate_log: 0,
         };
+
 
         match zstd_compress_advanced(in_slice, out_slice, &config) {
             Ok(written) => {
@@ -203,7 +208,12 @@ pub unsafe extern "C" fn ttzip_rust_zstd_compress_file_stream(
             window_log,
             enable_ldm,
             enable_checksum: true,
+            ldm_hash_log: 0,
+            ldm_min_match: 0,
+            ldm_bucket_size_log: 0,
+            ldm_hash_rate_log: 0,
         };
+
 
         let cb_wrapper = progress_callback.map(|cb| {
             let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();

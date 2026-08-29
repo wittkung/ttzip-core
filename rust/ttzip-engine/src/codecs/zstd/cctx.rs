@@ -5,7 +5,7 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! Zstandard compression context RAII wrapper and buffer compression.
+//! Zstandard compression context RAII wrapper, buffer compression, and LDM streaming pipeline.
 
 use super::types::*;
 use crate::types::TTZipStatus;
@@ -37,7 +37,7 @@ impl ZstdCCtx {
         }
     }
 
-    /// Applies full configuration parameters (workers, LDM, windowLog, etc.).
+    /// Applies full configuration parameters (workers, LDM, windowLog, tuning, etc.).
     pub fn apply_config(&mut self, config: &ZstdConfig) -> Result<(), TTZipStatus> {
         self.set_parameter(ZstdCParameter::CompressionLevel, config.level)?;
 
@@ -56,11 +56,49 @@ impl ZstdCCtx {
         }
         if config.enable_ldm {
             self.set_parameter(ZstdCParameter::EnableLongDistanceMatching, 1)?;
+            if config.ldm_hash_log > 0 {
+                self.set_parameter(ZstdCParameter::LdmHashLog, config.ldm_hash_log as i32)?;
+            }
+            if config.ldm_min_match > 0 {
+                self.set_parameter(ZstdCParameter::LdmMinMatch, config.ldm_min_match as i32)?;
+            }
+            if config.ldm_bucket_size_log > 0 {
+                self.set_parameter(ZstdCParameter::LdmBucketSizeLog, config.ldm_bucket_size_log as i32)?;
+            }
+            if config.ldm_hash_rate_log > 0 {
+                self.set_parameter(ZstdCParameter::LdmHashRateLog, config.ldm_hash_rate_log as i32)?;
+            }
         }
         if config.enable_checksum {
             self.set_parameter(ZstdCParameter::ChecksumFlag, 1)?;
         }
         Ok(())
+    }
+
+    /// References a digested dictionary (`CDict`) on this compression context.
+    pub fn ref_cdict_raw(&mut self, cdict_ptr: *const ZstdCDictOpaque) -> Result<(), TTZipStatus> {
+        let res = unsafe { ZSTD_CCtx_refCDict(self.handle.as_ptr(), cdict_ptr) };
+        if unsafe { ZSTD_isError(res) } != 0 {
+            Err(TTZipStatus::ErrArchiveInitFailed)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Loads raw dictionary bytes directly into the context.
+    pub fn load_dictionary(&mut self, dict: &[u8]) -> Result<(), TTZipStatus> {
+        let res = unsafe {
+            ZSTD_CCtx_loadDictionary(
+                self.handle.as_ptr(),
+                dict.as_ptr() as *const libc::c_void,
+                dict.len(),
+            )
+        };
+        if unsafe { ZSTD_isError(res) } != 0 {
+            Err(TTZipStatus::ErrArchiveInitFailed)
+        } else {
+            Ok(())
+        }
     }
 
     /// Resets the compression context for reuse.
@@ -94,6 +132,42 @@ impl ZstdCCtx {
                 in_ptr,
                 src.len(),
                 level as libc::c_int,
+            )
+        };
+
+        if unsafe { ZSTD_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(res)
+        }
+    }
+
+    /// Compresses a buffer in a single pass using pre-digested `CDict`.
+    pub fn compress_using_cdict_raw(
+        &mut self,
+        src: &[u8],
+        dst: &mut [u8],
+        cdict_ptr: *const ZstdCDictOpaque,
+    ) -> Result<usize, TTZipStatus> {
+        let in_ptr = if src.is_empty() {
+            std::ptr::null()
+        } else {
+            src.as_ptr() as *const libc::c_void
+        };
+        let out_ptr = if dst.is_empty() {
+            std::ptr::null_mut()
+        } else {
+            dst.as_mut_ptr() as *mut libc::c_void
+        };
+
+        let res = unsafe {
+            ZSTD_compress_usingCDict(
+                self.handle.as_ptr(),
+                out_ptr,
+                dst.len(),
+                in_ptr,
+                src.len(),
+                cdict_ptr,
             )
         };
 
@@ -202,3 +276,16 @@ pub fn zstd_compress_advanced(
     cctx.apply_config(config)?;
     cctx.compress2(src, dst)
 }
+
+/// Zero-copy Zstandard LDM compression (64MB .. 2GB deduplication window).
+pub fn zstd_compress_ldm(
+    src: &[u8],
+    dst: &mut [u8],
+    level: i32,
+    window_mb: usize,
+) -> Result<usize, TTZipStatus> {
+    let config = ZstdConfig::ldm(level, 26).with_ldm_window_mb(window_mb);
+    zstd_compress_advanced(src, dst, &config)
+
+}
+

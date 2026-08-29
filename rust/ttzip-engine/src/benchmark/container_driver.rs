@@ -278,7 +278,9 @@ impl ContainerBenchmarkDriver for TarZstContainerDriver {
                 window_log: 20,
                 enable_ldm: true,
                 enable_checksum: true,
+                ..Default::default()
             };
+
             zstd_compress_advanced(&tar_bytes, &mut zst_buf, &config)?
         } else {
             zstd_compress(&tar_bytes, &mut zst_buf, level)?

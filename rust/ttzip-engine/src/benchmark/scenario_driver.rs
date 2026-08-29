@@ -148,7 +148,9 @@ impl ScenarioBenchmarkDriver {
             window_log: if enable_ldm { 20 } else { 0 },
             enable_ldm,
             enable_checksum: true,
+            ..Default::default()
         };
+
 
         let t0 = Instant::now();
         let mut comp_buf = vec![0u8; orig_bytes + 4096];

@@ -9,13 +9,18 @@
 
 pub mod branch;
 pub mod brotli;
+pub mod bzip2;
 pub mod chardet;
 pub mod deflate;
 pub mod fast_blocks;
+pub mod lz4;
+pub mod lzfse;
 pub mod lzma;
 pub mod lzma2;
+pub mod ppmd;
 pub mod snappy;
 pub mod zstd;
+
 
 // Safe RAII stream byte counting wrappers
 
@@ -147,10 +152,24 @@ pub use brotli::{
     brotli_decompress_stream_pipe, brotli_decompress_to_vec, BrotliCompressorWriter, BrotliConfig,
     BrotliDecompressorReader, BROTLI_PIPE_BUFFER_SIZE,
 };
+pub use bzip2::{
+    bzip2_compress, bzip2_compress_bound, bzip2_compress_stream_pipe, bzip2_compress_to_vec,
+    bzip2_decompress, bzip2_decompress_stream_pipe, bzip2_decompress_to_vec,
+    bzip2_inspect_header, Bzip2Compressor, Bzip2Decompressor, Bzip2HeaderInfo,
+    BZIP2_PIPE_BUFFER_SIZE, BZ_EOS_BLOCK_MAGIC, BZ_MAGIC, BZ_PI_BLOCK_MAGIC,
+};
 pub use deflate::*;
 pub use fast_blocks::*;
 pub use lzma::*;
 pub use lzma2::*;
+
+pub use ppmd::{
+    ppmd_compress, ppmd_compress_to_vec, ppmd_decompress, ppmd_decompress_7z,
+    ppmd_decompress_7z_to_vec, ppmd_decompress_to_vec, ppmd_parse_7z_props,
+    PpmdContext, PpmdModel, PpmdRangeDecoder, PpmdRangeEncoder, PpmdState,
+    PpmdSubAlloc, METHOD_PPMD, PPMD_DEFAULT_MEMORY_SIZE, PPMD_DEFAULT_ORDER,
+    PPMD_MAX_MEMORY_SIZE, PPMD_MAX_ORDER, PPMD_MIN_MEMORY_SIZE, PPMD_MIN_ORDER,
+};
 pub use snappy::{
     is_framed_snappy, mask_crc32c, parse_varint, snappy_compress, snappy_compress_bound,
     snappy_compress_file, snappy_compress_stream_pipe, snappy_compress_to_vec, snappy_decompress,

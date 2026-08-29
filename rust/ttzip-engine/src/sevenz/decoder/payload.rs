@@ -171,6 +171,24 @@ where
                 total_decompressed += chunk.len() as u64;
             }
         }
+        METHOD_BZIP2 => {
+            let mut unpack_buf = vec![0u8; expected_unpack_size as usize];
+            let decomp_len = crate::codecs::bzip2::bzip2_decompress(raw_payload, &mut unpack_buf)?;
+            unpack_buf.truncate(decomp_len);
+            for chunk in unpack_buf.chunks(CHUNK_SIZE) {
+                sink(chunk)?;
+                total_decompressed += chunk.len() as u64;
+            }
+        }
+        METHOD_PPMD => {
+            let mut unpack_buf = vec![0u8; expected_unpack_size as usize];
+            let decomp_len = crate::codecs::ppmd::ppmd_decompress_7z(raw_payload, &mut unpack_buf, coder_props)?;
+            unpack_buf.truncate(decomp_len);
+            for chunk in unpack_buf.chunks(CHUNK_SIZE) {
+                sink(chunk)?;
+                total_decompressed += chunk.len() as u64;
+            }
+        }
         _ => return Err(TTZipStatus::ErrUnsupportedFeature),
     }
 

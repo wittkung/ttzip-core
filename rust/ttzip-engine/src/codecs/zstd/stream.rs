@@ -49,6 +49,23 @@ impl<W: Write> ZstdStreamWriter<W> {
         Self::new(writer, &config)
     }
 
+    /// Creates a new streaming compressor with pre-digested `CDict`.
+    pub fn with_cdict(writer: W, cdict: &super::dict::CDict) -> Result<Self, TTZipStatus> {
+        let mut cctx = ZstdCCtx::new()?;
+        cctx.ref_cdict_raw(cdict.as_ptr())?;
+        Ok(Self {
+            writer: Some(writer),
+            cctx,
+            out_buf: vec![0u8; ZSTD_STREAM_BUFFER_SIZE],
+            finished: false,
+        })
+    }
+
+    /// Creates a new streaming compressor with a high-level `ZstdDictionary`.
+    pub fn with_dict(writer: W, dict: &super::dict::ZstdDictionary) -> Result<Self, TTZipStatus> {
+        Self::with_cdict(writer, dict.cdict())
+    }
+
     /// Flushes all pending data, finalizes the Zstandard frame, and returns the underlying writer.
     pub fn finish(mut self) -> Result<W, TTZipStatus> {
         self.finish_frame()?;
@@ -191,6 +208,43 @@ impl<R: Read> ZstdStreamReader<R> {
             last_ret: 0,
             total_in: 0,
         })
+    }
+
+    /// Creates a new streaming decompressor supporting large LDM windows (up to 2GB).
+    pub fn with_max_window_log(reader: R, max_window_log: u32) -> Result<Self, TTZipStatus> {
+        let mut dctx = ZstdDCtx::new()?;
+        dctx.set_max_window_log(max_window_log)?;
+        Ok(Self {
+            reader,
+            dctx,
+            in_buf: vec![0u8; ZSTD_STREAM_BUFFER_SIZE],
+            in_pos: 0,
+            in_len: 0,
+            eof_reached: false,
+            last_ret: 0,
+            total_in: 0,
+        })
+    }
+
+    /// Creates a new streaming decompressor with pre-digested `DDict`.
+    pub fn with_ddict(reader: R, ddict: &super::dict::DDict) -> Result<Self, TTZipStatus> {
+        let mut dctx = ZstdDCtx::new()?;
+        dctx.ref_ddict_raw(ddict.as_ptr())?;
+        Ok(Self {
+            reader,
+            dctx,
+            in_buf: vec![0u8; ZSTD_STREAM_BUFFER_SIZE],
+            in_pos: 0,
+            in_len: 0,
+            eof_reached: false,
+            last_ret: 0,
+            total_in: 0,
+        })
+    }
+
+    /// Creates a new streaming decompressor with a high-level `ZstdDictionary`.
+    pub fn with_dict(reader: R, dict: &super::dict::ZstdDictionary) -> Result<Self, TTZipStatus> {
+        Self::with_ddict(reader, dict.ddict())
     }
 
     /// Consumes the wrapper and returns the underlying reader.

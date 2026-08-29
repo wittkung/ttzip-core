@@ -41,8 +41,10 @@ pub const K_ENCODED_HEADER: u8 = 0x17;
 // 7z Coder Method IDs
 pub const METHOD_COPY: u64 = 0x00;
 pub const METHOD_LZMA: u64 = 0x030101;
+pub const METHOD_PPMD: u64 = 0x030401;
 pub const METHOD_LZMA2: u64 = 0x21;
 pub const METHOD_DEFLATE: u64 = 0x040108;
+pub const METHOD_BZIP2: u64 = 0x040202;
 pub const METHOD_AES: u64 = 0x06F10701;
 
 /// Parsed 7z Signature Header (32 bytes at offset 0).

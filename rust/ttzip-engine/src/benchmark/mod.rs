@@ -11,6 +11,7 @@ pub mod clock;
 pub mod codecs_driver;
 pub mod container_driver;
 pub mod corpus;
+pub mod crypto_driver;
 pub mod delta;
 pub mod mips;
 pub mod multimodal_loader;
@@ -22,6 +23,7 @@ pub mod spline;
 
 #[cfg(test)]
 mod tests;
+
 
 pub use clock::MonotonicStopwatch;
 pub use codecs_driver::{
@@ -35,7 +37,15 @@ pub use container_driver::{
     ZipContainerDriver,
 };
 pub use corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
+pub use crypto_driver::{
+    Adler32BenchmarkDriver, Blake3BenchmarkDriver, Crc32BenchmarkDriver, Crc64BenchmarkDriver,
+    CryptoBenchmarkDriver, CryptoBenchmarkMatrixReport, CryptoBenchmarkPointResult, CryptoCategory,
+    MatrixCryptoDriver, SevenZAes256BenchmarkDriver, VaultAesGcmBenchmarkDriver,
+    VaultChaChaPolyBenchmarkDriver, WinZipAes256BenchmarkDriver, Xxh3_128BenchmarkDriver,
+    Xxh3_64BenchmarkDriver, ZipCryptoBenchmarkDriver,
+};
 pub use delta::{BinaryDeltaAuditor, BinaryDeltaReport, SegmentDeltaAudit};
+
 pub use mips::{MIPSHardwareBenchmarkEngine, MIPSResult, SplitMix64};
 pub use multimodal_loader::{
     compute_shannon_entropy, MultimodalCorpusEntry, MultimodalCorpusKind, MultimodalCorpusLoader,

@@ -236,7 +236,9 @@ proptest! {
             window_log: 18,
             enable_ldm: true,
             enable_checksum: true,
+            ..Default::default()
         };
+
 
         let mut adv_comp = vec![0u8; bound + 64];
         let adv_len = zstd_compress_advanced(&payload, &mut adv_comp, &cfg)
