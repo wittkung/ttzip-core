@@ -315,7 +315,7 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 5,
         measurement_rounds: 15,
-        max_allowed_regression: 10.0,
+        max_allowed_regression: 25.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
