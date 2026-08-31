@@ -21,6 +21,7 @@ pub mod lzma2;
 pub mod ppmd;
 pub use ppmd as ppmd_suballoc;
 pub mod snappy;
+pub mod zopfli;
 pub mod zstd;
 pub mod zstd_seekable;
 
@@ -227,4 +228,10 @@ pub use zstd::{
     SEEK_TABLE_FLAG_CHECKSUM, SKIPPABLE_HEADER_SIZE, SKIPPABLE_MAGIC_NUMBER,
     ZSTD_PIPE_BUFFER_SIZE, ZSTD_STANDARD_DICTIONARY_SIZE_BYTES, ZSTD_STREAM_BUFFER_SIZE,
 };
-
+pub use zopfli::{
+    estimate_entropy_cost, zopfli_compress, zopfli_compress_deflate, zopfli_compress_gzip,
+    zopfli_compress_zlib, BlockStats, CumulativeHistogram, ZopfliBlockSplitter, ZopfliCostModel,
+    ZopfliEncoder, ZopfliFormat, ZopfliHash, ZopfliMatchCache, ZopfliOptions,
+    ZopfliShortestPathMatcher, ZopfliSqueeze, ZopfliToken, DYNAMIC_HEADER_COST_BITS,
+    END_OF_BLOCK_SYM, MIN_BLOCK_SIZE, NUM_DIST_SYMS, NUM_LITLEN_SYMS, SPLIT_GAIN_THRESHOLD_BITS,
+};

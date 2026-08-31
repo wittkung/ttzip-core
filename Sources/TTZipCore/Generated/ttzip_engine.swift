@@ -2934,6 +2934,230 @@ public func FfiConverterTypeUniFFIVfsTree_lower(_ value: UniFfiVfsTree) -> Unsaf
 }
 
 /**
+ * Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+ */
+public protocol UniFfiZopfliOptimizerProtocol: AnyObject {
+    /**
+     * Benchmarks compression on the given payload.
+     */
+    func benchmark(format: UniFfiZopfliFormat, data: Data) throws -> UniFfiZopfliStats
+
+    /**
+     * Compresses a buffer with the configured options.
+     */
+    func compress(format: UniFfiZopfliFormat, data: Data) throws -> Data
+
+    /**
+     * Compresses a buffer with cancellation support.
+     */
+    func compressCancellable(format: UniFfiZopfliFormat, data: Data, cancellationToken: UniFfiCancellationToken?) throws -> Data
+
+    /**
+     * Compresses a buffer with progress callback and cancellation token.
+     */
+    func compressWithProgress(format: UniFfiZopfliFormat, data: Data, callback: UniFfiProgressCallback?, cancellationToken: UniFfiCancellationToken?) throws -> Data
+
+    /**
+     * Returns the configured options for this optimizer.
+     */
+    func options() -> UniFfiZopfliOptions
+
+    /**
+     * Verifies lossless roundtrip correctness.
+     */
+    func verifyRoundtrip(format: UniFfiZopfliFormat, data: Data) throws -> Bool
+}
+
+/**
+ * Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+ */
+open class UniFfiZopfliOptimizer:
+    UniFfiZopfliOptimizerProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new optimizer instance with custom configuration options.
+     */
+    public convenience init(options: UniFfiZopfliOptions) {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new(
+                    FfiConverterTypeUniFFIZopfliOptions.lower(options), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffizopflioptimizer(pointer, $0) }
+    }
+
+    /**
+     * Constructs a new optimizer instance from a preset.
+     */
+    public static func withPreset(preset: UniFfiZopfliPreset) -> UniFfiZopfliOptimizer {
+        return try! FfiConverterTypeUniFFIZopfliOptimizer.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset(
+                FfiConverterTypeUniFFIZopfliPreset.lower(preset), $0
+            )
+        })
+    }
+
+    /**
+     * Benchmarks compression on the given payload.
+     */
+    open func benchmark(format: UniFfiZopfliFormat, data: Data) throws -> UniFfiZopfliStats {
+        return try FfiConverterTypeUniFFIZopfliStats.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark(self.uniffiClonePointer(),
+                                                                          FfiConverterTypeUniFFIZopfliFormat.lower(format),
+                                                                          FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Compresses a buffer with the configured options.
+     */
+    open func compress(format: UniFfiZopfliFormat, data: Data) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress(self.uniffiClonePointer(),
+                                                                         FfiConverterTypeUniFFIZopfliFormat.lower(format),
+                                                                         FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Compresses a buffer with cancellation support.
+     */
+    open func compressCancellable(format: UniFfiZopfliFormat, data: Data, cancellationToken: UniFfiCancellationToken?) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable(self.uniffiClonePointer(),
+                                                                                     FfiConverterTypeUniFFIZopfliFormat.lower(format),
+                                                                                     FfiConverterData.lower(data),
+                                                                                     FfiConverterOptionTypeUniFFICancellationToken.lower(cancellationToken), $0)
+        })
+    }
+
+    /**
+     * Compresses a buffer with progress callback and cancellation token.
+     */
+    open func compressWithProgress(format: UniFfiZopfliFormat, data: Data, callback: UniFfiProgressCallback?, cancellationToken: UniFfiCancellationToken?) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress(self.uniffiClonePointer(),
+                                                                                       FfiConverterTypeUniFFIZopfliFormat.lower(format),
+                                                                                       FfiConverterData.lower(data),
+                                                                                       FfiConverterOptionCallbackInterfaceUniFfiProgressCallback.lower(callback),
+                                                                                       FfiConverterOptionTypeUniFFICancellationToken.lower(cancellationToken), $0)
+        })
+    }
+
+    /**
+     * Returns the configured options for this optimizer.
+     */
+    open func options() -> UniFfiZopfliOptions {
+        return try! FfiConverterTypeUniFFIZopfliOptions.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Verifies lossless roundtrip correctness.
+     */
+    open func verifyRoundtrip(format: UniFfiZopfliFormat, data: Data) throws -> Bool {
+        return try FfiConverterBool.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip(self.uniffiClonePointer(),
+                                                                                 FfiConverterTypeUniFFIZopfliFormat.lower(format),
+                                                                                 FfiConverterData.lower(data), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIZopfliOptimizer: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiZopfliOptimizer
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiZopfliOptimizer {
+        return UniFfiZopfliOptimizer(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiZopfliOptimizer) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiZopfliOptimizer {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiZopfliOptimizer, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliOptimizer_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiZopfliOptimizer {
+    return try FfiConverterTypeUniFFIZopfliOptimizer.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliOptimizer_lower(_ value: UniFfiZopfliOptimizer) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIZopfliOptimizer.lower(value)
+}
+
+/**
  * Thread-safe bounded in-memory virtual file stream supporting random seeking and chunked streaming.
  */
 public protocol VirtualFileStreamProtocol: AnyObject {
@@ -10159,6 +10383,215 @@ public func FfiConverterTypeUniFFIXxh3128Digest_lower(_ value: UniFfiXxh3128Dige
 }
 
 /**
+ * Strongly typed configuration options for Zopfli compression passes.
+ */
+public struct UniFfiZopfliOptions {
+    /**
+     * Maximum number of forward/backward optimization iterations (default: 15).
+     */
+    public var iterationCount: UInt64
+    /**
+     * Stop iterations early if no cost reduction occurs for N consecutive passes (0 = disabled).
+     */
+    public var iterationsWithoutImprovement: UInt64
+    /**
+     * Maximum number of dynamic Deflate block splits (0 = unlimited, default: 15).
+     */
+    public var maximumBlockSplits: UInt16
+    /**
+     * Enables or disables dynamic block splitting heuristics.
+     */
+    public var blockSplitting: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Maximum number of forward/backward optimization iterations (default: 15).
+         */ iterationCount: UInt64,
+        /* 
+            * Stop iterations early if no cost reduction occurs for N consecutive passes (0 = disabled).
+            */ iterationsWithoutImprovement: UInt64,
+        /* 
+            * Maximum number of dynamic Deflate block splits (0 = unlimited, default: 15).
+            */ maximumBlockSplits: UInt16,
+        /* 
+            * Enables or disables dynamic block splitting heuristics.
+            */ blockSplitting: Bool
+    ) {
+        self.iterationCount = iterationCount
+        self.iterationsWithoutImprovement = iterationsWithoutImprovement
+        self.maximumBlockSplits = maximumBlockSplits
+        self.blockSplitting = blockSplitting
+    }
+}
+
+extension UniFfiZopfliOptions: Equatable, Hashable {
+    public static func == (lhs: UniFfiZopfliOptions, rhs: UniFfiZopfliOptions) -> Bool {
+        if lhs.iterationCount != rhs.iterationCount {
+            return false
+        }
+        if lhs.iterationsWithoutImprovement != rhs.iterationsWithoutImprovement {
+            return false
+        }
+        if lhs.maximumBlockSplits != rhs.maximumBlockSplits {
+            return false
+        }
+        if lhs.blockSplitting != rhs.blockSplitting {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(iterationCount)
+        hasher.combine(iterationsWithoutImprovement)
+        hasher.combine(maximumBlockSplits)
+        hasher.combine(blockSplitting)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIZopfliOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiZopfliOptions {
+        return
+            try UniFfiZopfliOptions(
+                iterationCount: FfiConverterUInt64.read(from: &buf),
+                iterationsWithoutImprovement: FfiConverterUInt64.read(from: &buf),
+                maximumBlockSplits: FfiConverterUInt16.read(from: &buf),
+                blockSplitting: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiZopfliOptions, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.iterationCount, into: &buf)
+        FfiConverterUInt64.write(value.iterationsWithoutImprovement, into: &buf)
+        FfiConverterUInt16.write(value.maximumBlockSplits, into: &buf)
+        FfiConverterBool.write(value.blockSplitting, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliOptions_lift(_ buf: RustBuffer) throws -> UniFfiZopfliOptions {
+    return try FfiConverterTypeUniFFIZopfliOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliOptions_lower(_ value: UniFfiZopfliOptions) -> RustBuffer {
+    return FfiConverterTypeUniFFIZopfliOptions.lower(value)
+}
+
+/**
+ * Compression performance telemetry and analytical metrics for Zopfli runs.
+ */
+public struct UniFfiZopfliStats {
+    public var format: UniFfiZopfliFormat
+    public var uncompressedSize: UInt64
+    public var compressedSize: UInt64
+    public var compressionRatio: Double
+    public var durationNanos: UInt64
+    public var throughputMbs: Double
+    public var iterations: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(format: UniFfiZopfliFormat, uncompressedSize: UInt64, compressedSize: UInt64, compressionRatio: Double, durationNanos: UInt64, throughputMbs: Double, iterations: UInt64) {
+        self.format = format
+        self.uncompressedSize = uncompressedSize
+        self.compressedSize = compressedSize
+        self.compressionRatio = compressionRatio
+        self.durationNanos = durationNanos
+        self.throughputMbs = throughputMbs
+        self.iterations = iterations
+    }
+}
+
+extension UniFfiZopfliStats: Equatable, Hashable {
+    public static func == (lhs: UniFfiZopfliStats, rhs: UniFfiZopfliStats) -> Bool {
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.uncompressedSize != rhs.uncompressedSize {
+            return false
+        }
+        if lhs.compressedSize != rhs.compressedSize {
+            return false
+        }
+        if lhs.compressionRatio != rhs.compressionRatio {
+            return false
+        }
+        if lhs.durationNanos != rhs.durationNanos {
+            return false
+        }
+        if lhs.throughputMbs != rhs.throughputMbs {
+            return false
+        }
+        if lhs.iterations != rhs.iterations {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(format)
+        hasher.combine(uncompressedSize)
+        hasher.combine(compressedSize)
+        hasher.combine(compressionRatio)
+        hasher.combine(durationNanos)
+        hasher.combine(throughputMbs)
+        hasher.combine(iterations)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIZopfliStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiZopfliStats {
+        return
+            try UniFfiZopfliStats(
+                format: FfiConverterTypeUniFFIZopfliFormat.read(from: &buf),
+                uncompressedSize: FfiConverterUInt64.read(from: &buf),
+                compressedSize: FfiConverterUInt64.read(from: &buf),
+                compressionRatio: FfiConverterDouble.read(from: &buf),
+                durationNanos: FfiConverterUInt64.read(from: &buf),
+                throughputMbs: FfiConverterDouble.read(from: &buf),
+                iterations: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiZopfliStats, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFIZopfliFormat.write(value.format, into: &buf)
+        FfiConverterUInt64.write(value.uncompressedSize, into: &buf)
+        FfiConverterUInt64.write(value.compressedSize, into: &buf)
+        FfiConverterDouble.write(value.compressionRatio, into: &buf)
+        FfiConverterUInt64.write(value.durationNanos, into: &buf)
+        FfiConverterDouble.write(value.throughputMbs, into: &buf)
+        FfiConverterUInt64.write(value.iterations, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliStats_lift(_ buf: RustBuffer) throws -> UniFfiZopfliStats {
+    return try FfiConverterTypeUniFFIZopfliStats.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliStats_lower(_ value: UniFfiZopfliStats) -> RustBuffer {
+    return FfiConverterTypeUniFFIZopfliStats.lower(value)
+}
+
+/**
  * Video metadata properties record exposed to Swift.
  */
 public struct VideoMetadataRecord {
@@ -12214,6 +12647,155 @@ public func FfiConverterTypeUniFFISyntheticCorpusType_lower(_ value: UniFfiSynth
 }
 
 extension UniFfiSyntheticCorpusType: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Target container format for Zopfli compression.
+ */
+
+public enum UniFfiZopfliFormat {
+    /**
+     * Raw RFC 1951 Deflate byte stream without headers or checksums.
+     */
+    case deflate
+    /**
+     * RFC 1950 Zlib stream with 2-byte header and Adler-32 trailing checksum.
+     */
+    case zlib
+    /**
+     * RFC 1952 Gzip stream with 10-byte header, timestamp, and CRC32 checksum.
+     */
+    case gzip
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIZopfliFormat: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiZopfliFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiZopfliFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .deflate
+
+        case 2: return .zlib
+
+        case 3: return .gzip
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiZopfliFormat, into buf: inout [UInt8]) {
+        switch value {
+        case .deflate:
+            writeInt(&buf, Int32(1))
+
+        case .zlib:
+            writeInt(&buf, Int32(2))
+
+        case .gzip:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliFormat_lift(_ buf: RustBuffer) throws -> UniFfiZopfliFormat {
+    return try FfiConverterTypeUniFFIZopfliFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliFormat_lower(_ value: UniFfiZopfliFormat) -> RustBuffer {
+    return FfiConverterTypeUniFFIZopfliFormat.lower(value)
+}
+
+extension UniFfiZopfliFormat: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Predefined optimization profiles balancing speed vs extreme compression density.
+ */
+
+public enum UniFfiZopfliPreset {
+    /**
+     * Fast pass: 5 iterations, 5 block splits.
+     */
+    case fast
+    /**
+     * Balanced standard pass: 15 iterations, 15 block splits.
+     */
+    case balanced
+    /**
+     * Maximum density pass: 30 iterations, 30 block splits.
+     */
+    case maximum
+    /**
+     * Ultra extreme pass: 100 iterations, 50 block splits.
+     */
+    case ultra
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIZopfliPreset: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiZopfliPreset
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiZopfliPreset {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .fast
+
+        case 2: return .balanced
+
+        case 3: return .maximum
+
+        case 4: return .ultra
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiZopfliPreset, into buf: inout [UInt8]) {
+        switch value {
+        case .fast:
+            writeInt(&buf, Int32(1))
+
+        case .balanced:
+            writeInt(&buf, Int32(2))
+
+        case .maximum:
+            writeInt(&buf, Int32(3))
+
+        case .ultra:
+            writeInt(&buf, Int32(4))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliPreset_lift(_ buf: RustBuffer) throws -> UniFfiZopfliPreset {
+    return try FfiConverterTypeUniFFIZopfliPreset.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIZopfliPreset_lower(_ value: UniFfiZopfliPreset) -> RustBuffer {
+    return FfiConverterTypeUniFFIZopfliPreset.lower(value)
+}
+
+extension UniFfiZopfliPreset: Equatable, Hashable {}
 
 /**
  * Callback interface protocol implemented in Swift.
@@ -15485,6 +16067,97 @@ public func uniffiZlibDecompress(src: Data, expectedUncompressedSize: UInt64) th
 }
 
 /**
+ * Executes a Zopfli compression benchmark and returns performance statistics.
+ */
+public func uniffiZopfliBenchmark(data: Data, options: UniFfiZopfliOptions, format: UniFfiZopfliFormat) throws -> UniFfiZopfliStats {
+    return try FfiConverterTypeUniFFIZopfliStats.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark(
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIZopfliOptions.lower(options),
+            FfiConverterTypeUniFFIZopfliFormat.lower(format), $0
+        )
+    })
+}
+
+/**
+ * Compresses a buffer with Zopfli using specified format and options.
+ */
+public func uniffiZopfliCompress(format: UniFfiZopfliFormat, data: Data, options: UniFfiZopfliOptions) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress(
+            FfiConverterTypeUniFFIZopfliFormat.lower(format),
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIZopfliOptions.lower(options), $0
+        )
+    })
+}
+
+/**
+ * Compresses a buffer with Zopfli with cancellation token support.
+ */
+public func uniffiZopfliCompressCancellable(format: UniFfiZopfliFormat, data: Data, options: UniFfiZopfliOptions, cancellationToken: UniFfiCancellationToken?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable(
+            FfiConverterTypeUniFFIZopfliFormat.lower(format),
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIZopfliOptions.lower(options),
+            FfiConverterOptionTypeUniFFICancellationToken.lower(cancellationToken), $0
+        )
+    })
+}
+
+/**
+ * Compresses a buffer with Zopfli with fine-grained progress and cancellation support.
+ */
+public func uniffiZopfliCompressWithProgress(format: UniFfiZopfliFormat, data: Data, options: UniFfiZopfliOptions, callback: UniFfiProgressCallback?, cancellationToken: UniFfiCancellationToken?) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress(
+            FfiConverterTypeUniFFIZopfliFormat.lower(format),
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIZopfliOptions.lower(options),
+            FfiConverterOptionCallbackInterfaceUniFfiProgressCallback.lower(callback),
+            FfiConverterOptionTypeUniFFICancellationToken.lower(cancellationToken), $0
+        )
+    })
+}
+
+/**
+ * Decompresses a Zopfli-compressed byte stream back into uncompressed data.
+ */
+public func uniffiZopfliDecompress(format: UniFfiZopfliFormat, compressed: Data) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress(
+            FfiConverterTypeUniFFIZopfliFormat.lower(format),
+            FfiConverterData.lower(compressed), $0
+        )
+    })
+}
+
+/**
+ * Resolves standard preset options for Zopfli compression.
+ */
+public func uniffiZopfliOptionsForPreset(preset: UniFfiZopfliPreset) -> UniFfiZopfliOptions {
+    return try! FfiConverterTypeUniFFIZopfliOptions.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset(
+            FfiConverterTypeUniFFIZopfliPreset.lower(preset), $0
+        )
+    })
+}
+
+/**
+ * Performs a lossless roundtrip compression and decompression check.
+ */
+public func uniffiZopfliVerifyRoundtrip(format: UniFfiZopfliFormat, data: Data, options: UniFfiZopfliOptions) throws -> Bool {
+    return try FfiConverterBool.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip(
+            FfiConverterTypeUniFFIZopfliFormat.lower(format),
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIZopfliOptions.lower(options), $0
+        )
+    })
+}
+
+/**
  * Compresses buffer with Zstandard (RFC 8878, levels 1..22).
  */
 public func uniffiZstdCompress(src: Data, level: Int32) throws -> Data {
@@ -16090,6 +16763,27 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress() != 64979 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark() != 2086 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress() != 20102 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable() != 41471 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress() != 27386 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress() != 3796 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset() != 53437 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip() != 19767 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress() != 39956 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16369,6 +17063,24 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark() != 50597 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress() != 62156 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable() != 21283 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress() != 56329 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options() != 4534 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip() != 19638 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_virtualfilestream_position() != 61477 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16424,6 +17136,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new() != 28814 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset() != 29500 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty() != 64992 {

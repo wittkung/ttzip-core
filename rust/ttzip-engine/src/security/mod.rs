@@ -24,6 +24,7 @@ pub mod tar_defense;
 pub mod uniffi_defense;
 pub mod xz_defense;
 pub mod zip_defense;
+pub mod zopfli_defense;
 
 #[cfg(test)]
 mod tests;
@@ -45,6 +46,7 @@ pub use tar_defense::*;
 pub use uniffi_defense::*;
 pub use xz_defense::*;
 pub use zip_defense::*;
+pub use zopfli_defense::*;
 
 
 

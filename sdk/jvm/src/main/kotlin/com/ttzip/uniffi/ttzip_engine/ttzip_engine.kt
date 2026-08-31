@@ -657,6 +657,9 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 internal interface UniffiCallbackInterfaceProgressHandlerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceUniFfiProgressCallbackMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("onProgress", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceProgressHandler(
     @JvmField internal var `onProgress`: UniffiCallbackInterfaceProgressHandlerMethod0? = null,
@@ -673,6 +676,112 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
     }
 
 }
+@Structure.FieldOrder("onProgress", "uniffiFree")
+internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
+    @JvmField internal var `onProgress`: UniffiCallbackInterfaceUniFfiProgressCallbackMethod0? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `onProgress`: UniffiCallbackInterfaceUniFfiProgressCallbackMethod0? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfaceUniFfiProgressCallback(`onProgress`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceUniFfiProgressCallback) {
+        `onProgress` = other.`onProgress`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1212,6 +1321,7 @@ internal interface UniffiLib : Library {
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
                 uniffiCallbackInterfaceProgressHandler.register(lib)
+                uniffiCallbackInterfaceUniFFIProgressCallback.register(lib)
                 }
         }
         
@@ -1247,6 +1357,36 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error(`ptr`: Pointer,`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffibufferpool(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffibufferpool(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new(`maxEntries`: Int,`defaultSize`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire(`ptr`: Pointer,`minCapacity`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffibufferpool_clear(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffibufferpool_release(`ptr`: Pointer,`buffer`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_clone_unifficancellationtoken(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_unifficancellationtoken(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_clone_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1327,6 +1467,26 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64(`ptr`: Pointer,`data`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffiprogressreporter(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiprogressreporter(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new(`totalBytes`: Long,`throttleMillis`: Int,`callback`: RustBuffer.ByValue,`cancellationToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance(`ptr`: Pointer,`delta`: Long,`currentEntry`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update(`ptr`: Pointer,`processed`: Long,`currentEntry`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1395,6 +1555,26 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffizopflioptimizer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new(`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset(`preset`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark(`ptr`: Pointer,`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress(`ptr`: Pointer,`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable(`ptr`: Pointer,`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`cancellationToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress(`ptr`: Pointer,`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`callback`: RustBuffer.ByValue,`cancellationToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip(`ptr`: Pointer,`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_ttzip_engine_fn_clone_virtualfilestream(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_virtualfilestream(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1414,6 +1594,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_method_virtualfilestream_size(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     fun uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(`vtable`: UniffiVTableCallbackInterfaceProgressHandler,
+    ): Unit
+    fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(`vtable`: UniffiVTableCallbackInterfaceUniFfiProgressCallback,
     ): Unit
     fun uniffi_ttzip_engine_fn_func_apply_in_place_entry_mutation(`archivePath`: RustBuffer.ByValue,`entryPath`: RustBuffer.ByValue,`newData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1621,6 +1803,18 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate(`strategy`: RustBuffer.ByValue,`uncompressedSize`: Long,`estimatedEntropy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark(`src`: RustBuffer.ByValue,`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress(`engine`: RustBuffer.ByValue,`src`: RustBuffer.ByValue,`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress(`engine`: RustBuffer.ByValue,`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip(`src`: RustBuffer.ByValue,`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_gzip_compress(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1679,6 +1873,20 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark(`data`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress(`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable(`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`cancellationToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress(`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,`callback`: RustBuffer.ByValue,`cancellationToken`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress(`format`: RustBuffer.ByValue,`compressed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset(`preset`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip(`format`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_ttzip_engine_fn_func_uniffi_zstd_compress(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_zstd_compress_ldm(`src`: RustBuffer.ByValue,`level`: Int,`windowMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -2025,6 +2233,18 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress(
@@ -2083,6 +2303,20 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm(
@@ -2124,6 +2358,24 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_release(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise(
     ): Short
@@ -2181,6 +2433,20 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks(
@@ -2237,6 +2503,18 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_virtualfilestream_position(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_virtualfilestream_read(
@@ -2253,6 +2531,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64(
@@ -2265,13 +2547,21 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_progresshandler_on_progress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress(
     ): Short
     fun ffi_ttzip_engine_uniffi_contract_version(
     ): Int
@@ -2599,6 +2889,24 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress() != 43293.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate() != 15221.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark() != 51197.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress() != 31266.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress() != 57047.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip() != 38120.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2686,6 +2994,27 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress() != 64979.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark() != 2086.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress() != 20102.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable() != 41471.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress() != 27386.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress() != 3796.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset() != 53437.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip() != 19767.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress() != 39956.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2747,6 +3076,33 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire() != 42974.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear() != 10725.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats() != 11861.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_release() != 46161.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats() != 32224.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel() != 25446.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child() != 8512.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled() != 18692.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087.toShort()) {
@@ -2833,6 +3189,27 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance() != 14280.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds() != 30992.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish() != 22075.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled() != 65220.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage() != 28435.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs() != 44546.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update() != 56030.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2917,6 +3294,24 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark() != 50597.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress() != 62156.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable() != 21283.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress() != 56329.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options() != 4534.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip() != 19638.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_virtualfilestream_position() != 61477.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2941,6 +3336,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new() != 17543.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2959,16 +3360,28 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new() != 21494.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new() != 28814.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset() != 29500.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty() != 64992.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -3953,6 +4366,659 @@ public object FfiConverterTypeTTZipLocalizationEngine: FfiConverter<TtZipLocaliz
     override fun allocationSize(value: TtZipLocalizationEngine) = 8UL
 
     override fun write(value: TtZipLocalizationEngine, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+ */
+public interface UniFfiBufferPoolInterface {
+    
+    /**
+     * Acquires a byte buffer with at least `min_capacity` bytes.
+     */
+    fun `acquire`(`minCapacity`: kotlin.UInt): kotlin.ByteArray
+    
+    /**
+     * Clears all pooled buffers and releases memory to the OS.
+     */
+    fun `clear`()
+    
+    /**
+     * Takes a current snapshot of memory metrics and pool occupancy.
+     */
+    fun `getStats`(): UniFfiMemoryStats
+    
+    /**
+     * Returns a used buffer back to the pool if within capacity bounds.
+     */
+    fun `release`(`buffer`: kotlin.ByteArray)
+    
+    /**
+     * Resets memory statistics counters.
+     */
+    fun `resetStats`()
+    
+    companion object
+}
+
+/**
+ * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+ */
+open class UniFfiBufferPool: Disposable, AutoCloseable, UniFfiBufferPoolInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a new buffer pool with bounded entry count and default chunk size.
+     */
+    constructor(`maxEntries`: kotlin.UInt, `defaultSize`: kotlin.UInt) :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new(
+        FfiConverterUInt.lower(`maxEntries`),FfiConverterUInt.lower(`defaultSize`),_status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffibufferpool(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffibufferpool(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Acquires a byte buffer with at least `min_capacity` bytes.
+     */override fun `acquire`(`minCapacity`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire(
+        it, FfiConverterUInt.lower(`minCapacity`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Clears all pooled buffers and releases memory to the OS.
+     */override fun `clear`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffibufferpool_clear(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Takes a current snapshot of memory metrics and pool occupancy.
+     */override fun `getStats`(): UniFfiMemoryStats {
+            return FfiConverterTypeUniFFIMemoryStats.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns a used buffer back to the pool if within capacity bounds.
+     */override fun `release`(`buffer`: kotlin.ByteArray)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffibufferpool_release(
+        it, FfiConverterByteArray.lower(`buffer`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Resets memory statistics counters.
+     */override fun `resetStats`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats(
+        it, _status)
+}
+    }
+    
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIBufferPool: FfiConverter<UniFfiBufferPool, Pointer> {
+
+    override fun lower(value: UniFfiBufferPool): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiBufferPool {
+        return UniFfiBufferPool(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiBufferPool {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiBufferPool) = 8UL
+
+    override fun write(value: UniFfiBufferPool, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Thread-safe lock-free hierarchical cancellation token.
+ */
+public interface UniFfiCancellationTokenInterface {
+    
+    /**
+     * Triggers cancellation for this token (and any of its children).
+     */
+    fun `cancel`()
+    
+    /**
+     * Creates a child cancellation token linked to this parent.
+     *
+     * If either the parent or the child is cancelled, the child reports cancelled.
+     */
+    fun `createChild`(): UniFfiCancellationToken
+    
+    /**
+     * Checks whether cancellation has been requested on this token or its ancestors.
+     */
+    fun `isCancelled`(): kotlin.Boolean
+    
+    /**
+     * Resets the cancellation flag back to active (false).
+     */
+    fun `reset`()
+    
+    companion object
+}
+
+/**
+ * Thread-safe lock-free hierarchical cancellation token.
+ */
+open class UniFfiCancellationToken: Disposable, AutoCloseable, UniFfiCancellationTokenInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a new root cancellation token in the non-cancelled state.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_unifficancellationtoken(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_unifficancellationtoken(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Triggers cancellation for this token (and any of its children).
+     */override fun `cancel`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Creates a child cancellation token linked to this parent.
+     *
+     * If either the parent or the child is cancelled, the child reports cancelled.
+     */override fun `createChild`(): UniFfiCancellationToken {
+            return FfiConverterTypeUniFFICancellationToken.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Checks whether cancellation has been requested on this token or its ancestors.
+     */override fun `isCancelled`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Resets the cancellation flag back to active (false).
+     */override fun `reset`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset(
+        it, _status)
+}
+    }
+    
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFICancellationToken: FfiConverter<UniFfiCancellationToken, Pointer> {
+
+    override fun lower(value: UniFfiCancellationToken): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiCancellationToken {
+        return UniFfiCancellationToken(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiCancellationToken {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiCancellationToken) = 8UL
+
+    override fun write(value: UniFfiCancellationToken, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -5391,6 +6457,386 @@ public object FfiConverterTypeUniFFIPluginVerifier: FfiConverter<UniFfiPluginVer
 
 
 /**
+ * High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+ */
+public interface UniFfiProgressReporterInterface {
+    
+    /**
+     * Advances processed byte count by a delta chunk.
+     */
+    fun `advance`(`delta`: kotlin.ULong, `currentEntry`: kotlin.String?): kotlin.Boolean
+    
+    /**
+     * Computes estimated remaining time in seconds (ETA).
+     */
+    fun `estimatedRemainingSeconds`(): kotlin.Double
+    
+    /**
+     * Flushes final 100% completion event to the callback.
+     */
+    fun `finish`()
+    
+    /**
+     * Checks if cancellation has occurred.
+     */
+    fun `isCancelled`(): kotlin.Boolean
+    
+    /**
+     * Computes current completion percentage in range [0.0, 100.0].
+     */
+    fun `percentage`(): kotlin.Double
+    
+    /**
+     * Computes instantaneous throughput in megabytes per second (MB/s).
+     */
+    fun `throughputMbs`(): kotlin.Double
+    
+    /**
+     * Updates processed byte count and triggers throttled callback.
+     *
+     * Returns `true` if processing should continue, or `false` if cancelled.
+     */
+    fun `update`(`processed`: kotlin.ULong, `currentEntry`: kotlin.String?): kotlin.Boolean
+    
+    companion object
+}
+
+/**
+ * High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+ */
+open class UniFfiProgressReporter: Disposable, AutoCloseable, UniFfiProgressReporterInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a new progress reporter with specified byte quota, throttle interval, and optional callback.
+     */
+    constructor(`totalBytes`: kotlin.ULong, `throttleMillis`: kotlin.UInt, `callback`: UniFfiProgressCallback?, `cancellationToken`: UniFfiCancellationToken?) :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new(
+        FfiConverterULong.lower(`totalBytes`),FfiConverterUInt.lower(`throttleMillis`),FfiConverterOptionalTypeUniFFIProgressCallback.lower(`callback`),FfiConverterOptionalTypeUniFFICancellationToken.lower(`cancellationToken`),_status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiprogressreporter(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiprogressreporter(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Advances processed byte count by a delta chunk.
+     */override fun `advance`(`delta`: kotlin.ULong, `currentEntry`: kotlin.String?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance(
+        it, FfiConverterULong.lower(`delta`),FfiConverterOptionalString.lower(`currentEntry`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Computes estimated remaining time in seconds (ETA).
+     */override fun `estimatedRemainingSeconds`(): kotlin.Double {
+            return FfiConverterDouble.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Flushes final 100% completion event to the callback.
+     */override fun `finish`()
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Checks if cancellation has occurred.
+     */override fun `isCancelled`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Computes current completion percentage in range [0.0, 100.0].
+     */override fun `percentage`(): kotlin.Double {
+            return FfiConverterDouble.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Computes instantaneous throughput in megabytes per second (MB/s).
+     */override fun `throughputMbs`(): kotlin.Double {
+            return FfiConverterDouble.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Updates processed byte count and triggers throttled callback.
+     *
+     * Returns `true` if processing should continue, or `false` if cancelled.
+     */override fun `update`(`processed`: kotlin.ULong, `currentEntry`: kotlin.String?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update(
+        it, FfiConverterULong.lower(`processed`),FfiConverterOptionalString.lower(`currentEntry`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIProgressReporter: FfiConverter<UniFfiProgressReporter, Pointer> {
+
+    override fun lower(value: UniFfiProgressReporter): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiProgressReporter {
+        return UniFfiProgressReporter(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiProgressReporter {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiProgressReporter) = 8UL
+
+    override fun write(value: UniFfiProgressReporter, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Cross-language UniFFI MediaPlayer controller object.
  */
 public interface UniFfittZipMediaPlayerInterface {
@@ -6281,6 +7727,382 @@ public object FfiConverterTypeUniFFIVfsTree: FfiConverter<UniFfiVfsTree, Pointer
     override fun allocationSize(value: UniFfiVfsTree) = 8UL
 
     override fun write(value: UniFfiVfsTree, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+ */
+public interface UniFfiZopfliOptimizerInterface {
+    
+    /**
+     * Benchmarks compression on the given payload.
+     */
+    fun `benchmark`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): UniFfiZopfliStats
+    
+    /**
+     * Compresses a buffer with the configured options.
+     */
+    fun `compress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): kotlin.ByteArray
+    
+    /**
+     * Compresses a buffer with cancellation support.
+     */
+    fun `compressCancellable`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray
+    
+    /**
+     * Compresses a buffer with progress callback and cancellation token.
+     */
+    fun `compressWithProgress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `callback`: UniFfiProgressCallback?, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray
+    
+    /**
+     * Returns the configured options for this optimizer.
+     */
+    fun `options`(): UniFfiZopfliOptions
+    
+    /**
+     * Verifies lossless roundtrip correctness.
+     */
+    fun `verifyRoundtrip`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): kotlin.Boolean
+    
+    companion object
+}
+
+/**
+ * Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+ */
+open class UniFfiZopfliOptimizer: Disposable, AutoCloseable, UniFfiZopfliOptimizerInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new optimizer instance with custom configuration options.
+     */
+    constructor(`options`: UniFfiZopfliOptions) :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new(
+        FfiConverterTypeUniFFIZopfliOptions.lower(`options`),_status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffizopflioptimizer(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Benchmarks compression on the given payload.
+     */
+    @Throws(TtZipException::class)override fun `benchmark`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): UniFfiZopfliStats {
+            return FfiConverterTypeUniFFIZopfliStats.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark(
+        it, FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Compresses a buffer with the configured options.
+     */
+    @Throws(TtZipException::class)override fun `compress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress(
+        it, FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Compresses a buffer with cancellation support.
+     */
+    @Throws(TtZipException::class)override fun `compressCancellable`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable(
+        it, FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterOptionalTypeUniFFICancellationToken.lower(`cancellationToken`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Compresses a buffer with progress callback and cancellation token.
+     */
+    @Throws(TtZipException::class)override fun `compressWithProgress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `callback`: UniFfiProgressCallback?, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress(
+        it, FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterOptionalTypeUniFFIProgressCallback.lower(`callback`),FfiConverterOptionalTypeUniFFICancellationToken.lower(`cancellationToken`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns the configured options for this optimizer.
+     */override fun `options`(): UniFfiZopfliOptions {
+            return FfiConverterTypeUniFFIZopfliOptions.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies lossless roundtrip correctness.
+     */
+    @Throws(TtZipException::class)override fun `verifyRoundtrip`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip(
+        it, FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Constructs a new optimizer instance from a preset.
+     */ fun `withPreset`(`preset`: UniFfiZopfliPreset): UniFfiZopfliOptimizer {
+            return FfiConverterTypeUniFFIZopfliOptimizer.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset(
+        FfiConverterTypeUniFFIZopfliPreset.lower(`preset`),_status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIZopfliOptimizer: FfiConverter<UniFfiZopfliOptimizer, Pointer> {
+
+    override fun lower(value: UniFfiZopfliOptimizer): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiZopfliOptimizer {
+        return UniFfiZopfliOptimizer(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiZopfliOptimizer {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiZopfliOptimizer) = 8UL
+
+    override fun write(value: UniFfiZopfliOptimizer, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -7756,6 +9578,57 @@ public object FfiConverterTypeUniFFICorruptedEntry: FfiConverterRustBuffer<UniFf
 
 
 /**
+ * Detailed compression telemetry and performance metrics.
+ */
+data class UniFfiDeflateStats (
+    var `engine`: UniFfiDeflateEngine, 
+    var `uncompressedSize`: kotlin.ULong, 
+    var `compressedSize`: kotlin.ULong, 
+    var `compressionRatio`: kotlin.Double, 
+    var `durationNanos`: kotlin.ULong, 
+    var `throughputMbs`: kotlin.Double
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeflateStats: FfiConverterRustBuffer<UniFfiDeflateStats> {
+    override fun read(buf: ByteBuffer): UniFfiDeflateStats {
+        return UniFfiDeflateStats(
+            FfiConverterTypeUniFFIDeflateEngine.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDeflateStats) = (
+            FfiConverterTypeUniFFIDeflateEngine.allocationSize(value.`engine`) +
+            FfiConverterULong.allocationSize(value.`uncompressedSize`) +
+            FfiConverterULong.allocationSize(value.`compressedSize`) +
+            FfiConverterDouble.allocationSize(value.`compressionRatio`) +
+            FfiConverterULong.allocationSize(value.`durationNanos`) +
+            FfiConverterDouble.allocationSize(value.`throughputMbs`)
+    )
+
+    override fun write(value: UniFfiDeflateStats, buf: ByteBuffer) {
+            FfiConverterTypeUniFFIDeflateEngine.write(value.`engine`, buf)
+            FfiConverterULong.write(value.`uncompressedSize`, buf)
+            FfiConverterULong.write(value.`compressedSize`, buf)
+            FfiConverterDouble.write(value.`compressionRatio`, buf)
+            FfiConverterULong.write(value.`durationNanos`, buf)
+            FfiConverterDouble.write(value.`throughputMbs`, buf)
+    }
+}
+
+
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 data class UniFfiDocxExtractResult (
@@ -8564,6 +10437,61 @@ public object FfiConverterTypeUniFFIMediaTrackInfo: FfiConverterRustBuffer<UniFf
             FfiConverterOptionalUInt.write(value.`sampleRate`, buf)
             FfiConverterOptionalUInt.write(value.`width`, buf)
             FfiConverterOptionalUInt.write(value.`height`, buf)
+    }
+}
+
+
+
+/**
+ * Aggregated cross-language memory allocation and buffer pool telemetry.
+ */
+data class UniFfiMemoryStats (
+    var `allocatedBytes`: kotlin.ULong, 
+    var `deallocatedBytes`: kotlin.ULong, 
+    var `activeAllocations`: kotlin.ULong, 
+    var `peakAllocatedBytes`: kotlin.ULong, 
+    var `pooledBuffersCount`: kotlin.ULong, 
+    var `poolHitCount`: kotlin.ULong, 
+    var `poolMissCount`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMemoryStats: FfiConverterRustBuffer<UniFfiMemoryStats> {
+    override fun read(buf: ByteBuffer): UniFfiMemoryStats {
+        return UniFfiMemoryStats(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMemoryStats) = (
+            FfiConverterULong.allocationSize(value.`allocatedBytes`) +
+            FfiConverterULong.allocationSize(value.`deallocatedBytes`) +
+            FfiConverterULong.allocationSize(value.`activeAllocations`) +
+            FfiConverterULong.allocationSize(value.`peakAllocatedBytes`) +
+            FfiConverterULong.allocationSize(value.`pooledBuffersCount`) +
+            FfiConverterULong.allocationSize(value.`poolHitCount`) +
+            FfiConverterULong.allocationSize(value.`poolMissCount`)
+    )
+
+    override fun write(value: UniFfiMemoryStats, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`allocatedBytes`, buf)
+            FfiConverterULong.write(value.`deallocatedBytes`, buf)
+            FfiConverterULong.write(value.`activeAllocations`, buf)
+            FfiConverterULong.write(value.`peakAllocatedBytes`, buf)
+            FfiConverterULong.write(value.`pooledBuffersCount`, buf)
+            FfiConverterULong.write(value.`poolHitCount`, buf)
+            FfiConverterULong.write(value.`poolMissCount`, buf)
     }
 }
 
@@ -10244,6 +12172,116 @@ public object FfiConverterTypeUniFFIXxh3128Digest: FfiConverterRustBuffer<UniFfi
 
 
 /**
+ * Strongly typed configuration options for Zopfli compression passes.
+ */
+data class UniFfiZopfliOptions (
+    /**
+     * Maximum number of forward/backward optimization iterations (default: 15).
+     */
+    var `iterationCount`: kotlin.ULong, 
+    /**
+     * Stop iterations early if no cost reduction occurs for N consecutive passes (0 = disabled).
+     */
+    var `iterationsWithoutImprovement`: kotlin.ULong, 
+    /**
+     * Maximum number of dynamic Deflate block splits (0 = unlimited, default: 15).
+     */
+    var `maximumBlockSplits`: kotlin.UShort, 
+    /**
+     * Enables or disables dynamic block splitting heuristics.
+     */
+    var `blockSplitting`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIZopfliOptions: FfiConverterRustBuffer<UniFfiZopfliOptions> {
+    override fun read(buf: ByteBuffer): UniFfiZopfliOptions {
+        return UniFfiZopfliOptions(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiZopfliOptions) = (
+            FfiConverterULong.allocationSize(value.`iterationCount`) +
+            FfiConverterULong.allocationSize(value.`iterationsWithoutImprovement`) +
+            FfiConverterUShort.allocationSize(value.`maximumBlockSplits`) +
+            FfiConverterBoolean.allocationSize(value.`blockSplitting`)
+    )
+
+    override fun write(value: UniFfiZopfliOptions, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`iterationCount`, buf)
+            FfiConverterULong.write(value.`iterationsWithoutImprovement`, buf)
+            FfiConverterUShort.write(value.`maximumBlockSplits`, buf)
+            FfiConverterBoolean.write(value.`blockSplitting`, buf)
+    }
+}
+
+
+
+/**
+ * Compression performance telemetry and analytical metrics for Zopfli runs.
+ */
+data class UniFfiZopfliStats (
+    var `format`: UniFfiZopfliFormat, 
+    var `uncompressedSize`: kotlin.ULong, 
+    var `compressedSize`: kotlin.ULong, 
+    var `compressionRatio`: kotlin.Double, 
+    var `durationNanos`: kotlin.ULong, 
+    var `throughputMbs`: kotlin.Double, 
+    var `iterations`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIZopfliStats: FfiConverterRustBuffer<UniFfiZopfliStats> {
+    override fun read(buf: ByteBuffer): UniFfiZopfliStats {
+        return UniFfiZopfliStats(
+            FfiConverterTypeUniFFIZopfliFormat.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiZopfliStats) = (
+            FfiConverterTypeUniFFIZopfliFormat.allocationSize(value.`format`) +
+            FfiConverterULong.allocationSize(value.`uncompressedSize`) +
+            FfiConverterULong.allocationSize(value.`compressedSize`) +
+            FfiConverterDouble.allocationSize(value.`compressionRatio`) +
+            FfiConverterULong.allocationSize(value.`durationNanos`) +
+            FfiConverterDouble.allocationSize(value.`throughputMbs`) +
+            FfiConverterULong.allocationSize(value.`iterations`)
+    )
+
+    override fun write(value: UniFfiZopfliStats, buf: ByteBuffer) {
+            FfiConverterTypeUniFFIZopfliFormat.write(value.`format`, buf)
+            FfiConverterULong.write(value.`uncompressedSize`, buf)
+            FfiConverterULong.write(value.`compressedSize`, buf)
+            FfiConverterDouble.write(value.`compressionRatio`, buf)
+            FfiConverterULong.write(value.`durationNanos`, buf)
+            FfiConverterDouble.write(value.`throughputMbs`, buf)
+            FfiConverterULong.write(value.`iterations`, buf)
+    }
+}
+
+
+
+/**
  * Video metadata properties record exposed to Swift.
  */
 data class VideoMetadataRecord (
@@ -10876,6 +12914,447 @@ public object FfiConverterTypeUniFFIDecisionVerdict: FfiConverterRustBuffer<UniF
 
 
 /**
+ * Dynamic arbitration strategy for selecting optimal Deflate engine and compression level.
+ */
+
+enum class UniFfiDeflateArbitrationStrategy {
+    
+    /**
+     * Maximize processing speed and throughput; always selects `LibdeflateHardware`.
+     */
+    SPEED_FIRST,
+    /**
+     * Maximize compression ratio; selects `PureRustNearOptimalDp` with high levels.
+     */
+    RATIO_FIRST,
+    /**
+     * Balance speed and ratio based on payload volume thresholds (<= 64KB DP, > 64KB Hardware).
+     */
+    BALANCED,
+    /**
+     * Analyzes entropy and data characteristics dynamically to pick the optimal engine.
+     */
+    DYNAMIC_ADAPTIVE;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeflateArbitrationStrategy: FfiConverterRustBuffer<UniFfiDeflateArbitrationStrategy> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiDeflateArbitrationStrategy.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiDeflateArbitrationStrategy) = 4UL
+
+    override fun write(value: UniFfiDeflateArbitrationStrategy, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Dual-engine selection for RFC 1951 Deflate compression.
+ */
+
+enum class UniFfiDeflateEngine {
+    
+    /**
+     * Hardware-accelerated SIMD vectorised C-libdeflate engine.
+     */
+    LIBDEFLATE_HARDWARE,
+    /**
+     * Pure-Rust Near-Optimal Dynamic Programming OptParser with EM refinement.
+     */
+    PURE_RUST_NEAR_OPTIMAL_DP;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeflateEngine: FfiConverterRustBuffer<UniFfiDeflateEngine> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiDeflateEngine.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiDeflateEngine) = 4UL
+
+    override fun write(value: UniFfiDeflateEngine, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Strongly typed compression level for Deflate pipelines.
+ */
+sealed class UniFfiDeflateLevel {
+    
+    /**
+     * RFC 1951 BTYPE=00 uncompressed store blocks (Level 0).
+     */
+    object Store : UniFfiDeflateLevel()
+    
+    
+    /**
+     * Fast greedy match parsing (Level 1).
+     */
+    object Fast : UniFfiDeflateLevel()
+    
+    
+    /**
+     * Default balanced compression (Level 6).
+     */
+    object DefaultLevel : UniFfiDeflateLevel()
+    
+    
+    /**
+     * Maximum lazy match evaluation (Level 9).
+     */
+    object Maximum : UniFfiDeflateLevel()
+    
+    
+    /**
+     * Ultra Near-Optimal DP with EM refinement (Level 12).
+     */
+    object UltraDp : UniFfiDeflateLevel()
+    
+    
+    /**
+     * Custom compression level in range 0..=12.
+     */
+    data class Custom(
+        val `level`: kotlin.Int) : UniFfiDeflateLevel() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeflateLevel : FfiConverterRustBuffer<UniFfiDeflateLevel>{
+    override fun read(buf: ByteBuffer): UniFfiDeflateLevel {
+        return when(buf.getInt()) {
+            1 -> UniFfiDeflateLevel.Store
+            2 -> UniFfiDeflateLevel.Fast
+            3 -> UniFfiDeflateLevel.DefaultLevel
+            4 -> UniFfiDeflateLevel.Maximum
+            5 -> UniFfiDeflateLevel.UltraDp
+            6 -> UniFfiDeflateLevel.Custom(
+                FfiConverterInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiDeflateLevel) = when(value) {
+        is UniFfiDeflateLevel.Store -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiDeflateLevel.Fast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiDeflateLevel.DefaultLevel -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiDeflateLevel.Maximum -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiDeflateLevel.UltraDp -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiDeflateLevel.Custom -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterInt.allocationSize(value.`level`)
+            )
+        }
+    }
+
+    override fun write(value: UniFfiDeflateLevel, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiDeflateLevel.Store -> {
+                buf.putInt(1)
+                Unit
+            }
+            is UniFfiDeflateLevel.Fast -> {
+                buf.putInt(2)
+                Unit
+            }
+            is UniFfiDeflateLevel.DefaultLevel -> {
+                buf.putInt(3)
+                Unit
+            }
+            is UniFfiDeflateLevel.Maximum -> {
+                buf.putInt(4)
+                Unit
+            }
+            is UniFfiDeflateLevel.UltraDp -> {
+                buf.putInt(5)
+                Unit
+            }
+            is UniFfiDeflateLevel.Custom -> {
+                buf.putInt(6)
+                FfiConverterInt.write(value.`level`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+
+/**
+ * Strongly-typed cross-language error enumeration exposed to foreign runtimes.
+ */
+sealed class UniFfiException: kotlin.Exception() {
+    
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    class CorruptArchive(
+        
+        val `message`: kotlin.String, 
+        
+        val `offset`: kotlin.ULong
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }, offset=${ `offset` }"
+    }
+    
+    class InvalidPassword(
+        
+        val `message`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    class UnsupportedCompression(
+        
+        val `method`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "method=${ `method` }"
+    }
+    
+    class MmapException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    class PermissionDenied(
+        
+        val `path`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "path=${ `path` }"
+    }
+    
+    class OutOfMemory(
+        
+        val `message`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    class CryptoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiException = FfiConverterTypeUniFFIError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIError : FfiConverterRustBuffer<UniFfiException> {
+    override fun read(buf: ByteBuffer): UniFfiException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiException.IoException(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiException.CorruptArchive(
+                FfiConverterString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            3 -> UniFfiException.InvalidPassword(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiException.UnsupportedCompression(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiException.MmapException(
+                FfiConverterString.read(buf),
+                )
+            6 -> UniFfiException.PermissionDenied(
+                FfiConverterString.read(buf),
+                )
+            7 -> UniFfiException.OutOfMemory(
+                FfiConverterString.read(buf),
+                )
+            8 -> UniFfiException.CryptoException(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiException): ULong {
+        return when(value) {
+            is UniFfiException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiException.CorruptArchive -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+                + FfiConverterULong.allocationSize(value.`offset`)
+            )
+            is UniFfiException.InvalidPassword -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiException.UnsupportedCompression -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`method`)
+            )
+            is UniFfiException.MmapException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiException.PermissionDenied -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`path`)
+            )
+            is UniFfiException.OutOfMemory -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiException.CryptoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+        }
+    }
+
+    override fun write(value: UniFfiException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiException.IoException -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiException.CorruptArchive -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`message`, buf)
+                FfiConverterULong.write(value.`offset`, buf)
+                Unit
+            }
+            is UniFfiException.InvalidPassword -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiException.UnsupportedCompression -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`method`, buf)
+                Unit
+            }
+            is UniFfiException.MmapException -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiException.PermissionDenied -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`path`, buf)
+                Unit
+            }
+            is UniFfiException.OutOfMemory -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiException.CryptoException -> {
+                buf.putInt(8)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
  * Verification result enumeration exposed to UniFFI.
  */
 sealed class UniFfiLicenseResult {
@@ -11146,6 +13625,159 @@ public object FfiConverterTypeUniFFISubtitleFormat: FfiConverterRustBuffer<UniFf
 
 
 
+/**
+ * 8 Representative mathematical synthetic corpus types for empirical benchmarking.
+ */
+
+enum class UniFfiSyntheticCorpusType {
+    
+    /**
+     * Uniform zero byte run (0x00, zero entropy).
+     */
+    ALL_ZEROS,
+    /**
+     * Structured redundant timestamped log stream.
+     */
+    TEXT_REDUNDANT,
+    /**
+     * Repeated ASCII phrase sequences.
+     */
+    HIGHLY_REPETITIVE,
+    /**
+     * High-entropy pseudo-random bytes (~8.0 bits/byte).
+     */
+    UNIFORM_RANDOM,
+    /**
+     * Low-entropy 4-bit nibble distribution (~2.0 bits/byte).
+     */
+    LOW_ENTROPY_NIBBLES,
+    /**
+     * Structured JSON / C / Swift source code AST tokens.
+     */
+    ASCII_SOURCE_CODE,
+    /**
+     * Simulated Mach-O / ARM64 / x86_64 executable machine code bytecode.
+     */
+    BINARY_EXECUTABLE,
+    /**
+     * Zipfian power-law frequency distribution.
+     */
+    EXPONENTIAL_DECAY;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISyntheticCorpusType: FfiConverterRustBuffer<UniFfiSyntheticCorpusType> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiSyntheticCorpusType.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiSyntheticCorpusType) = 4UL
+
+    override fun write(value: UniFfiSyntheticCorpusType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Target container format for Zopfli compression.
+ */
+
+enum class UniFfiZopfliFormat {
+    
+    /**
+     * Raw RFC 1951 Deflate byte stream without headers or checksums.
+     */
+    DEFLATE,
+    /**
+     * RFC 1950 Zlib stream with 2-byte header and Adler-32 trailing checksum.
+     */
+    ZLIB,
+    /**
+     * RFC 1952 Gzip stream with 10-byte header, timestamp, and CRC32 checksum.
+     */
+    GZIP;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIZopfliFormat: FfiConverterRustBuffer<UniFfiZopfliFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiZopfliFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiZopfliFormat) = 4UL
+
+    override fun write(value: UniFfiZopfliFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Predefined optimization profiles balancing speed vs extreme compression density.
+ */
+
+enum class UniFfiZopfliPreset {
+    
+    /**
+     * Fast pass: 5 iterations, 5 block splits.
+     */
+    FAST,
+    /**
+     * Balanced standard pass: 15 iterations, 15 block splits.
+     */
+    BALANCED,
+    /**
+     * Maximum density pass: 30 iterations, 30 block splits.
+     */
+    MAXIMUM,
+    /**
+     * Ultra extreme pass: 100 iterations, 50 block splits.
+     */
+    ULTRA;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIZopfliPreset: FfiConverterRustBuffer<UniFfiZopfliPreset> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiZopfliPreset.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiZopfliPreset) = 4UL
+
+    override fun write(value: UniFfiZopfliPreset, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -11232,6 +13864,67 @@ internal object uniffiCallbackInterfaceProgressHandler {
  * @suppress
  */
 public object FfiConverterTypeProgressHandler: FfiConverterCallbackInterface<ProgressHandler>()
+
+
+
+
+
+/**
+ * Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
+ */
+public interface UniFfiProgressCallback {
+    
+    /**
+     * Dispatches a progress event. Return `false` to request immediate operation cancellation.
+     */
+    fun `onProgress`(`processedBytes`: kotlin.ULong, `totalBytes`: kotlin.ULong, `currentEntry`: kotlin.String?): kotlin.Boolean
+    
+    companion object
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceUniFFIProgressCallback {
+    internal object `onProgress`: UniffiCallbackInterfaceUniFfiProgressCallbackMethod0 {
+        override fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeUniFFIProgressCallback.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onProgress`(
+                    FfiConverterULong.lift(`processedBytes`),
+                    FfiConverterULong.lift(`totalBytes`),
+                    FfiConverterOptionalString.lift(`currentEntry`),
+                )
+            }
+            val writeReturn = { value: kotlin.Boolean -> uniffiOutReturn.setValue(FfiConverterBoolean.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeUniFFIProgressCallback.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceUniFfiProgressCallback.UniffiByValue(
+        `onProgress`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(vtable)
+    }
+}
+
+/**
+ * The ffiConverter which transforms the Callbacks in to handles to pass to Rust.
+ *
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIProgressCallback: FfiConverterCallbackInterface<UniFfiProgressCallback>()
 
 
 
@@ -11549,6 +14242,38 @@ public object FfiConverterOptionalTypeCancellationToken: FfiConverterRustBuffer<
         } else {
             buf.put(1)
             FfiConverterTypeCancellationToken.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUniFFICancellationToken: FfiConverterRustBuffer<UniFfiCancellationToken?> {
+    override fun read(buf: ByteBuffer): UniFfiCancellationToken? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFICancellationToken.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiCancellationToken?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFICancellationToken.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiCancellationToken?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFICancellationToken.write(value, buf)
         }
     }
 }
@@ -12039,6 +14764,38 @@ public object FfiConverterOptionalTypeProgressHandler: FfiConverterRustBuffer<Pr
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUniFFIProgressCallback: FfiConverterRustBuffer<UniFfiProgressCallback?> {
+    override fun read(buf: ByteBuffer): UniFfiProgressCallback? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFIProgressCallback.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiProgressCallback?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFIProgressCallback.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiProgressCallback?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFIProgressCallback.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceFloat: FfiConverterRustBuffer<List<kotlin.Float>> {
     override fun read(buf: ByteBuffer): List<kotlin.Float> {
         val len = buf.getInt()
@@ -12253,6 +15010,34 @@ public object FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFICorruptedEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffer<List<UniFfiDeflateStats>> {
+    override fun read(buf: ByteBuffer): List<UniFfiDeflateStats> {
+        val len = buf.getInt()
+        return List<UniFfiDeflateStats>(len) {
+            FfiConverterTypeUniFFIDeflateStats.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiDeflateStats>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIDeflateStats.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiDeflateStats>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIDeflateStats.write(it, buf)
         }
     }
 }
@@ -14148,6 +16933,82 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Arbitrates and selects the best Deflate engine given a strategy, payload size, and estimated entropy.
+         */ fun `uniffiDeflateDualArbitrate`(`strategy`: UniFfiDeflateArbitrationStrategy, `uncompressedSize`: kotlin.ULong, `estimatedEntropy`: kotlin.Double?): UniFfiDeflateEngine {
+            return FfiConverterTypeUniFFIDeflateEngine.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate(
+        FfiConverterTypeUniFFIDeflateArbitrationStrategy.lower(`strategy`),FfiConverterULong.lower(`uncompressedSize`),FfiConverterOptionalDouble.lower(`estimatedEntropy`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Benchmarks both Deflate engines on the provided input data and returns comparative telemetry statistics.
+         */
+    @Throws(TtZipException::class) fun `uniffiDeflateDualBenchmark`(`src`: kotlin.ByteArray, `level`: UniFfiDeflateLevel): List<UniFfiDeflateStats> {
+            return FfiConverterSequenceTypeUniFFIDeflateStats.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark(
+        FfiConverterByteArray.lower(`src`),FfiConverterTypeUniFFIDeflateLevel.lower(`level`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compresses a memory buffer with the specified Deflate engine and compression level.
+         */
+    @Throws(TtZipException::class) fun `uniffiDeflateDualCompress`(`engine`: UniFfiDeflateEngine, `src`: kotlin.ByteArray, `level`: UniFfiDeflateLevel): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress(
+        FfiConverterTypeUniFFIDeflateEngine.lower(`engine`),FfiConverterByteArray.lower(`src`),FfiConverterTypeUniFFIDeflateLevel.lower(`level`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Decompresses raw DEFLATE bytes into the expected uncompressed buffer.
+         */
+    @Throws(TtZipException::class) fun `uniffiDeflateDualDecompress`(`engine`: UniFfiDeflateEngine, `src`: kotlin.ByteArray, `expectedUncompressedSize`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress(
+        FfiConverterTypeUniFFIDeflateEngine.lower(`engine`),FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Lossless roundtrip verification test for Deflate compression and decompression.
+         */
+    @Throws(TtZipException::class) fun `uniffiDeflateDualVerifyRoundtrip`(`src`: kotlin.ByteArray, `level`: UniFfiDeflateLevel): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip(
+        FfiConverterByteArray.lower(`src`),FfiConverterTypeUniFFIDeflateLevel.lower(`level`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
+         */ fun `uniffiGenerateSyntheticCorpus`(`corpusType`: UniFfiSyntheticCorpusType, `sizeBytes`: kotlin.ULong, `seed`: kotlin.ULong?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(
+        FfiConverterTypeUniFFISyntheticCorpusType.lower(`corpusType`),FfiConverterULong.lower(`sizeBytes`),FfiConverterOptionalULong.lower(`seed`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Compresses buffer with gzip format (RFC 1952, levels 0..12).
          */
     @Throws(TtZipException::class) fun `uniffiGzipCompress`(`src`: kotlin.ByteArray, `level`: kotlin.Int): kotlin.ByteArray {
@@ -14515,6 +17376,96 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Executes a Zopfli compression benchmark and returns performance statistics.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliBenchmark`(`data`: kotlin.ByteArray, `options`: UniFfiZopfliOptions, `format`: UniFfiZopfliFormat): UniFfiZopfliStats {
+            return FfiConverterTypeUniFFIZopfliStats.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark(
+        FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIZopfliOptions.lower(`options`),FfiConverterTypeUniFFIZopfliFormat.lower(`format`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compresses a buffer with Zopfli using specified format and options.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliCompress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `options`: UniFfiZopfliOptions): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress(
+        FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIZopfliOptions.lower(`options`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compresses a buffer with Zopfli with cancellation token support.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliCompressCancellable`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `options`: UniFfiZopfliOptions, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable(
+        FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIZopfliOptions.lower(`options`),FfiConverterOptionalTypeUniFFICancellationToken.lower(`cancellationToken`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Compresses a buffer with Zopfli with fine-grained progress and cancellation support.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliCompressWithProgress`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `options`: UniFfiZopfliOptions, `callback`: UniFfiProgressCallback?, `cancellationToken`: UniFfiCancellationToken?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress(
+        FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIZopfliOptions.lower(`options`),FfiConverterOptionalTypeUniFFIProgressCallback.lower(`callback`),FfiConverterOptionalTypeUniFFICancellationToken.lower(`cancellationToken`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Decompresses a Zopfli-compressed byte stream back into uncompressed data.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliDecompress`(`format`: UniFfiZopfliFormat, `compressed`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress(
+        FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`compressed`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Resolves standard preset options for Zopfli compression.
+         */ fun `uniffiZopfliOptionsForPreset`(`preset`: UniFfiZopfliPreset): UniFfiZopfliOptions {
+            return FfiConverterTypeUniFFIZopfliOptions.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset(
+        FfiConverterTypeUniFFIZopfliPreset.lower(`preset`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Performs a lossless roundtrip compression and decompression check.
+         */
+    @Throws(TtZipException::class) fun `uniffiZopfliVerifyRoundtrip`(`format`: UniFfiZopfliFormat, `data`: kotlin.ByteArray, `options`: UniFfiZopfliOptions): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip(
+        FfiConverterTypeUniFFIZopfliFormat.lower(`format`),FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIZopfliOptions.lower(`options`),_status)
 }
     )
     }

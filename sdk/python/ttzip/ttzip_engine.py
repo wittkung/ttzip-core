@@ -666,6 +666,18 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress() != 43293:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate() != 15221:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark() != 51197:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress() != 31266:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress() != 57047:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip() != 38120:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress() != 57781:
@@ -724,6 +736,20 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress() != 64979:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark() != 2086:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress() != 20102:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable() != 41471:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress() != 27386:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress() != 3796:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset() != 53437:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip() != 19767:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress() != 39956:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress_ldm() != 25800:
@@ -765,6 +791,24 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key() != 28646:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire() != 42974:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear() != 10725:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats() != 11861:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_release() != 46161:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats() != 32224:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel() != 25446:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child() != 8512:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled() != 18692:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -822,6 +866,20 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance() != 14280:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds() != 30992:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish() != 22075:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled() != 65220:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage() != 28435:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs() != 44546:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update() != 56030:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896:
@@ -878,6 +936,18 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark() != 50597:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress() != 62156:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable() != 21283:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress() != 56329:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options() != 4534:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip() != 19638:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_virtualfilestream_position() != 61477:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_virtualfilestream_read() != 26274:
@@ -894,6 +964,10 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new() != 17543:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648:
@@ -906,13 +980,21 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new() != 21494:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new() != 28814:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset() != 29500:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty() != 64992:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -1023,9 +1105,17 @@ _UNIFFI_FOREIGN_FUTURE_COMPLETE_VOID = ctypes.CFUNCTYPE(None,ctypes.c_uint64,_Un
 _UNIFFI_CALLBACK_INTERFACE_PROGRESS_HANDLER_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64,_UniffiRustBuffer,ctypes.POINTER(ctypes.c_int8),
     ctypes.POINTER(_UniffiRustCallStatus),
 )
+_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64,_UniffiRustBuffer,ctypes.POINTER(ctypes.c_int8),
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
 class _UniffiVTableCallbackInterfaceProgressHandler(ctypes.Structure):
     _fields_ = [
         ("on_progress", _UNIFFI_CALLBACK_INTERFACE_PROGRESS_HANDLER_METHOD0),
+        ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
+    ]
+class _UniffiVTableCallbackInterfaceUniFfiProgressCallback(ctypes.Structure):
+    _fields_ = [
+        ("on_progress", _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0),
         ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
     ]
 _UniffiLib.uniffi_ttzip_engine_fn_clone_cancellationtoken.argtypes = (
@@ -1104,6 +1194,83 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffibufferpool.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffibufferpool.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffibufferpool.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffibufferpool.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new.argtypes = (
+    ctypes.c_uint32,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_clear.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_clear.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_release.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_release.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_clone_unifficancellationtoken.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_unifficancellationtoken.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_unifficancellationtoken.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_unifficancellationtoken.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffimmapreader.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1342,6 +1509,63 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_b
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiprogressreporter.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiprogressreporter.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiprogressreporter.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiprogressreporter.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new.argtypes = (
+    ctypes.c_uint64,
+    ctypes.c_uint32,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds.restype = ctypes.c_double
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage.restype = ctypes.c_double
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs.restype = ctypes.c_double
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update.restype = ctypes.c_int8
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1532,6 +1756,69 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries.argtypes = 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffizopflioptimizer.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffizopflioptimizer.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip.restype = ctypes.c_int8
 _UniffiLib.uniffi_ttzip_engine_fn_clone_virtualfilestream.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1584,6 +1871,10 @@ _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.argtypes 
     ctypes.POINTER(_UniffiVTableCallbackInterfaceProgressHandler),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback.argtypes = (
+    ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiProgressCallback),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_func_apply_in_place_entry_mutation.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -2219,6 +2510,46 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_gzip_compress.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -2401,6 +2732,55 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zlib_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip.restype = ctypes.c_int8
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_compress.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -3067,6 +3447,24 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress.restype = c
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress.restype = ctypes.c_uint16
@@ -3154,6 +3552,27 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_compress.restype = ctyp
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zlib_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_benchmark.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_cancellable.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_compress_with_progress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_options_for_preset.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zopfli_verify_roundtrip.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_compress.restype = ctypes.c_uint16
@@ -3217,6 +3636,33 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key.r
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_release.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_release.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.restype = ctypes.c_uint16
@@ -3301,6 +3747,27 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw.r
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.restype = ctypes.c_uint16
@@ -3385,6 +3852,24 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_search.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_cancellable.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_compress_with_progress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_options.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_verify_roundtrip.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_virtualfilestream_position.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_virtualfilestream_position.restype = ctypes.c_uint16
@@ -3409,6 +3894,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new.restyp
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.restype = ctypes.c_uint16
@@ -3427,18 +3918,30 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_with_preset.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.restype = ctypes.c_uint16
 _UniffiLib.ffi_ttzip_engine_uniffi_contract_version.argtypes = (
 )
 _UniffiLib.ffi_ttzip_engine_uniffi_contract_version.restype = ctypes.c_uint32
@@ -3903,6 +4406,328 @@ class _UniffiConverterTypeTtZipLocalizationEngine:
 
     @classmethod
     def write(cls, value: TtZipLocalizationEngineProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiBufferPoolProtocol(typing.Protocol):
+    """
+    Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+    """
+
+    def acquire(self, min_capacity: "int"):
+        """
+        Acquires a byte buffer with at least `min_capacity` bytes.
+        """
+
+        raise NotImplementedError
+    def clear(self, ):
+        """
+        Clears all pooled buffers and releases memory to the OS.
+        """
+
+        raise NotImplementedError
+    def get_stats(self, ):
+        """
+        Takes a current snapshot of memory metrics and pool occupancy.
+        """
+
+        raise NotImplementedError
+    def release(self, buffer: "bytes"):
+        """
+        Returns a used buffer back to the pool if within capacity bounds.
+        """
+
+        raise NotImplementedError
+    def reset_stats(self, ):
+        """
+        Resets memory statistics counters.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiBufferPool:
+    """
+    Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, max_entries: "int",default_size: "int"):
+        """
+        Creates a new buffer pool with bounded entry count and default chunk size.
+        """
+
+        _UniffiConverterUInt32.check_lower(max_entries)
+        
+        _UniffiConverterUInt32.check_lower(default_size)
+        
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new,
+        _UniffiConverterUInt32.lower(max_entries),
+        _UniffiConverterUInt32.lower(default_size))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffibufferpool, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffibufferpool, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def acquire(self, min_capacity: "int") -> "bytes":
+        """
+        Acquires a byte buffer with at least `min_capacity` bytes.
+        """
+
+        _UniffiConverterUInt32.check_lower(min_capacity)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt32.lower(min_capacity))
+        )
+
+
+
+
+
+    def clear(self, ) -> None:
+        """
+        Clears all pooled buffers and releases memory to the OS.
+        """
+
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_clear,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def get_stats(self, ) -> "UniFfiMemoryStats":
+        """
+        Takes a current snapshot of memory metrics and pool occupancy.
+        """
+
+        return _UniffiConverterTypeUniFfiMemoryStats.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def release(self, buffer: "bytes") -> None:
+        """
+        Returns a used buffer back to the pool if within capacity bounds.
+        """
+
+        _UniffiConverterBytes.check_lower(buffer)
+        
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_release,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(buffer))
+
+
+
+
+
+
+    def reset_stats(self, ) -> None:
+        """
+        Resets memory statistics counters.
+        """
+
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiBufferPool:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiBufferPool._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiBufferPool):
+        if not isinstance(value, UniFfiBufferPool):
+            raise TypeError("Expected UniFfiBufferPool instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiBufferPoolProtocol):
+        if not isinstance(value, UniFfiBufferPool):
+            raise TypeError("Expected UniFfiBufferPool instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiBufferPoolProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiCancellationTokenProtocol(typing.Protocol):
+    """
+    Thread-safe lock-free hierarchical cancellation token.
+    """
+
+    def cancel(self, ):
+        """
+        Triggers cancellation for this token (and any of its children).
+        """
+
+        raise NotImplementedError
+    def create_child(self, ):
+        """
+        Creates a child cancellation token linked to this parent.
+
+        If either the parent or the child is cancelled, the child reports cancelled.
+        """
+
+        raise NotImplementedError
+    def is_cancelled(self, ):
+        """
+        Checks whether cancellation has been requested on this token or its ancestors.
+        """
+
+        raise NotImplementedError
+    def reset(self, ):
+        """
+        Resets the cancellation flag back to active (false).
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiCancellationToken:
+    """
+    Thread-safe lock-free hierarchical cancellation token.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Creates a new root cancellation token in the non-cancelled state.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_unifficancellationtoken, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_unifficancellationtoken, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def cancel(self, ) -> None:
+        """
+        Triggers cancellation for this token (and any of its children).
+        """
+
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def create_child(self, ) -> "UniFfiCancellationToken":
+        """
+        Creates a child cancellation token linked to this parent.
+
+        If either the parent or the child is cancelled, the child reports cancelled.
+        """
+
+        return _UniffiConverterTypeUniFfiCancellationToken.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def is_cancelled(self, ) -> "bool":
+        """
+        Checks whether cancellation has been requested on this token or its ancestors.
+        """
+
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def reset(self, ) -> None:
+        """
+        Resets the cancellation flag back to active (false).
+        """
+
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiCancellationToken:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiCancellationToken._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiCancellationToken):
+        if not isinstance(value, UniFfiCancellationToken):
+            raise TypeError("Expected UniFfiCancellationToken instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiCancellationTokenProtocol):
+        if not isinstance(value, UniFfiCancellationToken):
+            raise TypeError("Expected UniFfiCancellationToken instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiCancellationTokenProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -4823,6 +5648,236 @@ class _UniffiConverterTypeUniFfiPluginVerifier:
 
 
 
+class UniFfiProgressReporterProtocol(typing.Protocol):
+    """
+    High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+    """
+
+    def advance(self, delta: "int",current_entry: "typing.Optional[str]"):
+        """
+        Advances processed byte count by a delta chunk.
+        """
+
+        raise NotImplementedError
+    def estimated_remaining_seconds(self, ):
+        """
+        Computes estimated remaining time in seconds (ETA).
+        """
+
+        raise NotImplementedError
+    def finish(self, ):
+        """
+        Flushes final 100% completion event to the callback.
+        """
+
+        raise NotImplementedError
+    def is_cancelled(self, ):
+        """
+        Checks if cancellation has occurred.
+        """
+
+        raise NotImplementedError
+    def percentage(self, ):
+        """
+        Computes current completion percentage in range [0.0, 100.0].
+        """
+
+        raise NotImplementedError
+    def throughput_mbs(self, ):
+        """
+        Computes instantaneous throughput in megabytes per second (MB/s).
+        """
+
+        raise NotImplementedError
+    def update(self, processed: "int",current_entry: "typing.Optional[str]"):
+        """
+        Updates processed byte count and triggers throttled callback.
+
+        Returns `true` if processing should continue, or `false` if cancelled.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiProgressReporter:
+    """
+    High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, total_bytes: "int",throttle_millis: "int",callback: "typing.Optional[UniFfiProgressCallback]",cancellation_token: "typing.Optional[UniFfiCancellationToken]"):
+        """
+        Creates a new progress reporter with specified byte quota, throttle interval, and optional callback.
+        """
+
+        _UniffiConverterUInt64.check_lower(total_bytes)
+        
+        _UniffiConverterUInt32.check_lower(throttle_millis)
+        
+        _UniffiConverterOptionalTypeUniFfiProgressCallback.check_lower(callback)
+        
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.check_lower(cancellation_token)
+        
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new,
+        _UniffiConverterUInt64.lower(total_bytes),
+        _UniffiConverterUInt32.lower(throttle_millis),
+        _UniffiConverterOptionalTypeUniFfiProgressCallback.lower(callback),
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.lower(cancellation_token))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiprogressreporter, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiprogressreporter, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def advance(self, delta: "int",current_entry: "typing.Optional[str]") -> "bool":
+        """
+        Advances processed byte count by a delta chunk.
+        """
+
+        _UniffiConverterUInt64.check_lower(delta)
+        
+        _UniffiConverterOptionalString.check_lower(current_entry)
+        
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(delta),
+        _UniffiConverterOptionalString.lower(current_entry))
+        )
+
+
+
+
+
+    def estimated_remaining_seconds(self, ) -> "float":
+        """
+        Computes estimated remaining time in seconds (ETA).
+        """
+
+        return _UniffiConverterDouble.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def finish(self, ) -> None:
+        """
+        Flushes final 100% completion event to the callback.
+        """
+
+        _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def is_cancelled(self, ) -> "bool":
+        """
+        Checks if cancellation has occurred.
+        """
+
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def percentage(self, ) -> "float":
+        """
+        Computes current completion percentage in range [0.0, 100.0].
+        """
+
+        return _UniffiConverterDouble.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def throughput_mbs(self, ) -> "float":
+        """
+        Computes instantaneous throughput in megabytes per second (MB/s).
+        """
+
+        return _UniffiConverterDouble.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def update(self, processed: "int",current_entry: "typing.Optional[str]") -> "bool":
+        """
+        Updates processed byte count and triggers throttled callback.
+
+        Returns `true` if processing should continue, or `false` if cancelled.
+        """
+
+        _UniffiConverterUInt64.check_lower(processed)
+        
+        _UniffiConverterOptionalString.check_lower(current_entry)
+        
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(processed),
+        _UniffiConverterOptionalString.lower(current_entry))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiProgressReporter:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiProgressReporter._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiProgressReporter):
+        if not isinstance(value, UniFfiProgressReporter):
+            raise TypeError("Expected UniFfiProgressReporter instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiProgressReporterProtocol):
+        if not isinstance(value, UniFfiProgressReporter):
+            raise TypeError("Expected UniFfiProgressReporter instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiProgressReporterProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
 class UniFfiVfsTreeProtocol(typing.Protocol):
     """
     Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
@@ -4988,6 +6043,245 @@ class _UniffiConverterTypeUniFfiVfsTree:
 
     @classmethod
     def write(cls, value: UniFfiVfsTreeProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiZopfliOptimizerProtocol(typing.Protocol):
+    """
+    Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+    """
+
+    def benchmark(self, format: "UniFfiZopfliFormat",data: "bytes"):
+        """
+        Benchmarks compression on the given payload.
+        """
+
+        raise NotImplementedError
+    def compress(self, format: "UniFfiZopfliFormat",data: "bytes"):
+        """
+        Compresses a buffer with the configured options.
+        """
+
+        raise NotImplementedError
+    def compress_cancellable(self, format: "UniFfiZopfliFormat",data: "bytes",cancellation_token: "typing.Optional[UniFfiCancellationToken]"):
+        """
+        Compresses a buffer with cancellation support.
+        """
+
+        raise NotImplementedError
+    def compress_with_progress(self, format: "UniFfiZopfliFormat",data: "bytes",callback: "typing.Optional[UniFfiProgressCallback]",cancellation_token: "typing.Optional[UniFfiCancellationToken]"):
+        """
+        Compresses a buffer with progress callback and cancellation token.
+        """
+
+        raise NotImplementedError
+    def options(self, ):
+        """
+        Returns the configured options for this optimizer.
+        """
+
+        raise NotImplementedError
+    def verify_roundtrip(self, format: "UniFfiZopfliFormat",data: "bytes"):
+        """
+        Verifies lossless roundtrip correctness.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiZopfliOptimizer:
+    """
+    Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, options: "UniFfiZopfliOptions"):
+        """
+        Constructs a new optimizer instance with custom configuration options.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+        
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_new,
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffizopflioptimizer, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def with_preset(cls, preset: "UniFfiZopfliPreset"):
+        """
+        Constructs a new optimizer instance from a preset.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliPreset.check_lower(preset)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffizopflioptimizer_with_preset,
+        _UniffiConverterTypeUniFfiZopfliPreset.lower(preset))
+        return cls._make_instance_(pointer)
+
+
+
+    def benchmark(self, format: "UniFfiZopfliFormat",data: "bytes") -> "UniFfiZopfliStats":
+        """
+        Benchmarks compression on the given payload.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+        
+        _UniffiConverterBytes.check_lower(data)
+        
+        return _UniffiConverterTypeUniFfiZopfliStats.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_benchmark,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data))
+        )
+
+
+
+
+
+    def compress(self, format: "UniFfiZopfliFormat",data: "bytes") -> "bytes":
+        """
+        Compresses a buffer with the configured options.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+        
+        _UniffiConverterBytes.check_lower(data)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data))
+        )
+
+
+
+
+
+    def compress_cancellable(self, format: "UniFfiZopfliFormat",data: "bytes",cancellation_token: "typing.Optional[UniFfiCancellationToken]") -> "bytes":
+        """
+        Compresses a buffer with cancellation support.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+        
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.check_lower(cancellation_token)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_cancellable,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.lower(cancellation_token))
+        )
+
+
+
+
+
+    def compress_with_progress(self, format: "UniFfiZopfliFormat",data: "bytes",callback: "typing.Optional[UniFfiProgressCallback]",cancellation_token: "typing.Optional[UniFfiCancellationToken]") -> "bytes":
+        """
+        Compresses a buffer with progress callback and cancellation token.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+        
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalTypeUniFfiProgressCallback.check_lower(callback)
+        
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.check_lower(cancellation_token)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_compress_with_progress,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalTypeUniFfiProgressCallback.lower(callback),
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.lower(cancellation_token))
+        )
+
+
+
+
+
+    def options(self, ) -> "UniFfiZopfliOptions":
+        """
+        Returns the configured options for this optimizer.
+        """
+
+        return _UniffiConverterTypeUniFfiZopfliOptions.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_options,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def verify_roundtrip(self, format: "UniFfiZopfliFormat",data: "bytes") -> "bool":
+        """
+        Verifies lossless roundtrip correctness.
+        """
+
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+        
+        _UniffiConverterBytes.check_lower(data)
+        
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffizopflioptimizer_verify_roundtrip,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiZopfliOptimizer:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiZopfliOptimizer._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiZopfliOptimizer):
+        if not isinstance(value, UniFfiZopfliOptimizer):
+            raise TypeError("Expected UniFfiZopfliOptimizer instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiZopfliOptimizerProtocol):
+        if not isinstance(value, UniFfiZopfliOptimizer):
+            raise TypeError("Expected UniFfiZopfliOptimizer instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiZopfliOptimizerProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -7204,6 +8498,74 @@ class _UniffiConverterTypeUniFfiCorruptedEntry(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.reason, buf)
 
 
+class UniFfiDeflateStats:
+    """
+    Detailed compression telemetry and performance metrics.
+    """
+
+    engine: "UniFfiDeflateEngine"
+    uncompressed_size: "int"
+    compressed_size: "int"
+    compression_ratio: "float"
+    duration_nanos: "int"
+    throughput_mbs: "float"
+    def __init__(self, *, engine: "UniFfiDeflateEngine", uncompressed_size: "int", compressed_size: "int", compression_ratio: "float", duration_nanos: "int", throughput_mbs: "float"):
+        self.engine = engine
+        self.uncompressed_size = uncompressed_size
+        self.compressed_size = compressed_size
+        self.compression_ratio = compression_ratio
+        self.duration_nanos = duration_nanos
+        self.throughput_mbs = throughput_mbs
+
+    def __str__(self):
+        return "UniFfiDeflateStats(engine={}, uncompressed_size={}, compressed_size={}, compression_ratio={}, duration_nanos={}, throughput_mbs={})".format(self.engine, self.uncompressed_size, self.compressed_size, self.compression_ratio, self.duration_nanos, self.throughput_mbs)
+
+    def __eq__(self, other):
+        if self.engine != other.engine:
+            return False
+        if self.uncompressed_size != other.uncompressed_size:
+            return False
+        if self.compressed_size != other.compressed_size:
+            return False
+        if self.compression_ratio != other.compression_ratio:
+            return False
+        if self.duration_nanos != other.duration_nanos:
+            return False
+        if self.throughput_mbs != other.throughput_mbs:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDeflateStats(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDeflateStats(
+            engine=_UniffiConverterTypeUniFfiDeflateEngine.read(buf),
+            uncompressed_size=_UniffiConverterUInt64.read(buf),
+            compressed_size=_UniffiConverterUInt64.read(buf),
+            compression_ratio=_UniffiConverterDouble.read(buf),
+            duration_nanos=_UniffiConverterUInt64.read(buf),
+            throughput_mbs=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeUniFfiDeflateEngine.check_lower(value.engine)
+        _UniffiConverterUInt64.check_lower(value.uncompressed_size)
+        _UniffiConverterUInt64.check_lower(value.compressed_size)
+        _UniffiConverterDouble.check_lower(value.compression_ratio)
+        _UniffiConverterUInt64.check_lower(value.duration_nanos)
+        _UniffiConverterDouble.check_lower(value.throughput_mbs)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeUniFfiDeflateEngine.write(value.engine, buf)
+        _UniffiConverterUInt64.write(value.uncompressed_size, buf)
+        _UniffiConverterUInt64.write(value.compressed_size, buf)
+        _UniffiConverterDouble.write(value.compression_ratio, buf)
+        _UniffiConverterUInt64.write(value.duration_nanos, buf)
+        _UniffiConverterDouble.write(value.throughput_mbs, buf)
+
+
 class UniFfiDocxExtractResult:
     """
     Extracted DOCX plain text, paragraph list, and metadata.
@@ -8279,6 +9641,81 @@ class _UniffiConverterTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffer):
         _UniffiConverterOptionalUInt32.write(value.sample_rate, buf)
         _UniffiConverterOptionalUInt32.write(value.width, buf)
         _UniffiConverterOptionalUInt32.write(value.height, buf)
+
+
+class UniFfiMemoryStats:
+    """
+    Aggregated cross-language memory allocation and buffer pool telemetry.
+    """
+
+    allocated_bytes: "int"
+    deallocated_bytes: "int"
+    active_allocations: "int"
+    peak_allocated_bytes: "int"
+    pooled_buffers_count: "int"
+    pool_hit_count: "int"
+    pool_miss_count: "int"
+    def __init__(self, *, allocated_bytes: "int", deallocated_bytes: "int", active_allocations: "int", peak_allocated_bytes: "int", pooled_buffers_count: "int", pool_hit_count: "int", pool_miss_count: "int"):
+        self.allocated_bytes = allocated_bytes
+        self.deallocated_bytes = deallocated_bytes
+        self.active_allocations = active_allocations
+        self.peak_allocated_bytes = peak_allocated_bytes
+        self.pooled_buffers_count = pooled_buffers_count
+        self.pool_hit_count = pool_hit_count
+        self.pool_miss_count = pool_miss_count
+
+    def __str__(self):
+        return "UniFfiMemoryStats(allocated_bytes={}, deallocated_bytes={}, active_allocations={}, peak_allocated_bytes={}, pooled_buffers_count={}, pool_hit_count={}, pool_miss_count={})".format(self.allocated_bytes, self.deallocated_bytes, self.active_allocations, self.peak_allocated_bytes, self.pooled_buffers_count, self.pool_hit_count, self.pool_miss_count)
+
+    def __eq__(self, other):
+        if self.allocated_bytes != other.allocated_bytes:
+            return False
+        if self.deallocated_bytes != other.deallocated_bytes:
+            return False
+        if self.active_allocations != other.active_allocations:
+            return False
+        if self.peak_allocated_bytes != other.peak_allocated_bytes:
+            return False
+        if self.pooled_buffers_count != other.pooled_buffers_count:
+            return False
+        if self.pool_hit_count != other.pool_hit_count:
+            return False
+        if self.pool_miss_count != other.pool_miss_count:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMemoryStats(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMemoryStats(
+            allocated_bytes=_UniffiConverterUInt64.read(buf),
+            deallocated_bytes=_UniffiConverterUInt64.read(buf),
+            active_allocations=_UniffiConverterUInt64.read(buf),
+            peak_allocated_bytes=_UniffiConverterUInt64.read(buf),
+            pooled_buffers_count=_UniffiConverterUInt64.read(buf),
+            pool_hit_count=_UniffiConverterUInt64.read(buf),
+            pool_miss_count=_UniffiConverterUInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.allocated_bytes)
+        _UniffiConverterUInt64.check_lower(value.deallocated_bytes)
+        _UniffiConverterUInt64.check_lower(value.active_allocations)
+        _UniffiConverterUInt64.check_lower(value.peak_allocated_bytes)
+        _UniffiConverterUInt64.check_lower(value.pooled_buffers_count)
+        _UniffiConverterUInt64.check_lower(value.pool_hit_count)
+        _UniffiConverterUInt64.check_lower(value.pool_miss_count)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.allocated_bytes, buf)
+        _UniffiConverterUInt64.write(value.deallocated_bytes, buf)
+        _UniffiConverterUInt64.write(value.active_allocations, buf)
+        _UniffiConverterUInt64.write(value.peak_allocated_bytes, buf)
+        _UniffiConverterUInt64.write(value.pooled_buffers_count, buf)
+        _UniffiConverterUInt64.write(value.pool_hit_count, buf)
+        _UniffiConverterUInt64.write(value.pool_miss_count, buf)
 
 
 class UniFfiMipsBenchmarkResult:
@@ -10548,6 +11985,151 @@ class _UniffiConverterTypeUniFfiXxh3128Digest(_UniffiConverterRustBuffer):
         _UniffiConverterUInt64.write(value.high, buf)
 
 
+class UniFfiZopfliOptions:
+    """
+    Strongly typed configuration options for Zopfli compression passes.
+    """
+
+    iteration_count: "int"
+    """
+    Maximum number of forward/backward optimization iterations (default: 15).
+    """
+
+    iterations_without_improvement: "int"
+    """
+    Stop iterations early if no cost reduction occurs for N consecutive passes (0 = disabled).
+    """
+
+    maximum_block_splits: "int"
+    """
+    Maximum number of dynamic Deflate block splits (0 = unlimited, default: 15).
+    """
+
+    block_splitting: "bool"
+    """
+    Enables or disables dynamic block splitting heuristics.
+    """
+
+    def __init__(self, *, iteration_count: "int", iterations_without_improvement: "int", maximum_block_splits: "int", block_splitting: "bool"):
+        self.iteration_count = iteration_count
+        self.iterations_without_improvement = iterations_without_improvement
+        self.maximum_block_splits = maximum_block_splits
+        self.block_splitting = block_splitting
+
+    def __str__(self):
+        return "UniFfiZopfliOptions(iteration_count={}, iterations_without_improvement={}, maximum_block_splits={}, block_splitting={})".format(self.iteration_count, self.iterations_without_improvement, self.maximum_block_splits, self.block_splitting)
+
+    def __eq__(self, other):
+        if self.iteration_count != other.iteration_count:
+            return False
+        if self.iterations_without_improvement != other.iterations_without_improvement:
+            return False
+        if self.maximum_block_splits != other.maximum_block_splits:
+            return False
+        if self.block_splitting != other.block_splitting:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiZopfliOptions(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiZopfliOptions(
+            iteration_count=_UniffiConverterUInt64.read(buf),
+            iterations_without_improvement=_UniffiConverterUInt64.read(buf),
+            maximum_block_splits=_UniffiConverterUInt16.read(buf),
+            block_splitting=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.iteration_count)
+        _UniffiConverterUInt64.check_lower(value.iterations_without_improvement)
+        _UniffiConverterUInt16.check_lower(value.maximum_block_splits)
+        _UniffiConverterBool.check_lower(value.block_splitting)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.iteration_count, buf)
+        _UniffiConverterUInt64.write(value.iterations_without_improvement, buf)
+        _UniffiConverterUInt16.write(value.maximum_block_splits, buf)
+        _UniffiConverterBool.write(value.block_splitting, buf)
+
+
+class UniFfiZopfliStats:
+    """
+    Compression performance telemetry and analytical metrics for Zopfli runs.
+    """
+
+    format: "UniFfiZopfliFormat"
+    uncompressed_size: "int"
+    compressed_size: "int"
+    compression_ratio: "float"
+    duration_nanos: "int"
+    throughput_mbs: "float"
+    iterations: "int"
+    def __init__(self, *, format: "UniFfiZopfliFormat", uncompressed_size: "int", compressed_size: "int", compression_ratio: "float", duration_nanos: "int", throughput_mbs: "float", iterations: "int"):
+        self.format = format
+        self.uncompressed_size = uncompressed_size
+        self.compressed_size = compressed_size
+        self.compression_ratio = compression_ratio
+        self.duration_nanos = duration_nanos
+        self.throughput_mbs = throughput_mbs
+        self.iterations = iterations
+
+    def __str__(self):
+        return "UniFfiZopfliStats(format={}, uncompressed_size={}, compressed_size={}, compression_ratio={}, duration_nanos={}, throughput_mbs={}, iterations={})".format(self.format, self.uncompressed_size, self.compressed_size, self.compression_ratio, self.duration_nanos, self.throughput_mbs, self.iterations)
+
+    def __eq__(self, other):
+        if self.format != other.format:
+            return False
+        if self.uncompressed_size != other.uncompressed_size:
+            return False
+        if self.compressed_size != other.compressed_size:
+            return False
+        if self.compression_ratio != other.compression_ratio:
+            return False
+        if self.duration_nanos != other.duration_nanos:
+            return False
+        if self.throughput_mbs != other.throughput_mbs:
+            return False
+        if self.iterations != other.iterations:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiZopfliStats(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiZopfliStats(
+            format=_UniffiConverterTypeUniFfiZopfliFormat.read(buf),
+            uncompressed_size=_UniffiConverterUInt64.read(buf),
+            compressed_size=_UniffiConverterUInt64.read(buf),
+            compression_ratio=_UniffiConverterDouble.read(buf),
+            duration_nanos=_UniffiConverterUInt64.read(buf),
+            throughput_mbs=_UniffiConverterDouble.read(buf),
+            iterations=_UniffiConverterUInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeUniFfiZopfliFormat.check_lower(value.format)
+        _UniffiConverterUInt64.check_lower(value.uncompressed_size)
+        _UniffiConverterUInt64.check_lower(value.compressed_size)
+        _UniffiConverterDouble.check_lower(value.compression_ratio)
+        _UniffiConverterUInt64.check_lower(value.duration_nanos)
+        _UniffiConverterDouble.check_lower(value.throughput_mbs)
+        _UniffiConverterUInt64.check_lower(value.iterations)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeUniFfiZopfliFormat.write(value.format, buf)
+        _UniffiConverterUInt64.write(value.uncompressed_size, buf)
+        _UniffiConverterUInt64.write(value.compressed_size, buf)
+        _UniffiConverterDouble.write(value.compression_ratio, buf)
+        _UniffiConverterUInt64.write(value.duration_nanos, buf)
+        _UniffiConverterDouble.write(value.throughput_mbs, buf)
+        _UniffiConverterUInt64.write(value.iterations, buf)
+
+
 class VideoMetadataRecord:
     """
     Video metadata properties record exposed to Swift.
@@ -11792,6 +13374,542 @@ class _UniffiConverterTypeUniFfiDecisionVerdict(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiDeflateArbitrationStrategy(enum.Enum):
+    """
+    Dynamic arbitration strategy for selecting optimal Deflate engine and compression level.
+    """
+
+    SPEED_FIRST = 0
+    """
+    Maximize processing speed and throughput; always selects `LibdeflateHardware`.
+    """
+
+    
+    RATIO_FIRST = 1
+    """
+    Maximize compression ratio; selects `PureRustNearOptimalDp` with high levels.
+    """
+
+    
+    BALANCED = 2
+    """
+    Balance speed and ratio based on payload volume thresholds (<= 64KB DP, > 64KB Hardware).
+    """
+
+    
+    DYNAMIC_ADAPTIVE = 3
+    """
+    Analyzes entropy and data characteristics dynamically to pick the optimal engine.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiDeflateArbitrationStrategy(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDeflateArbitrationStrategy.SPEED_FIRST
+        if variant == 2:
+            return UniFfiDeflateArbitrationStrategy.RATIO_FIRST
+        if variant == 3:
+            return UniFfiDeflateArbitrationStrategy.BALANCED
+        if variant == 4:
+            return UniFfiDeflateArbitrationStrategy.DYNAMIC_ADAPTIVE
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiDeflateArbitrationStrategy.SPEED_FIRST:
+            return
+        if value == UniFfiDeflateArbitrationStrategy.RATIO_FIRST:
+            return
+        if value == UniFfiDeflateArbitrationStrategy.BALANCED:
+            return
+        if value == UniFfiDeflateArbitrationStrategy.DYNAMIC_ADAPTIVE:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiDeflateArbitrationStrategy.SPEED_FIRST:
+            buf.write_i32(1)
+        if value == UniFfiDeflateArbitrationStrategy.RATIO_FIRST:
+            buf.write_i32(2)
+        if value == UniFfiDeflateArbitrationStrategy.BALANCED:
+            buf.write_i32(3)
+        if value == UniFfiDeflateArbitrationStrategy.DYNAMIC_ADAPTIVE:
+            buf.write_i32(4)
+
+
+
+
+
+
+
+class UniFfiDeflateEngine(enum.Enum):
+    """
+    Dual-engine selection for RFC 1951 Deflate compression.
+    """
+
+    LIBDEFLATE_HARDWARE = 0
+    """
+    Hardware-accelerated SIMD vectorised C-libdeflate engine.
+    """
+
+    
+    PURE_RUST_NEAR_OPTIMAL_DP = 1
+    """
+    Pure-Rust Near-Optimal Dynamic Programming OptParser with EM refinement.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiDeflateEngine(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDeflateEngine.LIBDEFLATE_HARDWARE
+        if variant == 2:
+            return UniFfiDeflateEngine.PURE_RUST_NEAR_OPTIMAL_DP
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiDeflateEngine.LIBDEFLATE_HARDWARE:
+            return
+        if value == UniFfiDeflateEngine.PURE_RUST_NEAR_OPTIMAL_DP:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiDeflateEngine.LIBDEFLATE_HARDWARE:
+            buf.write_i32(1)
+        if value == UniFfiDeflateEngine.PURE_RUST_NEAR_OPTIMAL_DP:
+            buf.write_i32(2)
+
+
+
+
+
+
+
+class UniFfiDeflateLevel:
+    """
+    Strongly typed compression level for Deflate pipelines.
+    """
+
+    def __init__(self):
+        raise RuntimeError("UniFfiDeflateLevel cannot be instantiated directly")
+
+    # Each enum variant is a nested class of the enum itself.
+    class STORE:
+        """
+        RFC 1951 BTYPE=00 uncompressed store blocks (Level 0).
+        """
+
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.STORE()".format()
+
+        def __eq__(self, other):
+            if not other.is_store():
+                return False
+            return True
+    
+    class FAST:
+        """
+        Fast greedy match parsing (Level 1).
+        """
+
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.FAST()".format()
+
+        def __eq__(self, other):
+            if not other.is_fast():
+                return False
+            return True
+    
+    class DEFAULT_LEVEL:
+        """
+        Default balanced compression (Level 6).
+        """
+
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.DEFAULT_LEVEL()".format()
+
+        def __eq__(self, other):
+            if not other.is_default_level():
+                return False
+            return True
+    
+    class MAXIMUM:
+        """
+        Maximum lazy match evaluation (Level 9).
+        """
+
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.MAXIMUM()".format()
+
+        def __eq__(self, other):
+            if not other.is_maximum():
+                return False
+            return True
+    
+    class ULTRA_DP:
+        """
+        Ultra Near-Optimal DP with EM refinement (Level 12).
+        """
+
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.ULTRA_DP()".format()
+
+        def __eq__(self, other):
+            if not other.is_ultra_dp():
+                return False
+            return True
+    
+    class CUSTOM:
+        """
+        Custom compression level in range 0..=12.
+        """
+
+        level: "int"
+
+        def __init__(self,level: "int"):
+            self.level = level
+
+        def __str__(self):
+            return "UniFfiDeflateLevel.CUSTOM(level={})".format(self.level)
+
+        def __eq__(self, other):
+            if not other.is_custom():
+                return False
+            if self.level != other.level:
+                return False
+            return True
+    
+    
+
+    # For each variant, we have an `is_NAME` method for easily checking
+    # whether an instance is that variant.
+    def is_store(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.STORE)
+    def is_fast(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.FAST)
+    def is_default_level(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.DEFAULT_LEVEL)
+    def is_maximum(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.MAXIMUM)
+    def is_ultra_dp(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.ULTRA_DP)
+    def is_custom(self) -> bool:
+        return isinstance(self, UniFfiDeflateLevel.CUSTOM)
+    
+
+# Now, a little trick - we make each nested variant class be a subclass of the main
+# enum class, so that method calls and instance checks etc will work intuitively.
+# We might be able to do this a little more neatly with a metaclass, but this'll do.
+UniFfiDeflateLevel.STORE = type("UniFfiDeflateLevel.STORE", (UniFfiDeflateLevel.STORE, UniFfiDeflateLevel,), {})  # type: ignore
+UniFfiDeflateLevel.FAST = type("UniFfiDeflateLevel.FAST", (UniFfiDeflateLevel.FAST, UniFfiDeflateLevel,), {})  # type: ignore
+UniFfiDeflateLevel.DEFAULT_LEVEL = type("UniFfiDeflateLevel.DEFAULT_LEVEL", (UniFfiDeflateLevel.DEFAULT_LEVEL, UniFfiDeflateLevel,), {})  # type: ignore
+UniFfiDeflateLevel.MAXIMUM = type("UniFfiDeflateLevel.MAXIMUM", (UniFfiDeflateLevel.MAXIMUM, UniFfiDeflateLevel,), {})  # type: ignore
+UniFfiDeflateLevel.ULTRA_DP = type("UniFfiDeflateLevel.ULTRA_DP", (UniFfiDeflateLevel.ULTRA_DP, UniFfiDeflateLevel,), {})  # type: ignore
+UniFfiDeflateLevel.CUSTOM = type("UniFfiDeflateLevel.CUSTOM", (UniFfiDeflateLevel.CUSTOM, UniFfiDeflateLevel,), {})  # type: ignore
+
+
+
+
+class _UniffiConverterTypeUniFfiDeflateLevel(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDeflateLevel.STORE(
+            )
+        if variant == 2:
+            return UniFfiDeflateLevel.FAST(
+            )
+        if variant == 3:
+            return UniFfiDeflateLevel.DEFAULT_LEVEL(
+            )
+        if variant == 4:
+            return UniFfiDeflateLevel.MAXIMUM(
+            )
+        if variant == 5:
+            return UniFfiDeflateLevel.ULTRA_DP(
+            )
+        if variant == 6:
+            return UniFfiDeflateLevel.CUSTOM(
+                _UniffiConverterInt32.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value.is_store():
+            return
+        if value.is_fast():
+            return
+        if value.is_default_level():
+            return
+        if value.is_maximum():
+            return
+        if value.is_ultra_dp():
+            return
+        if value.is_custom():
+            _UniffiConverterInt32.check_lower(value.level)
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value.is_store():
+            buf.write_i32(1)
+        if value.is_fast():
+            buf.write_i32(2)
+        if value.is_default_level():
+            buf.write_i32(3)
+        if value.is_maximum():
+            buf.write_i32(4)
+        if value.is_ultra_dp():
+            buf.write_i32(5)
+        if value.is_custom():
+            buf.write_i32(6)
+            _UniffiConverterInt32.write(value.level, buf)
+
+
+
+
+# UniFfiError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiError(Exception):
+    """
+    Strongly-typed cross-language error enumeration exposed to foreign runtimes.
+    """
+
+    pass
+
+_UniffiTempUniFfiError = UniFfiError
+
+class UniFfiError:  # type: ignore
+    """
+    Strongly-typed cross-language error enumeration exposed to foreign runtimes.
+    """
+
+    class IoError(_UniffiTempUniFfiError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiError.IoError({})".format(str(self))
+    _UniffiTempUniFfiError.IoError = IoError # type: ignore
+    class CorruptArchive(_UniffiTempUniFfiError):
+        def __init__(self, message, offset):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+                "offset={!r}".format(offset),
+            ]))
+            self.message = message
+            self.offset = offset
+
+        def __repr__(self):
+            return "UniFfiError.CorruptArchive({})".format(str(self))
+    _UniffiTempUniFfiError.CorruptArchive = CorruptArchive # type: ignore
+    class InvalidPassword(_UniffiTempUniFfiError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiError.InvalidPassword({})".format(str(self))
+    _UniffiTempUniFfiError.InvalidPassword = InvalidPassword # type: ignore
+    class UnsupportedCompression(_UniffiTempUniFfiError):
+        def __init__(self, method):
+            super().__init__(", ".join([
+                "method={!r}".format(method),
+            ]))
+            self.method = method
+
+        def __repr__(self):
+            return "UniFfiError.UnsupportedCompression({})".format(str(self))
+    _UniffiTempUniFfiError.UnsupportedCompression = UnsupportedCompression # type: ignore
+    class MmapError(_UniffiTempUniFfiError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiError.MmapError({})".format(str(self))
+    _UniffiTempUniFfiError.MmapError = MmapError # type: ignore
+    class PermissionDenied(_UniffiTempUniFfiError):
+        def __init__(self, path):
+            super().__init__(", ".join([
+                "path={!r}".format(path),
+            ]))
+            self.path = path
+
+        def __repr__(self):
+            return "UniFfiError.PermissionDenied({})".format(str(self))
+    _UniffiTempUniFfiError.PermissionDenied = PermissionDenied # type: ignore
+    class OutOfMemory(_UniffiTempUniFfiError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiError.OutOfMemory({})".format(str(self))
+    _UniffiTempUniFfiError.OutOfMemory = OutOfMemory # type: ignore
+    class CryptoError(_UniffiTempUniFfiError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiError.CryptoError({})".format(str(self))
+    _UniffiTempUniFfiError.CryptoError = CryptoError # type: ignore
+
+UniFfiError = _UniffiTempUniFfiError # type: ignore
+del _UniffiTempUniFfiError
+
+
+class _UniffiConverterTypeUniFfiError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiError.CorruptArchive(
+                _UniffiConverterString.read(buf),
+                _UniffiConverterUInt64.read(buf),
+            )
+        if variant == 3:
+            return UniFfiError.InvalidPassword(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiError.UnsupportedCompression(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 5:
+            return UniFfiError.MmapError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiError.PermissionDenied(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 7:
+            return UniFfiError.OutOfMemory(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 8:
+            return UniFfiError.CryptoError(
+                _UniffiConverterString.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiError.CorruptArchive):
+            _UniffiConverterString.check_lower(value.message)
+            _UniffiConverterUInt64.check_lower(value.offset)
+            return
+        if isinstance(value, UniFfiError.InvalidPassword):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiError.UnsupportedCompression):
+            _UniffiConverterString.check_lower(value.method)
+            return
+        if isinstance(value, UniFfiError.MmapError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiError.PermissionDenied):
+            _UniffiConverterString.check_lower(value.path)
+            return
+        if isinstance(value, UniFfiError.OutOfMemory):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiError.CryptoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiError.IoError):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiError.CorruptArchive):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.message, buf)
+            _UniffiConverterUInt64.write(value.offset, buf)
+        if isinstance(value, UniFfiError.InvalidPassword):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiError.UnsupportedCompression):
+            buf.write_i32(4)
+            _UniffiConverterString.write(value.method, buf)
+        if isinstance(value, UniFfiError.MmapError):
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiError.PermissionDenied):
+            buf.write_i32(6)
+            _UniffiConverterString.write(value.path, buf)
+        if isinstance(value, UniFfiError.OutOfMemory):
+            buf.write_i32(7)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiError.CryptoError):
+            buf.write_i32(8)
+            _UniffiConverterString.write(value.message, buf)
+
+
+
+
+
 class UniFfiLicenseResult:
     """
     Verification result enumeration exposed to UniFFI.
@@ -12274,6 +14392,264 @@ class _UniffiConverterTypeUniFfiSubtitleFormat(_UniffiConverterRustBuffer):
 
 
 
+
+
+class UniFfiSyntheticCorpusType(enum.Enum):
+    """
+    8 Representative mathematical synthetic corpus types for empirical benchmarking.
+    """
+
+    ALL_ZEROS = 0
+    """
+    Uniform zero byte run (0x00, zero entropy).
+    """
+
+    
+    TEXT_REDUNDANT = 1
+    """
+    Structured redundant timestamped log stream.
+    """
+
+    
+    HIGHLY_REPETITIVE = 2
+    """
+    Repeated ASCII phrase sequences.
+    """
+
+    
+    UNIFORM_RANDOM = 3
+    """
+    High-entropy pseudo-random bytes (~8.0 bits/byte).
+    """
+
+    
+    LOW_ENTROPY_NIBBLES = 4
+    """
+    Low-entropy 4-bit nibble distribution (~2.0 bits/byte).
+    """
+
+    
+    ASCII_SOURCE_CODE = 5
+    """
+    Structured JSON / C / Swift source code AST tokens.
+    """
+
+    
+    BINARY_EXECUTABLE = 6
+    """
+    Simulated Mach-O / ARM64 / x86_64 executable machine code bytecode.
+    """
+
+    
+    EXPONENTIAL_DECAY = 7
+    """
+    Zipfian power-law frequency distribution.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiSyntheticCorpusType(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiSyntheticCorpusType.ALL_ZEROS
+        if variant == 2:
+            return UniFfiSyntheticCorpusType.TEXT_REDUNDANT
+        if variant == 3:
+            return UniFfiSyntheticCorpusType.HIGHLY_REPETITIVE
+        if variant == 4:
+            return UniFfiSyntheticCorpusType.UNIFORM_RANDOM
+        if variant == 5:
+            return UniFfiSyntheticCorpusType.LOW_ENTROPY_NIBBLES
+        if variant == 6:
+            return UniFfiSyntheticCorpusType.ASCII_SOURCE_CODE
+        if variant == 7:
+            return UniFfiSyntheticCorpusType.BINARY_EXECUTABLE
+        if variant == 8:
+            return UniFfiSyntheticCorpusType.EXPONENTIAL_DECAY
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiSyntheticCorpusType.ALL_ZEROS:
+            return
+        if value == UniFfiSyntheticCorpusType.TEXT_REDUNDANT:
+            return
+        if value == UniFfiSyntheticCorpusType.HIGHLY_REPETITIVE:
+            return
+        if value == UniFfiSyntheticCorpusType.UNIFORM_RANDOM:
+            return
+        if value == UniFfiSyntheticCorpusType.LOW_ENTROPY_NIBBLES:
+            return
+        if value == UniFfiSyntheticCorpusType.ASCII_SOURCE_CODE:
+            return
+        if value == UniFfiSyntheticCorpusType.BINARY_EXECUTABLE:
+            return
+        if value == UniFfiSyntheticCorpusType.EXPONENTIAL_DECAY:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiSyntheticCorpusType.ALL_ZEROS:
+            buf.write_i32(1)
+        if value == UniFfiSyntheticCorpusType.TEXT_REDUNDANT:
+            buf.write_i32(2)
+        if value == UniFfiSyntheticCorpusType.HIGHLY_REPETITIVE:
+            buf.write_i32(3)
+        if value == UniFfiSyntheticCorpusType.UNIFORM_RANDOM:
+            buf.write_i32(4)
+        if value == UniFfiSyntheticCorpusType.LOW_ENTROPY_NIBBLES:
+            buf.write_i32(5)
+        if value == UniFfiSyntheticCorpusType.ASCII_SOURCE_CODE:
+            buf.write_i32(6)
+        if value == UniFfiSyntheticCorpusType.BINARY_EXECUTABLE:
+            buf.write_i32(7)
+        if value == UniFfiSyntheticCorpusType.EXPONENTIAL_DECAY:
+            buf.write_i32(8)
+
+
+
+
+
+
+
+class UniFfiZopfliFormat(enum.Enum):
+    """
+    Target container format for Zopfli compression.
+    """
+
+    DEFLATE = 0
+    """
+    Raw RFC 1951 Deflate byte stream without headers or checksums.
+    """
+
+    
+    ZLIB = 1
+    """
+    RFC 1950 Zlib stream with 2-byte header and Adler-32 trailing checksum.
+    """
+
+    
+    GZIP = 2
+    """
+    RFC 1952 Gzip stream with 10-byte header, timestamp, and CRC32 checksum.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiZopfliFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiZopfliFormat.DEFLATE
+        if variant == 2:
+            return UniFfiZopfliFormat.ZLIB
+        if variant == 3:
+            return UniFfiZopfliFormat.GZIP
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiZopfliFormat.DEFLATE:
+            return
+        if value == UniFfiZopfliFormat.ZLIB:
+            return
+        if value == UniFfiZopfliFormat.GZIP:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiZopfliFormat.DEFLATE:
+            buf.write_i32(1)
+        if value == UniFfiZopfliFormat.ZLIB:
+            buf.write_i32(2)
+        if value == UniFfiZopfliFormat.GZIP:
+            buf.write_i32(3)
+
+
+
+
+
+
+
+class UniFfiZopfliPreset(enum.Enum):
+    """
+    Predefined optimization profiles balancing speed vs extreme compression density.
+    """
+
+    FAST = 0
+    """
+    Fast pass: 5 iterations, 5 block splits.
+    """
+
+    
+    BALANCED = 1
+    """
+    Balanced standard pass: 15 iterations, 15 block splits.
+    """
+
+    
+    MAXIMUM = 2
+    """
+    Maximum density pass: 30 iterations, 30 block splits.
+    """
+
+    
+    ULTRA = 3
+    """
+    Ultra extreme pass: 100 iterations, 50 block splits.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiZopfliPreset(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiZopfliPreset.FAST
+        if variant == 2:
+            return UniFfiZopfliPreset.BALANCED
+        if variant == 3:
+            return UniFfiZopfliPreset.MAXIMUM
+        if variant == 4:
+            return UniFfiZopfliPreset.ULTRA
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiZopfliPreset.FAST:
+            return
+        if value == UniFfiZopfliPreset.BALANCED:
+            return
+        if value == UniFfiZopfliPreset.MAXIMUM:
+            return
+        if value == UniFfiZopfliPreset.ULTRA:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiZopfliPreset.FAST:
+            buf.write_i32(1)
+        if value == UniFfiZopfliPreset.BALANCED:
+            buf.write_i32(2)
+        if value == UniFfiZopfliPreset.MAXIMUM:
+            buf.write_i32(3)
+        if value == UniFfiZopfliPreset.ULTRA:
+            buf.write_i32(4)
+
+
+
+
+
 class ProgressHandler(typing.Protocol):
     """
     Callback interface protocol implemented in Swift.
@@ -12357,6 +14733,65 @@ class _UniffiTraitImplProgressHandler:
 
 # The _UniffiConverter which transforms the Callbacks in to Handles to pass to Rust.
 _UniffiConverterTypeProgressHandler = _UniffiCallbackInterfaceFfiConverter()
+
+
+
+class UniFfiProgressCallback(typing.Protocol):
+    """
+    Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
+    """
+
+    def on_progress(self, processed_bytes: "int",total_bytes: "int",current_entry: "typing.Optional[str]"):
+        """
+        Dispatches a progress event. Return `false` to request immediate operation cancellation.
+        """
+
+        raise NotImplementedError
+
+
+# Put all the bits inside a class to keep the top-level namespace clean
+class _UniffiTraitImplUniFFIProgressCallback:
+    # For each method, generate a callback function to pass to Rust
+
+    @_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0
+    def on_progress(
+            uniffi_handle,
+            processed_bytes,
+            total_bytes,
+            current_entry,
+            uniffi_out_return,
+            uniffi_call_status_ptr,
+        ):
+        uniffi_obj = _UniffiConverterTypeUniFfiProgressCallback._handle_map.get(uniffi_handle)
+        def make_call():
+            args = (_UniffiConverterUInt64.lift(processed_bytes), _UniffiConverterUInt64.lift(total_bytes), _UniffiConverterOptionalString.lift(current_entry), )
+            method = uniffi_obj.on_progress
+            return method(*args)
+
+        
+        def write_return_value(v):
+            uniffi_out_return[0] = _UniffiConverterBool.lower(v)
+        _uniffi_trait_interface_call(
+                uniffi_call_status_ptr.contents,
+                make_call,
+                write_return_value,
+        )
+
+    @_UNIFFI_CALLBACK_INTERFACE_FREE
+    def _uniffi_free(uniffi_handle):
+        _UniffiConverterTypeUniFfiProgressCallback._handle_map.remove(uniffi_handle)
+
+    # Generate the FFI VTable.  This has a field for each callback interface method.
+    _uniffi_vtable = _UniffiVTableCallbackInterfaceUniFfiProgressCallback(
+        on_progress,
+        _uniffi_free
+    )
+    # Send Rust a pointer to the VTable.  Note: this means we need to keep the struct alive forever,
+    # or else bad things will happen when Rust tries to access it.
+    _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(ctypes.byref(_uniffi_vtable))
+
+# The _UniffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+_UniffiConverterTypeUniFfiProgressCallback = _UniffiCallbackInterfaceFfiConverter()
 
 
 
@@ -12625,6 +15060,33 @@ class _UniffiConverterOptionalTypeCancellationToken(_UniffiConverterRustBuffer):
             return None
         elif flag == 1:
             return _UniffiConverterTypeCancellationToken.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeUniFfiCancellationToken(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiCancellationToken.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiCancellationToken.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiCancellationToken.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -13035,6 +15497,33 @@ class _UniffiConverterOptionalTypeProgressHandler(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterOptionalTypeUniFfiProgressCallback(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiProgressCallback.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiProgressCallback.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiProgressCallback.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterSequenceFloat(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -13231,6 +15720,31 @@ class _UniffiConverterSequenceTypeUniFfiCorruptedEntry(_UniffiConverterRustBuffe
 
         return [
             _UniffiConverterTypeUniFfiCorruptedEntry.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiDeflateStats(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiDeflateStats.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiDeflateStats.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiDeflateStats.read(buf) for i in range(count)
         ]
 
 
@@ -15251,6 +17765,102 @@ def uniffi_deflate_decompress(src: "bytes",expected_uncompressed_size: "int") ->
         _UniffiConverterUInt64.lower(expected_uncompressed_size)))
 
 
+def uniffi_deflate_dual_arbitrate(strategy: "UniFfiDeflateArbitrationStrategy",uncompressed_size: "int",estimated_entropy: "typing.Optional[float]") -> "UniFfiDeflateEngine":
+    """
+    Arbitrates and selects the best Deflate engine given a strategy, payload size, and estimated entropy.
+    """
+
+    _UniffiConverterTypeUniFfiDeflateArbitrationStrategy.check_lower(strategy)
+    
+    _UniffiConverterUInt64.check_lower(uncompressed_size)
+    
+    _UniffiConverterOptionalDouble.check_lower(estimated_entropy)
+    
+    return _UniffiConverterTypeUniFfiDeflateEngine.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate,
+        _UniffiConverterTypeUniFfiDeflateArbitrationStrategy.lower(strategy),
+        _UniffiConverterUInt64.lower(uncompressed_size),
+        _UniffiConverterOptionalDouble.lower(estimated_entropy)))
+
+
+def uniffi_deflate_dual_benchmark(src: "bytes",level: "UniFfiDeflateLevel") -> "typing.List[UniFfiDeflateStats]":
+    """
+    Benchmarks both Deflate engines on the provided input data and returns comparative telemetry statistics.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterTypeUniFfiDeflateLevel.check_lower(level)
+    
+    return _UniffiConverterSequenceTypeUniFfiDeflateStats.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterTypeUniFfiDeflateLevel.lower(level)))
+
+
+def uniffi_deflate_dual_compress(engine: "UniFfiDeflateEngine",src: "bytes",level: "UniFfiDeflateLevel") -> "bytes":
+    """
+    Compresses a memory buffer with the specified Deflate engine and compression level.
+    """
+
+    _UniffiConverterTypeUniFfiDeflateEngine.check_lower(engine)
+    
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterTypeUniFfiDeflateLevel.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress,
+        _UniffiConverterTypeUniFfiDeflateEngine.lower(engine),
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterTypeUniFfiDeflateLevel.lower(level)))
+
+
+def uniffi_deflate_dual_decompress(engine: "UniFfiDeflateEngine",src: "bytes",expected_uncompressed_size: "int") -> "bytes":
+    """
+    Decompresses raw DEFLATE bytes into the expected uncompressed buffer.
+    """
+
+    _UniffiConverterTypeUniFfiDeflateEngine.check_lower(engine)
+    
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterUInt64.check_lower(expected_uncompressed_size)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress,
+        _UniffiConverterTypeUniFfiDeflateEngine.lower(engine),
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_deflate_dual_verify_roundtrip(src: "bytes",level: "UniFfiDeflateLevel") -> "bool":
+    """
+    Lossless roundtrip verification test for Deflate compression and decompression.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterTypeUniFfiDeflateLevel.check_lower(level)
+    
+    return _UniffiConverterBool.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterTypeUniFfiDeflateLevel.lower(level)))
+
+
+def uniffi_generate_synthetic_corpus(corpus_type: "UniFfiSyntheticCorpusType",size_bytes: "int",seed: "typing.Optional[int]") -> "bytes":
+    """
+    Generates a deterministic mathematical synthetic corpus of specified type and byte size.
+    """
+
+    _UniffiConverterTypeUniFfiSyntheticCorpusType.check_lower(corpus_type)
+    
+    _UniffiConverterUInt64.check_lower(size_bytes)
+    
+    _UniffiConverterOptionalUInt64.check_lower(seed)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus,
+        _UniffiConverterTypeUniFfiSyntheticCorpusType.lower(corpus_type),
+        _UniffiConverterUInt64.lower(size_bytes),
+        _UniffiConverterOptionalUInt64.lower(seed)))
+
+
 def uniffi_gzip_compress(src: "bytes",level: "int") -> "bytes":
     """
     Compresses buffer with gzip format (RFC 1952, levels 0..12).
@@ -15682,6 +18292,125 @@ def uniffi_zlib_decompress(src: "bytes",expected_uncompressed_size: "int") -> "b
         _UniffiConverterUInt64.lower(expected_uncompressed_size)))
 
 
+def uniffi_zopfli_benchmark(data: "bytes",options: "UniFfiZopfliOptions",format: "UniFfiZopfliFormat") -> "UniFfiZopfliStats":
+    """
+    Executes a Zopfli compression benchmark and returns performance statistics.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+    
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    return _UniffiConverterTypeUniFfiZopfliStats.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_benchmark,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options),
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format)))
+
+
+def uniffi_zopfli_compress(format: "UniFfiZopfliFormat",data: "bytes",options: "UniFfiZopfliOptions") -> "bytes":
+    """
+    Compresses a buffer with Zopfli using specified format and options.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress,
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options)))
+
+
+def uniffi_zopfli_compress_cancellable(format: "UniFfiZopfliFormat",data: "bytes",options: "UniFfiZopfliOptions",cancellation_token: "typing.Optional[UniFfiCancellationToken]") -> "bytes":
+    """
+    Compresses a buffer with Zopfli with cancellation token support.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+    
+    _UniffiConverterOptionalTypeUniFfiCancellationToken.check_lower(cancellation_token)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_cancellable,
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options),
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.lower(cancellation_token)))
+
+
+def uniffi_zopfli_compress_with_progress(format: "UniFfiZopfliFormat",data: "bytes",options: "UniFfiZopfliOptions",callback: "typing.Optional[UniFfiProgressCallback]",cancellation_token: "typing.Optional[UniFfiCancellationToken]") -> "bytes":
+    """
+    Compresses a buffer with Zopfli with fine-grained progress and cancellation support.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+    
+    _UniffiConverterOptionalTypeUniFfiProgressCallback.check_lower(callback)
+    
+    _UniffiConverterOptionalTypeUniFfiCancellationToken.check_lower(cancellation_token)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_compress_with_progress,
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options),
+        _UniffiConverterOptionalTypeUniFfiProgressCallback.lower(callback),
+        _UniffiConverterOptionalTypeUniFfiCancellationToken.lower(cancellation_token)))
+
+
+def uniffi_zopfli_decompress(format: "UniFfiZopfliFormat",compressed: "bytes") -> "bytes":
+    """
+    Decompresses a Zopfli-compressed byte stream back into uncompressed data.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    _UniffiConverterBytes.check_lower(compressed)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_decompress,
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(compressed)))
+
+
+def uniffi_zopfli_options_for_preset(preset: "UniFfiZopfliPreset") -> "UniFfiZopfliOptions":
+    """
+    Resolves standard preset options for Zopfli compression.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliPreset.check_lower(preset)
+    
+    return _UniffiConverterTypeUniFfiZopfliOptions.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_options_for_preset,
+        _UniffiConverterTypeUniFfiZopfliPreset.lower(preset)))
+
+
+def uniffi_zopfli_verify_roundtrip(format: "UniFfiZopfliFormat",data: "bytes",options: "UniFfiZopfliOptions") -> "bool":
+    """
+    Performs a lossless roundtrip compression and decompression check.
+    """
+
+    _UniffiConverterTypeUniFfiZopfliFormat.check_lower(format)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterTypeUniFfiZopfliOptions.check_lower(options)
+    
+    return _UniffiConverterBool.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zopfli_verify_roundtrip,
+        _UniffiConverterTypeUniFfiZopfliFormat.lower(format),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterTypeUniFfiZopfliOptions.lower(options)))
+
+
 def uniffi_zstd_compress(src: "bytes",level: "int") -> "bytes":
     """
     Compresses buffer with Zstandard (RFC 8878, levels 1..22).
@@ -15909,12 +18638,19 @@ __all__ = [
     "UniFfiCompressionCodec",
     "UniFfiCorpusType",
     "UniFfiDecisionVerdict",
+    "UniFfiDeflateArbitrationStrategy",
+    "UniFfiDeflateEngine",
+    "UniFfiDeflateLevel",
+    "UniFfiError",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
     "UniFfiMmapAdvice",
     "UniFfiPlayerState",
     "UniFfiSubtitleAlignment",
     "UniFfiSubtitleFormat",
+    "UniFfiSyntheticCorpusType",
+    "UniFfiZopfliFormat",
+    "UniFfiZopfliPreset",
     "AudioMetadataRecord",
     "CompressionReport",
     "DecodedImageRecord",
@@ -15936,6 +18672,7 @@ __all__ = [
     "UniFfiBenchmarkPointResult",
     "UniFfiCompressionOptions",
     "UniFfiCorruptedEntry",
+    "UniFfiDeflateStats",
     "UniFfiDocxExtractResult",
     "UniFfiDocxProperties",
     "UniFfiEd25519Cert",
@@ -15952,6 +18689,7 @@ __all__ = [
     "UniFfiMediaChapter",
     "UniFfiMediaDemuxSummary",
     "UniFfiMediaTrackInfo",
+    "UniFfiMemoryStats",
     "UniFfiMipsBenchmarkResult",
     "UniFfiMmapSlice",
     "UniFfiMmapStats",
@@ -15983,6 +18721,8 @@ __all__ = [
     "UniFfiWalMutationSummary",
     "UniFfiWinZipKeys",
     "UniFfiXxh3128Digest",
+    "UniFfiZopfliOptions",
+    "UniFfiZopfliStats",
     "VideoMetadataRecord",
     "apply_in_place_entry_mutation",
     "autocomplete_disk_path",
@@ -16087,6 +18827,12 @@ __all__ = [
     "uniffi_decompress_buffer",
     "uniffi_deflate_compress",
     "uniffi_deflate_decompress",
+    "uniffi_deflate_dual_arbitrate",
+    "uniffi_deflate_dual_benchmark",
+    "uniffi_deflate_dual_compress",
+    "uniffi_deflate_dual_decompress",
+    "uniffi_deflate_dual_verify_roundtrip",
+    "uniffi_generate_synthetic_corpus",
     "uniffi_gzip_compress",
     "uniffi_gzip_decompress",
     "uniffi_lz4_compress_fast",
@@ -16116,6 +18862,13 @@ __all__ = [
     "uniffi_zipcrypto_encrypt",
     "uniffi_zlib_compress",
     "uniffi_zlib_decompress",
+    "uniffi_zopfli_benchmark",
+    "uniffi_zopfli_compress",
+    "uniffi_zopfli_compress_cancellable",
+    "uniffi_zopfli_compress_with_progress",
+    "uniffi_zopfli_decompress",
+    "uniffi_zopfli_options_for_preset",
+    "uniffi_zopfli_verify_roundtrip",
     "uniffi_zstd_compress",
     "uniffi_zstd_compress_ldm",
     "uniffi_zstd_compress_with_named_dict",
@@ -16132,12 +18885,17 @@ __all__ = [
     "verify_license_key",
     "CancellationToken",
     "TtZipLocalizationEngine",
+    "UniFfiBufferPool",
+    "UniFfiCancellationToken",
     "UniFfiMmapReader",
     "UniFfiPluginSigner",
     "UniFfiPluginVerifier",
+    "UniFfiProgressReporter",
     "UniFfittZipMediaPlayer",
     "UniFfiVfsTree",
+    "UniFfiZopfliOptimizer",
     "VirtualFileStream",
     "ProgressHandler",
+    "UniFfiProgressCallback",
 ]
 

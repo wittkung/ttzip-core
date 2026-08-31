@@ -20,6 +20,7 @@ fn compile_native_codecs(repo_root: &Path) {
     let libdeflate_dir = top_vendor.join("libdeflate");
     let lz4_dir = top_vendor.join("lz4/lib");
     let zstd_dir = top_vendor.join("zstd/lib");
+    let zopfli_dir = top_vendor.join("zopfli/src/zopfli");
 
     let mut build = cc::Build::new();
     build.opt_level(3);
@@ -167,6 +168,31 @@ fn compile_native_codecs(repo_root: &Path) {
         build.include(zstd_dir.join("common"));
         build.include(zstd_dir.join("dictBuilder"));
         build.define("ZSTD_MULTITHREAD", None);
+    }
+
+    // 6. zopfli
+    if zopfli_dir.exists() {
+        let zopfli_sources = [
+            "blocksplitter.c",
+            "cache.c",
+            "deflate.c",
+            "gzip_container.c",
+            "hash.c",
+            "katajainen.c",
+            "lz77.c",
+            "squeeze.c",
+            "tree.c",
+            "util.c",
+            "zlib_container.c",
+            "zopfli_lib.c",
+        ];
+        for src in zopfli_sources {
+            let path = zopfli_dir.join(src);
+            if path.exists() {
+                build.file(path);
+            }
+        }
+        build.include(&zopfli_dir);
     }
 
     build.compile("ttzip_native_codecs");

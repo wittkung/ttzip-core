@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --bail               Stop immediately on first failed stage"
-            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite)"
+            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite)"
             echo "  --release            Pass --release profile to applicable test stages"
             echo "  --json <path>        Export structured JSON report"
             echo "  -h, --help           Show this help message"
@@ -99,6 +99,7 @@ declare -a STAGE_NAMES=(
     "Zero-Copy Mmap Engine & Paging Invariant 6 Gate"
     "Mozilla UniFFI Scaffolding & Multi-Language Invariant 6 Gate"
     "zlib-ng Modern Deflate & 8-Corpus Invariant 6 Gate"
+    "Zopfli Optimal Deflate & Ground Truth Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -127,6 +128,7 @@ declare -a STAGE_KEYS=(
     "mmap-suite"
     "uniffi-suite"
     "zlib-ng-suite"
+    "zopfli-suite"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -156,6 +158,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_mmap_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_uniffi_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_zlib_ng_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_zopfli_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}

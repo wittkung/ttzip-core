@@ -75,7 +75,7 @@ pub use types::*;
 pub use uniffi_api::{
     archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*, media::*,
     ttzip_i18n_format_bytes, ttzip_i18n_format_throughput, ttzip_i18n_get_string,
-    ttzip_i18n_localize_error, vault::*, vfs::*,
+    ttzip_i18n_localize_error, vault::*, vfs::*, zopfli_opt::*,
 };
 pub use tar::{
     alignment::*, checksum::*, codec::*, gnu::*, header::*, pax::*, sparse::*, types::*,
