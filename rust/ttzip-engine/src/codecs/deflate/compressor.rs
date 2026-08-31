@@ -128,13 +128,15 @@ impl DeflateCompressor {
         }
 
         let handle = self.handle.ok_or(TTZipStatus::ErrCompressionFailed)?;
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -196,16 +198,76 @@ impl DeflateCompressor {
         Ok(out_pos)
     }
 
+    /// High-speed RFC 1950 uncompressed zlib store writer.
+    fn compress_zlib_store(&self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        let needed = self.zlib_compress_bound(src.len());
+        if dst.len() < needed {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+
+        // Zlib header: CMF=0x78 (Deflate, 32K window), FLG=0x01 (No preset dict, check bits)
+        // (0x78 * 256 + 0x01) % 31 == 0
+        dst[0] = 0x78;
+        dst[1] = 0x01;
+        let mut out_pos = 2;
+
+        let store_len = self.compress_store(src, &mut dst[out_pos..])?;
+        out_pos += store_len;
+
+        let adler = adler2::adler32_slice(src);
+        dst[out_pos..out_pos + 4].copy_from_slice(&adler.to_be_bytes());
+        out_pos += 4;
+
+        Ok(out_pos)
+    }
+
+    /// High-speed RFC 1952 uncompressed gzip store writer.
+    fn compress_gzip_store(&self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        let needed = self.gzip_compress_bound(src.len());
+        if dst.len() < needed {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+
+        // Gzip header (10 bytes)
+        dst[0] = 0x1F; // ID1
+        dst[1] = 0x8B; // ID2
+        dst[2] = 0x08; // CM = Deflate
+        dst[3] = 0x00; // FLG
+        dst[4..8].copy_from_slice(&[0, 0, 0, 0]); // MTIME
+        dst[8] = 0x00; // XFL
+        dst[9] = 0x03; // OS = Unix
+        let mut out_pos = 10;
+
+        let store_len = self.compress_store(src, &mut dst[out_pos..])?;
+        out_pos += store_len;
+
+        let crc = crc32fast::hash(src);
+        dst[out_pos..out_pos + 4].copy_from_slice(&crc.to_le_bytes());
+        out_pos += 4;
+
+        let isize = src.len() as u32;
+        dst[out_pos..out_pos + 4].copy_from_slice(&isize.to_le_bytes());
+        out_pos += 4;
+
+        Ok(out_pos)
+    }
+
     /// Compresses source slice using zlib (RFC 1950) format.
     pub fn zlib_compress(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        if self.level == 0 {
+            return self.compress_zlib_store(src, dst);
+        }
+
         let handle = self.handle.ok_or(TTZipStatus::ErrCompressionFailed)?;
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -229,14 +291,20 @@ impl DeflateCompressor {
 
     /// Compresses source slice using gzip (RFC 1952) format.
     pub fn gzip_compress(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        if self.level == 0 {
+            return self.compress_gzip_store(src, dst);
+        }
+
         let handle = self.handle.ok_or(TTZipStatus::ErrCompressionFailed)?;
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };

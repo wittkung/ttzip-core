@@ -71,13 +71,15 @@ impl DeflateDecompressor {
         src: &[u8],
         dst: &mut [u8],
     ) -> Result<usize, DeflateDecompressError> {
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -108,13 +110,15 @@ impl DeflateDecompressor {
         src: &[u8],
         dst: &mut [u8],
     ) -> Result<(usize, usize), DeflateDecompressError> {
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -152,13 +156,15 @@ impl DeflateDecompressor {
         src: &[u8],
         dst: &mut [u8],
     ) -> Result<usize, DeflateDecompressError> {
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -189,13 +195,15 @@ impl DeflateDecompressor {
         src: &[u8],
         dst: &mut [u8],
     ) -> Result<(usize, usize), DeflateDecompressError> {
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };
@@ -233,13 +241,15 @@ impl DeflateDecompressor {
         src: &[u8],
         dst: &mut [u8],
     ) -> Result<usize, DeflateDecompressError> {
+        let dummy_in = [0u8; 1];
         let in_ptr = if src.is_empty() {
-            std::ptr::null()
+            dummy_in.as_ptr() as *const libc::c_void
         } else {
             src.as_ptr() as *const libc::c_void
         };
+        let mut dummy_out = [0u8; 1];
         let out_ptr = if dst.is_empty() {
-            std::ptr::null_mut()
+            dummy_out.as_mut_ptr() as *mut libc::c_void
         } else {
             dst.as_mut_ptr() as *mut libc::c_void
         };

@@ -5,23 +5,40 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! Safe RAII wrapper and thread-local handle pool for `libdeflate`.
+//! Safe RAII wrapper, modern zlib-ng matching, corpus evaluation, and dynamic scheduling for DEFLATE.
 //!
-//! Provides ultra-fast, zero-copy DEFLATE (RFC 1951), zlib (RFC 1950), and gzip (RFC 1952)
-//! compression and decompression with safe lifecycle management and hardware acceleration.
+//! Provides:
+//! - Ultra-fast, zero-copy DEFLATE (RFC 1951), zlib (RFC 1950), and gzip (RFC 1952) compression.
+//! - Modern zlib-ng style sliding window matchfinder ([`ZlibNgMatcher`]).
+//! - 8 industrial-grade mathematical synthetic corpus generators ([`SyntheticCorpus`]).
+//! - Sub-15ns dual-engine intelligent routing arbitrator ([`DeflateEngineArbitrator`]).
+//! - Runtime dynamic level and RFC 1951 block type scheduler ([`DynamicLevelScheduler`]).
 
+pub mod arbitrator;
 pub mod compressor;
+pub mod corpus_generators;
 pub mod decompressor;
+pub mod dynamic_level;
 pub(crate) mod ffi;
 mod pool;
+pub mod zlib_ng_match;
 
 #[cfg(test)]
 mod tests;
 
-pub use compressor::DeflateCompressor;
+pub use arbitrator::{DeflateEngineArbitrator, DeflateEngineChoice, DeflateWorkloadHint};
+pub use compressor::{DeflateCompressor, DeflateStrategy};
+pub use corpus_generators::{SyntheticCorpus, SyntheticCorpusKind};
 pub use decompressor::{DeflateDecompressError, DeflateDecompressor};
+pub use dynamic_level::{
+    DeflateBlockType, DynamicLevelScheduler, PerformanceProfile, SchedulerMetrics,
+};
 pub use ffi::LibdeflateResult;
 pub use pool::*;
+pub use zlib_ng_match::{
+    match_length_fast, DeflateToken, Match as ZlibNgMatch, MatcherConfig, ZlibNgMatcher,
+    HASH_MASK, HASH_SIZE, MAX_MATCH, MIN_MATCH, WINDOW_MASK, WINDOW_SIZE,
+};
 
 use crate::types::TTZipStatus;
 
@@ -65,19 +82,34 @@ pub fn gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus>
 
 /// Zero-allocation, constant-time upper bound calculation for raw DEFLATE compression.
 #[inline]
-pub fn deflate_compress_bound(in_len: usize, _level: i32) -> usize {
-    unsafe { ffi::libdeflate_deflate_compress_bound(std::ptr::null_mut(), in_len) }
+pub fn deflate_compress_bound(in_len: usize, level: i32) -> usize {
+    if level == 0 {
+        if in_len == 0 {
+            5
+        } else {
+            in_len + in_len.div_ceil(65535) * 5
+        }
+    } else {
+        unsafe { ffi::libdeflate_deflate_compress_bound(std::ptr::null_mut(), in_len) }
+    }
 }
 
 /// Zero-allocation, constant-time upper bound calculation for zlib compression.
 #[inline]
-pub fn zlib_compress_bound(in_len: usize, _level: i32) -> usize {
-    unsafe { ffi::libdeflate_zlib_compress_bound(std::ptr::null_mut(), in_len) }
+pub fn zlib_compress_bound(in_len: usize, level: i32) -> usize {
+    if level == 0 {
+        deflate_compress_bound(in_len, 0) + 6
+    } else {
+        unsafe { ffi::libdeflate_zlib_compress_bound(std::ptr::null_mut(), in_len) }
+    }
 }
 
 /// Zero-allocation, constant-time upper bound calculation for gzip compression.
 #[inline]
-pub fn gzip_compress_bound(in_len: usize, _level: i32) -> usize {
-    unsafe { ffi::libdeflate_gzip_compress_bound(std::ptr::null_mut(), in_len) }
+pub fn gzip_compress_bound(in_len: usize, level: i32) -> usize {
+    if level == 0 {
+        deflate_compress_bound(in_len, 0) + 18
+    } else {
+        unsafe { ffi::libdeflate_gzip_compress_bound(std::ptr::null_mut(), in_len) }
+    }
 }
-

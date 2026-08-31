@@ -17,6 +17,7 @@ pub mod benchmark;
 pub mod callback;
 pub mod codecs;
 pub mod crypto;
+pub mod deflate_dual;
 pub mod demuxer;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
@@ -48,6 +49,7 @@ pub use benchmark::*;
 pub use callback::*;
 pub use codecs::*;
 pub use crypto::*;
+pub use deflate_dual::*;
 pub use demuxer::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]

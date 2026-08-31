@@ -5254,6 +5254,102 @@ public func FfiConverterTypeUniFFICorruptedEntry_lower(_ value: UniFfiCorruptedE
 }
 
 /**
+ * Detailed compression telemetry and performance metrics.
+ */
+public struct UniFfiDeflateStats {
+    public var engine: UniFfiDeflateEngine
+    public var uncompressedSize: UInt64
+    public var compressedSize: UInt64
+    public var compressionRatio: Double
+    public var durationNanos: UInt64
+    public var throughputMbs: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(engine: UniFfiDeflateEngine, uncompressedSize: UInt64, compressedSize: UInt64, compressionRatio: Double, durationNanos: UInt64, throughputMbs: Double) {
+        self.engine = engine
+        self.uncompressedSize = uncompressedSize
+        self.compressedSize = compressedSize
+        self.compressionRatio = compressionRatio
+        self.durationNanos = durationNanos
+        self.throughputMbs = throughputMbs
+    }
+}
+
+extension UniFfiDeflateStats: Equatable, Hashable {
+    public static func == (lhs: UniFfiDeflateStats, rhs: UniFfiDeflateStats) -> Bool {
+        if lhs.engine != rhs.engine {
+            return false
+        }
+        if lhs.uncompressedSize != rhs.uncompressedSize {
+            return false
+        }
+        if lhs.compressedSize != rhs.compressedSize {
+            return false
+        }
+        if lhs.compressionRatio != rhs.compressionRatio {
+            return false
+        }
+        if lhs.durationNanos != rhs.durationNanos {
+            return false
+        }
+        if lhs.throughputMbs != rhs.throughputMbs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(engine)
+        hasher.combine(uncompressedSize)
+        hasher.combine(compressedSize)
+        hasher.combine(compressionRatio)
+        hasher.combine(durationNanos)
+        hasher.combine(throughputMbs)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDeflateStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDeflateStats {
+        return
+            try UniFfiDeflateStats(
+                engine: FfiConverterTypeUniFFIDeflateEngine.read(from: &buf),
+                uncompressedSize: FfiConverterUInt64.read(from: &buf),
+                compressedSize: FfiConverterUInt64.read(from: &buf),
+                compressionRatio: FfiConverterDouble.read(from: &buf),
+                durationNanos: FfiConverterUInt64.read(from: &buf),
+                throughputMbs: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDeflateStats, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFIDeflateEngine.write(value.engine, into: &buf)
+        FfiConverterUInt64.write(value.uncompressedSize, into: &buf)
+        FfiConverterUInt64.write(value.compressedSize, into: &buf)
+        FfiConverterDouble.write(value.compressionRatio, into: &buf)
+        FfiConverterUInt64.write(value.durationNanos, into: &buf)
+        FfiConverterDouble.write(value.throughputMbs, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateStats_lift(_ buf: RustBuffer) throws -> UniFfiDeflateStats {
+    return try FfiConverterTypeUniFFIDeflateStats.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateStats_lower(_ value: UniFfiDeflateStats) -> RustBuffer {
+    return FfiConverterTypeUniFFIDeflateStats.lower(value)
+}
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 public struct UniFfiDocxExtractResult {
@@ -11216,6 +11312,244 @@ public func FfiConverterTypeUniFFIDecisionVerdict_lower(_ value: UniFfiDecisionV
 
 extension UniFfiDecisionVerdict: Equatable, Hashable {}
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Dynamic arbitration strategy for selecting optimal Deflate engine and compression level.
+ */
+
+public enum UniFfiDeflateArbitrationStrategy {
+    /**
+     * Maximize processing speed and throughput; always selects `LibdeflateHardware`.
+     */
+    case speedFirst
+    /**
+     * Maximize compression ratio; selects `PureRustNearOptimalDp` with high levels.
+     */
+    case ratioFirst
+    /**
+     * Balance speed and ratio based on payload volume thresholds (<= 64KB DP, > 64KB Hardware).
+     */
+    case balanced
+    /**
+     * Analyzes entropy and data characteristics dynamically to pick the optimal engine.
+     */
+    case dynamicAdaptive
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDeflateArbitrationStrategy: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDeflateArbitrationStrategy
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDeflateArbitrationStrategy {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .speedFirst
+
+        case 2: return .ratioFirst
+
+        case 3: return .balanced
+
+        case 4: return .dynamicAdaptive
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDeflateArbitrationStrategy, into buf: inout [UInt8]) {
+        switch value {
+        case .speedFirst:
+            writeInt(&buf, Int32(1))
+
+        case .ratioFirst:
+            writeInt(&buf, Int32(2))
+
+        case .balanced:
+            writeInt(&buf, Int32(3))
+
+        case .dynamicAdaptive:
+            writeInt(&buf, Int32(4))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateArbitrationStrategy_lift(_ buf: RustBuffer) throws -> UniFfiDeflateArbitrationStrategy {
+    return try FfiConverterTypeUniFFIDeflateArbitrationStrategy.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateArbitrationStrategy_lower(_ value: UniFfiDeflateArbitrationStrategy) -> RustBuffer {
+    return FfiConverterTypeUniFFIDeflateArbitrationStrategy.lower(value)
+}
+
+extension UniFfiDeflateArbitrationStrategy: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Dual-engine selection for RFC 1951 Deflate compression.
+ */
+
+public enum UniFfiDeflateEngine {
+    /**
+     * Hardware-accelerated SIMD vectorised C-libdeflate engine.
+     */
+    case libdeflateHardware
+    /**
+     * Pure-Rust Near-Optimal Dynamic Programming OptParser with EM refinement.
+     */
+    case pureRustNearOptimalDp
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDeflateEngine: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDeflateEngine
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDeflateEngine {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .libdeflateHardware
+
+        case 2: return .pureRustNearOptimalDp
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDeflateEngine, into buf: inout [UInt8]) {
+        switch value {
+        case .libdeflateHardware:
+            writeInt(&buf, Int32(1))
+
+        case .pureRustNearOptimalDp:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateEngine_lift(_ buf: RustBuffer) throws -> UniFfiDeflateEngine {
+    return try FfiConverterTypeUniFFIDeflateEngine.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateEngine_lower(_ value: UniFfiDeflateEngine) -> RustBuffer {
+    return FfiConverterTypeUniFFIDeflateEngine.lower(value)
+}
+
+extension UniFfiDeflateEngine: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Strongly typed compression level for Deflate pipelines.
+ */
+
+public enum UniFfiDeflateLevel {
+    /**
+     * RFC 1951 BTYPE=00 uncompressed store blocks (Level 0).
+     */
+    case store
+    /**
+     * Fast greedy match parsing (Level 1).
+     */
+    case fast
+    /**
+     * Default balanced compression (Level 6).
+     */
+    case defaultLevel
+    /**
+     * Maximum lazy match evaluation (Level 9).
+     */
+    case maximum
+    /**
+     * Ultra Near-Optimal DP with EM refinement (Level 12).
+     */
+    case ultraDp
+    /**
+     * Custom compression level in range 0..=12.
+     */
+    case custom(level: Int32)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDeflateLevel: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDeflateLevel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDeflateLevel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .store
+
+        case 2: return .fast
+
+        case 3: return .defaultLevel
+
+        case 4: return .maximum
+
+        case 5: return .ultraDp
+
+        case 6: return try .custom(level: FfiConverterInt32.read(from: &buf))
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDeflateLevel, into buf: inout [UInt8]) {
+        switch value {
+        case .store:
+            writeInt(&buf, Int32(1))
+
+        case .fast:
+            writeInt(&buf, Int32(2))
+
+        case .defaultLevel:
+            writeInt(&buf, Int32(3))
+
+        case .maximum:
+            writeInt(&buf, Int32(4))
+
+        case .ultraDp:
+            writeInt(&buf, Int32(5))
+
+        case let .custom(level):
+            writeInt(&buf, Int32(6))
+            FfiConverterInt32.write(level, into: &buf)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateLevel_lift(_ buf: RustBuffer) throws -> UniFfiDeflateLevel {
+    return try FfiConverterTypeUniFFIDeflateLevel.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeflateLevel_lower(_ value: UniFfiDeflateLevel) -> RustBuffer {
+    return FfiConverterTypeUniFFIDeflateLevel.lower(value)
+}
+
+extension UniFfiDeflateLevel: Equatable, Hashable {}
+
 /**
  * Strongly-typed cross-language error enumeration exposed to foreign runtimes.
  */
@@ -11765,6 +12099,121 @@ public func FfiConverterTypeUniFFISubtitleFormat_lower(_ value: UniFfiSubtitleFo
 }
 
 extension UniFfiSubtitleFormat: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * 8 Representative mathematical synthetic corpus types for empirical benchmarking.
+ */
+
+public enum UniFfiSyntheticCorpusType {
+    /**
+     * Uniform zero byte run (0x00, zero entropy).
+     */
+    case allZeros
+    /**
+     * Structured redundant timestamped log stream.
+     */
+    case textRedundant
+    /**
+     * Repeated ASCII phrase sequences.
+     */
+    case highlyRepetitive
+    /**
+     * High-entropy pseudo-random bytes (~8.0 bits/byte).
+     */
+    case uniformRandom
+    /**
+     * Low-entropy 4-bit nibble distribution (~2.0 bits/byte).
+     */
+    case lowEntropyNibbles
+    /**
+     * Structured JSON / C / Swift source code AST tokens.
+     */
+    case asciiSourceCode
+    /**
+     * Simulated Mach-O / ARM64 / x86_64 executable machine code bytecode.
+     */
+    case binaryExecutable
+    /**
+     * Zipfian power-law frequency distribution.
+     */
+    case exponentialDecay
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISyntheticCorpusType: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiSyntheticCorpusType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSyntheticCorpusType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .allZeros
+
+        case 2: return .textRedundant
+
+        case 3: return .highlyRepetitive
+
+        case 4: return .uniformRandom
+
+        case 5: return .lowEntropyNibbles
+
+        case 6: return .asciiSourceCode
+
+        case 7: return .binaryExecutable
+
+        case 8: return .exponentialDecay
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiSyntheticCorpusType, into buf: inout [UInt8]) {
+        switch value {
+        case .allZeros:
+            writeInt(&buf, Int32(1))
+
+        case .textRedundant:
+            writeInt(&buf, Int32(2))
+
+        case .highlyRepetitive:
+            writeInt(&buf, Int32(3))
+
+        case .uniformRandom:
+            writeInt(&buf, Int32(4))
+
+        case .lowEntropyNibbles:
+            writeInt(&buf, Int32(5))
+
+        case .asciiSourceCode:
+            writeInt(&buf, Int32(6))
+
+        case .binaryExecutable:
+            writeInt(&buf, Int32(7))
+
+        case .exponentialDecay:
+            writeInt(&buf, Int32(8))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISyntheticCorpusType_lift(_ buf: RustBuffer) throws -> UniFfiSyntheticCorpusType {
+    return try FfiConverterTypeUniFFISyntheticCorpusType.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISyntheticCorpusType_lower(_ value: UniFfiSyntheticCorpusType) -> RustBuffer {
+    return FfiConverterTypeUniFFISyntheticCorpusType.lower(value)
+}
+
+extension UniFfiSyntheticCorpusType: Equatable, Hashable {}
 
 /**
  * Callback interface protocol implemented in Swift.
@@ -12814,6 +13263,31 @@ private struct FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFICorruptedEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiDeflateStats]
+
+    static func write(_ value: [UniFfiDeflateStats], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIDeflateStats.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiDeflateStats] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiDeflateStats]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIDeflateStats.read(from: &buf))
         }
         return seq
     }
@@ -14578,6 +15052,82 @@ public func uniffiDeflateDecompress(src: Data, expectedUncompressedSize: UInt64)
 }
 
 /**
+ * Arbitrates and selects the best Deflate engine given a strategy, payload size, and estimated entropy.
+ */
+public func uniffiDeflateDualArbitrate(strategy: UniFfiDeflateArbitrationStrategy, uncompressedSize: UInt64, estimatedEntropy: Double?) -> UniFfiDeflateEngine {
+    return try! FfiConverterTypeUniFFIDeflateEngine.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_arbitrate(
+            FfiConverterTypeUniFFIDeflateArbitrationStrategy.lower(strategy),
+            FfiConverterUInt64.lower(uncompressedSize),
+            FfiConverterOptionDouble.lower(estimatedEntropy), $0
+        )
+    })
+}
+
+/**
+ * Benchmarks both Deflate engines on the provided input data and returns comparative telemetry statistics.
+ */
+public func uniffiDeflateDualBenchmark(src: Data, level: UniFfiDeflateLevel) throws -> [UniFfiDeflateStats] {
+    return try FfiConverterSequenceTypeUniFFIDeflateStats.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_benchmark(
+            FfiConverterData.lower(src),
+            FfiConverterTypeUniFFIDeflateLevel.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Compresses a memory buffer with the specified Deflate engine and compression level.
+ */
+public func uniffiDeflateDualCompress(engine: UniFfiDeflateEngine, src: Data, level: UniFfiDeflateLevel) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_compress(
+            FfiConverterTypeUniFFIDeflateEngine.lower(engine),
+            FfiConverterData.lower(src),
+            FfiConverterTypeUniFFIDeflateLevel.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Decompresses raw DEFLATE bytes into the expected uncompressed buffer.
+ */
+public func uniffiDeflateDualDecompress(engine: UniFfiDeflateEngine, src: Data, expectedUncompressedSize: UInt64) throws -> Data {
+    return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_decompress(
+            FfiConverterTypeUniFFIDeflateEngine.lower(engine),
+            FfiConverterData.lower(src),
+            FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Lossless roundtrip verification test for Deflate compression and decompression.
+ */
+public func uniffiDeflateDualVerifyRoundtrip(src: Data, level: UniFfiDeflateLevel) throws -> Bool {
+    return try FfiConverterBool.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip(
+            FfiConverterData.lower(src),
+            FfiConverterTypeUniFFIDeflateLevel.lower(level), $0
+        )
+    })
+}
+
+/**
+ * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
+ */
+public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType, sizeBytes: UInt64, seed: UInt64?) -> Data {
+    return try! FfiConverterData.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(
+            FfiConverterTypeUniFFISyntheticCorpusType.lower(corpusType),
+            FfiConverterUInt64.lower(sizeBytes),
+            FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
  * Compresses buffer with gzip format (RFC 1952, levels 0..12).
  */
 public func uniffiGzipCompress(src: Data, level: Int32) throws -> Data {
@@ -15433,6 +15983,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_deflate_decompress() != 43293 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_arbitrate() != 15221 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_benchmark() != 51197 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_compress() != 31266 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_decompress() != 57047 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip() != 38120 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381 {
