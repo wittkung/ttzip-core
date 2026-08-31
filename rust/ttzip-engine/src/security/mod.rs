@@ -15,6 +15,7 @@ pub mod ed25519_defense;
 pub mod libdeflate_defense;
 pub mod license;
 pub mod lzfse_defense;
+pub mod mmap_defense;
 pub mod path_sanitizer;
 pub mod secure_extract;
 pub mod snappy_defense;
@@ -33,12 +34,14 @@ pub use ed25519_defense::*;
 pub use libdeflate_defense::*;
 pub use license::*;
 pub use lzfse_defense::*;
+pub use mmap_defense::*;
 pub use path_sanitizer::*;
 pub use secure_extract::*;
 pub use snappy_defense::*;
 pub use tar_defense::*;
 pub use xz_defense::*;
 pub use zip_defense::*;
+
 
 
 

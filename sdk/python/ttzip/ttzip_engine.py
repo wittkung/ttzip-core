@@ -766,6 +766,30 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32() != 15990:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3() != 47922:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty() != 12127:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_len() != 58390:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_path() != 42388:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all() != 1163:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes() != 29580:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks() != 7087:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice() != 46644:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence() != 64796:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256() != 30754:
@@ -869,6 +893,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new() != 62347:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1078,6 +1104,95 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffimmapreader.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffimmapreader.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffimmapreader.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffimmapreader.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_advise.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_advise.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_len.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_len.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_path.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_path.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_uint64,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginsigner.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3102,6 +3217,42 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key.r
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_len.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_len.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_path.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_path.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3.restype = ctypes.c_uint16
@@ -3258,6 +3409,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new.restyp
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64.restype = ctypes.c_uint16
@@ -3749,6 +3903,355 @@ class _UniffiConverterTypeTtZipLocalizationEngine:
 
     @classmethod
     def write(cls, value: TtZipLocalizationEngineProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiMmapReaderProtocol(typing.Protocol):
+    """
+    High-performance zero-copy memory-mapped file reader with kernel advice management.
+    """
+
+    def advise(self, advice: "UniFfiMmapAdvice",offset: "int",length: "int"):
+        """
+        Issues kernel memory access advice (madvise) on the specified mapped byte range.
+        """
+
+        raise NotImplementedError
+    def compute_crc32(self, offset: "int",length: "int"):
+        """
+        Computes CRC32 checksum over the requested mapped range.
+        """
+
+        raise NotImplementedError
+    def compute_xxh3(self, offset: "int",length: "int"):
+        """
+        Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+        """
+
+        raise NotImplementedError
+    def is_empty(self, ):
+        """
+        Returns `true` if the mapped file is 0 bytes.
+        """
+
+        raise NotImplementedError
+    def len(self, ):
+        """
+        Returns total mapped file size in bytes.
+        """
+
+        raise NotImplementedError
+    def path(self, ):
+        """
+        Returns the mapped file path.
+        """
+
+        raise NotImplementedError
+    def read_all(self, ):
+        """
+        Reads all mapped file bytes into memory.
+        """
+
+        raise NotImplementedError
+    def read_bytes(self, offset: "int",length: "int"):
+        """
+        Reads raw bytes within the specified range.
+        """
+
+        raise NotImplementedError
+    def read_chunks(self, chunk_size: "int"):
+        """
+        Partitions the mapped file into fixed-size chunk slices.
+        """
+
+        raise NotImplementedError
+    def read_slice(self, offset: "int",length: "int"):
+        """
+        Reads a bounded slice descriptor starting from offset with requested length.
+        """
+
+        raise NotImplementedError
+    def search_subsequence(self, pattern: "bytes",start_offset: "int"):
+        """
+        Fast subsequence pattern matching over mapped memory.
+        """
+
+        raise NotImplementedError
+    def stats(self, ):
+        """
+        Queries aggregated mapping statistics and memory bounds.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiMmapReader:
+    """
+    High-performance zero-copy memory-mapped file reader with kernel advice management.
+    """
+
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffimmapreader, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffimmapreader, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def open(cls, path: "str"):
+        """
+        Maps a local file into virtual memory with read-only protection.
+        """
+
+        _UniffiConverterString.check_lower(path)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open,
+        _UniffiConverterString.lower(path))
+        return cls._make_instance_(pointer)
+
+
+
+    def advise(self, advice: "UniFfiMmapAdvice",offset: "int",length: "int") -> None:
+        """
+        Issues kernel memory access advice (madvise) on the specified mapped byte range.
+        """
+
+        _UniffiConverterTypeUniFfiMmapAdvice.check_lower(advice)
+        
+        _UniffiConverterUInt64.check_lower(offset)
+        
+        _UniffiConverterUInt64.check_lower(length)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_advise,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiMmapAdvice.lower(advice),
+        _UniffiConverterUInt64.lower(offset),
+        _UniffiConverterUInt64.lower(length))
+
+
+
+
+
+
+    def compute_crc32(self, offset: "int",length: "int") -> "int":
+        """
+        Computes CRC32 checksum over the requested mapped range.
+        """
+
+        _UniffiConverterUInt64.check_lower(offset)
+        
+        _UniffiConverterUInt64.check_lower(length)
+        
+        return _UniffiConverterUInt32.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(offset),
+        _UniffiConverterUInt64.lower(length))
+        )
+
+
+
+
+
+    def compute_xxh3(self, offset: "int",length: "int") -> "int":
+        """
+        Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+        """
+
+        _UniffiConverterUInt64.check_lower(offset)
+        
+        _UniffiConverterUInt64.check_lower(length)
+        
+        return _UniffiConverterUInt64.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(offset),
+        _UniffiConverterUInt64.lower(length))
+        )
+
+
+
+
+
+    def is_empty(self, ) -> "bool":
+        """
+        Returns `true` if the mapped file is 0 bytes.
+        """
+
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def len(self, ) -> "int":
+        """
+        Returns total mapped file size in bytes.
+        """
+
+        return _UniffiConverterUInt64.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_len,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def path(self, ) -> "str":
+        """
+        Returns the mapped file path.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_path,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def read_all(self, ) -> "bytes":
+        """
+        Reads all mapped file bytes into memory.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def read_bytes(self, offset: "int",length: "int") -> "bytes":
+        """
+        Reads raw bytes within the specified range.
+        """
+
+        _UniffiConverterUInt64.check_lower(offset)
+        
+        _UniffiConverterUInt64.check_lower(length)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(offset),
+        _UniffiConverterUInt64.lower(length))
+        )
+
+
+
+
+
+    def read_chunks(self, chunk_size: "int") -> "typing.List[UniFfiMmapSlice]":
+        """
+        Partitions the mapped file into fixed-size chunk slices.
+        """
+
+        _UniffiConverterUInt64.check_lower(chunk_size)
+        
+        return _UniffiConverterSequenceTypeUniFfiMmapSlice.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(chunk_size))
+        )
+
+
+
+
+
+    def read_slice(self, offset: "int",length: "int") -> "UniFfiMmapSlice":
+        """
+        Reads a bounded slice descriptor starting from offset with requested length.
+        """
+
+        _UniffiConverterUInt64.check_lower(offset)
+        
+        _UniffiConverterUInt64.check_lower(length)
+        
+        return _UniffiConverterTypeUniFfiMmapSlice.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice,self._uniffi_clone_pointer(),
+        _UniffiConverterUInt64.lower(offset),
+        _UniffiConverterUInt64.lower(length))
+        )
+
+
+
+
+
+    def search_subsequence(self, pattern: "bytes",start_offset: "int") -> "typing.Optional[int]":
+        """
+        Fast subsequence pattern matching over mapped memory.
+        """
+
+        _UniffiConverterBytes.check_lower(pattern)
+        
+        _UniffiConverterUInt64.check_lower(start_offset)
+        
+        return _UniffiConverterOptionalUInt64.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(pattern),
+        _UniffiConverterUInt64.lower(start_offset))
+        )
+
+
+
+
+
+    def stats(self, ) -> "UniFfiMmapStats":
+        """
+        Queries aggregated mapping statistics and memory bounds.
+        """
+
+        return _UniffiConverterTypeUniFfiMmapStats.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiMmapReader:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiMmapReader._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiMmapReader):
+        if not isinstance(value, UniFfiMmapReader):
+            raise TypeError("Expected UniFfiMmapReader instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiMmapReaderProtocol):
+        if not isinstance(value, UniFfiMmapReader):
+            raise TypeError("Expected UniFfiMmapReader instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiMmapReaderProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -7867,6 +8370,114 @@ class _UniffiConverterTypeUniFfiMipsBenchmarkResult(_UniffiConverterRustBuffer):
         _UniffiConverterDouble.write(value.rating_per_usage_mips, buf)
 
 
+class UniFfiMmapSlice:
+    """
+    Zero-copy slice payload descriptor across FFI boundary.
+    """
+
+    offset: "int"
+    length: "int"
+    data: "bytes"
+    def __init__(self, *, offset: "int", length: "int", data: "bytes"):
+        self.offset = offset
+        self.length = length
+        self.data = data
+
+    def __str__(self):
+        return "UniFfiMmapSlice(offset={}, length={}, data={})".format(self.offset, self.length, self.data)
+
+    def __eq__(self, other):
+        if self.offset != other.offset:
+            return False
+        if self.length != other.length:
+            return False
+        if self.data != other.data:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMmapSlice(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMmapSlice(
+            offset=_UniffiConverterUInt64.read(buf),
+            length=_UniffiConverterUInt64.read(buf),
+            data=_UniffiConverterBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.offset)
+        _UniffiConverterUInt64.check_lower(value.length)
+        _UniffiConverterBytes.check_lower(value.data)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.offset, buf)
+        _UniffiConverterUInt64.write(value.length, buf)
+        _UniffiConverterBytes.write(value.data, buf)
+
+
+class UniFfiMmapStats:
+    """
+    Aggregated memory map diagnostics and page alignment statistics.
+    """
+
+    file_size: "int"
+    mapped_size: "int"
+    is_empty: "bool"
+    page_size: "int"
+    is_readonly: "bool"
+    def __init__(self, *, file_size: "int", mapped_size: "int", is_empty: "bool", page_size: "int", is_readonly: "bool"):
+        self.file_size = file_size
+        self.mapped_size = mapped_size
+        self.is_empty = is_empty
+        self.page_size = page_size
+        self.is_readonly = is_readonly
+
+    def __str__(self):
+        return "UniFfiMmapStats(file_size={}, mapped_size={}, is_empty={}, page_size={}, is_readonly={})".format(self.file_size, self.mapped_size, self.is_empty, self.page_size, self.is_readonly)
+
+    def __eq__(self, other):
+        if self.file_size != other.file_size:
+            return False
+        if self.mapped_size != other.mapped_size:
+            return False
+        if self.is_empty != other.is_empty:
+            return False
+        if self.page_size != other.page_size:
+            return False
+        if self.is_readonly != other.is_readonly:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiMmapStats(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiMmapStats(
+            file_size=_UniffiConverterUInt64.read(buf),
+            mapped_size=_UniffiConverterUInt64.read(buf),
+            is_empty=_UniffiConverterBool.read(buf),
+            page_size=_UniffiConverterUInt32.read(buf),
+            is_readonly=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt64.check_lower(value.file_size)
+        _UniffiConverterUInt64.check_lower(value.mapped_size)
+        _UniffiConverterBool.check_lower(value.is_empty)
+        _UniffiConverterUInt32.check_lower(value.page_size)
+        _UniffiConverterBool.check_lower(value.is_readonly)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt64.write(value.file_size, buf)
+        _UniffiConverterUInt64.write(value.mapped_size, buf)
+        _UniffiConverterBool.write(value.is_empty, buf)
+        _UniffiConverterUInt32.write(value.page_size, buf)
+        _UniffiConverterBool.write(value.is_readonly, buf)
+
+
 class UniFfiMultimodalEntryMetadata:
     """
     Metadata descriptor for a multi-modal corpus entry.
@@ -11353,6 +11964,72 @@ class _UniffiConverterTypeUniFfiMediaTrackType(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiMmapAdvice(enum.Enum):
+    """
+    Kernel memory access advice exposed via UniFFI to optimize OS page cache behavior.
+    """
+
+    NORMAL = 0
+    
+    SEQUENTIAL = 1
+    
+    RANDOM = 2
+    
+    WILL_NEED = 3
+    
+    DONT_NEED = 4
+    
+
+
+class _UniffiConverterTypeUniFfiMmapAdvice(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiMmapAdvice.NORMAL
+        if variant == 2:
+            return UniFfiMmapAdvice.SEQUENTIAL
+        if variant == 3:
+            return UniFfiMmapAdvice.RANDOM
+        if variant == 4:
+            return UniFfiMmapAdvice.WILL_NEED
+        if variant == 5:
+            return UniFfiMmapAdvice.DONT_NEED
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiMmapAdvice.NORMAL:
+            return
+        if value == UniFfiMmapAdvice.SEQUENTIAL:
+            return
+        if value == UniFfiMmapAdvice.RANDOM:
+            return
+        if value == UniFfiMmapAdvice.WILL_NEED:
+            return
+        if value == UniFfiMmapAdvice.DONT_NEED:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiMmapAdvice.NORMAL:
+            buf.write_i32(1)
+        if value == UniFfiMmapAdvice.SEQUENTIAL:
+            buf.write_i32(2)
+        if value == UniFfiMmapAdvice.RANDOM:
+            buf.write_i32(3)
+        if value == UniFfiMmapAdvice.WILL_NEED:
+            buf.write_i32(4)
+        if value == UniFfiMmapAdvice.DONT_NEED:
+            buf.write_i32(5)
+
+
+
+
+
+
+
 class UniFfiPlayerState(enum.Enum):
     """
     High-level playback state exposed across UniFFI boundary.
@@ -12704,6 +13381,31 @@ class _UniffiConverterSequenceTypeUniFfiMediaTrackInfo(_UniffiConverterRustBuffe
 
         return [
             _UniffiConverterTypeUniFfiMediaTrackInfo.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiMmapSlice(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiMmapSlice.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiMmapSlice.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiMmapSlice.read(buf) for i in range(count)
         ]
 
 
@@ -15209,6 +15911,7 @@ __all__ = [
     "UniFfiDecisionVerdict",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
+    "UniFfiMmapAdvice",
     "UniFfiPlayerState",
     "UniFfiSubtitleAlignment",
     "UniFfiSubtitleFormat",
@@ -15250,6 +15953,8 @@ __all__ = [
     "UniFfiMediaDemuxSummary",
     "UniFfiMediaTrackInfo",
     "UniFfiMipsBenchmarkResult",
+    "UniFfiMmapSlice",
+    "UniFfiMmapStats",
     "UniFfiMultimodalEntryMetadata",
     "UniFfiParentAndPrefix",
     "UniFfiParetoCodecPoint",
@@ -15427,6 +16132,7 @@ __all__ = [
     "verify_license_key",
     "CancellationToken",
     "TtZipLocalizationEngine",
+    "UniFfiMmapReader",
     "UniFfiPluginSigner",
     "UniFfiPluginVerifier",
     "UniFfittZipMediaPlayer",

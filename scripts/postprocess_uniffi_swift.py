@@ -61,6 +61,7 @@ extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
 extension UniFfiPluginSigner: @unchecked Sendable {}
 extension UniFfiPluginVerifier: @unchecked Sendable {}
+extension UniFfiMmapReader: @unchecked Sendable {}
 """
     if "extension UniFfiVfsTree: @unchecked Sendable" not in content:
         content += sendable_extensions

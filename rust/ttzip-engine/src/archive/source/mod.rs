@@ -9,10 +9,14 @@
 
 pub mod factory;
 pub mod mmap;
+pub mod mmap_advisor;
+pub mod slice_pool;
 pub mod stream;
 
 pub use factory::*;
 pub use mmap::*;
+pub use mmap_advisor::*;
+pub use slice_pool::*;
 pub use stream::*;
 
 use crate::types::TTZipStatus;

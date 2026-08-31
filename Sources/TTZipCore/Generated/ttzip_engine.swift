@@ -933,6 +933,304 @@ public func FfiConverterTypeTTZipLocalizationEngine_lower(_ value: TtZipLocaliza
 }
 
 /**
+ * High-performance zero-copy memory-mapped file reader with kernel advice management.
+ */
+public protocol UniFfiMmapReaderProtocol: AnyObject {
+    /**
+     * Issues kernel memory access advice (madvise) on the specified mapped byte range.
+     */
+    func advise(advice: UniFfiMmapAdvice, offset: UInt64, length: UInt64) throws
+
+    /**
+     * Computes CRC32 checksum over the requested mapped range.
+     */
+    func computeCrc32(offset: UInt64, length: UInt64) throws -> UInt32
+
+    /**
+     * Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+     */
+    func computeXxh3(offset: UInt64, length: UInt64) throws -> UInt64
+
+    /**
+     * Returns `true` if the mapped file is 0 bytes.
+     */
+    func isEmpty() -> Bool
+
+    /**
+     * Returns total mapped file size in bytes.
+     */
+    func len() -> UInt64
+
+    /**
+     * Returns the mapped file path.
+     */
+    func path() -> String
+
+    /**
+     * Reads all mapped file bytes into memory.
+     */
+    func readAll() throws -> Data
+
+    /**
+     * Reads raw bytes within the specified range.
+     */
+    func readBytes(offset: UInt64, length: UInt64) throws -> Data
+
+    /**
+     * Partitions the mapped file into fixed-size chunk slices.
+     */
+    func readChunks(chunkSize: UInt64) throws -> [UniFfiMmapSlice]
+
+    /**
+     * Reads a bounded slice descriptor starting from offset with requested length.
+     */
+    func readSlice(offset: UInt64, length: UInt64) throws -> UniFfiMmapSlice
+
+    /**
+     * Fast subsequence pattern matching over mapped memory.
+     */
+    func searchSubsequence(pattern: Data, startOffset: UInt64) -> UInt64?
+
+    /**
+     * Queries aggregated mapping statistics and memory bounds.
+     */
+    func stats() -> UniFfiMmapStats
+}
+
+/**
+ * High-performance zero-copy memory-mapped file reader with kernel advice management.
+ */
+open class UniFfiMmapReader:
+    UniFfiMmapReaderProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffimmapreader(self.pointer, $0) }
+    }
+
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffimmapreader(pointer, $0) }
+    }
+
+    /**
+     * Maps a local file into virtual memory with read-only protection.
+     */
+    public static func open(path: String) throws -> UniFfiMmapReader {
+        return try FfiConverterTypeUniFFIMmapReader.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open(
+                FfiConverterString.lower(path), $0
+            )
+        })
+    }
+
+    /**
+     * Issues kernel memory access advice (madvise) on the specified mapped byte range.
+     */
+    open func advise(advice: UniFfiMmapAdvice, offset: UInt64, length: UInt64) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_advise(self.uniffiClonePointer(),
+                                                                  FfiConverterTypeUniFFIMmapAdvice.lower(advice),
+                                                                  FfiConverterUInt64.lower(offset),
+                                                                  FfiConverterUInt64.lower(length), $0)
+        }
+    }
+
+    /**
+     * Computes CRC32 checksum over the requested mapped range.
+     */
+    open func computeCrc32(offset: UInt64, length: UInt64) throws -> UInt32 {
+        return try FfiConverterUInt32.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32(self.uniffiClonePointer(),
+                                                                         FfiConverterUInt64.lower(offset),
+                                                                         FfiConverterUInt64.lower(length), $0)
+        })
+    }
+
+    /**
+     * Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+     */
+    open func computeXxh3(offset: UInt64, length: UInt64) throws -> UInt64 {
+        return try FfiConverterUInt64.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3(self.uniffiClonePointer(),
+                                                                        FfiConverterUInt64.lower(offset),
+                                                                        FfiConverterUInt64.lower(length), $0)
+        })
+    }
+
+    /**
+     * Returns `true` if the mapped file is 0 bytes.
+     */
+    open func isEmpty() -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns total mapped file size in bytes.
+     */
+    open func len() -> UInt64 {
+        return try! FfiConverterUInt64.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_len(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns the mapped file path.
+     */
+    open func path() -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_path(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Reads all mapped file bytes into memory.
+     */
+    open func readAll() throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Reads raw bytes within the specified range.
+     */
+    open func readBytes(offset: UInt64, length: UInt64) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes(self.uniffiClonePointer(),
+                                                                      FfiConverterUInt64.lower(offset),
+                                                                      FfiConverterUInt64.lower(length), $0)
+        })
+    }
+
+    /**
+     * Partitions the mapped file into fixed-size chunk slices.
+     */
+    open func readChunks(chunkSize: UInt64) throws -> [UniFfiMmapSlice] {
+        return try FfiConverterSequenceTypeUniFFIMmapSlice.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks(self.uniffiClonePointer(),
+                                                                       FfiConverterUInt64.lower(chunkSize), $0)
+        })
+    }
+
+    /**
+     * Reads a bounded slice descriptor starting from offset with requested length.
+     */
+    open func readSlice(offset: UInt64, length: UInt64) throws -> UniFfiMmapSlice {
+        return try FfiConverterTypeUniFFIMmapSlice.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice(self.uniffiClonePointer(),
+                                                                      FfiConverterUInt64.lower(offset),
+                                                                      FfiConverterUInt64.lower(length), $0)
+        })
+    }
+
+    /**
+     * Fast subsequence pattern matching over mapped memory.
+     */
+    open func searchSubsequence(pattern: Data, startOffset: UInt64) -> UInt64? {
+        return try! FfiConverterOptionUInt64.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence(self.uniffiClonePointer(),
+                                                                              FfiConverterData.lower(pattern),
+                                                                              FfiConverterUInt64.lower(startOffset), $0)
+        })
+    }
+
+    /**
+     * Queries aggregated mapping statistics and memory bounds.
+     */
+    open func stats() -> UniFfiMmapStats {
+        return try! FfiConverterTypeUniFFIMmapStats.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffimmapreader_stats(self.uniffiClonePointer(), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMmapReader: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiMmapReader
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiMmapReader {
+        return UniFfiMmapReader(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiMmapReader) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMmapReader {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiMmapReader, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapReader_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiMmapReader {
+    return try FfiConverterTypeUniFFIMmapReader.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapReader_lower(_ value: UniFfiMmapReader) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIMmapReader.lower(value)
+}
+
+/**
  * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
  */
 public protocol UniFfiPluginSignerProtocol: AnyObject {
@@ -6027,6 +6325,166 @@ public func FfiConverterTypeUniFFIMipsBenchmarkResult_lower(_ value: UniFfiMipsB
 }
 
 /**
+ * Zero-copy slice payload descriptor across FFI boundary.
+ */
+public struct UniFfiMmapSlice {
+    public var offset: UInt64
+    public var length: UInt64
+    public var data: Data
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(offset: UInt64, length: UInt64, data: Data) {
+        self.offset = offset
+        self.length = length
+        self.data = data
+    }
+}
+
+extension UniFfiMmapSlice: Equatable, Hashable {
+    public static func == (lhs: UniFfiMmapSlice, rhs: UniFfiMmapSlice) -> Bool {
+        if lhs.offset != rhs.offset {
+            return false
+        }
+        if lhs.length != rhs.length {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(offset)
+        hasher.combine(length)
+        hasher.combine(data)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMmapSlice: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMmapSlice {
+        return
+            try UniFfiMmapSlice(
+                offset: FfiConverterUInt64.read(from: &buf),
+                length: FfiConverterUInt64.read(from: &buf),
+                data: FfiConverterData.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMmapSlice, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.offset, into: &buf)
+        FfiConverterUInt64.write(value.length, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapSlice_lift(_ buf: RustBuffer) throws -> UniFfiMmapSlice {
+    return try FfiConverterTypeUniFFIMmapSlice.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapSlice_lower(_ value: UniFfiMmapSlice) -> RustBuffer {
+    return FfiConverterTypeUniFFIMmapSlice.lower(value)
+}
+
+/**
+ * Aggregated memory map diagnostics and page alignment statistics.
+ */
+public struct UniFfiMmapStats {
+    public var fileSize: UInt64
+    public var mappedSize: UInt64
+    public var isEmpty: Bool
+    public var pageSize: UInt32
+    public var isReadonly: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(fileSize: UInt64, mappedSize: UInt64, isEmpty: Bool, pageSize: UInt32, isReadonly: Bool) {
+        self.fileSize = fileSize
+        self.mappedSize = mappedSize
+        self.isEmpty = isEmpty
+        self.pageSize = pageSize
+        self.isReadonly = isReadonly
+    }
+}
+
+extension UniFfiMmapStats: Equatable, Hashable {
+    public static func == (lhs: UniFfiMmapStats, rhs: UniFfiMmapStats) -> Bool {
+        if lhs.fileSize != rhs.fileSize {
+            return false
+        }
+        if lhs.mappedSize != rhs.mappedSize {
+            return false
+        }
+        if lhs.isEmpty != rhs.isEmpty {
+            return false
+        }
+        if lhs.pageSize != rhs.pageSize {
+            return false
+        }
+        if lhs.isReadonly != rhs.isReadonly {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(fileSize)
+        hasher.combine(mappedSize)
+        hasher.combine(isEmpty)
+        hasher.combine(pageSize)
+        hasher.combine(isReadonly)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMmapStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMmapStats {
+        return
+            try UniFfiMmapStats(
+                fileSize: FfiConverterUInt64.read(from: &buf),
+                mappedSize: FfiConverterUInt64.read(from: &buf),
+                isEmpty: FfiConverterBool.read(from: &buf),
+                pageSize: FfiConverterUInt32.read(from: &buf),
+                isReadonly: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMmapStats, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.fileSize, into: &buf)
+        FfiConverterUInt64.write(value.mappedSize, into: &buf)
+        FfiConverterBool.write(value.isEmpty, into: &buf)
+        FfiConverterUInt32.write(value.pageSize, into: &buf)
+        FfiConverterBool.write(value.isReadonly, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapStats_lift(_ buf: RustBuffer) throws -> UniFfiMmapStats {
+    return try FfiConverterTypeUniFFIMmapStats.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapStats_lower(_ value: UniFfiMmapStats) -> RustBuffer {
+    return FfiConverterTypeUniFFIMmapStats.lower(value)
+}
+
+/**
  * Metadata descriptor for a multi-modal corpus entry.
  */
 public struct UniFfiMultimodalEntryMetadata {
@@ -10193,6 +10651,79 @@ extension UniFfiMediaTrackType: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Kernel memory access advice exposed via UniFFI to optimize OS page cache behavior.
+ */
+
+public enum UniFfiMmapAdvice {
+    case normal
+    case sequential
+    case random
+    case willNeed
+    case dontNeed
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMmapAdvice: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiMmapAdvice
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMmapAdvice {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .normal
+
+        case 2: return .sequential
+
+        case 3: return .random
+
+        case 4: return .willNeed
+
+        case 5: return .dontNeed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiMmapAdvice, into buf: inout [UInt8]) {
+        switch value {
+        case .normal:
+            writeInt(&buf, Int32(1))
+
+        case .sequential:
+            writeInt(&buf, Int32(2))
+
+        case .random:
+            writeInt(&buf, Int32(3))
+
+        case .willNeed:
+            writeInt(&buf, Int32(4))
+
+        case .dontNeed:
+            writeInt(&buf, Int32(5))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapAdvice_lift(_ buf: RustBuffer) throws -> UniFfiMmapAdvice {
+    return try FfiConverterTypeUniFFIMmapAdvice.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMmapAdvice_lower(_ value: UniFfiMmapAdvice) -> RustBuffer {
+    return FfiConverterTypeUniFFIMmapAdvice.lower(value)
+}
+
+extension UniFfiMmapAdvice: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * High-level playback state exposed across UniFFI boundary.
  */
 
@@ -11495,6 +12026,31 @@ private struct FfiConverterSequenceTypeUniFFIMediaTrackInfo: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIMediaTrackInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIMmapSlice: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiMmapSlice]
+
+    static func write(_ value: [UniFfiMmapSlice], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIMmapSlice.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiMmapSlice] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiMmapSlice]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIMmapSlice.read(from: &buf))
         }
         return seq
     }
@@ -14091,6 +14647,42 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32() != 15990 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3() != 47922 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty() != 12127 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_len() != 58390 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_path() != 42388 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all() != 1163 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes() != 29580 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks() != 7087 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice() != 46644 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence() != 64796 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14247,6 +14839,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14296,3 +14891,4 @@ extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
 extension UniFfiPluginSigner: @unchecked Sendable {}
 extension UniFfiPluginVerifier: @unchecked Sendable {}
+extension UniFfiMmapReader: @unchecked Sendable {}

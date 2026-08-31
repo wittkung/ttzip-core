@@ -1173,6 +1173,34 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1218,6 +1246,36 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_has_key(`ptr`: Pointer,`key`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error(`ptr`: Pointer,`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_advise(`ptr`: Pointer,`advice`: RustBuffer.ByValue,`offset`: Long,`length`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32(`ptr`: Pointer,`offset`: Long,`length`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3(`ptr`: Pointer,`offset`: Long,`length`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_len(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_path(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes(`ptr`: Pointer,`offset`: Long,`length`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks(`ptr`: Pointer,`chunkSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice(`ptr`: Pointer,`offset`: Long,`length`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence(`ptr`: Pointer,`pattern`: RustBuffer.ByValue,`startOffset`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffimmapreader_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffipluginsigner(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
@@ -2067,6 +2125,30 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_len(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_path(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256(
@@ -2170,6 +2252,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64(
     ): Short
@@ -2665,6 +2749,42 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_crc32() != 15990.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_compute_xxh3() != 47922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_is_empty() != 12127.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_len() != 58390.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_path() != 42388.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_all() != 1163.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_bytes() != 29580.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_chunks() != 7087.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_read_slice() != 46644.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence() != 64796.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2819,6 +2939,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648.toShort()) {
@@ -3830,6 +3953,494 @@ public object FfiConverterTypeTTZipLocalizationEngine: FfiConverter<TtZipLocaliz
     override fun allocationSize(value: TtZipLocalizationEngine) = 8UL
 
     override fun write(value: TtZipLocalizationEngine, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * High-performance zero-copy memory-mapped file reader with kernel advice management.
+ */
+public interface UniFfiMmapReaderInterface {
+    
+    /**
+     * Issues kernel memory access advice (madvise) on the specified mapped byte range.
+     */
+    fun `advise`(`advice`: UniFfiMmapAdvice, `offset`: kotlin.ULong, `length`: kotlin.ULong)
+    
+    /**
+     * Computes CRC32 checksum over the requested mapped range.
+     */
+    fun `computeCrc32`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.UInt
+    
+    /**
+     * Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+     */
+    fun `computeXxh3`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.ULong
+    
+    /**
+     * Returns `true` if the mapped file is 0 bytes.
+     */
+    fun `isEmpty`(): kotlin.Boolean
+    
+    /**
+     * Returns total mapped file size in bytes.
+     */
+    fun `len`(): kotlin.ULong
+    
+    /**
+     * Returns the mapped file path.
+     */
+    fun `path`(): kotlin.String
+    
+    /**
+     * Reads all mapped file bytes into memory.
+     */
+    fun `readAll`(): kotlin.ByteArray
+    
+    /**
+     * Reads raw bytes within the specified range.
+     */
+    fun `readBytes`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.ByteArray
+    
+    /**
+     * Partitions the mapped file into fixed-size chunk slices.
+     */
+    fun `readChunks`(`chunkSize`: kotlin.ULong): List<UniFfiMmapSlice>
+    
+    /**
+     * Reads a bounded slice descriptor starting from offset with requested length.
+     */
+    fun `readSlice`(`offset`: kotlin.ULong, `length`: kotlin.ULong): UniFfiMmapSlice
+    
+    /**
+     * Fast subsequence pattern matching over mapped memory.
+     */
+    fun `searchSubsequence`(`pattern`: kotlin.ByteArray, `startOffset`: kotlin.ULong): kotlin.ULong?
+    
+    /**
+     * Queries aggregated mapping statistics and memory bounds.
+     */
+    fun `stats`(): UniFfiMmapStats
+    
+    companion object
+}
+
+/**
+ * High-performance zero-copy memory-mapped file reader with kernel advice management.
+ */
+open class UniFfiMmapReader: Disposable, AutoCloseable, UniFfiMmapReaderInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffimmapreader(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffimmapreader(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Issues kernel memory access advice (madvise) on the specified mapped byte range.
+     */
+    @Throws(TtZipException::class)override fun `advise`(`advice`: UniFfiMmapAdvice, `offset`: kotlin.ULong, `length`: kotlin.ULong)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_advise(
+        it, FfiConverterTypeUniFFIMmapAdvice.lower(`advice`),FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`length`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Computes CRC32 checksum over the requested mapped range.
+     */
+    @Throws(TtZipException::class)override fun `computeCrc32`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_crc32(
+        it, FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`length`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Computes hardware-accelerated XXH3-64 checksum over the requested mapped range.
+     */
+    @Throws(TtZipException::class)override fun `computeXxh3`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_compute_xxh3(
+        it, FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`length`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns `true` if the mapped file is 0 bytes.
+     */override fun `isEmpty`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_is_empty(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns total mapped file size in bytes.
+     */override fun `len`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_len(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns the mapped file path.
+     */override fun `path`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_path(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Reads all mapped file bytes into memory.
+     */
+    @Throws(TtZipException::class)override fun `readAll`(): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_all(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Reads raw bytes within the specified range.
+     */
+    @Throws(TtZipException::class)override fun `readBytes`(`offset`: kotlin.ULong, `length`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_bytes(
+        it, FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`length`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Partitions the mapped file into fixed-size chunk slices.
+     */
+    @Throws(TtZipException::class)override fun `readChunks`(`chunkSize`: kotlin.ULong): List<UniFfiMmapSlice> {
+            return FfiConverterSequenceTypeUniFFIMmapSlice.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_chunks(
+        it, FfiConverterULong.lower(`chunkSize`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Reads a bounded slice descriptor starting from offset with requested length.
+     */
+    @Throws(TtZipException::class)override fun `readSlice`(`offset`: kotlin.ULong, `length`: kotlin.ULong): UniFfiMmapSlice {
+            return FfiConverterTypeUniFFIMmapSlice.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_read_slice(
+        it, FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`length`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Fast subsequence pattern matching over mapped memory.
+     */override fun `searchSubsequence`(`pattern`: kotlin.ByteArray, `startOffset`: kotlin.ULong): kotlin.ULong? {
+            return FfiConverterOptionalULong.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence(
+        it, FfiConverterByteArray.lower(`pattern`),FfiConverterULong.lower(`startOffset`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Queries aggregated mapping statistics and memory bounds.
+     */override fun `stats`(): UniFfiMmapStats {
+            return FfiConverterTypeUniFFIMmapStats.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Maps a local file into virtual memory with read-only protection.
+     */
+    @Throws(TtZipException::class) fun `open`(`path`: kotlin.String): UniFfiMmapReader {
+            return FfiConverterTypeUniFFIMmapReader.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffimmapreader_open(
+        FfiConverterString.lower(`path`),_status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMmapReader: FfiConverter<UniFfiMmapReader, Pointer> {
+
+    override fun lower(value: UniFfiMmapReader): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiMmapReader {
+        return UniFfiMmapReader(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiMmapReader {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiMmapReader) = 8UL
+
+    override fun write(value: UniFfiMmapReader, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -8022,6 +8633,92 @@ public object FfiConverterTypeUniFFIMipsBenchmarkResult: FfiConverterRustBuffer<
 
 
 /**
+ * Zero-copy slice payload descriptor across FFI boundary.
+ */
+data class UniFfiMmapSlice (
+    var `offset`: kotlin.ULong, 
+    var `length`: kotlin.ULong, 
+    var `data`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMmapSlice: FfiConverterRustBuffer<UniFfiMmapSlice> {
+    override fun read(buf: ByteBuffer): UniFfiMmapSlice {
+        return UniFfiMmapSlice(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMmapSlice) = (
+            FfiConverterULong.allocationSize(value.`offset`) +
+            FfiConverterULong.allocationSize(value.`length`) +
+            FfiConverterByteArray.allocationSize(value.`data`)
+    )
+
+    override fun write(value: UniFfiMmapSlice, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`offset`, buf)
+            FfiConverterULong.write(value.`length`, buf)
+            FfiConverterByteArray.write(value.`data`, buf)
+    }
+}
+
+
+
+/**
+ * Aggregated memory map diagnostics and page alignment statistics.
+ */
+data class UniFfiMmapStats (
+    var `fileSize`: kotlin.ULong, 
+    var `mappedSize`: kotlin.ULong, 
+    var `isEmpty`: kotlin.Boolean, 
+    var `pageSize`: kotlin.UInt, 
+    var `isReadonly`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMmapStats: FfiConverterRustBuffer<UniFfiMmapStats> {
+    override fun read(buf: ByteBuffer): UniFfiMmapStats {
+        return UniFfiMmapStats(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiMmapStats) = (
+            FfiConverterULong.allocationSize(value.`fileSize`) +
+            FfiConverterULong.allocationSize(value.`mappedSize`) +
+            FfiConverterBoolean.allocationSize(value.`isEmpty`) +
+            FfiConverterUInt.allocationSize(value.`pageSize`) +
+            FfiConverterBoolean.allocationSize(value.`isReadonly`)
+    )
+
+    override fun write(value: UniFfiMmapStats, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`fileSize`, buf)
+            FfiConverterULong.write(value.`mappedSize`, buf)
+            FfiConverterBoolean.write(value.`isEmpty`, buf)
+            FfiConverterUInt.write(value.`pageSize`, buf)
+            FfiConverterBoolean.write(value.`isReadonly`, buf)
+    }
+}
+
+
+
+/**
  * Metadata descriptor for a multi-modal corpus entry.
  */
 data class UniFfiMultimodalEntryMetadata (
@@ -10300,6 +10997,42 @@ public object FfiConverterTypeUniFFIMediaTrackType: FfiConverterRustBuffer<UniFf
 
 
 /**
+ * Kernel memory access advice exposed via UniFFI to optimize OS page cache behavior.
+ */
+
+enum class UniFfiMmapAdvice {
+    
+    NORMAL,
+    SEQUENTIAL,
+    RANDOM,
+    WILL_NEED,
+    DONT_NEED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIMmapAdvice: FfiConverterRustBuffer<UniFfiMmapAdvice> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiMmapAdvice.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiMmapAdvice) = 4UL
+
+    override fun write(value: UniFfiMmapAdvice, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * High-level playback state exposed across UniFFI boundary.
  */
 
@@ -11688,6 +12421,34 @@ public object FfiConverterSequenceTypeUniFFIMediaTrackInfo: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIMediaTrackInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIMmapSlice: FfiConverterRustBuffer<List<UniFfiMmapSlice>> {
+    override fun read(buf: ByteBuffer): List<UniFfiMmapSlice> {
+        val len = buf.getInt()
+        return List<UniFfiMmapSlice>(len) {
+            FfiConverterTypeUniFFIMmapSlice.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiMmapSlice>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIMmapSlice.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiMmapSlice>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIMmapSlice.write(it, buf)
         }
     }
 }
