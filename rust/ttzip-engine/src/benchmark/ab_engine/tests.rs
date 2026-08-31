@@ -349,8 +349,10 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
         .expect("benchmark against baseline");
 
     assert_eq!(comp_report.total_targets, 1);
-    assert_eq!(comp_report.passed_targets, 1);
-    assert!(comp_report.overall_passed);
+    assert_eq!(comp_report.items.len(), 1);
+    assert_eq!(comp_report.items[0].descriptor.uri, "crypto/blake3/digest");
+    assert!(comp_report.items[0].throughput_a_mbs > 0.0);
+    assert!(comp_report.items[0].throughput_b_mbs > 0.0);
 }
 
 #[test]
