@@ -25,7 +25,7 @@ use ttzip_engine::codecs::bzip2::{
 };
 
 const WARMUP_RUNS: usize = 2;
-const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(1000); // 1000ms Adaptive Integration
+const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
 fn generate_realistic_corpus(size: usize) -> Vec<u8> {

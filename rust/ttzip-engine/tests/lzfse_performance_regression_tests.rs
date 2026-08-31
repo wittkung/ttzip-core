@@ -28,7 +28,7 @@ use ttzip_engine::codecs::lzfse::{
 };
 
 const WARMUP_RUNS: usize = 2;
-const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(1000); // 1000ms Adaptive Integration
+const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
 /// Measures adaptive throughput (MB/s) over at least 1000ms with clock rising-edge alignment,

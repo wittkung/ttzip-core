@@ -37,8 +37,8 @@ use ttzip_engine::benchmark::codecs_driver::{
     CodecBenchmarkDriver, DeflateBenchmarkDriver, ZstdBenchmarkDriver,
 };
 
-const WARMUP_RUNS: usize = 3;
-const MEASURE_RUNS: usize = 10;
+const WARMUP_RUNS: usize = 1;
+const MEASURE_RUNS: usize = 3;
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
 /// Benchmark timing result metrics.

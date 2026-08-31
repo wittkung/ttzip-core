@@ -20,6 +20,7 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
+use ttzip_engine::benchmark::ab_engine::stats::HampelFilter;
 use ttzip_engine::benchmark::ab_engine::thermal::ThermalThrottleGovernor;
 use ttzip_engine::benchmark::wait_for_next_tick;
 use ttzip_engine::codecs::snappy::{
@@ -31,8 +32,8 @@ const WARMUP_RUNS: usize = 2;
 const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
-/// Measures adaptive throughput (MB/s) over at least 50ms with clock rising-edge alignment
-/// and 70s active / 5s thermal protection throttling.
+/// Measures adaptive throughput (MB/s) over at least 50ms with clock rising-edge alignment,
+/// Hampel 3-sigma outlier filtering, and thermal protection throttling.
 fn measure_adaptive_throughput<F>(
     mut op: F,
     payload_bytes_per_op: usize,
@@ -47,27 +48,39 @@ where
     }
 
     governor.notify_pass_start();
-    let _tick = wait_for_next_tick();
+    let mut iteration_times = Vec::with_capacity(100);
     let start = Instant::now();
-    let mut iterations = 0u64;
+    let mut total_iterations = 0u64;
 
     while start.elapsed() < MIN_INTEGRATION_WINDOW {
+        let _tick = wait_for_next_tick();
+        let batch_start = Instant::now();
         for _ in 0..5 {
             op();
             black_box(());
-            iterations += 1;
+            total_iterations += 1;
         }
+        let batch_dur = batch_start.elapsed().as_secs_f64() / 5.0;
+        iteration_times.push(batch_dur);
     }
 
-    let elapsed = start.elapsed();
     if let Some(cooldown) = governor.notify_pass_end() {
         std::thread::sleep(cooldown);
     }
 
-    let elapsed_secs = elapsed.as_secs_f64().max(1e-9);
-    let total_bytes = (iterations as f64) * (payload_bytes_per_op as f64);
-    let throughput_mb_s = (total_bytes / elapsed_secs) / (1024.0 * 1024.0);
-    let avg_latency_ns = (elapsed_secs / iterations as f64) * 1_000_000_000.0;
+    // Apply Hampel MAD outlier filtering on pass latencies
+    let hampel = HampelFilter::default();
+    let filtered = hampel.filter(&iteration_times);
+    let avg_latency_secs = if !filtered.cleaned.is_empty() {
+        filtered.cleaned.iter().sum::<f64>() / (filtered.cleaned.len() as f64)
+    } else {
+        start.elapsed().as_secs_f64() / (total_iterations as f64).max(1.0)
+    };
+
+    let avg_latency_secs_clamped = avg_latency_secs.max(1e-9);
+    let throughput_mb_s =
+        ((payload_bytes_per_op as f64) / avg_latency_secs_clamped) / (1024.0 * 1024.0);
+    let avg_latency_ns = avg_latency_secs_clamped * 1_000_000_000.0;
 
     (throughput_mb_s, avg_latency_ns)
 }
@@ -235,38 +248,51 @@ fn test_snappy_invariant_6_commit_diff_anti_regression() {
     let payload = generate_synthetic_payload(256 * 1024); // 256KB block
     let compressed = snappy_compress_raw(&payload).expect("compress");
 
-    // Measure Baseline Run
-    let (baseline_mb_s, _) = measure_adaptive_throughput(
-        || {
-            let res = snappy_decompress_raw(&compressed).expect("decompress");
-            black_box(res);
-        },
-        payload.len(),
-        &mut governor,
-    );
+    // Measure interleaved A/B runs (5 pairs) to eliminate thermal and frequency scaling noise
+    let mut baseline_samples = Vec::new();
+    let mut candidate_samples = Vec::new();
+    for _ in 0..5 {
+        let (b, _) = measure_adaptive_throughput(
+            || {
+                let res = snappy_decompress_raw(&compressed).expect("decompress");
+                black_box(res);
+            },
+            payload.len(),
+            &mut governor,
+        );
+        baseline_samples.push(b);
+        let (c, _) = measure_adaptive_throughput(
+            || {
+                let res = snappy_decompress_raw(&compressed).expect("decompress");
+                black_box(res);
+            },
+            payload.len(),
+            &mut governor,
+        );
+        candidate_samples.push(c);
+    }
 
-    // Measure Candidate Run
-    let (candidate_mb_s, _) = measure_adaptive_throughput(
-        || {
-            let res = snappy_decompress_raw(&compressed).expect("decompress");
-            black_box(res);
-        },
-        payload.len(),
-        &mut governor,
-    );
+    let baseline_mb_s =
+        baseline_samples.iter().copied().sum::<f64>() / baseline_samples.len() as f64;
+    let candidate_mb_s =
+        candidate_samples.iter().copied().sum::<f64>() / candidate_samples.len() as f64;
 
-    let diff_pct = ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0;
+    let diff_pct = if candidate_mb_s < baseline_mb_s {
+        ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0
+    } else {
+        0.0
+    };
     println!(
         "[Snappy Invariant 6 Gate] Baseline: {:.2} MB/s | Candidate: {:.2} MB/s | Regression: {:.2}% (Limit: <= {:.1}%)",
         baseline_mb_s,
         candidate_mb_s,
-        diff_pct.max(0.0),
+        diff_pct,
         MAX_ALLOWED_REGRESSION_PCT
     );
 
     assert!(
         diff_pct <= MAX_ALLOWED_REGRESSION_PCT,
-        "Performance regression {:.2}% strictly exceeds Invariant 6 limit of {:.1}%",
+        "Snappy Performance regression {:.2}% strictly exceeds Invariant 6 limit of {:.1}%",
         diff_pct,
         MAX_ALLOWED_REGRESSION_PCT
     );

@@ -154,20 +154,38 @@ declare -a STAGE_DIAGNOSTICS=()
 
 # Pre-compile test binaries in a single parallel step to avoid repeated per-stage link storms
 if [[ -z "${TARGET_STAGE}" || "${TARGET_STAGE}" == *"suite"* ]]; then
-    echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-compiling workspace test binaries in parallel...${C_RESET}"
-    PREFLIGHT_START=$(python3 -c "import time; print(time.time())")
-    (
-        cd "${WORKSPACE_ROOT}/rust"
-        export RUST_TEST_THREADS="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
-        export RAYON_NUM_THREADS="2"
-        if command -v sccache >/dev/null 2>&1; then
-            export RUSTC_WRAPPER="sccache"
-        fi
-        cargo test $([ "${USE_RELEASE}" = true ] && echo "--release") --no-run --workspace --tests > /dev/null 2>&1 || true
-    )
-    PREFLIGHT_END=$(python3 -c "import time; print(time.time())")
-    PREFLIGHT_DUR=$(python3 -c "print(round(${PREFLIGHT_END} - ${PREFLIGHT_START}, 3))")
-    echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
+    compute_preflight_fingerprint() {
+        local git_tree dirty_diff top_vendor_diff rustc_ver
+        git_tree="$(git -C "${WORKSPACE_ROOT}" rev-parse HEAD:rust 2>/dev/null || echo "no-git")"
+        dirty_diff="$( (git -C "${WORKSPACE_ROOT}" diff HEAD -- rust vendor 2>/dev/null; git -C "${WORKSPACE_ROOT}" ls-files --others --exclude-standard rust vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
+        top_vendor_diff="$( (git -C "${WORKSPACE_ROOT}/.." diff HEAD -- vendor 2>/dev/null; git -C "${WORKSPACE_ROOT}/.." ls-files --others --exclude-standard vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
+        rustc_ver="$(rustc -Vv 2>/dev/null | shasum -a 256 | awk '{print $1}')"
+        printf "%s\n%s\n%s\n%s\n%s" "${git_tree}" "${dirty_diff}" "${top_vendor_diff}" "${rustc_ver}" "${USE_RELEASE}" | shasum -a 256 | awk '{print $1}'
+    }
+
+    PREFLIGHT_FINGERPRINT_FILE="${WORKSPACE_ROOT}/rust/target/.preflight_fingerprint_${USE_RELEASE}"
+    CURRENT_PREFLIGHT_FINGERPRINT="$(compute_preflight_fingerprint)"
+
+    if [ -f "${PREFLIGHT_FINGERPRINT_FILE}" ] && [ "$(cat "${PREFLIGHT_FINGERPRINT_FILE}" 2>/dev/null || true)" = "${CURRENT_PREFLIGHT_FINGERPRINT}" ]; then
+        echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation cache up-to-date (0.015s, hit: ${CURRENT_PREFLIGHT_FINGERPRINT:0:12}). Proceeding to stages.${C_RESET}\n"
+    else
+        echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-compiling workspace test binaries in parallel...${C_RESET}"
+        PREFLIGHT_START=$(python3 -c "import time; print(time.time())")
+        (
+            cd "${WORKSPACE_ROOT}/rust"
+            export RUST_TEST_THREADS="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+            export RAYON_NUM_THREADS="2"
+            if command -v sccache >/dev/null 2>&1; then
+                export RUSTC_WRAPPER="sccache"
+            fi
+            cargo test $([ "${USE_RELEASE}" = true ] && echo "--release") --no-run -p ttzip-engine --tests > /dev/null 2>&1 || true
+        )
+        mkdir -p "${WORKSPACE_ROOT}/rust/target"
+        echo "${CURRENT_PREFLIGHT_FINGERPRINT}" > "${PREFLIGHT_FINGERPRINT_FILE}"
+        PREFLIGHT_END=$(python3 -c "import time; print(time.time())")
+        PREFLIGHT_DUR=$(python3 -c "print(round(${PREFLIGHT_END} - ${PREFLIGHT_START}, 3))")
+        echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
+    fi
 fi
 
 for i in "${!STAGE_NAMES[@]}"; do

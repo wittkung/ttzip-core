@@ -89,8 +89,6 @@ XZ_TEST_TARGETS=(
 )
 
 TOTAL_TARGETS=${#XZ_TEST_TARGETS[@]}
-
-echo "--> Pre-building ${TOTAL_TARGETS} XZ test suites in unified compilation..."
 CARGO_TEST_ARGS=()
 for target in "${XZ_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
@@ -98,58 +96,9 @@ done
 
 cd "${RUST_DIR}"
 
-cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" --no-run
-
-BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
-MAX_CONCURRENT=4
-PIDS=()
-LOGS=()
-TARGET_NAMES=()
-FAILED=0
-
-echo "--> Executing ${TOTAL_TARGETS} test suites concurrently (pool size: ${MAX_CONCURRENT})..."
-for target in "${XZ_TEST_TARGETS[@]}"; do
-    bin="$(ls -t "${BUILD_DIR}/${target}-"* 2>/dev/null | grep -v '\.d$' | grep -v '\.dSYM' | head -n 1 || true)"
-    log="$(mktemp)"
-    if [ -x "${bin}" ]; then
-        "${bin}" --nocapture > "${log}" 2>&1 &
-    else
-        cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --test "${target}" -- --nocapture > "${log}" 2>&1 &
-    fi
-    PIDS+=("$!")
-    LOGS+=("${log}")
-    TARGET_NAMES+=("${target}")
-
-    if [ ${#PIDS[@]} -ge ${MAX_CONCURRENT} ]; then
-        pid="${PIDS[0]}"
-        log="${LOGS[0]}"
-        tname="${TARGET_NAMES[0]}"
-        if ! wait "${pid}"; then
-            echo "❌ [FAILED] ${tname}"
-            cat "${log}"
-            FAILED=1
-        fi
-        rm -f "${log}"
-        PIDS=("${PIDS[@]:1}")
-        LOGS=("${LOGS[@]:1}")
-        TARGET_NAMES=("${TARGET_NAMES[@]:1}")
-    fi
-done
-
-for i in "${!PIDS[@]}"; do
-    pid="${PIDS[$i]}"
-    log="${LOGS[$i]}"
-    tname="${TARGET_NAMES[$i]}"
-    if ! wait "${pid}"; then
-        echo "❌ [FAILED] ${tname}"
-        cat "${log}"
-        FAILED=1
-    fi
-    rm -f "${log}"
-done
-
-if [ ${FAILED} -ne 0 ]; then
-    echo "❌ One or more XZ test suites failed!"
+echo "--> Executing ${TOTAL_TARGETS} XZ test suites via unified test matrix..."
+if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
+    echo "❌ One or more XZ test suites failed."
     exit 1
 fi
 
@@ -157,3 +106,4 @@ echo ""
 echo "======================================================================"
 echo "🎉 ALL ${TOTAL_TARGETS}/${TOTAL_TARGETS} XZ TEST SUITES PASSED (INVARIANT 6 <= 3.0% OK)!"
 echo "======================================================================"
+
