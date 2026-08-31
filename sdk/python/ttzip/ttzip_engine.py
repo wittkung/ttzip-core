@@ -766,6 +766,38 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256() != 30754:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64() != 59730:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes() != 12249:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate() != 15069:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign() != 24342:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64() != 52484:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string() != 19873:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64() != 65041:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3() != 7912:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256() != 58752:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate() != 3418:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest() != 39982:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert() != 64432:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw() != 53731:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896:
@@ -837,6 +869,16 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new() != 62347:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes() != 29958:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate() != 20899:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier() != 9726:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1036,6 +1078,155 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginsigner.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginsigner.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginsigner.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginsigner.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginverifier.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginverifier.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginverifier.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginverifier.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -2911,6 +3102,54 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_has_key.r
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.restype = ctypes.c_uint16
@@ -3019,6 +3258,21 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new.restyp
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.restype = ctypes.c_uint16
@@ -3495,6 +3749,573 @@ class _UniffiConverterTypeTtZipLocalizationEngine:
 
     @classmethod
     def write(cls, value: TtZipLocalizationEngineProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiPluginSignerProtocol(typing.Protocol):
+    """
+    Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+    """
+
+    def get_fingerprint_blake3(self, ):
+        """
+        Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+        """
+
+        raise NotImplementedError
+    def get_fingerprint_sha256(self, ):
+        """
+        Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+        """
+
+        raise NotImplementedError
+    def get_public_key_base64(self, ):
+        """
+        Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+        """
+
+        raise NotImplementedError
+    def get_public_key_bytes(self, ):
+        """
+        Returns the raw 32-byte Ed25519 public key.
+        """
+
+        raise NotImplementedError
+    def issue_certificate(self, issuer_id: "str",subject_id: "str",subject_public_key_base64: "str",validity_days: "int",serial_number: "typing.Optional[str]"):
+        """
+        Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+        """
+
+        raise NotImplementedError
+    def sign(self, data: "bytes"):
+        """
+        Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+        """
+
+        raise NotImplementedError
+    def sign_base64(self, data: "bytes"):
+        """
+        Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+        """
+
+        raise NotImplementedError
+    def sign_manifest_string(self, manifest_content: "str"):
+        """
+        Generates a detached Base64 signature for a UTF-8 manifest payload string.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiPluginSigner:
+    """
+    Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+    """
+
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginsigner, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginsigner, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def from_seed_base64(cls, seed_base64: "str"):
+        """
+        Instantiates a signer from a 32-byte secret seed in standard Base64 representation.
+        """
+
+        _UniffiConverterString.check_lower(seed_base64)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64,
+        _UniffiConverterString.lower(seed_base64))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def from_seed_bytes(cls, seed_bytes: "bytes"):
+        """
+        Instantiates a signer from raw 32-byte secret seed bytes.
+        """
+
+        _UniffiConverterBytes.check_lower(seed_bytes)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes,
+        _UniffiConverterBytes.lower(seed_bytes))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def generate(cls, ):
+        """
+        Generates a cryptographically secure random private signing key.
+        """
+
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate,)
+        return cls._make_instance_(pointer)
+
+
+
+    def get_fingerprint_blake3(self, ) -> "str":
+        """
+        Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_fingerprint_sha256(self, ) -> "str":
+        """
+        Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_public_key_base64(self, ) -> "str":
+        """
+        Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_public_key_bytes(self, ) -> "bytes":
+        """
+        Returns the raw 32-byte Ed25519 public key.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def issue_certificate(self, issuer_id: "str",subject_id: "str",subject_public_key_base64: "str",validity_days: "int",serial_number: "typing.Optional[str]") -> "UniFfiEd25519Cert":
+        """
+        Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+        """
+
+        _UniffiConverterString.check_lower(issuer_id)
+        
+        _UniffiConverterString.check_lower(subject_id)
+        
+        _UniffiConverterString.check_lower(subject_public_key_base64)
+        
+        _UniffiConverterUInt32.check_lower(validity_days)
+        
+        _UniffiConverterOptionalString.check_lower(serial_number)
+        
+        return _UniffiConverterTypeUniFfiEd25519Cert.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(issuer_id),
+        _UniffiConverterString.lower(subject_id),
+        _UniffiConverterString.lower(subject_public_key_base64),
+        _UniffiConverterUInt32.lower(validity_days),
+        _UniffiConverterOptionalString.lower(serial_number))
+        )
+
+
+
+
+
+    def sign(self, data: "bytes") -> "bytes":
+        """
+        Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data))
+        )
+
+
+
+
+
+    def sign_base64(self, data: "bytes") -> "str":
+        """
+        Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data))
+        )
+
+
+
+
+
+    def sign_manifest_string(self, manifest_content: "str") -> "str":
+        """
+        Generates a detached Base64 signature for a UTF-8 manifest payload string.
+        """
+
+        _UniffiConverterString.check_lower(manifest_content)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(manifest_content))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiPluginSigner:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiPluginSigner._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiPluginSigner):
+        if not isinstance(value, UniFfiPluginSigner):
+            raise TypeError("Expected UniFfiPluginSigner instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiPluginSignerProtocol):
+        if not isinstance(value, UniFfiPluginSigner):
+            raise TypeError("Expected UniFfiPluginSigner instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiPluginSignerProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiPluginVerifierProtocol(typing.Protocol):
+    """
+    Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+    """
+
+    def add_trusted_root_base64(self, root_public_key_base64: "str"):
+        """
+        Appends a trusted root public key in Base64 representation to the verifier's trust store.
+        """
+
+        raise NotImplementedError
+    def extract_fingerprint_blake3(self, public_key_base64: "str"):
+        """
+        Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+        """
+
+        raise NotImplementedError
+    def extract_fingerprint_sha256(self, public_key_base64: "str"):
+        """
+        Computes standardized SHA-256 fingerprint for a Base64 public key string.
+        """
+
+        raise NotImplementedError
+    def verify_certificate(self, cert: "UniFfiEd25519Cert",current_timestamp_secs: "typing.Optional[int]"):
+        """
+        Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+        """
+
+        raise NotImplementedError
+    def verify_manifest(self, manifest_content: "str",signature_base64: "str",developer_public_key_base64: "str"):
+        """
+        Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+        """
+
+        raise NotImplementedError
+    def verify_manifest_with_cert(self, manifest_content: "str",signature_base64: "str",cert: "UniFfiEd25519Cert",current_timestamp_secs: "typing.Optional[int]"):
+        """
+        Verifies `.ttplugin` manifest string using a developer certificate chain.
+        """
+
+        raise NotImplementedError
+    def verify_raw(self, data: "bytes",signature_bytes: "bytes",public_key_bytes: "bytes"):
+        """
+        Verifies raw binary data against raw Ed25519 signature and public key bytes.
+        """
+
+        raise NotImplementedError
+    def verify_signature_base64(self, data: "bytes",signature_base64: "str",public_key_base64: "str"):
+        """
+        Verifies raw data against Base64-encoded signature and public key strings.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiPluginVerifier:
+    """
+    Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, root_public_keys_base64: "typing.List[str]"):
+        """
+        Creates a verifier configured with custom trusted root public keys in Base64.
+        """
+
+        _UniffiConverterSequenceString.check_lower(root_public_keys_base64)
+        
+        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new,
+        _UniffiConverterSequenceString.lower(root_public_keys_base64))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffipluginverifier, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipluginverifier, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def default_verifier(cls, ):
+        """
+        Creates a verifier preloaded with the official embedded TTZip root public key.
+        """
+
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier,)
+        return cls._make_instance_(pointer)
+
+
+
+    def add_trusted_root_base64(self, root_public_key_base64: "str") -> None:
+        """
+        Appends a trusted root public key in Base64 representation to the verifier's trust store.
+        """
+
+        _UniffiConverterString.check_lower(root_public_key_base64)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(root_public_key_base64))
+
+
+
+
+
+
+    def extract_fingerprint_blake3(self, public_key_base64: "str") -> "str":
+        """
+        Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+        """
+
+        _UniffiConverterString.check_lower(public_key_base64)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(public_key_base64))
+        )
+
+
+
+
+
+    def extract_fingerprint_sha256(self, public_key_base64: "str") -> "str":
+        """
+        Computes standardized SHA-256 fingerprint for a Base64 public key string.
+        """
+
+        _UniffiConverterString.check_lower(public_key_base64)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(public_key_base64))
+        )
+
+
+
+
+
+    def verify_certificate(self, cert: "UniFfiEd25519Cert",current_timestamp_secs: "typing.Optional[int]") -> "UniFfiAuthStatus":
+        """
+        Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+        """
+
+        _UniffiConverterTypeUniFfiEd25519Cert.check_lower(cert)
+        
+        _UniffiConverterOptionalInt64.check_lower(current_timestamp_secs)
+        
+        return _UniffiConverterTypeUniFfiAuthStatus.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUniFfiEd25519Cert.lower(cert),
+        _UniffiConverterOptionalInt64.lower(current_timestamp_secs))
+        )
+
+
+
+
+
+    def verify_manifest(self, manifest_content: "str",signature_base64: "str",developer_public_key_base64: "str") -> "UniFfiAuthStatus":
+        """
+        Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+        """
+
+        _UniffiConverterString.check_lower(manifest_content)
+        
+        _UniffiConverterString.check_lower(signature_base64)
+        
+        _UniffiConverterString.check_lower(developer_public_key_base64)
+        
+        return _UniffiConverterTypeUniFfiAuthStatus.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(manifest_content),
+        _UniffiConverterString.lower(signature_base64),
+        _UniffiConverterString.lower(developer_public_key_base64))
+        )
+
+
+
+
+
+    def verify_manifest_with_cert(self, manifest_content: "str",signature_base64: "str",cert: "UniFfiEd25519Cert",current_timestamp_secs: "typing.Optional[int]") -> "UniFfiAuthStatus":
+        """
+        Verifies `.ttplugin` manifest string using a developer certificate chain.
+        """
+
+        _UniffiConverterString.check_lower(manifest_content)
+        
+        _UniffiConverterString.check_lower(signature_base64)
+        
+        _UniffiConverterTypeUniFfiEd25519Cert.check_lower(cert)
+        
+        _UniffiConverterOptionalInt64.check_lower(current_timestamp_secs)
+        
+        return _UniffiConverterTypeUniFfiAuthStatus.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(manifest_content),
+        _UniffiConverterString.lower(signature_base64),
+        _UniffiConverterTypeUniFfiEd25519Cert.lower(cert),
+        _UniffiConverterOptionalInt64.lower(current_timestamp_secs))
+        )
+
+
+
+
+
+    def verify_raw(self, data: "bytes",signature_bytes: "bytes",public_key_bytes: "bytes") -> "UniFfiAuthStatus":
+        """
+        Verifies raw binary data against raw Ed25519 signature and public key bytes.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterBytes.check_lower(signature_bytes)
+        
+        _UniffiConverterBytes.check_lower(public_key_bytes)
+        
+        return _UniffiConverterTypeUniFfiAuthStatus.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterBytes.lower(signature_bytes),
+        _UniffiConverterBytes.lower(public_key_bytes))
+        )
+
+
+
+
+
+    def verify_signature_base64(self, data: "bytes",signature_base64: "str",public_key_base64: "str") -> "UniFfiAuthStatus":
+        """
+        Verifies raw data against Base64-encoded signature and public key strings.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterString.check_lower(signature_base64)
+        
+        _UniffiConverterString.check_lower(public_key_base64)
+        
+        return _UniffiConverterTypeUniFfiAuthStatus.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(signature_base64),
+        _UniffiConverterString.lower(public_key_base64))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiPluginVerifier:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiPluginVerifier._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiPluginVerifier):
+        if not isinstance(value, UniFfiPluginVerifier):
+            raise TypeError("Expected UniFfiPluginVerifier instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiPluginVerifierProtocol):
+        if not isinstance(value, UniFfiPluginVerifier):
+            raise TypeError("Expected UniFfiPluginVerifier instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiPluginVerifierProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -6021,6 +6842,120 @@ class _UniffiConverterTypeUniFfiDocxProperties(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.word_count, buf)
         _UniffiConverterUInt32.write(value.character_count, buf)
         _UniffiConverterUInt32.write(value.paragraph_count, buf)
+
+
+class UniFfiEd25519Cert:
+    """
+    Lightweight Ed25519 Digital Identity Certificate record exposed via UniFFI.
+    """
+
+    serial_number: "str"
+    """
+    Unique certificate serial number.
+    """
+
+    issuer_id: "str"
+    """
+    Entity identifier of the certificate authority / issuer.
+    """
+
+    subject_id: "str"
+    """
+    Entity identifier of the subject / developer.
+    """
+
+    public_key_base64: "str"
+    """
+    32-byte Ed25519 public key in standard Base64 representation.
+    """
+
+    issued_at_epoch_secs: "int"
+    """
+    Validity commencement timestamp in seconds since Unix epoch.
+    """
+
+    expires_at_epoch_secs: "int"
+    """
+    Validity expiration timestamp in seconds since Unix epoch.
+    """
+
+    signature_base64: "str"
+    """
+    64-byte Ed25519 digital signature in Base64 representation.
+    """
+
+    fingerprint_sha256: "str"
+    """
+    Standardized SHA-256 public key fingerprint (e.g. `SHA256:...`).
+    """
+
+    def __init__(self, *, serial_number: "str", issuer_id: "str", subject_id: "str", public_key_base64: "str", issued_at_epoch_secs: "int", expires_at_epoch_secs: "int", signature_base64: "str", fingerprint_sha256: "str"):
+        self.serial_number = serial_number
+        self.issuer_id = issuer_id
+        self.subject_id = subject_id
+        self.public_key_base64 = public_key_base64
+        self.issued_at_epoch_secs = issued_at_epoch_secs
+        self.expires_at_epoch_secs = expires_at_epoch_secs
+        self.signature_base64 = signature_base64
+        self.fingerprint_sha256 = fingerprint_sha256
+
+    def __str__(self):
+        return "UniFfiEd25519Cert(serial_number={}, issuer_id={}, subject_id={}, public_key_base64={}, issued_at_epoch_secs={}, expires_at_epoch_secs={}, signature_base64={}, fingerprint_sha256={})".format(self.serial_number, self.issuer_id, self.subject_id, self.public_key_base64, self.issued_at_epoch_secs, self.expires_at_epoch_secs, self.signature_base64, self.fingerprint_sha256)
+
+    def __eq__(self, other):
+        if self.serial_number != other.serial_number:
+            return False
+        if self.issuer_id != other.issuer_id:
+            return False
+        if self.subject_id != other.subject_id:
+            return False
+        if self.public_key_base64 != other.public_key_base64:
+            return False
+        if self.issued_at_epoch_secs != other.issued_at_epoch_secs:
+            return False
+        if self.expires_at_epoch_secs != other.expires_at_epoch_secs:
+            return False
+        if self.signature_base64 != other.signature_base64:
+            return False
+        if self.fingerprint_sha256 != other.fingerprint_sha256:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEd25519Cert(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEd25519Cert(
+            serial_number=_UniffiConverterString.read(buf),
+            issuer_id=_UniffiConverterString.read(buf),
+            subject_id=_UniffiConverterString.read(buf),
+            public_key_base64=_UniffiConverterString.read(buf),
+            issued_at_epoch_secs=_UniffiConverterInt64.read(buf),
+            expires_at_epoch_secs=_UniffiConverterInt64.read(buf),
+            signature_base64=_UniffiConverterString.read(buf),
+            fingerprint_sha256=_UniffiConverterString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.serial_number)
+        _UniffiConverterString.check_lower(value.issuer_id)
+        _UniffiConverterString.check_lower(value.subject_id)
+        _UniffiConverterString.check_lower(value.public_key_base64)
+        _UniffiConverterInt64.check_lower(value.issued_at_epoch_secs)
+        _UniffiConverterInt64.check_lower(value.expires_at_epoch_secs)
+        _UniffiConverterString.check_lower(value.signature_base64)
+        _UniffiConverterString.check_lower(value.fingerprint_sha256)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.serial_number, buf)
+        _UniffiConverterString.write(value.issuer_id, buf)
+        _UniffiConverterString.write(value.subject_id, buf)
+        _UniffiConverterString.write(value.public_key_base64, buf)
+        _UniffiConverterInt64.write(value.issued_at_epoch_secs, buf)
+        _UniffiConverterInt64.write(value.expires_at_epoch_secs, buf)
+        _UniffiConverterString.write(value.signature_base64, buf)
+        _UniffiConverterString.write(value.fingerprint_sha256, buf)
 
 
 class UniFfiEntryMetadata:
@@ -9842,6 +10777,92 @@ class _UniffiConverterTypeTtZipError(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiAuthStatus(enum.Enum):
+    """
+    Strongly typed authentication and verification status enumeration exposed via UniFFI.
+    """
+
+    VALID = 0
+    """
+    Digital signature and certificate chain are cryptographically valid and active.
+    """
+
+    
+    INVALID_SIGNATURE = 1
+    """
+    Digital signature mismatch or tampering detected.
+    """
+
+    
+    UNTRUSTED_ROOT = 2
+    """
+    Certificate issuer does not chain to any configured trusted root anchor.
+    """
+
+    
+    MALFORMED_CERT = 3
+    """
+    Malformed public key, signature format, or corrupt certificate payload.
+    """
+
+    
+    EXPIRED = 4
+    """
+    Certificate or manifest has expired or is not yet valid.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiAuthStatus(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiAuthStatus.VALID
+        if variant == 2:
+            return UniFfiAuthStatus.INVALID_SIGNATURE
+        if variant == 3:
+            return UniFfiAuthStatus.UNTRUSTED_ROOT
+        if variant == 4:
+            return UniFfiAuthStatus.MALFORMED_CERT
+        if variant == 5:
+            return UniFfiAuthStatus.EXPIRED
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiAuthStatus.VALID:
+            return
+        if value == UniFfiAuthStatus.INVALID_SIGNATURE:
+            return
+        if value == UniFfiAuthStatus.UNTRUSTED_ROOT:
+            return
+        if value == UniFfiAuthStatus.MALFORMED_CERT:
+            return
+        if value == UniFfiAuthStatus.EXPIRED:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiAuthStatus.VALID:
+            buf.write_i32(1)
+        if value == UniFfiAuthStatus.INVALID_SIGNATURE:
+            buf.write_i32(2)
+        if value == UniFfiAuthStatus.UNTRUSTED_ROOT:
+            buf.write_i32(3)
+        if value == UniFfiAuthStatus.MALFORMED_CERT:
+            buf.write_i32(4)
+        if value == UniFfiAuthStatus.EXPIRED:
+            buf.write_i32(5)
+
+
+
+
+
+
+
 class UniFfiCompressionCodec(enum.Enum):
     """
     Compression codec identifier exposed to Swift and multi-language SDKs.
@@ -10765,6 +11786,33 @@ class _UniffiConverterOptionalUInt64(_UniffiConverterRustBuffer):
             return None
         elif flag == 1:
             return _UniffiConverterUInt64.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalInt64(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterInt64.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterInt64.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterInt64.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -14155,6 +15203,7 @@ __all__ = [
     "FileMediaType",
     "ThumbnailSamplingFilter",
     "TtZipError",
+    "UniFfiAuthStatus",
     "UniFfiCompressionCodec",
     "UniFfiCorpusType",
     "UniFfiDecisionVerdict",
@@ -14186,6 +15235,7 @@ __all__ = [
     "UniFfiCorruptedEntry",
     "UniFfiDocxExtractResult",
     "UniFfiDocxProperties",
+    "UniFfiEd25519Cert",
     "UniFfiEntryMetadata",
     "UniFfiEpubBook",
     "UniFfiEpubChapter",
@@ -14377,6 +15427,8 @@ __all__ = [
     "verify_license_key",
     "CancellationToken",
     "TtZipLocalizationEngine",
+    "UniFfiPluginSigner",
+    "UniFfiPluginVerifier",
     "UniFfittZipMediaPlayer",
     "UniFfiVfsTree",
     "VirtualFileStream",

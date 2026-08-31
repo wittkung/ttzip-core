@@ -1127,6 +1127,52 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1172,6 +1218,56 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_has_key(`ptr`: Pointer,`key`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error(`ptr`: Pointer,`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffipluginsigner(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffipluginsigner(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64(`seedBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes(`seedBytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate(`ptr`: Pointer,`issuerId`: RustBuffer.ByValue,`subjectId`: RustBuffer.ByValue,`subjectPublicKeyBase64`: RustBuffer.ByValue,`validityDays`: Int,`serialNumber`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string(`ptr`: Pointer,`manifestContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffipluginverifier(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffipluginverifier(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new(`rootPublicKeysBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64(`ptr`: Pointer,`rootPublicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3(`ptr`: Pointer,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256(`ptr`: Pointer,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate(`ptr`: Pointer,`cert`: RustBuffer.ByValue,`currentTimestampSecs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest(`ptr`: Pointer,`manifestContent`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`developerPublicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert(`ptr`: Pointer,`manifestContent`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`cert`: RustBuffer.ByValue,`currentTimestampSecs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw(`ptr`: Pointer,`data`: RustBuffer.ByValue,`signatureBytes`: RustBuffer.ByValue,`publicKeyBytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64(`ptr`: Pointer,`data`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
@@ -1971,6 +2067,38 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks(
@@ -2042,6 +2170,16 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_constructor_cancellationtoken_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new(
     ): Short
@@ -2527,6 +2665,54 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256() != 30754.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64() != 59730.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes() != 12249.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate() != 15069.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign() != 24342.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64() != 52484.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string() != 19873.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64() != 65041.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3() != 7912.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256() != 58752.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate() != 3418.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest() != 39982.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert() != 64432.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw() != 53731.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2633,6 +2819,21 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes() != 29958.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate() != 20899.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier() != 9726.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586.toShort()) {
@@ -3629,6 +3830,850 @@ public object FfiConverterTypeTTZipLocalizationEngine: FfiConverter<TtZipLocaliz
     override fun allocationSize(value: TtZipLocalizationEngine) = 8UL
 
     override fun write(value: TtZipLocalizationEngine, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+ */
+public interface UniFfiPluginSignerInterface {
+    
+    /**
+     * Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+     */
+    fun `getFingerprintBlake3`(): kotlin.String
+    
+    /**
+     * Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+     */
+    fun `getFingerprintSha256`(): kotlin.String
+    
+    /**
+     * Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+     */
+    fun `getPublicKeyBase64`(): kotlin.String
+    
+    /**
+     * Returns the raw 32-byte Ed25519 public key.
+     */
+    fun `getPublicKeyBytes`(): kotlin.ByteArray
+    
+    /**
+     * Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+     */
+    fun `issueCertificate`(`issuerId`: kotlin.String, `subjectId`: kotlin.String, `subjectPublicKeyBase64`: kotlin.String, `validityDays`: kotlin.UInt, `serialNumber`: kotlin.String?): UniFfiEd25519Cert
+    
+    /**
+     * Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+     */
+    fun `sign`(`data`: kotlin.ByteArray): kotlin.ByteArray
+    
+    /**
+     * Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+     */
+    fun `signBase64`(`data`: kotlin.ByteArray): kotlin.String
+    
+    /**
+     * Generates a detached Base64 signature for a UTF-8 manifest payload string.
+     */
+    fun `signManifestString`(`manifestContent`: kotlin.String): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+ */
+open class UniFfiPluginSigner: Disposable, AutoCloseable, UniFfiPluginSignerInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffipluginsigner(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffipluginsigner(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+     */override fun `getFingerprintBlake3`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+     */override fun `getFingerprintSha256`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+     */override fun `getPublicKeyBase64`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns the raw 32-byte Ed25519 public key.
+     */override fun `getPublicKeyBytes`(): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+     */
+    @Throws(TtZipException::class)override fun `issueCertificate`(`issuerId`: kotlin.String, `subjectId`: kotlin.String, `subjectPublicKeyBase64`: kotlin.String, `validityDays`: kotlin.UInt, `serialNumber`: kotlin.String?): UniFfiEd25519Cert {
+            return FfiConverterTypeUniFFIEd25519Cert.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate(
+        it, FfiConverterString.lower(`issuerId`),FfiConverterString.lower(`subjectId`),FfiConverterString.lower(`subjectPublicKeyBase64`),FfiConverterUInt.lower(`validityDays`),FfiConverterOptionalString.lower(`serialNumber`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+     */override fun `sign`(`data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign(
+        it, FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+     */override fun `signBase64`(`data`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64(
+        it, FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates a detached Base64 signature for a UTF-8 manifest payload string.
+     */override fun `signManifestString`(`manifestContent`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string(
+        it, FfiConverterString.lower(`manifestContent`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Instantiates a signer from a 32-byte secret seed in standard Base64 representation.
+     */
+    @Throws(TtZipException::class) fun `fromSeedBase64`(`seedBase64`: kotlin.String): UniFfiPluginSigner {
+            return FfiConverterTypeUniFFIPluginSigner.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64(
+        FfiConverterString.lower(`seedBase64`),_status)
+}
+    )
+    }
+    
+
+        
+    /**
+     * Instantiates a signer from raw 32-byte secret seed bytes.
+     */
+    @Throws(TtZipException::class) fun `fromSeedBytes`(`seedBytes`: kotlin.ByteArray): UniFfiPluginSigner {
+            return FfiConverterTypeUniFFIPluginSigner.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes(
+        FfiConverterByteArray.lower(`seedBytes`),_status)
+}
+    )
+    }
+    
+
+        
+    /**
+     * Generates a cryptographically secure random private signing key.
+     */
+    @Throws(TtZipException::class) fun `generate`(): UniFfiPluginSigner {
+            return FfiConverterTypeUniFFIPluginSigner.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate(
+        _status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPluginSigner: FfiConverter<UniFfiPluginSigner, Pointer> {
+
+    override fun lower(value: UniFfiPluginSigner): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiPluginSigner {
+        return UniFfiPluginSigner(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiPluginSigner {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiPluginSigner) = 8UL
+
+    override fun write(value: UniFfiPluginSigner, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+ */
+public interface UniFfiPluginVerifierInterface {
+    
+    /**
+     * Appends a trusted root public key in Base64 representation to the verifier's trust store.
+     */
+    fun `addTrustedRootBase64`(`rootPublicKeyBase64`: kotlin.String)
+    
+    /**
+     * Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+     */
+    fun `extractFingerprintBlake3`(`publicKeyBase64`: kotlin.String): kotlin.String
+    
+    /**
+     * Computes standardized SHA-256 fingerprint for a Base64 public key string.
+     */
+    fun `extractFingerprintSha256`(`publicKeyBase64`: kotlin.String): kotlin.String
+    
+    /**
+     * Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+     */
+    fun `verifyCertificate`(`cert`: UniFfiEd25519Cert, `currentTimestampSecs`: kotlin.Long?): UniFfiAuthStatus
+    
+    /**
+     * Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+     */
+    fun `verifyManifest`(`manifestContent`: kotlin.String, `signatureBase64`: kotlin.String, `developerPublicKeyBase64`: kotlin.String): UniFfiAuthStatus
+    
+    /**
+     * Verifies `.ttplugin` manifest string using a developer certificate chain.
+     */
+    fun `verifyManifestWithCert`(`manifestContent`: kotlin.String, `signatureBase64`: kotlin.String, `cert`: UniFfiEd25519Cert, `currentTimestampSecs`: kotlin.Long?): UniFfiAuthStatus
+    
+    /**
+     * Verifies raw binary data against raw Ed25519 signature and public key bytes.
+     */
+    fun `verifyRaw`(`data`: kotlin.ByteArray, `signatureBytes`: kotlin.ByteArray, `publicKeyBytes`: kotlin.ByteArray): UniFfiAuthStatus
+    
+    /**
+     * Verifies raw data against Base64-encoded signature and public key strings.
+     */
+    fun `verifySignatureBase64`(`data`: kotlin.ByteArray, `signatureBase64`: kotlin.String, `publicKeyBase64`: kotlin.String): UniFfiAuthStatus
+    
+    companion object
+}
+
+/**
+ * Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+ */
+open class UniFfiPluginVerifier: Disposable, AutoCloseable, UniFfiPluginVerifierInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a verifier configured with custom trusted root public keys in Base64.
+     */
+    constructor(`rootPublicKeysBase64`: List<kotlin.String>) :
+        this(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new(
+        FfiConverterSequenceString.lower(`rootPublicKeysBase64`),_status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffipluginverifier(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffipluginverifier(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Appends a trusted root public key in Base64 representation to the verifier's trust store.
+     */
+    @Throws(TtZipException::class)override fun `addTrustedRootBase64`(`rootPublicKeyBase64`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64(
+        it, FfiConverterString.lower(`rootPublicKeyBase64`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+     */
+    @Throws(TtZipException::class)override fun `extractFingerprintBlake3`(`publicKeyBase64`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3(
+        it, FfiConverterString.lower(`publicKeyBase64`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Computes standardized SHA-256 fingerprint for a Base64 public key string.
+     */
+    @Throws(TtZipException::class)override fun `extractFingerprintSha256`(`publicKeyBase64`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256(
+        it, FfiConverterString.lower(`publicKeyBase64`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+     */override fun `verifyCertificate`(`cert`: UniFfiEd25519Cert, `currentTimestampSecs`: kotlin.Long?): UniFfiAuthStatus {
+            return FfiConverterTypeUniFFIAuthStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate(
+        it, FfiConverterTypeUniFFIEd25519Cert.lower(`cert`),FfiConverterOptionalLong.lower(`currentTimestampSecs`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+     */override fun `verifyManifest`(`manifestContent`: kotlin.String, `signatureBase64`: kotlin.String, `developerPublicKeyBase64`: kotlin.String): UniFfiAuthStatus {
+            return FfiConverterTypeUniFFIAuthStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest(
+        it, FfiConverterString.lower(`manifestContent`),FfiConverterString.lower(`signatureBase64`),FfiConverterString.lower(`developerPublicKeyBase64`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies `.ttplugin` manifest string using a developer certificate chain.
+     */override fun `verifyManifestWithCert`(`manifestContent`: kotlin.String, `signatureBase64`: kotlin.String, `cert`: UniFfiEd25519Cert, `currentTimestampSecs`: kotlin.Long?): UniFfiAuthStatus {
+            return FfiConverterTypeUniFFIAuthStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert(
+        it, FfiConverterString.lower(`manifestContent`),FfiConverterString.lower(`signatureBase64`),FfiConverterTypeUniFFIEd25519Cert.lower(`cert`),FfiConverterOptionalLong.lower(`currentTimestampSecs`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies raw binary data against raw Ed25519 signature and public key bytes.
+     */override fun `verifyRaw`(`data`: kotlin.ByteArray, `signatureBytes`: kotlin.ByteArray, `publicKeyBytes`: kotlin.ByteArray): UniFfiAuthStatus {
+            return FfiConverterTypeUniFFIAuthStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterByteArray.lower(`signatureBytes`),FfiConverterByteArray.lower(`publicKeyBytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies raw data against Base64-encoded signature and public key strings.
+     */override fun `verifySignatureBase64`(`data`: kotlin.ByteArray, `signatureBase64`: kotlin.String, `publicKeyBase64`: kotlin.String): UniFfiAuthStatus {
+            return FfiConverterTypeUniFFIAuthStatus.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`signatureBase64`),FfiConverterString.lower(`publicKeyBase64`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Creates a verifier preloaded with the official embedded TTZip root public key.
+     */ fun `defaultVerifier`(): UniFfiPluginVerifier {
+            return FfiConverterTypeUniFFIPluginVerifier.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier(
+        _status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPluginVerifier: FfiConverter<UniFfiPluginVerifier, Pointer> {
+
+    override fun lower(value: UniFfiPluginVerifier): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiPluginVerifier {
+        return UniFfiPluginVerifier(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiPluginVerifier {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiPluginVerifier) = 8UL
+
+    override fun write(value: UniFfiPluginVerifier, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -6200,6 +7245,89 @@ public object FfiConverterTypeUniFFIDocxProperties: FfiConverterRustBuffer<UniFf
             FfiConverterUInt.write(value.`wordCount`, buf)
             FfiConverterUInt.write(value.`characterCount`, buf)
             FfiConverterUInt.write(value.`paragraphCount`, buf)
+    }
+}
+
+
+
+/**
+ * Lightweight Ed25519 Digital Identity Certificate record exposed via UniFFI.
+ */
+data class UniFfiEd25519Cert (
+    /**
+     * Unique certificate serial number.
+     */
+    var `serialNumber`: kotlin.String, 
+    /**
+     * Entity identifier of the certificate authority / issuer.
+     */
+    var `issuerId`: kotlin.String, 
+    /**
+     * Entity identifier of the subject / developer.
+     */
+    var `subjectId`: kotlin.String, 
+    /**
+     * 32-byte Ed25519 public key in standard Base64 representation.
+     */
+    var `publicKeyBase64`: kotlin.String, 
+    /**
+     * Validity commencement timestamp in seconds since Unix epoch.
+     */
+    var `issuedAtEpochSecs`: kotlin.Long, 
+    /**
+     * Validity expiration timestamp in seconds since Unix epoch.
+     */
+    var `expiresAtEpochSecs`: kotlin.Long, 
+    /**
+     * 64-byte Ed25519 digital signature in Base64 representation.
+     */
+    var `signatureBase64`: kotlin.String, 
+    /**
+     * Standardized SHA-256 public key fingerprint (e.g. `SHA256:...`).
+     */
+    var `fingerprintSha256`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEd25519Cert: FfiConverterRustBuffer<UniFfiEd25519Cert> {
+    override fun read(buf: ByteBuffer): UniFfiEd25519Cert {
+        return UniFfiEd25519Cert(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEd25519Cert) = (
+            FfiConverterString.allocationSize(value.`serialNumber`) +
+            FfiConverterString.allocationSize(value.`issuerId`) +
+            FfiConverterString.allocationSize(value.`subjectId`) +
+            FfiConverterString.allocationSize(value.`publicKeyBase64`) +
+            FfiConverterLong.allocationSize(value.`issuedAtEpochSecs`) +
+            FfiConverterLong.allocationSize(value.`expiresAtEpochSecs`) +
+            FfiConverterString.allocationSize(value.`signatureBase64`) +
+            FfiConverterString.allocationSize(value.`fingerprintSha256`)
+    )
+
+    override fun write(value: UniFfiEd25519Cert, buf: ByteBuffer) {
+            FfiConverterString.write(value.`serialNumber`, buf)
+            FfiConverterString.write(value.`issuerId`, buf)
+            FfiConverterString.write(value.`subjectId`, buf)
+            FfiConverterString.write(value.`publicKeyBase64`, buf)
+            FfiConverterLong.write(value.`issuedAtEpochSecs`, buf)
+            FfiConverterLong.write(value.`expiresAtEpochSecs`, buf)
+            FfiConverterString.write(value.`signatureBase64`, buf)
+            FfiConverterString.write(value.`fingerprintSha256`, buf)
     }
 }
 
@@ -8877,6 +10005,57 @@ public object FfiConverterTypeThumbnailSamplingFilter: FfiConverterRustBuffer<Th
 
 
 /**
+ * Strongly typed authentication and verification status enumeration exposed via UniFFI.
+ */
+
+enum class UniFfiAuthStatus {
+    
+    /**
+     * Digital signature and certificate chain are cryptographically valid and active.
+     */
+    VALID,
+    /**
+     * Digital signature mismatch or tampering detected.
+     */
+    INVALID_SIGNATURE,
+    /**
+     * Certificate issuer does not chain to any configured trusted root anchor.
+     */
+    UNTRUSTED_ROOT,
+    /**
+     * Malformed public key, signature format, or corrupt certificate payload.
+     */
+    MALFORMED_CERT,
+    /**
+     * Certificate or manifest has expired or is not yet valid.
+     */
+    EXPIRED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAuthStatus: FfiConverterRustBuffer<UniFfiAuthStatus> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiAuthStatus.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiAuthStatus) = 4UL
+
+    override fun write(value: UniFfiAuthStatus, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Compression codec identifier exposed to Swift and multi-language SDKs.
  */
 
@@ -9445,6 +10624,38 @@ public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
         } else {
             buf.put(1)
             FfiConverterULong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
         }
     }
 }

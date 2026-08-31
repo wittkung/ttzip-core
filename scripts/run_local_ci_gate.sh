@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --bail               Stop immediately on first failed stage"
-            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite)"
+            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite)"
             echo "  --release            Pass --release profile to applicable test stages"
             echo "  --json <path>        Export structured JSON report"
             echo "  -h, --help           Show this help message"
@@ -95,6 +95,7 @@ declare -a STAGE_NAMES=(
     "Bzip2 Industrial Suite & Invariant 6 Anti-Regression Gate"
     "Libdeflate Industrial Suite & Invariant 6 Anti-Regression Gate"
     "BLAKE3 Tree Hashing & Security Invariant 6 Gate"
+    "Ed25519 Elliptic Curve & Plugin Auth Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -119,6 +120,7 @@ declare -a STAGE_KEYS=(
     "bzip2-suite"
     "libdeflate-suite"
     "blake3-suite"
+    "ed25519-suite"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -144,6 +146,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_bzip2_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_libdeflate_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_blake3_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_ed25519_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
@@ -172,22 +175,17 @@ if [[ -z "${TARGET_STAGE}" || "${TARGET_STAGE}" == *"suite"* ]]; then
     if [ -f "${PREFLIGHT_FINGERPRINT_FILE}" ] && [ "$(cat "${PREFLIGHT_FINGERPRINT_FILE}" 2>/dev/null || true)" = "${CURRENT_PREFLIGHT_FINGERPRINT}" ]; then
         echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation cache up-to-date (0.015s, hit: ${CURRENT_PREFLIGHT_FINGERPRINT:0:12}). Proceeding to stages.${C_RESET}\n"
     else
-        echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-compiling workspace test binaries in parallel...${C_RESET}"
+        echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-checking workspace tests and dependencies...${C_RESET}"
         PREFLIGHT_START=$(python3 -c "import time; print(time.time())")
         (
             cd "${WORKSPACE_ROOT}/rust"
-            export RUST_TEST_THREADS="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
-            export RAYON_NUM_THREADS="2"
-            if command -v sccache >/dev/null 2>&1; then
-                export RUSTC_WRAPPER="sccache"
-            fi
-            cargo test $([ "${USE_RELEASE}" = true ] && echo "--release") --no-run -p ttzip-engine --tests > /dev/null 2>&1 || true
+            cargo check $([ "${USE_RELEASE}" = true ] && echo "--release") --tests -p ttzip-engine > /dev/null 2>&1 || true
         )
         mkdir -p "${WORKSPACE_ROOT}/rust/target"
         echo "${CURRENT_PREFLIGHT_FINGERPRINT}" > "${PREFLIGHT_FINGERPRINT_FILE}"
         PREFLIGHT_END=$(python3 -c "import time; print(time.time())")
         PREFLIGHT_DUR=$(python3 -c "print(round(${PREFLIGHT_END} - ${PREFLIGHT_START}, 3))")
-        echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
+        echo -e "${C_GREEN}--> [Pre-flight] Pre-check ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
     fi
 fi
 

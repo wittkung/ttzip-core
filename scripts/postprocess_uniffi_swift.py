@@ -59,6 +59,8 @@ def postprocess(swift_path):
     sendable_extensions = """
 extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
+extension UniFfiPluginSigner: @unchecked Sendable {}
+extension UniFfiPluginVerifier: @unchecked Sendable {}
 """
     if "extension UniFfiVfsTree: @unchecked Sendable" not in content:
         content += sendable_extensions

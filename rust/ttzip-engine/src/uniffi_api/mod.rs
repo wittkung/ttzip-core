@@ -28,6 +28,7 @@ pub mod integrity;
 pub mod media;
 #[cfg(feature = "probe")]
 pub mod metadata;
+pub mod plugin_auth;
 pub mod smart_extract;
 pub mod subtitles;
 pub mod syntax;
@@ -54,6 +55,7 @@ pub use integrity::*;
 pub use media::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
+pub use plugin_auth::*;
 pub use smart_extract::*;
 pub use subtitles::*;
 pub use syntax::*;

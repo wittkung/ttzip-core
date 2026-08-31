@@ -643,6 +643,7 @@ dependencies = [
  "fiat-crypto",
  "rustc_version",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -2645,6 +2646,7 @@ dependencies = [
  "criterion",
  "crossbeam-utils",
  "ctr",
+ "curve25519-dalek",
  "ed25519-dalek",
  "encoding_rs",
  "flate2",
@@ -2666,6 +2668,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "snap",
+ "subtle",
  "symphonia",
  "tar",
  "tempfile",

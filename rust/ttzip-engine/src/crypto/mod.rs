@@ -14,6 +14,7 @@ pub mod blake3;
 pub mod chacha20poly1305;
 pub mod crc32;
 pub mod crc64;
+pub mod ed25519;
 pub mod md5;
 pub mod password_recovery;
 pub mod recovery;
@@ -40,6 +41,7 @@ pub use blake3::{
 pub use chacha20poly1305::{chacha20_poly1305_decrypt, chacha20_poly1305_encrypt, Poly1305};
 pub use crc32::{crc32, crc32_combine, crc32_fast};
 pub use crc64::{crc64, crc64_fast};
+pub use ed25519::*;
 pub use md5::{md5, FastMd5};
 pub use password_recovery::*;
 pub use recovery::*;

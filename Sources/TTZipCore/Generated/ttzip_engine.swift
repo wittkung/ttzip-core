@@ -933,6 +933,517 @@ public func FfiConverterTypeTTZipLocalizationEngine_lower(_ value: TtZipLocaliza
 }
 
 /**
+ * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+ */
+public protocol UniFfiPluginSignerProtocol: AnyObject {
+    /**
+     * Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+     */
+    func getFingerprintBlake3() -> String
+
+    /**
+     * Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+     */
+    func getFingerprintSha256() -> String
+
+    /**
+     * Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+     */
+    func getPublicKeyBase64() -> String
+
+    /**
+     * Returns the raw 32-byte Ed25519 public key.
+     */
+    func getPublicKeyBytes() -> Data
+
+    /**
+     * Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+     */
+    func issueCertificate(issuerId: String, subjectId: String, subjectPublicKeyBase64: String, validityDays: UInt32, serialNumber: String?) throws -> UniFfiEd25519Cert
+
+    /**
+     * Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+     */
+    func sign(data: Data) -> Data
+
+    /**
+     * Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+     */
+    func signBase64(data: Data) -> String
+
+    /**
+     * Generates a detached Base64 signature for a UTF-8 manifest payload string.
+     */
+    func signManifestString(manifestContent: String) -> String
+}
+
+/**
+ * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
+ */
+open class UniFfiPluginSigner:
+    UniFfiPluginSignerProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffipluginsigner(self.pointer, $0) }
+    }
+
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffipluginsigner(pointer, $0) }
+    }
+
+    /**
+     * Instantiates a signer from a 32-byte secret seed in standard Base64 representation.
+     */
+    public static func fromSeedBase64(seedBase64: String) throws -> UniFfiPluginSigner {
+        return try FfiConverterTypeUniFFIPluginSigner.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_base64(
+                FfiConverterString.lower(seedBase64), $0
+            )
+        })
+    }
+
+    /**
+     * Instantiates a signer from raw 32-byte secret seed bytes.
+     */
+    public static func fromSeedBytes(seedBytes: Data) throws -> UniFfiPluginSigner {
+        return try FfiConverterTypeUniFFIPluginSigner.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_from_seed_bytes(
+                FfiConverterData.lower(seedBytes), $0
+            )
+        })
+    }
+
+    /**
+     * Generates a cryptographically secure random private signing key.
+     */
+    public static func generate() throws -> UniFfiPluginSigner {
+        return try FfiConverterTypeUniFFIPluginSigner.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_constructor_uniffipluginsigner_generate($0)
+        })
+    }
+
+    /**
+     * Derives the high-performance BLAKE3 public key fingerprint in format `BLAKE3:<base64>`.
+     */
+    open func getFingerprintBlake3() -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_blake3(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Derives the standard SHA-256 public key fingerprint in format `SHA256:<base64>`.
+     */
+    open func getFingerprintSha256() -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_fingerprint_sha256(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns the associated 32-byte Ed25519 public key encoded in standard Base64.
+     */
+    open func getPublicKeyBase64() -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_base64(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns the raw 32-byte Ed25519 public key.
+     */
+    open func getPublicKeyBytes() -> Data {
+        return try! FfiConverterData.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_get_public_key_bytes(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Issues and signs a new `UniFFIEd25519Cert` for a subject developer public key.
+     */
+    open func issueCertificate(issuerId: String, subjectId: String, subjectPublicKeyBase64: String, validityDays: UInt32, serialNumber: String?) throws -> UniFfiEd25519Cert {
+        return try FfiConverterTypeUniFFIEd25519Cert.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_issue_certificate(self.uniffiClonePointer(),
+                                                                               FfiConverterString.lower(issuerId),
+                                                                               FfiConverterString.lower(subjectId),
+                                                                               FfiConverterString.lower(subjectPublicKeyBase64),
+                                                                               FfiConverterUInt32.lower(validityDays),
+                                                                               FfiConverterOptionString.lower(serialNumber), $0)
+        })
+    }
+
+    /**
+     * Generates a deterministic 64-byte Ed25519 digital signature over raw binary payload.
+     */
+    open func sign(data: Data) -> Data {
+        return try! FfiConverterData.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign(self.uniffiClonePointer(),
+                                                                  FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Generates a 64-byte Ed25519 digital signature over raw binary payload encoded in Base64.
+     */
+    open func signBase64(data: Data) -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_base64(self.uniffiClonePointer(),
+                                                                         FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Generates a detached Base64 signature for a UTF-8 manifest payload string.
+     */
+    open func signManifestString(manifestContent: String) -> String {
+        return try! FfiConverterString.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginsigner_sign_manifest_string(self.uniffiClonePointer(),
+                                                                                  FfiConverterString.lower(manifestContent), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPluginSigner: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiPluginSigner
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPluginSigner {
+        return UniFfiPluginSigner(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiPluginSigner) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPluginSigner {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiPluginSigner, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPluginSigner_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPluginSigner {
+    return try FfiConverterTypeUniFFIPluginSigner.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPluginSigner_lower(_ value: UniFfiPluginSigner) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIPluginSigner.lower(value)
+}
+
+/**
+ * Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+ */
+public protocol UniFfiPluginVerifierProtocol: AnyObject {
+    /**
+     * Appends a trusted root public key in Base64 representation to the verifier's trust store.
+     */
+    func addTrustedRootBase64(rootPublicKeyBase64: String) throws
+
+    /**
+     * Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+     */
+    func extractFingerprintBlake3(publicKeyBase64: String) throws -> String
+
+    /**
+     * Computes standardized SHA-256 fingerprint for a Base64 public key string.
+     */
+    func extractFingerprintSha256(publicKeyBase64: String) throws -> String
+
+    /**
+     * Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+     */
+    func verifyCertificate(cert: UniFfiEd25519Cert, currentTimestampSecs: Int64?) -> UniFfiAuthStatus
+
+    /**
+     * Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+     */
+    func verifyManifest(manifestContent: String, signatureBase64: String, developerPublicKeyBase64: String) -> UniFfiAuthStatus
+
+    /**
+     * Verifies `.ttplugin` manifest string using a developer certificate chain.
+     */
+    func verifyManifestWithCert(manifestContent: String, signatureBase64: String, cert: UniFfiEd25519Cert, currentTimestampSecs: Int64?) -> UniFfiAuthStatus
+
+    /**
+     * Verifies raw binary data against raw Ed25519 signature and public key bytes.
+     */
+    func verifyRaw(data: Data, signatureBytes: Data, publicKeyBytes: Data) -> UniFfiAuthStatus
+
+    /**
+     * Verifies raw data against Base64-encoded signature and public key strings.
+     */
+    func verifySignatureBase64(data: Data, signatureBase64: String, publicKeyBase64: String) -> UniFfiAuthStatus
+}
+
+/**
+ * Thread-safe cryptographic Ed25519 verifier for `.ttplugin` archives, manifests, and certificates.
+ */
+open class UniFfiPluginVerifier:
+    UniFfiPluginVerifierProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffipluginverifier(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a verifier configured with custom trusted root public keys in Base64.
+     */
+    public convenience init(rootPublicKeysBase64: [String]) throws {
+        let pointer =
+            try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+                uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_new(
+                    FfiConverterSequenceString.lower(rootPublicKeysBase64), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffipluginverifier(pointer, $0) }
+    }
+
+    /**
+     * Creates a verifier preloaded with the official embedded TTZip root public key.
+     */
+    public static func defaultVerifier() -> UniFfiPluginVerifier {
+        return try! FfiConverterTypeUniFFIPluginVerifier.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_constructor_uniffipluginverifier_default_verifier($0)
+        })
+    }
+
+    /**
+     * Appends a trusted root public key in Base64 representation to the verifier's trust store.
+     */
+    open func addTrustedRootBase64(rootPublicKeyBase64: String) throws {
+        try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_add_trusted_root_base64(self.uniffiClonePointer(),
+                                                                                       FfiConverterString.lower(rootPublicKeyBase64), $0)
+        }
+    }
+
+    /**
+     * Computes standardized BLAKE3 fingerprint for a Base64 public key string.
+     */
+    open func extractFingerprintBlake3(publicKeyBase64: String) throws -> String {
+        return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_blake3(self.uniffiClonePointer(),
+                                                                                          FfiConverterString.lower(publicKeyBase64), $0)
+        })
+    }
+
+    /**
+     * Computes standardized SHA-256 fingerprint for a Base64 public key string.
+     */
+    open func extractFingerprintSha256(publicKeyBase64: String) throws -> String {
+        return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_extract_fingerprint_sha256(self.uniffiClonePointer(),
+                                                                                          FfiConverterString.lower(publicKeyBase64), $0)
+        })
+    }
+
+    /**
+     * Verifies a `UniFFIEd25519Cert` against configured trusted root anchors and validity timestamps.
+     */
+    open func verifyCertificate(cert: UniFfiEd25519Cert, currentTimestampSecs: Int64?) -> UniFfiAuthStatus {
+        return try! FfiConverterTypeUniFFIAuthStatus.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_certificate(self.uniffiClonePointer(),
+                                                                                  FfiConverterTypeUniFFIEd25519Cert.lower(cert),
+                                                                                  FfiConverterOptionInt64.lower(currentTimestampSecs), $0)
+        })
+    }
+
+    /**
+     * Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
+     */
+    open func verifyManifest(manifestContent: String, signatureBase64: String, developerPublicKeyBase64: String) -> UniFfiAuthStatus {
+        return try! FfiConverterTypeUniFFIAuthStatus.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest(self.uniffiClonePointer(),
+                                                                               FfiConverterString.lower(manifestContent),
+                                                                               FfiConverterString.lower(signatureBase64),
+                                                                               FfiConverterString.lower(developerPublicKeyBase64), $0)
+        })
+    }
+
+    /**
+     * Verifies `.ttplugin` manifest string using a developer certificate chain.
+     */
+    open func verifyManifestWithCert(manifestContent: String, signatureBase64: String, cert: UniFfiEd25519Cert, currentTimestampSecs: Int64?) -> UniFfiAuthStatus {
+        return try! FfiConverterTypeUniFFIAuthStatus.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_manifest_with_cert(self.uniffiClonePointer(),
+                                                                                         FfiConverterString.lower(manifestContent),
+                                                                                         FfiConverterString.lower(signatureBase64),
+                                                                                         FfiConverterTypeUniFFIEd25519Cert.lower(cert),
+                                                                                         FfiConverterOptionInt64.lower(currentTimestampSecs), $0)
+        })
+    }
+
+    /**
+     * Verifies raw binary data against raw Ed25519 signature and public key bytes.
+     */
+    open func verifyRaw(data: Data, signatureBytes: Data, publicKeyBytes: Data) -> UniFfiAuthStatus {
+        return try! FfiConverterTypeUniFFIAuthStatus.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_raw(self.uniffiClonePointer(),
+                                                                          FfiConverterData.lower(data),
+                                                                          FfiConverterData.lower(signatureBytes),
+                                                                          FfiConverterData.lower(publicKeyBytes), $0)
+        })
+    }
+
+    /**
+     * Verifies raw data against Base64-encoded signature and public key strings.
+     */
+    open func verifySignatureBase64(data: Data, signatureBase64: String, publicKeyBase64: String) -> UniFfiAuthStatus {
+        return try! FfiConverterTypeUniFFIAuthStatus.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffipluginverifier_verify_signature_base64(self.uniffiClonePointer(),
+                                                                                       FfiConverterData.lower(data),
+                                                                                       FfiConverterString.lower(signatureBase64),
+                                                                                       FfiConverterString.lower(publicKeyBase64), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPluginVerifier: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiPluginVerifier
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPluginVerifier {
+        return UniFfiPluginVerifier(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiPluginVerifier) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPluginVerifier {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiPluginVerifier, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPluginVerifier_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPluginVerifier {
+    return try FfiConverterTypeUniFFIPluginVerifier.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPluginVerifier_lower(_ value: UniFfiPluginVerifier) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIPluginVerifier.lower(value)
+}
+
+/**
  * Cross-language UniFFI MediaPlayer controller object.
  */
 public protocol UniFfittZipMediaPlayerProtocol: AnyObject {
@@ -4054,6 +4565,167 @@ public func FfiConverterTypeUniFFIDocxProperties_lift(_ buf: RustBuffer) throws 
 #endif
 public func FfiConverterTypeUniFFIDocxProperties_lower(_ value: UniFfiDocxProperties) -> RustBuffer {
     return FfiConverterTypeUniFFIDocxProperties.lower(value)
+}
+
+/**
+ * Lightweight Ed25519 Digital Identity Certificate record exposed via UniFFI.
+ */
+public struct UniFfiEd25519Cert {
+    /**
+     * Unique certificate serial number.
+     */
+    public var serialNumber: String
+    /**
+     * Entity identifier of the certificate authority / issuer.
+     */
+    public var issuerId: String
+    /**
+     * Entity identifier of the subject / developer.
+     */
+    public var subjectId: String
+    /**
+     * 32-byte Ed25519 public key in standard Base64 representation.
+     */
+    public var publicKeyBase64: String
+    /**
+     * Validity commencement timestamp in seconds since Unix epoch.
+     */
+    public var issuedAtEpochSecs: Int64
+    /**
+     * Validity expiration timestamp in seconds since Unix epoch.
+     */
+    public var expiresAtEpochSecs: Int64
+    /**
+     * 64-byte Ed25519 digital signature in Base64 representation.
+     */
+    public var signatureBase64: String
+    /**
+     * Standardized SHA-256 public key fingerprint (e.g. `SHA256:...`).
+     */
+    public var fingerprintSha256: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Unique certificate serial number.
+         */ serialNumber: String,
+        /* 
+            * Entity identifier of the certificate authority / issuer.
+            */ issuerId: String,
+        /* 
+            * Entity identifier of the subject / developer.
+            */ subjectId: String,
+        /* 
+            * 32-byte Ed25519 public key in standard Base64 representation.
+            */ publicKeyBase64: String,
+        /* 
+            * Validity commencement timestamp in seconds since Unix epoch.
+            */ issuedAtEpochSecs: Int64,
+        /* 
+            * Validity expiration timestamp in seconds since Unix epoch.
+            */ expiresAtEpochSecs: Int64,
+        /* 
+            * 64-byte Ed25519 digital signature in Base64 representation.
+            */ signatureBase64: String,
+        /* 
+            * Standardized SHA-256 public key fingerprint (e.g. `SHA256:...`).
+            */ fingerprintSha256: String
+    ) {
+        self.serialNumber = serialNumber
+        self.issuerId = issuerId
+        self.subjectId = subjectId
+        self.publicKeyBase64 = publicKeyBase64
+        self.issuedAtEpochSecs = issuedAtEpochSecs
+        self.expiresAtEpochSecs = expiresAtEpochSecs
+        self.signatureBase64 = signatureBase64
+        self.fingerprintSha256 = fingerprintSha256
+    }
+}
+
+extension UniFfiEd25519Cert: Equatable, Hashable {
+    public static func == (lhs: UniFfiEd25519Cert, rhs: UniFfiEd25519Cert) -> Bool {
+        if lhs.serialNumber != rhs.serialNumber {
+            return false
+        }
+        if lhs.issuerId != rhs.issuerId {
+            return false
+        }
+        if lhs.subjectId != rhs.subjectId {
+            return false
+        }
+        if lhs.publicKeyBase64 != rhs.publicKeyBase64 {
+            return false
+        }
+        if lhs.issuedAtEpochSecs != rhs.issuedAtEpochSecs {
+            return false
+        }
+        if lhs.expiresAtEpochSecs != rhs.expiresAtEpochSecs {
+            return false
+        }
+        if lhs.signatureBase64 != rhs.signatureBase64 {
+            return false
+        }
+        if lhs.fingerprintSha256 != rhs.fingerprintSha256 {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(serialNumber)
+        hasher.combine(issuerId)
+        hasher.combine(subjectId)
+        hasher.combine(publicKeyBase64)
+        hasher.combine(issuedAtEpochSecs)
+        hasher.combine(expiresAtEpochSecs)
+        hasher.combine(signatureBase64)
+        hasher.combine(fingerprintSha256)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEd25519Cert: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEd25519Cert {
+        return
+            try UniFfiEd25519Cert(
+                serialNumber: FfiConverterString.read(from: &buf),
+                issuerId: FfiConverterString.read(from: &buf),
+                subjectId: FfiConverterString.read(from: &buf),
+                publicKeyBase64: FfiConverterString.read(from: &buf),
+                issuedAtEpochSecs: FfiConverterInt64.read(from: &buf),
+                expiresAtEpochSecs: FfiConverterInt64.read(from: &buf),
+                signatureBase64: FfiConverterString.read(from: &buf),
+                fingerprintSha256: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEd25519Cert, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.serialNumber, into: &buf)
+        FfiConverterString.write(value.issuerId, into: &buf)
+        FfiConverterString.write(value.subjectId, into: &buf)
+        FfiConverterString.write(value.publicKeyBase64, into: &buf)
+        FfiConverterInt64.write(value.issuedAtEpochSecs, into: &buf)
+        FfiConverterInt64.write(value.expiresAtEpochSecs, into: &buf)
+        FfiConverterString.write(value.signatureBase64, into: &buf)
+        FfiConverterString.write(value.fingerprintSha256, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEd25519Cert_lift(_ buf: RustBuffer) throws -> UniFfiEd25519Cert {
+    return try FfiConverterTypeUniFFIEd25519Cert.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEd25519Cert_lower(_ value: UniFfiEd25519Cert) -> RustBuffer {
+    return FfiConverterTypeUniFFIEd25519Cert.lower(value)
 }
 
 /**
@@ -9000,6 +9672,94 @@ extension ThumbnailSamplingFilter: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Strongly typed authentication and verification status enumeration exposed via UniFFI.
+ */
+
+public enum UniFfiAuthStatus {
+    /**
+     * Digital signature and certificate chain are cryptographically valid and active.
+     */
+    case valid
+    /**
+     * Digital signature mismatch or tampering detected.
+     */
+    case invalidSignature
+    /**
+     * Certificate issuer does not chain to any configured trusted root anchor.
+     */
+    case untrustedRoot
+    /**
+     * Malformed public key, signature format, or corrupt certificate payload.
+     */
+    case malformedCert
+    /**
+     * Certificate or manifest has expired or is not yet valid.
+     */
+    case expired
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAuthStatus: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiAuthStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAuthStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .valid
+
+        case 2: return .invalidSignature
+
+        case 3: return .untrustedRoot
+
+        case 4: return .malformedCert
+
+        case 5: return .expired
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiAuthStatus, into buf: inout [UInt8]) {
+        switch value {
+        case .valid:
+            writeInt(&buf, Int32(1))
+
+        case .invalidSignature:
+            writeInt(&buf, Int32(2))
+
+        case .untrustedRoot:
+            writeInt(&buf, Int32(3))
+
+        case .malformedCert:
+            writeInt(&buf, Int32(4))
+
+        case .expired:
+            writeInt(&buf, Int32(5))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAuthStatus_lift(_ buf: RustBuffer) throws -> UniFfiAuthStatus {
+    return try FfiConverterTypeUniFFIAuthStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAuthStatus_lower(_ value: UniFfiAuthStatus) -> RustBuffer {
+    return FfiConverterTypeUniFFIAuthStatus.lower(value)
+}
+
+extension UniFfiAuthStatus: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Compression codec identifier exposed to Swift and multi-language SDKs.
  */
 
@@ -9881,6 +10641,30 @@ private struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterUInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -13307,6 +14091,54 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_sha256() != 30754 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_base64() != 59730 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_public_key_bytes() != 12249 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_issue_certificate() != 15069 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign() != 24342 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_base64() != 52484 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_sign_manifest_string() != 19873 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_add_trusted_root_base64() != 65041 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_blake3() != 7912 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_extract_fingerprint_sha256() != 58752 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_certificate() != 3418 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest() != 39982 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_manifest_with_cert() != 64432 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_raw() != 53731 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13415,6 +14247,21 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_bytes() != 29958 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_generate() != 20899 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_default_verifier() != 9726 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13447,3 +14294,5 @@ private func uniffiEnsureInitialized() {
 
 extension UniFfiVfsTree: @unchecked Sendable {}
 extension CancellationToken: @unchecked Sendable {}
+extension UniFfiPluginSigner: @unchecked Sendable {}
+extension UniFfiPluginVerifier: @unchecked Sendable {}

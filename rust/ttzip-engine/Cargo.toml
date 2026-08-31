@@ -53,6 +53,8 @@ ctr = "0.9"
 cbc = "0.1"
 symphonia = { version = "0.5", features = ["all"] }
 sha2 = "0.10"
+curve25519-dalek = { version = "4.1", default-features = false, features = ["alloc", "zeroize"] }
+subtle = { version = "2.6", default-features = false }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast"] }
 quick-xml = { version = "0.36", optional = true }
 roxmltree = { version = "0.20", optional = true }
