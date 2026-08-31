@@ -21,7 +21,6 @@ use std::time::{Duration, Instant};
 
 use ttzip_engine::benchmark::ab_engine::stats::HampelFilter;
 use ttzip_engine::benchmark::ab_engine::thermal::ThermalThrottleGovernor;
-use ttzip_engine::benchmark::wait_for_next_tick;
 use ttzip_engine::codecs::lzfse::{
     lzfse_compress_raw, lzfse_decompress_raw, lzvn_compress, lzvn_compress_bound,
     lzvn_compress_raw, lzvn_decompress_raw,
@@ -52,14 +51,13 @@ where
     let mut total_iterations = 0u64;
 
     while start.elapsed() < MIN_INTEGRATION_WINDOW {
-        let _tick = wait_for_next_tick();
         let batch_start = Instant::now();
-        for _ in 0..5 {
+        for _ in 0..10 {
             op();
             black_box(());
             total_iterations += 1;
         }
-        let batch_dur = batch_start.elapsed().as_secs_f64() / 5.0;
+        let batch_dur = batch_start.elapsed().as_secs_f64() / 10.0;
         iteration_times.push(batch_dur);
     }
 
