@@ -12,7 +12,6 @@ use std::fs;
 use std::io::Read;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use ttzip_engine::archive::ArchiveSource;
 use ttzip_engine::archive::source::mmap::MmapSource;
 use ttzip_engine::archive::source::StorageMedium;
 use ttzip_engine::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};

@@ -933,6 +933,369 @@ public func FfiConverterTypeTTZipLocalizationEngine_lower(_ value: TtZipLocaliza
 }
 
 /**
+ * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+ */
+public protocol UniFfiBufferPoolProtocol: AnyObject {
+    /**
+     * Acquires a byte buffer with at least `min_capacity` bytes.
+     */
+    func acquire(minCapacity: UInt32) -> Data
+
+    /**
+     * Clears all pooled buffers and releases memory to the OS.
+     */
+    func clear()
+
+    /**
+     * Takes a current snapshot of memory metrics and pool occupancy.
+     */
+    func getStats() -> UniFfiMemoryStats
+
+    /**
+     * Returns a used buffer back to the pool if within capacity bounds.
+     */
+    func release(buffer: Data)
+
+    /**
+     * Resets memory statistics counters.
+     */
+    func resetStats()
+}
+
+/**
+ * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
+ */
+open class UniFfiBufferPool:
+    UniFfiBufferPoolProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffibufferpool(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a new buffer pool with bounded entry count and default chunk size.
+     */
+    public convenience init(maxEntries: UInt32, defaultSize: UInt32) {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffibufferpool_new(
+                    FfiConverterUInt32.lower(maxEntries),
+                    FfiConverterUInt32.lower(defaultSize), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffibufferpool(pointer, $0) }
+    }
+
+    /**
+     * Acquires a byte buffer with at least `min_capacity` bytes.
+     */
+    open func acquire(minCapacity: UInt32) -> Data {
+        return try! FfiConverterData.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffibufferpool_acquire(self.uniffiClonePointer(),
+                                                                   FfiConverterUInt32.lower(minCapacity), $0)
+        })
+    }
+
+    /**
+     * Clears all pooled buffers and releases memory to the OS.
+     */
+    open func clear() {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffibufferpool_clear(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Takes a current snapshot of memory metrics and pool occupancy.
+     */
+    open func getStats() -> UniFfiMemoryStats {
+        return try! FfiConverterTypeUniFFIMemoryStats.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffibufferpool_get_stats(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Returns a used buffer back to the pool if within capacity bounds.
+     */
+    open func release(buffer: Data) {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffibufferpool_release(self.uniffiClonePointer(),
+                                                                   FfiConverterData.lower(buffer), $0)
+        }
+    }
+
+    /**
+     * Resets memory statistics counters.
+     */
+    open func resetStats() {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffibufferpool_reset_stats(self.uniffiClonePointer(), $0)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIBufferPool: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiBufferPool
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiBufferPool {
+        return UniFfiBufferPool(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiBufferPool) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiBufferPool {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiBufferPool, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBufferPool_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiBufferPool {
+    return try FfiConverterTypeUniFFIBufferPool.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBufferPool_lower(_ value: UniFfiBufferPool) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIBufferPool.lower(value)
+}
+
+/**
+ * Thread-safe lock-free hierarchical cancellation token.
+ */
+public protocol UniFfiCancellationTokenProtocol: AnyObject {
+    /**
+     * Triggers cancellation for this token (and any of its children).
+     */
+    func cancel()
+
+    /**
+     * Creates a child cancellation token linked to this parent.
+     *
+     * If either the parent or the child is cancelled, the child reports cancelled.
+     */
+    func createChild() -> UniFfiCancellationToken
+
+    /**
+     * Checks whether cancellation has been requested on this token or its ancestors.
+     */
+    func isCancelled() -> Bool
+
+    /**
+     * Resets the cancellation flag back to active (false).
+     */
+    func reset()
+}
+
+/**
+ * Thread-safe lock-free hierarchical cancellation token.
+ */
+open class UniFfiCancellationToken:
+    UniFfiCancellationTokenProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_unifficancellationtoken(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a new root cancellation token in the non-cancelled state.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_unifficancellationtoken_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_unifficancellationtoken(pointer, $0) }
+    }
+
+    /**
+     * Triggers cancellation for this token (and any of its children).
+     */
+    open func cancel() {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_unifficancellationtoken_cancel(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Creates a child cancellation token linked to this parent.
+     *
+     * If either the parent or the child is cancelled, the child reports cancelled.
+     */
+    open func createChild() -> UniFfiCancellationToken {
+        return try! FfiConverterTypeUniFFICancellationToken.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_unifficancellationtoken_create_child(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Checks whether cancellation has been requested on this token or its ancestors.
+     */
+    open func isCancelled() -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_unifficancellationtoken_is_cancelled(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Resets the cancellation flag back to active (false).
+     */
+    open func reset() {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset(self.uniffiClonePointer(), $0)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICancellationToken: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiCancellationToken
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiCancellationToken {
+        return UniFfiCancellationToken(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiCancellationToken) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCancellationToken {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiCancellationToken, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICancellationToken_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiCancellationToken {
+    return try FfiConverterTypeUniFFICancellationToken.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICancellationToken_lower(_ value: UniFfiCancellationToken) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFICancellationToken.lower(value)
+}
+
+/**
  * High-performance zero-copy memory-mapped file reader with kernel advice management.
  */
 public protocol UniFfiMmapReaderProtocol: AnyObject {
@@ -1739,6 +2102,231 @@ public func FfiConverterTypeUniFFIPluginVerifier_lift(_ pointer: UnsafeMutableRa
 #endif
 public func FfiConverterTypeUniFFIPluginVerifier_lower(_ value: UniFfiPluginVerifier) -> UnsafeMutableRawPointer {
     return FfiConverterTypeUniFFIPluginVerifier.lower(value)
+}
+
+/**
+ * High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+ */
+public protocol UniFfiProgressReporterProtocol: AnyObject {
+    /**
+     * Advances processed byte count by a delta chunk.
+     */
+    func advance(delta: UInt64, currentEntry: String?) -> Bool
+
+    /**
+     * Computes estimated remaining time in seconds (ETA).
+     */
+    func estimatedRemainingSeconds() -> Double
+
+    /**
+     * Flushes final 100% completion event to the callback.
+     */
+    func finish()
+
+    /**
+     * Checks if cancellation has occurred.
+     */
+    func isCancelled() -> Bool
+
+    /**
+     * Computes current completion percentage in range [0.0, 100.0].
+     */
+    func percentage() -> Double
+
+    /**
+     * Computes instantaneous throughput in megabytes per second (MB/s).
+     */
+    func throughputMbs() -> Double
+
+    /**
+     * Updates processed byte count and triggers throttled callback.
+     *
+     * Returns `true` if processing should continue, or `false` if cancelled.
+     */
+    func update(processed: UInt64, currentEntry: String?) -> Bool
+}
+
+/**
+ * High-throughput smooth progress reporter with adaptive throttling and throughput computation.
+ */
+open class UniFfiProgressReporter:
+    UniFfiProgressReporterProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiprogressreporter(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a new progress reporter with specified byte quota, throttle interval, and optional callback.
+     */
+    public convenience init(totalBytes: UInt64, throttleMillis: UInt32, callback: UniFfiProgressCallback?, cancellationToken: UniFfiCancellationToken?) {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffiprogressreporter_new(
+                    FfiConverterUInt64.lower(totalBytes),
+                    FfiConverterUInt32.lower(throttleMillis),
+                    FfiConverterOptionCallbackInterfaceUniFfiProgressCallback.lower(callback),
+                    FfiConverterOptionTypeUniFFICancellationToken.lower(cancellationToken), $0
+                )
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiprogressreporter(pointer, $0) }
+    }
+
+    /**
+     * Advances processed byte count by a delta chunk.
+     */
+    open func advance(delta: UInt64, currentEntry: String?) -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_advance(self.uniffiClonePointer(),
+                                                                         FfiConverterUInt64.lower(delta),
+                                                                         FfiConverterOptionString.lower(currentEntry), $0)
+        })
+    }
+
+    /**
+     * Computes estimated remaining time in seconds (ETA).
+     */
+    open func estimatedRemainingSeconds() -> Double {
+        return try! FfiConverterDouble.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_estimated_remaining_seconds(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Flushes final 100% completion event to the callback.
+     */
+    open func finish() {
+        try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_finish(self.uniffiClonePointer(), $0)
+        }
+    }
+
+    /**
+     * Checks if cancellation has occurred.
+     */
+    open func isCancelled() -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_is_cancelled(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Computes current completion percentage in range [0.0, 100.0].
+     */
+    open func percentage() -> Double {
+        return try! FfiConverterDouble.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_percentage(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Computes instantaneous throughput in megabytes per second (MB/s).
+     */
+    open func throughputMbs() -> Double {
+        return try! FfiConverterDouble.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_throughput_mbs(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Updates processed byte count and triggers throttled callback.
+     *
+     * Returns `true` if processing should continue, or `false` if cancelled.
+     */
+    open func update(processed: UInt64, currentEntry: String?) -> Bool {
+        return try! FfiConverterBool.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update(self.uniffiClonePointer(),
+                                                                        FfiConverterUInt64.lower(processed),
+                                                                        FfiConverterOptionString.lower(currentEntry), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIProgressReporter: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiProgressReporter
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiProgressReporter {
+        return UniFfiProgressReporter(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiProgressReporter) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiProgressReporter {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiProgressReporter, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIProgressReporter_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiProgressReporter {
+    return try FfiConverterTypeUniFFIProgressReporter.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIProgressReporter_lower(_ value: UniFfiProgressReporter) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIProgressReporter.lower(value)
 }
 
 /**
@@ -6205,6 +6793,110 @@ public func FfiConverterTypeUniFFIMediaTrackInfo_lower(_ value: UniFfiMediaTrack
 }
 
 /**
+ * Aggregated cross-language memory allocation and buffer pool telemetry.
+ */
+public struct UniFfiMemoryStats {
+    public var allocatedBytes: UInt64
+    public var deallocatedBytes: UInt64
+    public var activeAllocations: UInt64
+    public var peakAllocatedBytes: UInt64
+    public var pooledBuffersCount: UInt64
+    public var poolHitCount: UInt64
+    public var poolMissCount: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(allocatedBytes: UInt64, deallocatedBytes: UInt64, activeAllocations: UInt64, peakAllocatedBytes: UInt64, pooledBuffersCount: UInt64, poolHitCount: UInt64, poolMissCount: UInt64) {
+        self.allocatedBytes = allocatedBytes
+        self.deallocatedBytes = deallocatedBytes
+        self.activeAllocations = activeAllocations
+        self.peakAllocatedBytes = peakAllocatedBytes
+        self.pooledBuffersCount = pooledBuffersCount
+        self.poolHitCount = poolHitCount
+        self.poolMissCount = poolMissCount
+    }
+}
+
+extension UniFfiMemoryStats: Equatable, Hashable {
+    public static func == (lhs: UniFfiMemoryStats, rhs: UniFfiMemoryStats) -> Bool {
+        if lhs.allocatedBytes != rhs.allocatedBytes {
+            return false
+        }
+        if lhs.deallocatedBytes != rhs.deallocatedBytes {
+            return false
+        }
+        if lhs.activeAllocations != rhs.activeAllocations {
+            return false
+        }
+        if lhs.peakAllocatedBytes != rhs.peakAllocatedBytes {
+            return false
+        }
+        if lhs.pooledBuffersCount != rhs.pooledBuffersCount {
+            return false
+        }
+        if lhs.poolHitCount != rhs.poolHitCount {
+            return false
+        }
+        if lhs.poolMissCount != rhs.poolMissCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(allocatedBytes)
+        hasher.combine(deallocatedBytes)
+        hasher.combine(activeAllocations)
+        hasher.combine(peakAllocatedBytes)
+        hasher.combine(pooledBuffersCount)
+        hasher.combine(poolHitCount)
+        hasher.combine(poolMissCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIMemoryStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiMemoryStats {
+        return
+            try UniFfiMemoryStats(
+                allocatedBytes: FfiConverterUInt64.read(from: &buf),
+                deallocatedBytes: FfiConverterUInt64.read(from: &buf),
+                activeAllocations: FfiConverterUInt64.read(from: &buf),
+                peakAllocatedBytes: FfiConverterUInt64.read(from: &buf),
+                pooledBuffersCount: FfiConverterUInt64.read(from: &buf),
+                poolHitCount: FfiConverterUInt64.read(from: &buf),
+                poolMissCount: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiMemoryStats, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.allocatedBytes, into: &buf)
+        FfiConverterUInt64.write(value.deallocatedBytes, into: &buf)
+        FfiConverterUInt64.write(value.activeAllocations, into: &buf)
+        FfiConverterUInt64.write(value.peakAllocatedBytes, into: &buf)
+        FfiConverterUInt64.write(value.pooledBuffersCount, into: &buf)
+        FfiConverterUInt64.write(value.poolHitCount, into: &buf)
+        FfiConverterUInt64.write(value.poolMissCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMemoryStats_lift(_ buf: RustBuffer) throws -> UniFfiMemoryStats {
+    return try FfiConverterTypeUniFFIMemoryStats.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIMemoryStats_lower(_ value: UniFfiMemoryStats) -> RustBuffer {
+    return FfiConverterTypeUniFFIMemoryStats.lower(value)
+}
+
+/**
  * Standardized 7-Zip aligned MIPS hardware benchmark telemetry.
  */
 public struct UniFfiMipsBenchmarkResult {
@@ -10524,6 +11216,104 @@ public func FfiConverterTypeUniFFIDecisionVerdict_lower(_ value: UniFfiDecisionV
 
 extension UniFfiDecisionVerdict: Equatable, Hashable {}
 
+/**
+ * Strongly-typed cross-language error enumeration exposed to foreign runtimes.
+ */
+public enum UniFfiError {
+    case IoError(message: String)
+    case CorruptArchive(message: String, offset: UInt64)
+    case InvalidPassword(message: String)
+    case UnsupportedCompression(method: String)
+    case MmapError(message: String)
+    case PermissionDenied(path: String)
+    case OutOfMemory(message: String)
+    case CryptoError(message: String)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIError: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .IoError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 2: return try .CorruptArchive(
+                message: FfiConverterString.read(from: &buf),
+                offset: FfiConverterUInt64.read(from: &buf)
+            )
+        case 3: return try .InvalidPassword(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 4: return try .UnsupportedCompression(
+                method: FfiConverterString.read(from: &buf)
+            )
+        case 5: return try .MmapError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 6: return try .PermissionDenied(
+                path: FfiConverterString.read(from: &buf)
+            )
+        case 7: return try .OutOfMemory(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 8: return try .CryptoError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiError, into buf: inout [UInt8]) {
+        switch value {
+        case let .IoError(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .CorruptArchive(message, offset):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(message, into: &buf)
+            FfiConverterUInt64.write(offset, into: &buf)
+
+        case let .InvalidPassword(message):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .UnsupportedCompression(method):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(method, into: &buf)
+
+        case let .MmapError(message):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .PermissionDenied(path):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(path, into: &buf)
+
+        case let .OutOfMemory(message):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .CryptoError(message):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(message, into: &buf)
+        }
+    }
+}
+
+extension UniFfiError: Equatable, Hashable {}
+
+extension UniFfiError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
@@ -11081,6 +11871,106 @@ extension FfiConverterCallbackInterfaceProgressHandler: FfiConverter {
     }
 }
 
+/**
+ * Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
+ */
+public protocol UniFfiProgressCallback: AnyObject {
+    /**
+     * Dispatches a progress event. Return `false` to request immediate operation cancellation.
+     */
+    func onProgress(processedBytes: UInt64, totalBytes: UInt64, currentEntry: String?) -> Bool
+}
+
+/// Put the implementation in a struct so we don't pollute the top-level namespace
+private enum UniffiCallbackInterfaceUniFFIProgressCallback {
+    /// Create the VTable using a series of closures.
+    /// Swift automatically converts these into C callback functions.
+    nonisolated(unsafe) static var vtable: UniffiVTableCallbackInterfaceUniFfiProgressCallback = .init(
+        onProgress: { (
+            uniffiHandle: UInt64,
+            processedBytes: UInt64,
+            totalBytes: UInt64,
+            currentEntry: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<Int8>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Bool in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceUniFfiProgressCallback.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try uniffiObj.onProgress(
+                    processedBytes: FfiConverterUInt64.lift(processedBytes),
+                    totalBytes: FfiConverterUInt64.lift(totalBytes),
+                    currentEntry: FfiConverterOptionString.lift(currentEntry)
+                )
+            }
+
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) in
+            let result = try? FfiConverterCallbackInterfaceUniFfiProgressCallback.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface UniFFIProgressCallback: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitUniFFIProgressCallback() {
+    uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(&UniffiCallbackInterfaceUniFFIProgressCallback.vtable)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private enum FfiConverterCallbackInterfaceUniFfiProgressCallback {
+    nonisolated(unsafe) fileprivate static var handleMap = UniffiHandleMap<UniFfiProgressCallback>()
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfaceUniFfiProgressCallback: FfiConverter {
+    typealias SwiftType = UniFfiProgressCallback
+    typealias FfiType = UInt64
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
@@ -11316,6 +12206,30 @@ private struct FfiConverterOptionTypeCancellationToken: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeCancellationToken.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionTypeUniFFICancellationToken: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCancellationToken?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFICancellationToken.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFICancellationToken.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -11676,6 +12590,30 @@ private struct FfiConverterOptionCallbackInterfaceProgressHandler: FfiConverterR
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterCallbackInterfaceProgressHandler.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterOptionCallbackInterfaceUniFfiProgressCallback: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiProgressCallback?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterCallbackInterfaceUniFfiProgressCallback.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterCallbackInterfaceUniFfiProgressCallback.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14647,6 +15585,33 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire() != 42974 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear() != 10725 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffibufferpool_get_stats() != 11861 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffibufferpool_release() != 46161 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffibufferpool_reset_stats() != 32224 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_cancel() != 25446 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_create_child() != 8512 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled() != 18692 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14729,6 +15694,27 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffipluginverifier_verify_signature_base64() != 26206 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_advance() != 14280 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_estimated_remaining_seconds() != 30992 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_finish() != 22075 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_is_cancelled() != 65220 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_percentage() != 28435 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_throughput_mbs() != 44546 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update() != 56030 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913 {
@@ -14839,6 +15825,12 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new() != 17543 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14857,6 +15849,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_constructor_uniffipluginverifier_new() != 5376 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new() != 21494 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14869,8 +15864,12 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360 {
+        return InitializationResult.apiChecksumMismatch
+    }
 
     uniffiCallbackInitProgressHandler()
+    uniffiCallbackInitUniFFIProgressCallback()
     return InitializationResult.ok
 }()
 

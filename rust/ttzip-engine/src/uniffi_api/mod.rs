@@ -14,6 +14,7 @@ pub mod ab_benchmark;
 pub mod archive;
 pub mod audio;
 pub mod benchmark;
+pub mod callback;
 pub mod codecs;
 pub mod crypto;
 pub mod demuxer;
@@ -21,11 +22,13 @@ pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
 pub mod epub;
+pub mod error_mapping;
 pub mod extraction;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod integrity;
 pub mod media;
+pub mod memory;
 #[cfg(feature = "probe")]
 pub mod metadata;
 pub mod mmap_stream;
@@ -42,6 +45,7 @@ pub use ab_benchmark::*;
 pub use archive::*;
 pub use audio::*;
 pub use benchmark::*;
+pub use callback::*;
 pub use codecs::*;
 pub use crypto::*;
 pub use demuxer::*;
@@ -49,11 +53,13 @@ pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;
 pub use epub::*;
+pub use error_mapping::*;
 pub use extraction::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use integrity::*;
 pub use media::*;
+pub use memory::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
 pub use mmap_stream::*;
