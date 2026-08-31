@@ -97,10 +97,39 @@ done
 
 cd "${RUST_DIR}"
 
-echo "--> Executing ${TOTAL_TARGETS} 7-Zip test suites via unified test matrix..."
-if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
-    echo "❌ One or more 7-Zip test suites failed."
-    exit 1
+BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+ALL_BINS_EXIST=true
+DIRECT_BINS=()
+for target in "${SEVENZ_TEST_TARGETS[@]}"; do
+    target_bin=""
+    for candidate in "${BUILD_DIR}/${target}-"*; do
+        if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
+            target_bin="${candidate}"
+            break
+        fi
+    done
+    if [ -n "${target_bin}" ]; then
+        DIRECT_BINS+=("${target_bin}")
+    else
+        ALL_BINS_EXIST=false
+        break
+    fi
+done
+
+if [ "${ALL_BINS_EXIST}" = true ] && [ "${FORCE_REBUILD}" = false ]; then
+    echo "--> Executing ${TOTAL_TARGETS} 7-Zip test suites directly from pre-compiled binary cache..."
+    for bin in "${DIRECT_BINS[@]}"; do
+        if ! "${bin}" --nocapture; then
+            echo "❌ 7-Zip test suite failed: $(basename "${bin}")"
+            exit 1
+        fi
+    done
+else
+    echo "--> Executing ${TOTAL_TARGETS} 7-Zip test suites via unified test matrix..."
+    if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
+        echo "❌ One or more 7-Zip test suites failed."
+        exit 1
+    fi
 fi
 
 echo ""

@@ -95,12 +95,39 @@ for target in "${ZIP_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
 done
 
-cd "${RUST_DIR}"
+BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+ALL_BINS_EXIST=true
+DIRECT_BINS=()
+for target in "${ZIP_TEST_TARGETS[@]}"; do
+    target_bin=""
+    for candidate in "${BUILD_DIR}/${target}-"*; do
+        if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
+            target_bin="${candidate}"
+            break
+        fi
+    done
+    if [ -n "${target_bin}" ]; then
+        DIRECT_BINS+=("${target_bin}")
+    else
+        ALL_BINS_EXIST=false
+        break
+    fi
+done
 
-echo "--> Executing ${TOTAL_TARGETS} ZIP test suites via unified test matrix..."
-if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
-    echo "❌ One or more ZIP test suites failed."
-    exit 1
+if [ "${ALL_BINS_EXIST}" = true ] && [ "${FORCE_REBUILD}" = false ]; then
+    echo "--> Executing ${TOTAL_TARGETS} ZIP test suites directly from pre-compiled binary cache..."
+    for bin in "${DIRECT_BINS[@]}"; do
+        if ! "${bin}" --nocapture; then
+            echo "❌ ZIP test suite failed: $(basename "${bin}")"
+            exit 1
+        fi
+    done
+else
+    echo "--> Executing ${TOTAL_TARGETS} ZIP test suites via unified test matrix..."
+    if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
+        echo "❌ One or more ZIP test suites failed."
+        exit 1
+    fi
 fi
 
 echo ""
