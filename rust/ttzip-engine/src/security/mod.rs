@@ -8,6 +8,7 @@
 //! Security, sandbox isolation, path defense, and threat scanning modules.
 
 pub mod acl;
+pub mod blake3_defense;
 pub mod brotli_defense;
 pub mod bzip2_defense;
 pub mod libdeflate_defense;
@@ -24,6 +25,7 @@ pub mod zip_defense;
 mod tests;
 
 pub use acl::*;
+pub use blake3_defense::*;
 pub use brotli_defense::*;
 pub use bzip2_defense::*;
 pub use libdeflate_defense::*;
@@ -35,5 +37,6 @@ pub use snappy_defense::*;
 pub use tar_defense::*;
 pub use xz_defense::*;
 pub use zip_defense::*;
+
 
 
