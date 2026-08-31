@@ -22,7 +22,7 @@
 
 use crate::crypto::{
     adler32_fast, aes256_cbc_decrypt, aes256_cbc_encrypt, blake3, chacha20_poly1305_decrypt,
-    chacha20_poly1305_encrypt, crc32_fast, crc64_fast, derive_7z_aes_key,
+    chacha20_poly1305_encrypt, crc32_fast, crc64_fast, derive_7z_key_arm64,
     vault::{aes256_gcm_decrypt, aes256_gcm_encrypt},
     winzip_aes256_decrypt_and_verify, winzip_aes256_encrypt_and_tag, xxh3_128_bytes, xxh3_64,
     ZipCryptoKeys,
@@ -322,7 +322,7 @@ impl CryptoBenchmarkDriver for SevenZAes256BenchmarkDriver {
     }
 
     fn bench_process(&self, src: &[u8]) -> Result<Vec<u8>, TTZipStatus> {
-        let key = derive_7z_aes_key(BENCH_PASSWORD, &BENCH_SALT_16, 6);
+        let key = derive_7z_key_arm64(BENCH_PASSWORD, &BENCH_SALT_16, 6);
         let pad_len = 16 - (src.len() % 16);
         let total_len = src.len() + pad_len;
 
@@ -337,7 +337,7 @@ impl CryptoBenchmarkDriver for SevenZAes256BenchmarkDriver {
     }
 
     fn bench_verify_or_decrypt(&self, processed: &[u8], orig: &[u8]) -> Result<bool, TTZipStatus> {
-        let key = derive_7z_aes_key(BENCH_PASSWORD, &BENCH_SALT_16, 6);
+        let key = derive_7z_key_arm64(BENCH_PASSWORD, &BENCH_SALT_16, 6);
         let mut decrypted = vec![0u8; processed.len()];
         aes256_cbc_decrypt(&key, &BENCH_IV_16, processed, &mut decrypted)
             .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
@@ -607,10 +607,7 @@ impl MatrixCryptoDriver {
 
             // Measure verification or decryption
             let t1 = Instant::now();
-            let verified = match driver.bench_verify_or_decrypt(&processed, corpus) {
-                Ok(v) => v,
-                Err(_) => false,
-            };
+            let verified = driver.bench_verify_or_decrypt(&processed, corpus).unwrap_or_default();
             let verify_time = t1.elapsed();
             let verify_nanos = verify_time.as_nanos().max(1) as u64;
             let verify_mbs = (corpus_len as f64 / (1024.0 * 1024.0)) / verify_time.as_secs_f64().max(1e-9);

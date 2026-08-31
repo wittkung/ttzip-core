@@ -11,12 +11,14 @@
 //! and automatic Zip64 extension promotion for large files (>4GB) and large catalogs (>65535 files).
 
 pub mod assemble;
+pub mod data_descriptor;
 pub mod parallel;
 pub mod store_stream;
 pub mod streaming_parallel;
 pub mod types;
 
 pub use assemble::*;
+pub use data_descriptor::*;
 pub use parallel::*;
 pub use store_stream::*;
 pub use streaming_parallel::*;

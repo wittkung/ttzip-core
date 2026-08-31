@@ -75,9 +75,8 @@ pub fn extract_archive_with_metrics(
                 }
             }
             if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-                if let Ok(report) = zip_archive.extract_all(destination_path, options) {
-                    return Ok(report.total_uncompressed_bytes);
-                }
+                let report = zip_archive.extract_all(destination_path, options)?;
+                return Ok(report.total_uncompressed_bytes);
             }
         }
     }
@@ -168,6 +167,7 @@ unsafe fn extract_from_archive_handle(
     let mut engine = SafeExtractEngine::new();
     let mut entry: *mut c_void = std::ptr::null_mut();
     let mut total_processed: u64 = 0;
+    let mut deferred_hardlinks: Vec<(std::path::PathBuf, std::path::PathBuf)> = Vec::new();
     let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
 
     while archive_read_next_header(a, &mut entry) == 0 {
@@ -236,25 +236,54 @@ unsafe fn extract_from_archive_handle(
             continue;
         }
 
+        let is_hardlink_entry = if let Some(hardlink_str) = {
+            let hl_raw = archive_entry_hardlink(entry);
+            if !hl_raw.is_null() {
+                let s = CStr::from_ptr(hl_raw).to_str().ok();
+                if s.map(|x| !x.trim_start_matches(['/', '\\', '.']).is_empty()).unwrap_or(false) {
+                    s
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } {
+            let clean_hl = hardlink_str.trim_start_matches(['/', '\\']);
+            sanitize_and_validate_path(destination_path, clean_hl).ok()
+        } else {
+            None
+        };
+
         if is_symlink {
             let symlink_raw = archive_entry_symlink(entry);
             if !symlink_raw.is_null() {
                 if let Ok(symlink_target) = CStr::from_ptr(symlink_raw).to_str() {
-                    // Reject absolute symlink targets and targets resolving outside destination
-                    if symlink_target.starts_with('/') || symlink_target.starts_with('\\') {
+                    // Reject absolute symlink targets and drive prefixes
+                    if symlink_target.starts_with('/')
+                        || symlink_target.starts_with('\\')
+                        || (symlink_target.len() >= 2 && symlink_target.as_bytes()[1] == b':')
+                    {
                         return Err(TTZipStatus::ErrSecurityViolation);
                     }
-                    let parent_dir = target_path.parent().unwrap_or(destination_path);
-                    let resolved_target = parent_dir.join(symlink_target);
-                    match resolved_target.strip_prefix(destination_path) {
-                        Ok(rel_to_dest) => {
-                            let rel_str = rel_to_dest.to_string_lossy();
-                            if !rel_str.is_empty() && sanitize_and_validate_path(destination_path, &rel_str).is_err() {
+
+                    // Strict depth tracking traversal defense (identical to SecurePathExtractor invariant)
+                    let mut depth = Path::new(clean_rel_str).components().count().saturating_sub(1);
+                    for comp in Path::new(symlink_target).components() {
+                        match comp {
+                            std::path::Component::ParentDir => {
+                                if depth == 0 {
+                                    return Err(TTZipStatus::ErrSecurityViolation);
+                                }
+                                depth -= 1;
+                            }
+                            std::path::Component::Normal(_) => {
+                                depth += 1;
+                            }
+                            std::path::Component::CurDir => {}
+                            std::path::Component::RootDir | std::path::Component::Prefix(_) => {
                                 return Err(TTZipStatus::ErrSecurityViolation);
                             }
-                        }
-                        Err(_) => {
-                            return Err(TTZipStatus::ErrSecurityViolation);
                         }
                     }
                     crate::fs::safe_extract::validate_no_intermediate_symlinks(destination_path, &target_path)?;
@@ -267,6 +296,23 @@ unsafe fn extract_from_archive_handle(
                         }
                     }
                     let _ = std::os::unix::fs::symlink(symlink_target, &target_path);
+                }
+            }
+            archive_read_data_skip(a);
+        } else if let (Some(src_link_path), 0) = (&is_hardlink_entry, size) {
+            // Record deferred hardlink for bidirectional resolution
+            deferred_hardlinks.push((src_link_path.clone(), target_path.clone()));
+            if src_link_path.exists() {
+                if target_path.exists() || fs::symlink_metadata(&target_path).is_ok() {
+                    let _ = fs::remove_file(&target_path);
+                }
+                if let Some(parent) = target_path.parent() {
+                    if !parent.exists() {
+                        let _ = fs::create_dir_all(parent);
+                    }
+                }
+                if fs::hard_link(src_link_path, &target_path).is_err() {
+                    let _ = fs::copy(src_link_path, &target_path);
                 }
             }
             archive_read_data_skip(a);
@@ -309,10 +355,8 @@ unsafe fn extract_from_archive_handle(
                     return Err(TTZipStatus::ErrExtractionFailed);
                 }
                 if block_size > 0 && !block_ptr.is_null() {
-                    if block_offset >= 0 {
-                        if file.seek(SeekFrom::Start(block_offset as u64)).is_err() {
-                            return Err(TTZipStatus::ErrExtractionFailed);
-                        }
+                    if block_offset >= 0 && file.seek(SeekFrom::Start(block_offset as u64)).is_err() {
+                        return Err(TTZipStatus::ErrExtractionFailed);
                     }
                     let chunk = std::slice::from_raw_parts(block_ptr as *const u8, block_size);
                     if file.write_all(chunk).is_err() {
@@ -326,6 +370,51 @@ unsafe fn extract_from_archive_handle(
                         }
                     }
                 }
+            }
+
+            drop(file);
+
+            // NewCpio style: entry carries data, relink earlier zero-size placeholder
+            if let Some(src_link_path) = is_hardlink_entry {
+                deferred_hardlinks.push((target_path.clone(), src_link_path.clone()));
+                if target_path.exists() {
+                    if src_link_path.exists() || fs::symlink_metadata(&src_link_path).is_ok() {
+                        let _ = fs::remove_file(&src_link_path);
+                    }
+                    if let Some(parent) = src_link_path.parent() {
+                        if !parent.exists() {
+                            let _ = fs::create_dir_all(parent);
+                        }
+                    }
+                    if fs::hard_link(&target_path, &src_link_path).is_err() {
+                        let _ = fs::copy(&target_path, &src_link_path);
+                    }
+                }
+            }
+        }
+    }
+
+    // Resolve any remaining deferred hardlinks
+    for (src, dst) in deferred_hardlinks {
+        if src.exists() {
+            if dst.exists() || fs::symlink_metadata(&dst).is_ok() {
+                let _ = fs::remove_file(&dst);
+            }
+            if let Some(parent) = dst.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if fs::hard_link(&src, &dst).is_err() {
+                let _ = fs::copy(&src, &dst);
+            }
+        } else if dst.exists() {
+            if src.exists() || fs::symlink_metadata(&src).is_ok() {
+                let _ = fs::remove_file(&src);
+            }
+            if let Some(parent) = src.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if fs::hard_link(&dst, &src).is_err() {
+                let _ = fs::copy(&dst, &src);
             }
         }
     }

@@ -145,12 +145,14 @@ where
 
 fn bench_min_dyn(f: &mut dyn FnMut()) -> Duration {
     for _ in 0..WARMUP_RUNS {
-        black_box(f());
+        f();
+        black_box(());
     }
     let mut best = Duration::from_secs(999);
     for _ in 0..MEASURE_RUNS {
         let start = Instant::now();
-        black_box(f());
+        f();
+        black_box(());
         let elapsed = start.elapsed();
         if elapsed < best {
             best = elapsed;
@@ -223,7 +225,7 @@ fn run_ab_checksum_benchmarks() {
 
     for &(label, size) in &sizes {
         let payload = vec![0xABu8; size];
-        let iters = if size == 0 { 1_000_000 } else { (10 * 1024 * 1024 / size).max(10) };
+        let iters = (10usize * 1024 * 1024).checked_div(size).map_or(1_000_000, |v| v.max(10));
         let total_bytes = size * iters;
 
         // CRC-32 A/B
@@ -531,7 +533,7 @@ fn run_ab_multi_corpus_deflate_benchmarks() {
             black_box(res)
         });
 
-        // TTZip Level 0 (Store / 仅存储模式)
+        // TTZip Level 0 (Store mode)
         let mut cur_l0_comp = DeflateCompressor::new(0).unwrap();
         let bound0 = cur_l0_comp.compress_bound(corpus.len());
         let mut cur_l0_buf = vec![0u8; bound0];

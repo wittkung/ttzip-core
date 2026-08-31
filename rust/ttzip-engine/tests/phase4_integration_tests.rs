@@ -148,7 +148,7 @@ fn test_phase4_safe_extract_bottom_up_permission_engine() {
     let meta_l1 = fs::metadata(&level1).unwrap();
     assert_eq!(meta_l1.permissions().mode() & 0o777, 0o755);
 
-    let _ = fs::remove_dir_all(&temp_root);
+    let _ = fs::remove_dir_all(temp_root);
 }
 
 #[test]

@@ -18,7 +18,7 @@ use ttzip_engine::uniffi_api::image::{
 };
 
 fn make_test_bmp(w: u32, h: u32) -> Vec<u8> {
-    let row_size = ((w * 3 + 3) / 4) * 4;
+    let row_size = (w * 3).div_ceil(4) * 4;
     let pixel_data_size = row_size * h;
     let file_size = 54 + pixel_data_size;
     let mut buf = Vec::with_capacity(file_size as usize);

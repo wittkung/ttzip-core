@@ -22,11 +22,12 @@ cd "${REPO_ROOT}"
 
 # 1. Homebrew Formula Audit
 echo ">>> [1/3] Auditing Homebrew Formula..."
-if [ -f "/Users/kevintung/Documents/dev/homebrew-ttzip/Formula/ttzip.rb" ]; then
-    ruby -c /Users/kevintung/Documents/dev/homebrew-ttzip/Formula/ttzip.rb >/dev/null
+HOMEBREW_FORMULA="${HOMEBREW_FORMULA_PATH:-${REPO_ROOT}/../../homebrew-ttzip/Formula/ttzip.rb}"
+if [ -f "${HOMEBREW_FORMULA}" ]; then
+    ruby -c "${HOMEBREW_FORMULA}" >/dev/null
     echo "  [PASS] Homebrew Formula syntax valid (ruby -c passed)."
 else
-    echo "  [SKIP] Local homebrew-ttzip directory not found."
+    echo "  [SKIP] Local homebrew-ttzip directory not found at ${HOMEBREW_FORMULA}."
 fi
 
 # 2. Rust Crates.io Dry-Run Packaging

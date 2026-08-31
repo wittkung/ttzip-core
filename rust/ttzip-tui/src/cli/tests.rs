@@ -213,7 +213,16 @@ fn test_headless_create_list_extract_roundtrip_zip() {
 
     // 4. Extract ZIP
     let out_dir = temp_dir.path().join("extracted");
-    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false, false, &[], &[]);
+    let extract_res = execute_extract(CliExtractParams {
+        archive_path: &archive_file,
+        output_dir: Some(&out_dir),
+        password: None,
+        threads: 2,
+        verbose: false,
+        dry_run: false,
+        include: &[],
+        exclude: &[],
+    });
     assert!(extract_res.is_ok(), "extract_res: {:?}", extract_res);
 
     let extracted_file = out_dir.join("sample.txt");
@@ -250,7 +259,16 @@ fn test_headless_create_list_extract_roundtrip_7z() {
 
     // 3. Extract 7z
     let out_dir = temp_dir.path().join("extracted_7z");
-    let extract_res = execute_extract(&archive_file, Some(&out_dir), None, 2, false, false, &[], &[]);
+    let extract_res = execute_extract(CliExtractParams {
+        archive_path: &archive_file,
+        output_dir: Some(&out_dir),
+        password: None,
+        threads: 2,
+        verbose: false,
+        dry_run: false,
+        include: &[],
+        exclude: &[],
+    });
     assert!(extract_res.is_ok(), "extract_res 7z: {:?}", extract_res);
 
     let extracted_file = out_dir.join("doc.md");

@@ -297,9 +297,7 @@ impl ZstdReverseFrameGenerator {
         frame_buf.extend_from_slice(&Self::ZSTD_MAGIC);
 
         // FCS Code: 0 (1B if single_segment), 1 (2B), 2 (4B), 3 (8B)
-        let fcs_code: u8 = if content_size == 0 && single_segment {
-            0
-        } else if content_size < 256 && single_segment {
+        let fcs_code: u8 = if content_size < 256 && single_segment {
             0
         } else if content_size <= 65536 + 256 {
             1
@@ -440,7 +438,7 @@ impl ZstdReverseFrameGenerator {
         match block_type {
             0 => {
                 // Raw Block: header followed directly by uncompressed data
-                let header = last_bit | (0u32 << 1) | ((block_size as u32) << 3);
+                let header = last_bit | ((block_size as u32) << 3);
                 frame_buf.extend_from_slice(&header.to_le_bytes()[..3]);
 
                 if block_size > 0 {
@@ -478,14 +476,14 @@ impl ZstdReverseFrameGenerator {
 
                 // Fall back to Raw block if compression fails or expands
                 if unsafe { ZSTD_isError(compressed_size) } != 0 || compressed_size >= block_size {
-                    let header = last_bit | (0u32 << 1) | ((block_size as u32) << 3);
+                    let header = last_bit | ((block_size as u32) << 3);
                     frame_buf.extend_from_slice(&header.to_le_bytes()[..3]);
                     frame_buf.extend_from_slice(&uncompressed);
                 } else {
                     // Extract block body without frame wrapper
                     let body = &comp_buf[..compressed_size];
                     // If full frame was generated, strip frame header/footer to extract block
-                    let header = last_bit | (0u32 << 1) | ((block_size as u32) << 3);
+                    let header = last_bit | ((block_size as u32) << 3);
                     frame_buf.extend_from_slice(&header.to_le_bytes()[..3]);
                     frame_buf.extend_from_slice(&uncompressed);
                     let _ = body;

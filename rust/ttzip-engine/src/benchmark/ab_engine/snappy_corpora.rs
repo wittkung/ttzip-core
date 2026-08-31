@@ -235,22 +235,20 @@ impl SnappyIndustrialCorpusProvider {
 
     /// Resolves the filesystem path to the vendor testdata file.
     fn find_testdata_file(&self, filename: &str) -> Option<PathBuf> {
+        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let manifest_candidate = manifest_dir.join(format!("../../../vendor/snappy/testdata/{}", filename));
         let candidates = [
-            format!("vendor/snappy/testdata/{}", filename),
-            format!("../vendor/snappy/testdata/{}", filename),
-            format!("../../vendor/snappy/testdata/{}", filename),
-            format!("../../../vendor/snappy/testdata/{}", filename),
-            format!("../../../../vendor/snappy/testdata/{}", filename),
-            format!(
-                "/Users/kevintung/Documents/dev/products/ttzip/vendor/snappy/testdata/{}",
-                filename
-            ),
+            PathBuf::from(format!("vendor/snappy/testdata/{}", filename)),
+            PathBuf::from(format!("../vendor/snappy/testdata/{}", filename)),
+            PathBuf::from(format!("../../vendor/snappy/testdata/{}", filename)),
+            PathBuf::from(format!("../../../vendor/snappy/testdata/{}", filename)),
+            PathBuf::from(format!("../../../../vendor/snappy/testdata/{}", filename)),
+            manifest_candidate,
         ];
 
-        for c in &candidates {
-            let p = Path::new(c);
+        for p in &candidates {
             if p.is_file() {
-                return Some(p.to_path_buf());
+                return Some(p.clone());
             }
         }
 

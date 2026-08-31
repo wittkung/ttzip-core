@@ -90,12 +90,10 @@ pub fn parse_epub_from_memory(epub_bytes: &[u8]) -> Result<EpubBook, DocumentStr
 
     // 4. Parse Table of Contents mapping
     let mut toc_titles: HashMap<String, String> = HashMap::new();
-    for rel_opt in [ncx_href, nav_href] {
-        if let Some(rel) = rel_opt {
-            let full = resolve_relative_path(opf_dir, &rel);
-            if let Some(bytes) = find_and_extract_zip_entry(&zip, &full) {
-                parse_toc_content(&bytes, &mut toc_titles);
-            }
+    for rel in [ncx_href, nav_href].into_iter().flatten() {
+        let full = resolve_relative_path(opf_dir, &rel);
+        if let Some(bytes) = find_and_extract_zip_entry(&zip, &full) {
+            parse_toc_content(&bytes, &mut toc_titles);
         }
     }
 

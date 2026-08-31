@@ -36,22 +36,22 @@ report_violation() {
 }
 
 echo "--> [1/5] Checking for rogue root-level web artifacts in core/..."
-for html in core/*.html core/CNAME core/_config.yml core/.nojekyll; do
+for html in *.html CNAME _config.yml .nojekyll; do
     if [ -f "${html}" ]; then
         report_violation "ROGUE_WEB_ARTIFACT" "${html}" "Web site files belong in apple/site/ or docs/, not core/ root"
     fi
 done
 
 echo "--> [2/5] Checking for unreferenced GUI targets and tests inside core/..."
-for orphan in core/Sources/TTZipApp core/Sources/TTZipFinderSync core/Sources/TTZipQuickLook core/Tests/TTZipAppTests; do
+for orphan in Sources/TTZipApp Sources/TTZipFinderSync Sources/TTZipQuickLook Tests/TTZipAppTests; do
     if [ -d "${orphan}" ]; then
         report_violation "ORPHANED_CORE_SOURCE" "${orphan}" "App targets and tests migrated to apple/; remove dead copies from core/"
     fi
 done
 
 echo "--> [3/5] Checking for unoptimized compiler flags (.unsafeFlags)..."
-if grep -q "no-whole-module-optimization" core/Package.swift 2>/dev/null; then
-    report_violation "UNOPTIMIZED_SWIFT_FLAG" "core/Package.swift" "Contains -no-whole-module-optimization; remove to enable Release WMO"
+if grep -q "no-whole-module-optimization" Package.swift 2>/dev/null; then
+    report_violation "UNOPTIMIZED_SWIFT_FLAG" "Package.swift" "Contains -no-whole-module-optimization; remove to enable Release WMO"
 fi
 
 echo "--> [4/5] Checking for forbidden macOS clutter (.DS_Store, ._ files)..."
@@ -62,7 +62,7 @@ while IFS= read -r clutter; do
 done < <(find . -not -path "*/.*" -name ".DS_Store" -o -name "._*" 2>/dev/null || true)
 
 echo "--> [5/5] Checking for unignored build artifacts in repository roots..."
-for build_dir in dist/staging core/dist/staging; do
+for build_dir in dist/staging; do
     if [ -d "${build_dir}" ]; then
         report_violation "DIRTY_STAGING_DIR" "${build_dir}" "Uncleaned staging directory found"
     fi

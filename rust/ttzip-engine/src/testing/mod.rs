@@ -7,12 +7,16 @@
 
 //! Testing utilities, SIMD binary hex diff engine, and deterministic fuzz mutation suite.
 
+pub mod archive_corpus_generator;
 pub mod differential;
 pub mod fuzz;
+pub mod fuzz_data_producer;
 pub mod hex_diff;
 
+pub use archive_corpus_generator::*;
 pub use differential::*;
 pub use fuzz::*;
+pub use fuzz_data_producer::*;
 pub use hex_diff::*;
 
 #[cfg(test)]

@@ -490,6 +490,9 @@ impl CorpusRegistry {
         // 4. Register 12 Google Snappy Industrial Datasets
         crate::benchmark::ab_engine::snappy_corpora::SnappyIndustrialCorpusProvider::register_all(&registry);
 
+        // 5. Register 12 Silesia Industrial Datasets
+        crate::benchmark::ab_engine::silesia_corpus::SilesiaCorpusEngine::register_all(&registry);
+
         registry
     }
 

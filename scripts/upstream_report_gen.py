@@ -92,7 +92,11 @@ def generate_report(json_path, output_md_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-json', default='/Users/kevintung/.gemini/antigravity/brain/3ac96734-1cc6-454b-a0a2-ea64d74fac52/scratch/full_deflate_matrix_results.json')
+    default_json = os.environ.get(
+        'UPSTREAM_BENCH_RESULTS_JSON',
+        os.path.join(os.path.dirname(__file__), 'full_deflate_matrix_results.json')
+    )
+    parser.add_argument('--input-json', default=default_json)
     parser.add_argument('--output-md', default=None)
     args = parser.parse_args()
     generate_report(args.input_json, args.output_md)

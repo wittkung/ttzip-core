@@ -56,7 +56,7 @@ fn test_wav_pcm16_waveform_extraction() {
     assert_eq!(waveform.len(), 32);
     for (idx, &val) in waveform.iter().enumerate() {
         assert!(
-            val >= 0.0 && val <= 1.0,
+            (0.0..=1.0).contains(&val),
             "Bucket {} out of range: {}",
             idx,
             val
@@ -83,6 +83,6 @@ fn test_default_waveform_fallback() {
     let def = default_waveform(24);
     assert_eq!(def.len(), 24);
     for &val in def.iter() {
-        assert!(val >= 0.04 && val <= 1.0);
+        assert!((0.04..=1.0).contains(&val));
     }
 }

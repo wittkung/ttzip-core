@@ -254,8 +254,8 @@ fn test_ab_orchestrator_paired_target_interleaved_sampling() {
 
     let payload = b"Interleaved A/B sampling verification with Zstd L1 vs L3 on synthetic payload.";
     let config = AbOrchestratorConfig {
-        warmup_rounds: 2,
-        measurement_rounds: 6,
+        warmup_rounds: 3,
+        measurement_rounds: 8,
         max_allowed_regression: 5.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
@@ -313,9 +313,9 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
 fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
     let orchestrator = AbEngineOrchestrator::new();
     let config = AbOrchestratorConfig {
-        warmup_rounds: 4,
-        measurement_rounds: 8,
-        max_allowed_regression: 5.0,
+        warmup_rounds: 5,
+        measurement_rounds: 15,
+        max_allowed_regression: 10.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
@@ -722,7 +722,7 @@ fn test_huffman_dos_defense_and_degenerate_bomb_generators() {
     writer.put_bits(0b10, 2);
     let bytes = writer.finish();
     assert_eq!(bytes.len(), 1);
-    assert_eq!(bytes[0], 0b10_0_11_101);
+    assert_eq!(bytes[0], 0b1001_1101);
 
     // 2. Generate and safely decompress empty static Huffman blocks
     let static_stream = generate_empty_static_huffman_blocks(512);

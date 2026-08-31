@@ -129,19 +129,16 @@ impl MediaDemuxSummary {
     }
 
     /// Returns all video tracks.
-    #[must_use]
     pub fn video_tracks(&self) -> impl Iterator<Item = &MediaTrackInfo> {
         self.tracks.iter().filter(|t| t.track_type == MediaTrackType::Video)
     }
 
     /// Returns all audio tracks.
-    #[must_use]
     pub fn audio_tracks(&self) -> impl Iterator<Item = &MediaTrackInfo> {
         self.tracks.iter().filter(|t| t.track_type == MediaTrackType::Audio)
     }
 
     /// Returns all subtitle tracks.
-    #[must_use]
     pub fn subtitle_tracks(&self) -> impl Iterator<Item = &MediaTrackInfo> {
         self.tracks.iter().filter(|t| t.track_type == MediaTrackType::Subtitle)
     }

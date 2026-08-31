@@ -352,7 +352,7 @@ fn validate_block_header(
         }
         let slice = &buffer[*pos..*pos + cs as usize];
         *pos += cs as usize;
-        while (*pos - data_start) % 4 != 0 {
+        while !(*pos - data_start).is_multiple_of(4) {
             if *pos >= buffer.len() {
                 return Err(XzSecurityError::TruncatedStream("Compressed data padding truncated".into()));
             }

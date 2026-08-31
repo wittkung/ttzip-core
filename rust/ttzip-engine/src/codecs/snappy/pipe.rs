@@ -5,20 +5,20 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! Snappy 4MB In / 4MB Out bounded streaming compression and decompression pipelines.
+//! Pure Safe-Rust Snappy 4MB In / 4MB Out bounded streaming pipelines.
 //!
 //! Strictly enforces memory bounds for file-to-file and stream-to-stream processing.
 
+use crate::codecs::snappy::framed_reader::SnappyFramedReader;
+use crate::codecs::snappy::framed_writer::SnappyFramedWriter;
 use crate::codecs::{CountingReader, CountingWriter};
 use crate::types::TTZipStatus;
-use snap::read::FrameDecoder;
-use snap::write::FrameEncoder;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
 /// Bounded pipe chunk buffer size: 4MB In / 4MB Out.
-pub const SNAPPY_PIPE_BUFFER_SIZE: usize = 4 * 1024 * 1024; // 4MB
+pub const SNAPPY_PIPE_BUFFER_SIZE: usize = 4 * 1024 * 1024;
 
 /// Streams uncompressed data from `reader`, compresses into Snappy framing stream, and writes to `writer`.
 pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
@@ -31,7 +31,7 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
 
     let mut counting_writer = CountingWriter::new(writer);
     let written_counter = counting_writer.counter();
-    let mut encoder = FrameEncoder::new(&mut counting_writer);
+    let mut encoder = SnappyFramedWriter::new(&mut counting_writer);
 
     loop {
         let bytes_read = reader.read(&mut in_buf).map_err(|_| TTZipStatus::ErrOpenFailed)?;
@@ -51,7 +51,7 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
         }
     }
 
-    let inner_writer = encoder.into_inner().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    let inner_writer = encoder.finish().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
     inner_writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
     let total_written = written_counter.load(std::sync::atomic::Ordering::Relaxed);
@@ -66,7 +66,7 @@ pub fn snappy_decompress_stream_pipe<R: Read, W: Write>(
 ) -> Result<(u64, u64), TTZipStatus> {
     let mut counting_reader = CountingReader::new(reader);
     let read_counter = counting_reader.counter();
-    let mut decoder = FrameDecoder::new(&mut counting_reader);
+    let mut decoder = SnappyFramedReader::new(&mut counting_reader);
     let mut out_buf = vec![0u8; SNAPPY_PIPE_BUFFER_SIZE];
 
     let mut total_written: u64 = 0;

@@ -9,6 +9,7 @@
 
 use super::types::{unix_to_dos_time, ZipCompressedItem};
 use crate::types::TTZipStatus;
+use crate::zip::alignment::{build_alignment_extra_field, AlignmentPaddingCalculator};
 use crate::zip::extra::ZipExtraFields;
 use crate::zip::parser::{
     MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
@@ -16,6 +17,18 @@ use crate::zip::parser::{
 
 /// Assembles compressed items into final ZIP archive binary bytes.
 pub fn assemble_zip_archive(items: &[ZipCompressedItem]) -> Result<Vec<u8>, TTZipStatus> {
+    assemble_zip_archive_aligned(items, 0)
+}
+
+/// Assembles compressed items into final ZIP archive binary bytes with custom sector/page alignment.
+///
+/// If `target_alignment > 1`, injects `TAG_DATA_STREAM_ALIGNMENT` (`0xa11e`) padding into
+/// each entry's Local File Header (LFH) so that every payload's file offset is aligned.
+/// The alignment extra fields are stripped from the Central Directory to save catalog space.
+pub fn assemble_zip_archive_aligned(
+    items: &[ZipCompressedItem],
+    target_alignment: u16,
+) -> Result<Vec<u8>, TTZipStatus> {
     let mut out = Vec::new();
     let mut lfh_offsets = Vec::with_capacity(items.len());
 
@@ -46,6 +59,19 @@ pub fn assemble_zip_archive(items: &[ZipCompressedItem]) -> Result<Vec<u8>, TTZi
         }
         let ts_extra = ZipExtraFields::build_extended_timestamp(item.mtime_epoch_secs);
         extra_bytes.extend_from_slice(&ts_extra);
+
+        if target_alignment > 1 {
+            let pad_len = AlignmentPaddingCalculator::calculate(
+                lfh_offset,
+                name_bytes.len(),
+                extra_bytes.len(),
+                target_alignment,
+            );
+            if pad_len > 0 {
+                let align_extra = build_alignment_extra_field(pad_len, target_alignment);
+                extra_bytes.extend_from_slice(&align_extra);
+            }
+        }
 
         let version_needed = if use_zip64 {
             45u16

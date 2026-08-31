@@ -26,6 +26,7 @@ pub const TYPE_PAX_GLOBAL_HEADER: u8 = b'g';
 pub const TYPE_GNU_LONGNAME: u8 = b'L';
 pub const TYPE_GNU_LONGLINK: u8 = b'K';
 pub const TYPE_SOLARIS_EXT: u8 = b'X';
+pub const TYPE_GNU_SPARSE: u8 = b'S';
 
 pub const MAGIC_USTAR: &[u8; 6] = b"ustar\0";
 pub const MAGIC_GNU: &[u8; 6] = b"ustar ";
@@ -88,6 +89,7 @@ pub fn is_tar_zero_block(block: &[u8; TAR_BLOCK_SIZE]) -> bool {
     block.iter().all(|&b| b == 0)
 }
 
+
 /// Parses an ASCII octal field into a `u64`.
 pub fn parse_octal(bytes: &[u8]) -> Option<u64> {
     let mut trimmed = bytes;
@@ -117,9 +119,9 @@ pub fn parse_numeric(bytes: &[u8]) -> Option<u64> {
         return Some(0);
     }
 
-    // GNU base-256 extension: leading byte 0x80 indicates positive binary base-256
-    if bytes[0] == 0x80 {
-        let mut val: u64 = 0;
+    // GNU base-256 extension: leading byte bit 0x80 indicates positive binary base-256
+    if (bytes[0] & 0x80) != 0 {
+        let mut val: u64 = (bytes[0] & 0x7F) as u64;
         for &b in &bytes[1..] {
             val = (val << 8) | (b as u64);
         }

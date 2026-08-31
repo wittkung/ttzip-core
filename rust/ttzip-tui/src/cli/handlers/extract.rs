@@ -31,12 +31,10 @@ pub fn glob_match(pattern: &str, text: &str) -> bool {
         let sub = &pat[1..pat.len() - 1];
         return txt.contains(sub);
     }
-    if pat.starts_with('*') {
-        let suffix = &pat[1..];
+    if let Some(suffix) = pat.strip_prefix('*') {
         return txt.ends_with(suffix);
     }
-    if pat.ends_with('*') {
-        let prefix = &pat[..pat.len() - 1];
+    if let Some(prefix) = pat.strip_suffix('*') {
         return txt.starts_with(prefix);
     }
     txt == pat
@@ -60,40 +58,52 @@ pub fn pattern_matches(rel_path: &str, include: &[String], exclude: &[String]) -
     true
 }
 
+/// Execution parameters for the headless `extract` CLI subcommand.
+#[derive(Debug, Clone)]
+pub struct CliExtractParams<'a> {
+    pub archive_path: &'a Path,
+    pub output_dir: Option<&'a Path>,
+    pub password: Option<&'a str>,
+    pub threads: u32,
+    pub verbose: bool,
+    pub dry_run: bool,
+    pub include: &'a [String],
+    pub exclude: &'a [String],
+}
+
 /// Executes headless `extract` subcommand with zero-copy mmap and optional pattern filtering.
-pub fn execute_extract(
-    archive_path: &Path,
-    output_dir: Option<&Path>,
-    password: Option<&str>,
-    threads: u32,
-    _verbose: bool,
-    dry_run: bool,
-    include: &[String],
-    exclude: &[String],
-) -> Result<(), String> {
-    if !archive_path.exists() {
-        return Err(format!("Archive file not found: {}", archive_path.display()));
+pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
+    if !params.archive_path.exists() {
+        return Err(format!("Archive file not found: {}", params.archive_path.display()));
     }
 
     let start_time = Instant::now();
-    let dest_dir = output_dir.unwrap_or_else(|| Path::new("."));
-    if !dry_run {
+    let dest_dir = params.output_dir.unwrap_or_else(|| Path::new("."));
+    if !params.dry_run {
         fs::create_dir_all(dest_dir)
             .map_err(|e| format!("Failed to create output directory {}: {}", dest_dir.display(), e))?;
     }
 
-    let (_volumes, data) = read_archive_data_auto(archive_path)?;
-    let format = detect_archive_format(archive_path, &data);
+    let (_volumes, data) = read_archive_data_auto(params.archive_path)?;
+    let format = detect_archive_format(params.archive_path, &data);
 
-    let password_c = password.map(|p| CString::new(p).unwrap_or_default());
+    let password_c = params.password.map(|p| CString::new(p).unwrap_or_default());
     let password_ptr = password_c.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
 
-    let mut options = TTZipExtractOptions::default();
-    options.password = password_ptr;
-    options.thread_budget = threads.max(1);
-    options.overwrite_existing = true;
-    options.preserve_permissions = true;
-    options.dry_run = dry_run;
+    let options = TTZipExtractOptions {
+        password: password_ptr,
+        thread_budget: params.threads.max(1),
+        overwrite_existing: true,
+        preserve_permissions: true,
+        dry_run: params.dry_run,
+        ..Default::default()
+    };
+
+    let include = params.include;
+    let exclude = params.exclude;
+    let dry_run = params.dry_run;
+    let password = params.password;
+    let archive_path = params.archive_path;
 
     let (entries_count, total_uncompressed_bytes) = match format {
         ContainerFormat::Zip => {
@@ -197,7 +207,7 @@ pub fn execute_extract(
                                 }
                                 let bytes = archive.extract_entry_bytes(idx)
                                     .map_err(|e| format!("Extraction failed for {}: {:?}", entry.path, e))?;
-                                fs::write(&out_path, &bytes)
+                                fs::write(&out_path, bytes)
                                     .map_err(|e| format!("Failed to write {}: {}", out_path.display(), e))?;
                             }
                             count += 1;

@@ -156,7 +156,7 @@ pub fn inspect_archive_bytes(data: &[u8]) -> Result<RecoveryTarget, TTZipStatus>
         if let Ok(info) = crate::sevenz::header::metadata::parse_7z_metadata(data, None) {
             if info.is_encrypted {
                 let salt = if info.aes_salt_len > 0 {
-                    info.aes_salt[..(info.aes_salt_len as usize).min(16)].to_vec()
+                    info.aes_salt[..info.aes_salt_len.min(16)].to_vec()
                 } else {
                     vec![]
                 };
@@ -266,7 +266,7 @@ pub fn recover_brute_force_rayon(
                 let num_chars = chars.len();
                 let mut local_attempts = 0u64;
                 loop {
-                    if local_attempts % 1024 == 0 {
+                    if local_attempts.is_multiple_of(1024) {
                         if let Some(cnt) = attempts {
                             cnt.fetch_add(local_attempts, Ordering::Relaxed);
                             local_attempts = 0;
@@ -322,7 +322,7 @@ pub fn recover_brute_force_rayon(
                 let num_chars = chars.len();
                 let mut local_attempts = 0u64;
                 loop {
-                    if local_attempts % 1024 == 0 {
+                    if local_attempts.is_multiple_of(1024) {
                         if let Some(cnt) = attempts {
                             cnt.fetch_add(local_attempts, Ordering::Relaxed);
                             local_attempts = 0;

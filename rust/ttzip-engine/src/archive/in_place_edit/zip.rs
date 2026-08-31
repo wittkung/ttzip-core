@@ -184,10 +184,12 @@ pub fn in_place_edit_zip(
         .flush()
         .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
-    let mut prov = TTZipExecutionProvenance::default();
-    prov.engine_tag = TTZipEngineTag::RustInPlaceZip;
-    prov.compressed_bytes = current_offset;
-    prov.is_fallback = false;
+    let prov = TTZipExecutionProvenance {
+        engine_tag: TTZipEngineTag::RustInPlaceZip,
+        compressed_bytes: current_offset,
+        is_fallback: false,
+        ..Default::default()
+    };
     record_execution_provenance(prov);
 
     Ok(())

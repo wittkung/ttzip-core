@@ -77,7 +77,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             }
         }
 
-        // 安全差集回滚：严格仅删除本次产生的新增文件，严禁删除既有文件
+        // Safe differential rollback: strictly delete only newly generated files from this operation, never touching existing files.
         let currentSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
         let newlyCreated = currentSubpaths.subtracting(preExistingSubpaths)
         let sortedToClean = newlyCreated.sorted {

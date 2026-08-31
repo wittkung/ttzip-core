@@ -45,11 +45,10 @@ impl Fl2DCtx {
 
     /// Decompresses buffer in a single pass into destination.
     pub fn decompress(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
-        let in_ptr = if src.is_empty() {
-            std::ptr::null()
-        } else {
-            src.as_ptr() as *const libc::c_void
-        };
+        if src.is_empty() {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        let in_ptr = src.as_ptr() as *const libc::c_void;
         let out_ptr = if dst.is_empty() {
             std::ptr::null_mut()
         } else {
@@ -127,6 +126,23 @@ impl Fl2DStream {
             Err(TTZipStatus::ErrExtractionFailed)
         } else {
             Ok(res)
+        }
+    }
+
+    /// Sets a timeout in milliseconds for streaming decompression.
+    pub fn set_timeout(&mut self, timeout_ms: u32) -> Result<(), TTZipStatus> {
+        let res = unsafe { FL2_setDStreamTimeout(self.handle.as_ptr(), timeout_ms as libc::c_uint) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrInvalidParam)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Cancels any ongoing decompression operation and frees decoder buffer resources.
+    pub fn cancel(&mut self) {
+        unsafe {
+            FL2_cancelDStream(self.handle.as_ptr());
         }
     }
 }

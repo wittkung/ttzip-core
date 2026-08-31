@@ -302,6 +302,7 @@ impl<R: Read> Read for ZstdStreamReader<R> {
                 self.in_len = n;
             }
 
+            let prev_in_pos = self.in_pos;
             let mut in_struct = ZstdInBuffer {
                 src: self.in_buf.as_ptr() as *const libc::c_void,
                 size: self.in_len,
@@ -323,6 +324,32 @@ impl<R: Read> Read for ZstdStreamReader<R> {
 
             if out_struct.pos > 0 {
                 break;
+            }
+
+            // If no input was consumed and no output was produced, Zstd needs MORE input
+            // to make forward progress. Compact unconsumed bytes and read more from underlying reader.
+            if self.in_pos == prev_in_pos {
+                if self.eof_reached {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::UnexpectedEof,
+                        "unexpected eof in zstd stream: decoder needs more input to progress",
+                    ));
+                }
+                if self.in_pos > 0 {
+                    let unconsumed = self.in_len - self.in_pos;
+                    self.in_buf.copy_within(self.in_pos..self.in_len, 0);
+                    self.in_pos = 0;
+                    self.in_len = unconsumed;
+                }
+                if self.in_len < self.in_buf.len() {
+                    let n = self.reader.read(&mut self.in_buf[self.in_len..])?;
+                    if n == 0 {
+                        self.eof_reached = true;
+                    } else {
+                        self.total_in += n as u64;
+                        self.in_len += n;
+                    }
+                }
             }
         }
 

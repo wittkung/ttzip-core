@@ -29,7 +29,10 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
             hpos += rd1;
             let (num_pack_streams, rd2) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
             hpos += rd2;
-            out_info.payload_offset = 32 + (pack_pos as usize);
+            if (num_pack_streams as usize) > hlen {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+            out_info.payload_offset = 32usize.saturating_add(pack_pos as usize);
             let mut total_pack_size = 0u64;
 
             while hpos < hlen {
@@ -49,11 +52,18 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     let all_defined = hp[hpos];
                     hpos += 1;
                     if all_defined != 0 {
-                        hpos += (num_pack_streams as usize) * 4;
+                        let crc_bytes = (num_pack_streams as usize).saturating_mul(4);
+                        if hpos.saturating_add(crc_bytes) > hlen {
+                            return Err(TTZipStatus::ErrCorruptHeader);
+                        }
+                        hpos += crc_bytes;
                     }
                 } else {
                     let (sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
-                    hpos += rd + (sz as usize);
+                    hpos = hpos.saturating_add(rd).saturating_add(sz as usize);
+                    if hpos > hlen {
+                        return Err(TTZipStatus::ErrCorruptHeader);
+                    }
                 }
             }
             out_info.payload_len = total_pack_size as usize;
@@ -67,6 +77,9 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                 if utag == K_FOLDER {
                     let (num_folders, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                     hpos += rd;
+                    if (num_folders as usize) > hlen {
+                        return Err(TTZipStatus::ErrCorruptHeader);
+                    }
                     let external = hp[hpos];
                     hpos += 1;
 
@@ -75,6 +88,10 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                             let mut folder = SevenZFolder::default();
                             let (num_coders, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                             hpos += rd;
+
+                            if num_coders == 0 || num_coders > 256 || (num_coders as usize) > hlen {
+                                return Err(TTZipStatus::ErrCorruptHeader);
+                            }
 
                             for _ in 0..num_coders {
                                 let flags = hp[hpos];
@@ -114,24 +131,20 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                                         if mid == METHOD_AES && psz >= 1 {
                                             let b0 = props[0];
                                             out_info.aes_num_cycles_power = (b0 & 0x3F) as u32;
-                                            if (b0 & 0xC0) != 0 && psz >= 2 {
-                                                let b1 = props[1];
-                                                let mut p_off = 2;
-                                                let s_len = (b1 & 0x0F) as usize;
-                                                let iv_len_enc = ((b1 >> 4) & 0x0F) as usize;
-                                                let iv_len = if iv_len_enc > 0 { iv_len_enc + 1 } else { 0 };
-
-                                                if s_len > 0 && p_off + s_len <= psz {
-                                                    let copy_len = s_len.min(16);
-                                                    out_info.aes_salt[..copy_len].copy_from_slice(&props[p_off..p_off + copy_len]);
-                                                    out_info.aes_salt_len = s_len;
-                                                    p_off += s_len;
-                                                }
-                                                if iv_len > 0 && p_off + iv_len <= psz {
-                                                    let copy_len = iv_len.min(16);
-                                                    out_info.aes_iv[..copy_len].copy_from_slice(&props[p_off..p_off + copy_len]);
-                                                    out_info.aes_iv_len = iv_len;
-                                                }
+                                            let b1 = if psz >= 2 { props[1] } else { 0 };
+                                            let salt_size = (((b0 >> 7) & 1) + (b1 >> 4)) as usize;
+                                            let iv_size = (((b0 >> 6) & 1) + (b1 & 0x0F)) as usize;
+                                            let mut p_off = if psz >= 2 { 2 } else { 1 };
+                                            if salt_size > 0 && p_off + salt_size <= psz {
+                                                let copy_len = salt_size.min(16);
+                                                out_info.aes_salt[..copy_len].copy_from_slice(&props[p_off..p_off + copy_len]);
+                                                out_info.aes_salt_len = copy_len;
+                                                p_off += salt_size;
+                                            }
+                                            if iv_size > 0 && p_off + iv_size <= psz {
+                                                let copy_len = iv_size.min(16);
+                                                out_info.aes_iv[..copy_len].copy_from_slice(&props[p_off..p_off + copy_len]);
+                                                out_info.aes_iv_len = copy_len;
                                             }
                                         } else if mid != METHOD_AES {
                                             out_info.coder_props = props.clone();
@@ -151,13 +164,82 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
 
                             if num_coders > 1 {
                                 let num_bind_pairs = (num_coders - 1) as usize;
-                                for _ in 0..num_bind_pairs {
-                                    let (_, rd1) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
-                                    hpos += rd1;
-                                    let (_, rd2) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
-                                    hpos += rd2;
+                                let total_in: usize = folder.coders.iter().map(|c| c.num_in_streams as usize).sum();
+                                let total_out: usize = folder.coders.iter().map(|c| c.num_out_streams as usize).sum();
+
+                                let mut in_to_coder = Vec::with_capacity(total_in);
+                                for (c_idx, c) in folder.coders.iter().enumerate() {
+                                    for _ in 0..c.num_in_streams {
+                                        in_to_coder.push(c_idx);
+                                    }
                                 }
-                                let num_packed_streams = (num_coders - (num_bind_pairs as u64)) as usize;
+
+                                let mut out_to_coder = Vec::with_capacity(total_out);
+                                for (c_idx, c) in folder.coders.iter().enumerate() {
+                                    for _ in 0..c.num_out_streams {
+                                        out_to_coder.push(c_idx);
+                                    }
+                                }
+
+                                let mut in_used = vec![false; total_in];
+                                let mut out_used = vec![false; total_out];
+                                let mut adj = vec![Vec::new(); num_coders as usize];
+                                let mut in_degree = vec![0usize; num_coders as usize];
+
+                                for _ in 0..num_bind_pairs {
+                                    let (in_idx_val, rd1) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                                    hpos += rd1;
+                                    let (out_idx_val, rd2) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
+                                    hpos += rd2;
+
+                                    let in_idx = in_idx_val as usize;
+                                    let out_idx = out_idx_val as usize;
+
+                                    if in_idx >= total_in || out_idx >= total_out {
+                                        return Err(TTZipStatus::ErrCorruptHeader);
+                                    }
+                                    if in_used[in_idx] || out_used[out_idx] {
+                                        return Err(TTZipStatus::ErrCorruptHeader);
+                                    }
+                                    in_used[in_idx] = true;
+                                    out_used[out_idx] = true;
+
+                                    let in_coder = in_to_coder[in_idx];
+                                    let out_coder = out_to_coder[out_idx];
+
+                                    // Self-loop check (In == Out on same coder)
+                                    if in_coder == out_coder {
+                                        return Err(TTZipStatus::ErrCorruptHeader);
+                                    }
+
+                                    adj[out_coder].push(in_coder);
+                                    in_degree[in_coder] += 1;
+                                }
+
+                                // Kahn's topological sort for cycle detection
+                                let mut queue = std::collections::VecDeque::new();
+                                for (c_idx, &deg) in in_degree.iter().enumerate() {
+                                    if deg == 0 {
+                                        queue.push_back(c_idx);
+                                    }
+                                }
+
+                                let mut visited_count = 0usize;
+                                while let Some(u) = queue.pop_front() {
+                                    visited_count += 1;
+                                    for &v in &adj[u] {
+                                        in_degree[v] -= 1;
+                                        if in_degree[v] == 0 {
+                                            queue.push_back(v);
+                                        }
+                                    }
+                                }
+
+                                if visited_count != num_coders as usize {
+                                    return Err(TTZipStatus::ErrCorruptHeader);
+                                }
+
+                                let num_packed_streams = total_in.saturating_sub(num_bind_pairs);
                                 if num_packed_streams > 1 {
                                     for _ in 0..num_packed_streams {
                                         let (_, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
@@ -193,7 +275,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         }
                     } else {
                         let num_folders = out_info.folders.len();
-                        let bitmask_bytes = (num_folders + 7) / 8;
+                        let bitmask_bytes = num_folders.div_ceil(8);
                         if hpos + bitmask_bytes <= hlen {
                             let bitmask = &hp[hpos..hpos + bitmask_bytes];
                             hpos += bitmask_bytes;
@@ -271,7 +353,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                             }
                         }
                     } else {
-                        let bitmask_bytes = (total_streams + 7) / 8;
+                        let bitmask_bytes = total_streams.div_ceil(8);
                         if hpos + bitmask_bytes <= hlen {
                             let bitmask = &hp[hpos..hpos + bitmask_bytes];
                             hpos += bitmask_bytes;
@@ -313,6 +395,9 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
         } else if tag == K_FILES_INFO {
             let (num_files_val, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
             hpos += rd;
+            if num_files_val > 1_000_000 || (num_files_val as usize) > hlen.saturating_mul(1024) {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
             let num_files = num_files_val as usize;
             out_info.files.resize(num_files, SevenZFileMeta::default());
 

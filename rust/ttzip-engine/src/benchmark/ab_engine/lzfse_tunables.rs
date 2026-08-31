@@ -162,11 +162,7 @@ impl LzfseTunablesConfig {
     #[inline]
     pub fn entry_lines_per_cache_line(&self, cache_line_bytes: usize) -> usize {
         let line_bytes = self.entry_line_bytes();
-        if line_bytes == 0 {
-            0
-        } else {
-            cache_line_bytes / line_bytes
-        }
+        cache_line_bytes.checked_div(line_bytes).unwrap_or(0)
     }
 
     /// Returns `true` if the entire history table fits strictly within the L1D cache budget.

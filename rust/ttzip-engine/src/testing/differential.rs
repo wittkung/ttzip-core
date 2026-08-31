@@ -622,9 +622,9 @@ impl DifferentialOracleTestRunner {
             for item in items {
                 let mtime = item.mtime_epoch_secs as i64;
                 if item.is_directory {
-                    writer.append_dir(&item.rel_path, item.mode as u32, mtime)?;
+                    writer.append_dir(&item.rel_path, item.mode, mtime)?;
                 } else {
-                    writer.append_file(&item.rel_path, &item.data, item.mode as u32, mtime)?;
+                    writer.append_file(&item.rel_path, &item.data, item.mode, mtime)?;
                 }
             }
             writer.finish()?;

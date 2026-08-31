@@ -32,40 +32,18 @@ fn truncate_to_char_boundary(s: &str, max_bytes: usize) -> &str {
     }
 }
 
-/// Splits a file path into POSIX USTAR `(prefix, name)` components.
-///
-/// POSIX.1-1988 USTAR limits filenames to 100 bytes and prefix to 155 bytes,
-/// separated by a slash `/` (which is not stored in either field).
-/// Total maximum representable path length is 155 + 1 + 100 = 256 bytes.
-///
-/// Returns:
-/// - `Some(("", path))` if `path.len() <= 100` (fits entirely in name field).
-/// - `Some((prefix, name))` if path can be split at a `/` such that `prefix.len() <= 155`
-///   and `name.len() <= 100` (both non-empty).
-/// - `None` if `path` cannot be represented in USTAR format without PAX headers.
-pub fn split_ustar_path(path: &str) -> Option<(&str, &str)> {
-    let bytes = path.as_bytes();
-    if bytes.len() <= 100 {
-        return Some(("", path));
-    }
-    if bytes.len() > 256 {
-        return None;
-    }
+pub use super::gnu::split_ustar_path;
 
-    let min_idx = 1.max(bytes.len().saturating_sub(101));
-    let max_idx = 155.min(bytes.len().saturating_sub(2));
-
-    for idx in (min_idx..=max_idx).rev() {
-        if bytes[idx] == b'/' {
-            let prefix = &path[..idx];
-            let name = &path[idx + 1..];
-            if !prefix.is_empty() && prefix.len() <= 155 && !name.is_empty() && name.len() <= 100 {
-                return Some((prefix, name));
-            }
-        }
-    }
-
-    None
+/// Custom entry specification for appending specialized TAR records (symlink, PAX, directory).
+#[derive(Debug, Clone, Copy)]
+pub struct TarCustomEntryParams<'a> {
+    pub rel_path: &'a str,
+    pub data: &'a [u8],
+    pub mode: u32,
+    pub mtime: i64,
+    pub typeflag: u8,
+    pub link_target: Option<&'a str>,
+    pub pax_extra: Option<&'a HashMap<String, String>>,
 }
 
 /// Streaming PAX format TAR Archive Writer.
@@ -96,7 +74,15 @@ impl<W: Write> TarWriter<W> {
         mode: u32,
         mtime: i64,
     ) -> Result<(), TTZipStatus> {
-        self.append_custom_entry(rel_path, data, mode, mtime, TYPE_REGULAR, None, None)
+        self.append_custom_entry(TarCustomEntryParams {
+            rel_path,
+            data,
+            mode,
+            mtime,
+            typeflag: TYPE_REGULAR,
+            link_target: None,
+            pax_extra: None,
+        })
     }
 
     /// Appends a file from an existing `Read` stream with a known size using 64KB buffering.
@@ -270,7 +256,15 @@ impl<W: Write> TarWriter<W> {
         if !dir_path.ends_with('/') {
             dir_path.push('/');
         }
-        self.append_custom_entry(&dir_path, &[], mode, mtime, TYPE_DIRECTORY, None, None)
+        self.append_custom_entry(TarCustomEntryParams {
+            rel_path: &dir_path,
+            data: &[],
+            mode,
+            mtime,
+            typeflag: TYPE_DIRECTORY,
+            link_target: None,
+            pax_extra: None,
+        })
     }
 
     /// Appends a symbolic link entry to the TAR archive.
@@ -281,25 +275,26 @@ impl<W: Write> TarWriter<W> {
         mode: u32,
         mtime: i64,
     ) -> Result<(), TTZipStatus> {
-        self.append_custom_entry(rel_path, &[], mode, mtime, TYPE_SYMLINK, Some(target), None)
+        self.append_custom_entry(TarCustomEntryParams {
+            rel_path,
+            data: &[],
+            mode,
+            mtime,
+            typeflag: TYPE_SYMLINK,
+            link_target: Some(target),
+            pax_extra: None,
+        })
     }
 
     /// Appends an entry with custom typeflag, link target, and optional PAX extra records.
-    #[allow(clippy::too_many_arguments)]
     pub fn append_custom_entry(
         &mut self,
-        rel_path: &str,
-        data: &[u8],
-        mode: u32,
-        mtime: i64,
-        typeflag: u8,
-        link_target: Option<&str>,
-        pax_extra: Option<&HashMap<String, String>>,
+        params: TarCustomEntryParams<'_>,
     ) -> Result<(), TTZipStatus> {
-        let normalized_path = rel_path.replace('\\', "/");
+        let normalized_path = params.rel_path.replace('\\', "/");
         let path_len = normalized_path.len();
-        let size = data.len() as u64;
-        let link_len = link_target.map(|s| s.len()).unwrap_or(0);
+        let size = params.data.len() as u64;
+        let link_len = params.link_target.map(|s| s.len()).unwrap_or(0);
 
         let ustar_split = split_ustar_path(&normalized_path);
 
@@ -307,15 +302,15 @@ impl<W: Write> TarWriter<W> {
         let needs_pax = ustar_split.is_none()
             || link_len > 100
             || size >= 0o77777777777 // 8GB octal limit
-            || mtime > 0o77777777777
-            || pax_extra.is_some();
+            || params.mtime > 0o77777777777
+            || params.pax_extra.is_some();
 
         if needs_pax {
             let mut pax_records = Vec::new();
             if path_len > 100 {
                 pax_records.push(("path", normalized_path.as_str()));
             }
-            if let Some(target) = link_target {
+            if let Some(target) = params.link_target {
                 if link_len > 100 {
                     pax_records.push(("linkpath", target));
                 }
@@ -326,12 +321,12 @@ impl<W: Write> TarWriter<W> {
                 pax_records.push(("size", &size_str));
             }
             let mtime_str;
-            if mtime > 0o77777777777 {
-                mtime_str = mtime.to_string();
+            if params.mtime > 0o77777777777 {
+                mtime_str = params.mtime.to_string();
                 pax_records.push(("mtime", &mtime_str));
             }
 
-            if let Some(extra) = pax_extra {
+            if let Some(extra) = params.pax_extra {
                 for (k, v) in extra {
                     pax_records.push((k.as_str(), v.as_str()));
                 }
@@ -345,7 +340,7 @@ impl<W: Write> TarWriter<W> {
                 uid: 0,
                 gid: 0,
                 size: pax_payload.len() as u64,
-                mtime: mtime.max(0),
+                mtime: params.mtime.max(0),
                 chksum: 0,
                 typeflag: TYPE_PAX_EXT_HEADER,
                 linkname: String::new(),
@@ -383,19 +378,19 @@ impl<W: Write> TarWriter<W> {
             ),
         };
 
-        let short_link = link_target
+        let short_link = params.link_target
             .map(|s| truncate_to_char_boundary(s, 100).to_string())
             .unwrap_or_default();
 
         let header = TarHeader {
             name,
-            mode: if mode != 0 { mode } else if typeflag == TYPE_DIRECTORY { 0o755 } else { 0o644 },
+            mode: if params.mode != 0 { params.mode } else if params.typeflag == TYPE_DIRECTORY { 0o755 } else { 0o644 },
             uid: 0,
             gid: 0,
             size,
-            mtime: mtime.max(0),
+            mtime: params.mtime.max(0),
             chksum: 0,
-            typeflag,
+            typeflag: params.typeflag,
             linkname: short_link,
             magic: *MAGIC_USTAR,
             version: *VERSION_USTAR,
@@ -412,12 +407,12 @@ impl<W: Write> TarWriter<W> {
             .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
         // Write payload
-        if !data.is_empty() {
+        if !params.data.is_empty() {
             self.inner
-                .write_all(data)
+                .write_all(params.data)
                 .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
-            let pad = (TAR_BLOCK_SIZE - (data.len() % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
+            let pad = (TAR_BLOCK_SIZE - (params.data.len() % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
             if pad > 0 {
                 self.inner
                     .write_all(&vec![0u8; pad])

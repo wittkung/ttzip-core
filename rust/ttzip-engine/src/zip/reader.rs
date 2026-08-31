@@ -174,13 +174,16 @@ impl<'a> ZipArchive<'a> {
             total_comp_bytes += entry.compressed_size;
 
             let safe_path = sanitize_and_validate_path(dest_dir, &entry.rel_path)?;
-            engine.register_entry(
-                safe_path.clone(),
-                entry.mode,
-                entry.mtime_epoch_secs,
-                0,
-                entry.is_directory,
-            );
+            let is_symlink = (entry.mode & 0o170000) == 0o120000;
+            if !is_symlink {
+                engine.register_entry(
+                    safe_path.clone(),
+                    entry.mode & 0o7777,
+                    entry.mtime_epoch_secs,
+                    0,
+                    entry.is_directory,
+                );
+            }
 
             if entry.is_directory {
                 fs::create_dir_all(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
@@ -289,12 +292,71 @@ impl<'a> ZipArchive<'a> {
             let _ = fs::create_dir_all(parent);
         }
 
+        let is_symlink = (entry.mode & 0o170000) == 0o120000;
+        if is_symlink {
+            let bytes = self.extract_entry_bytes(idx, password)?;
+            if let Ok(target_str) = std::str::from_utf8(&bytes) {
+                // Strict depth tracking traversal defense
+                let mut depth = Path::new(&entry.rel_path).components().count().saturating_sub(1);
+                for comp in Path::new(target_str).components() {
+                    match comp {
+                        std::path::Component::ParentDir => {
+                            if depth == 0 {
+                                return Err(TTZipStatus::ErrSecurityViolation);
+                            }
+                            depth -= 1;
+                        }
+                        std::path::Component::Normal(_) => {
+                            depth += 1;
+                        }
+                        std::path::Component::CurDir => {}
+                        std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                            return Err(TTZipStatus::ErrSecurityViolation);
+                        }
+                    }
+                }
+                if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
+                    let _ = fs::remove_file(&safe_path);
+                }
+                #[cfg(unix)]
+                let _ = std::os::unix::fs::symlink(target_str, &safe_path);
+                return Ok(());
+            }
+        }
+
         if entry.uncompressed_size == 0 {
             File::create(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
             return Ok(());
         }
 
-        let bytes = self.extract_entry_bytes(idx, password)?;
+        let lfh_offset = entry.lfh_offset as usize;
+        let (payload_offset, _) = parse_local_file_header(self.data, lfh_offset)?;
+        let comp_size = entry.compressed_size as usize;
+
+        if payload_offset + comp_size > self.data.len() {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+
+        let raw_payload = &self.data[payload_offset..payload_offset + comp_size];
+        let mut decrypted_storage = Vec::new();
+
+        let effective_payload = if entry.is_encrypted {
+            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
+            if pass.is_empty() {
+                return Err(TTZipStatus::ErrInvalidPassword);
+            }
+            if comp_size < 28 {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+
+            let cipher_len = comp_size - 28;
+            decrypted_storage.resize(cipher_len, 0);
+            let dec_len = winzip_aes256_decrypt_and_verify(pass, raw_payload, &mut decrypted_storage)?;
+            &decrypted_storage[..dec_len]
+        } else {
+            raw_payload
+        };
+
         let mut file = File::create(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
         let fd = file.as_raw_fd();
 
@@ -307,7 +369,42 @@ impl<'a> ZipArchive<'a> {
             }
         }
 
-        file.write_all(&bytes).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        let mut computed_crc = 0u32;
+        let uncomp_size = entry.uncompressed_size;
+
+        match entry.actual_method {
+            0 => {
+                if (effective_payload.len() as u64) != uncomp_size {
+                    return Err(TTZipStatus::ErrCorruptHeader);
+                }
+                file.write_all(effective_payload).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                computed_crc = crc32_fast(0, effective_payload);
+            }
+            8 => {
+                use std::io::Read;
+                let mut decoder = flate2::read::DeflateDecoder::new(effective_payload);
+                let mut chunk = [0u8; 64 * 1024];
+                let mut total_written = 0u64;
+                loop {
+                    let n = decoder.read(&mut chunk).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+                    if n == 0 {
+                        break;
+                    }
+                    file.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    computed_crc = crc32_fast(computed_crc, &chunk[..n]);
+                    total_written += n as u64;
+                }
+                if total_written != uncomp_size {
+                    return Err(TTZipStatus::ErrCorruptHeader);
+                }
+            }
+            _ => return Err(TTZipStatus::ErrArchiveInitFailed),
+        }
+
+        if (!entry.is_encrypted || entry.crc32 != 0) && computed_crc != entry.crc32 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+
         Ok(())
     }
 }

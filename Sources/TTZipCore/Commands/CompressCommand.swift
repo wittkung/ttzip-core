@@ -111,7 +111,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
                     progress: progress
                 )
             } catch {
-                // 原子回滚：清理损坏的未完成输出文件，使用备份无损还原原始文件
+                // Atomic rollback: clean up corrupted incomplete output files and restore originals losslessly from backup.
                 for (originalPath, backupPath) in backupDict {
                     if fm.fileExists(atPath: originalPath) {
                         try? fm.removeItem(atPath: originalPath)

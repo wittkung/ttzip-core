@@ -74,7 +74,7 @@ impl GuardedBuffer {
         let nr_data_pages = if size == 0 {
             1
         } else {
-            (size + page_size - 1) / page_size
+            size.div_ceil(page_size)
         };
         let total_pages = nr_data_pages + 1; // Data pages + 1 trailing guard page
         let total_bytes = total_pages

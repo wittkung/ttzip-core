@@ -15,13 +15,13 @@
 
 mod create;
 mod extract;
-pub(crate) mod guards;
+pub mod guards;
 mod in_place;
 mod inspect;
 pub mod provenance;
 mod repair;
 pub mod split;
-pub(crate) mod sys;
+pub mod sys;
 mod tar;
 pub mod unified;
 mod zip;

@@ -113,10 +113,12 @@ pub fn in_place_edit_sevenz(
     let total_len = bytes.len() as u64;
     fs::write(shadow_path, bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
 
-    let mut prov = TTZipExecutionProvenance::default();
-    prov.engine_tag = TTZipEngineTag::RustInPlaceSevenZip;
-    prov.compressed_bytes = total_len;
-    prov.is_fallback = false;
+    let prov = TTZipExecutionProvenance {
+        engine_tag: TTZipEngineTag::RustInPlaceSevenZip,
+        compressed_bytes: total_len,
+        is_fallback: false,
+        ..Default::default()
+    };
     record_execution_provenance(prov);
 
     Ok(())

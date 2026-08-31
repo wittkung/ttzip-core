@@ -27,6 +27,7 @@ pub enum Fl2CParameter {
     LiteralPosBits = 14,
     PosBits = 15,
     OmitProperties = 16,
+    DoXXHash = 17,
 }
 
 #[repr(C)]
@@ -97,6 +98,9 @@ extern "C" {
     ) -> libc::size_t;
     pub fn FL2_flushStream(fcs: *mut Fl2CCtxOpaque, output: *mut Fl2OutBuffer) -> libc::size_t;
     pub fn FL2_endStream(fcs: *mut Fl2CCtxOpaque, output: *mut Fl2OutBuffer) -> libc::size_t;
+    pub fn FL2_setCStreamTimeout(fcs: *mut Fl2CCtxOpaque, timeout: libc::c_uint) -> libc::size_t;
+    pub fn FL2_cancelCStream(fcs: *mut Fl2CCtxOpaque);
+    pub fn FL2_waitCStream(fcs: *mut Fl2CCtxOpaque) -> libc::size_t;
 
     pub fn FL2_createDStream() -> *mut Fl2DCtxOpaque;
     pub fn FL2_createDStreamMt(nb_threads: libc::c_uint) -> *mut Fl2DCtxOpaque;
@@ -108,4 +112,8 @@ extern "C" {
         output: *mut Fl2OutBuffer,
         input: *mut Fl2InBuffer,
     ) -> libc::size_t;
+    pub fn FL2_setDStreamTimeout(fds: *mut Fl2DCtxOpaque, timeout: libc::c_uint) -> libc::size_t;
+    pub fn FL2_cancelDStream(fds: *mut Fl2DCtxOpaque);
+    pub fn FL2_waitDStream(fds: *mut Fl2DCtxOpaque) -> libc::size_t;
+    pub fn FL2_isTimedOut(code: libc::size_t) -> libc::c_uint;
 }

@@ -39,7 +39,7 @@ fn test_store_mode_zero_compression_roundtrip() {
     };
 
     let status = UnifiedArchiveOrchestrator::create_archive(
-        &[input_file.clone()],
+        std::slice::from_ref(&input_file),
         &zip_output,
         &create_opts,
         0,

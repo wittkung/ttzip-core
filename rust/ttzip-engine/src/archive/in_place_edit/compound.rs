@@ -145,10 +145,12 @@ pub fn in_place_edit_compound_stream(
         }
     }
 
-    let mut prov = TTZipExecutionProvenance::default();
-    prov.engine_tag = TTZipEngineTag::RustTarStreamEngine;
-    prov.compressed_bytes = fs::metadata(shadow_path).map(|m| m.len()).unwrap_or(0);
-    prov.is_fallback = false;
+    let prov = TTZipExecutionProvenance {
+        engine_tag: TTZipEngineTag::RustTarStreamEngine,
+        compressed_bytes: fs::metadata(shadow_path).map(|m| m.len()).unwrap_or(0),
+        is_fallback: false,
+        ..Default::default()
+    };
     record_execution_provenance(prov);
 
     Ok(())

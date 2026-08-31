@@ -66,8 +66,15 @@ fn test_probe_png_rgba() {
 #[test]
 fn test_probe_webp_lossy_and_lossless() {
     let mut webp = Vec::from(b"RIFF\x18\0\0\0WEBPVP8L\x05\0\0\0");
-    let (b1, b2, b3, b4) = (99 & 0xFF, ((99 >> 8) & 0x3F) | ((199 & 0x03) << 6), (199 >> 2) & 0xFF, 0x10);
-    webp.extend_from_slice(&[0x2F, b1 as u8, b2 as u8, b3 as u8, b4, 0]);
+    let w: u32 = 99;
+    let h: u32 = 199;
+    let (b1, b2, b3, b4) = (
+        (w & 0xFF) as u8,
+        (((w >> 8) & 0x3F) | ((h & 0x03) << 6)) as u8,
+        ((h >> 2) & 0xFF) as u8,
+        0x10u8,
+    );
+    webp.extend_from_slice(&[0x2F, b1, b2, b3, b4, 0]);
 
     let probe = probe_metadata_buffer(&webp, Some("sticker.webp"), None);
     assert_eq!(probe.media_type, MediaType::Image);
@@ -287,7 +294,7 @@ fn test_probe_3d_obj_and_ply() {
 
 #[test]
 fn test_probe_font_ttf() {
-    let mut ttf = Vec::from(b"\x00\x01\x00\x00\0\x02\0\0\0\0\0\0head\0\0\0\0\0\0\0,\0\0\06maxp\0\0\0\0\0\0\0b\0\0\0 ");
+    let mut ttf = Vec::from(b"\x00\x01\x00\x00\0\x02\0\0\0\0\0\0head\0\0\0\0\0\0\0,\0\0\x006maxp\0\0\0\0\0\0\0b\0\0\0 ");
     let mut head = vec![0u8; 54];
     head[18..20].copy_from_slice(&2048u16.to_be_bytes());
     ttf.extend_from_slice(&head);

@@ -61,9 +61,9 @@ public final class SecureBytes: @unchecked Sendable {
         }
     }
 
-    /// Allocates an empty locked secure buffer with specified capacity.
-    public init(capacity: Int) {
-        self.count = capacity
+    /// Allocates an empty locked secure buffer with specified capacity and optional logical count.
+    public init(capacity: Int, count: Int? = nil) {
+        self.count = count ?? capacity
         let pageSize = Int(getpagesize())
         let alignedSize = ((capacity + pageSize - 1) / pageSize) * pageSize
         self.allocationSize = max(alignedSize, pageSize)
@@ -82,12 +82,13 @@ public final class SecureBytes: @unchecked Sendable {
     /// Initializes buffer from UTF-8 string bytes directly into mlocked memory without intermediate Swift heap allocations.
     public convenience init(utf8String: String) {
         let utf8Count = utf8String.utf8.count
-        self.init(capacity: max(1, utf8Count))
+        self.init(capacity: max(1, utf8Count + 1), count: utf8Count)
         if utf8Count > 0 {
             utf8String.withCString { cStr in
                 self.rawPointer.copyMemory(from: cStr, byteCount: utf8Count)
             }
         }
+        self.rawPointer.advanced(by: utf8Count).storeBytes(of: 0, as: UInt8.self)
     }
 
     /// Initializes buffer from byte array.

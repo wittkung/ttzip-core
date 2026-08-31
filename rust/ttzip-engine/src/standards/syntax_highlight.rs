@@ -268,7 +268,7 @@ fn fallback_tokenize(text: &str) -> Vec<TokenSpan> {
             while i < n && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') { i += 1; }
             let word = &text[s..i];
             let cat = if is_keyword_kind(word) { Some(HighlightCategory::Keyword) }
-            else if word.chars().next().map_or(false, |c| c.is_uppercase()) { Some(HighlightCategory::Type) }
+            else if word.starts_with(char::is_uppercase) { Some(HighlightCategory::Type) }
             else { None };
             if let Some(category) = cat {
                 let (loc, len) = index.byte_range_to_utf16(s, i);

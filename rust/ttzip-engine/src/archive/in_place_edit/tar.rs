@@ -30,10 +30,12 @@ pub fn in_place_edit_tar(
     let total_len = new_tar_bytes.len() as u64;
     fs::write(shadow_path, new_tar_bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
 
-    let mut prov = TTZipExecutionProvenance::default();
-    prov.engine_tag = TTZipEngineTag::RustTarStreamEngine;
-    prov.compressed_bytes = total_len;
-    prov.is_fallback = false;
+    let prov = TTZipExecutionProvenance {
+        engine_tag: TTZipEngineTag::RustTarStreamEngine,
+        compressed_bytes: total_len,
+        is_fallback: false,
+        ..Default::default()
+    };
     record_execution_provenance(prov);
 
     Ok(())

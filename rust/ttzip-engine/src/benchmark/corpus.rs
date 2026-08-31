@@ -170,7 +170,7 @@ impl BenchmarkCorpusGenerator {
             let len = vlen[w] as usize;
 
             rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-            if ((rng >> 16) % 6) == 0 {
+            if (rng >> 16).is_multiple_of(6) {
                 // Novel word: mutate the tail into fresh literals
                 let start = if len > 4 { len - 4 } else { 1 };
                 for c in start..len {
@@ -188,11 +188,11 @@ impl BenchmarkCorpusGenerator {
 
             rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
             words = words.wrapping_add(1);
-            if (words % 12) == 0 {
+            if words.is_multiple_of(12) {
                 let punct = b".\n";
                 let p_len = (size - buf.len()).min(punct.len());
                 buf.extend_from_slice(&punct[..p_len]);
-            } else if ((rng >> 16) % 16) == 0 {
+            } else if (rng >> 16).is_multiple_of(16) {
                 let punct = b", ";
                 let p_len = (size - buf.len()).min(punct.len());
                 buf.extend_from_slice(&punct[..p_len]);
@@ -453,7 +453,7 @@ impl BenchmarkCorpusGenerator {
         let mut buf = vec![0u8; size];
         let pixels = size / 3;
         let width = if pixels >= 256 { 256 } else { pixels.max(1) };
-        let height = if width > 0 { pixels / width } else { 0 };
+        let height = pixels.checked_div(width).unwrap_or(0);
 
         if height == 0 {
             return buf;

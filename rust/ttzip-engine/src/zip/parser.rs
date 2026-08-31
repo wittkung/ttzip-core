@@ -84,7 +84,8 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
 
     let mut eocd_pos = None;
 
-    // Search backwards for MAGIC_EOCD
+    // First pass: search backwards for exact EOCD where pos + 22 + comment_len == file_size.
+    // This disambiguates real EOCD from fake EOCD signatures embedded in comments.
     let mut pos = file_size - 22;
     loop {
         if pos < search_start {
@@ -92,9 +93,8 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
         }
         let sig = read_u32_le(mapped, pos);
         if sig == MAGIC_EOCD {
-            // Validate comment length matches remaining bytes
             let comment_len = read_u16_le(mapped, pos + 20) as usize;
-            if pos + 22 + comment_len <= file_size {
+            if pos + 22 + comment_len == file_size {
                 eocd_pos = Some(pos);
                 break;
             }
@@ -103,6 +103,28 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
             break;
         }
         pos -= 1;
+    }
+
+    // Fallback pass: if trailing bytes exist, accept pos + 22 + comment_len <= file_size
+    if eocd_pos.is_none() {
+        let mut pos = file_size - 22;
+        loop {
+            if pos < search_start {
+                break;
+            }
+            let sig = read_u32_le(mapped, pos);
+            if sig == MAGIC_EOCD {
+                let comment_len = read_u16_le(mapped, pos + 20) as usize;
+                if pos + 22 + comment_len <= file_size {
+                    eocd_pos = Some(pos);
+                    break;
+                }
+            }
+            if pos == 0 {
+                break;
+            }
+            pos -= 1;
+        }
     }
 
     let p = eocd_pos.ok_or(TTZipStatus::ErrCorruptHeader)?;
@@ -125,7 +147,7 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
         let locator_sig = read_u32_le(mapped, locator_pos);
         if locator_sig == MAGIC_ZIP64_LOCATOR {
             let z64_eocd_off = read_u64_le(mapped, locator_pos + 8) as usize;
-            if z64_eocd_off + 56 <= file_size {
+            if z64_eocd_off.saturating_add(56) <= file_size {
                 let z64_sig = read_u32_le(mapped, z64_eocd_off);
                 if z64_sig == MAGIC_ZIP64_EOCD {
                     info.is_zip64 = true;
@@ -142,47 +164,9 @@ pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
 
 /// Converts DOS timestamp (time: u16, date: u16) to Unix epoch timestamp in seconds.
 pub fn dos_to_unix_time(dos_time: u16, dos_date: u16) -> i64 {
-    let sec = ((dos_time & 0x1F) * 2) as u32;
-    let min = ((dos_time >> 5) & 0x3F) as u32;
-    let hour = ((dos_time >> 11) & 0x1F) as u32;
-
-    let day = (dos_date & 0x1F) as u32;
-    let month = ((dos_date >> 5) & 0x0F) as u32;
-    let year = (((dos_date >> 9) & 0x7F) + 1980) as u32;
-
-    // Fast days since epoch calculation
-    let mut days_since_1970 = 0i64;
-    for y in 1970..year {
-        days_since_1970 += if (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0) {
-            366
-        } else {
-            365
-        };
-    }
-
-    let is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-    let month_days = [
-        31,
-        if is_leap { 29 } else { 28 },
-        31,
-        30,
-        31,
-        30,
-        31,
-        31,
-        30,
-        31,
-        30,
-        31,
-    ];
-
-    for m in 1..month.min(12) {
-        days_since_1970 += month_days[(m - 1) as usize] as i64;
-    }
-
-    days_since_1970 += (day.saturating_sub(1)) as i64;
-
-    days_since_1970 * 86400 + (hour as i64 * 3600) + (min as i64 * 60) + sec as i64
+    crate::zip::datetime::DosDateTime::from_dos(dos_date, dos_time)
+        .map(|dt| dt.to_unix_epoch_secs())
+        .unwrap_or(0)
 }
 
 /// Parses a single Central Directory File Header (CDFH) entry.
@@ -217,8 +201,10 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
 
     let fn_start = curr_pos + 46;
     let fn_bytes = &mapped[fn_start..fn_start + fn_len];
-    let mut filename = String::from_utf8_lossy(fn_bytes).to_string();
+    let is_utf8 = (flag & 0x0800) != 0;
+    let mut filename = crate::zip::cp437::decode_zip_filename(fn_bytes, is_utf8);
     filename = filename.replace('\\', "/");
+
 
     let extra_start = fn_start + fn_len;
     let extra_bytes = &mapped[extra_start..extra_start + extra_len];
@@ -231,8 +217,10 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
         lfh_offset32 == 0xFFFFFFFF,
     );
 
-    if let Some(upath) = extra.unicode_path {
-        filename = upath.replace('\\', "/");
+    if let Some(upath) = &extra.unicode_path {
+        if upath.is_valid_for(fn_bytes) {
+            filename = upath.text.replace('\\', "/");
+        }
     }
 
     let uncompressed_size = extra.uncompressed_size.unwrap_or(uncomp_size32 as u64);
@@ -261,13 +249,13 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
         mtime_epoch = ext_mtime as i64;
     }
 
-    let posix_mode = (ext_attr >> 16) & 0o7777;
-    let mode = if posix_mode != 0 {
-        posix_mode
+    let full_posix_mode = ext_attr >> 16;
+    let mode = if full_posix_mode != 0 {
+        full_posix_mode
     } else if is_directory {
-        0o755
+        0o040755
     } else {
-        0o644
+        0o100644
     };
 
     let entry = ZipEntry {

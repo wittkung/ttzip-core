@@ -14,6 +14,9 @@
 //!
 //! Guarantees optimal throughput across ALL payload scales with 100% pure native safe implementation.
 
+pub mod xxhash32;
+pub use xxhash32::*;
+
 use crate::crypto::{adler32_fast, crc32_fast};
 use core::hash::Hasher;
 

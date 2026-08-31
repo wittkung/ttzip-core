@@ -9,6 +9,7 @@
 
 use super::payload::decode_7z_solid_streaming;
 use super::stream::extract_entry_bytes_stream;
+use super::solid_stream::{SolidEarlyExitExtractor, SolidFolderIndex};
 use crate::crypto::crc32::crc32_fast;
 use crate::fs::safe_extract::{sanitize_and_validate_path, SafeExtractEngine};
 use crate::sevenz::header::{parse_7z_metadata, SevenZFileMeta, SevenZHeaderInfo, SevenZSeekIndex};
@@ -26,17 +27,23 @@ pub struct SevenZArchive<'a> {
     data: &'a [u8],
     info: SevenZHeaderInfo,
     seek_index: SevenZSeekIndex,
+    folder_index: SolidFolderIndex,
 }
+
+/// Type alias for `SevenZArchive` providing unified reader naming convention.
+pub type SevenZReader<'a> = SevenZArchive<'a>;
 
 impl<'a> SevenZArchive<'a> {
     /// Opens and parses a 7z archive from in-memory slice with optional password.
     pub fn open_slice_with_password(data: &'a [u8], password: Option<&str>) -> Result<Self, TTZipStatus> {
         let info = parse_7z_metadata(data, password)?;
         let seek_index = SevenZSeekIndex::build(&info);
+        let folder_index = SolidFolderIndex::build(&info);
         Ok(Self {
             data,
             info,
             seek_index,
+            folder_index,
         })
     }
 
@@ -55,6 +62,24 @@ impl<'a> SevenZArchive<'a> {
     #[inline]
     pub fn seek_index(&self) -> &SevenZSeekIndex {
         &self.seek_index
+    }
+
+    /// Returns reference to pre-built solid folder index.
+    #[inline]
+    pub fn folder_index(&self) -> &SolidFolderIndex {
+        &self.folder_index
+    }
+
+    /// Returns reference to pre-built solid folder index.
+    #[inline]
+    pub fn solid_index(&self) -> &SolidFolderIndex {
+        &self.folder_index
+    }
+
+    /// Creates a 4MB micro-buffer early-exit solid extractor bound to this archive.
+    #[inline]
+    pub fn solid_extractor(&self) -> SolidEarlyExitExtractor<'_> {
+        SolidEarlyExitExtractor::new(self.data, &self.info, &self.folder_index)
     }
 
     /// Returns list of files in the 7z archive.

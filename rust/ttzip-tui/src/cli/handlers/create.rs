@@ -78,17 +78,19 @@ pub fn execute_create(
         TTZipEncryptionMethod::None
     };
 
-    let mut options = TTZipCreateOptions::default();
-    options.format = match target_format {
-        ContainerFormat::Zip => TTZipArchiveFormat::Zip,
-        ContainerFormat::SevenZip => TTZipArchiveFormat::SevenZip,
-        _ => TTZipArchiveFormat::Zip,
+    let options = TTZipCreateOptions {
+        format: match target_format {
+            ContainerFormat::Zip => TTZipArchiveFormat::Zip,
+            ContainerFormat::SevenZip => TTZipArchiveFormat::SevenZip,
+            _ => TTZipArchiveFormat::Zip,
+        },
+        level: compression_level,
+        encryption: encryption_method,
+        password: password_ptr,
+        thread_budget: threads.max(1),
+        solid_block_size_mb: 64,
+        ..Default::default()
     };
-    options.level = compression_level;
-    options.encryption = encryption_method;
-    options.password = password_ptr;
-    options.thread_budget = threads.max(1);
-    options.solid_block_size_mb = 64;
 
     if let Some(v_size_str) = volume_size {
         let chunk_size = parse_size_bytes(v_size_str)?;

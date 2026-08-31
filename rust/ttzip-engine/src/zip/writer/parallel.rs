@@ -7,7 +7,8 @@
 
 //! Multithreaded parallel compression engine for ZIP archives.
 
-use super::types::{ZipCompressedItem, ZipInputItem};
+use super::data_descriptor::compute_zipcrypto_check_byte;
+use super::types::{unix_to_dos_time, ZipCompressedItem, ZipInputItem};
 use crate::codecs::deflate::{deflate_compress, deflate_compress_bound};
 use crate::crypto::crc32::crc32_fast;
 use crate::crypto::sha1::winzip_aes256_encrypt_and_tag;
@@ -87,7 +88,8 @@ pub fn compress_items_parallel(
                         unsafe {
                             libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11);
                         }
-                        header[11] = (crc32 >> 24) as u8;
+                        let (dos_time, _) = unix_to_dos_time(item.mtime_epoch_secs);
+                        header[11] = compute_zipcrypto_check_byte(crc32, dos_time, false);
                         let mut keys = crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
                         keys.encrypt_slice(&mut header);
                         enc_payload.extend_from_slice(&header);

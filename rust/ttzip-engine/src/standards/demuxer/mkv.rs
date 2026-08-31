@@ -68,11 +68,13 @@ fn parse_ebml_element(id: u32, payload: &[u8], summary: &mut MediaDemuxSummary, 
     match id {
         INFO_ID => {
             let mut raw_dur: Option<f64> = None;
-            for_each_ebml_child(payload, |iid, ip| match iid {
-                0x2AD7_B1 => *scale = read_uint(ip).max(1),
-                0x4489 => raw_dur = read_float(ip),
-                0x7BA9 => if summary.title.is_none() { summary.title = Some(read_str(ip)); },
-                _ => {}
+            for_each_ebml_child(payload, |iid, ip| {
+                match iid {
+                    0x002A_D7B1 => *scale = read_uint(ip).max(1),
+                    0x4489 => raw_dur = read_float(ip),
+                    0x7BA9 if summary.title.is_none() => summary.title = Some(read_str(ip)),
+                    _ => {}
+                }
             });
             if let Some(dur) = raw_dur {
                 summary.duration_ms = Some(((dur * (*scale as f64)) / 1_000_000.0) as u64);
@@ -160,7 +162,7 @@ fn parse_track_entry(data: &[u8]) -> Option<MediaTrackInfo> {
         0x83 => t_type = read_uint(p),
         0x86 => codec = read_str(p),
         0x536E => name = Some(read_str(p)),
-        0x22B5_9C | 0x22B5_9D | 0x22B5_9E => lang = Some(read_str(p)),
+        0x0022_B59C..=0x0022_B59E => lang = Some(read_str(p)),
         0x88 => is_def = read_uint(p) != 0,
         0xE0 => for_each_ebml_child(p, |vid, vp| match vid {
             0xB0 => w = Some(read_uint(vp) as u32),

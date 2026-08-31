@@ -147,30 +147,30 @@ pub fn uniffi_decompress_buffer(
     let opts = options.unwrap_or_default();
     match codec {
         UniFFICompressionCodec::DeflateRaw => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_deflate_decompress(src, exp)
         }
         UniFFICompressionCodec::Zlib => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_zlib_decompress(src, exp)
         }
         UniFFICompressionCodec::Gzip => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_gzip_decompress(src, exp)
         }
         UniFFICompressionCodec::Zstd | UniFFICompressionCodec::ZstdLdm => {
             uniffi_zstd_decompress(src, expected_uncompressed_size)
         }
         UniFFICompressionCodec::Lz4Fast | UniFFICompressionCodec::Lz4Hc => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_lz4_decompress(src, exp)
         }
         UniFFICompressionCodec::Lzfse => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_lzfse_decompress(src, exp)
         }
         UniFFICompressionCodec::Lzvn => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_lzvn_decompress(src, exp)
         }
         UniFFICompressionCodec::Brotli => {
@@ -186,7 +186,7 @@ pub fn uniffi_decompress_buffer(
             uniffi_bzip2_decompress(src, expected_uncompressed_size)
         }
         UniFFICompressionCodec::Ppmd => {
-            let exp = expected_uncompressed_size.ok_or_else(|| TTZipError::EngineError { code: -1 })?;
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             let order = opts.ppmd_order.unwrap_or(6);
             let mem_mb = opts.ppmd_mem_mb.unwrap_or(16);
             uniffi_ppmd_decompress(src, exp, order, mem_mb)

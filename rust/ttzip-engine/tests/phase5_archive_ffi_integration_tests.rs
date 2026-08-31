@@ -175,7 +175,7 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
     let content2 = fs::read(&extracted_f2).unwrap();
     assert_eq!(content2, vec![0x42; 1024]);
 
-    let _ = fs::remove_dir_all(&temp_dir);
+    let _ = fs::remove_dir_all(temp_dir);
 }
 
 #[test]
@@ -281,9 +281,8 @@ fn test_phase5_archive_error_handling() {
 
 #[test]
 fn test_phase5_inplace_editing_ffi_roundtrip() {
-    let temp_dir = std::env::temp_dir().join("ttzip_test_phase5_inplace_ffi");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_dir_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_dir_guard.path();
 
     let src_file = temp_dir.join("initial.txt");
     fs::write(&src_file, b"Initial FFI Content").unwrap();
@@ -380,6 +379,6 @@ fn test_phase5_inplace_editing_ffi_roundtrip() {
     let content_app = fs::read_to_string(out_dir.join("appended.txt")).unwrap();
     assert_eq!(content_app, "Appended FFI Content");
 
-    let _ = fs::remove_dir_all(&temp_dir);
+    let _ = fs::remove_dir_all(temp_dir);
 }
 

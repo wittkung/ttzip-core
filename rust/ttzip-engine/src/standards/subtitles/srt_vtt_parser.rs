@@ -70,7 +70,7 @@ fn find_time_line(lines: &[&str]) -> Option<(usize, (i64, i64))> {
     for (i, &line) in lines.iter().enumerate() {
         if let Some((s_str, e_str)) = line.split_once("-->") {
             let start = parse_srt_vtt_timestamp(s_str.trim())?;
-            let end_token = e_str.trim().split_whitespace().next().unwrap_or(e_str.trim());
+            let end_token = e_str.split_whitespace().next().unwrap_or(e_str.trim());
             let end = parse_srt_vtt_timestamp(end_token)?;
             return Some((i, (start, end)));
         }

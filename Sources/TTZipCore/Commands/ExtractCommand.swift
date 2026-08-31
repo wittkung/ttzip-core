@@ -93,7 +93,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
                     progress: progress
                 )
             } catch {
-                // 精确增量回滚：仅清理本次解压新增的文件/目录，绝不删除用户既有文件
+                // Precise incremental rollback: clean up only newly extracted files/directories from this operation, preserving pre-existing user files.
                 if dirExistedBefore {
                     let dirtyPaths = self.scanDirectorySet(dirPath: destinationDir).subtracting(preExistingPaths)
                     let sortedDirty = dirtyPaths.sorted {

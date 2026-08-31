@@ -8,7 +8,7 @@
 //! Subcommand execution handler: convert.
 
 use crate::cli::handlers::create::execute_create;
-use crate::cli::handlers::extract::execute_extract;
+use crate::cli::handlers::extract::{execute_extract, CliExtractParams};
 use std::path::Path;
 use std::time::Instant;
 
@@ -30,7 +30,16 @@ pub fn execute_convert(
         .map_err(|e| format!("Failed to create staging directory for conversion: {}", e))?;
 
     println!("-> Extracting source archive {}...", source_archive.display());
-    let extract_res = execute_extract(source_archive, Some(&staging_path), None, 4, false, false, &[], &[]);
+    let extract_res = execute_extract(CliExtractParams {
+        archive_path: source_archive,
+        output_dir: Some(&staging_path),
+        password: None,
+        threads: 4,
+        verbose: false,
+        dry_run: false,
+        include: &[],
+        exclude: &[],
+    });
     if let Err(e) = extract_res {
         let _ = std::fs::remove_dir_all(&staging_path);
         return Err(e);

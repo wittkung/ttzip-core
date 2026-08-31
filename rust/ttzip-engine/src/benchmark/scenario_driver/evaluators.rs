@@ -29,27 +29,31 @@ use crate::sevenz::writer::create_7z_solid_archive_bytes;
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
 use crate::zip::writer::{assemble_zip_archive, ZipCompressedItem, ZipInputItem};
 
+/// Parameters for constructing a `ScenarioBenchmarkPoint`.
+#[derive(Debug, Clone)]
+pub struct ScenarioPointParams<'a> {
+    pub id: &'a str,
+    pub category: &'a str,
+    pub format: &'a str,
+    pub display_name: &'a str,
+    pub options_summary: &'a str,
+    pub orig_bytes: usize,
+    pub out_bytes: usize,
+    pub create_micros: u64,
+    pub extract_micros: u64,
+    pub is_encrypted: bool,
+    pub is_split: bool,
+    pub is_solid: bool,
+    pub passed_invariants: bool,
+    pub rss_delta_bytes: u64,
+}
+
 /// Helper to build a benchmark point with throughput and Mach memory bounds checks.
 #[inline]
-pub fn build_point(
-    id: &str,
-    category: &str,
-    format: &str,
-    display_name: &str,
-    options_summary: &str,
-    orig_bytes: usize,
-    out_bytes: usize,
-    create_micros: u64,
-    extract_micros: u64,
-    is_encrypted: bool,
-    is_split: bool,
-    is_solid: bool,
-    passed_invariants: bool,
-    _rss_delta_bytes: u64,
-) -> ScenarioBenchmarkPoint {
-    let orig_mb = (orig_bytes as f64) / (1024.0 * 1024.0);
-    let create_sec = (create_micros as f64) / 1_000_000.0;
-    let extract_sec = (extract_micros as f64) / 1_000_000.0;
+pub fn build_point(params: ScenarioPointParams<'_>) -> ScenarioBenchmarkPoint {
+    let orig_mb = (params.orig_bytes as f64) / (1024.0 * 1024.0);
+    let create_sec = (params.create_micros as f64) / 1_000_000.0;
+    let extract_sec = (params.extract_micros as f64) / 1_000_000.0;
 
     let create_mbs = if create_sec > 1e-7 {
         orig_mb / create_sec
@@ -62,101 +66,113 @@ pub fn build_point(
         0.0
     };
 
-    let savings = if orig_bytes > 0 {
-        ((1.0 - (out_bytes as f64 / orig_bytes as f64)) * 100.0).max(0.0)
+    let savings = if params.orig_bytes > 0 {
+        ((1.0 - (params.out_bytes as f64 / params.orig_bytes as f64)) * 100.0).max(0.0)
     } else {
         0.0
     };
 
-    let final_passed = passed_invariants;
+    let final_passed = params.passed_invariants;
 
     ScenarioBenchmarkPoint {
-        id: id.to_string(),
-        category: category.to_string(),
-        format: format.to_string(),
-        display_name: display_name.to_string(),
-        options_summary: options_summary.to_string(),
-        original_size_bytes: orig_bytes,
-        output_size_bytes: out_bytes,
+        id: params.id.to_string(),
+        category: params.category.to_string(),
+        format: params.format.to_string(),
+        display_name: params.display_name.to_string(),
+        options_summary: params.options_summary.to_string(),
+        original_size_bytes: params.orig_bytes,
+        output_size_bytes: params.out_bytes,
         space_savings_pct: savings,
         create_throughput_mbs: create_mbs,
         extract_throughput_mbs: extract_mbs,
-        create_duration_micros: create_micros,
-        extract_duration_micros: extract_micros,
-        is_encrypted,
-        is_split,
-        is_solid,
+        create_duration_micros: params.create_micros,
+        extract_duration_micros: params.extract_micros,
+        is_encrypted: params.is_encrypted,
+        is_split: params.is_split,
+        is_solid: params.is_solid,
         passed_invariants: final_passed,
     }
+}
+
+/// Configuration options for evaluating container scenarios.
+#[derive(Debug, Clone)]
+pub struct ContainerScenarioParams<'a> {
+    pub id: &'a str,
+    pub category: &'a str,
+    pub display_name: &'a str,
+    pub options_summary: &'a str,
+    pub level: i32,
+    pub algorithm: Option<&'a str>,
+    pub password: Option<&'a str>,
+    pub is_split: bool,
+    pub is_solid: bool,
+    pub expected_entry_count: usize,
 }
 
 /// Evaluates a container scenario using a `ContainerBenchmarkDriver`.
 pub fn eval_container_scenario<D: ContainerBenchmarkDriver>(
     driver: &D,
-    id: &str,
-    category: &str,
-    display_name: &str,
-    options_summary: &str,
     items: &[ZipInputItem],
-    level: i32,
-    algorithm: Option<&str>,
-    password: Option<&str>,
-    is_split: bool,
-    is_solid: bool,
-    expected_entry_count: usize,
+    params: &ContainerScenarioParams<'_>,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
     let orig_bytes: usize = items.iter().map(|it| it.data.len()).sum();
     let rss_before = get_current_rss_bytes();
 
     let t0 = Instant::now();
-    let archive_bytes = driver.create_archive(items, level, algorithm, password)?;
+    let archive_bytes = driver.create_archive(items, params.level, params.algorithm, params.password)?;
     let create_micros = t0.elapsed().as_micros() as u64;
 
     let t1 = Instant::now();
-    let extracted_count = driver.extract_archive(&archive_bytes, password)?;
+    let extracted_count = driver.extract_archive(&archive_bytes, params.password)?;
     let extract_micros = t1.elapsed().as_micros() as u64;
 
     let rss_after = get_current_rss_bytes();
-    let is_enc = password.is_some();
-    let passed = extracted_count == expected_entry_count;
+    let is_enc = params.password.is_some();
+    let passed = extracted_count == params.expected_entry_count;
 
-    Ok(build_point(
-        id,
-        category,
-        driver.container_id(),
-        display_name,
-        options_summary,
+    Ok(build_point(ScenarioPointParams {
+        id: params.id,
+        category: params.category,
+        format: driver.container_id(),
+        display_name: params.display_name,
+        options_summary: params.options_summary,
         orig_bytes,
-        archive_bytes.len(),
+        out_bytes: archive_bytes.len(),
         create_micros,
         extract_micros,
-        is_enc,
-        is_split,
-        is_solid,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: is_enc,
+        is_split: params.is_split,
+        is_solid: params.is_solid,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
+}
+
+/// Configuration options for evaluating 7-Zip solid scenarios.
+#[derive(Debug, Clone)]
+pub struct SevenZScenarioParams<'a> {
+    pub id: &'a str,
+    pub category: &'a str,
+    pub display_name: &'a str,
+    pub options_summary: &'a str,
+    pub level: i32,
+    pub num_threads: u32,
+    pub is_encrypted: bool,
+    pub is_split: bool,
+    pub is_solid: bool,
+    pub expected_entry_count: usize,
 }
 
 /// Evaluates a 7-Zip solid or non-solid archive scenario.
 pub fn eval_7z_scenario(
-    id: &str,
-    category: &str,
-    display_name: &str,
-    options_summary: &str,
     items: &[ZipInputItem],
-    level: i32,
-    num_threads: u32,
-    is_encrypted: bool,
-    is_split: bool,
-    is_solid: bool,
-    expected_entry_count: usize,
+    params: &SevenZScenarioParams<'_>,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
     let orig_bytes: usize = items.iter().map(|it| it.data.len()).sum();
     let rss_before = get_current_rss_bytes();
 
     let t0 = Instant::now();
-    let sz_bytes = create_7z_solid_archive_bytes(items, level, num_threads)?;
+    let sz_bytes = create_7z_solid_archive_bytes(items, params.level, params.num_threads)?;
     let create_micros = t0.elapsed().as_micros() as u64;
 
     let t1 = Instant::now();
@@ -165,24 +181,24 @@ pub fn eval_7z_scenario(
     let extract_micros = t1.elapsed().as_micros() as u64;
 
     let rss_after = get_current_rss_bytes();
-    let passed = count == expected_entry_count;
+    let passed = count == params.expected_entry_count;
 
-    Ok(build_point(
-        id,
-        category,
-        "7Z",
-        display_name,
-        options_summary,
+    Ok(build_point(ScenarioPointParams {
+        id: params.id,
+        category: params.category,
+        format: "7Z",
+        display_name: params.display_name,
+        options_summary: params.options_summary,
         orig_bytes,
-        sz_bytes.len(),
+        out_bytes: sz_bytes.len(),
         create_micros,
         extract_micros,
-        is_encrypted,
-        is_split,
-        is_solid,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: params.is_encrypted,
+        is_split: params.is_split,
+        is_solid: params.is_solid,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates Zstandard advanced options (LDM on vs off, window sizes).
@@ -228,22 +244,22 @@ pub fn eval_zstd_advanced_scenario(
     let rss_after = get_current_rss_bytes();
     let passed = decomp_len == raw_data.len() && decomp_buf[..decomp_len] == raw_data;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        "ZSTD",
+        format: "ZSTD",
         display_name,
         options_summary,
-        raw_data.len(),
-        comp_buf.len(),
+        orig_bytes: raw_data.len(),
+        out_bytes: comp_buf.len(),
         create_micros,
         extract_micros,
-        false,
-        false,
-        false,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates cryptographic driver (AES-GCM, ChaCha20-Poly1305).
@@ -269,22 +285,22 @@ pub fn eval_crypto_driver_scenario(
 
     let rss_after = get_current_rss_bytes();
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        algorithm_id,
+        format: algorithm_id,
         display_name,
         options_summary,
-        raw_data.len(),
-        processed.len(),
+        orig_bytes: raw_data.len(),
+        out_bytes: processed.len(),
         create_micros,
         extract_micros,
-        true,
-        false,
-        false,
-        verified,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: true,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: verified,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates single-stream compression roundtrips (GZ, ZST, BR, SZ, LZFSE, BZ2).
@@ -359,22 +375,22 @@ pub fn eval_single_stream_scenario(
     let rss_after = get_current_rss_bytes();
     let passed = decomp_len == raw_data.len() && matched;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        format_tag,
+        format: format_tag,
         display_name,
         options_summary,
-        raw_data.len(),
-        compressed.len(),
+        orig_bytes: raw_data.len(),
+        out_bytes: compressed.len(),
         create_micros,
         extract_micros,
-        false,
-        false,
-        false,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates in-place mutation lifecycle operations (Append, Replace, Delete).
@@ -438,22 +454,22 @@ pub fn eval_inplace_scenario(
 
     let passed = !modified_bytes.is_empty() && mutate_micros < 100_000;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        ext.to_uppercase().as_str(),
+        format: ext.to_uppercase().as_str(),
         display_name,
         options_summary,
         orig_bytes,
-        modified_bytes.len(),
-        mutate_micros,
-        mutate_micros / 2,
-        false,
-        false,
-        false,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        out_bytes: modified_bytes.len(),
+        create_micros: mutate_micros,
+        extract_micros: mutate_micros / 2,
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates QuickLook and selective extraction jump on 7z solid archives.
@@ -480,22 +496,22 @@ pub fn eval_7z_selective_jump_scenario(
     let rss_after = get_current_rss_bytes();
     let passed = !single_file.is_empty() && extract_micros < 50_000;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        "7Z",
+        format: "7Z",
         display_name,
         options_summary,
         orig_bytes,
-        single_file.len(),
+        out_bytes: single_file.len(),
         create_micros,
         extract_micros,
-        false,
-        false,
-        true,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        is_encrypted: false,
+        is_split: false,
+        is_solid: true,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates damaged archive self-healing (ZIP and TAR).
@@ -560,22 +576,22 @@ pub fn eval_damaged_repair_scenario(
 
     let passed = salvaged_count >= 1 && !repaired_bytes.is_empty();
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        format_tag,
+        format: format_tag,
         display_name,
         options_summary,
         orig_bytes,
-        repaired_bytes.len(),
-        repair_micros,
-        repair_micros / 2,
-        false,
-        false,
-        false,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        out_bytes: repaired_bytes.len(),
+        create_micros: repair_micros,
+        extract_micros: repair_micros / 2,
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates APFS CoW clonefile and extent preallocation.
@@ -611,22 +627,22 @@ pub fn eval_apfs_scenario(
 
     let passed = clone_ok && prealloc_ok;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        "APFS",
+        format: "APFS",
         display_name,
         options_summary,
-        size_bytes,
-        size_bytes,
-        clone_micros,
-        prealloc_micros,
-        false,
-        false,
-        false,
-        passed,
-        rss_after.saturating_sub(rss_before),
-    ))
+        orig_bytes: size_bytes,
+        out_bytes: size_bytes,
+        create_micros: clone_micros,
+        extract_micros: prealloc_micros,
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_after.saturating_sub(rss_before),
+    }))
 }
 
 /// Evaluates large sparse file stream (Zip64 with bounded RSS <= 64MB).
@@ -661,20 +677,20 @@ pub fn eval_sparse_scenario(
     let memory_bounded = rss_delta <= 64 * 1024 * 1024 || peak_rss <= 1024 * 1024 * 1024;
     let passed = count == 1 && memory_bounded;
 
-    Ok(build_point(
+    Ok(build_point(ScenarioPointParams {
         id,
         category,
-        "ZIP",
+        format: "ZIP",
         display_name,
         options_summary,
-        virtual_size_bytes,
-        zip_bytes.len(),
+        orig_bytes: virtual_size_bytes,
+        out_bytes: zip_bytes.len(),
         create_micros,
         extract_micros,
-        false,
-        false,
-        false,
-        passed,
-        rss_delta,
-    ))
+        is_encrypted: false,
+        is_split: false,
+        is_solid: false,
+        passed_invariants: passed,
+        rss_delta_bytes: rss_delta,
+    }))
 }

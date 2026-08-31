@@ -359,7 +359,7 @@ fn parse_wav_waveform(data: &[u8], bucket_count: usize) -> Option<Vec<f32>> {
         }
 
         offset += chunk_size;
-        if chunk_size % 2 != 0 {
+        if !chunk_size.is_multiple_of(2) {
             offset += 1;
         }
     }
@@ -476,7 +476,7 @@ fn parse_aiff_waveform(data: &[u8], bucket_count: usize) -> Option<Vec<f32>> {
         }
 
         offset += chunk_size;
-        if chunk_size % 2 != 0 {
+        if !chunk_size.is_multiple_of(2) {
             offset += 1;
         }
     }
@@ -551,7 +551,7 @@ pub fn default_waveform(count: usize) -> Vec<f32> {
             let harmonic1 = (progress * std::f32::consts::PI * 8.0).sin() * 0.35;
             let harmonic2 = (progress * std::f32::consts::PI * 19.5).sin() * 0.25;
             let envelope = (progress * std::f32::consts::PI).sin();
-            ((0.25 + (harmonic1 + harmonic2).abs()) * envelope).max(0.04).min(0.95)
+            ((0.25 + (harmonic1 + harmonic2).abs()) * envelope).clamp(0.04, 0.95)
         })
         .collect()
 }

@@ -135,7 +135,27 @@ pub extern "C" fn ttzip_rust_snappy_validate_bounded(
 }
 
 #[no_mangle]
+pub extern "C" fn ttzip_rust_snappy_validate_raw(
+    src: *const u8,
+    src_len: size_t,
+    max_uncompressed_len: size_t,
+) -> bool {
+    match unsafe { safe_slice(src, src_len) } {
+        Ok(in_slice) => snappy_validate_bounded(in_slice, max_uncompressed_len),
+        Err(_) => false,
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ttzip_rust_snappy_frame_validate(src: *const u8, src_len: size_t) -> bool {
+    match unsafe { safe_slice(src, src_len) } {
+        Ok(in_slice) => snappy_frame_validate(in_slice),
+        Err(_) => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ttzip_rust_snappy_validate_framed(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(in_slice) => snappy_frame_validate(in_slice),
         Err(_) => false,

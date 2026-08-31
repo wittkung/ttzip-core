@@ -144,9 +144,7 @@ fn slugify(name: &str) -> String {
         "adler-32" | "adler32" => "adler32".to_string(),
         "crc-64-ecma" | "crc-64" | "crc64" => "crc64".to_string(),
         _ => lower
-            .replace('.', "_")
-            .replace('-', "_")
-            .replace(' ', "_"),
+            .replace(['.', '-', ' '], "_"),
     }
 }
 

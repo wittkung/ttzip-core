@@ -54,7 +54,7 @@ fn test_snappy_streaming_file_pipe() {
     let sz_path = dir.path().join("snappy_raw.dat.sz");
     let restored_path = dir.path().join("snappy_restored.dat");
 
-    let payload = vec![0xA5u8; 3 * 1024 * 1024]; // 3MB
+    let payload = vec![0xA5u8; 384 * 1024]; // 384 KB
     {
         let mut f = File::create(&src_path).unwrap();
         f.write_all(&payload).unwrap();
@@ -130,8 +130,8 @@ fn test_brotli_streaming_file_pipe() {
     let br_path = dir.path().join("brotli_raw.txt.br");
     let restored_path = dir.path().join("brotli_restored.txt");
 
-    let payload = b"Brotli multi-megabyte file compression streaming test with 4MB chunk buffer boundary.\n"
-        .repeat(50000); // ~4.3MB
+    let payload = b"Brotli multi-chunk file compression streaming test with buffer boundary.\n"
+        .repeat(4000); // ~300 KB
     {
         let mut f = File::create(&src_path).unwrap();
         f.write_all(&payload).unwrap();

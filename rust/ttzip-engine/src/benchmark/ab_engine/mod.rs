@@ -25,9 +25,11 @@ pub mod huffman_defense;
 pub mod lzfse_tunables;
 pub mod micro_chunk;
 pub mod orchestrator;
+pub mod paramgrill;
 pub mod reporters;
 pub mod secure_symlink;
 pub mod self_verifying_bundle;
+pub mod silesia_corpus;
 pub mod snappy_corpora;
 pub mod stats;
 pub mod target;
@@ -55,6 +57,11 @@ pub use self_verifying_bundle::{
     BundleHashAlgorithm, SelfVerifyingBundleEngine, StreamingBundleHasher, BUNDLE_MAGIC,
     BUNDLE_VERSION_1, DEFAULT_STREAM_CHUNK_SIZE,
 };
+pub use silesia_corpus::{
+    SilesiaCorpusEngine, SilesiaCorpusKind, SilesiaCorpusProvider, SilesiaFileDescriptor,
+    SilesiaValidationError, SilesiaValidationReport, SILESIA_DESCRIPTORS,
+    SILESIA_ENTITIES_COUNT, SILESIA_TOTAL_STANDARD_BYTES,
+};
 pub use snappy_corpora::{SnappyCorpusKind, SnappyIndustrialCorpusProvider};
 pub use decodecorpus::{
     zstd_xxh64_digest32, DeterministicRng, ReverseBlockType, ReverseFrameConfig,
@@ -67,6 +74,7 @@ pub use fast_lzma2_pool::{
 };
 pub use fuzz_tail::FuzzTailDataProducer;
 pub use guarded_buffer::{system_page_size, GuardedBuffer, GuardedBufferError};
+pub use crate::memory::{BumpWorkspace, WorkspaceError, CACHE_LINE_ALIGNMENT};
 pub use header_quota_guard::{
     validate_header_entry_count, HeaderQuotaGuard, HeaderSecurityError,
     DEFAULT_ESTIMATED_BYTES_PER_ENTRY, DEFAULT_MAX_ENTRIES_PER_HEADER_BYTE,
@@ -91,6 +99,10 @@ pub use micro_chunk::{
 pub use orchestrator::{
     calc_throughput_mbs, AbBaselineSnapshot, AbBenchmarkReport, AbEngineOrchestrator,
     AbOrchestratorConfig, BaselineSnapshotEntry, TargetAbReportItem,
+};
+pub use paramgrill::{
+    HyperParamVector, ParamEvaluationResult, ParamGrillReport, ParamGrillSearchConstraints,
+    ParamGrillSearchEngine, VALID_CHUNK_SIZES,
 };
 pub use reporters::{AsciiTableReporter, JsonTelemetryReporter, MarkdownCommentReporter};
 pub use secure_symlink::{

@@ -17,7 +17,21 @@ pub const VFS_FLAG_IS_DIR: u8 = 1 << 0;
 pub const VFS_FLAG_IS_ENCRYPTED: u8 = 1 << 1;
 pub const VFS_FLAG_IS_SYMLINK: u8 = 1 << 2;
 
-/// High-density Struct-of-Arrays Flat Arena for virtual filesystem nodes.
+/// Node allocation parameters for inserting a new VFS entity into `VfsArena`.
+#[derive(Debug, Clone, Copy)]
+pub struct VfsNodeAllocParams<'a> {
+    pub name: &'a str,
+    pub full_path: &'a str,
+    pub uncompressed_size: u64,
+    pub compressed_size: u64,
+    pub crc32: u32,
+    pub mtime: i64,
+    pub mode: u32,
+    pub flags: u8,
+    pub parent_id: u32,
+}
+
+/// Ultra-compact Structure-of-Arrays (SoA) virtual filesystem arena.
 #[derive(Debug, Clone, Default)]
 pub struct VfsArena {
     pub string_arena: Vec<u8>,
@@ -75,33 +89,22 @@ impl VfsArena {
     }
 
     /// Allocates a new node in the SoA arena and returns its node ID.
-    pub fn alloc_node(
-        &mut self,
-        name: &str,
-        full_path: &str,
-        uncompressed_size: u64,
-        compressed_size: u64,
-        crc32: u32,
-        mtime: i64,
-        mode: u32,
-        flags: u8,
-        parent_id: u32,
-    ) -> u32 {
+    pub fn alloc_node(&mut self, params: VfsNodeAllocParams<'_>) -> u32 {
         let id = self.total_nodes as u32;
-        let (name_off, name_len) = self.intern_string(name);
-        let (path_off, path_len) = self.intern_string(full_path);
+        let (name_off, name_len) = self.intern_string(params.name);
+        let (path_off, path_len) = self.intern_string(params.full_path);
 
         self.name_offsets.push(name_off);
         self.name_lens.push(name_len);
         self.full_path_offsets.push(path_off);
         self.full_path_lens.push(path_len);
-        self.uncompressed_sizes.push(uncompressed_size);
-        self.compressed_sizes.push(compressed_size);
-        self.crc32s.push(crc32);
-        self.mtimes.push(mtime);
-        self.modes.push(mode);
-        self.flags.push(flags);
-        self.parent_ids.push(parent_id);
+        self.uncompressed_sizes.push(params.uncompressed_size);
+        self.compressed_sizes.push(params.compressed_size);
+        self.crc32s.push(params.crc32);
+        self.mtimes.push(params.mtime);
+        self.modes.push(params.mode);
+        self.flags.push(params.flags);
+        self.parent_ids.push(params.parent_id);
         self.first_child.push(VFS_NULL_NODE);
         self.next_sibling.push(VFS_NULL_NODE);
         self.child_counts.push(0);
@@ -129,17 +132,17 @@ impl VfsArena {
         let mut arena = Self::with_capacity(count + 16);
 
         // Root Node (ID = 0)
-        let root_id = arena.alloc_node(
-            root_name,
-            "",
-            0,
-            0,
-            0,
-            0,
-            0o755,
-            VFS_FLAG_IS_DIR,
-            VFS_NULL_NODE,
-        );
+        let root_id = arena.alloc_node(VfsNodeAllocParams {
+            name: root_name,
+            full_path: "",
+            uncompressed_size: 0,
+            compressed_size: 0,
+            crc32: 0,
+            mtime: 0,
+            mode: 0o755,
+            flags: VFS_FLAG_IS_DIR,
+            parent_id: VFS_NULL_NODE,
+        });
 
         let mut dir_map: HashMap<String, u32> = HashMap::with_capacity(count / 4 + 16);
         dir_map.insert(String::new(), root_id);
@@ -181,32 +184,32 @@ impl VfsArena {
 
             if is_dir {
                 if !dir_map.contains_key(clean_path) {
-                    let dir_id = arena.alloc_node(
-                        leaf_name,
-                        clean_path,
-                        uncompressed[i],
-                        compressed[i],
-                        crcs[i],
-                        mtimes[i],
-                        modes[i],
-                        flags[i] | VFS_FLAG_IS_DIR,
-                        curr_parent_id,
-                    );
+                    let dir_id = arena.alloc_node(VfsNodeAllocParams {
+                        name: leaf_name,
+                        full_path: clean_path,
+                        uncompressed_size: uncompressed[i],
+                        compressed_size: compressed[i],
+                        crc32: crcs[i],
+                        mtime: mtimes[i],
+                        mode: modes[i],
+                        flags: flags[i] | VFS_FLAG_IS_DIR,
+                        parent_id: curr_parent_id,
+                    });
                     arena.add_child(curr_parent_id, dir_id);
                     dir_map.insert(clean_path.to_string(), dir_id);
                 }
             } else {
-                let file_id = arena.alloc_node(
-                    leaf_name,
-                    clean_path,
-                    uncompressed[i],
-                    compressed[i],
-                    crcs[i],
-                    mtimes[i],
-                    modes[i],
-                    flags[i],
-                    curr_parent_id,
-                );
+                let file_id = arena.alloc_node(VfsNodeAllocParams {
+                    name: leaf_name,
+                    full_path: clean_path,
+                    uncompressed_size: uncompressed[i],
+                    compressed_size: compressed[i],
+                    crc32: crcs[i],
+                    mtime: mtimes[i],
+                    mode: modes[i],
+                    flags: flags[i],
+                    parent_id: curr_parent_id,
+                });
                 arena.add_child(curr_parent_id, file_id);
             }
         }
@@ -382,17 +385,17 @@ fn ensure_directory(
         if let Some(&existing_id) = dir_map.get(&accumulated) {
             p_id = existing_id;
         } else {
-            let new_dir_id = arena.alloc_node(
-                segment,
-                &accumulated,
-                0,
-                0,
-                0,
+            let new_dir_id = arena.alloc_node(VfsNodeAllocParams {
+                name: segment,
+                full_path: &accumulated,
+                uncompressed_size: 0,
+                compressed_size: 0,
+                crc32: 0,
                 mtime,
-                0o755,
-                VFS_FLAG_IS_DIR,
-                p_id,
-            );
+                mode: 0o755,
+                flags: VFS_FLAG_IS_DIR,
+                parent_id: p_id,
+            });
             arena.add_child(p_id, new_dir_id);
             dir_map.insert(accumulated.clone(), new_dir_id);
             p_id = new_dir_id;

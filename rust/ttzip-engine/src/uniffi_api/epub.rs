@@ -73,9 +73,9 @@ pub fn parse_epub_metadata(epub_path: String) -> Option<UniFFIEpubBook> {
     let mut cover_item_id: Option<String> = None;
 
     for tag in find_tags(&opf_str, "item") {
-        if let (Some(id), Some(href)) = (extract_attr(&tag, "item", "id"), extract_attr(&tag, "item", "href")) {
-            let media_type = extract_attr(&tag, "item", "media-type").unwrap_or_default();
-            let props = extract_attr(&tag, "item", "properties").unwrap_or_default();
+        if let (Some(id), Some(href)) = (extract_attr(tag, "item", "id"), extract_attr(tag, "item", "href")) {
+            let media_type = extract_attr(tag, "item", "media-type").unwrap_or_default();
+            let props = extract_attr(tag, "item", "properties").unwrap_or_default();
 
             if media_type == "application/x-dtbncx+xml" || href.to_lowercase().ends_with(".ncx") {
                 ncx_href = Some(href.clone());
@@ -91,8 +91,8 @@ pub fn parse_epub_metadata(epub_path: String) -> Option<UniFFIEpubBook> {
     }
 
     for tag in find_tags(&opf_str, "meta") {
-        if extract_attr(&tag, "meta", "name").as_deref() == Some("cover") {
-            if let Some(content) = extract_attr(&tag, "meta", "content") {
+        if extract_attr(tag, "meta", "name").as_deref() == Some("cover") {
+            if let Some(content) = extract_attr(tag, "meta", "content") {
                 cover_item_id = Some(content);
             }
         }
@@ -104,7 +104,7 @@ pub fn parse_epub_metadata(epub_path: String) -> Option<UniFFIEpubBook> {
 
     let spine_ids: Vec<String> = find_tags(&opf_str, "itemref")
         .into_iter()
-        .filter_map(|tag| extract_attr(&tag, "itemref", "idref"))
+        .filter_map(|tag| extract_attr(tag, "itemref", "idref"))
         .collect();
 
     // 3. Build Table of Contents mapping (href/filename -> title)

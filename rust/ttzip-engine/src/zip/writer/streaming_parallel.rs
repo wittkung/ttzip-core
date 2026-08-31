@@ -33,9 +33,7 @@ use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-
-/// PKWARE Data Descriptor signature (0x08074B50 / "PK\x07\x08").
-pub const MAGIC_DATA_DESCRIPTOR: u32 = 0x08074B50;
+use super::data_descriptor::{build_data_descriptor, compute_zipcrypto_check_byte};
 
 /// An item planned for compression.
 #[derive(Debug, Clone)]
@@ -64,33 +62,6 @@ pub struct CentralDirectoryMeta {
     pub mtime_secs: u32,
     pub mode: u32,
     pub is_directory: bool,
-}
-
-/// Builds a PKWARE Data Descriptor tail block.
-///
-/// - Non-Zip64 (16 bytes): [Signature: 4B, CRC32: 4B, CompSize: 4B, UncompSize: 4B]
-/// - Zip64 (24 bytes): [Signature: 4B, CRC32: 4B, CompSize: 8B, UncompSize: 8B]
-pub fn build_data_descriptor(
-    crc32: u32,
-    compressed_size: u64,
-    uncompressed_size: u64,
-    is_zip64: bool,
-) -> Vec<u8> {
-    if is_zip64 {
-        let mut buf = Vec::with_capacity(24);
-        buf.extend_from_slice(&MAGIC_DATA_DESCRIPTOR.to_le_bytes());
-        buf.extend_from_slice(&crc32.to_le_bytes());
-        buf.extend_from_slice(&compressed_size.to_le_bytes());
-        buf.extend_from_slice(&uncompressed_size.to_le_bytes());
-        buf
-    } else {
-        let mut buf = Vec::with_capacity(16);
-        buf.extend_from_slice(&MAGIC_DATA_DESCRIPTOR.to_le_bytes());
-        buf.extend_from_slice(&crc32.to_le_bytes());
-        buf.extend_from_slice(&(compressed_size as u32).to_le_bytes());
-        buf.extend_from_slice(&(uncompressed_size as u32).to_le_bytes());
-        buf
-    }
 }
 
 /// Creates a ZIP archive using the high-throughput multi-core streaming parallel engine.
@@ -300,13 +271,15 @@ pub fn create_zip_streaming_parallel(
     let elapsed_nanos = start_time.elapsed().as_nanos() as u64;
     let elapsed_ms = elapsed_nanos / 1_000_000;
 
-    let mut prov = crate::types::TTZipExecutionProvenance::default();
-    prov.engine_tag = crate::types::TTZipEngineTag::RustStreamingParallelZip;
-    prov.thread_count = options.thread_budget;
-    prov.uncompressed_bytes = total_uncompressed;
-    prov.compressed_bytes = current_offset;
-    prov.kernel_duration_nanos = elapsed_nanos;
-    prov.is_fallback = false;
+    let prov = crate::types::TTZipExecutionProvenance {
+        engine_tag: crate::types::TTZipEngineTag::RustStreamingParallelZip,
+        thread_count: options.thread_budget,
+        uncompressed_bytes: total_uncompressed,
+        compressed_bytes: current_offset,
+        kernel_duration_nanos: elapsed_nanos,
+        is_fallback: false,
+        ..Default::default()
+    };
     crate::types::record_execution_provenance(prov);
 
     Ok(ZipCreateReport {
@@ -426,7 +399,8 @@ fn compress_single_item(
             unsafe {
                 libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11);
             }
-            header[11] = (crc >> 24) as u8;
+            let (_, dos_time) = unix_to_dos_time(item.mtime_secs);
+            header[11] = compute_zipcrypto_check_byte(crc, dos_time, true);
             let mut keys =
                 crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
             keys.encrypt_slice(&mut header);
@@ -672,6 +646,7 @@ fn build_eocd(entries_count: u16, cd_size: u32, cd_offset: u32) -> Vec<u8> {
 mod tests {
     use super::*;
     use crate::zip::reader::ZipArchive;
+    use crate::zip::writer::data_descriptor::MAGIC_DATA_DESCRIPTOR;
 
     #[test]
     fn test_build_data_descriptor_standard_and_zip64() {
@@ -721,7 +696,7 @@ mod tests {
             user_data: std::ptr::null_mut(),
         };
 
-        let report = create_zip_streaming_parallel(&out_zip, &[src_dir.clone()], &opt).unwrap();
+        let report = create_zip_streaming_parallel(&out_zip, std::slice::from_ref(&src_dir), &opt).unwrap();
         assert_eq!(report.total_entries, 4); // root dir + sub dir + 2 files
 
         let zip_bytes = fs::read(&out_zip).unwrap();

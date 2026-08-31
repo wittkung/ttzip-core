@@ -138,7 +138,7 @@ fn test_benchmark_corpus_8_mathematical_generators() {
     let short_match = BenchmarkCorpusGenerator::gen_short_match_data(N);
     assert_eq!(short_match.len(), N);
     let h_short = compute_shannon_entropy(&short_match);
-    assert!(h_short >= 2.0 && h_short <= 8.0, "Short match entropy expected 2.0-8.0, got {}", h_short);
+    assert!((2.0..=8.0).contains(&h_short), "Short match entropy expected 2.0-8.0, got {}", h_short);
 
     let dna = BenchmarkCorpusGenerator::gen_dna_data(N);
     assert_eq!(dna.len(), N);

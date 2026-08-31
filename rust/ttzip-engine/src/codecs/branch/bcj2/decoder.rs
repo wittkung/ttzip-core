@@ -50,16 +50,25 @@ impl Bcj2Decoder {
         let mut jump_pos = 0;
         let mut prev_byte = 0u8;
 
-        for &b in main {
-            if b == 0xE8 || b == 0xE9 {
+        let mut i = 0;
+        while i < main.len() {
+            let b = main[i];
+            let is_jcc = prev_byte == 0x0F && (b & 0xF0) == 0x80;
+            let is_call_or_jump = (b & 0xFE) == 0xE8;
+
+            if is_call_or_jump || is_jcc {
                 let ctx = if b == 0xE8 {
-                    prev_byte as usize
+                    2 + (prev_byte as usize)
+                } else if b == 0xE9 {
+                    1
                 } else {
-                    256
+                    0
                 };
                 let bit = rc_dec.decode_bit(&mut probs[ctx]);
                 if bit == 1 {
-                    let dest = if b == 0xE8 {
+                    out.push(b);
+                    let is_call = b == 0xE8;
+                    let dest = if is_call {
                         if call_pos + 4 > call.len() {
                             return Err(TTZipStatus::ErrCorruptHeader);
                         }
@@ -85,18 +94,19 @@ impl Bcj2Decoder {
                         d
                     };
 
-                    let current_ip = self.ip.wrapping_add(out.len() as u32).wrapping_add(5);
+                    let current_ip = self.ip.wrapping_add(out.len() as u32).wrapping_add(4);
                     let rel = dest.wrapping_sub(current_ip);
                     let rel_le = rel.to_le_bytes();
-
-                    out.push(b);
                     out.extend_from_slice(&rel_le);
                     prev_byte = rel_le[3];
+                    i += 1;
                     continue;
                 }
             }
+
             out.push(b);
             prev_byte = b;
+            i += 1;
         }
 
         Ok(out)

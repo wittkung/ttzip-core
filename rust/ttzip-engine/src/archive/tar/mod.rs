@@ -10,6 +10,7 @@
 //! Provides zero-copy parsing, Rayon multi-core parallel extraction,
 //! streaming PAX generation, and hardware APFS extent preallocation.
 
+pub mod gnu;
 pub mod header;
 pub mod pax;
 pub mod reader;
@@ -19,6 +20,7 @@ pub mod writer;
 #[cfg(test)]
 mod tests;
 
+pub use gnu::*;
 pub use header::{
     build_tar_header_block, compute_tar_checksum, format_numeric, format_octal, is_tar_zero_block,
     parse_numeric, parse_octal, parse_tar_header_block, verify_tar_checksum, TarHeader,
@@ -31,3 +33,4 @@ pub use pax::{build_pax_payload, format_pax_record, parse_pax_data, parse_pax_ti
 pub use reader::{TarArchive, TarExtractReport};
 pub use scanner::{TarEntry, TarSeekScanner};
 pub use writer::{split_ustar_path, write_tar_to_writer, TarWriter};
+

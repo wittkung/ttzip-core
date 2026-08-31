@@ -11,25 +11,55 @@
 //! ARM64 8-way NEON AES-256-CBC hardware decryption with SHA-256 KDF,
 //! and multi-threaded Fast-LZMA2 solid archive creation.
 
+pub mod dag;
 pub mod decoder;
+pub mod encrypted_header;
 pub mod format;
 pub mod header;
+pub mod mt_writer;
+pub mod sanitizer;
+pub mod solid_seek;
+pub mod time;
+pub mod varint;
 pub mod writer;
 
+pub use dag::{build_and_sort, CoderGraph, CoderNode, SevenZError};
+pub use encrypted_header::{
+    probe_7z_password, EncodedHeaderDecoder, MAX_PACKED_HEADER_BYTES, MAX_PREALLOC_BYTES,
+};
+pub use sanitizer::{
+    bounded_count, bounded_usize, safe_join, DEFAULT_MAX_CODERS_LIMIT, DEFAULT_MAX_FILES_LIMIT,
+    DEFAULT_MAX_FOLDERS_LIMIT, DEFAULT_MAX_STREAMS_LIMIT,
+};
 pub use decoder::{
     decode_7z_folder_streaming, decode_7z_solid_payload, decode_7z_solid_streaming,
     extract_entry_bytes_stream, extract_entry_bytes_stream_bounded, extract_single_entry_bounded,
-    get_current_rss_bytes, SevenZArchive,
+    get_current_rss_bytes, SevenZArchive, SevenZReader, SolidEarlyExitExtractor, SolidExtractionStats,
+    SolidFileRange, SolidFolderIndex, SolidFolderTable, SOLID_MICRO_BUFFER_CHUNK_SIZE,
 };
 pub use format::{
-    read_varint, write_varint, SevenZSignatureHeader, K_CODERS_UNPACK_SIZE, K_CRC, K_EMPTY_STREAM,
-    K_END, K_ENCODED_HEADER, K_FILES_INFO, K_FOLDER, K_HEADER, K_MAIN_STREAMS_INFO, K_NAME,
-    K_NUM_UNPACK_STREAM, K_PACK_INFO, K_SIZE, K_SUB_STREAMS_INFO, K_UNPACK_INFO, K_WIN_ATTRIBUTES,
-    METHOD_AES, METHOD_COPY, METHOD_DEFLATE, METHOD_LZMA, METHOD_LZMA2, SEVENZ_SIGNATURE,
+    read_varint, write_varint, SevenZSignatureHeader, METHOD_AES, METHOD_COPY, METHOD_DEFLATE,
+    METHOD_LZMA, METHOD_LZMA2, SEVENZ_SIGNATURE,
 };
 pub use header::{
     parse_7z_metadata, SevenZCoder, SevenZEntryLocation, SevenZFileMeta, SevenZFolder,
     SevenZHeaderInfo, SevenZSeekIndex,
+};
+pub use mt_writer::{
+    prepare_block, PreparedBlock, SevenZArchiveWriter, SevenZEncoderMethod, SevenZEncoderOptions,
+};
+pub use time::{
+    NtTime, NANOS_PER_TICK, SECS_BETWEEN_1601_AND_1970, TICKS_PER_SEC, UNIX_EPOCH_TICKS,
+};
+pub use varint::{
+    decode_7z_varint, encode_7z_varint, encode_7z_varint_vec, read_variable_u64,
+    read_variable_usize, try_encode_7z_varint, varint_size_7z, write_variable_u64,
+    VarintError, K_ADDITIONAL_STREAMS_INFO, K_ANTI, K_ARCHIVE_PROPERTIES, K_ATIME,
+    K_CODERS_UNPACK_SIZE, K_COMMENT, K_CRC, K_CTIME, K_DUMMY, K_EMPTY_FILE,
+    K_EMPTY_STREAM, K_ENCODED_HEADER, K_END, K_FILES_INFO, K_FOLDER, K_HEADER,
+    K_MAIN_STREAMS_INFO, K_MTIME, K_NAME, K_NUM_UNPACK_STREAM, K_PACK_INFO, K_SIZE,
+    K_START_EDIT_HEADER, K_SUB_STREAMS_INFO, K_UNPACK_INFO, K_WIN_ATTRIBUTES,
+    MAX_VARINT_LEN_7Z,
 };
 pub use writer::{
     build_7z_metadata_header, create_7z_archive, create_7z_solid_archive_bytes,
@@ -228,11 +258,13 @@ mod tests {
 
     #[test]
     fn test_7z_unsupported_codec_routing() {
-        let mut info = SevenZHeaderInfo::default();
-        info.payload_offset = 0;
-        info.payload_len = 16;
-        info.primary_method_id = 0x999999; // Unknown unsupported method ID
-        info.stream_sizes = vec![16];
+        let info = SevenZHeaderInfo {
+            payload_offset: 0,
+            payload_len: 16,
+            primary_method_id: 0x999999, // Unknown unsupported method ID
+            stream_sizes: vec![16],
+            ..Default::default()
+        };
 
         let payload = vec![0u8; 16];
         let result = decode_7z_solid_payload(&payload, &info, None, 1);

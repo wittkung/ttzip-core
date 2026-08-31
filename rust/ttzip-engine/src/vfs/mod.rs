@@ -10,3 +10,4 @@
 pub mod cache_pool;
 
 pub use cache_pool::*;
+pub use crate::codecs::zstd_seekable::*;

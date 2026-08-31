@@ -61,12 +61,13 @@ def run_gate(args):
 
     # Stage 4 & 5: Load benchmark data
     json_candidates = [
-        "/Users/kevintung/.gemini/antigravity/brain/3ac96734-1cc6-454b-a0a2-ea64d74fac52/scratch/full_deflate_matrix_results.json",
-        os.path.join(args.worktree, "full_deflate_matrix_results.json")
+        os.environ.get("UPSTREAM_BENCH_RESULTS_JSON", ""),
+        os.path.join(args.worktree, "full_deflate_matrix_results.json"),
+        os.path.join(os.path.dirname(__file__), "full_deflate_matrix_results.json"),
     ]
     raw_data = None
     for jc in json_candidates:
-        if os.path.exists(jc):
+        if jc and os.path.exists(jc):
             with open(jc) as f:
                 raw_data = json.load(f)
             break

@@ -121,7 +121,7 @@ impl BundleCompressionCodec {
 
 /// Dynamic state wrapper for zero-allocation streaming hash calculation.
 pub enum StreamingBundleHasher {
-    Blake3(Blake3),
+    Blake3(Box<Blake3>),
     Sha256(FastSha256),
     Xxh3_128(Xxh3_128),
     Xxh3_64(Xxh3_64),
@@ -131,7 +131,7 @@ impl StreamingBundleHasher {
     /// Creates a new streaming hasher for the given algorithm.
     pub fn new(algo: BundleHashAlgorithm) -> Self {
         match algo {
-            BundleHashAlgorithm::Blake3 => Self::Blake3(Blake3::new()),
+            BundleHashAlgorithm::Blake3 => Self::Blake3(Box::default()),
             BundleHashAlgorithm::Sha256 => Self::Sha256(FastSha256::new()),
             BundleHashAlgorithm::Xxh3_128 => Self::Xxh3_128(Xxh3_128::new()),
             BundleHashAlgorithm::Xxh3_64 => Self::Xxh3_64(Xxh3_64::new()),
@@ -141,7 +141,9 @@ impl StreamingBundleHasher {
     /// Ingests streaming byte slice into active hasher state.
     pub fn update(&mut self, chunk: &[u8]) {
         match self {
-            Self::Blake3(h) => h.update(chunk),
+            Self::Blake3(h) => {
+                h.update(chunk);
+            }
             Self::Sha256(h) => h.update(chunk),
             Self::Xxh3_128(h) => h.update(chunk),
             Self::Xxh3_64(h) => h.update(chunk),

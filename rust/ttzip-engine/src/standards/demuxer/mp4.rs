@@ -105,13 +105,26 @@ fn parse_mvhd(data: &[u8], summary: &mut MediaDemuxSummary) {
         (u32::from_be_bytes([data[12], data[13], data[14], data[15]]) as u64,
          u32::from_be_bytes([data[16], data[17], data[18], data[19]]) as u64)
     } else { return; };
-    if timescale > 0 { summary.duration_ms = Some(duration.saturating_mul(1000) / timescale); }
+    if let Some(dur_ms) = duration.saturating_mul(1000).checked_div(timescale) {
+        summary.duration_ms = Some(dur_ms);
+    }
+}
+
+#[derive(Debug, Default)]
+struct Mp4TrackMeta {
+    track_id: u32,
+    hdlr_type: [u8; 4],
+    codec_str: String,
+    language: Option<String>,
+    channels: Option<u16>,
+    sample_rate: Option<u32>,
+    width: Option<u32>,
+    height: Option<u32>,
+    track_name: Option<String>,
 }
 
 fn parse_trak_box(data: &[u8], summary: &mut MediaDemuxSummary) -> Option<MediaTrackInfo> {
-    let (mut track_id, mut width, mut height) = (0u32, None, None);
-    let (mut hdlr_type, mut codec_str, mut language) = ([0u8; 4], String::new(), None);
-    let (mut channels, mut sample_rate, mut track_name) = (None, None, None);
+    let mut meta = Mp4TrackMeta::default();
 
     for_each_mp4_box(data, |fourcc, payload| match &fourcc {
         b"tkhd" => if payload.len() >= 24 {
@@ -124,49 +137,40 @@ fn parse_trak_box(data: &[u8], summary: &mut MediaDemuxSummary) -> Option<MediaT
                  u32::from_be_bytes([payload[76], payload[77], payload[78], payload[79]]) >> 16,
                  u32::from_be_bytes([payload[80], payload[81], payload[82], payload[83]]) >> 16)
             } else { (0, 0, 0) };
-            track_id = tid;
-            if w > 0 { width = Some(w); }
-            if h > 0 { height = Some(h); }
+            meta.track_id = tid;
+            if w > 0 { meta.width = Some(w); }
+            if h > 0 { meta.height = Some(h); }
         },
-        b"mdia" => parse_mdia_box(payload, &mut hdlr_type, &mut codec_str, &mut language, &mut channels, &mut sample_rate, &mut width, &mut height),
+        b"mdia" => parse_mdia_box(payload, &mut meta),
         b"udta" => parse_udta_box(payload, summary),
-        b"name" => track_name = Some(String::from_utf8_lossy(payload).trim_matches('\0').to_string()),
+        b"name" => meta.track_name = Some(String::from_utf8_lossy(payload).trim_matches('\0').to_string()),
         _ => {}
     });
 
-    let track_type = match &hdlr_type {
+    let track_type = match &meta.hdlr_type {
         b"vide" => MediaTrackType::Video,
         b"soun" => MediaTrackType::Audio,
         b"sbtl" | b"subt" | b"text" | b"clcp" => MediaTrackType::Subtitle,
-        _ => classify_by_codec(&codec_str)?,
+        _ => classify_by_codec(&meta.codec_str)?,
     };
 
-    let mut info = MediaTrackInfo::new(track_id, track_type, codec_str);
-    info.language = language;
-    info.title = track_name;
-    info.width = width;
-    info.height = height;
-    info.channels = channels;
-    info.sample_rate = sample_rate;
-    info.is_default = track_id == 1;
+    let mut info = MediaTrackInfo::new(meta.track_id, track_type, meta.codec_str);
+    info.language = meta.language;
+    info.title = meta.track_name;
+    info.width = meta.width;
+    info.height = meta.height;
+    info.channels = meta.channels;
+    info.sample_rate = meta.sample_rate;
+    info.is_default = meta.track_id == 1;
     Some(info)
 }
 
-fn parse_mdia_box(
-    data: &[u8],
-    hdlr: &mut [u8; 4],
-    codec: &mut String,
-    lang: &mut Option<String>,
-    ch: &mut Option<u16>,
-    sr: &mut Option<u32>,
-    w: &mut Option<u32>,
-    h: &mut Option<u32>,
-) {
+fn parse_mdia_box(data: &[u8], meta: &mut Mp4TrackMeta) {
     for_each_mp4_box(data, |fourcc, payload| match &fourcc {
-        b"mdhd" => *lang = parse_mdhd_lang(payload),
-        b"hdlr" => if payload.len() >= 12 { hdlr.copy_from_slice(&payload[8..12]); },
+        b"mdhd" => meta.language = parse_mdhd_lang(payload),
+        b"hdlr" => if payload.len() >= 12 { meta.hdlr_type.copy_from_slice(&payload[8..12]); },
         b"minf" => for_each_mp4_box(payload, |m_fc, m_p| if &m_fc == b"stbl" {
-            for_each_mp4_box(m_p, |s_fc, s_p| if &s_fc == b"stsd" { parse_stsd_box(s_p, codec, ch, sr, w, h); });
+            for_each_mp4_box(m_p, |s_fc, s_p| if &s_fc == b"stsd" { parse_stsd_box(s_p, meta); });
         }),
         _ => {}
     });
@@ -185,30 +189,23 @@ fn parse_mdhd_lang(data: &[u8]) -> Option<String> {
     None
 }
 
-fn parse_stsd_box(
-    data: &[u8],
-    codec: &mut String,
-    ch: &mut Option<u16>,
-    sr: &mut Option<u32>,
-    w: &mut Option<u32>,
-    h: &mut Option<u32>,
-) {
+fn parse_stsd_box(data: &[u8], meta: &mut Mp4TrackMeta) {
     if data.len() < 16 { return; }
     let entry = &data[8..];
-    *codec = String::from_utf8_lossy(&entry[4..8]).to_string();
+    meta.codec_str = String::from_utf8_lossy(&entry[4..8]).to_string();
 
     if entry.len() >= 36 {
         let channels = u16::from_be_bytes([entry[24], entry[25]]);
         let sample_rate = u32::from_be_bytes([entry[30], entry[31], entry[32], entry[33]]) >> 16;
         if channels > 0 && sample_rate > 0 {
-            *ch = Some(channels);
-            *sr = Some(sample_rate);
+            meta.channels = Some(channels);
+            meta.sample_rate = Some(sample_rate);
         }
         let width = u16::from_be_bytes([entry[32], entry[33]]) as u32;
         let height = u16::from_be_bytes([entry[34], entry[35]]) as u32;
         if width > 0 && height > 0 {
-            *w = Some(width);
-            *h = Some(height);
+            meta.width = Some(width);
+            meta.height = Some(height);
         }
     }
 }

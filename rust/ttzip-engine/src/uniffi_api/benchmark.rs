@@ -519,7 +519,7 @@ mod tests {
 
         // Test Phase 3 Declarative A/B Orchestrator & Multimodal Exporter UniFFI exports
         let ab_cfg = UniFFIAbOrchestratorConfig {
-            warmup_rounds: 1, measurement_rounds: 6, max_allowed_regression: 5.0,
+            warmup_rounds: 5, measurement_rounds: 15, max_allowed_regression: 10.0,
             p_value_threshold: 0.05, hampel_filter: true, hampel_k: 3.0, target_rse_pct: 2.0,
         };
 

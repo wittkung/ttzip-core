@@ -350,11 +350,7 @@ pub fn parse_pax_timestamp(
     let mut was_clamped = false;
     let clamped_secs = if raw_secs < 0 {
         was_clamped = true;
-        if clamp_negative {
-            0u64
-        } else {
-            0u64
-        }
+        0u64
     } else if raw_secs > MAX_SAFE_PAX_SECONDS {
         was_clamped = true;
         MAX_SAFE_PAX_SECONDS as u64

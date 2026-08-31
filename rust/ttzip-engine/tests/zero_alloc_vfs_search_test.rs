@@ -18,6 +18,12 @@ pub struct TrackingAllocator {
     total_alloc_bytes: AtomicUsize,
 }
 
+impl Default for TrackingAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrackingAllocator {
     pub const fn new() -> Self {
         Self {

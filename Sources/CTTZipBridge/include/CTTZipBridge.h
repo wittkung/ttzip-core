@@ -86,7 +86,19 @@ size_t ttzip_rust_snappy_frame_max_encoded_length(size_t src_len);
 
 int32_t ttzip_rust_lzfse_compress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
 int32_t ttzip_rust_lzfse_decompress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzfse_compress_raw(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzfse_decompress_raw(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t uncompressed_len, size_t *out_len);
+int32_t ttzip_rust_lzfse_compress_stream(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzfse_decompress_stream(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
 size_t ttzip_rust_lzfse_compress_bound(size_t src_len);
+bool ttzip_rust_lzfse_validate(const uint8_t *src, size_t src_len);
+
+int32_t ttzip_rust_lzvn_compress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzvn_decompress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzvn_compress_raw(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);
+int32_t ttzip_rust_lzvn_decompress_raw(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t uncompressed_len, size_t *out_len);
+size_t ttzip_rust_lzvn_compress_bound(size_t src_len);
+bool ttzip_rust_lzvn_validate(const uint8_t *src, size_t src_len);
 
 int32_t ttzip_rust_brotli_compress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, uint32_t quality, uint32_t lgwin, size_t *out_len);
 int32_t ttzip_rust_brotli_decompress(const uint8_t *src, size_t src_len, uint8_t *dst, size_t dst_capacity, size_t *out_len);

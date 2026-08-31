@@ -388,13 +388,16 @@ pub struct Zip64VerificationReport {
     pub valid_state_machine: bool,
 }
 
+/// Tuple holding parsed values from a Zip64 extra field: (found, uncompressed_size, compressed_size, local_header_offset).
+pub type ParsedZip64ExtraField = (bool, Option<u64>, Option<u64>, Option<u64>);
+
 /// Shared parser for Zip64 Extra Field (`0x0001`).
 fn parse_extra_field_zip64(
     extra: &[u8],
     need_uncomp: bool,
     need_comp: bool,
     need_offset: bool,
-) -> Result<(bool, Option<u64>, Option<u64>, Option<u64>), Zip64InspectionError> {
+) -> Result<ParsedZip64ExtraField, Zip64InspectionError> {
     let mut pos = 0;
     while pos + 4 <= extra.len() {
         let tag = u16::from_le_bytes([extra[pos], extra[pos + 1]]);

@@ -91,9 +91,41 @@ impl<'a> TarSeekScanner<'a> {
             self.consecutive_zero_blocks = 0;
 
             let header = parse_tar_header_block(block)?;
-            let payload_size = header.size as usize;
+
+            // Aligned with GHSA-3cv2-h65g-fgmm:
+            // For regular entries, PAX extended size unconditionally overrides ustar header size
+            // for payload boundary calculation and stream stride stepping.
+            // Special GNU metadata headers ('L', 'K') and PAX headers ('x', 'g') use their own header size.
+            let effective_size = match header.typeflag {
+                TYPE_GNU_LONGNAME
+                | TYPE_GNU_LONGLINK
+                | TYPE_PAX_EXT_HEADER
+                | TYPE_SOLARIS_EXT
+                | TYPE_PAX_GLOBAL_HEADER => header.size,
+                _ => self
+                    .pending_pax_ext
+                    .as_ref()
+                    .and_then(|p| p.size)
+                    .unwrap_or(header.size),
+            };
+
+            let payload_size = match usize::try_from(effective_size) {
+                Ok(sz) => sz,
+                Err(_) => return Err(TTZipStatus::ErrCorruptHeader),
+            };
             let payload_blocks = payload_size.div_ceil(TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE;
-            let payload_start = self.cursor + TAR_BLOCK_SIZE;
+            let mut payload_start = self.cursor + TAR_BLOCK_SIZE;
+
+            // Handle GNU Sparse 0.0/0.1 extended header blocks
+            if header.typeflag == TYPE_GNU_SPARSE {
+                let mut is_ext = block[482] != 0;
+                while is_ext && payload_start + TAR_BLOCK_SIZE <= self.data.len() {
+                    let ext_block = &self.data[payload_start..payload_start + TAR_BLOCK_SIZE];
+                    is_ext = ext_block[504] != 0;
+                    payload_start += TAR_BLOCK_SIZE;
+                }
+            }
+
             let payload_end = payload_start + payload_size;
 
             if payload_start + payload_blocks > self.data.len() {
@@ -103,7 +135,7 @@ impl<'a> TarSeekScanner<'a> {
 
             let payload_slice = &self.data[payload_start..payload_end];
             let header_offset = self.cursor;
-            self.cursor += TAR_BLOCK_SIZE + payload_blocks;
+            self.cursor = payload_start + payload_blocks;
 
             match header.typeflag {
                 TYPE_GNU_LONGNAME => {

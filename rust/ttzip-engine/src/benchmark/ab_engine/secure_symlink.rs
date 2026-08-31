@@ -366,15 +366,15 @@ impl SecurePathExtractor {
         }
 
         // Absolute symlink target check
-        if raw_target.starts_with('/') || raw_target.starts_with('\\') {
-            if self.config.secure_no_absolute_paths {
-                return Err(SecurityError::SymlinkEscapeAttempt {
-                    path: link_path.display().to_string(),
-                    target: raw_target.to_string(),
-                    sandbox_root: self.sandbox_root.display().to_string(),
-                    reason: "Absolute symlink target is prohibited by security policy".into(),
-                });
-            }
+        if (raw_target.starts_with('/') || raw_target.starts_with('\\'))
+            && self.config.secure_no_absolute_paths
+        {
+            return Err(SecurityError::SymlinkEscapeAttempt {
+                path: link_path.display().to_string(),
+                target: raw_target.to_string(),
+                sandbox_root: self.sandbox_root.display().to_string(),
+                reason: "Absolute symlink target is prohibited by security policy".into(),
+            });
         }
 
         // Relative symlink target resolution

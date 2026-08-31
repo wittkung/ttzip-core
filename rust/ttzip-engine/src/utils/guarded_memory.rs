@@ -59,7 +59,7 @@ impl GuardedBuffer {
         let payload_pages = if data_len == 0 {
             1
         } else {
-            (data_len + page_size - 1) / page_size
+            data_len.div_ceil(page_size)
         };
         let payload_bytes = payload_pages * page_size;
         let total_len = guard_bytes + payload_bytes + guard_bytes;
@@ -145,7 +145,7 @@ impl GuardedBuffer {
         let payload_pages = if data_len == 0 {
             1
         } else {
-            (data_len + page_size - 1) / page_size
+            data_len.div_ceil(page_size)
         };
         let payload_bytes = payload_pages * page_size;
         let total_len = guard_bytes + payload_bytes + guard_bytes;

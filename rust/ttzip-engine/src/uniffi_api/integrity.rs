@@ -224,7 +224,7 @@ pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZi
     let mut file = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
     let mut buf = [0u8; 64 * 1024];
 
-    let algo_norm = algorithm.trim().to_ascii_lowercase().replace('-', "").replace('_', "");
+    let algo_norm = algorithm.trim().to_ascii_lowercase().replace(['-', '_'], "");
     match algo_norm.as_str() {
         "crc32" => {
             let mut crc = 0u32;

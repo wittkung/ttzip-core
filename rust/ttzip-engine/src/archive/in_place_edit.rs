@@ -8,12 +8,11 @@
 //! Universal In-Place Atomic Archive & Compression Stream Mutation Engine.
 //!
 //! Supports transactional append, replace, and delete operations across 18 formats:
-//! 1. ZIP (zero-recompression Central Directory reconstruction)
-//! 2. 7-Zip (non-solid / solid append and header index reconstruction)
-//! 3. POSIX TAR (512-byte aligned in-place block overwrite, append, and double zero-block termination)
-//! 4-7. Compound TAR streams (TAR.GZ, TAR.BZ2, TAR.XZ, TAR.ZSTD) via single-pass in-memory micro-buffering
-//! 8-14. Single-file compressed streams (GZ, BZ2, XZ, ZST, Snappy, Brotli, LZFSE)
-//! 15-18. Generic containers (SquashFS, ISO 9660, CAB, WIM, DEB, RPM, CPIO, AR) with WAL transaction journals.
+//!
+//! - 1-3. Direct archive mutation: ZIP (CD reconstruction), 7-Zip (solid append), POSIX TAR (512-byte block overwrite)
+//! - 4-7. Compound TAR streams (TAR.GZ, TAR.BZ2, TAR.XZ, TAR.ZSTD) via single-pass in-memory micro-buffering
+//! - 8-14. Single-file compressed streams (GZ, BZ2, XZ, ZST, Snappy, Brotli, LZFSE)
+//! - 15-18. Generic containers (SquashFS, ISO 9660, CAB, WIM, DEB, RPM, CPIO, AR) with WAL transaction journals.
 
 pub mod compound;
 pub mod container;

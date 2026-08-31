@@ -11,12 +11,17 @@
 //! normalization filters for improving entropy coding and LZMA/LZMA2 compression ratios.
 
 pub mod bcj2;
+pub mod bcj2_stream;
 pub mod bcj_arm64;
 pub mod bcj_x86;
 
 pub use bcj2::{
     decode_bcj2, encode_bcj2, Bcj2Decoder, Bcj2Encoder, Bcj2Streams, NUM_BCJ2_PROBS,
     STREAM_CALL, STREAM_JUMP, STREAM_MAIN, STREAM_RC,
+};
+pub use bcj2_stream::{
+    decode_bcj2_stream, Bcj2ArbitratorStatus, Bcj2RangeState, Bcj2State, Bcj2StreamArbitrator,
+    Bcj2StreamId, Bcj2StreamReader, BCJ2_STREAM_BUFFER_SIZE,
 };
 pub use bcj_arm64::{arm64_decode, arm64_encode, BcjArm64};
 pub use bcj_x86::{x86_decode, x86_encode, BcjX86};

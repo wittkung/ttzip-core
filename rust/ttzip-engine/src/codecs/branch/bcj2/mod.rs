@@ -15,11 +15,18 @@
 
 pub mod decoder;
 pub mod encoder;
+pub mod range;
 pub mod range_coder;
+pub mod stream;
 
 pub use decoder::{decode_bcj2, Bcj2Decoder};
 pub use encoder::{encode_bcj2, Bcj2Encoder, Bcj2Streams};
-pub use range_coder::{RangeDecoder, RangeEncoder, NUM_BCJ2_PROBS};
+pub use range::{
+    Bcj2RangeDecoder, Bcj2RangeDecoderProbs, Bcj2RangeEncoder, BIT_MODEL_TOTAL, NUM_BCJ2_PROBS,
+    NUM_BIT_MODEL_TOTAL_BITS, NUM_MOVE_BITS, PROB_INIT_VAL, TOP_VALUE,
+};
+pub use range_coder::{RangeDecoder, RangeEncoder};
+pub use stream::{Bcj2StreamArbitrator, MicroBuffer, MICRO_BUFFER_SIZE};
 
 use super::StreamFilter;
 

@@ -47,6 +47,7 @@ fn extract_input_bytes<'a, 'py>(_py: Python<'py>, obj: &'a Bound<'py, PyAny>) ->
 }
 
 /// Safely extract mutable byte slice from a mutable Python buffer (bytearray).
+#[allow(clippy::mut_from_ref)]
 fn extract_mut_bytes<'a, 'py>(_py: Python<'py>, obj: &'a Bound<'py, PyAny>) -> PyResult<&'a mut [u8]> {
     if let Ok(byte_array) = obj.downcast::<PyByteArray>() {
         return Ok(unsafe { byte_array.as_bytes_mut() });

@@ -394,7 +394,7 @@ mod tests {
             user_data: std::ptr::null_mut(),
         };
 
-        UnifiedArchiveOrchestrator::create_archive(&[payload_file.clone()], &fast_out, &opt_fast, 0)
+        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&payload_file), &fast_out, &opt_fast, 0)
             .expect("create fast archive");
 
         let mut opt_ultra = opt_fast;

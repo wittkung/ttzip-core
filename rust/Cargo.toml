@@ -22,8 +22,11 @@ categories = ["compression", "command-line-utilities", "filesystem"]
 opt-level = 3
 lto = "thin"
 codegen-units = 16
-panic = "abort"
+panic = "unwind"
 strip = true
+
+
+
 
 
 [profile.test]
@@ -36,7 +39,7 @@ split-debuginfo = "unpacked"
 opt-level = 3
 
 [profile.test.package.ttzip-engine]
-opt-level = 2
+opt-level = 3
 
 
 [workspace.lints.rust]

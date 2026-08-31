@@ -74,7 +74,7 @@ fn test_vfs_lz4_cache_pool_ffi_lifecycle_and_spill() {
     unsafe {
         ttzip_rust_vfs_cache_free(handle);
     }
-    let _ = fs::remove_dir_all(&temp_spill);
+    let _ = fs::remove_dir_all(temp_spill);
 }
 
 #[test]
@@ -140,9 +140,8 @@ fn test_crypto_password_recovery_ffi_zipcrypto_and_winzip() {
 
 #[test]
 fn test_archive_repair_zip_and_tar_ffi() {
-    let temp_dir = std::env::temp_dir().join("ttzip_repair_ffi_test");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_dir_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_dir_guard.path();
 
     // 1. Corrupted ZIP Repair
     let zip_item = ZipCompressedItem {
@@ -204,5 +203,5 @@ fn test_archive_repair_zip_and_tar_ffi() {
     assert_eq!(tar_salvaged, 1);
     assert!(repaired_tar_path.exists());
 
-    let _ = fs::remove_dir_all(&temp_dir);
+    let _ = fs::remove_dir_all(temp_dir);
 }

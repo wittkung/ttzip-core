@@ -200,7 +200,7 @@ impl Read for VirtualFileStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let mut pos = self.position.lock();
         let bytes = self.inner.read_exact_at(*pos, buf.len() as u32)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))?;
+            .map_err(|e| std::io::Error::other(format!("{:?}", e)))?;
         let n = bytes.len();
         buf[..n].copy_from_slice(&bytes);
         *pos += n as u64;

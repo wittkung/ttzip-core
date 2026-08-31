@@ -8,15 +8,29 @@
 //! Format detection and format resolution submodule for Unified Orchestrator.
 
 use std::path::Path;
+use crate::archive::unified::format_sniffer::{FormatSniffer, SniffResult};
 use crate::standards::signatures::{CompoundFormat, DetectedFormat};
 use crate::standards::sniffer::detect_format_file;
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
+
+/// Sniffs detailed 50+ archive format with 3-state evaluation.
+pub fn detect_archive_sniff(path: &Path) -> Result<SniffResult, TTZipStatus> {
+    FormatSniffer::sniff_file(path).map_err(|_| TTZipStatus::ErrFileNotFound)
+}
 
 /// Detects format of an archive from file headers with extension fallback.
 pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundFormat>), TTZipStatus> {
     let sniff = detect_format_file(path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
     if sniff.format != DetectedFormat::Unknown {
         return Ok((sniff.format, sniff.compound_format));
+    }
+
+    // Secondary 50+ FormatSniffer lookup
+    if let Ok(SniffResult::Yes { format, .. }) = FormatSniffer::sniff_file(path) {
+        let detected = format.to_detected_format();
+        if detected != DetectedFormat::Unknown {
+            return Ok((detected, None));
+        }
     }
 
     // Extension fallback

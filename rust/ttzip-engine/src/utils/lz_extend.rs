@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_overlapping_match_rle() {
         // Overlapping match: "AAAA..." with offset 1
-        let data = vec![b'A'; 200];
+        let data = [b'A'; 200];
         let src = &data[1..];
         let match_slice = &data[..199];
 

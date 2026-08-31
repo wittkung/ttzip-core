@@ -286,7 +286,7 @@ pub fn uniffi_7z_aes256_derive_key(
     salt: Vec<u8>,
     num_cycles_power: u32,
 ) -> Vec<u8> {
-    let key = crate::crypto::sha256::derive_7z_aes_key(&password, &salt, num_cycles_power);
+    let key = crate::crypto::arm64_sha256::derive_7z_key_arm64(&password, &salt, num_cycles_power);
     key.to_vec()
 }
 

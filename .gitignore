@@ -24,7 +24,9 @@ upstream/
 
 # Rust Cargo & UniFFI
 target/
+target_sdk/
 rust/target/
+rust/target_sdk/
 core/target/
 **/*.rs.bk
 

@@ -148,7 +148,7 @@ impl BrotliDictionary {
 
     /// Precompiled built-in Source Code dictionary (C/Rust/Swift).
     pub fn builtin_source_code() -> Self {
-        const CODE_TOKENS: &str = "pub fn new() -> Self { Self { config: Default::default() } }\n#[inline]\npub fn is_empty(&self) -> bool { self.len() == 0 }\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\nint main(int argc, char** argv) {\n    if (argc < 2) return 1;\n    return 0;\n}\n// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0\nimport Foundation\nimport SwiftUI\n";
+        const CODE_TOKENS: &str = "pub fn new() -> Self { Self { config: Default::default() } }\n#[inline]\npub fn is_empty(&self) -> bool { self.len() == 0 }\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\nint main(int argc, char** argv) {\n    if (argc < 2) return 1;\n    return 0;\n}\n// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0\nimport Foundation\nimport Accelerate\n";
         Self::from_raw(
             "brotli-dict-source-code-v1",
             BrotliDictDomain::SourceCode,
@@ -200,7 +200,7 @@ impl BrotliDictionary {
                 (ngram, score)
             })
             .collect();
-        ranked.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+        ranked.sort_unstable_by_key(|b| std::cmp::Reverse(b.1));
 
         let mut dict_buf = Vec::with_capacity(max_size);
         for (ngram, _) in ranked {

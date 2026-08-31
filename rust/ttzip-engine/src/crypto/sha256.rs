@@ -387,89 +387,12 @@ impl SevenZKeyCache {
 // 5. 7z SHA-256 Key Derivation Function (KDF)
 // ============================================================================
 
-/// Derives a 32-byte AES key for 7z archives using hardware-accelerated SHA-256.
-///
-/// Features:
-/// - Fast LRU singleton cache check for 0ms repeated lookups.
-/// - Pre-populated 4KB batch buffering to saturate hardware SIMD pipelines.
-/// - Zero heap allocation during key computation.
-/// - Full `Zeroize` erasure of sensitive plaintext and intermediate buffers.
-pub fn derive_7z_aes_key(password: &str, salt: &[u8], num_cycles_power: u32) -> [u8; 32] {
-    if let Some(cached) = SevenZKeyCache::global().get(password, salt, num_cycles_power) {
-        return cached;
-    }
-
-    let mut hasher = HardwareSha256::new();
-    let num_cycles = 1u64 << num_cycles_power;
-
-    let mut utf16_buf = [0u8; 1024];
-    let mut utf16_len = 0;
-
-    for val in password.encode_utf16() {
-        if utf16_len + 2 <= utf16_buf.len() {
-            let bytes = val.to_le_bytes();
-            utf16_buf[utf16_len] = bytes[0];
-            utf16_buf[utf16_len + 1] = bytes[1];
-            utf16_len += 2;
-        }
-    }
-
-    let pass_bytes = &utf16_buf[..utf16_len];
-    let prefix_len = salt.len() + pass_bytes.len();
-    let step_len = prefix_len + 8;
-
-    if step_len <= 1024 {
-        let mut iter_buf = [0u8; 1024];
-        if !salt.is_empty() { iter_buf[..salt.len()].copy_from_slice(salt); }
-        if !pass_bytes.is_empty() { iter_buf[salt.len()..prefix_len].copy_from_slice(pass_bytes); }
-
-        const BATCH_BUF_SIZE: usize = 4096;
-        let batch_count = (BATCH_BUF_SIZE / step_len).max(1);
-        let mut batch_buf = [0u8; BATCH_BUF_SIZE];
-
-        for step_idx in 0..batch_count {
-            let offset = step_idx * step_len;
-            batch_buf[offset..offset + prefix_len].copy_from_slice(&iter_buf[..prefix_len]);
-        }
-
-        let mut i = 0u64;
-        while i + (batch_count as u64) <= num_cycles {
-            for step_idx in 0..batch_count {
-                let current_cycle = i + (step_idx as u64);
-                let counter_offset = step_idx * step_len + prefix_len;
-                batch_buf[counter_offset..counter_offset + 8].copy_from_slice(&current_cycle.to_le_bytes());
-            }
-            hasher.update(&batch_buf[..batch_count * step_len]);
-            i += batch_count as u64;
-        }
-
-        while i < num_cycles {
-            iter_buf[prefix_len..step_len].copy_from_slice(&i.to_le_bytes());
-            hasher.update(&iter_buf[..step_len]);
-            i += 1;
-        }
-
-        iter_buf.zeroize();
-        batch_buf.zeroize();
-    } else {
-        for i in 0..num_cycles {
-            if !salt.is_empty() { hasher.update(salt); }
-            if !pass_bytes.is_empty() { hasher.update(pass_bytes); }
-            hasher.update(&i.to_le_bytes());
-        }
-    }
-
-    utf16_buf.zeroize();
-
-    let key = hasher.finalize();
-    SevenZKeyCache::global().insert(password, salt, num_cycles_power, key);
-    key
-}
-
-/// Backwards-compatible alias for `derive_7z_aes_key`.
+/// 7z SHA-256 KDF key derivation.
 pub fn sha256_7z_kdf(password: &str, salt: &[u8], num_cycles_power: u32) -> [u8; 32] {
-    derive_7z_aes_key(password, salt, num_cycles_power)
+    crate::crypto::arm64_sha256::derive_7z_key_arm64(password, salt, num_cycles_power)
 }
+
+pub use crate::crypto::arm64_sha256::{derive_7z_key_arm64, sha256_compress_blocks};
 
 // ============================================================================
 // 6. Unit Tests
@@ -514,13 +437,13 @@ mod tests {
 
         // 7-Zip Standard KDF Test Vectors:
         // Case 1: Password = "", Salt = [], num_cycles_power = 0 (1 cycle: hashes 8 bytes 0x00)
-        let key_empty = derive_7z_aes_key("", &[], 0);
+        let key_empty = sha256_7z_kdf("", &[], 0);
         let mut expected_h = HardwareSha256::new();
         expected_h.update(&0u64.to_le_bytes());
         assert_eq!(key_empty, expected_h.finalize());
 
         // Case 2: Password = "123", Salt = [0xAA, 0xBB], num_cycles_power = 1 (2 cycles)
-        let key_123 = derive_7z_aes_key("123", &[0xAA, 0xBB], 1);
+        let key_123 = sha256_7z_kdf("123", &[0xAA, 0xBB], 1);
         let mut exp_123 = HardwareSha256::new();
         let pass_utf16_123: [u8; 6] = [0x31, 0x00, 0x32, 0x00, 0x33, 0x00];
         exp_123.update(&[0xAA, 0xBB]);
@@ -533,7 +456,7 @@ mod tests {
 
         // Case 3: 7z Standard 64-cycle vector
         let salt = [0x01, 0x02, 0x03, 0x04];
-        let key = derive_7z_aes_key("password123", &salt, 6);
+        let key = sha256_7z_kdf("password123", &salt, 6);
         assert_ne!(key, [0u8; 32]);
     }
 
@@ -570,7 +493,7 @@ mod tests {
         let num_cycles_power = 19; // 524,288 cycles
 
         let start = Instant::now();
-        let key1 = derive_7z_aes_key(password, &salt, num_cycles_power);
+        let key1 = sha256_7z_kdf(password, &salt, num_cycles_power);
         let elapsed = start.elapsed();
 
         println!("524,288 cycles 7z SHA-256 KDF elapsed time: {:.3} ms", elapsed.as_secs_f64() * 1000.0);
@@ -578,7 +501,7 @@ mod tests {
         assert!(elapsed.as_millis() <= 20, "7z KDF derivation took {:?}, exceeding 20ms threshold", elapsed);
 
         let cache_start = Instant::now();
-        let key2 = derive_7z_aes_key(password, &salt, num_cycles_power);
+        let key2 = sha256_7z_kdf(password, &salt, num_cycles_power);
         let cache_elapsed = cache_start.elapsed();
 
         assert_eq!(key1, key2);

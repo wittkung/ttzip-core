@@ -89,6 +89,20 @@ impl ProcessRusage {
     }
 }
 
+/// Internal measurement metrics for MIPS score calculation.
+#[derive(Debug, Clone, Copy)]
+struct MipsMetricsInput {
+    dict_mb: u32,
+    threads: u32,
+    iters: u32,
+    unpack_size_per_iter: usize,
+    pack_size_per_iter: usize,
+    comp_elapsed: f64,
+    decomp_elapsed: f64,
+    wall_elapsed: f64,
+    cpu_time_elapsed: f64,
+}
+
 /// Hardware performance benchmark engine based on official 7-Zip LZMA2 MIPS formulas.
 pub struct MIPSHardwareBenchmarkEngine;
 
@@ -115,14 +129,14 @@ impl MIPSHardwareBenchmarkEngine {
     pub fn count_cpu_freq_inner(mut a: u64, mut b: u64) -> (u64, u64) {
         macro_rules! alu_step8 {
             () => {
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
-                a = a.wrapping_add(b); b = b ^ a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
+                a = a.wrapping_add(b); b ^= a;
             };
         }
         // 16 blocks * 8 instructions = 128 dependent ALU operations
@@ -229,17 +243,17 @@ impl MIPSHardwareBenchmarkEngine {
         let rusage_end = ProcessRusage::current();
         let cpu_time_elapsed = (rusage_end.total_cpu_secs() - rusage_start.total_cpu_secs()).max(0.0);
 
-        Self::calculate_metric(
+        Self::calculate_metric(&MipsMetricsInput {
             dict_mb,
-            1,
+            threads: 1,
             iters,
-            buffer_size,
-            compressed_len,
+            unpack_size_per_iter: buffer_size,
+            pack_size_per_iter: compressed_len,
             comp_elapsed,
             decomp_elapsed,
-            total_wall_elapsed,
+            wall_elapsed: total_wall_elapsed,
             cpu_time_elapsed,
-        )
+        })
     }
 
     fn run_multi_thread(
@@ -319,41 +333,30 @@ impl MIPSHardwareBenchmarkEngine {
         let total_pack_size: usize = compressed_items.iter().map(|(_, sz)| *sz).sum();
         let avg_pack_size = total_pack_size / (threads.max(1) as usize);
 
-        Self::calculate_metric(
+        Self::calculate_metric(&MipsMetricsInput {
             dict_mb,
             threads,
             iters,
-            buffer_size * (threads as usize),
-            avg_pack_size * (threads as usize),
+            unpack_size_per_iter: buffer_size * (threads as usize),
+            pack_size_per_iter: avg_pack_size * (threads as usize),
             comp_elapsed,
             decomp_elapsed,
-            total_wall_elapsed,
+            wall_elapsed: total_wall_elapsed,
             cpu_time_elapsed,
-        )
+        })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn calculate_metric(
-        dict_mb: u32,
-        threads: u32,
-        iters: u32,
-        unpack_size_per_iter: usize,
-        pack_size_per_iter: usize,
-        comp_elapsed: f64,
-        decomp_elapsed: f64,
-        wall_elapsed: f64,
-        cpu_time_elapsed: f64,
-    ) -> Result<MIPSResult, TTZipStatus> {
-        let total_uncompressed_bytes = (unpack_size_per_iter as f64) * (iters as f64);
-        let total_compressed_bytes = (pack_size_per_iter as f64) * (iters as f64);
+    fn calculate_metric(input: &MipsMetricsInput) -> Result<MIPSResult, TTZipStatus> {
+        let total_uncompressed_bytes = (input.unpack_size_per_iter as f64) * (input.iters as f64);
+        let total_compressed_bytes = (input.pack_size_per_iter as f64) * (input.iters as f64);
 
         let uncompressed_mb = total_uncompressed_bytes / (1024.0 * 1024.0);
-        let comp_speed_mbs = uncompressed_mb / comp_elapsed;
-        let decomp_speed_mbs = uncompressed_mb / decomp_elapsed;
+        let comp_speed_mbs = uncompressed_mb / input.comp_elapsed;
+        let decomp_speed_mbs = uncompressed_mb / input.decomp_elapsed;
 
         // 1. Official 7-Zip Logarithmic Polynomial Complexity:
         // Complexity(D) = 870 + 5 * (log2(D) - 18)^2
-        let dictionary_bytes = (dict_mb as usize) * 1024 * 1024;
+        let dictionary_bytes = (input.dict_mb as usize) * 1024 * 1024;
         let complexity_d = Self::calculate_lzma2_complexity(dictionary_bytes);
 
         // 2. Compress MIPS = Throughput(MB/s) * Complexity(D)
@@ -364,23 +367,23 @@ impl MIPSHardwareBenchmarkEngine {
         let decompress_commands = 190.0 * total_compressed_bytes + 4.0 * total_uncompressed_bytes;
 
         // 4. Decompress MIPS = Decompress Commands / (Elapsed_Time * 10^6)
-        let decompress_mips = decompress_commands / (decomp_elapsed * 1_000_000.0);
+        let decompress_mips = decompress_commands / (input.decomp_elapsed * 1_000_000.0);
 
         // 5. Total MIPS
         let total_mips = (compress_mips + decompress_mips) / 2.0;
 
         // 6. CPU Usage % & Rating/Usage using getrusage
-        let measured_cpu_usage = if wall_elapsed > 0.0001 && cpu_time_elapsed > 0.0 {
-            (cpu_time_elapsed / wall_elapsed) * 100.0
+        let measured_cpu_usage = if input.wall_elapsed > 0.0001 && input.cpu_time_elapsed > 0.0 {
+            (input.cpu_time_elapsed / input.wall_elapsed) * 100.0
         } else {
-            (threads as f64) * 100.0
+            (input.threads as f64) * 100.0
         };
-        let cpu_usage_percent = measured_cpu_usage.clamp(50.0, (threads as f64) * 120.0);
+        let cpu_usage_percent = measured_cpu_usage.clamp(50.0, (input.threads as f64) * 120.0);
         let rating_per_usage = total_mips / (cpu_usage_percent / 100.0).max(0.01);
 
         Ok(MIPSResult {
-            dictionary_size_mb: dict_mb,
-            thread_count: threads,
+            dictionary_size_mb: input.dict_mb,
+            thread_count: input.threads,
             compress_mips,
             decompress_mips,
             total_mips,

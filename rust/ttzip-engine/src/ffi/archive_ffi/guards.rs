@@ -10,7 +10,7 @@
 use super::sys::*;
 use libc::c_void;
 
-pub(crate) struct ArchiveReadGuard(pub *mut c_void);
+pub struct ArchiveReadGuard(pub *mut c_void);
 
 impl Drop for ArchiveReadGuard {
     fn drop(&mut self) {
@@ -24,7 +24,7 @@ impl Drop for ArchiveReadGuard {
     }
 }
 
-pub(crate) struct ArchiveWriteGuard(pub *mut c_void);
+pub struct ArchiveWriteGuard(pub *mut c_void);
 
 impl Drop for ArchiveWriteGuard {
     fn drop(&mut self) {
@@ -38,7 +38,7 @@ impl Drop for ArchiveWriteGuard {
     }
 }
 
-pub(crate) struct ArchiveEntryGuard(pub *mut c_void);
+pub struct ArchiveEntryGuard(pub *mut c_void);
 
 impl Drop for ArchiveEntryGuard {
     fn drop(&mut self) {

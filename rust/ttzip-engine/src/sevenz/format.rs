@@ -12,39 +12,29 @@ use crate::types::TTZipStatus;
 
 pub const SEVENZ_SIGNATURE: [u8; 6] = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]; // '7', 'z', 0xBC, 0xAF, 0x27, 0x1C
 
-// 7z Property Tags (IDs)
-pub const K_END: u8 = 0x00;
-pub const K_HEADER: u8 = 0x01;
-pub const K_ARCHIVE_PROPERTIES: u8 = 0x02;
-pub const K_ADDITIONAL_STREAMS_INFO: u8 = 0x03;
-pub const K_MAIN_STREAMS_INFO: u8 = 0x04;
-pub const K_FILES_INFO: u8 = 0x05;
-pub const K_PACK_INFO: u8 = 0x06;
-pub const K_UNPACK_INFO: u8 = 0x07;
-pub const K_SUB_STREAMS_INFO: u8 = 0x08;
-pub const K_SIZE: u8 = 0x09;
-pub const K_CRC: u8 = 0x0A;
-pub const K_FOLDER: u8 = 0x0B;
-pub const K_CODERS_UNPACK_SIZE: u8 = 0x0C;
-pub const K_NUM_UNPACK_STREAM: u8 = 0x0D;
-pub const K_EMPTY_STREAM: u8 = 0x0E;
-pub const K_EMPTY_FILE: u8 = 0x0F;
-pub const K_ANTI: u8 = 0x10;
-pub const K_NAME: u8 = 0x11;
-pub const K_CTIME: u8 = 0x12;
-pub const K_ATIME: u8 = 0x13;
-pub const K_MTIME: u8 = 0x14;
-pub const K_WIN_ATTRIBUTES: u8 = 0x15;
-pub const K_COMMENT: u8 = 0x16;
-pub const K_ENCODED_HEADER: u8 = 0x17;
+// 7z Property Tags (NIDs re-exported from varint module)
+pub use crate::sevenz::varint::{
+    K_ADDITIONAL_STREAMS_INFO, K_ANTI, K_ARCHIVE_PROPERTIES, K_ATIME, K_CODERS_UNPACK_SIZE,
+    K_COMMENT, K_CRC, K_CTIME, K_DUMMY, K_EMPTY_FILE, K_EMPTY_STREAM, K_ENCODED_HEADER,
+    K_END, K_FILES_INFO, K_FOLDER, K_HEADER, K_MAIN_STREAMS_INFO, K_MTIME, K_NAME,
+    K_NUM_UNPACK_STREAM, K_PACK_INFO, K_SIZE, K_START_EDIT_HEADER, K_SUB_STREAMS_INFO,
+    K_UNPACK_INFO, K_WIN_ATTRIBUTES,
+};
 
 // 7z Coder Method IDs
 pub const METHOD_COPY: u64 = 0x00;
-pub const METHOD_LZMA: u64 = 0x030101;
-pub const METHOD_PPMD: u64 = 0x030401;
+pub const METHOD_DELTA: u64 = 0x03;
+pub const METHOD_ARM64: u64 = 0x0A;
 pub const METHOD_LZMA2: u64 = 0x21;
+pub const METHOD_LZMA: u64 = 0x030101;
+pub const METHOD_BCJ_X86: u64 = 0x03030103;
+pub const METHOD_BCJ2: u64 = 0x0303011B;
+pub const METHOD_ARM64_ALT: u64 = 0x03030701;
+pub const METHOD_PPMD: u64 = 0x030401;
 pub const METHOD_DEFLATE: u64 = 0x040108;
 pub const METHOD_BZIP2: u64 = 0x040202;
+pub const METHOD_BROTLI: u64 = 0x04F71102;
+pub const METHOD_LZ4: u64 = 0x04F71104;
 pub const METHOD_AES: u64 = 0x06F10701;
 
 /// Parsed 7z Signature Header (32 bytes at offset 0).
@@ -110,68 +100,22 @@ impl SevenZSignatureHeader {
     }
 }
 
+pub use crate::sevenz::varint::{
+    decode_7z_varint, encode_7z_varint, encode_7z_varint_vec, try_encode_7z_varint,
+    varint_size_7z, VarintError, MAX_VARINT_LEN_7Z,
+};
+
 /// Reads a 7z variable-length integer (Varint) from slice.
-/// Returns `(value, bytes_consumed)` or `None` if slice is too short.
+/// Returns `(value, bytes_consumed)` or `None` if slice is too short or invalid.
+#[inline]
 pub fn read_varint(buf: &[u8]) -> Option<(u64, usize)> {
-    if buf.is_empty() {
-        return None;
-    }
-
-    let first = buf[0];
-    let k = (!first).leading_zeros() as usize; // Number of leading 1 bits in first (0..=8)
-
-    if k == 0 {
-        return Some((first as u64, 1));
-    }
-    if k > 8 || buf.len() < 1 + k {
-        return None;
-    }
-
-    if k == 8 {
-        let val = u64::from_le_bytes(buf[1..9].try_into().unwrap());
-        return Some((val, 9));
-    }
-
-    let mask = ((0xFFu16 >> (k + 1)) & 0xFF) as u8;
-    let high_part = ((first & mask) as u64) << (k * 8);
-
-    let mut low_part = 0u64;
-    for i in 0..k {
-        low_part |= (buf[1 + i] as u64) << (i * 8);
-    }
-
-    Some((high_part | low_part, 1 + k))
+    decode_7z_varint(buf).ok()
 }
 
 /// Writes a 7z variable-length integer (Varint) to a vector.
+#[inline]
 pub fn write_varint(val: u64, out: &mut Vec<u8>) {
-    if val < 0x80 {
-        out.push(val as u8);
-        return;
-    }
-
-    for extra_bytes in 1..=8 {
-        let max_val = if extra_bytes == 8 {
-            u64::MAX
-        } else {
-            let high_bits_count = 7 - extra_bytes;
-            (1u64 << (8 * extra_bytes + high_bits_count)) - 1
-        };
-
-        if val <= max_val || extra_bytes == 8 {
-            let first_mask = ((0xFFu16 << (8 - extra_bytes)) & 0xFF) as u8;
-            let high_val = if extra_bytes == 8 {
-                0
-            } else {
-                (val >> (8 * extra_bytes)) as u8
-            };
-            out.push(first_mask | high_val);
-            for i in 0..extra_bytes {
-                out.push((val >> (i * 8)) as u8);
-            }
-            return;
-        }
-    }
+    encode_7z_varint_vec(val, out);
 }
 
 #[cfg(test)]

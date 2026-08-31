@@ -36,7 +36,9 @@ crossbeam-utils = "0.8"
 parking_lot = "0.12"
 snap = "1.1"
 brotli = "7.0"
+flate2 = "1.0"
 crc32fast = "1.4"
+ppmd-rust = "1"
 adler2 = "2.0"
 encoding_rs = "0.8"
 chardetng = "0.1"
@@ -100,6 +102,8 @@ tempfile = "3.12"
 flate2 = "1.0"
 tar = "0.4"
 jpeg-encoder = "0.5"
+zeroize = { version = "1.8", features = ["zeroize_derive", "alloc"] }
+
 
 [build-dependencies]
 cc = "1.0"

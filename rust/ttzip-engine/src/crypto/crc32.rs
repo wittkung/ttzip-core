@@ -350,7 +350,6 @@ mod arm64 {
 // ============================================================================
 // 2. Slice-by-8 Scalar Reference Fallback
 // ============================================================================
-#[allow(dead_code)]
 pub mod scalar {
     // Precomputed IEEE 802.3 CRC-32 table (polynomial 0xEDB88320)
     const fn make_tables() -> [[u32; 256]; 8] {

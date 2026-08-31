@@ -45,8 +45,7 @@ pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Resu
 /// 2. Absolute root paths (`/etc/passwd`, `\Windows\System32`, `C:\`)
 /// 3. Embedded null bytes (`\0`)
 pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Result<PathBuf, TTZipStatus> {
-    if raw_entry_path.is_empty()
-        || raw_entry_path.starts_with('/')
+    if raw_entry_path.starts_with('/')
         || raw_entry_path.starts_with('\\')
         || raw_entry_path.contains('\0')
         || raw_entry_path.contains("://")
@@ -115,6 +114,7 @@ pub struct DeferredEntryMetadata {
     pub mtime_epoch_secs: i64,
     pub mtime_nanos: u32,
     pub is_directory: bool,
+    pub is_symlink: bool,
 }
 
 impl DeferredEntryMetadata {
@@ -146,12 +146,26 @@ impl SafeExtractEngine {
         mtime_nanos: u32,
         is_directory: bool,
     ) {
+        self.register_entry_typed(path, mode, mtime_epoch_secs, mtime_nanos, is_directory, false);
+    }
+
+    /// Registers an entry with explicit directory and symlink discrimination.
+    pub fn register_entry_typed(
+        &mut self,
+        path: PathBuf,
+        mode: u32,
+        mtime_epoch_secs: i64,
+        mtime_nanos: u32,
+        is_directory: bool,
+        is_symlink: bool,
+    ) {
         self.deferred_entries.push(DeferredEntryMetadata {
             path,
             mode,
             mtime_epoch_secs,
             mtime_nanos,
             is_directory,
+            is_symlink,
         });
     }
 
@@ -178,6 +192,7 @@ impl SafeExtractEngine {
             mtime_epoch_secs: mtime_secs,
             mtime_nanos: 0,
             is_directory: true,
+            is_symlink: false,
         });
 
         Ok(())
@@ -216,6 +231,7 @@ impl SafeExtractEngine {
             mtime_epoch_secs: mtime_secs,
             mtime_nanos: 0,
             is_directory: false,
+            is_symlink: false,
         });
 
         Ok(file)
@@ -267,19 +283,19 @@ impl SafeExtractEngine {
         };
 
         unsafe {
-            // Check using lstat to verify entry is NOT a symlink (TOCTOU defense)
+            // Check using lstat to verify entry is NOT an unexpected symlink (TOCTOU defense)
             let mut st: libc::stat = std::mem::zeroed();
             if libc::lstat(c_path.as_ptr(), &mut st) != 0 {
                 return Err(TTZipStatus::ErrFileNotFound);
             }
 
-            // Ensure not a symlink
-            if (st.st_mode & libc::S_IFMT) == libc::S_IFLNK {
+            let is_actual_symlink = (st.st_mode & libc::S_IFMT) == libc::S_IFLNK;
+            if !entry.is_symlink && is_actual_symlink {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
 
-            // Apply POSIX permissions if requested
-            if preserve_permissions && entry.mode != 0 {
+            // Apply POSIX permissions if requested and not a symlink
+            if preserve_permissions && !is_actual_symlink && entry.mode != 0 {
                 let target_mode = (entry.mode & 0o7777) as libc::mode_t;
                 if libc::chmod(c_path.as_ptr(), target_mode) != 0 {
                     return Err(TTZipStatus::ErrExtractionFailed);

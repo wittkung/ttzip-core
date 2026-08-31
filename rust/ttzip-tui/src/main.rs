@@ -13,7 +13,8 @@ use ttzip_tui::cli::{
     execute_bench, execute_cat, execute_check, execute_comment, execute_completions,
     execute_convert, execute_create, execute_delete, execute_diff, execute_doctor, execute_extract,
     execute_hash, execute_info, execute_join, execute_list, execute_lock, execute_recover,
-    execute_repair, execute_split, execute_tree, execute_update, run_interactive_tui, Cli, Commands,
+    execute_repair, execute_split, execute_tree, execute_update, run_interactive_tui, Cli,
+    CliExtractParams, Commands,
 };
 
 fn main() {
@@ -36,16 +37,16 @@ fn main() {
             dry_run,
             include,
             exclude,
-        }) => execute_extract(
-            &archive,
-            output.as_deref(),
-            password.as_deref(),
+        }) => execute_extract(CliExtractParams {
+            archive_path: &archive,
+            output_dir: output.as_deref(),
+            password: password.as_deref(),
             threads,
             verbose,
             dry_run,
-            &include,
-            &exclude,
-        )
+            include: &include,
+            exclude: &exclude,
+        })
         .map_err(|e| e.into()),
         Some(Commands::Create {
             archive,

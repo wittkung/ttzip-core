@@ -38,4 +38,10 @@ pub use stream::{ZstdStreamReader, ZstdStreamWriter, ZSTD_STREAM_BUFFER_SIZE};
 pub use types::{
     ZstdCParameter, ZstdConfig, ZstdDParameter, ZstdEndDirective, ZstdInBuffer, ZstdOutBuffer,
 };
+pub use crate::codecs::zstd_seekable::{
+    SeekFrameInfo, SeekTableDecoder, SeekTableEncoder, SeekTableEntry, SeekableError,
+    ZstdSeekableReader, ZstdSeekableWriter, DEFAULT_SEEKABLE_FRAME_SIZE, SEEKABLE_FOOTER_SIZE,
+    SEEKABLE_MAGIC_NUMBER, SEEK_TABLE_FLAG_CHECKSUM, SKIPPABLE_HEADER_SIZE,
+    SKIPPABLE_MAGIC_NUMBER,
+};
 

@@ -119,11 +119,34 @@ swift run ttzip-bench pipeline
    - **确定性确界 (Bounds-First)**: 密码与敏感内存必须调用 `zeroize` / `SecureBytes` 擦除；跨语言数值必须经过 `SSIZE_MAX` Clamp。
    - **真实预言机 (Oracle-First)**: 自动化测试面向真实边界用例；自研引擎与系统原生 `/usr/bin/tar` / `/usr/bin/unzip` 执行双向差分测试。
 
-4. **严格单文件 LOC 门禁 ($\le 800$ LOC)**:
-   - 单文件行数硬性上限 800 行，目标均值 $\le 350$ 行。超限阻断 CI 流水线。
+4. **严格单文件 LOC 门禁 ($\le 800$ LOC) 与单一职责重构铁律 (Single Responsibility & Anti-Squishing Mandate)**:
+   - **单一职责警报器**: 单文件 $\le 800$ 行门禁（目标均值 $\le 350$ 行）的本质是**系统架构异味与职责超载探测器**。超限阻断 CI 流水线；
+   - **严禁掩耳盗铃式机械代码压缩 (Strict Anti-Squishing)**: 严禁为了规避 800 行上限而采取任何破坏可读性的代码压缩手段（如将多个函数参数挤在一行、删除合法空行与换行、多条语句合并单行、使用无意义单字母短变量名等）；
+   - **唯一合法应对动作：物理架构重构与职责拆分**: 一旦单个文件接近或超过 800 行，这明确表明**该文件已经承担了过多的业务或系统职责**。开发者必须立即对其进行**物理层面的架构解耦与拆分重构**（如将大文件拆分为子目录模块、将数据模型/枚举与核心状态机分离、将不同维度的算法或管线抽离为正交的独立子文件），通过优雅的模块化降低复杂度，严禁在单个臃肿文件内继续堆砌或压缩！
 
-5. **绝对零编译告警 (Zero-Warning Hard Gate)**:
-   - 无论是 Debug、Release 还是 Test Target，必须无条件通过 `-warnings-as-errors`。
+5. **绝对零编译告警与严禁 `#[allow(...)]` 掩耳盗铃假修复铁律 (Zero-Warning Hard Gate & Anti-Suppression Invariant)**:
+   - **绝对零警告硬门禁**: 无论是 Debug、Release 还是 Test Target，代码必须无条件通过 `-warnings-as-errors` 与 `cargo clippy --workspace --all-targets -- -D warnings` 零错误 0 告警通过；
+   - **严禁滥用 `#[allow(...)]` 抑制宏假装合规 (Strict Anti-Suppression)**: 严禁为了消灭警告或图省事而在业务、算法或测试代码中粗暴添加 `#[allow(...)]` 或 `#![allow(...)]`（如 `clippy::too_many_arguments`、`clippy::large_enum_variant`、`dead_code`、`unused_variables`、`#![allow(warnings)]` 等）；
+   - **唯一合法根治路径（物理重构与类型加固）**:
+     - 遇到 `too_many_arguments`（>7 个参数），必须物理重构为强类型参数对象/配置结构体（如 `XxxOptions`）；
+     - 遇到 `large_enum_variant`（枚举变体尺寸悬殊），必须使用 `Box<T>` 堆指针包裹大变体，维持枚举栈上紧凑对齐；
+     - 遇到 `dead_code` / `unused_variables`，必须物理清理死代码或修正调用逻辑，绝对严禁留存加 `allow` 假死代码；
+     - **唯一不可抗力豁免清单**：仅允许 Mozilla UniFFI Proc-Macro 宏生成绑定、外部 C-ABI 裸结构体内存对齐等物理不可抗力场景。
+
+6. **严禁伪基准与宽松阈值妥协 (Strict Physical Parameters & Zero-Compromise Invariant)**:
+   - **真实物理界限**: 严禁在测试代码、基准测试用例或任何配置中为了"规避测试失败"或"图方便"而随意放宽物理常数与统计学阈值（如将 `max_allowed_regression` 设为 10%~50%、将 `target_rse_pct` 设为 10% 等）。
+   - **硬性门禁区间**: 
+     - 生产环境最大允许性能倒退 `max_allowed_regression` 硬上限为 $\le 3.0\%$（单测与临时基准不得超过 $\le 5.0\%$）；
+     - 稳态相对标准误差 `target_rse_pct` 必须保持在 $\le 2.0\%$（生产推荐 $\le 0.5\%$）；
+     - 统计显著性必须基于严谨的 $p \le 0.05$（95% 置信区间）。
+   - **宁死锁报错，绝不掩耳盗铃**: 遇测试偶发失败，必须通过增加有效负载尺寸、引入时钟上升沿对齐（`wait_for_next_tick`）、1000ms 自适应时间积分或 Hampel MAD 离群点滤波在物理层面上消抖解决，绝对严禁通过调大阈值假装通过！
+
+7. **精准测试过滤与零空转铁律 (Precise Test Targeting & Zero-Idle-Process Mandate)**:
+   - **禁止低效模糊匹配**: 严禁在测试单个模块时使用 `cargo test -p ttzip-engine <pattern>`（不加 `--lib` 或 `--test`），这会导致 Cargo 盲目 `fork/exec` 启动 tests/ 目录下全部 60+ 个集成测试进程逐一过滤（产生大量 `0 passed; N filtered out`），白白浪费 10~20 秒 I/O 与进程派生开销；
+   - **靶向命令铁律**:
+     - **库内单元测试**: 必须显式添加 `--lib`（如 `cargo test -p ttzip-engine --lib crypto::blake3`），0.05 秒毫秒级直达；
+     - **集成测试文件**: 必须显式添加 `--test <test_binary>`（如 `cargo test -p ttzip-engine --test blake3_facade_tests`），仅启动目标二进制；
+     - **全量门禁回归**: 必须使用 `cargo test --workspace` 或专属测试脚本（如 `./scripts/run_blake3_tests.sh`）。
 
 ---
 

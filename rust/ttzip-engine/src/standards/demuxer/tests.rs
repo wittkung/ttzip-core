@@ -40,7 +40,7 @@ fn mp4_box(fourcc: &[u8; 4], payload: &[u8]) -> Vec<u8> {
 #[test]
 fn test_mkv_demux_synthetic_container() {
     let ebml_hdr = ebml_box(0x1A45_DFA3, &ebml_str(0x4282, "matroska"));
-    let mut info_b = ebml_uint(0x2AD7_B1, 1_000_000, 3);
+    let mut info_b = ebml_uint(0x002A_D7B1, 1_000_000, 3);
     info_b.extend(ebml_float32(0x4489, 65000.0));
     info_b.extend(ebml_str(0x7BA9, "Synthetic Anime EP01"));
     let info = ebml_box(0x1549_A966, &info_b);
@@ -58,14 +58,14 @@ fn test_mkv_demux_synthetic_container() {
     let mut a_b = ebml_uint(0xD7, 2, 1);
     a_b.extend(ebml_uint(0x83, 2, 1));
     a_b.extend(ebml_str(0x86, "A_OPUS"));
-    a_b.extend(ebml_str(0x22B5_9C, "jpn"));
+    a_b.extend(ebml_str(0x0022_B59C, "jpn"));
     a_b.extend(ebml_box(0xE1, &a_sub));
 
     let mut s_b = ebml_uint(0xD7, 3, 1);
     s_b.extend(ebml_uint(0x83, 17, 1));
     s_b.extend(ebml_str(0x86, "S_TEXT/ASS"));
     s_b.extend(ebml_str(0x536E, "English Dialogue"));
-    s_b.extend(ebml_str(0x22B5_9C, "eng"));
+    s_b.extend(ebml_str(0x0022_B59C, "eng"));
 
     let mut trk_b = ebml_box(0xAE, &v_b);
     trk_b.extend(ebml_box(0xAE, &a_b));
@@ -228,7 +228,7 @@ fn test_webm_and_quicktime_containers() {
 #[test]
 fn test_mkv_two_pass_tail_seekhead_and_cues() {
     let ebml_hdr = ebml_box(0x1A45_DFA3, &ebml_str(0x4282, "matroska"));
-    let mut info_b = ebml_uint(0x2AD7_B1, 1_000_000, 3);
+    let mut info_b = ebml_uint(0x002A_D7B1, 1_000_000, 3);
     info_b.extend(ebml_str(0x7BA9, "Two Pass Film"));
     let info = ebml_box(0x1549_A966, &info_b);
 

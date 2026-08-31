@@ -38,43 +38,53 @@ pub fn probe_isobmff(data: &[u8]) -> Option<IsobMffOutcome> {
     let brand = &data[8..12];
     let is_heic_or_avif = matches!(brand, b"heic" | b"heix" | b"mif1" | b"msf1" | b"avif" | b"avis");
 
-    let (mut dur, mut vw, mut vh, mut vcodec, mut acodec) = (0.0f64, 0u32, 0u32, String::new(), String::new());
-    let (mut asr, mut ach, mut rot) = (0u32, 0u32, 0u32);
-
-    scan_isobmff_boxes(data, 0, data.len(), &mut dur, &mut vw, &mut vh, &mut vcodec, &mut acodec, &mut asr, &mut ach, &mut rot, 0);
+    let mut state = IsobMffBoxScannerState::default();
+    scan_isobmff_boxes(data, 0, data.len(), &mut state, 0);
 
     if is_heic_or_avif {
         let (fmt, mime) = if brand == b"avif" || brand == b"avis" { ("AVIF Image", "image/avif") } else { ("HEIC Image", "image/heic") };
-        let ori = match rot { 90 => 6, 180 => 3, 270 => 8, _ => 1 };
+        let ori = match state.rot { 90 => 6, 180 => 3, 270 => 8, _ => 1 };
         return Some(IsobMffOutcome::Image(ImageProbeResult {
-            width: vw.max(1), height: vh.max(1), orientation: ori, bit_depth: 8,
+            width: state.vw.max(1), height: state.vh.max(1), orientation: ori, bit_depth: 8,
             color_space: Some("Display P3".to_string()), has_alpha: false,
             camera_make: None, camera_model: None, lens_model: None, focal_length_mm: None,
             f_number: None, exposure_time_secs: None, iso_speed: None, date_time_original: None, icc_profile_name: None,
         }, fmt, mime));
     }
 
-    let br = if dur > 0.0 { ((data.len() as f64 * 8.0) / dur / 1000.0) as u32 } else { 0 };
-    if !vcodec.is_empty() || (vw > 0 && vh > 0) {
+    let br = if state.dur > 0.0 { ((data.len() as f64 * 8.0) / state.dur / 1000.0) as u32 } else { 0 };
+    if !state.vcodec.is_empty() || (state.vw > 0 && state.vh > 0) {
         Some(IsobMffOutcome::Video(VideoProbeResult {
-            duration_secs: dur, width: vw, height: vh, frame_rate: 30.0,
-            video_codec: if vcodec.is_empty() { "H.264 / AVC".to_string() } else { vcodec },
-            audio_codec: if acodec.is_empty() { None } else { Some(acodec) },
-            audio_sample_rate: asr, audio_channels: ach, bitrate_kbps: br, orientation_degrees: rot,
+            duration_secs: state.dur, width: state.vw, height: state.vh, frame_rate: 30.0,
+            video_codec: if state.vcodec.is_empty() { "H.264 / AVC".to_string() } else { state.vcodec },
+            audio_codec: if state.acodec.is_empty() { None } else { Some(state.acodec) },
+            audio_sample_rate: state.asr, audio_channels: state.ach, bitrate_kbps: br, orientation_degrees: state.rot,
         }, "MPEG-4 Video", "video/mp4"))
-    } else if !acodec.is_empty() || brand == b"M4A " {
-        Some(IsobMffOutcome::Audio(simple_audio(dur, if asr == 0 { 44100 } else { asr }, if ach == 0 { 2 } else { ach }, 16, br, if acodec.is_empty() { "AAC".to_string() } else { acodec }), "MPEG-4 Audio", "audio/mp4"))
+    } else if !state.acodec.is_empty() || brand == b"M4A " {
+        Some(IsobMffOutcome::Audio(simple_audio(state.dur, if state.asr == 0 { 44100 } else { state.asr }, if state.ach == 0 { 2 } else { state.ach }, 16, br, if state.acodec.is_empty() { "AAC".to_string() } else { state.acodec }), "MPEG-4 Audio", "audio/mp4"))
     } else {
         None
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[derive(Debug, Default)]
+struct IsobMffBoxScannerState {
+    dur: f64,
+    vw: u32,
+    vh: u32,
+    vcodec: String,
+    acodec: String,
+    asr: u32,
+    ach: u32,
+    rot: u32,
+}
+
 fn scan_isobmff_boxes(
-    data: &[u8], mut off: usize, end: usize,
-    dur: &mut f64, vw: &mut u32, vh: &mut u32,
-    vc: &mut String, ac: &mut String,
-    asr: &mut u32, ach: &mut u32, rot: &mut u32, depth: usize,
+    data: &[u8],
+    mut off: usize,
+    end: usize,
+    state: &mut IsobMffBoxScannerState,
+    depth: usize,
 ) {
     if depth > 6 { return; }
     while off + 8 <= end && off + 8 <= data.len() {
@@ -88,21 +98,21 @@ fn scan_isobmff_boxes(
         let (p_off, p_end) = (if bsize == 1 { off + 16 } else { off + 8 }, off + actual);
         match btype {
             b"moov" | b"trak" | b"mdia" | b"minf" | b"stbl" | b"iprp" | b"ipco" => {
-                scan_isobmff_boxes(data, p_off, p_end, dur, vw, vh, vc, ac, asr, ach, rot, depth + 1);
+                scan_isobmff_boxes(data, p_off, p_end, state, depth + 1);
             }
             b"meta" => {
-                scan_isobmff_boxes(data, (p_off + 4).min(p_end), p_end, dur, vw, vh, vc, ac, asr, ach, rot, depth + 1);
+                scan_isobmff_boxes(data, (p_off + 4).min(p_end), p_end, state, depth + 1);
             }
             b"mvhd" if p_off + 20 <= p_end => {
                 let v = data[p_off];
                 if v == 0 && p_off + 20 <= data.len() {
                     let ts = u32::from_be_bytes([data[p_off+12], data[p_off+13], data[p_off+14], data[p_off+15]]) as f64;
                     let d = u32::from_be_bytes([data[p_off+16], data[p_off+17], data[p_off+18], data[p_off+19]]) as f64;
-                    if ts > 0.0 { *dur = d / ts; }
+                    if ts > 0.0 { state.dur = d / ts; }
                 } else if v == 1 && p_off + 28 <= data.len() {
                     let ts = u32::from_be_bytes([data[p_off+20], data[p_off+21], data[p_off+22], data[p_off+23]]) as f64;
                     let d = u64::from_be_bytes([data[p_off+24], data[p_off+25], data[p_off+26], data[p_off+27], data[p_off+28], data[p_off+29], data[p_off+30], data[p_off+31]]) as f64;
-                    if ts > 0.0 { *dur = d / ts; }
+                    if ts > 0.0 { state.dur = d / ts; }
                 }
             }
             b"tkhd" if p_off + 84 <= p_end => {
@@ -111,20 +121,23 @@ fn scan_isobmff_boxes(
                 if dim_off + 8 <= data.len() {
                     let (w, h) = (u32::from_be_bytes([data[dim_off], data[dim_off+1], data[dim_off+2], data[dim_off+3]]) >> 16,
                                   u32::from_be_bytes([data[dim_off+4], data[dim_off+5], data[dim_off+6], data[dim_off+7]]) >> 16);
-                    if w > 0 && h > 0 { *vw = w; *vh = h; }
+                    if w > 0 && h > 0 { state.vw = w; state.vh = h; }
                 }
                 if m_off + 16 <= data.len() {
                     let (m0, m1, m3) = (i32::from_be_bytes([data[m_off], data[m_off+1], data[m_off+2], data[m_off+3]]),
                                         i32::from_be_bytes([data[m_off+4], data[m_off+5], data[m_off+6], data[m_off+7]]),
                                         i32::from_be_bytes([data[m_off+12], data[m_off+13], data[m_off+14], data[m_off+15]]));
-                    if m1 == 0x0001_0000 && m3 == -0x0001_0000 { *rot = 90; }
-                    else if m0 == -0x0001_0000 { *rot = 180; }
-                    else if m1 == -0x0001_0000 && m3 == 0x0001_0000 { *rot = 270; }
+                    if m1 == 0x0001_0000 && m3 == -0x0001_0000 { state.rot = 90; }
+                    else if m0 == -0x0001_0000 && m1 == 0 && m3 == 0 { state.rot = 180; }
+                    else if m1 == -0x0001_0000 && m3 == 0x0001_0000 { state.rot = 270; }
                 }
             }
             b"ispe" if p_off + 12 <= p_end => {
-                *vw = u32::from_be_bytes([data[p_off+4], data[p_off+5], data[p_off+6], data[p_off+7]]);
-                *vh = u32::from_be_bytes([data[p_off+8], data[p_off+9], data[p_off+10], data[p_off+11]]);
+                state.vw = u32::from_be_bytes([data[p_off+4], data[p_off+5], data[p_off+6], data[p_off+7]]);
+                state.vh = u32::from_be_bytes([data[p_off+8], data[p_off+9], data[p_off+10], data[p_off+11]]);
+            }
+            b"irot" if p_off < p_end => {
+                state.rot = match data[p_off] & 0x03 { 1 => 90, 2 => 180, 3 => 270, _ => 0 };
             }
             b"stsd" if p_off + 8 <= p_end => {
                 let cnt = u32::from_be_bytes([data[p_off+4], data[p_off+5], data[p_off+6], data[p_off+7]]);
@@ -133,20 +146,29 @@ fn scan_isobmff_boxes(
                     if e_off + 8 > p_end { break; }
                     let esz = u32::from_be_bytes([data[e_off], data[e_off+1], data[e_off+2], data[e_off+3]]) as usize;
                     match &data[e_off+4..e_off+8] {
-                        b"avc1" | b"avc3" => *vc = "H.264 / AVC".to_string(),
-                        b"hvc1" | b"hev1" => *vc = "HEVC / H.265".to_string(),
-                        b"av01" => *vc = "AV1".to_string(),
-                        b"vp09" => *vc = "VP9".to_string(),
-                        b"apcn" => *vc = "Apple ProRes 422".to_string(),
-                        b"apch" => *vc = "Apple ProRes 422 HQ".to_string(),
-                        b"ap4h" => *vc = "Apple ProRes 4444".to_string(),
-                        b"mp4a" => *ac = "AAC".to_string(),
-                        b"alac" => *ac = "Apple Lossless (ALAC)".to_string(),
-                        b"ac-3" => *ac = "Dolby Digital (AC-3)".to_string(),
-                        b"ec-3" => *ac = "Dolby Digital Plus (E-AC-3)".to_string(),
-                        b"Opus" | b"opus" => *ac = "Opus".to_string(),
-                        b"fLaC" | b"flac" => *ac = "FLAC".to_string(),
+                        b"avc1" | b"avc3" => state.vcodec = "H.264 / AVC".to_string(),
+                        b"hvc1" | b"hev1" => state.vcodec = "HEVC / H.265".to_string(),
+                        b"av01" => state.vcodec = "AV1".to_string(),
+                        b"vp09" => state.vcodec = "VP9".to_string(),
+                        b"apcn" => state.vcodec = "Apple ProRes 422".to_string(),
+                        b"apch" => state.vcodec = "Apple ProRes 422 HQ".to_string(),
+                        b"ap4h" => state.vcodec = "Apple ProRes 4444".to_string(),
+                        b"mp4a" => state.acodec = "AAC".to_string(),
+                        b"alac" => state.acodec = "Apple Lossless (ALAC)".to_string(),
+                        b"ac-3" => state.acodec = "Dolby Digital (AC-3)".to_string(),
+                        b"ec-3" => state.acodec = "Dolby Digital Plus (E-AC-3)".to_string(),
+                        b"Opus" | b"opus" => state.acodec = "Opus".to_string(),
+                        b"fLaC" | b"flac" => state.acodec = "FLAC".to_string(),
                         _ => {}
+                    }
+                    let is_audio = matches!(&data[e_off+4..e_off+8], b"mp4a" | b"alac" | b"ac-3" | b"ec-3" | b"Opus" | b"opus" | b"fLaC" | b"flac");
+                    if is_audio && esz >= 28 && e_off + 28 <= p_end {
+                        if state.ach == 0 {
+                            state.ach = u16::from_be_bytes([data[e_off + 16], data[e_off + 17]]) as u32;
+                        }
+                        if state.asr == 0 {
+                            state.asr = u32::from_be_bytes([data[e_off + 24], data[e_off + 25], data[e_off + 26], data[e_off + 27]]) >> 16;
+                        }
                     }
                     if esz < 8 { break; }
                     e_off += esz;

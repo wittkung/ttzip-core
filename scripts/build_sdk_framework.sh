@@ -109,7 +109,8 @@ if command -v sccache >/dev/null 2>&1; then
     export RUSTC_WRAPPER="sccache"
 fi
 
-EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target_sdk}"
+EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR}"
 HOST_ARCH="$(uname -m)"
 if [ "${HOST_ARCH}" = "arm64" ]; then
     HOST_TARGET="aarch64-apple-darwin"
@@ -181,13 +182,16 @@ mkdir -p "${DIST_DIR}" "${REPO_ROOT}/Sources/CTTZipBridge/include" "${REPO_ROOT}
 mkdir -p "${SLICE_DIR}/Headers" "${XCFRAMEWORK_DIR}/macos-arm64/Headers"
 
 if [ "${BUILD_NATIVE_ONLY}" = "1" ]; then
-    echo "--> [INFO] Fast Path: Building native architecture only (${HOST_TARGET})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --target "${HOST_TARGET}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    echo "--> [INFO] Fast Path: Building native architecture only (${HOST_ARCH} ${BUILD_MODE})..."
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
-    TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a"
-    CODEC_LIB="$(ls -t ${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
+    TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.a"
+    if [ ! -f "${TARGET_LIB}" ]; then
+        TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a"
+    fi
+    CODEC_LIB="$(ls -t ${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
     if [ -z "${CODEC_LIB}" ]; then
-        CODEC_LIB="$(find "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
+        CODEC_LIB="$(find "${EFFECTIVE_TARGET_DIR}" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
     fi
     
     if [ -n "${CODEC_LIB}" ] && [ -f "${CODEC_LIB}" ]; then
@@ -248,12 +252,12 @@ fi
 
 # 5. 生成 UniFFI 绑定与 Scaffolding C 头文件（输出至临时目录并通过内容对比幂等写入）
 echo "--> [INFO] Generating Mozilla UniFFI bindings..."
-FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
+FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
 if [ ! -f "${FIRST_DYLIB}" ]; then
-    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
+    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
 fi
 if [ ! -f "${FIRST_DYLIB}" ]; then
-    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
+    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
 fi
 
 UNIFFI_BIN=""

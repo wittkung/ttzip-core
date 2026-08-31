@@ -10,7 +10,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
-#include "../../Sources/CTTZipBridge/include/ttzip.h"
+#include "../include/ttzip.h"
 
 int main(int argc, char **argv) {
     int iterations = (argc > 1) ? atoi(argv[1]) : 1000;

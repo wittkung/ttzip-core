@@ -99,17 +99,24 @@ impl<'a> TarArchive<'a> {
         // Stage 1: Register all entries with SafeExtractEngine & create directories
         for entry in &self.entries {
             total_uncomp_bytes += entry.size;
-            let safe_path = sanitize_and_validate_path(dest_dir, &entry.path)?;
+            let trimmed = entry.path.trim_matches('/');
+            let is_root_dir = trimmed.is_empty() || trimmed == ".";
+            let safe_path = if is_root_dir {
+                dest_dir.to_path_buf()
+            } else {
+                sanitize_and_validate_path(dest_dir, &entry.path)?
+            };
 
-            engine.register_entry(
+            engine.register_entry_typed(
                 safe_path.clone(),
                 entry.mode,
                 entry.mtime_epoch_secs,
                 entry.mtime_nanos,
                 entry.is_directory,
+                entry.is_symlink,
             );
 
-            if entry.is_directory {
+            if entry.is_directory && !is_root_dir {
                 fs::create_dir_all(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
             }
         }
@@ -127,7 +134,7 @@ impl<'a> TarArchive<'a> {
             .entries
             .iter()
             .enumerate()
-            .filter(|(_, e)| !e.is_directory)
+            .filter(|(_, e)| !e.is_directory && !e.path.trim_matches('/').is_empty() && e.path.trim_matches('/') != ".")
             .map(|(i, _)| i)
             .collect();
 
@@ -144,6 +151,17 @@ impl<'a> TarArchive<'a> {
                 if entry.is_symlink {
                     if let Some(target) = &entry.link_target {
                         validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
+                    }
+                } else if entry.is_hardlink {
+                    if let Some(target) = &entry.link_target {
+                        let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
+                        if let Some(parent) = safe_path.parent() {
+                            let _ = fs::create_dir_all(parent);
+                        }
+                        if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
+                            let _ = fs::remove_file(&safe_path);
+                        }
+                        let _ = fs::hard_link(&target_safe, &safe_path);
                     }
                 } else {
                     if let Some(parent) = safe_path.parent() {
@@ -185,6 +203,17 @@ impl<'a> TarArchive<'a> {
                     if entry.is_symlink {
                         if let Some(target) = &entry.link_target {
                             validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
+                        }
+                    } else if entry.is_hardlink {
+                        if let Some(target) = &entry.link_target {
+                            let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
+                            if let Some(parent) = safe_path.parent() {
+                                let _ = fs::create_dir_all(parent);
+                            }
+                            if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
+                                let _ = fs::remove_file(&safe_path);
+                            }
+                            let _ = fs::hard_link(&target_safe, &safe_path);
                         }
                     } else {
                         if let Some(parent) = safe_path.parent() {

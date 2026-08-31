@@ -11,20 +11,52 @@
 //! WinZip AES-256 hardware decryption passthrough, multi-core parallel Deflate/Store
 //! compression and decompression, and ZipSlip-immune safe file landing.
 
+pub mod alignment;
+pub mod blocks;
+pub mod cp437;
+pub mod datetime;
 pub mod extra;
 pub mod parser;
 pub mod reader;
+pub mod scanner;
 pub mod writer;
+pub mod zip64;
 
+pub use alignment::{
+    build_alignment_extra_field, contains_alignment_extra_field, parse_alignment_extra_field,
+    strip_alignment_extra_fields, AlignmentPaddingCalculator, LFH_FIXED_HEADER_SIZE,
+    MIN_ALIGNMENT_EXTRA_FIELD_LEN, TAG_DATA_STREAM_ALIGNMENT,
+};
+pub use blocks::{
+    to_and_from_le, FixedSizeBlock, Pod, Zip32CDEBlock, Zip64CDEBlock, Zip64CDELocatorBlock,
+    Zip64DataDescriptorBlock, ZipCentralEntryBlock, ZipDataDescriptorBlock, ZipLocalEntryBlock,
+};
+pub use cp437::{decode_cp437, decode_zip_filename};
+pub use datetime::{
+    days_in_month, dos_to_unix_epoch_secs, is_leap_year, unix_epoch_secs_to_dos, DosDateTime,
+};
 pub use extra::ZipExtraFields;
+
 pub use parser::{
     dos_to_unix_time, find_eocd, parse_all_entries, parse_cdfh_entry, parse_local_file_header,
     EocdInfo, ZipEntry, MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
 };
 pub use reader::{ZipArchive, ZipExtractReport};
+pub use scanner::{
+    find_eocd_candidate_offsets, CentralDirectoryEndInfo, EocdScanner, ZipEngineError,
+    EOCD_MIN_SIZE, MAX_COMMENT_LEN, MAX_EOCD_SEARCH_WINDOW,
+};
 pub use writer::{
-    assemble_zip_archive, collect_zip_input_items, compress_items_parallel, create_zip_archive,
-    unix_to_dos_time, ZipCompressedItem, ZipCreateReport, ZipInputItem,
+    assemble_zip_archive, assemble_zip_archive_aligned, build_data_descriptor,
+    collect_zip_input_items, compress_items_parallel, compute_zipcrypto_check_byte,
+    create_zip_archive, has_data_descriptor, inject_data_descriptor_flag, parse_data_descriptor,
+    unix_to_dos_time, write_data_descriptor, ZipCompressedItem, ZipCreateReport,
+    ZipDataDescriptor32, ZipDataDescriptor64, ZipInputItem, FLAG_DATA_DESCRIPTOR,
+    MAGIC_DATA_DESCRIPTOR,
+};
+pub use zip64::{
+    CdfhZip64Decision, EocdZip64Decision, LfhZip64Decision, Zip64DecisionMatrix, Zip64EocdLocator,
+    Zip64EocdRecord, Zip64ExtraField, ZIP64_BYTES_THR, ZIP64_ENTRY_THR,
 };
 
 #[cfg(test)]

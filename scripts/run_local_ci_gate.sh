@@ -27,6 +27,7 @@ C_CYAN="\033[1;36m"
 BAIL_ON_FAILURE=false
 TARGET_STAGE=""
 JSON_REPORT_PATH=""
+USE_RELEASE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -38,6 +39,10 @@ while [[ $# -gt 0 ]]; do
             TARGET_STAGE="$2"
             shift 2
             ;;
+        --release)
+            USE_RELEASE=true
+            shift
+            ;;
         --json)
             JSON_REPORT_PATH="$2"
             shift 2
@@ -47,7 +52,8 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --bail               Stop immediately on first failed stage"
-            echo "  --stage <name>       Execute only the specified stage (loc-gate, swift-facade, performance, rust-industrial)"
+            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite)"
+            echo "  --release            Pass --release profile to applicable test stages"
             echo "  --json <path>        Export structured JSON report"
             echo "  -h, --help           Show this help message"
             exit 0
@@ -69,33 +75,72 @@ echo ""
 # Stage Definitions
 declare -a STAGE_NAMES=(
     "Single-File LOC Defense Gate (<= 800 LOC)"
+    "Architecture & Module Dependency DAG Gate"
     "Mozilla UniFFI Symbol Alignment Gate (100% Scaffolding Parity)"
     "Universal XCFramework & SDK Checksum Gate"
     "Swift High-Level Facade & CLI Suite"
     "Deflate-Bench 50-Point Matrix Gate"
     "Rust Industrial Suite (Props, Fuzz, Differential)"
+    "7-Zip Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "ZIP Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "TAR Industrial Suite & Invariant 6 Anti-Regression Gate"
     "Deflate Deep Defense & CPU-Stripping Gate"
+    "libarchive Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "LZ4 Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "LZMA2 Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "XZ Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "Brotli Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "Snappy Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "LZFSE & LZVN Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "Bzip2 Industrial Suite & Invariant 6 Anti-Regression Gate"
+    "Libdeflate Industrial Suite & Invariant 6 Anti-Regression Gate"
 )
 
 declare -a STAGE_KEYS=(
     "loc-gate"
+    "dag-gate"
     "uniffi-gate"
     "sdk-gate"
     "swift-facade"
     "performance"
     "rust-industrial"
+    "sevenz-suite"
+    "zip-suite"
+    "tar-suite"
     "deflate-defense"
+    "libarchive-suite"
+    "lz4-suite"
+    "lzma2-suite"
+    "xz-suite"
+    "brotli-suite"
+    "snappy-suite"
+    "lzfse-suite"
+    "bzip2-suite"
+    "libdeflate-suite"
 )
 
 declare -a STAGE_COMMANDS=(
     "./scripts/lint_loc_gate.sh"
+    "./scripts/lint_dag_gate.sh"
     "./scripts/verify_uniffi_symbols.sh"
-    "./scripts/build_sdk_framework.sh --release --native"
-    "swift test"
+    "./scripts/build_sdk_framework.sh$([ "${USE_RELEASE}" = true ] && echo " --release" || echo " --debug") --native"
+    "swift test --parallel"
 
     "swift run -c release ttzip-bench gate"
-    "./scripts/run_rust_tests.sh --unit --props --fuzz"
+    "./scripts/run_rust_tests.sh --unit --props --fuzz$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_7z_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_zip_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_tar_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_deflate_defense_tests.sh"
+    "./scripts/run_libarchive_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lz4_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lzma2_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_xz_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_brotli_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_snappy_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lzfse_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_bzip2_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_libdeflate_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
@@ -106,6 +151,24 @@ GLOBAL_START_TIME=$(python3 -c "import time; print(time.time())")
 declare -a STAGE_STATUSES=()
 declare -a STAGE_DURATIONS=()
 declare -a STAGE_DIAGNOSTICS=()
+
+# Pre-compile test binaries in a single parallel step to avoid repeated per-stage link storms
+if [[ -z "${TARGET_STAGE}" || "${TARGET_STAGE}" == *"suite"* ]]; then
+    echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-compiling workspace test binaries in parallel...${C_RESET}"
+    PREFLIGHT_START=$(python3 -c "import time; print(time.time())")
+    (
+        cd "${WORKSPACE_ROOT}/rust"
+        export RUST_TEST_THREADS="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+        export RAYON_NUM_THREADS="2"
+        if command -v sccache >/dev/null 2>&1; then
+            export RUSTC_WRAPPER="sccache"
+        fi
+        cargo test $([ "${USE_RELEASE}" = true ] && echo "--release") --no-run --workspace --tests > /dev/null 2>&1 || true
+    )
+    PREFLIGHT_END=$(python3 -c "import time; print(time.time())")
+    PREFLIGHT_DUR=$(python3 -c "print(round(${PREFLIGHT_END} - ${PREFLIGHT_START}, 3))")
+    echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
+fi
 
 for i in "${!STAGE_NAMES[@]}"; do
     STAGE_INDEX=$((i + 1))

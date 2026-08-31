@@ -208,6 +208,6 @@ fn test_exhaustive_all_13_levels_across_4_corpora() {
     let binary_corpus = generate_macho_binary_corpus(2 * 1024 * 1024); // 2 MB
     benchmark_corpus_all_13_levels("Mach-O Binary Machine Code", &binary_corpus);
 
-    let high_entropy = generate_high_entropy_corpus(1 * 1024 * 1024); // 1 MB
+    let high_entropy = generate_high_entropy_corpus(1024 * 1024); // 1 MB
     benchmark_corpus_all_13_levels("High-Entropy Random Stream", &high_entropy);
 }

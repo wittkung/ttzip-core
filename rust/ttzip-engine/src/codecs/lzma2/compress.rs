@@ -170,6 +170,16 @@ impl Fl2CStream {
         }
     }
 
+    /// Flushes buffered data from the compression stream without ending it.
+    pub fn flush_stream(&mut self, output: &mut Fl2OutBuffer) -> Result<usize, TTZipStatus> {
+        let res = unsafe { FL2_flushStream(self.handle.as_ptr(), output) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrCompressionFailed)
+        } else {
+            Ok(res)
+        }
+    }
+
     /// Flushes remaining compressed data and finalizes the LZMA2 stream.
     pub fn end_stream(&mut self, output: &mut Fl2OutBuffer) -> Result<usize, TTZipStatus> {
         let res = unsafe { FL2_endStream(self.handle.as_ptr(), output) };
@@ -177,6 +187,23 @@ impl Fl2CStream {
             Err(TTZipStatus::ErrCompressionFailed)
         } else {
             Ok(res)
+        }
+    }
+
+    /// Sets a timeout in milliseconds for streaming compression.
+    pub fn set_timeout(&mut self, timeout_ms: u32) -> Result<(), TTZipStatus> {
+        let res = unsafe { FL2_setCStreamTimeout(self.handle.as_ptr(), timeout_ms as libc::c_uint) };
+        if unsafe { FL2_isError(res) } != 0 {
+            Err(TTZipStatus::ErrInvalidParam)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Cancels any ongoing compression operation and resets stream state.
+    pub fn cancel(&mut self) {
+        unsafe {
+            FL2_cancelCStream(self.handle.as_ptr());
         }
     }
 }

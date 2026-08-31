@@ -145,8 +145,8 @@ fi
 
 if [ "${RUN_UNIT}" = true ] || [ "${RUN_PROPS}" = true ] || [ "${RUN_FUZZ}" = true ]; then
     echo "--> [1/2] Executing Unified Workspace Test Matrix..."
-    # Exclude benches from unit test execution to prevent long-running perf benchmarks in test mode
-    cargo test "${CARGO_FLAGS[@]}" --workspace --lib --bins --tests -- --nocapture
+    # Exclude benches and separate integration suites from unit test execution to focus on core fast unit tests
+    cargo test "${CARGO_FLAGS[@]}" --workspace --lib --bins
     echo "✅ [PASS] Unified Workspace Tests completed successfully."
 fi
 

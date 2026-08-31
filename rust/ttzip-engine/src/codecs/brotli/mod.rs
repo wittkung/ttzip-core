@@ -7,13 +7,42 @@
 
 //! Safe Pure-Rust Google Brotli block and streaming compression codecs.
 
+pub mod bit_reader;
 pub mod block;
+pub mod command;
+pub mod context;
+pub mod decoder;
+pub mod dictionary;
+pub mod encoder;
+pub mod error;
+pub mod huffman;
+pub mod meta_header;
+pub mod params;
 pub mod pipe;
+pub mod ring_buffer;
+pub mod state;
 pub mod stream;
+pub mod transform;
+pub mod uncompressed;
+pub mod window;
 
+pub use bit_reader::*;
 pub use block::*;
+pub use command::*;
+pub use context::*;
+pub use decoder::*;
+pub use dictionary::*;
+pub use encoder::*;
+pub use error::*;
+pub use huffman::*;
+pub use meta_header::*;
+pub use params::*;
 pub use pipe::*;
+pub use ring_buffer::*;
+pub use state::*;
 pub use stream::*;
+pub use transform::*;
+pub use window::*;
 
 #[cfg(test)]
 mod tests {

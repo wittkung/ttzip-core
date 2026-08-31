@@ -16,10 +16,14 @@
 
 pub mod create;
 pub mod detect;
+pub mod entry;
 pub mod extract;
 pub mod extract_single;
+pub mod filter_pipeline;
+pub mod format_sniffer;
 pub mod inspect;
 pub mod repair;
+pub mod stream_adapter;
 pub mod verify;
 #[cfg(test)]
 pub mod tests_detection;
@@ -27,11 +31,27 @@ pub mod tests_detection;
 pub mod tests_lifecycle;
 
 pub use create::create_archive;
-pub use detect::{detect_format, resolve_create_format};
+pub use detect::{detect_archive_sniff, detect_format, resolve_create_format};
+pub use entry::{
+    coalesce_sparse_extents, clean_sparse_extents, EntryFields, LinkAction, LinkResolver,
+    LinkResolverStrategy, SparseExtent, TTZipEntry, TTZipFileType, TTZipTimestamp,
+};
 pub use extract::{extract_archive, extract_archive_with_metrics};
 pub use extract_single::{extract_selected_entries, extract_single_entry_memory};
+pub use filter_pipeline::{
+    FilterKind, FilterPipeline, FilterPipelineError, FilterPipelineResult,
+    StreamFilter, MAX_FILTER_CHAIN_DEPTH,
+};
+pub use format_sniffer::{
+    ArchiveFormat, ArchiveFormatBidder, BidResult, BidScore, FormatBidderRegistry, FormatSniffer,
+    SeekableStream, SniffAnchor, SniffResult, SniffRule, SNIFF_RULES,
+};
 pub use inspect::inspect_archive;
 pub use repair::repair_archive;
+pub use stream_adapter::{
+    LookaheadRead, SlidingLookaheadReader, DEFAULT_INITIAL_LOOKAHEAD_CAPACITY,
+    MAX_LOOKAHEAD_CAPACITY, MICRO_BUFFER_CHUNK_SIZE,
+};
 pub use verify::{verify_archive_stream, ArchiveIntegrityReport, CorruptedEntryDetail};
 
 use std::path::{Path, PathBuf};
@@ -46,6 +66,18 @@ use libc::c_void;
 pub struct UnifiedArchiveOrchestrator;
 
 impl UnifiedArchiveOrchestrator {
+    /// Three-state sniffing across 50+ archive, disk image, and compressed formats from memory buffer.
+    #[inline]
+    pub fn sniff_format(buffer: &[u8]) -> SniffResult {
+        FormatSniffer::sniff(buffer)
+    }
+
+    /// Three-state sniffing across 50+ archive, disk image, and compressed formats from file.
+    #[inline]
+    pub fn sniff_file(path: &Path) -> std::io::Result<SniffResult> {
+        FormatSniffer::sniff_file(path)
+    }
+
     /// Detects format of an archive from file headers with extension fallback.
     #[inline]
     pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundFormat>), TTZipStatus> {
