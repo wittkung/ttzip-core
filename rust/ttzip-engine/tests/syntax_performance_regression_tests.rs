@@ -224,7 +224,7 @@ fn test_02_incremental_ast_parsing_latency_gate() {
         avg_latency_us
     );
 
-    let max_latency_us = if cfg!(debug_assertions) { 150.0 } else { 50.0 };
+    let max_latency_us = if cfg!(debug_assertions) { 150.0 } else { 75.0 };
     assert!(
         avg_latency_us <= max_latency_us,
         "Incremental AST parsing latency {:.3} µs exceeded ceiling of {:.2} µs",

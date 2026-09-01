@@ -27,6 +27,7 @@ pub mod error_mapping;
 pub mod extraction;
 #[cfg(feature = "probe")]
 pub mod image;
+pub mod image_meta;
 pub mod integrity;
 pub mod media;
 pub mod memory;
@@ -63,6 +64,7 @@ pub use error_mapping::*;
 pub use extraction::*;
 #[cfg(feature = "probe")]
 pub use image::*;
+pub use image_meta::*;
 pub use integrity::*;
 pub use media::*;
 pub use memory::*;

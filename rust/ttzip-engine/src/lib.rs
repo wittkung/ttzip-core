@@ -28,6 +28,7 @@ pub mod crypto;
 pub mod ffi;
 pub mod fs;
 pub mod i18n;
+pub mod image;
 pub mod media;
 pub mod memory;
 pub mod platform;
@@ -70,6 +71,10 @@ pub use charset::*;
 pub use codecs::*;
 pub use crypto::*;
 pub use i18n::*;
+pub use image::{
+    ColorSpacePipeline, DecodedImageFrame, ExifThumbnailExtractor, ImageBitDepth, ImageColorSpace,
+    ImageError, ImageFormat, TTZipImageDecoder, ViewportFilter, ViewportRect, ViewportSampler,
+};
 pub use media::*;
 pub use memory::*;
 pub use platform::*;

@@ -1296,6 +1296,251 @@ public func FfiConverterTypeUniFFICancellationToken_lower(_ value: UniFfiCancell
 }
 
 /**
+ * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
+ */
+public protocol UniFfiImageServiceProtocol: AnyObject {
+    /**
+     * Decodes an image from an in-memory byte buffer into RGBA8 pixels.
+     */
+    func decodeImage(data: Data, maxDimension: UInt32?) throws -> UniFfiImageFrame
+
+    /**
+     * Decodes an image from a local filesystem path into RGBA8 pixels.
+     */
+    func decodeImageFromFile(filePath: String, maxDimension: UInt32?) throws -> UniFfiImageFrame
+
+    /**
+     * Generates a downsampled thumbnail from an in-memory byte buffer.
+     */
+    func extractThumbnail(data: Data, maxWidth: UInt32, maxHeight: UInt32, filterType: String?) throws -> UniFfiThumbnailResult
+
+    /**
+     * Generates a downsampled thumbnail from a local filesystem path.
+     */
+    func extractThumbnailFromFile(filePath: String, maxWidth: UInt32, maxHeight: UInt32, filterType: String?) throws -> UniFfiThumbnailResult
+
+    /**
+     * Probes image format and metadata from an in-memory byte buffer.
+     */
+    func probeInfo(data: Data, fileName: String?) throws -> UniFfiImageInfo
+
+    /**
+     * Probes image format and metadata from a local filesystem path.
+     */
+    func probeInfoFromFile(filePath: String) throws -> UniFfiImageInfo
+
+    /**
+     * Samples a cropped and scaled viewport tile from an in-memory byte buffer.
+     */
+    func sampleViewport(data: Data, params: UniFfiViewportCropParams) throws -> UniFfiViewportTile
+
+    /**
+     * Samples a cropped and scaled viewport tile from a local filesystem path.
+     */
+    func sampleViewportFromFile(filePath: String, params: UniFfiViewportCropParams) throws -> UniFfiViewportTile
+}
+
+/**
+ * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
+ */
+open class UniFfiImageService:
+    UniFfiImageServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiimageservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new image rendering and inspection service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffiimageservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiimageservice(pointer, $0) }
+    }
+
+    /**
+     * Decodes an image from an in-memory byte buffer into RGBA8 pixels.
+     */
+    open func decodeImage(data: Data, maxDimension: UInt32?) throws -> UniFfiImageFrame {
+        return try FfiConverterTypeUniFFIImageFrame.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image(self.uniffiClonePointer(),
+                                                                          FfiConverterData.lower(data),
+                                                                          FfiConverterOptionUInt32.lower(maxDimension), $0)
+        })
+    }
+
+    /**
+     * Decodes an image from a local filesystem path into RGBA8 pixels.
+     */
+    open func decodeImageFromFile(filePath: String, maxDimension: UInt32?) throws -> UniFfiImageFrame {
+        return try FfiConverterTypeUniFFIImageFrame.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image_from_file(self.uniffiClonePointer(),
+                                                                                    FfiConverterString.lower(filePath),
+                                                                                    FfiConverterOptionUInt32.lower(maxDimension), $0)
+        })
+    }
+
+    /**
+     * Generates a downsampled thumbnail from an in-memory byte buffer.
+     */
+    open func extractThumbnail(data: Data, maxWidth: UInt32, maxHeight: UInt32, filterType: String?) throws -> UniFfiThumbnailResult {
+        return try FfiConverterTypeUniFFIThumbnailResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail(self.uniffiClonePointer(),
+                                                                               FfiConverterData.lower(data),
+                                                                               FfiConverterUInt32.lower(maxWidth),
+                                                                               FfiConverterUInt32.lower(maxHeight),
+                                                                               FfiConverterOptionString.lower(filterType), $0)
+        })
+    }
+
+    /**
+     * Generates a downsampled thumbnail from a local filesystem path.
+     */
+    open func extractThumbnailFromFile(filePath: String, maxWidth: UInt32, maxHeight: UInt32, filterType: String?) throws -> UniFfiThumbnailResult {
+        return try FfiConverterTypeUniFFIThumbnailResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail_from_file(self.uniffiClonePointer(),
+                                                                                         FfiConverterString.lower(filePath),
+                                                                                         FfiConverterUInt32.lower(maxWidth),
+                                                                                         FfiConverterUInt32.lower(maxHeight),
+                                                                                         FfiConverterOptionString.lower(filterType), $0)
+        })
+    }
+
+    /**
+     * Probes image format and metadata from an in-memory byte buffer.
+     */
+    open func probeInfo(data: Data, fileName: String?) throws -> UniFfiImageInfo {
+        return try FfiConverterTypeUniFFIImageInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info(self.uniffiClonePointer(),
+                                                                        FfiConverterData.lower(data),
+                                                                        FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Probes image format and metadata from a local filesystem path.
+     */
+    open func probeInfoFromFile(filePath: String) throws -> UniFfiImageInfo {
+        return try FfiConverterTypeUniFFIImageInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info_from_file(self.uniffiClonePointer(),
+                                                                                  FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Samples a cropped and scaled viewport tile from an in-memory byte buffer.
+     */
+    open func sampleViewport(data: Data, params: UniFfiViewportCropParams) throws -> UniFfiViewportTile {
+        return try FfiConverterTypeUniFFIViewportTile.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport(self.uniffiClonePointer(),
+                                                                             FfiConverterData.lower(data),
+                                                                             FfiConverterTypeUniFFIViewportCropParams.lower(params), $0)
+        })
+    }
+
+    /**
+     * Samples a cropped and scaled viewport tile from a local filesystem path.
+     */
+    open func sampleViewportFromFile(filePath: String, params: UniFfiViewportCropParams) throws -> UniFfiViewportTile {
+        return try FfiConverterTypeUniFFIViewportTile.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from_file(self.uniffiClonePointer(),
+                                                                                       FfiConverterString.lower(filePath),
+                                                                                       FfiConverterTypeUniFFIViewportCropParams.lower(params), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIImageService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiImageService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiImageService {
+        return UniFfiImageService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiImageService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiImageService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiImageService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiImageService {
+    return try FfiConverterTypeUniFFIImageService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageService_lower(_ value: UniFfiImageService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIImageService.lower(value)
+}
+
+/**
  * High-performance zero-copy memory-mapped file reader with kernel advice management.
  */
 public protocol UniFfiMmapReaderProtocol: AnyObject {
@@ -7926,6 +8171,440 @@ public func FfiConverterTypeUniFFIHighlightToken_lower(_ value: UniFfiHighlightT
 }
 
 /**
+ * Decoded full-frame RGBA8 pixel buffer with dimensions and row stride.
+ */
+public struct UniFfiImageFrame {
+    /**
+     * Pixel width of the decoded image.
+     */
+    public var width: UInt32
+    /**
+     * Pixel height of the decoded image.
+     */
+    public var height: UInt32
+    /**
+     * Row stride in bytes (typically `width * 4` for 32-bit RGBA).
+     */
+    public var stride: UInt32
+    /**
+     * Flat RGBA8 pixel byte buffer in row-major order.
+     */
+    public var rgbaBytes: Data
+    /**
+     * Target color space identifier (e.g. "sRGB").
+     */
+    public var colorSpace: String
+    /**
+     * Animation frame duration in milliseconds, if applicable.
+     */
+    public var durationMs: UInt32?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Pixel width of the decoded image.
+         */ width: UInt32,
+        /* 
+            * Pixel height of the decoded image.
+            */ height: UInt32,
+        /* 
+            * Row stride in bytes (typically `width * 4` for 32-bit RGBA).
+            */ stride: UInt32,
+        /* 
+            * Flat RGBA8 pixel byte buffer in row-major order.
+            */ rgbaBytes: Data,
+        /* 
+            * Target color space identifier (e.g. "sRGB").
+            */ colorSpace: String,
+        /* 
+            * Animation frame duration in milliseconds, if applicable.
+            */ durationMs: UInt32?
+    ) {
+        self.width = width
+        self.height = height
+        self.stride = stride
+        self.rgbaBytes = rgbaBytes
+        self.colorSpace = colorSpace
+        self.durationMs = durationMs
+    }
+}
+
+extension UniFfiImageFrame: Equatable, Hashable {
+    public static func == (lhs: UniFfiImageFrame, rhs: UniFfiImageFrame) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.stride != rhs.stride {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        if lhs.colorSpace != rhs.colorSpace {
+            return false
+        }
+        if lhs.durationMs != rhs.durationMs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(stride)
+        hasher.combine(rgbaBytes)
+        hasher.combine(colorSpace)
+        hasher.combine(durationMs)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIImageFrame: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiImageFrame {
+        return
+            try UniFfiImageFrame(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                stride: FfiConverterUInt32.read(from: &buf),
+                rgbaBytes: FfiConverterData.read(from: &buf),
+                colorSpace: FfiConverterString.read(from: &buf),
+                durationMs: FfiConverterOptionUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiImageFrame, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterUInt32.write(value.stride, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+        FfiConverterString.write(value.colorSpace, into: &buf)
+        FfiConverterOptionUInt32.write(value.durationMs, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageFrame_lift(_ buf: RustBuffer) throws -> UniFfiImageFrame {
+    return try FfiConverterTypeUniFFIImageFrame.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageFrame_lower(_ value: UniFfiImageFrame) -> RustBuffer {
+    return FfiConverterTypeUniFFIImageFrame.lower(value)
+}
+
+/**
+ * Comprehensive image metadata and EXIF introspection record.
+ */
+public struct UniFfiImageInfo {
+    /**
+     * Pixel width of the image.
+     */
+    public var width: UInt32
+    /**
+     * Pixel height of the image.
+     */
+    public var height: UInt32
+    /**
+     * Detected format classification (e.g. "PNG", "JPEG", "WebP", "GIF", "BMP", "TIFF", "ICO", "PSD", "QOI", "HDR").
+     */
+    public var formatName: String
+    /**
+     * Color space descriptor (e.g. "sRGB", "Display P3", "Adobe RGB", "Grayscale", "Indexed Color").
+     */
+    public var colorSpace: String
+    /**
+     * Whether the image contains an active alpha transparency channel.
+     */
+    public var hasAlpha: Bool
+    /**
+     * Bits per pixel/channel depth (e.g. 8, 16, 24, 32).
+     */
+    public var bitDepth: UInt32
+    /**
+     * EXIF orientation tag (1..=8, default 1 for normal orientation).
+     */
+    public var orientation: UInt32
+    /**
+     * Total number of animation frames (1 for static images).
+     */
+    public var frameCount: UInt32
+    /**
+     * Camera manufacturer name if available in EXIF tags.
+     */
+    public var cameraMake: String?
+    /**
+     * Camera model name if available in EXIF tags.
+     */
+    public var cameraModel: String?
+    /**
+     * Lens model specification if available in EXIF tags.
+     */
+    public var lensModel: String?
+    /**
+     * ISO speed rating if available in EXIF tags.
+     */
+    public var isoSpeed: UInt32?
+    /**
+     * Lens aperture f-number if available in EXIF tags.
+     */
+    public var fNumber: Double?
+    /**
+     * Exposure time in seconds if available in EXIF tags.
+     */
+    public var exposureTimeSecs: Double?
+    /**
+     * Focal length in millimeters if available in EXIF tags.
+     */
+    public var focalLengthMm: Double?
+    /**
+     * Original capture date/time string if available in EXIF tags.
+     */
+    public var dateTimeOriginal: String?
+    /**
+     * Embedded ICC color profile name if available.
+     */
+    public var iccProfileName: String?
+    /**
+     * Total byte size of the raw compressed image buffer.
+     */
+    public var byteSize: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Pixel width of the image.
+         */ width: UInt32,
+        /* 
+            * Pixel height of the image.
+            */ height: UInt32,
+        /* 
+            * Detected format classification (e.g. "PNG", "JPEG", "WebP", "GIF", "BMP", "TIFF", "ICO", "PSD", "QOI", "HDR").
+            */ formatName: String,
+        /* 
+            * Color space descriptor (e.g. "sRGB", "Display P3", "Adobe RGB", "Grayscale", "Indexed Color").
+            */ colorSpace: String,
+        /* 
+            * Whether the image contains an active alpha transparency channel.
+            */ hasAlpha: Bool,
+        /* 
+            * Bits per pixel/channel depth (e.g. 8, 16, 24, 32).
+            */ bitDepth: UInt32,
+        /* 
+            * EXIF orientation tag (1..=8, default 1 for normal orientation).
+            */ orientation: UInt32,
+        /* 
+            * Total number of animation frames (1 for static images).
+            */ frameCount: UInt32,
+        /* 
+            * Camera manufacturer name if available in EXIF tags.
+            */ cameraMake: String?,
+        /* 
+            * Camera model name if available in EXIF tags.
+            */ cameraModel: String?,
+        /* 
+            * Lens model specification if available in EXIF tags.
+            */ lensModel: String?,
+        /* 
+            * ISO speed rating if available in EXIF tags.
+            */ isoSpeed: UInt32?,
+        /* 
+            * Lens aperture f-number if available in EXIF tags.
+            */ fNumber: Double?,
+        /* 
+            * Exposure time in seconds if available in EXIF tags.
+            */ exposureTimeSecs: Double?,
+        /* 
+            * Focal length in millimeters if available in EXIF tags.
+            */ focalLengthMm: Double?,
+        /* 
+            * Original capture date/time string if available in EXIF tags.
+            */ dateTimeOriginal: String?,
+        /* 
+            * Embedded ICC color profile name if available.
+            */ iccProfileName: String?,
+        /* 
+            * Total byte size of the raw compressed image buffer.
+            */ byteSize: UInt64
+    ) {
+        self.width = width
+        self.height = height
+        self.formatName = formatName
+        self.colorSpace = colorSpace
+        self.hasAlpha = hasAlpha
+        self.bitDepth = bitDepth
+        self.orientation = orientation
+        self.frameCount = frameCount
+        self.cameraMake = cameraMake
+        self.cameraModel = cameraModel
+        self.lensModel = lensModel
+        self.isoSpeed = isoSpeed
+        self.fNumber = fNumber
+        self.exposureTimeSecs = exposureTimeSecs
+        self.focalLengthMm = focalLengthMm
+        self.dateTimeOriginal = dateTimeOriginal
+        self.iccProfileName = iccProfileName
+        self.byteSize = byteSize
+    }
+}
+
+extension UniFfiImageInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiImageInfo, rhs: UniFfiImageInfo) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.colorSpace != rhs.colorSpace {
+            return false
+        }
+        if lhs.hasAlpha != rhs.hasAlpha {
+            return false
+        }
+        if lhs.bitDepth != rhs.bitDepth {
+            return false
+        }
+        if lhs.orientation != rhs.orientation {
+            return false
+        }
+        if lhs.frameCount != rhs.frameCount {
+            return false
+        }
+        if lhs.cameraMake != rhs.cameraMake {
+            return false
+        }
+        if lhs.cameraModel != rhs.cameraModel {
+            return false
+        }
+        if lhs.lensModel != rhs.lensModel {
+            return false
+        }
+        if lhs.isoSpeed != rhs.isoSpeed {
+            return false
+        }
+        if lhs.fNumber != rhs.fNumber {
+            return false
+        }
+        if lhs.exposureTimeSecs != rhs.exposureTimeSecs {
+            return false
+        }
+        if lhs.focalLengthMm != rhs.focalLengthMm {
+            return false
+        }
+        if lhs.dateTimeOriginal != rhs.dateTimeOriginal {
+            return false
+        }
+        if lhs.iccProfileName != rhs.iccProfileName {
+            return false
+        }
+        if lhs.byteSize != rhs.byteSize {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(formatName)
+        hasher.combine(colorSpace)
+        hasher.combine(hasAlpha)
+        hasher.combine(bitDepth)
+        hasher.combine(orientation)
+        hasher.combine(frameCount)
+        hasher.combine(cameraMake)
+        hasher.combine(cameraModel)
+        hasher.combine(lensModel)
+        hasher.combine(isoSpeed)
+        hasher.combine(fNumber)
+        hasher.combine(exposureTimeSecs)
+        hasher.combine(focalLengthMm)
+        hasher.combine(dateTimeOriginal)
+        hasher.combine(iccProfileName)
+        hasher.combine(byteSize)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIImageInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiImageInfo {
+        return
+            try UniFfiImageInfo(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                formatName: FfiConverterString.read(from: &buf),
+                colorSpace: FfiConverterString.read(from: &buf),
+                hasAlpha: FfiConverterBool.read(from: &buf),
+                bitDepth: FfiConverterUInt32.read(from: &buf),
+                orientation: FfiConverterUInt32.read(from: &buf),
+                frameCount: FfiConverterUInt32.read(from: &buf),
+                cameraMake: FfiConverterOptionString.read(from: &buf),
+                cameraModel: FfiConverterOptionString.read(from: &buf),
+                lensModel: FfiConverterOptionString.read(from: &buf),
+                isoSpeed: FfiConverterOptionUInt32.read(from: &buf),
+                fNumber: FfiConverterOptionDouble.read(from: &buf),
+                exposureTimeSecs: FfiConverterOptionDouble.read(from: &buf),
+                focalLengthMm: FfiConverterOptionDouble.read(from: &buf),
+                dateTimeOriginal: FfiConverterOptionString.read(from: &buf),
+                iccProfileName: FfiConverterOptionString.read(from: &buf),
+                byteSize: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiImageInfo, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterString.write(value.colorSpace, into: &buf)
+        FfiConverterBool.write(value.hasAlpha, into: &buf)
+        FfiConverterUInt32.write(value.bitDepth, into: &buf)
+        FfiConverterUInt32.write(value.orientation, into: &buf)
+        FfiConverterUInt32.write(value.frameCount, into: &buf)
+        FfiConverterOptionString.write(value.cameraMake, into: &buf)
+        FfiConverterOptionString.write(value.cameraModel, into: &buf)
+        FfiConverterOptionString.write(value.lensModel, into: &buf)
+        FfiConverterOptionUInt32.write(value.isoSpeed, into: &buf)
+        FfiConverterOptionDouble.write(value.fNumber, into: &buf)
+        FfiConverterOptionDouble.write(value.exposureTimeSecs, into: &buf)
+        FfiConverterOptionDouble.write(value.focalLengthMm, into: &buf)
+        FfiConverterOptionString.write(value.dateTimeOriginal, into: &buf)
+        FfiConverterOptionString.write(value.iccProfileName, into: &buf)
+        FfiConverterUInt64.write(value.byteSize, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageInfo_lift(_ buf: RustBuffer) throws -> UniFfiImageInfo {
+    return try FfiConverterTypeUniFFIImageInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIImageInfo_lower(_ value: UniFfiImageInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIImageInfo.lower(value)
+}
+
+/**
  * Comprehensive archive integrity report.
  */
 public struct UniFfiIntegrityReport {
@@ -11476,6 +12155,139 @@ public func FfiConverterTypeUniFFITargetAbReportItem_lower(_ value: UniFfiTarget
 }
 
 /**
+ * High-performance downsampled thumbnail generation result with execution metrics.
+ */
+public struct UniFfiThumbnailResult {
+    /**
+     * Pixel width of the generated thumbnail.
+     */
+    public var width: UInt32
+    /**
+     * Pixel height of the generated thumbnail.
+     */
+    public var height: UInt32
+    /**
+     * Row stride in bytes (`width * 4`).
+     */
+    public var stride: UInt32
+    /**
+     * Flat RGBA8 pixel byte buffer.
+     */
+    public var rgbaBytes: Data
+    /**
+     * Effective scale factor relative to original dimensions.
+     */
+    public var scaleFactor: Double
+    /**
+     * Wall-clock thumbnail generation latency in milliseconds.
+     */
+    public var durationMs: Double
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Pixel width of the generated thumbnail.
+         */ width: UInt32,
+        /* 
+            * Pixel height of the generated thumbnail.
+            */ height: UInt32,
+        /* 
+            * Row stride in bytes (`width * 4`).
+            */ stride: UInt32,
+        /* 
+            * Flat RGBA8 pixel byte buffer.
+            */ rgbaBytes: Data,
+        /* 
+            * Effective scale factor relative to original dimensions.
+            */ scaleFactor: Double,
+        /* 
+            * Wall-clock thumbnail generation latency in milliseconds.
+            */ durationMs: Double
+    ) {
+        self.width = width
+        self.height = height
+        self.stride = stride
+        self.rgbaBytes = rgbaBytes
+        self.scaleFactor = scaleFactor
+        self.durationMs = durationMs
+    }
+}
+
+extension UniFfiThumbnailResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiThumbnailResult, rhs: UniFfiThumbnailResult) -> Bool {
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.stride != rhs.stride {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        if lhs.scaleFactor != rhs.scaleFactor {
+            return false
+        }
+        if lhs.durationMs != rhs.durationMs {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(stride)
+        hasher.combine(rgbaBytes)
+        hasher.combine(scaleFactor)
+        hasher.combine(durationMs)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIThumbnailResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiThumbnailResult {
+        return
+            try UniFfiThumbnailResult(
+                width: FfiConverterUInt32.read(from: &buf),
+                height: FfiConverterUInt32.read(from: &buf),
+                stride: FfiConverterUInt32.read(from: &buf),
+                rgbaBytes: FfiConverterData.read(from: &buf),
+                scaleFactor: FfiConverterDouble.read(from: &buf),
+                durationMs: FfiConverterDouble.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiThumbnailResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.width, into: &buf)
+        FfiConverterUInt32.write(value.height, into: &buf)
+        FfiConverterUInt32.write(value.stride, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+        FfiConverterDouble.write(value.scaleFactor, into: &buf)
+        FfiConverterDouble.write(value.durationMs, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIThumbnailResult_lift(_ buf: RustBuffer) throws -> UniFfiThumbnailResult {
+    return try FfiConverterTypeUniFFIThumbnailResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIThumbnailResult_lower(_ value: UniFfiThumbnailResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIThumbnailResult.lower(value)
+}
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 public struct UniFfiTokenSpan {
@@ -12134,6 +12946,249 @@ public func FfiConverterTypeUniFFIVideoTrack_lift(_ buf: RustBuffer) throws -> U
 #endif
 public func FfiConverterTypeUniFFIVideoTrack_lower(_ value: UniFfiVideoTrack) -> RustBuffer {
     return FfiConverterTypeUniFFIVideoTrack.lower(value)
+}
+
+/**
+ * Viewport sampling crop and dimension configuration record.
+ */
+public struct UniFfiViewportCropParams {
+    public var cropX: UInt32
+    public var cropY: UInt32
+    public var cropWidth: UInt32
+    public var cropHeight: UInt32
+    public var targetWidth: UInt32
+    public var targetHeight: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(cropX: UInt32, cropY: UInt32, cropWidth: UInt32, cropHeight: UInt32, targetWidth: UInt32, targetHeight: UInt32) {
+        self.cropX = cropX
+        self.cropY = cropY
+        self.cropWidth = cropWidth
+        self.cropHeight = cropHeight
+        self.targetWidth = targetWidth
+        self.targetHeight = targetHeight
+    }
+}
+
+extension UniFfiViewportCropParams: Equatable, Hashable {
+    public static func == (lhs: UniFfiViewportCropParams, rhs: UniFfiViewportCropParams) -> Bool {
+        if lhs.cropX != rhs.cropX {
+            return false
+        }
+        if lhs.cropY != rhs.cropY {
+            return false
+        }
+        if lhs.cropWidth != rhs.cropWidth {
+            return false
+        }
+        if lhs.cropHeight != rhs.cropHeight {
+            return false
+        }
+        if lhs.targetWidth != rhs.targetWidth {
+            return false
+        }
+        if lhs.targetHeight != rhs.targetHeight {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(cropX)
+        hasher.combine(cropY)
+        hasher.combine(cropWidth)
+        hasher.combine(cropHeight)
+        hasher.combine(targetWidth)
+        hasher.combine(targetHeight)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIViewportCropParams: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiViewportCropParams {
+        return
+            try UniFfiViewportCropParams(
+                cropX: FfiConverterUInt32.read(from: &buf),
+                cropY: FfiConverterUInt32.read(from: &buf),
+                cropWidth: FfiConverterUInt32.read(from: &buf),
+                cropHeight: FfiConverterUInt32.read(from: &buf),
+                targetWidth: FfiConverterUInt32.read(from: &buf),
+                targetHeight: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiViewportCropParams, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.cropX, into: &buf)
+        FfiConverterUInt32.write(value.cropY, into: &buf)
+        FfiConverterUInt32.write(value.cropWidth, into: &buf)
+        FfiConverterUInt32.write(value.cropHeight, into: &buf)
+        FfiConverterUInt32.write(value.targetWidth, into: &buf)
+        FfiConverterUInt32.write(value.targetHeight, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIViewportCropParams_lift(_ buf: RustBuffer) throws -> UniFfiViewportCropParams {
+    return try FfiConverterTypeUniFFIViewportCropParams.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIViewportCropParams_lower(_ value: UniFfiViewportCropParams) -> RustBuffer {
+    return FfiConverterTypeUniFFIViewportCropParams.lower(value)
+}
+
+/**
+ * Sampled sub-region tile for high-resolution deep zoom viewports.
+ */
+public struct UniFfiViewportTile {
+    /**
+     * Origin X coordinate of the crop rectangle in original image coordinates.
+     */
+    public var tileX: UInt32
+    /**
+     * Origin Y coordinate of the crop rectangle in original image coordinates.
+     */
+    public var tileY: UInt32
+    /**
+     * Rendered pixel width of the output tile.
+     */
+    public var tileWidth: UInt32
+    /**
+     * Rendered pixel height of the output tile.
+     */
+    public var tileHeight: UInt32
+    /**
+     * Row stride in bytes (`tile_width * 4`).
+     */
+    public var stride: UInt32
+    /**
+     * Flat RGBA8 pixel byte buffer.
+     */
+    public var rgbaBytes: Data
+    /**
+     * Level of detail (LOD) pyramid level (0 = 1:1 full resolution, 1 = 1/2, 2 = 1/4, etc.).
+     */
+    public var lodLevel: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Origin X coordinate of the crop rectangle in original image coordinates.
+         */ tileX: UInt32,
+        /* 
+            * Origin Y coordinate of the crop rectangle in original image coordinates.
+            */ tileY: UInt32,
+        /* 
+            * Rendered pixel width of the output tile.
+            */ tileWidth: UInt32,
+        /* 
+            * Rendered pixel height of the output tile.
+            */ tileHeight: UInt32,
+        /* 
+            * Row stride in bytes (`tile_width * 4`).
+            */ stride: UInt32,
+        /* 
+            * Flat RGBA8 pixel byte buffer.
+            */ rgbaBytes: Data,
+        /* 
+            * Level of detail (LOD) pyramid level (0 = 1:1 full resolution, 1 = 1/2, 2 = 1/4, etc.).
+            */ lodLevel: UInt32
+    ) {
+        self.tileX = tileX
+        self.tileY = tileY
+        self.tileWidth = tileWidth
+        self.tileHeight = tileHeight
+        self.stride = stride
+        self.rgbaBytes = rgbaBytes
+        self.lodLevel = lodLevel
+    }
+}
+
+extension UniFfiViewportTile: Equatable, Hashable {
+    public static func == (lhs: UniFfiViewportTile, rhs: UniFfiViewportTile) -> Bool {
+        if lhs.tileX != rhs.tileX {
+            return false
+        }
+        if lhs.tileY != rhs.tileY {
+            return false
+        }
+        if lhs.tileWidth != rhs.tileWidth {
+            return false
+        }
+        if lhs.tileHeight != rhs.tileHeight {
+            return false
+        }
+        if lhs.stride != rhs.stride {
+            return false
+        }
+        if lhs.rgbaBytes != rhs.rgbaBytes {
+            return false
+        }
+        if lhs.lodLevel != rhs.lodLevel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(tileX)
+        hasher.combine(tileY)
+        hasher.combine(tileWidth)
+        hasher.combine(tileHeight)
+        hasher.combine(stride)
+        hasher.combine(rgbaBytes)
+        hasher.combine(lodLevel)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIViewportTile: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiViewportTile {
+        return
+            try UniFfiViewportTile(
+                tileX: FfiConverterUInt32.read(from: &buf),
+                tileY: FfiConverterUInt32.read(from: &buf),
+                tileWidth: FfiConverterUInt32.read(from: &buf),
+                tileHeight: FfiConverterUInt32.read(from: &buf),
+                stride: FfiConverterUInt32.read(from: &buf),
+                rgbaBytes: FfiConverterData.read(from: &buf),
+                lodLevel: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiViewportTile, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.tileX, into: &buf)
+        FfiConverterUInt32.write(value.tileY, into: &buf)
+        FfiConverterUInt32.write(value.tileWidth, into: &buf)
+        FfiConverterUInt32.write(value.tileHeight, into: &buf)
+        FfiConverterUInt32.write(value.stride, into: &buf)
+        FfiConverterData.write(value.rgbaBytes, into: &buf)
+        FfiConverterUInt32.write(value.lodLevel, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIViewportTile_lift(_ buf: RustBuffer) throws -> UniFfiViewportTile {
+    return try FfiConverterTypeUniFFIViewportTile.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIViewportTile_lower(_ value: UniFfiViewportTile) -> RustBuffer {
+    return FfiConverterTypeUniFFIViewportTile.lower(value)
 }
 
 /**
@@ -17804,6 +18859,18 @@ public func uniffiCrc64(data: Data, seed: UInt64?) -> UInt64 {
 }
 
 /**
+ * Decodes an image from in-memory bytes into unified RGBA8 format.
+ */
+public func uniffiDecodeImage(data: Data, maxDimension: UInt32?) throws -> UniFfiImageFrame {
+    return try FfiConverterTypeUniFFIImageFrame.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_decode_image(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt32.lower(maxDimension), $0
+        )
+    })
+}
+
+/**
  * Decompresses a memory buffer using the specified codec.
  */
 public func uniffiDecompressBuffer(codec: UniFfiCompressionCodec, src: Data, expectedUncompressedSize: UInt64?, options: UniFfiCompressionOptions?) throws -> Data {
@@ -17968,6 +19035,20 @@ public func uniffiExtractSymbols(code: String, languageHint: String) -> [UniFfiS
         uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(
             FfiConverterString.lower(code),
             FfiConverterString.lower(languageHint), $0
+        )
+    })
+}
+
+/**
+ * Generates a high-quality downsampled thumbnail from in-memory image bytes.
+ */
+public func uniffiExtractThumbnail(data: Data, maxWidth: UInt32, maxHeight: UInt32, filterType: String?) throws -> UniFfiThumbnailResult {
+    return try FfiConverterTypeUniFFIThumbnailResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(
+            FfiConverterData.lower(data),
+            FfiConverterUInt32.lower(maxWidth),
+            FfiConverterUInt32.lower(maxHeight),
+            FfiConverterOptionString.lower(filterType), $0
         )
     })
 }
@@ -18177,6 +19258,18 @@ public func uniffiPpmdDecompress(src: Data, expectedUncompressedSize: UInt64, or
 }
 
 /**
+ * Probes image format, dimensions, color space, and EXIF tags without full pixel decompression.
+ */
+public func uniffiProbeImageInfo(data: Data, fileName: String?) throws -> UniFfiImageInfo {
+    return try FfiConverterTypeUniFFIImageInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
  * Standalone convenience function for single filename remediation.
  */
 public func uniffiRemediateFilename(rawBytes: Data, fallbackEncoding: String?) -> UniFfiRemediationResult {
@@ -18184,6 +19277,18 @@ public func uniffiRemediateFilename(rawBytes: Data, fallbackEncoding: String?) -
         uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(
             FfiConverterData.lower(rawBytes),
             FfiConverterOptionString.lower(fallbackEncoding), $0
+        )
+    })
+}
+
+/**
+ * Samples a cropped viewport tile from an in-memory image buffer.
+ */
+public func uniffiSampleViewport(data: Data, params: UniFfiViewportCropParams) throws -> UniFfiViewportTile {
+    return try FfiConverterTypeUniFFIViewportTile.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(
+            FfiConverterData.lower(data),
+            FfiConverterTypeUniFFIViewportCropParams.lower(params), $0
         )
     })
 }
@@ -19016,6 +20121,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_decode_image() != 27202 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer() != 6970 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19056,6 +20164,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
@@ -19109,7 +20220,13 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport() != 3307 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295 {
@@ -19281,6 +20398,30 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image() != 23857 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image_from_file() != 29611 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail() != 18321 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail_from_file() != 10362 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info() != 55447 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info_from_file() != 18067 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport() != 22094 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file() != 41256 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087 {
@@ -19578,6 +20719,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760 {
