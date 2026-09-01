@@ -438,28 +438,52 @@ fn test_blake3_invariant_6_commit_diff_anti_regression_gate() {
     let mut baseline_samples = Vec::with_capacity(5);
     let mut candidate_samples = Vec::with_capacity(5);
 
-    for _ in 0..5 {
-        let (b, _) = measure_adaptive_throughput(
-            || {
-                let mut hasher = Blake3Hasher::new();
-                hasher.update(&payload);
-                let digest = hasher.finalize();
-                black_box(digest);
-            },
-            payload.len(),
-            &mut governor,
-        );
-        baseline_samples.push(b);
+    for i in 0..6 {
+        if i % 2 == 0 {
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let mut hasher = Blake3Hasher::new();
+                    hasher.update(&payload);
+                    let digest = hasher.finalize();
+                    black_box(digest);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            baseline_samples.push(b);
 
-        let (c, _) = measure_adaptive_throughput(
-            || {
-                let digest = hash(&payload);
-                black_box(digest);
-            },
-            payload.len(),
-            &mut governor,
-        );
-        candidate_samples.push(c);
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let digest = hash(&payload);
+                    black_box(digest);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            candidate_samples.push(c);
+        } else {
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let digest = hash(&payload);
+                    black_box(digest);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            candidate_samples.push(c);
+
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let mut hasher = Blake3Hasher::new();
+                    hasher.update(&payload);
+                    let digest = hasher.finalize();
+                    black_box(digest);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            baseline_samples.push(b);
+        }
     }
 
     let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);

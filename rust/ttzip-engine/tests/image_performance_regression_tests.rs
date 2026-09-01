@@ -452,9 +452,10 @@ fn test_master_image_anti_regression_invariant_6_gate() {
     let bmp_data = make_test_bmp(128, 128);
     let payload_bytes = 128 * 128 * 4;
 
-    // Execute 3 baseline runs and 3 candidate runs
-    let mut baseline_samples = Vec::with_capacity(3);
-    for _ in 0..3 {
+    // Execute 5 interleaved A/B passes
+    let mut baseline_samples = Vec::with_capacity(5);
+    let mut candidate_samples = Vec::with_capacity(5);
+    for _ in 0..5 {
         let (b, _) = measure_adaptive_throughput(
             || {
                 let img = decode_image_rgba(&bmp_data).unwrap();
@@ -464,10 +465,7 @@ fn test_master_image_anti_regression_invariant_6_gate() {
             &mut governor,
         );
         baseline_samples.push(b);
-    }
 
-    let mut candidate_samples = Vec::with_capacity(3);
-    for _ in 0..3 {
         let (c, _) = measure_adaptive_throughput(
             || {
                 let img = decode_image_rgba(&bmp_data).unwrap();
@@ -479,10 +477,8 @@ fn test_master_image_anti_regression_invariant_6_gate() {
         candidate_samples.push(c);
     }
 
-    let baseline_mb_s =
-        baseline_samples.iter().copied().sum::<f64>() / baseline_samples.len() as f64;
-    let candidate_mb_s =
-        candidate_samples.iter().copied().sum::<f64>() / candidate_samples.len() as f64;
+    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
+    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
 
     let diff_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0
