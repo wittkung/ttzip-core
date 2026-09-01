@@ -66,7 +66,11 @@ pub use archive::{
     ArchiveEntryInfo, ArchiveReader, ExtractBuilder, SplitVolumeWriter, VirtualFileStream,
     VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
 };
-pub use audio::*;
+pub use audio::{
+    default_waveform, extract_waveform_from_bytes, extract_waveform_from_file, AudioCoverArt,
+    AudioError, AudioMetadata, AudioMetadataExtractor, AudioPcmConverter, AudioPictureType,
+    AudioStreamInfo, AudioWaveform, AudioWaveformSampler, DecodedAudioPacket, TTZipAudioDecoder,
+};
 pub use benchmark::*;
 pub use charset::*;
 pub use codecs::*;

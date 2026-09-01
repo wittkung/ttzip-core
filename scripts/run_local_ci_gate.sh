@@ -108,6 +108,7 @@ declare -a STAGE_NAMES=(
     "Tree-sitter Incremental Syntax & AST Highlight Invariant 6 Gate"
     "Pure-Rust Image Decoder & Viewport Rendering Invariant 6 Gate"
     "Pure-Rust PDF Parser & Streaming Text Invariant 6 Gate"
+    "Pure-Rust Audio Decoder & Waveform Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -142,6 +143,7 @@ declare -a STAGE_KEYS=(
     "syntax-suite"
     "image-suite"
     "pdf-suite"
+    "audio-suite"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -177,6 +179,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_syntax_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_image_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_pdf_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_audio_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}

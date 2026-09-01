@@ -933,6 +933,248 @@ public func FfiConverterTypeTTZipLocalizationEngine_lower(_ value: TtZipLocaliza
 }
 
 /**
+ * High-performance Mozilla UniFFI audio engine service exposing probing, metadata, and playback streaming.
+ */
+public protocol UniFfiAudioServiceProtocol: AnyObject {
+    /**
+     * Decodes chunked PCM sample packets from an in-memory byte buffer.
+     */
+    func decodePackets(data: Data, maxPackets: UInt32?, fileName: String?) throws -> [UniFfiAudioPacket]
+
+    /**
+     * Decodes chunked PCM sample packets from a local audio file on disk.
+     */
+    func decodePacketsFromFile(filePath: String, maxPackets: UInt32?) throws -> [UniFfiAudioPacket]
+
+    /**
+     * Extracts metadata tags and embedded cover art from an in-memory byte buffer.
+     */
+    func extractMetadata(data: Data, fileName: String?) throws -> UniFfiAudioMetadata
+
+    /**
+     * Extracts metadata tags and embedded cover art from a local audio file on disk.
+     */
+    func extractMetadataFromFile(filePath: String) throws -> UniFfiAudioMetadata
+
+    /**
+     * Generates normalized waveform amplitudes from an in-memory byte buffer.
+     */
+    func generateWaveform(data: Data, bucketCount: UInt32, fileName: String?) throws -> UniFfiAudioWaveform
+
+    /**
+     * Generates normalized waveform amplitudes from a local audio file on disk.
+     */
+    func generateWaveformFromFile(filePath: String, bucketCount: UInt32) throws -> UniFfiAudioWaveform
+
+    /**
+     * Probes technical stream info from an in-memory byte buffer.
+     */
+    func probeBytes(data: Data, fileName: String?) throws -> UniFfiAudioStreamInfo
+
+    /**
+     * Probes technical stream info from a local audio file on disk.
+     */
+    func probeFile(filePath: String) throws -> UniFfiAudioStreamInfo
+}
+
+/**
+ * High-performance Mozilla UniFFI audio engine service exposing probing, metadata, and playback streaming.
+ */
+open class UniFfiAudioService:
+    UniFfiAudioServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiaudioservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new thread-safe audio service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffiaudioservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiaudioservice(pointer, $0) }
+    }
+
+    /**
+     * Decodes chunked PCM sample packets from an in-memory byte buffer.
+     */
+    open func decodePackets(data: Data, maxPackets: UInt32?, fileName: String?) throws -> [UniFfiAudioPacket] {
+        return try FfiConverterSequenceTypeUniFFIAudioPacket.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets(self.uniffiClonePointer(),
+                                                                            FfiConverterData.lower(data),
+                                                                            FfiConverterOptionUInt32.lower(maxPackets),
+                                                                            FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Decodes chunked PCM sample packets from a local audio file on disk.
+     */
+    open func decodePacketsFromFile(filePath: String, maxPackets: UInt32?) throws -> [UniFfiAudioPacket] {
+        return try FfiConverterSequenceTypeUniFFIAudioPacket.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets_from_file(self.uniffiClonePointer(),
+                                                                                      FfiConverterString.lower(filePath),
+                                                                                      FfiConverterOptionUInt32.lower(maxPackets), $0)
+        })
+    }
+
+    /**
+     * Extracts metadata tags and embedded cover art from an in-memory byte buffer.
+     */
+    open func extractMetadata(data: Data, fileName: String?) throws -> UniFfiAudioMetadata {
+        return try FfiConverterTypeUniFFIAudioMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata(self.uniffiClonePointer(),
+                                                                              FfiConverterData.lower(data),
+                                                                              FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts metadata tags and embedded cover art from a local audio file on disk.
+     */
+    open func extractMetadataFromFile(filePath: String) throws -> UniFfiAudioMetadata {
+        return try FfiConverterTypeUniFFIAudioMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata_from_file(self.uniffiClonePointer(),
+                                                                                        FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Generates normalized waveform amplitudes from an in-memory byte buffer.
+     */
+    open func generateWaveform(data: Data, bucketCount: UInt32, fileName: String?) throws -> UniFfiAudioWaveform {
+        return try FfiConverterTypeUniFFIAudioWaveform.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform(self.uniffiClonePointer(),
+                                                                               FfiConverterData.lower(data),
+                                                                               FfiConverterUInt32.lower(bucketCount),
+                                                                               FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Generates normalized waveform amplitudes from a local audio file on disk.
+     */
+    open func generateWaveformFromFile(filePath: String, bucketCount: UInt32) throws -> UniFfiAudioWaveform {
+        return try FfiConverterTypeUniFFIAudioWaveform.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform_from_file(self.uniffiClonePointer(),
+                                                                                         FfiConverterString.lower(filePath),
+                                                                                         FfiConverterUInt32.lower(bucketCount), $0)
+        })
+    }
+
+    /**
+     * Probes technical stream info from an in-memory byte buffer.
+     */
+    open func probeBytes(data: Data, fileName: String?) throws -> UniFfiAudioStreamInfo {
+        return try FfiConverterTypeUniFFIAudioStreamInfo.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_bytes(self.uniffiClonePointer(),
+                                                                         FfiConverterData.lower(data),
+                                                                         FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Probes technical stream info from a local audio file on disk.
+     */
+    open func probeFile(filePath: String) throws -> UniFfiAudioStreamInfo {
+        return try FfiConverterTypeUniFFIAudioStreamInfo.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_file(self.uniffiClonePointer(),
+                                                                        FfiConverterString.lower(filePath), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiAudioService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiAudioService {
+        return UniFfiAudioService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiAudioService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiAudioService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiAudioService {
+    return try FfiConverterTypeUniFFIAudioService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioService_lower(_ value: UniFfiAudioService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIAudioService.lower(value)
+}
+
+/**
  * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
  */
 public protocol UniFfiBufferPoolProtocol: AnyObject {
@@ -6081,6 +6323,748 @@ public func FfiConverterTypeUniFFIAeadResult_lower(_ value: UniFfiAeadResult) ->
 }
 
 /**
+ * Embedded picture/album artwork metadata extracted from audio tags.
+ */
+public struct UniFfiAudioCoverArt {
+    /**
+     * MIME type of the cover image (e.g. "image/jpeg", "image/png").
+     */
+    public var mimeType: String
+    /**
+     * Image width in pixels if known.
+     */
+    public var width: UInt32?
+    /**
+     * Image height in pixels if known.
+     */
+    public var height: UInt32?
+    /**
+     * Raw picture image bytes (JPEG / PNG / WebP).
+     */
+    public var data: Data
+    /**
+     * Picture description or tag type (e.g. "Front Cover", "Back Cover", "Icon").
+     */
+    public var description: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * MIME type of the cover image (e.g. "image/jpeg", "image/png").
+         */ mimeType: String,
+        /* 
+            * Image width in pixels if known.
+            */ width: UInt32?,
+        /* 
+            * Image height in pixels if known.
+            */ height: UInt32?,
+        /* 
+            * Raw picture image bytes (JPEG / PNG / WebP).
+            */ data: Data,
+        /* 
+            * Picture description or tag type (e.g. "Front Cover", "Back Cover", "Icon").
+            */ description: String?
+    ) {
+        self.mimeType = mimeType
+        self.width = width
+        self.height = height
+        self.data = data
+        self.description = description
+    }
+}
+
+extension UniFfiAudioCoverArt: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioCoverArt, rhs: UniFfiAudioCoverArt) -> Bool {
+        if lhs.mimeType != rhs.mimeType {
+            return false
+        }
+        if lhs.width != rhs.width {
+            return false
+        }
+        if lhs.height != rhs.height {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(mimeType)
+        hasher.combine(width)
+        hasher.combine(height)
+        hasher.combine(data)
+        hasher.combine(description)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioCoverArt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioCoverArt {
+        return
+            try UniFfiAudioCoverArt(
+                mimeType: FfiConverterString.read(from: &buf),
+                width: FfiConverterOptionUInt32.read(from: &buf),
+                height: FfiConverterOptionUInt32.read(from: &buf),
+                data: FfiConverterData.read(from: &buf),
+                description: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioCoverArt, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.mimeType, into: &buf)
+        FfiConverterOptionUInt32.write(value.width, into: &buf)
+        FfiConverterOptionUInt32.write(value.height, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioCoverArt_lift(_ buf: RustBuffer) throws -> UniFfiAudioCoverArt {
+    return try FfiConverterTypeUniFFIAudioCoverArt.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioCoverArt_lower(_ value: UniFfiAudioCoverArt) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioCoverArt.lower(value)
+}
+
+/**
+ * Comprehensive high-level acoustic and tag metadata record.
+ */
+public struct UniFfiAudioMetadata {
+    /**
+     * Track title.
+     */
+    public var title: String?
+    /**
+     * Primary artist or performer.
+     */
+    public var artist: String?
+    /**
+     * Album title.
+     */
+    public var album: String?
+    /**
+     * Album artist or compilation creator.
+     */
+    public var albumArtist: String?
+    /**
+     * Track number in album sequence.
+     */
+    public var trackNumber: UInt32?
+    /**
+     * Total number of tracks in album.
+     */
+    public var trackTotal: UInt32?
+    /**
+     * Disc number in multi-disc set.
+     */
+    public var discNumber: UInt32?
+    /**
+     * Total number of discs in set.
+     */
+    public var discTotal: UInt32?
+    /**
+     * Release year or date string.
+     */
+    public var year: String?
+    /**
+     * Music genre classification.
+     */
+    public var genre: String?
+    /**
+     * Musical composer.
+     */
+    public var composer: String?
+    /**
+     * Song lyrics text if present.
+     */
+    public var lyrics: String?
+    /**
+     * Legal copyright notice.
+     */
+    public var copyright: String?
+    /**
+     * Embedded cover art image if present.
+     */
+    public var coverArt: UniFfiAudioCoverArt?
+    /**
+     * Technical properties of the primary audio stream.
+     */
+    public var streamInfo: UniFfiAudioStreamInfo
+    /**
+     * Total size of the audio file in bytes.
+     */
+    public var fileSizeBytes: UInt64
+    /**
+     * Container format name (e.g. "mp3", "m4a", "flac", "wav", "ogg", "aiff").
+     */
+    public var containerFormat: String
+    /**
+     * Additional unstructured key-value tag pairs.
+     */
+    public var extraTags: [String: String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Track title.
+         */ title: String?,
+        /* 
+            * Primary artist or performer.
+            */ artist: String?,
+        /* 
+            * Album title.
+            */ album: String?,
+        /* 
+            * Album artist or compilation creator.
+            */ albumArtist: String?,
+        /* 
+            * Track number in album sequence.
+            */ trackNumber: UInt32?,
+        /* 
+            * Total number of tracks in album.
+            */ trackTotal: UInt32?,
+        /* 
+            * Disc number in multi-disc set.
+            */ discNumber: UInt32?,
+        /* 
+            * Total number of discs in set.
+            */ discTotal: UInt32?,
+        /* 
+            * Release year or date string.
+            */ year: String?,
+        /* 
+            * Music genre classification.
+            */ genre: String?,
+        /* 
+            * Musical composer.
+            */ composer: String?,
+        /* 
+            * Song lyrics text if present.
+            */ lyrics: String?,
+        /* 
+            * Legal copyright notice.
+            */ copyright: String?,
+        /* 
+            * Embedded cover art image if present.
+            */ coverArt: UniFfiAudioCoverArt?,
+        /* 
+            * Technical properties of the primary audio stream.
+            */ streamInfo: UniFfiAudioStreamInfo,
+        /* 
+            * Total size of the audio file in bytes.
+            */ fileSizeBytes: UInt64,
+        /* 
+            * Container format name (e.g. "mp3", "m4a", "flac", "wav", "ogg", "aiff").
+            */ containerFormat: String,
+        /* 
+            * Additional unstructured key-value tag pairs.
+            */ extraTags: [String: String]
+    ) {
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.albumArtist = albumArtist
+        self.trackNumber = trackNumber
+        self.trackTotal = trackTotal
+        self.discNumber = discNumber
+        self.discTotal = discTotal
+        self.year = year
+        self.genre = genre
+        self.composer = composer
+        self.lyrics = lyrics
+        self.copyright = copyright
+        self.coverArt = coverArt
+        self.streamInfo = streamInfo
+        self.fileSizeBytes = fileSizeBytes
+        self.containerFormat = containerFormat
+        self.extraTags = extraTags
+    }
+}
+
+extension UniFfiAudioMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioMetadata, rhs: UniFfiAudioMetadata) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.artist != rhs.artist {
+            return false
+        }
+        if lhs.album != rhs.album {
+            return false
+        }
+        if lhs.albumArtist != rhs.albumArtist {
+            return false
+        }
+        if lhs.trackNumber != rhs.trackNumber {
+            return false
+        }
+        if lhs.trackTotal != rhs.trackTotal {
+            return false
+        }
+        if lhs.discNumber != rhs.discNumber {
+            return false
+        }
+        if lhs.discTotal != rhs.discTotal {
+            return false
+        }
+        if lhs.year != rhs.year {
+            return false
+        }
+        if lhs.genre != rhs.genre {
+            return false
+        }
+        if lhs.composer != rhs.composer {
+            return false
+        }
+        if lhs.lyrics != rhs.lyrics {
+            return false
+        }
+        if lhs.copyright != rhs.copyright {
+            return false
+        }
+        if lhs.coverArt != rhs.coverArt {
+            return false
+        }
+        if lhs.streamInfo != rhs.streamInfo {
+            return false
+        }
+        if lhs.fileSizeBytes != rhs.fileSizeBytes {
+            return false
+        }
+        if lhs.containerFormat != rhs.containerFormat {
+            return false
+        }
+        if lhs.extraTags != rhs.extraTags {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(artist)
+        hasher.combine(album)
+        hasher.combine(albumArtist)
+        hasher.combine(trackNumber)
+        hasher.combine(trackTotal)
+        hasher.combine(discNumber)
+        hasher.combine(discTotal)
+        hasher.combine(year)
+        hasher.combine(genre)
+        hasher.combine(composer)
+        hasher.combine(lyrics)
+        hasher.combine(copyright)
+        hasher.combine(coverArt)
+        hasher.combine(streamInfo)
+        hasher.combine(fileSizeBytes)
+        hasher.combine(containerFormat)
+        hasher.combine(extraTags)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioMetadata {
+        return
+            try UniFfiAudioMetadata(
+                title: FfiConverterOptionString.read(from: &buf),
+                artist: FfiConverterOptionString.read(from: &buf),
+                album: FfiConverterOptionString.read(from: &buf),
+                albumArtist: FfiConverterOptionString.read(from: &buf),
+                trackNumber: FfiConverterOptionUInt32.read(from: &buf),
+                trackTotal: FfiConverterOptionUInt32.read(from: &buf),
+                discNumber: FfiConverterOptionUInt32.read(from: &buf),
+                discTotal: FfiConverterOptionUInt32.read(from: &buf),
+                year: FfiConverterOptionString.read(from: &buf),
+                genre: FfiConverterOptionString.read(from: &buf),
+                composer: FfiConverterOptionString.read(from: &buf),
+                lyrics: FfiConverterOptionString.read(from: &buf),
+                copyright: FfiConverterOptionString.read(from: &buf),
+                coverArt: FfiConverterOptionTypeUniFFIAudioCoverArt.read(from: &buf),
+                streamInfo: FfiConverterTypeUniFFIAudioStreamInfo.read(from: &buf),
+                fileSizeBytes: FfiConverterUInt64.read(from: &buf),
+                containerFormat: FfiConverterString.read(from: &buf),
+                extraTags: FfiConverterDictionaryStringString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioMetadata, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.artist, into: &buf)
+        FfiConverterOptionString.write(value.album, into: &buf)
+        FfiConverterOptionString.write(value.albumArtist, into: &buf)
+        FfiConverterOptionUInt32.write(value.trackNumber, into: &buf)
+        FfiConverterOptionUInt32.write(value.trackTotal, into: &buf)
+        FfiConverterOptionUInt32.write(value.discNumber, into: &buf)
+        FfiConverterOptionUInt32.write(value.discTotal, into: &buf)
+        FfiConverterOptionString.write(value.year, into: &buf)
+        FfiConverterOptionString.write(value.genre, into: &buf)
+        FfiConverterOptionString.write(value.composer, into: &buf)
+        FfiConverterOptionString.write(value.lyrics, into: &buf)
+        FfiConverterOptionString.write(value.copyright, into: &buf)
+        FfiConverterOptionTypeUniFFIAudioCoverArt.write(value.coverArt, into: &buf)
+        FfiConverterTypeUniFFIAudioStreamInfo.write(value.streamInfo, into: &buf)
+        FfiConverterUInt64.write(value.fileSizeBytes, into: &buf)
+        FfiConverterString.write(value.containerFormat, into: &buf)
+        FfiConverterDictionaryStringString.write(value.extraTags, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioMetadata_lift(_ buf: RustBuffer) throws -> UniFfiAudioMetadata {
+    return try FfiConverterTypeUniFFIAudioMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioMetadata_lower(_ value: UniFfiAudioMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioMetadata.lower(value)
+}
+
+/**
+ * Decoded chunk packet of floating-point PCM audio samples for streaming playback.
+ */
+public struct UniFfiAudioPacket {
+    /**
+     * Presentation timestamp in milliseconds from stream origin.
+     */
+    public var ptsMs: UInt64
+    /**
+     * Duration of this audio packet in milliseconds.
+     */
+    public var durationMs: UInt64
+    /**
+     * Number of interleaved audio channels.
+     */
+    public var channels: UInt32
+    /**
+     * Sample rate in Hertz.
+     */
+    public var sampleRate: UInt32
+    /**
+     * Interleaved 32-bit floating point PCM audio samples normalized `[-1.0, 1.0]`.
+     */
+    public var pcmF32Samples: [Float]
+    /**
+     * Number of audio frames in this packet (`pcm_f32_samples.len() / channels`).
+     */
+    public var frameCount: UInt32
+    /**
+     * Whether this is the final packet of the audio stream (EOF marker).
+     */
+    public var isEof: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Presentation timestamp in milliseconds from stream origin.
+         */ ptsMs: UInt64,
+        /* 
+            * Duration of this audio packet in milliseconds.
+            */ durationMs: UInt64,
+        /* 
+            * Number of interleaved audio channels.
+            */ channels: UInt32,
+        /* 
+            * Sample rate in Hertz.
+            */ sampleRate: UInt32,
+        /* 
+            * Interleaved 32-bit floating point PCM audio samples normalized `[-1.0, 1.0]`.
+            */ pcmF32Samples: [Float],
+        /* 
+            * Number of audio frames in this packet (`pcm_f32_samples.len() / channels`).
+            */ frameCount: UInt32,
+        /* 
+            * Whether this is the final packet of the audio stream (EOF marker).
+            */ isEof: Bool
+    ) {
+        self.ptsMs = ptsMs
+        self.durationMs = durationMs
+        self.channels = channels
+        self.sampleRate = sampleRate
+        self.pcmF32Samples = pcmF32Samples
+        self.frameCount = frameCount
+        self.isEof = isEof
+    }
+}
+
+extension UniFfiAudioPacket: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioPacket, rhs: UniFfiAudioPacket) -> Bool {
+        if lhs.ptsMs != rhs.ptsMs {
+            return false
+        }
+        if lhs.durationMs != rhs.durationMs {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.pcmF32Samples != rhs.pcmF32Samples {
+            return false
+        }
+        if lhs.frameCount != rhs.frameCount {
+            return false
+        }
+        if lhs.isEof != rhs.isEof {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ptsMs)
+        hasher.combine(durationMs)
+        hasher.combine(channels)
+        hasher.combine(sampleRate)
+        hasher.combine(pcmF32Samples)
+        hasher.combine(frameCount)
+        hasher.combine(isEof)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioPacket: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioPacket {
+        return
+            try UniFfiAudioPacket(
+                ptsMs: FfiConverterUInt64.read(from: &buf),
+                durationMs: FfiConverterUInt64.read(from: &buf),
+                channels: FfiConverterUInt32.read(from: &buf),
+                sampleRate: FfiConverterUInt32.read(from: &buf),
+                pcmF32Samples: FfiConverterSequenceFloat.read(from: &buf),
+                frameCount: FfiConverterUInt32.read(from: &buf),
+                isEof: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioPacket, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.ptsMs, into: &buf)
+        FfiConverterUInt64.write(value.durationMs, into: &buf)
+        FfiConverterUInt32.write(value.channels, into: &buf)
+        FfiConverterUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterSequenceFloat.write(value.pcmF32Samples, into: &buf)
+        FfiConverterUInt32.write(value.frameCount, into: &buf)
+        FfiConverterBool.write(value.isEof, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioPacket_lift(_ buf: RustBuffer) throws -> UniFfiAudioPacket {
+    return try FfiConverterTypeUniFFIAudioPacket.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioPacket_lower(_ value: UniFfiAudioPacket) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioPacket.lower(value)
+}
+
+/**
+ * Technical stream properties of the primary audio track.
+ */
+public struct UniFfiAudioStreamInfo {
+    /**
+     * Short codec identifier (e.g. "mp3", "aac", "flac", "wav", "vorbis", "alac", "opus").
+     */
+    public var codecName: String
+    /**
+     * Detailed codec description or profile (e.g. "MPEG-1 Layer 3", "AAC-LC", "FLAC 16-bit").
+     */
+    public var codecLongName: String
+    /**
+     * Sample rate in Hertz (e.g. 44100, 48000, 96000).
+     */
+    public var sampleRate: UInt32
+    /**
+     * Number of audio channels (e.g. 1 for mono, 2 for stereo, 6 for 5.1 surround).
+     */
+    public var channels: UInt32
+    /**
+     * Channel layout descriptor (e.g. "mono", "stereo", "5.1").
+     */
+    public var channelLayout: String
+    /**
+     * Bits per sample if fixed uncompressed/lossless (e.g. 16, 24, 32).
+     */
+    public var bitsPerSample: UInt32?
+    /**
+     * Nominal or average bitrate in bits per second (e.g. 320000).
+     */
+    public var bitRate: UInt64?
+    /**
+     * Total duration of the primary audio stream in seconds.
+     */
+    public var durationSeconds: Double
+    /**
+     * Total audio frame or sample count if available.
+     */
+    public var totalFrames: UInt64?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Short codec identifier (e.g. "mp3", "aac", "flac", "wav", "vorbis", "alac", "opus").
+         */ codecName: String,
+        /* 
+            * Detailed codec description or profile (e.g. "MPEG-1 Layer 3", "AAC-LC", "FLAC 16-bit").
+            */ codecLongName: String,
+        /* 
+            * Sample rate in Hertz (e.g. 44100, 48000, 96000).
+            */ sampleRate: UInt32,
+        /* 
+            * Number of audio channels (e.g. 1 for mono, 2 for stereo, 6 for 5.1 surround).
+            */ channels: UInt32,
+        /* 
+            * Channel layout descriptor (e.g. "mono", "stereo", "5.1").
+            */ channelLayout: String,
+        /* 
+            * Bits per sample if fixed uncompressed/lossless (e.g. 16, 24, 32).
+            */ bitsPerSample: UInt32?,
+        /* 
+            * Nominal or average bitrate in bits per second (e.g. 320000).
+            */ bitRate: UInt64?,
+        /* 
+            * Total duration of the primary audio stream in seconds.
+            */ durationSeconds: Double,
+        /* 
+            * Total audio frame or sample count if available.
+            */ totalFrames: UInt64?
+    ) {
+        self.codecName = codecName
+        self.codecLongName = codecLongName
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.channelLayout = channelLayout
+        self.bitsPerSample = bitsPerSample
+        self.bitRate = bitRate
+        self.durationSeconds = durationSeconds
+        self.totalFrames = totalFrames
+    }
+}
+
+extension UniFfiAudioStreamInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioStreamInfo, rhs: UniFfiAudioStreamInfo) -> Bool {
+        if lhs.codecName != rhs.codecName {
+            return false
+        }
+        if lhs.codecLongName != rhs.codecLongName {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.channelLayout != rhs.channelLayout {
+            return false
+        }
+        if lhs.bitsPerSample != rhs.bitsPerSample {
+            return false
+        }
+        if lhs.bitRate != rhs.bitRate {
+            return false
+        }
+        if lhs.durationSeconds != rhs.durationSeconds {
+            return false
+        }
+        if lhs.totalFrames != rhs.totalFrames {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(codecName)
+        hasher.combine(codecLongName)
+        hasher.combine(sampleRate)
+        hasher.combine(channels)
+        hasher.combine(channelLayout)
+        hasher.combine(bitsPerSample)
+        hasher.combine(bitRate)
+        hasher.combine(durationSeconds)
+        hasher.combine(totalFrames)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioStreamInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioStreamInfo {
+        return
+            try UniFfiAudioStreamInfo(
+                codecName: FfiConverterString.read(from: &buf),
+                codecLongName: FfiConverterString.read(from: &buf),
+                sampleRate: FfiConverterUInt32.read(from: &buf),
+                channels: FfiConverterUInt32.read(from: &buf),
+                channelLayout: FfiConverterString.read(from: &buf),
+                bitsPerSample: FfiConverterOptionUInt32.read(from: &buf),
+                bitRate: FfiConverterOptionUInt64.read(from: &buf),
+                durationSeconds: FfiConverterDouble.read(from: &buf),
+                totalFrames: FfiConverterOptionUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioStreamInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.codecName, into: &buf)
+        FfiConverterString.write(value.codecLongName, into: &buf)
+        FfiConverterUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterUInt32.write(value.channels, into: &buf)
+        FfiConverterString.write(value.channelLayout, into: &buf)
+        FfiConverterOptionUInt32.write(value.bitsPerSample, into: &buf)
+        FfiConverterOptionUInt64.write(value.bitRate, into: &buf)
+        FfiConverterDouble.write(value.durationSeconds, into: &buf)
+        FfiConverterOptionUInt64.write(value.totalFrames, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioStreamInfo_lift(_ buf: RustBuffer) throws -> UniFfiAudioStreamInfo {
+    return try FfiConverterTypeUniFFIAudioStreamInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioStreamInfo_lower(_ value: UniFfiAudioStreamInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioStreamInfo.lower(value)
+}
+
+/**
  * Audio track metadata exposed across UniFFI boundary.
  */
 public struct UniFfiAudioTrack {
@@ -6182,6 +7166,139 @@ public func FfiConverterTypeUniFFIAudioTrack_lift(_ buf: RustBuffer) throws -> U
 #endif
 public func FfiConverterTypeUniFFIAudioTrack_lower(_ value: UniFfiAudioTrack) -> RustBuffer {
     return FfiConverterTypeUniFFIAudioTrack.lower(value)
+}
+
+/**
+ * Normalized acoustic peak and RMS waveform amplitude envelope.
+ */
+public struct UniFfiAudioWaveform {
+    /**
+     * Array of normalized peak amplitude values `[0.0, 1.0]`.
+     */
+    public var amplitudes: [Float]
+    /**
+     * Total number of sample buckets in the waveform array.
+     */
+    public var bucketCount: UInt32
+    /**
+     * Total duration of the analyzed audio in seconds.
+     */
+    public var durationSeconds: Double
+    /**
+     * Audio sample rate in Hertz.
+     */
+    public var sampleRate: UInt32
+    /**
+     * Number of audio channels analyzed.
+     */
+    public var channels: UInt32
+    /**
+     * Array of normalized RMS energy amplitude values `[0.0, 1.0]`.
+     */
+    public var rmsAmplitudes: [Float]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Array of normalized peak amplitude values `[0.0, 1.0]`.
+         */ amplitudes: [Float],
+        /* 
+            * Total number of sample buckets in the waveform array.
+            */ bucketCount: UInt32,
+        /* 
+            * Total duration of the analyzed audio in seconds.
+            */ durationSeconds: Double,
+        /* 
+            * Audio sample rate in Hertz.
+            */ sampleRate: UInt32,
+        /* 
+            * Number of audio channels analyzed.
+            */ channels: UInt32,
+        /* 
+            * Array of normalized RMS energy amplitude values `[0.0, 1.0]`.
+            */ rmsAmplitudes: [Float]
+    ) {
+        self.amplitudes = amplitudes
+        self.bucketCount = bucketCount
+        self.durationSeconds = durationSeconds
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.rmsAmplitudes = rmsAmplitudes
+    }
+}
+
+extension UniFfiAudioWaveform: Equatable, Hashable {
+    public static func == (lhs: UniFfiAudioWaveform, rhs: UniFfiAudioWaveform) -> Bool {
+        if lhs.amplitudes != rhs.amplitudes {
+            return false
+        }
+        if lhs.bucketCount != rhs.bucketCount {
+            return false
+        }
+        if lhs.durationSeconds != rhs.durationSeconds {
+            return false
+        }
+        if lhs.sampleRate != rhs.sampleRate {
+            return false
+        }
+        if lhs.channels != rhs.channels {
+            return false
+        }
+        if lhs.rmsAmplitudes != rhs.rmsAmplitudes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(amplitudes)
+        hasher.combine(bucketCount)
+        hasher.combine(durationSeconds)
+        hasher.combine(sampleRate)
+        hasher.combine(channels)
+        hasher.combine(rmsAmplitudes)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioWaveform: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioWaveform {
+        return
+            try UniFfiAudioWaveform(
+                amplitudes: FfiConverterSequenceFloat.read(from: &buf),
+                bucketCount: FfiConverterUInt32.read(from: &buf),
+                durationSeconds: FfiConverterDouble.read(from: &buf),
+                sampleRate: FfiConverterUInt32.read(from: &buf),
+                channels: FfiConverterUInt32.read(from: &buf),
+                rmsAmplitudes: FfiConverterSequenceFloat.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiAudioWaveform, into buf: inout [UInt8]) {
+        FfiConverterSequenceFloat.write(value.amplitudes, into: &buf)
+        FfiConverterUInt32.write(value.bucketCount, into: &buf)
+        FfiConverterDouble.write(value.durationSeconds, into: &buf)
+        FfiConverterUInt32.write(value.sampleRate, into: &buf)
+        FfiConverterUInt32.write(value.channels, into: &buf)
+        FfiConverterSequenceFloat.write(value.rmsAmplitudes, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioWaveform_lift(_ buf: RustBuffer) throws -> UniFfiAudioWaveform {
+    return try FfiConverterTypeUniFFIAudioWaveform.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAudioWaveform_lower(_ value: UniFfiAudioWaveform) -> RustBuffer {
+    return FfiConverterTypeUniFFIAudioWaveform.lower(value)
 }
 
 /**
@@ -15309,6 +16426,98 @@ public func FfiConverterTypeThumbnailSamplingFilter_lower(_ value: ThumbnailSamp
 
 extension ThumbnailSamplingFilter: Equatable, Hashable {}
 
+/**
+ * Strongly-typed audio operation error enum mapped directly to Swift `throws UniFFIAudioError`.
+ */
+public enum UniFfiAudioError {
+    /**
+     * Failure during audio packet decoding or PCM transformation.
+     */
+    case DecodeError(message: String)
+    /**
+     * The container or codec format is not supported or recognized.
+     */
+    case UnsupportedFormat(format: String)
+    /**
+     * File system or stream I/O failure.
+     */
+    case IoError(message: String)
+    /**
+     * Supplied parameter is out of valid bounds or invalid.
+     */
+    case InvalidParameter(parameter: String)
+    /**
+     * The audio bitstream is prematurely truncated or invalid.
+     */
+    case CorruptedStream
+    /**
+     * Audio operation was explicitly cancelled by caller.
+     */
+    case Cancelled
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAudioError: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiAudioError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAudioError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .DecodeError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 2: return try .UnsupportedFormat(
+                format: FfiConverterString.read(from: &buf)
+            )
+        case 3: return try .IoError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 4: return try .InvalidParameter(
+                parameter: FfiConverterString.read(from: &buf)
+            )
+        case 5: return .CorruptedStream
+        case 6: return .Cancelled
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiAudioError, into buf: inout [UInt8]) {
+        switch value {
+        case let .DecodeError(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .UnsupportedFormat(format):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(format, into: &buf)
+
+        case let .IoError(message):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .InvalidParameter(parameter):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(parameter, into: &buf)
+
+        case .CorruptedStream:
+            writeInt(&buf, Int32(5))
+
+        case .Cancelled:
+            writeInt(&buf, Int32(6))
+        }
+    }
+}
+
+extension UniFfiAudioError: Equatable, Hashable {}
+
+extension UniFfiAudioError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
@@ -17374,6 +18583,30 @@ private struct FfiConverterOptionTypeUniFFIAbOrchestratorConfig: FfiConverterRus
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionTypeUniFFIAudioCoverArt: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiAudioCoverArt?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFIAudioCoverArt.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFIAudioCoverArt.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionTypeUniFFICompressionOptions: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiCompressionOptions?
 
@@ -17756,6 +18989,31 @@ private struct FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypePathSuggestionItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIAudioPacket: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiAudioPacket]
+
+    static func write(_ value: [UniFfiAudioPacket], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIAudioPacket.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiAudioPacket] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiAudioPacket]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIAudioPacket.read(from: &buf))
         }
         return seq
     }
@@ -19782,6 +21040,19 @@ public func uniffiCrc64(data: Data, seed: UInt64?) -> UInt64 {
 }
 
 /**
+ * Decodes audio packets into interleaved float PCM sample chunks for streaming playback.
+ */
+public func uniffiDecodeAudioStream(data: Data, maxPackets: UInt32?, fileName: String?) throws -> [UniFfiAudioPacket] {
+    return try FfiConverterSequenceTypeUniFFIAudioPacket.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_decode_audio_stream(
+            FfiConverterData.lower(data),
+            FfiConverterOptionUInt32.lower(maxPackets),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
  * Decodes an image from in-memory bytes into unified RGBA8 format.
  */
 public func uniffiDecodeImage(data: Data, maxDimension: UInt32?) throws -> UniFfiImageFrame {
@@ -19918,6 +21189,18 @@ public func uniffiDetectLanguage(filePathOrExt: String, firstLineHint: String?) 
 }
 
 /**
+ * Extracts comprehensive metadata tags and embedded cover art from in-memory audio bytes.
+ */
+public func uniffiExtractAudioMetadata(data: Data, fileName: String?) throws -> UniFfiAudioMetadata {
+    return try FfiConverterTypeUniFFIAudioMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
  * Extracts EPUB Dublin Core publication metadata from a file on disk.
  */
 public func uniffiExtractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata {
@@ -20006,6 +21289,19 @@ public func uniffiExtractThumbnail(data: Data, maxWidth: UInt32, maxHeight: UInt
             FfiConverterUInt32.lower(maxWidth),
             FfiConverterUInt32.lower(maxHeight),
             FfiConverterOptionString.lower(filterType), $0
+        )
+    })
+}
+
+/**
+ * Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
+ */
+public func uniffiGenerateAudioWaveform(data: Data, bucketCount: UInt32, fileName: String?) throws -> UniFfiAudioWaveform {
+    return try FfiConverterTypeUniFFIAudioWaveform.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(
+            FfiConverterData.lower(data),
+            FfiConverterUInt32.lower(bucketCount),
+            FfiConverterOptionString.lower(fileName), $0
         )
     })
 }
@@ -20210,6 +21506,18 @@ public func uniffiPpmdDecompress(src: Data, expectedUncompressedSize: UInt64, or
             FfiConverterUInt64.lower(expectedUncompressedSize),
             FfiConverterUInt32.lower(order),
             FfiConverterUInt32.lower(memMb), $0
+        )
+    })
+}
+
+/**
+ * Probes technical stream parameters from in-memory audio bytes without full decoding.
+ */
+public func uniffiProbeAudioBytes(data: Data, fileName: String?) throws -> UniFfiAudioStreamInfo {
+    return try FfiConverterTypeUniFFIAudioStreamInfo.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
         )
     })
 }
@@ -21092,6 +22400,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream() != 14907 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_decode_image() != 27202 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -21125,6 +22436,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -21147,6 +22461,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
@@ -21198,6 +22515,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes() != 1259 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977 {
@@ -21354,6 +22674,30 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets() != 38954 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets_from_file() != 20942 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata() != 45441 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata_from_file() != 18072 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform() != 11028 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform_from_file() != 14550 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_bytes() != 42120 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_file() != 32021 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire() != 42974 {
@@ -21726,6 +23070,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffiaudioservice_new() != 38526 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new() != 17543 {

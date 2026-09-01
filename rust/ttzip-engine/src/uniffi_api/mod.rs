@@ -13,6 +13,7 @@
 pub mod ab_benchmark;
 pub mod archive;
 pub mod audio;
+pub mod audio_meta;
 pub mod benchmark;
 pub mod callback;
 pub mod codecs;
@@ -51,6 +52,7 @@ pub mod zopfli_opt;
 pub use ab_benchmark::*;
 pub use archive::*;
 pub use audio::*;
+pub use audio_meta::*;
 pub use benchmark::*;
 pub use callback::*;
 pub use codecs::*;

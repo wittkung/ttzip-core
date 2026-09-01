@@ -1390,6 +1390,94 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1437,6 +1525,28 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_ttzip_engine_fn_method_ttziplocalizationengine_localize_error(`ptr`: Pointer,`errorCode`: Int,`param1`: RustBuffer.ByValue,`param2`: RustBuffer.ByValue,`lang`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffiaudioservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiaudioservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiaudioservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets(`ptr`: Pointer,`data`: RustBuffer.ByValue,`maxPackets`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`maxPackets`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform(`ptr`: Pointer,`data`: RustBuffer.ByValue,`bucketCount`: Int,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`bucketCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffibufferpool(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffibufferpool(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1467,6 +1577,28 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_ttzip_engine_fn_clone_uniffiimageservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiimageservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiimageservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image(`ptr`: Pointer,`data`: RustBuffer.ByValue,`maxDimension`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`maxDimension`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail(`ptr`: Pointer,`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport(`ptr`: Pointer,`data`: RustBuffer.ByValue,`params`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`params`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1496,6 +1628,32 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence(`ptr`: Pointer,`pattern`: RustBuffer.ByValue,`startOffset`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffimmapreader_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffipdfservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffipdfservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffipdfservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`maxPages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text_from_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`maxPages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata_from_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline_from_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`pageNumber`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text_from_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`pageNumber`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text_from_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffipluginsigner(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
@@ -1935,6 +2093,10 @@ internal interface UniffiLib : Library {
     ): Int
     fun uniffi_ttzip_engine_fn_func_uniffi_crc64(`data`: RustBuffer.ByValue,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_func_uniffi_decode_audio_stream(`data`: RustBuffer.ByValue,`maxPackets`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_decode_image(`data`: RustBuffer.ByValue,`maxDimension`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_decompress_buffer(`codec`: RustBuffer.ByValue,`src`: RustBuffer.ByValue,`expectedUncompressedSize`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_deflate_compress(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1955,13 +2117,25 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_detect_language(`filePathOrExt`: RustBuffer.ByValue,`firstLineHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_office_outline(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_outline(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text(`filePath`: RustBuffer.ByValue,`pageNumber`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(`data`: RustBuffer.ByValue,`bucketCount`: Int,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1997,7 +2171,15 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,`order`: Int,`memMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(`rawBytes`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(`data`: RustBuffer.ByValue,`params`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(`filePath`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2393,6 +2575,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_crc64(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_decode_image(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_compress(
@@ -2413,13 +2599,25 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_detect_language(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_outline(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
     ): Short
@@ -2455,7 +2653,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress(
     ): Short
@@ -2553,6 +2759,22 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_file(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffibufferpool_clear(
@@ -2570,6 +2792,22 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancelled(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise(
     ): Short
@@ -2594,6 +2832,26 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text_from_bytes(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3(
     ): Short
@@ -2765,11 +3023,17 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiaudioservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64(
     ): Short
@@ -3120,6 +3384,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream() != 14907.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_decode_image() != 27202.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_decompress_buffer() != 6970.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3150,6 +3420,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3159,7 +3432,22 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline() != 48634.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_metadata() != 64179.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_outline() != 26469.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text() != 59046.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437.toShort()) {
@@ -3213,7 +3501,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes() != 1259.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport() != 3307.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295.toShort()) {
@@ -3360,6 +3660,30 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_ttziplocalizationengine_localize_error() != 33386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets() != 38954.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_decode_packets_from_file() != 20942.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata() != 45441.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_extract_metadata_from_file() != 18072.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform() != 11028.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_generate_waveform_from_file() != 14550.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_bytes() != 42120.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiaudioservice_probe_file() != 32021.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffibufferpool_acquire() != 42974.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3385,6 +3709,30 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image() != 23857.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image_from_file() != 29611.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail() != 18321.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_extract_thumbnail_from_file() != 10362.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info() != 55447.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_probe_info_from_file() != 18067.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport() != 22094.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file() != 41256.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087.toShort()) {
@@ -3421,6 +3769,36 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text() != 64119.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text_from_bytes() != 64381.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata() != 56476.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata_from_bytes() != 16782.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline() != 33647.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline_from_bytes() != 47954.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text() != 54260.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text_from_bytes() != 44910.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text() != 26030.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text_from_bytes() != 24720.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786.toShort()) {
@@ -3678,13 +4056,22 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_ttziplocalizationengine_new() != 13778.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiaudioservice_new() != 38526.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new() != 17543.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new() != 36065.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648.toShort()) {
@@ -4823,6 +5210,411 @@ public object FfiConverterTypeTTZipLocalizationEngine: FfiConverter<TtZipLocaliz
 
 
 /**
+ * High-performance Mozilla UniFFI audio engine service exposing probing, metadata, and playback streaming.
+ */
+public interface UniFfiAudioServiceInterface {
+    
+    /**
+     * Decodes chunked PCM sample packets from an in-memory byte buffer.
+     */
+    fun `decodePackets`(`data`: kotlin.ByteArray, `maxPackets`: kotlin.UInt?, `fileName`: kotlin.String?): List<UniFfiAudioPacket>
+    
+    /**
+     * Decodes chunked PCM sample packets from a local audio file on disk.
+     */
+    fun `decodePacketsFromFile`(`filePath`: kotlin.String, `maxPackets`: kotlin.UInt?): List<UniFfiAudioPacket>
+    
+    /**
+     * Extracts metadata tags and embedded cover art from an in-memory byte buffer.
+     */
+    fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioMetadata
+    
+    /**
+     * Extracts metadata tags and embedded cover art from a local audio file on disk.
+     */
+    fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiAudioMetadata
+    
+    /**
+     * Generates normalized waveform amplitudes from an in-memory byte buffer.
+     */
+    fun `generateWaveform`(`data`: kotlin.ByteArray, `bucketCount`: kotlin.UInt, `fileName`: kotlin.String?): UniFfiAudioWaveform
+    
+    /**
+     * Generates normalized waveform amplitudes from a local audio file on disk.
+     */
+    fun `generateWaveformFromFile`(`filePath`: kotlin.String, `bucketCount`: kotlin.UInt): UniFfiAudioWaveform
+    
+    /**
+     * Probes technical stream info from an in-memory byte buffer.
+     */
+    fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioStreamInfo
+    
+    /**
+     * Probes technical stream info from a local audio file on disk.
+     */
+    fun `probeFile`(`filePath`: kotlin.String): UniFfiAudioStreamInfo
+    
+    companion object
+}
+
+/**
+ * High-performance Mozilla UniFFI audio engine service exposing probing, metadata, and playback streaming.
+ */
+open class UniFfiAudioService: Disposable, AutoCloseable, UniFfiAudioServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe audio service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiaudioservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiaudioservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiaudioservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Decodes chunked PCM sample packets from an in-memory byte buffer.
+     */
+    @Throws(UniFfiAudioException::class)override fun `decodePackets`(`data`: kotlin.ByteArray, `maxPackets`: kotlin.UInt?, `fileName`: kotlin.String?): List<UniFfiAudioPacket> {
+            return FfiConverterSequenceTypeUniFFIAudioPacket.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalUInt.lower(`maxPackets`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decodes chunked PCM sample packets from a local audio file on disk.
+     */
+    @Throws(UniFfiAudioException::class)override fun `decodePacketsFromFile`(`filePath`: kotlin.String, `maxPackets`: kotlin.UInt?): List<UniFfiAudioPacket> {
+            return FfiConverterSequenceTypeUniFFIAudioPacket.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_decode_packets_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterOptionalUInt.lower(`maxPackets`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts metadata tags and embedded cover art from an in-memory byte buffer.
+     */
+    @Throws(UniFfiAudioException::class)override fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioMetadata {
+            return FfiConverterTypeUniFFIAudioMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts metadata tags and embedded cover art from a local audio file on disk.
+     */
+    @Throws(UniFfiAudioException::class)override fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiAudioMetadata {
+            return FfiConverterTypeUniFFIAudioMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_extract_metadata_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates normalized waveform amplitudes from an in-memory byte buffer.
+     */
+    @Throws(UniFfiAudioException::class)override fun `generateWaveform`(`data`: kotlin.ByteArray, `bucketCount`: kotlin.UInt, `fileName`: kotlin.String?): UniFfiAudioWaveform {
+            return FfiConverterTypeUniFFIAudioWaveform.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterUInt.lower(`bucketCount`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates normalized waveform amplitudes from a local audio file on disk.
+     */
+    @Throws(UniFfiAudioException::class)override fun `generateWaveformFromFile`(`filePath`: kotlin.String, `bucketCount`: kotlin.UInt): UniFfiAudioWaveform {
+            return FfiConverterTypeUniFFIAudioWaveform.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_generate_waveform_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterUInt.lower(`bucketCount`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes technical stream info from an in-memory byte buffer.
+     */
+    @Throws(UniFfiAudioException::class)override fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioStreamInfo {
+            return FfiConverterTypeUniFFIAudioStreamInfo.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes technical stream info from a local audio file on disk.
+     */
+    @Throws(UniFfiAudioException::class)override fun `probeFile`(`filePath`: kotlin.String): UniFfiAudioStreamInfo {
+            return FfiConverterTypeUniFFIAudioStreamInfo.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiaudioservice_probe_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioService: FfiConverter<UniFfiAudioService, Pointer> {
+
+    override fun lower(value: UniFfiAudioService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiAudioService {
+        return UniFfiAudioService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiAudioService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiAudioService) = 8UL
+
+    override fun write(value: UniFfiAudioService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Thread-safe bounded memory buffer pool for high-throughput cross-language transfers.
  */
 public interface UniFfiBufferPoolInterface {
@@ -5476,6 +6268,411 @@ public object FfiConverterTypeUniFFICancellationToken: FfiConverter<UniFfiCancel
 
 
 /**
+ * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
+ */
+public interface UniFfiImageServiceInterface {
+    
+    /**
+     * Decodes an image from an in-memory byte buffer into RGBA8 pixels.
+     */
+    fun `decodeImage`(`data`: kotlin.ByteArray, `maxDimension`: kotlin.UInt?): UniFfiImageFrame
+    
+    /**
+     * Decodes an image from a local filesystem path into RGBA8 pixels.
+     */
+    fun `decodeImageFromFile`(`filePath`: kotlin.String, `maxDimension`: kotlin.UInt?): UniFfiImageFrame
+    
+    /**
+     * Generates a downsampled thumbnail from an in-memory byte buffer.
+     */
+    fun `extractThumbnail`(`data`: kotlin.ByteArray, `maxWidth`: kotlin.UInt, `maxHeight`: kotlin.UInt, `filterType`: kotlin.String?): UniFfiThumbnailResult
+    
+    /**
+     * Generates a downsampled thumbnail from a local filesystem path.
+     */
+    fun `extractThumbnailFromFile`(`filePath`: kotlin.String, `maxWidth`: kotlin.UInt, `maxHeight`: kotlin.UInt, `filterType`: kotlin.String?): UniFfiThumbnailResult
+    
+    /**
+     * Probes image format and metadata from an in-memory byte buffer.
+     */
+    fun `probeInfo`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiImageInfo
+    
+    /**
+     * Probes image format and metadata from a local filesystem path.
+     */
+    fun `probeInfoFromFile`(`filePath`: kotlin.String): UniFfiImageInfo
+    
+    /**
+     * Samples a cropped and scaled viewport tile from an in-memory byte buffer.
+     */
+    fun `sampleViewport`(`data`: kotlin.ByteArray, `params`: UniFfiViewportCropParams): UniFfiViewportTile
+    
+    /**
+     * Samples a cropped and scaled viewport tile from a local filesystem path.
+     */
+    fun `sampleViewportFromFile`(`filePath`: kotlin.String, `params`: UniFfiViewportCropParams): UniFfiViewportTile
+    
+    companion object
+}
+
+/**
+ * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
+ */
+open class UniFfiImageService: Disposable, AutoCloseable, UniFfiImageServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new image rendering and inspection service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiimageservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiimageservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiimageservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Decodes an image from an in-memory byte buffer into RGBA8 pixels.
+     */
+    @Throws(TtZipException::class)override fun `decodeImage`(`data`: kotlin.ByteArray, `maxDimension`: kotlin.UInt?): UniFfiImageFrame {
+            return FfiConverterTypeUniFFIImageFrame.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalUInt.lower(`maxDimension`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decodes an image from a local filesystem path into RGBA8 pixels.
+     */
+    @Throws(TtZipException::class)override fun `decodeImageFromFile`(`filePath`: kotlin.String, `maxDimension`: kotlin.UInt?): UniFfiImageFrame {
+            return FfiConverterTypeUniFFIImageFrame.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_decode_image_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterOptionalUInt.lower(`maxDimension`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates a downsampled thumbnail from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractThumbnail`(`data`: kotlin.ByteArray, `maxWidth`: kotlin.UInt, `maxHeight`: kotlin.UInt, `filterType`: kotlin.String?): UniFfiThumbnailResult {
+            return FfiConverterTypeUniFFIThumbnailResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterUInt.lower(`maxWidth`),FfiConverterUInt.lower(`maxHeight`),FfiConverterOptionalString.lower(`filterType`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Generates a downsampled thumbnail from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractThumbnailFromFile`(`filePath`: kotlin.String, `maxWidth`: kotlin.UInt, `maxHeight`: kotlin.UInt, `filterType`: kotlin.String?): UniFfiThumbnailResult {
+            return FfiConverterTypeUniFFIThumbnailResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_extract_thumbnail_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterUInt.lower(`maxWidth`),FfiConverterUInt.lower(`maxHeight`),FfiConverterOptionalString.lower(`filterType`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes image format and metadata from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `probeInfo`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiImageInfo {
+            return FfiConverterTypeUniFFIImageInfo.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes image format and metadata from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `probeInfoFromFile`(`filePath`: kotlin.String): UniFfiImageInfo {
+            return FfiConverterTypeUniFFIImageInfo.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_probe_info_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Samples a cropped and scaled viewport tile from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `sampleViewport`(`data`: kotlin.ByteArray, `params`: UniFfiViewportCropParams): UniFfiViewportTile {
+            return FfiConverterTypeUniFFIViewportTile.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIViewportCropParams.lower(`params`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Samples a cropped and scaled viewport tile from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `sampleViewportFromFile`(`filePath`: kotlin.String, `params`: UniFfiViewportCropParams): UniFfiViewportTile {
+            return FfiConverterTypeUniFFIViewportTile.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterTypeUniFFIViewportCropParams.lower(`params`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIImageService: FfiConverter<UniFfiImageService, Pointer> {
+
+    override fun lower(value: UniFfiImageService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiImageService {
+        return UniFfiImageService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiImageService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiImageService) = 8UL
+
+    override fun write(value: UniFfiImageService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * High-performance zero-copy memory-mapped file reader with kernel advice management.
  */
 public interface UniFfiMmapReaderInterface {
@@ -5858,6 +7055,453 @@ public object FfiConverterTypeUniFFIMmapReader: FfiConverter<UniFfiMmapReader, P
     override fun allocationSize(value: UniFfiMmapReader) = 8UL
 
     override fun write(value: UniFfiMmapReader, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Stateful UniFFI service managing PDF document metadata, outline trees, and full-text search.
+ */
+public interface UniFfiPdfServiceInterface {
+    
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from a local filesystem path.
+     */
+    fun `extractAllPagesText`(`filePath`: kotlin.String, `maxPages`: kotlin.UInt?): List<UniFfiPdfPageText>
+    
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from an in-memory byte buffer.
+     */
+    fun `extractAllPagesTextFromBytes`(`data`: kotlin.ByteArray, `maxPages`: kotlin.UInt?): List<UniFfiPdfPageText>
+    
+    /**
+     * Extracts PDF metadata properties from a local filesystem path.
+     */
+    fun `extractMetadata`(`filePath`: kotlin.String): UniFfiPdfMetadata
+    
+    /**
+     * Extracts PDF metadata properties directly from an in-memory byte buffer.
+     */
+    fun `extractMetadataFromBytes`(`data`: kotlin.ByteArray): UniFfiPdfMetadata
+    
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from a local filesystem path.
+     */
+    fun `extractOutline`(`filePath`: kotlin.String): List<UniFfiPdfOutlineNode>
+    
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from an in-memory byte buffer.
+     */
+    fun `extractOutlineFromBytes`(`data`: kotlin.ByteArray): List<UniFfiPdfOutlineNode>
+    
+    /**
+     * Extracts plain text from a specific 1-based page number from a local filesystem path.
+     */
+    fun `extractPageText`(`filePath`: kotlin.String, `pageNumber`: kotlin.UInt): UniFfiPdfPageText
+    
+    /**
+     * Extracts plain text from a specific 1-based page number from an in-memory byte buffer.
+     */
+    fun `extractPageTextFromBytes`(`data`: kotlin.ByteArray, `pageNumber`: kotlin.UInt): UniFfiPdfPageText
+    
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from a local filesystem path.
+     */
+    fun `searchText`(`filePath`: kotlin.String, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult>
+    
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from an in-memory byte buffer.
+     */
+    fun `searchTextFromBytes`(`data`: kotlin.ByteArray, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult>
+    
+    companion object
+}
+
+/**
+ * Stateful UniFFI service managing PDF document metadata, outline trees, and full-text search.
+ */
+open class UniFfiPdfService: Disposable, AutoCloseable, UniFfiPdfServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe PDF service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffipdfservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffipdfservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffipdfservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractAllPagesText`(`filePath`: kotlin.String, `maxPages`: kotlin.UInt?): List<UniFfiPdfPageText> {
+            return FfiConverterSequenceTypeUniFFIPdfPageText.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text(
+        it, FfiConverterString.lower(`filePath`),FfiConverterOptionalUInt.lower(`maxPages`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractAllPagesTextFromBytes`(`data`: kotlin.ByteArray, `maxPages`: kotlin.UInt?): List<UniFfiPdfPageText> {
+            return FfiConverterSequenceTypeUniFFIPdfPageText.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text_from_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalUInt.lower(`maxPages`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts PDF metadata properties from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractMetadata`(`filePath`: kotlin.String): UniFfiPdfMetadata {
+            return FfiConverterTypeUniFFIPdfMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts PDF metadata properties directly from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractMetadataFromBytes`(`data`: kotlin.ByteArray): UniFfiPdfMetadata {
+            return FfiConverterTypeUniFFIPdfMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata_from_bytes(
+        it, FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractOutline`(`filePath`: kotlin.String): List<UniFfiPdfOutlineNode> {
+            return FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractOutlineFromBytes`(`data`: kotlin.ByteArray): List<UniFfiPdfOutlineNode> {
+            return FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline_from_bytes(
+        it, FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts plain text from a specific 1-based page number from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractPageText`(`filePath`: kotlin.String, `pageNumber`: kotlin.UInt): UniFfiPdfPageText {
+            return FfiConverterTypeUniFFIPdfPageText.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text(
+        it, FfiConverterString.lower(`filePath`),FfiConverterUInt.lower(`pageNumber`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts plain text from a specific 1-based page number from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractPageTextFromBytes`(`data`: kotlin.ByteArray, `pageNumber`: kotlin.UInt): UniFfiPdfPageText {
+            return FfiConverterTypeUniFFIPdfPageText.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text_from_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterUInt.lower(`pageNumber`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from a local filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `searchText`(`filePath`: kotlin.String, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult> {
+            return FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text(
+        it, FfiConverterString.lower(`filePath`),FfiConverterString.lower(`query`),FfiConverterUInt.lower(`maxResults`),FfiConverterBoolean.lower(`caseSensitive`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `searchTextFromBytes`(`data`: kotlin.ByteArray, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult> {
+            return FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text_from_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`query`),FfiConverterUInt.lower(`maxResults`),FfiConverterBoolean.lower(`caseSensitive`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPdfService: FfiConverter<UniFfiPdfService, Pointer> {
+
+    override fun lower(value: UniFfiPdfService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiPdfService {
+        return UniFfiPdfService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiPdfService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiPdfService) = 8UL
+
+    override fun write(value: UniFfiPdfService, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -10751,6 +12395,387 @@ public object FfiConverterTypeUniFFIAeadResult: FfiConverterRustBuffer<UniFfiAea
 
 
 /**
+ * Embedded picture/album artwork metadata extracted from audio tags.
+ */
+data class UniFfiAudioCoverArt (
+    /**
+     * MIME type of the cover image (e.g. "image/jpeg", "image/png").
+     */
+    var `mimeType`: kotlin.String, 
+    /**
+     * Image width in pixels if known.
+     */
+    var `width`: kotlin.UInt?, 
+    /**
+     * Image height in pixels if known.
+     */
+    var `height`: kotlin.UInt?, 
+    /**
+     * Raw picture image bytes (JPEG / PNG / WebP).
+     */
+    var `data`: kotlin.ByteArray, 
+    /**
+     * Picture description or tag type (e.g. "Front Cover", "Back Cover", "Icon").
+     */
+    var `description`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioCoverArt: FfiConverterRustBuffer<UniFfiAudioCoverArt> {
+    override fun read(buf: ByteBuffer): UniFfiAudioCoverArt {
+        return UniFfiAudioCoverArt(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioCoverArt) = (
+            FfiConverterString.allocationSize(value.`mimeType`) +
+            FfiConverterOptionalUInt.allocationSize(value.`width`) +
+            FfiConverterOptionalUInt.allocationSize(value.`height`) +
+            FfiConverterByteArray.allocationSize(value.`data`) +
+            FfiConverterOptionalString.allocationSize(value.`description`)
+    )
+
+    override fun write(value: UniFfiAudioCoverArt, buf: ByteBuffer) {
+            FfiConverterString.write(value.`mimeType`, buf)
+            FfiConverterOptionalUInt.write(value.`width`, buf)
+            FfiConverterOptionalUInt.write(value.`height`, buf)
+            FfiConverterByteArray.write(value.`data`, buf)
+            FfiConverterOptionalString.write(value.`description`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive high-level acoustic and tag metadata record.
+ */
+data class UniFfiAudioMetadata (
+    /**
+     * Track title.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Primary artist or performer.
+     */
+    var `artist`: kotlin.String?, 
+    /**
+     * Album title.
+     */
+    var `album`: kotlin.String?, 
+    /**
+     * Album artist or compilation creator.
+     */
+    var `albumArtist`: kotlin.String?, 
+    /**
+     * Track number in album sequence.
+     */
+    var `trackNumber`: kotlin.UInt?, 
+    /**
+     * Total number of tracks in album.
+     */
+    var `trackTotal`: kotlin.UInt?, 
+    /**
+     * Disc number in multi-disc set.
+     */
+    var `discNumber`: kotlin.UInt?, 
+    /**
+     * Total number of discs in set.
+     */
+    var `discTotal`: kotlin.UInt?, 
+    /**
+     * Release year or date string.
+     */
+    var `year`: kotlin.String?, 
+    /**
+     * Music genre classification.
+     */
+    var `genre`: kotlin.String?, 
+    /**
+     * Musical composer.
+     */
+    var `composer`: kotlin.String?, 
+    /**
+     * Song lyrics text if present.
+     */
+    var `lyrics`: kotlin.String?, 
+    /**
+     * Legal copyright notice.
+     */
+    var `copyright`: kotlin.String?, 
+    /**
+     * Embedded cover art image if present.
+     */
+    var `coverArt`: UniFfiAudioCoverArt?, 
+    /**
+     * Technical properties of the primary audio stream.
+     */
+    var `streamInfo`: UniFfiAudioStreamInfo, 
+    /**
+     * Total size of the audio file in bytes.
+     */
+    var `fileSizeBytes`: kotlin.ULong, 
+    /**
+     * Container format name (e.g. "mp3", "m4a", "flac", "wav", "ogg", "aiff").
+     */
+    var `containerFormat`: kotlin.String, 
+    /**
+     * Additional unstructured key-value tag pairs.
+     */
+    var `extraTags`: Map<kotlin.String, kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioMetadata: FfiConverterRustBuffer<UniFfiAudioMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiAudioMetadata {
+        return UniFfiAudioMetadata(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeUniFFIAudioCoverArt.read(buf),
+            FfiConverterTypeUniFFIAudioStreamInfo.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterMapStringString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioMetadata) = (
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`artist`) +
+            FfiConverterOptionalString.allocationSize(value.`album`) +
+            FfiConverterOptionalString.allocationSize(value.`albumArtist`) +
+            FfiConverterOptionalUInt.allocationSize(value.`trackNumber`) +
+            FfiConverterOptionalUInt.allocationSize(value.`trackTotal`) +
+            FfiConverterOptionalUInt.allocationSize(value.`discNumber`) +
+            FfiConverterOptionalUInt.allocationSize(value.`discTotal`) +
+            FfiConverterOptionalString.allocationSize(value.`year`) +
+            FfiConverterOptionalString.allocationSize(value.`genre`) +
+            FfiConverterOptionalString.allocationSize(value.`composer`) +
+            FfiConverterOptionalString.allocationSize(value.`lyrics`) +
+            FfiConverterOptionalString.allocationSize(value.`copyright`) +
+            FfiConverterOptionalTypeUniFFIAudioCoverArt.allocationSize(value.`coverArt`) +
+            FfiConverterTypeUniFFIAudioStreamInfo.allocationSize(value.`streamInfo`) +
+            FfiConverterULong.allocationSize(value.`fileSizeBytes`) +
+            FfiConverterString.allocationSize(value.`containerFormat`) +
+            FfiConverterMapStringString.allocationSize(value.`extraTags`)
+    )
+
+    override fun write(value: UniFfiAudioMetadata, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`artist`, buf)
+            FfiConverterOptionalString.write(value.`album`, buf)
+            FfiConverterOptionalString.write(value.`albumArtist`, buf)
+            FfiConverterOptionalUInt.write(value.`trackNumber`, buf)
+            FfiConverterOptionalUInt.write(value.`trackTotal`, buf)
+            FfiConverterOptionalUInt.write(value.`discNumber`, buf)
+            FfiConverterOptionalUInt.write(value.`discTotal`, buf)
+            FfiConverterOptionalString.write(value.`year`, buf)
+            FfiConverterOptionalString.write(value.`genre`, buf)
+            FfiConverterOptionalString.write(value.`composer`, buf)
+            FfiConverterOptionalString.write(value.`lyrics`, buf)
+            FfiConverterOptionalString.write(value.`copyright`, buf)
+            FfiConverterOptionalTypeUniFFIAudioCoverArt.write(value.`coverArt`, buf)
+            FfiConverterTypeUniFFIAudioStreamInfo.write(value.`streamInfo`, buf)
+            FfiConverterULong.write(value.`fileSizeBytes`, buf)
+            FfiConverterString.write(value.`containerFormat`, buf)
+            FfiConverterMapStringString.write(value.`extraTags`, buf)
+    }
+}
+
+
+
+/**
+ * Decoded chunk packet of floating-point PCM audio samples for streaming playback.
+ */
+data class UniFfiAudioPacket (
+    /**
+     * Presentation timestamp in milliseconds from stream origin.
+     */
+    var `ptsMs`: kotlin.ULong, 
+    /**
+     * Duration of this audio packet in milliseconds.
+     */
+    var `durationMs`: kotlin.ULong, 
+    /**
+     * Number of interleaved audio channels.
+     */
+    var `channels`: kotlin.UInt, 
+    /**
+     * Sample rate in Hertz.
+     */
+    var `sampleRate`: kotlin.UInt, 
+    /**
+     * Interleaved 32-bit floating point PCM audio samples normalized `[-1.0, 1.0]`.
+     */
+    var `pcmF32Samples`: List<kotlin.Float>, 
+    /**
+     * Number of audio frames in this packet (`pcm_f32_samples.len() / channels`).
+     */
+    var `frameCount`: kotlin.UInt, 
+    /**
+     * Whether this is the final packet of the audio stream (EOF marker).
+     */
+    var `isEof`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioPacket: FfiConverterRustBuffer<UniFfiAudioPacket> {
+    override fun read(buf: ByteBuffer): UniFfiAudioPacket {
+        return UniFfiAudioPacket(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceFloat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioPacket) = (
+            FfiConverterULong.allocationSize(value.`ptsMs`) +
+            FfiConverterULong.allocationSize(value.`durationMs`) +
+            FfiConverterUInt.allocationSize(value.`channels`) +
+            FfiConverterUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterSequenceFloat.allocationSize(value.`pcmF32Samples`) +
+            FfiConverterUInt.allocationSize(value.`frameCount`) +
+            FfiConverterBoolean.allocationSize(value.`isEof`)
+    )
+
+    override fun write(value: UniFfiAudioPacket, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`ptsMs`, buf)
+            FfiConverterULong.write(value.`durationMs`, buf)
+            FfiConverterUInt.write(value.`channels`, buf)
+            FfiConverterUInt.write(value.`sampleRate`, buf)
+            FfiConverterSequenceFloat.write(value.`pcmF32Samples`, buf)
+            FfiConverterUInt.write(value.`frameCount`, buf)
+            FfiConverterBoolean.write(value.`isEof`, buf)
+    }
+}
+
+
+
+/**
+ * Technical stream properties of the primary audio track.
+ */
+data class UniFfiAudioStreamInfo (
+    /**
+     * Short codec identifier (e.g. "mp3", "aac", "flac", "wav", "vorbis", "alac", "opus").
+     */
+    var `codecName`: kotlin.String, 
+    /**
+     * Detailed codec description or profile (e.g. "MPEG-1 Layer 3", "AAC-LC", "FLAC 16-bit").
+     */
+    var `codecLongName`: kotlin.String, 
+    /**
+     * Sample rate in Hertz (e.g. 44100, 48000, 96000).
+     */
+    var `sampleRate`: kotlin.UInt, 
+    /**
+     * Number of audio channels (e.g. 1 for mono, 2 for stereo, 6 for 5.1 surround).
+     */
+    var `channels`: kotlin.UInt, 
+    /**
+     * Channel layout descriptor (e.g. "mono", "stereo", "5.1").
+     */
+    var `channelLayout`: kotlin.String, 
+    /**
+     * Bits per sample if fixed uncompressed/lossless (e.g. 16, 24, 32).
+     */
+    var `bitsPerSample`: kotlin.UInt?, 
+    /**
+     * Nominal or average bitrate in bits per second (e.g. 320000).
+     */
+    var `bitRate`: kotlin.ULong?, 
+    /**
+     * Total duration of the primary audio stream in seconds.
+     */
+    var `durationSeconds`: kotlin.Double, 
+    /**
+     * Total audio frame or sample count if available.
+     */
+    var `totalFrames`: kotlin.ULong?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioStreamInfo: FfiConverterRustBuffer<UniFfiAudioStreamInfo> {
+    override fun read(buf: ByteBuffer): UniFfiAudioStreamInfo {
+        return UniFfiAudioStreamInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioStreamInfo) = (
+            FfiConverterString.allocationSize(value.`codecName`) +
+            FfiConverterString.allocationSize(value.`codecLongName`) +
+            FfiConverterUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterUInt.allocationSize(value.`channels`) +
+            FfiConverterString.allocationSize(value.`channelLayout`) +
+            FfiConverterOptionalUInt.allocationSize(value.`bitsPerSample`) +
+            FfiConverterOptionalULong.allocationSize(value.`bitRate`) +
+            FfiConverterDouble.allocationSize(value.`durationSeconds`) +
+            FfiConverterOptionalULong.allocationSize(value.`totalFrames`)
+    )
+
+    override fun write(value: UniFfiAudioStreamInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`codecName`, buf)
+            FfiConverterString.write(value.`codecLongName`, buf)
+            FfiConverterUInt.write(value.`sampleRate`, buf)
+            FfiConverterUInt.write(value.`channels`, buf)
+            FfiConverterString.write(value.`channelLayout`, buf)
+            FfiConverterOptionalUInt.write(value.`bitsPerSample`, buf)
+            FfiConverterOptionalULong.write(value.`bitRate`, buf)
+            FfiConverterDouble.write(value.`durationSeconds`, buf)
+            FfiConverterOptionalULong.write(value.`totalFrames`, buf)
+    }
+}
+
+
+
+/**
  * Audio track metadata exposed across UniFFI boundary.
  */
 data class UniFfiAudioTrack (
@@ -10800,6 +12825,75 @@ public object FfiConverterTypeUniFFIAudioTrack: FfiConverterRustBuffer<UniFfiAud
             FfiConverterOptionalUInt.write(value.`sampleRate`, buf)
             FfiConverterString.write(value.`codec`, buf)
             FfiConverterBoolean.write(value.`isSelected`, buf)
+    }
+}
+
+
+
+/**
+ * Normalized acoustic peak and RMS waveform amplitude envelope.
+ */
+data class UniFfiAudioWaveform (
+    /**
+     * Array of normalized peak amplitude values `[0.0, 1.0]`.
+     */
+    var `amplitudes`: List<kotlin.Float>, 
+    /**
+     * Total number of sample buckets in the waveform array.
+     */
+    var `bucketCount`: kotlin.UInt, 
+    /**
+     * Total duration of the analyzed audio in seconds.
+     */
+    var `durationSeconds`: kotlin.Double, 
+    /**
+     * Audio sample rate in Hertz.
+     */
+    var `sampleRate`: kotlin.UInt, 
+    /**
+     * Number of audio channels analyzed.
+     */
+    var `channels`: kotlin.UInt, 
+    /**
+     * Array of normalized RMS energy amplitude values `[0.0, 1.0]`.
+     */
+    var `rmsAmplitudes`: List<kotlin.Float>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioWaveform: FfiConverterRustBuffer<UniFfiAudioWaveform> {
+    override fun read(buf: ByteBuffer): UniFfiAudioWaveform {
+        return UniFfiAudioWaveform(
+            FfiConverterSequenceFloat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioWaveform) = (
+            FfiConverterSequenceFloat.allocationSize(value.`amplitudes`) +
+            FfiConverterUInt.allocationSize(value.`bucketCount`) +
+            FfiConverterDouble.allocationSize(value.`durationSeconds`) +
+            FfiConverterUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterUInt.allocationSize(value.`channels`) +
+            FfiConverterSequenceFloat.allocationSize(value.`rmsAmplitudes`)
+    )
+
+    override fun write(value: UniFfiAudioWaveform, buf: ByteBuffer) {
+            FfiConverterSequenceFloat.write(value.`amplitudes`, buf)
+            FfiConverterUInt.write(value.`bucketCount`, buf)
+            FfiConverterDouble.write(value.`durationSeconds`, buf)
+            FfiConverterUInt.write(value.`sampleRate`, buf)
+            FfiConverterUInt.write(value.`channels`, buf)
+            FfiConverterSequenceFloat.write(value.`rmsAmplitudes`, buf)
     }
 }
 
@@ -11987,6 +14081,228 @@ public object FfiConverterTypeUniFFIHighlightToken: FfiConverterRustBuffer<UniFf
 
 
 /**
+ * Decoded full-frame RGBA8 pixel buffer with dimensions and row stride.
+ */
+data class UniFfiImageFrame (
+    /**
+     * Pixel width of the decoded image.
+     */
+    var `width`: kotlin.UInt, 
+    /**
+     * Pixel height of the decoded image.
+     */
+    var `height`: kotlin.UInt, 
+    /**
+     * Row stride in bytes (typically `width * 4` for 32-bit RGBA).
+     */
+    var `stride`: kotlin.UInt, 
+    /**
+     * Flat RGBA8 pixel byte buffer in row-major order.
+     */
+    var `rgbaBytes`: kotlin.ByteArray, 
+    /**
+     * Target color space identifier (e.g. "sRGB").
+     */
+    var `colorSpace`: kotlin.String, 
+    /**
+     * Animation frame duration in milliseconds, if applicable.
+     */
+    var `durationMs`: kotlin.UInt?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIImageFrame: FfiConverterRustBuffer<UniFfiImageFrame> {
+    override fun read(buf: ByteBuffer): UniFfiImageFrame {
+        return UniFfiImageFrame(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiImageFrame) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterUInt.allocationSize(value.`stride`) +
+            FfiConverterByteArray.allocationSize(value.`rgbaBytes`) +
+            FfiConverterString.allocationSize(value.`colorSpace`) +
+            FfiConverterOptionalUInt.allocationSize(value.`durationMs`)
+    )
+
+    override fun write(value: UniFfiImageFrame, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterUInt.write(value.`stride`, buf)
+            FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+            FfiConverterString.write(value.`colorSpace`, buf)
+            FfiConverterOptionalUInt.write(value.`durationMs`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive image metadata and EXIF introspection record.
+ */
+data class UniFfiImageInfo (
+    /**
+     * Pixel width of the image.
+     */
+    var `width`: kotlin.UInt, 
+    /**
+     * Pixel height of the image.
+     */
+    var `height`: kotlin.UInt, 
+    /**
+     * Detected format classification (e.g. "PNG", "JPEG", "WebP", "GIF", "BMP", "TIFF", "ICO", "PSD", "QOI", "HDR").
+     */
+    var `formatName`: kotlin.String, 
+    /**
+     * Color space descriptor (e.g. "sRGB", "Display P3", "Adobe RGB", "Grayscale", "Indexed Color").
+     */
+    var `colorSpace`: kotlin.String, 
+    /**
+     * Whether the image contains an active alpha transparency channel.
+     */
+    var `hasAlpha`: kotlin.Boolean, 
+    /**
+     * Bits per pixel/channel depth (e.g. 8, 16, 24, 32).
+     */
+    var `bitDepth`: kotlin.UInt, 
+    /**
+     * EXIF orientation tag (1..=8, default 1 for normal orientation).
+     */
+    var `orientation`: kotlin.UInt, 
+    /**
+     * Total number of animation frames (1 for static images).
+     */
+    var `frameCount`: kotlin.UInt, 
+    /**
+     * Camera manufacturer name if available in EXIF tags.
+     */
+    var `cameraMake`: kotlin.String?, 
+    /**
+     * Camera model name if available in EXIF tags.
+     */
+    var `cameraModel`: kotlin.String?, 
+    /**
+     * Lens model specification if available in EXIF tags.
+     */
+    var `lensModel`: kotlin.String?, 
+    /**
+     * ISO speed rating if available in EXIF tags.
+     */
+    var `isoSpeed`: kotlin.UInt?, 
+    /**
+     * Lens aperture f-number if available in EXIF tags.
+     */
+    var `fNumber`: kotlin.Double?, 
+    /**
+     * Exposure time in seconds if available in EXIF tags.
+     */
+    var `exposureTimeSecs`: kotlin.Double?, 
+    /**
+     * Focal length in millimeters if available in EXIF tags.
+     */
+    var `focalLengthMm`: kotlin.Double?, 
+    /**
+     * Original capture date/time string if available in EXIF tags.
+     */
+    var `dateTimeOriginal`: kotlin.String?, 
+    /**
+     * Embedded ICC color profile name if available.
+     */
+    var `iccProfileName`: kotlin.String?, 
+    /**
+     * Total byte size of the raw compressed image buffer.
+     */
+    var `byteSize`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIImageInfo: FfiConverterRustBuffer<UniFfiImageInfo> {
+    override fun read(buf: ByteBuffer): UniFfiImageInfo {
+        return UniFfiImageInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiImageInfo) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterString.allocationSize(value.`formatName`) +
+            FfiConverterString.allocationSize(value.`colorSpace`) +
+            FfiConverterBoolean.allocationSize(value.`hasAlpha`) +
+            FfiConverterUInt.allocationSize(value.`bitDepth`) +
+            FfiConverterUInt.allocationSize(value.`orientation`) +
+            FfiConverterUInt.allocationSize(value.`frameCount`) +
+            FfiConverterOptionalString.allocationSize(value.`cameraMake`) +
+            FfiConverterOptionalString.allocationSize(value.`cameraModel`) +
+            FfiConverterOptionalString.allocationSize(value.`lensModel`) +
+            FfiConverterOptionalUInt.allocationSize(value.`isoSpeed`) +
+            FfiConverterOptionalDouble.allocationSize(value.`fNumber`) +
+            FfiConverterOptionalDouble.allocationSize(value.`exposureTimeSecs`) +
+            FfiConverterOptionalDouble.allocationSize(value.`focalLengthMm`) +
+            FfiConverterOptionalString.allocationSize(value.`dateTimeOriginal`) +
+            FfiConverterOptionalString.allocationSize(value.`iccProfileName`) +
+            FfiConverterULong.allocationSize(value.`byteSize`)
+    )
+
+    override fun write(value: UniFfiImageInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterString.write(value.`formatName`, buf)
+            FfiConverterString.write(value.`colorSpace`, buf)
+            FfiConverterBoolean.write(value.`hasAlpha`, buf)
+            FfiConverterUInt.write(value.`bitDepth`, buf)
+            FfiConverterUInt.write(value.`orientation`, buf)
+            FfiConverterUInt.write(value.`frameCount`, buf)
+            FfiConverterOptionalString.write(value.`cameraMake`, buf)
+            FfiConverterOptionalString.write(value.`cameraModel`, buf)
+            FfiConverterOptionalString.write(value.`lensModel`, buf)
+            FfiConverterOptionalUInt.write(value.`isoSpeed`, buf)
+            FfiConverterOptionalDouble.write(value.`fNumber`, buf)
+            FfiConverterOptionalDouble.write(value.`exposureTimeSecs`, buf)
+            FfiConverterOptionalDouble.write(value.`focalLengthMm`, buf)
+            FfiConverterOptionalString.write(value.`dateTimeOriginal`, buf)
+            FfiConverterOptionalString.write(value.`iccProfileName`, buf)
+            FfiConverterULong.write(value.`byteSize`, buf)
+    }
+}
+
+
+
+/**
  * Comprehensive archive integrity report.
  */
 data class UniFfiIntegrityReport (
@@ -12826,6 +15142,303 @@ public object FfiConverterTypeUniFFIPdfDocumentInfo: FfiConverterRustBuffer<UniF
             FfiConverterBoolean.write(value.`isEncrypted`, buf)
             FfiConverterOptionalString.write(value.`extractedText`, buf)
             FfiConverterUInt.write(value.`extractedPageCount`, buf)
+    }
+}
+
+
+
+/**
+ * Strongly-typed metadata record extracted from a PDF document.
+ */
+data class UniFfiPdfMetadata (
+    /**
+     * Format specification version string (e.g. "PDF-1.7", "PDF-2.0").
+     */
+    var `formatVersion`: kotlin.String, 
+    /**
+     * Total number of pages in the document.
+     */
+    var `pageCount`: kotlin.UInt, 
+    /**
+     * Document title string from Info dictionary or XMP metadata.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Author or primary creator of the document.
+     */
+    var `author`: kotlin.String?, 
+    /**
+     * Subject matter or description.
+     */
+    var `subject`: kotlin.String?, 
+    /**
+     * Semicolon or comma-separated keyword tags.
+     */
+    var `keywords`: kotlin.String?, 
+    /**
+     * Authoring application or tool (e.g. "Adobe InDesign", "LaTeX").
+     */
+    var `creator`: kotlin.String?, 
+    /**
+     * PDF producer or conversion library (e.g. "Quartz PDFContext", "lopdf").
+     */
+    var `producer`: kotlin.String?, 
+    /**
+     * Document creation timestamp string (PDF ASN.1 date or ISO 8601).
+     */
+    var `creationDate`: kotlin.String?, 
+    /**
+     * Document modification timestamp string.
+     */
+    var `modificationDate`: kotlin.String?, 
+    /**
+     * Whether the document requires a password or encryption key to open.
+     */
+    var `isEncrypted`: kotlin.Boolean, 
+    /**
+     * Size of the raw PDF file in bytes.
+     */
+    var `fileSizeBytes`: kotlin.ULong, 
+    /**
+     * Whether the document contains a hierarchical bookmark or outline tree.
+     */
+    var `hasOutline`: kotlin.Boolean, 
+    /**
+     * Additional custom key-value pairs parsed from the Info dictionary.
+     */
+    var `customProperties`: Map<kotlin.String, kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPdfMetadata: FfiConverterRustBuffer<UniFfiPdfMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiPdfMetadata {
+        return UniFfiPdfMetadata(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterMapStringString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPdfMetadata) = (
+            FfiConverterString.allocationSize(value.`formatVersion`) +
+            FfiConverterUInt.allocationSize(value.`pageCount`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`subject`) +
+            FfiConverterOptionalString.allocationSize(value.`keywords`) +
+            FfiConverterOptionalString.allocationSize(value.`creator`) +
+            FfiConverterOptionalString.allocationSize(value.`producer`) +
+            FfiConverterOptionalString.allocationSize(value.`creationDate`) +
+            FfiConverterOptionalString.allocationSize(value.`modificationDate`) +
+            FfiConverterBoolean.allocationSize(value.`isEncrypted`) +
+            FfiConverterULong.allocationSize(value.`fileSizeBytes`) +
+            FfiConverterBoolean.allocationSize(value.`hasOutline`) +
+            FfiConverterMapStringString.allocationSize(value.`customProperties`)
+    )
+
+    override fun write(value: UniFfiPdfMetadata, buf: ByteBuffer) {
+            FfiConverterString.write(value.`formatVersion`, buf)
+            FfiConverterUInt.write(value.`pageCount`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`subject`, buf)
+            FfiConverterOptionalString.write(value.`keywords`, buf)
+            FfiConverterOptionalString.write(value.`creator`, buf)
+            FfiConverterOptionalString.write(value.`producer`, buf)
+            FfiConverterOptionalString.write(value.`creationDate`, buf)
+            FfiConverterOptionalString.write(value.`modificationDate`, buf)
+            FfiConverterBoolean.write(value.`isEncrypted`, buf)
+            FfiConverterULong.write(value.`fileSizeBytes`, buf)
+            FfiConverterBoolean.write(value.`hasOutline`, buf)
+            FfiConverterMapStringString.write(value.`customProperties`, buf)
+    }
+}
+
+
+
+/**
+ * Hierarchical bookmark or outline node in a PDF document outline tree.
+ */
+data class UniFfiPdfOutlineNode (
+    /**
+     * Human-readable title label of the outline item.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * 1-based target page number (1 if not directly linked or unresolved).
+     */
+    var `pageNumber`: kotlin.UInt, 
+    /**
+     * Optional destination string or action URI (e.g. named target or external link).
+     */
+    var `dest`: kotlin.String?, 
+    /**
+     * Whether this outline node is initially in an expanded state.
+     */
+    var `isExpanded`: kotlin.Boolean, 
+    /**
+     * Nested child outline items under this section heading.
+     */
+    var `children`: List<UniFfiPdfOutlineNode>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPdfOutlineNode: FfiConverterRustBuffer<UniFfiPdfOutlineNode> {
+    override fun read(buf: ByteBuffer): UniFfiPdfOutlineNode {
+        return UniFfiPdfOutlineNode(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeUniFFIPdfOutlineNode.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPdfOutlineNode) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterUInt.allocationSize(value.`pageNumber`) +
+            FfiConverterOptionalString.allocationSize(value.`dest`) +
+            FfiConverterBoolean.allocationSize(value.`isExpanded`) +
+            FfiConverterSequenceTypeUniFFIPdfOutlineNode.allocationSize(value.`children`)
+    )
+
+    override fun write(value: UniFfiPdfOutlineNode, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterUInt.write(value.`pageNumber`, buf)
+            FfiConverterOptionalString.write(value.`dest`, buf)
+            FfiConverterBoolean.write(value.`isExpanded`, buf)
+            FfiConverterSequenceTypeUniFFIPdfOutlineNode.write(value.`children`, buf)
+    }
+}
+
+
+
+/**
+ * Extracted text content and metric properties for a specific PDF page.
+ */
+data class UniFfiPdfPageText (
+    /**
+     * 1-based page number.
+     */
+    var `pageNumber`: kotlin.UInt, 
+    /**
+     * Extracted plain text content of the page.
+     */
+    var `text`: kotlin.String, 
+    /**
+     * Total character count of the extracted page text.
+     */
+    var `characterCount`: kotlin.UInt, 
+    /**
+     * Total word count of the extracted page text.
+     */
+    var `wordCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPdfPageText: FfiConverterRustBuffer<UniFfiPdfPageText> {
+    override fun read(buf: ByteBuffer): UniFfiPdfPageText {
+        return UniFfiPdfPageText(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPdfPageText) = (
+            FfiConverterUInt.allocationSize(value.`pageNumber`) +
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterUInt.allocationSize(value.`characterCount`) +
+            FfiConverterUInt.allocationSize(value.`wordCount`)
+    )
+
+    override fun write(value: UniFfiPdfPageText, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageNumber`, buf)
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterUInt.write(value.`characterCount`, buf)
+            FfiConverterUInt.write(value.`wordCount`, buf)
+    }
+}
+
+
+
+/**
+ * Result entry from a full-text search across PDF document content streams.
+ */
+data class UniFfiPdfSearchResult (
+    /**
+     * 1-based page number where the match occurred.
+     */
+    var `pageNumber`: kotlin.UInt, 
+    /**
+     * Contextual snippet containing the matching query and surrounding text.
+     */
+    var `matchText`: kotlin.String, 
+    /**
+     * 0-based character offset of the match start within the page text.
+     */
+    var `charOffset`: kotlin.UInt, 
+    /**
+     * Length of the matched substring in characters.
+     */
+    var `matchLength`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPdfSearchResult: FfiConverterRustBuffer<UniFfiPdfSearchResult> {
+    override fun read(buf: ByteBuffer): UniFfiPdfSearchResult {
+        return UniFfiPdfSearchResult(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPdfSearchResult) = (
+            FfiConverterUInt.allocationSize(value.`pageNumber`) +
+            FfiConverterString.allocationSize(value.`matchText`) +
+            FfiConverterUInt.allocationSize(value.`charOffset`) +
+            FfiConverterUInt.allocationSize(value.`matchLength`)
+    )
+
+    override fun write(value: UniFfiPdfSearchResult, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pageNumber`, buf)
+            FfiConverterString.write(value.`matchText`, buf)
+            FfiConverterUInt.write(value.`charOffset`, buf)
+            FfiConverterUInt.write(value.`matchLength`, buf)
     }
 }
 
@@ -13852,6 +16465,75 @@ public object FfiConverterTypeUniFFITargetAbReportItem: FfiConverterRustBuffer<U
 
 
 /**
+ * High-performance downsampled thumbnail generation result with execution metrics.
+ */
+data class UniFfiThumbnailResult (
+    /**
+     * Pixel width of the generated thumbnail.
+     */
+    var `width`: kotlin.UInt, 
+    /**
+     * Pixel height of the generated thumbnail.
+     */
+    var `height`: kotlin.UInt, 
+    /**
+     * Row stride in bytes (`width * 4`).
+     */
+    var `stride`: kotlin.UInt, 
+    /**
+     * Flat RGBA8 pixel byte buffer.
+     */
+    var `rgbaBytes`: kotlin.ByteArray, 
+    /**
+     * Effective scale factor relative to original dimensions.
+     */
+    var `scaleFactor`: kotlin.Double, 
+    /**
+     * Wall-clock thumbnail generation latency in milliseconds.
+     */
+    var `durationMs`: kotlin.Double
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIThumbnailResult: FfiConverterRustBuffer<UniFfiThumbnailResult> {
+    override fun read(buf: ByteBuffer): UniFfiThumbnailResult {
+        return UniFfiThumbnailResult(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiThumbnailResult) = (
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterUInt.allocationSize(value.`stride`) +
+            FfiConverterByteArray.allocationSize(value.`rgbaBytes`) +
+            FfiConverterDouble.allocationSize(value.`scaleFactor`) +
+            FfiConverterDouble.allocationSize(value.`durationMs`)
+    )
+
+    override fun write(value: UniFfiThumbnailResult, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterUInt.write(value.`stride`, buf)
+            FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+            FfiConverterDouble.write(value.`scaleFactor`, buf)
+            FfiConverterDouble.write(value.`durationMs`, buf)
+    }
+}
+
+
+
+/**
  * Highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
  */
 data class UniFfiTokenSpan (
@@ -14199,6 +16881,133 @@ public object FfiConverterTypeUniFFIVideoTrack: FfiConverterRustBuffer<UniFfiVid
             FfiConverterUInt.write(value.`height`, buf)
             FfiConverterDouble.write(value.`fps`, buf)
             FfiConverterBoolean.write(value.`isSelected`, buf)
+    }
+}
+
+
+
+/**
+ * Viewport sampling crop and dimension configuration record.
+ */
+data class UniFfiViewportCropParams (
+    var `cropX`: kotlin.UInt, 
+    var `cropY`: kotlin.UInt, 
+    var `cropWidth`: kotlin.UInt, 
+    var `cropHeight`: kotlin.UInt, 
+    var `targetWidth`: kotlin.UInt, 
+    var `targetHeight`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIViewportCropParams: FfiConverterRustBuffer<UniFfiViewportCropParams> {
+    override fun read(buf: ByteBuffer): UniFfiViewportCropParams {
+        return UniFfiViewportCropParams(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiViewportCropParams) = (
+            FfiConverterUInt.allocationSize(value.`cropX`) +
+            FfiConverterUInt.allocationSize(value.`cropY`) +
+            FfiConverterUInt.allocationSize(value.`cropWidth`) +
+            FfiConverterUInt.allocationSize(value.`cropHeight`) +
+            FfiConverterUInt.allocationSize(value.`targetWidth`) +
+            FfiConverterUInt.allocationSize(value.`targetHeight`)
+    )
+
+    override fun write(value: UniFfiViewportCropParams, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`cropX`, buf)
+            FfiConverterUInt.write(value.`cropY`, buf)
+            FfiConverterUInt.write(value.`cropWidth`, buf)
+            FfiConverterUInt.write(value.`cropHeight`, buf)
+            FfiConverterUInt.write(value.`targetWidth`, buf)
+            FfiConverterUInt.write(value.`targetHeight`, buf)
+    }
+}
+
+
+
+/**
+ * Sampled sub-region tile for high-resolution deep zoom viewports.
+ */
+data class UniFfiViewportTile (
+    /**
+     * Origin X coordinate of the crop rectangle in original image coordinates.
+     */
+    var `tileX`: kotlin.UInt, 
+    /**
+     * Origin Y coordinate of the crop rectangle in original image coordinates.
+     */
+    var `tileY`: kotlin.UInt, 
+    /**
+     * Rendered pixel width of the output tile.
+     */
+    var `tileWidth`: kotlin.UInt, 
+    /**
+     * Rendered pixel height of the output tile.
+     */
+    var `tileHeight`: kotlin.UInt, 
+    /**
+     * Row stride in bytes (`tile_width * 4`).
+     */
+    var `stride`: kotlin.UInt, 
+    /**
+     * Flat RGBA8 pixel byte buffer.
+     */
+    var `rgbaBytes`: kotlin.ByteArray, 
+    /**
+     * Level of detail (LOD) pyramid level (0 = 1:1 full resolution, 1 = 1/2, 2 = 1/4, etc.).
+     */
+    var `lodLevel`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIViewportTile: FfiConverterRustBuffer<UniFfiViewportTile> {
+    override fun read(buf: ByteBuffer): UniFfiViewportTile {
+        return UniFfiViewportTile(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiViewportTile) = (
+            FfiConverterUInt.allocationSize(value.`tileX`) +
+            FfiConverterUInt.allocationSize(value.`tileY`) +
+            FfiConverterUInt.allocationSize(value.`tileWidth`) +
+            FfiConverterUInt.allocationSize(value.`tileHeight`) +
+            FfiConverterUInt.allocationSize(value.`stride`) +
+            FfiConverterByteArray.allocationSize(value.`rgbaBytes`) +
+            FfiConverterUInt.allocationSize(value.`lodLevel`)
+    )
+
+    override fun write(value: UniFfiViewportTile, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`tileX`, buf)
+            FfiConverterUInt.write(value.`tileY`, buf)
+            FfiConverterUInt.write(value.`tileWidth`, buf)
+            FfiConverterUInt.write(value.`tileHeight`, buf)
+            FfiConverterUInt.write(value.`stride`, buf)
+            FfiConverterByteArray.write(value.`rgbaBytes`, buf)
+            FfiConverterUInt.write(value.`lodLevel`, buf)
     }
 }
 
@@ -14933,6 +17742,179 @@ public object FfiConverterTypeThumbnailSamplingFilter: FfiConverterRustBuffer<Th
 }
 
 
+
+
+
+
+
+/**
+ * Strongly-typed audio operation error enum mapped directly to Swift `throws UniFFIAudioError`.
+ */
+sealed class UniFfiAudioException: kotlin.Exception() {
+    
+    /**
+     * Failure during audio packet decoding or PCM transformation.
+     */
+    class DecodeException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiAudioException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * The container or codec format is not supported or recognized.
+     */
+    class UnsupportedFormat(
+        
+        val `format`: kotlin.String
+        ) : UniFfiAudioException() {
+        override val message
+            get() = "format=${ `format` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiAudioException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Supplied parameter is out of valid bounds or invalid.
+     */
+    class InvalidParameter(
+        
+        val `parameter`: kotlin.String
+        ) : UniFfiAudioException() {
+        override val message
+            get() = "parameter=${ `parameter` }"
+    }
+    
+    /**
+     * The audio bitstream is prematurely truncated or invalid.
+     */
+    class CorruptedStream(
+        ) : UniFfiAudioException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * Audio operation was explicitly cancelled by caller.
+     */
+    class Cancelled(
+        ) : UniFfiAudioException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiAudioException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiAudioException = FfiConverterTypeUniFFIAudioError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioError : FfiConverterRustBuffer<UniFfiAudioException> {
+    override fun read(buf: ByteBuffer): UniFfiAudioException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiAudioException.DecodeException(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiAudioException.UnsupportedFormat(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiAudioException.IoException(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiAudioException.InvalidParameter(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiAudioException.CorruptedStream()
+            6 -> UniFfiAudioException.Cancelled()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiAudioException): ULong {
+        return when(value) {
+            is UniFfiAudioException.DecodeException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiAudioException.UnsupportedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`format`)
+            )
+            is UniFfiAudioException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiAudioException.InvalidParameter -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`parameter`)
+            )
+            is UniFfiAudioException.CorruptedStream -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is UniFfiAudioException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UniFfiAudioException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiAudioException.DecodeException -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiAudioException.UnsupportedFormat -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`format`, buf)
+                Unit
+            }
+            is UniFfiAudioException.IoException -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiAudioException.InvalidParameter -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`parameter`, buf)
+                Unit
+            }
+            is UniFfiAudioException.CorruptedStream -> {
+                buf.putInt(5)
+                Unit
+            }
+            is UniFfiAudioException.Cancelled -> {
+                buf.putInt(6)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
 
 
 
@@ -16673,6 +19655,38 @@ public object FfiConverterOptionalTypeUniFFIAbOrchestratorConfig: FfiConverterRu
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUniFFIAudioCoverArt: FfiConverterRustBuffer<UniFfiAudioCoverArt?> {
+    override fun read(buf: ByteBuffer): UniFfiAudioCoverArt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFIAudioCoverArt.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiAudioCoverArt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFIAudioCoverArt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiAudioCoverArt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFIAudioCoverArt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeUniFFICompressionOptions: FfiConverterRustBuffer<UniFfiCompressionOptions?> {
     override fun read(buf: ByteBuffer): UniFfiCompressionOptions? {
         if (buf.get().toInt() == 0) {
@@ -17161,6 +20175,34 @@ public object FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIAudioPacket: FfiConverterRustBuffer<List<UniFfiAudioPacket>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAudioPacket> {
+        val len = buf.getInt()
+        return List<UniFfiAudioPacket>(len) {
+            FfiConverterTypeUniFFIAudioPacket.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAudioPacket>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAudioPacket.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAudioPacket>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAudioPacket.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIAudioTrack: FfiConverterRustBuffer<List<UniFfiAudioTrack>> {
     override fun read(buf: ByteBuffer): List<UniFfiAudioTrack> {
         val len = buf.getInt()
@@ -17599,6 +20641,90 @@ public object FfiConverterSequenceTypeUniFFIParetoCodecPoint: FfiConverterRustBu
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIParetoCodecPoint.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIPdfOutlineNode: FfiConverterRustBuffer<List<UniFfiPdfOutlineNode>> {
+    override fun read(buf: ByteBuffer): List<UniFfiPdfOutlineNode> {
+        val len = buf.getInt()
+        return List<UniFfiPdfOutlineNode>(len) {
+            FfiConverterTypeUniFFIPdfOutlineNode.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiPdfOutlineNode>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIPdfOutlineNode.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiPdfOutlineNode>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIPdfOutlineNode.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIPdfPageText: FfiConverterRustBuffer<List<UniFfiPdfPageText>> {
+    override fun read(buf: ByteBuffer): List<UniFfiPdfPageText> {
+        val len = buf.getInt()
+        return List<UniFfiPdfPageText>(len) {
+            FfiConverterTypeUniFFIPdfPageText.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiPdfPageText>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIPdfPageText.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiPdfPageText>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIPdfPageText.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIPdfSearchResult: FfiConverterRustBuffer<List<UniFfiPdfSearchResult>> {
+    override fun read(buf: ByteBuffer): List<UniFfiPdfSearchResult> {
+        val len = buf.getInt()
+        return List<UniFfiPdfSearchResult>(len) {
+            FfiConverterTypeUniFFIPdfSearchResult.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiPdfSearchResult>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIPdfSearchResult.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiPdfSearchResult>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIPdfSearchResult.write(it, buf)
         }
     }
 }
@@ -19259,6 +22385,32 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Decodes audio packets into interleaved float PCM sample chunks for streaming playback.
+         */
+    @Throws(UniFfiAudioException::class) fun `uniffiDecodeAudioStream`(`data`: kotlin.ByteArray, `maxPackets`: kotlin.UInt?, `fileName`: kotlin.String?): List<UniFfiAudioPacket> {
+            return FfiConverterSequenceTypeUniFFIAudioPacket.lift(
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_decode_audio_stream(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalUInt.lower(`maxPackets`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Decodes an image from in-memory bytes into unified RGBA8 format.
+         */
+    @Throws(TtZipException::class) fun `uniffiDecodeImage`(`data`: kotlin.ByteArray, `maxDimension`: kotlin.UInt?): UniFfiImageFrame {
+            return FfiConverterTypeUniFFIImageFrame.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_decode_image(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalUInt.lower(`maxDimension`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Decompresses a memory buffer using the specified codec.
          */
     @Throws(TtZipException::class) fun `uniffiDecompressBuffer`(`codec`: UniFfiCompressionCodec, `src`: kotlin.ByteArray, `expectedUncompressedSize`: kotlin.ULong?, `options`: UniFfiCompressionOptions?): kotlin.ByteArray {
@@ -19386,6 +22538,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Extracts comprehensive metadata tags and embedded cover art from in-memory audio bytes.
+         */
+    @Throws(UniFfiAudioException::class) fun `uniffiExtractAudioMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioMetadata {
+            return FfiConverterTypeUniFFIAudioMetadata.lift(
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts EPUB Dublin Core publication metadata from a file on disk.
          */
     @Throws(TtZipException::class) fun `uniffiExtractEpubMetadata`(`filePath`: kotlin.String): UniFfiEpubMetadata {
@@ -19425,12 +22590,77 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Extracts PDF metadata (title, author, subject, keywords, page count) from a file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractPdfMetadata`(`filePath`: kotlin.String): UniFfiPdfMetadata {
+            return FfiConverterTypeUniFFIPdfMetadata.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_metadata(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts the hierarchical bookmark and outline tree from a PDF file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractPdfOutline`(`filePath`: kotlin.String): List<UniFfiPdfOutlineNode> {
+            return FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_outline(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts plain text from a specific 1-based page number of a PDF file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractPdfPageText`(`filePath`: kotlin.String, `pageNumber`: kotlin.UInt): UniFfiPdfPageText {
+            return FfiConverterTypeUniFFIPdfPageText.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text(
+        FfiConverterString.lower(`filePath`),FfiConverterUInt.lower(`pageNumber`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts structural outline symbol tree from source code text.
          */ fun `uniffiExtractSymbols`(`code`: kotlin.String, `languageHint`: kotlin.String): List<UniFfiSymbolNode> {
             return FfiConverterSequenceTypeUniFFISymbolNode.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(
         FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Generates a high-quality downsampled thumbnail from in-memory image bytes.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractThumbnail`(`data`: kotlin.ByteArray, `maxWidth`: kotlin.UInt, `maxHeight`: kotlin.UInt, `filterType`: kotlin.String?): UniFfiThumbnailResult {
+            return FfiConverterTypeUniFFIThumbnailResult.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(
+        FfiConverterByteArray.lower(`data`),FfiConverterUInt.lower(`maxWidth`),FfiConverterUInt.lower(`maxHeight`),FfiConverterOptionalString.lower(`filterType`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
+         */
+    @Throws(UniFfiAudioException::class) fun `uniffiGenerateAudioWaveform`(`data`: kotlin.ByteArray, `bucketCount`: kotlin.UInt, `fileName`: kotlin.String?): UniFfiAudioWaveform {
+            return FfiConverterTypeUniFFIAudioWaveform.lift(
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(
+        FfiConverterByteArray.lower(`data`),FfiConverterUInt.lower(`bucketCount`),FfiConverterOptionalString.lower(`fileName`),_status)
 }
     )
     }
@@ -19654,12 +22884,64 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Probes technical stream parameters from in-memory audio bytes without full decoding.
+         */
+    @Throws(UniFfiAudioException::class) fun `uniffiProbeAudioBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioStreamInfo {
+            return FfiConverterTypeUniFFIAudioStreamInfo.lift(
+    uniffiRustCallWithError(UniFfiAudioException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Probes image format, dimensions, color space, and EXIF tags without full pixel decompression.
+         */
+    @Throws(TtZipException::class) fun `uniffiProbeImageInfo`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiImageInfo {
+            return FfiConverterTypeUniFFIImageInfo.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Standalone convenience function for single filename remediation.
          */ fun `uniffiRemediateFilename`(`rawBytes`: kotlin.ByteArray, `fallbackEncoding`: kotlin.String?): UniFfiRemediationResult {
             return FfiConverterTypeUniFFIRemediationResult.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(
         FfiConverterByteArray.lower(`rawBytes`),FfiConverterOptionalString.lower(`fallbackEncoding`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Samples a cropped viewport tile from an in-memory image buffer.
+         */
+    @Throws(TtZipException::class) fun `uniffiSampleViewport`(`data`: kotlin.ByteArray, `params`: UniFfiViewportCropParams): UniFfiViewportTile {
+            return FfiConverterTypeUniFFIViewportTile.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(
+        FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIViewportCropParams.lower(`params`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Searches for full-text occurrences of a query string across all pages of a PDF file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiSearchPdfText`(`filePath`: kotlin.String, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult> {
+            return FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(
+        FfiConverterString.lower(`filePath`),FfiConverterString.lower(`query`),FfiConverterUInt.lower(`maxResults`),FfiConverterBoolean.lower(`caseSensitive`),_status)
 }
     )
     }
