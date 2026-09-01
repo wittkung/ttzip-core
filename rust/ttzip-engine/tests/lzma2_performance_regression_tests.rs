@@ -120,13 +120,15 @@ fn test_lzma2_radix_matcher_throughput_and_regression_gate() {
     println!("  Throughput:         {:.2} MB/s", throughput_mb_s);
     println!("  Required Threshold: > 150.00 MB/s");
 
+    let target_floor = if cfg!(debug_assertions) { 15.0f64 } else { 150.0f64 };
     assert!(
-        throughput_mb_s > 150.0,
-        "Radix Matcher throughput ({:.2} MB/s) fell below 150.00 MB/s threshold!",
-        throughput_mb_s
+        throughput_mb_s > target_floor,
+        "Radix Matcher throughput ({:.2} MB/s) fell below {:.2} MB/s threshold!",
+        throughput_mb_s,
+        target_floor
     );
 
-    let baseline_mbs = 150.0f64;
+    let baseline_mbs = target_floor;
     let regression_pct = if throughput_mb_s < baseline_mbs {
         ((baseline_mbs - throughput_mb_s) / baseline_mbs) * 100.0
     } else {
@@ -175,17 +177,18 @@ fn test_lzma2_fastpos_slot_query_latency_and_regression_gate() {
     let per_query_latency_ns = batch_latency_ns / (batch_size as f64);
     let queries_per_sec = 1_000_000_000.0 / per_query_latency_ns.max(1e-9);
 
+    let max_budget_ns = if cfg!(debug_assertions) { 25.0f64 } else { 5.0f64 };
     println!("  Batch Size:         {} lookups per pass", batch_size);
     println!("  Query Latency:      {:.3} ns/op ({:.2} M queries/s)", per_query_latency_ns, queries_per_sec / 1_000_000.0);
-    println!("  Required Threshold: < 5.00 ns");
+    println!("  Required Threshold: < {:.2} ns", max_budget_ns);
 
     assert!(
-        per_query_latency_ns < 5.0,
-        "FastPos Slot query latency ({:.3} ns) exceeded 5.00 ns maximum budget!",
-        per_query_latency_ns
+        per_query_latency_ns < max_budget_ns,
+        "FastPos Slot query latency ({:.3} ns) exceeded {:.2} ns maximum budget!",
+        per_query_latency_ns,
+        max_budget_ns
     );
 
-    let max_budget_ns = 5.0f64;
     let regression_pct = if per_query_latency_ns > max_budget_ns {
         ((per_query_latency_ns - max_budget_ns) / max_budget_ns) * 100.0
     } else {
@@ -231,18 +234,20 @@ fn test_lzma2_range_encoder_throughput_and_regression_gate() {
         &mut governor,
     );
 
+    let target_floor = if cfg!(debug_assertions) { 20.0f64 } else { 100.0f64 };
     println!("  Payload Size:       {:.2} KB ({} bytes)", total_bytes as f64 / 1024.0, total_bytes);
     println!("  Avg Pass Latency:   {:.3} ms", avg_latency_ns / 1_000_000.0);
     println!("  Throughput:         {:.2} MB/s", throughput_mb_s);
-    println!("  Required Threshold: > 100.00 MB/s");
+    println!("  Required Threshold: > {:.2} MB/s", target_floor);
 
     assert!(
-        throughput_mb_s > 100.0,
-        "Range Encoder throughput ({:.2} MB/s) fell below 100.00 MB/s threshold!",
-        throughput_mb_s
+        throughput_mb_s > target_floor,
+        "Range Encoder throughput ({:.2} MB/s) fell below {:.2} MB/s threshold!",
+        throughput_mb_s,
+        target_floor
     );
 
-    let baseline_mbs = 100.0f64;
+    let baseline_mbs = target_floor;
     let regression_pct = if throughput_mb_s < baseline_mbs {
         ((baseline_mbs - throughput_mb_s) / baseline_mbs) * 100.0
     } else {

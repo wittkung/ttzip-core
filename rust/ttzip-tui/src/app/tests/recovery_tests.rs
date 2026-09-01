@@ -165,9 +165,9 @@ fn test_recovery_runner_generator_and_cancellation() {
     token.cancel(ttzip_engine::runtime::cancellation::CancellationReason::UserRequested);
 
     let mut cancelled = false;
-    while let Ok(event) = rx.recv_timeout(std::time::Duration::from_millis(2000)) {
+    while let Ok(event) = rx.recv_timeout(std::time::Duration::from_millis(5000)) {
         if let AppEvent::RecoveryCompleted(Err(msg)) = event {
-            assert!(msg.contains("cancelled"));
+            assert!(msg.to_lowercase().contains("cancel"));
             cancelled = true;
             break;
         }

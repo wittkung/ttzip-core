@@ -128,6 +128,9 @@ for target in "${AUDIO_TEST_TARGETS[@]}"; do
     target_bin=""
     for candidate in $(ls -t "${BUILD_DIR}/${target}-"* 2>/dev/null || true); do
         if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
+            if [ -f "ttzip-engine/tests/${target}.rs" ] && [ "ttzip-engine/tests/${target}.rs" -nt "${candidate}" ]; then
+                continue
+            fi
             target_bin="${candidate}"
             break
         fi

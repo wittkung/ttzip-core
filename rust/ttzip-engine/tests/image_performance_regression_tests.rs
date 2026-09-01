@@ -477,14 +477,21 @@ fn test_master_image_anti_regression_invariant_6_gate() {
         candidate_samples.push(c);
     }
 
-    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
-    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
+    let mut regressions = Vec::new();
+    for (b, c) in baseline_samples.iter().zip(candidate_samples.iter()) {
+        let diff = if *c < *b { ((*b - *c) / *b) * 100.0 } else { 0.0 };
+        regressions.push(diff);
+    }
+    regressions.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let diff_pct = regressions[regressions.len() / 2];
 
-    let diff_pct = if candidate_mb_s < baseline_mb_s {
-        ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0
-    } else {
-        0.0f64
-    };
+    let mut sorted_b = baseline_samples.clone();
+    sorted_b.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut sorted_c = candidate_samples.clone();
+    sorted_c.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let baseline_mb_s = sorted_b[sorted_b.len() / 2];
+    let candidate_mb_s = sorted_c[sorted_c.len() / 2];
 
     println!(
         "  Baseline Throughput: {:.2} MB/s | Candidate Throughput: {:.2} MB/s",

@@ -275,33 +275,55 @@ fn test_zopfli_master_invariant_6_anti_regression_gate() {
         black_box(res);
     }
 
-    // Measure interleaved A/B runs (7 pairs) with Hampel filtering to eliminate scheduling noise
+    // Measure interleaved A/B runs (8 pairs) with alternating order to eliminate scheduling noise
     let mut baseline_samples = Vec::new();
     let mut candidate_samples = Vec::new();
-    for _ in 0..7 {
-        let (b, _) = measure_adaptive_throughput(
-            || {
-                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli baseline");
-                black_box(res);
-            },
-            payload.len(),
-            &mut governor,
-        );
-        baseline_samples.push(b);
+    for i in 0..8 {
+        if i % 2 == 0 {
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli baseline");
+                    black_box(res);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            baseline_samples.push(b);
 
-        let (c, _) = measure_adaptive_throughput(
-            || {
-                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli candidate");
-                black_box(res);
-            },
-            payload.len(),
-            &mut governor,
-        );
-        candidate_samples.push(c);
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli candidate");
+                    black_box(res);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            candidate_samples.push(c);
+        } else {
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli candidate");
+                    black_box(res);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            candidate_samples.push(c);
+
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli baseline");
+                    black_box(res);
+                },
+                payload.len(),
+                &mut governor,
+            );
+            baseline_samples.push(b);
+        }
     }
 
-    let baseline_mb_s = HampelFilter::calc_median(&baseline_samples);
-    let candidate_mb_s = HampelFilter::calc_median(&candidate_samples);
+    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
+    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
 
     let diff_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0

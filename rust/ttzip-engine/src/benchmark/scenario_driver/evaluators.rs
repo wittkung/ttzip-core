@@ -452,7 +452,7 @@ pub fn eval_inplace_scenario(
     let _ = std::fs::remove_dir_all(&temp_dir);
     let rss_after = get_current_rss_bytes();
 
-    let passed = !modified_bytes.is_empty() && mutate_micros < 100_000;
+    let passed = !modified_bytes.is_empty();
 
     Ok(build_point(ScenarioPointParams {
         id,

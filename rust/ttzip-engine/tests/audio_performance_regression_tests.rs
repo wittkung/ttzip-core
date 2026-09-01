@@ -290,11 +290,23 @@ fn test_audio_anti_regression_invariant6_gate() {
     let wav_data = make_benchmark_wav(48_000, 2, 2.0);
     let pipeline = AudioSecurityPipeline::default();
 
+    // Warm-up
+    for _ in 0..WARMUP_RUNS {
+        let _ = pipeline.inspect_stream_header(&wav_data);
+        if let Ok(mut dec) = TTZipAudioDecoder::open_from_bytes(&wav_data) {
+            while let Ok(Some(pkt)) = dec.decode_next_packet() {
+                black_box(pkt);
+            }
+        }
+    }
+
     let mut baseline_samples = Vec::new();
     let mut candidate_samples = Vec::new();
 
-    for _ in 0..7 {
-        let (b, _) = measure_workload(|| {
+    for i in 0..10 {
+        wait_for_next_tick();
+        if i % 2 == 0 {
+            let t0 = Instant::now();
             let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
             let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
             while let Ok(Some(pkt)) = decoder.decode_next_packet() {
@@ -302,10 +314,10 @@ fn test_audio_anti_regression_invariant6_gate() {
             }
             let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
             let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
-        });
-        baseline_samples.push(b);
+            let dur_b = t0.elapsed().as_secs_f64();
+            baseline_samples.push((wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
 
-        let (c, _) = measure_workload(|| {
+            let t1 = Instant::now();
             let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
             let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
             while let Ok(Some(pkt)) = decoder.decode_next_packet() {
@@ -313,25 +325,53 @@ fn test_audio_anti_regression_invariant6_gate() {
             }
             let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
             let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
-        });
-        candidate_samples.push(c);
+            let dur_c = t1.elapsed().as_secs_f64();
+            candidate_samples.push((wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
+        } else {
+            let t1 = Instant::now();
+            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                black_box(pkt);
+            }
+            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
+            let dur_c = t1.elapsed().as_secs_f64();
+            candidate_samples.push((wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
+
+            let t0 = Instant::now();
+            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                black_box(pkt);
+            }
+            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
+            let dur_b = t0.elapsed().as_secs_f64();
+            baseline_samples.push((wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
+        }
     }
 
-    baseline_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    candidate_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let baseline_sec = baseline_samples[baseline_samples.len() / 2];
-    let candidate_sec = candidate_samples[candidate_samples.len() / 2];
+    let mut regressions = Vec::new();
+    for (b, c) in baseline_samples.iter().zip(candidate_samples.iter()) {
+        let diff = if *c < *b { ((*b - *c) / *b) * 100.0 } else { 0.0 };
+        regressions.push(diff);
+    }
+    regressions.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let regression_pct = regressions[regressions.len() / 2];
 
-    let regression_pct = if candidate_sec > baseline_sec {
-        ((candidate_sec - baseline_sec) / baseline_sec) * 100.0
-    } else {
-        0.0
-    };
+    let mut sorted_b = baseline_samples.clone();
+    sorted_b.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut sorted_c = candidate_samples.clone();
+    sorted_c.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let baseline_mb_s = sorted_b[sorted_b.len() / 2];
+    let candidate_mb_s = sorted_c[sorted_c.len() / 2];
 
     println!(
-        "[Invariant 6] Audio baseline: {:.4} ms, candidate: {:.4} ms, regression: {:.2}% (limit <= {:.1}%)",
-        baseline_sec * 1000.0,
-        candidate_sec * 1000.0,
+        "[Invariant 6] Audio baseline: {:.2} MB/s, candidate: {:.2} MB/s, regression: {:.2}% (limit <= {:.1}%)",
+        baseline_mb_s,
+        candidate_mb_s,
         regression_pct,
         MAX_ALLOWED_REGRESSION_PCT
     );

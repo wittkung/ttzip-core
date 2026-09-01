@@ -23,7 +23,6 @@ use std::time::{Duration, Instant};
 use quick_xml::events::Event;
 use quick_xml::Reader as XmlReader;
 
-use ttzip_engine::benchmark::ab_engine::stats::HampelFilter;
 use ttzip_engine::benchmark::ab_engine::thermal::ThermalThrottleGovernor;
 use ttzip_engine::benchmark::wait_for_next_tick;
 use ttzip_engine::standards::document_stream::parse_docx_xml_content;
@@ -85,37 +84,24 @@ where
         }
 
         governor.notify_pass_start();
-        let mut iteration_times = Vec::with_capacity(100);
+        let _tick = wait_for_next_tick();
         let start = Instant::now();
         let mut total_iterations = 0u64;
 
         while start.elapsed() < MIN_INTEGRATION_WINDOW {
-            let _tick = wait_for_next_tick();
-            let batch_start = Instant::now();
-            let batch_size = 20u64;
-            for _ in 0..batch_size {
+            for _ in 0..5 {
                 op();
                 black_box(());
                 total_iterations += 1;
             }
-            let batch_dur = batch_start.elapsed().as_secs_f64() / (batch_size as f64);
-            iteration_times.push(batch_dur);
         }
 
         if let Some(cooldown) = governor.notify_pass_end() {
             std::thread::sleep(cooldown);
         }
 
-        // Apply Hampel MAD outlier filtering on pass latencies
-        let hampel = HampelFilter::default();
-        let filtered = hampel.filter(&iteration_times);
-        let avg_latency_secs = if !filtered.cleaned.is_empty() {
-            filtered.cleaned.iter().sum::<f64>() / (filtered.cleaned.len() as f64)
-        } else {
-            start.elapsed().as_secs_f64() / (total_iterations as f64).max(1.0)
-        };
-
-        let avg_latency_secs_clamped = avg_latency_secs.max(1e-9);
+        let elapsed_secs = start.elapsed().as_secs_f64().max(1e-9);
+        let avg_latency_secs_clamped = (elapsed_secs / total_iterations as f64).max(1e-9);
         let ops_per_sec = 1.0 / avg_latency_secs_clamped;
         let avg_latency_ns = avg_latency_secs_clamped * 1_000_000_000.0;
 
@@ -360,26 +346,48 @@ fn test_06_master_anti_regression_invariant_6_gate() {
     // Measure interleaved A/B runs (7 pairs) to eliminate thermal and frequency scaling noise
     let mut baseline_samples = Vec::new();
     let mut candidate_samples = Vec::new();
-    for _ in 0..7 {
-        let (b, _) = measure_adaptive_throughput(
-            || {
-                let res = parse_docx_xml_content(&payload).expect("Pass A");
-                black_box(res.0.len());
-            },
-            payload_len,
-            &mut governor,
-        );
-        baseline_samples.push(b);
+    for i in 0..8 {
+        if i % 2 == 0 {
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let res = parse_docx_xml_content(&payload).expect("Pass A");
+                    black_box(res.0.len());
+                },
+                payload_len,
+                &mut governor,
+            );
+            baseline_samples.push(b);
 
-        let (c, _) = measure_adaptive_throughput(
-            || {
-                let res = parse_docx_xml_content(&payload).expect("Pass B");
-                black_box(res.0.len());
-            },
-            payload_len,
-            &mut governor,
-        );
-        candidate_samples.push(c);
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let res = parse_docx_xml_content(&payload).expect("Pass B");
+                    black_box(res.0.len());
+                },
+                payload_len,
+                &mut governor,
+            );
+            candidate_samples.push(c);
+        } else {
+            let (c, _) = measure_adaptive_throughput(
+                || {
+                    let res = parse_docx_xml_content(&payload).expect("Pass B");
+                    black_box(res.0.len());
+                },
+                payload_len,
+                &mut governor,
+            );
+            candidate_samples.push(c);
+
+            let (b, _) = measure_adaptive_throughput(
+                || {
+                    let res = parse_docx_xml_content(&payload).expect("Pass A");
+                    black_box(res.0.len());
+                },
+                payload_len,
+                &mut governor,
+            );
+            baseline_samples.push(b);
+        }
     }
 
     let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
