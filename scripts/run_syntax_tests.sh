@@ -72,11 +72,29 @@ if [ "${USE_RELEASE}" = true ]; then
     CARGO_FLAGS+=("--release")
 fi
 
+BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+
 # 1. In-crate library unit tests
 echo "--> Executing in-crate syntax module unit tests..."
-cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib standards::syntax_highlight -- --nocapture
-cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib uniffi_api::syntax -- --nocapture
-cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib syntax -- --nocapture
+LIB_BIN=""
+if [ "${FORCE_REBUILD}" = false ]; then
+    for candidate in $(ls -t "${BUILD_DIR}/ttzip_engine-"* 2>/dev/null || true); do
+        if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
+            LIB_BIN="${candidate}"
+            break
+        fi
+    done
+fi
+
+if [ -n "${LIB_BIN}" ]; then
+    "${LIB_BIN}" standards::syntax_highlight --nocapture
+    "${LIB_BIN}" uniffi_api::syntax --nocapture
+    "${LIB_BIN}" syntax --nocapture
+else
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib standards::syntax_highlight -- --nocapture
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib uniffi_api::syntax -- --nocapture
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib syntax -- --nocapture
+fi
 
 # 2. Integration test targets
 SYNTAX_TEST_TARGETS=(
@@ -89,8 +107,6 @@ CARGO_TEST_ARGS=()
 for target in "${SYNTAX_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
 done
-
-BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
 ALL_BINS_EXIST=true
 DIRECT_BINS=()
 for target in "${SYNTAX_TEST_TARGETS[@]}"; do

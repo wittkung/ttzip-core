@@ -11,7 +11,7 @@
 //! time-domain waveform analysis, and chunked PCM sample decoding directly to Swift 6.
 
 pub(crate) mod decoder;
-pub mod service;
+pub(crate) mod service;
 pub mod types;
 
 pub use decoder::{

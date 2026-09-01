@@ -7,8 +7,6 @@
 
 //! DOCX streaming text extraction and Dublin Core metadata parsing via quick-xml SAX.
 
-use std::io::Cursor;
-
 use quick_xml::events::Event;
 use quick_xml::Reader as XmlReader;
 
@@ -71,14 +69,13 @@ pub fn parse_docx_from_memory(docx_bytes: &[u8]) -> Result<DocxDocument, Documen
     })
 }
 
-/// Fast streaming extraction of plain text from DOCX `word/document.xml` using quick-xml SAX.
 pub fn parse_docx_xml_content(xml_bytes: &[u8]) -> Result<(String, Vec<String>), DocumentStreamError> {
-    let mut reader = XmlReader::from_reader(Cursor::new(xml_bytes));
+    let mut reader = XmlReader::from_reader(xml_bytes);
     reader.config_mut().trim_text(false);
 
     let mut buf = Vec::with_capacity(1024);
-    let mut paragraphs: Vec<String> = Vec::new();
-    let mut current_paragraph = String::with_capacity(256);
+    let mut paragraphs: Vec<String> = Vec::with_capacity(128);
+    let mut current_paragraph = String::with_capacity(512);
     let mut in_text = false;
 
     loop {
@@ -109,7 +106,12 @@ pub fn parse_docx_xml_content(xml_bytes: &[u8]) -> Result<(String, Vec<String>),
             }
             Ok(Event::Text(ref e)) => {
                 if in_text {
-                    if let Ok(txt) = e.unescape() {
+                    let raw: &[u8] = e.as_ref();
+                    if !raw.contains(&b'&') {
+                        if let Ok(s) = std::str::from_utf8(raw) {
+                            current_paragraph.push_str(s);
+                        }
+                    } else if let Ok(txt) = e.unescape() {
                         current_paragraph.push_str(&txt);
                     }
                 }
@@ -120,7 +122,9 @@ pub fn parse_docx_xml_content(xml_bytes: &[u8]) -> Result<(String, Vec<String>),
                     b"p" => {
                         let trimmed = current_paragraph.trim();
                         if !trimmed.is_empty() {
-                            paragraphs.push(current_paragraph.clone());
+                            paragraphs.push(std::mem::take(&mut current_paragraph));
+                        } else {
+                            current_paragraph.clear();
                         }
                     }
                     b"t" => {

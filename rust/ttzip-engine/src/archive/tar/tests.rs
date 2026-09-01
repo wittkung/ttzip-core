@@ -187,7 +187,14 @@ use std::fs;
         writer.append_file("folder/sub/data.bin", &[1, 2, 3, 4, 5], 0o600, 1700000000).unwrap();
         writer.finish().unwrap();
 
-        let temp_dir = std::env::temp_dir().join("ttzip_tar_test_extract");
+        let temp_dir = std::env::temp_dir().join(format!(
+            "ttzip_tar_test_extract_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let _ = fs::remove_dir_all(&temp_dir);
 
         let archive = TarArchive::open_slice(&archive_bytes).unwrap();

@@ -109,7 +109,7 @@ if command -v sccache >/dev/null 2>&1; then
     export RUSTC_WRAPPER="sccache"
 fi
 
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target_sdk}"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR}"
 HOST_ARCH="$(uname -m)"
 if [ "${HOST_ARCH}" = "arm64" ]; then

@@ -25,6 +25,7 @@ pub mod charset;
 pub mod checksum;
 pub mod codecs;
 pub mod crypto;
+pub mod ebook;
 pub mod ffi;
 pub mod fs;
 pub mod i18n;
@@ -75,6 +76,11 @@ pub use benchmark::*;
 pub use charset::*;
 pub use codecs::*;
 pub use crypto::*;
+pub use ebook::{
+    decompress_palmdoc_record, EbookError, EbookFormat, EbookMetadata, EbookMobiDecoder,
+    EbookNavigationExtractor, EbookResource, EbookResourceExtractor, EbookResult, EbookTocNode,
+    MobiExthRecord, MobiHeaderInfo, PalmDocHeader, SpineItem, TTZipEbookParser,
+};
 pub use i18n::*;
 pub use image::{
     ColorSpacePipeline, DecodedImageFrame, ExifThumbnailExtractor, ImageBitDepth, ImageColorSpace,

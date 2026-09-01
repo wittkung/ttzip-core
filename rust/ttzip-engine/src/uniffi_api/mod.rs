@@ -23,6 +23,7 @@ pub mod demuxer;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
+pub mod ebook_meta;
 pub mod epub;
 pub mod error_mapping;
 pub mod extraction;
@@ -52,7 +53,13 @@ pub mod zopfli_opt;
 pub use ab_benchmark::*;
 pub use archive::*;
 pub use audio::*;
-pub use audio_meta::*;
+pub use audio_meta::{
+    decode_stream_packets_from_bytes, extract_metadata_from_bytes, generate_waveform_from_bytes,
+    probe_stream_info_from_bytes, uniffi_decode_audio_stream, uniffi_extract_audio_metadata,
+    uniffi_generate_audio_waveform, uniffi_probe_audio_bytes, UniFFIAudioCoverArt,
+    UniFFIAudioError, UniFFIAudioMetadata, UniFFIAudioPacket, UniFFIAudioService,
+    UniFFIAudioStreamInfo, UniFFIAudioWaveform,
+};
 pub use benchmark::*;
 pub use callback::*;
 pub use codecs::*;
@@ -62,6 +69,13 @@ pub use demuxer::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;
+pub use ebook_meta::{
+    uniffi_extract_ebook_chapter, uniffi_extract_ebook_cover, uniffi_extract_ebook_metadata,
+    uniffi_extract_ebook_resource, uniffi_extract_ebook_toc, uniffi_get_ebook_spine,
+    uniffi_probe_ebook_bytes, UniFFIEbookChapter, UniFFIEbookError, UniFFIEbookFormat,
+    UniFFIEbookMetadata, UniFFIEbookResource, UniFFIEbookService, UniFFIEbookSpineItem,
+    UniFFIEbookTocNode,
+};
 pub use epub::*;
 pub use error_mapping::*;
 pub use extraction::*;

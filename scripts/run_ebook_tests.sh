@@ -7,8 +7,8 @@
 # TTZip: High-performance native archiving and compression engine.
 
 # ==============================================================================
-# scripts/run_image_tests.sh
-# Automated Pure-Rust Image Decoder, Fuzzing & Invariant 6 Anti-Regression Runner
+# scripts/run_ebook_tests.sh
+# Automated Pure-Rust E-Book Parser, Fuzzing & Invariant 6 Anti-Regression Runner
 # ==============================================================================
 
 set -euo pipefail
@@ -62,7 +62,7 @@ done
 cd "${RUST_DIR}"
 
 echo "======================================================================"
-echo "📦 TTZip Pure-Rust Image Subsystem Suite & Anti-Regression Gate Runner"
+echo "📦 TTZip Pure-Rust E-Book Subsystem Suite & Anti-Regression Gate Runner"
 echo "   Working Directory: ${RUST_DIR}"
 echo "   Profile:           $(if [ "${USE_RELEASE}" = true ]; then echo 'Release'; else echo 'Debug'; fi)"
 echo "======================================================================"
@@ -75,7 +75,7 @@ fi
 BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
 
 # 1. In-crate library unit tests
-echo "--> Executing in-crate image module unit tests..."
+echo "--> Executing in-crate e-book module unit tests..."
 LIB_BIN=""
 if [ "${FORCE_REBUILD}" = false ]; then
     for candidate in $(ls -t "${BUILD_DIR}/ttzip_engine-"* 2>/dev/null || true); do
@@ -87,32 +87,29 @@ if [ "${FORCE_REBUILD}" = false ]; then
 fi
 
 if [ -n "${LIB_BIN}" ]; then
-    "${LIB_BIN}" standards::image_pipeline --nocapture
-    "${LIB_BIN}" uniffi_api::image --nocapture
-    "${LIB_BIN}" image --nocapture
-    "${LIB_BIN}" security::image_defense --nocapture
+    "${LIB_BIN}" ebook --nocapture
+    "${LIB_BIN}" security::ebook_defense --nocapture
+    "${LIB_BIN}" uniffi_api::ebook_meta --nocapture
 else
-    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib standards::image_pipeline -- --nocapture
-    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib uniffi_api::image -- --nocapture
-    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib image -- --nocapture
-    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib security::image_defense -- --nocapture
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib ebook -- --nocapture
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib security::ebook_defense -- --nocapture
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib uniffi_api::ebook_meta -- --nocapture
 fi
 
 # 2. Integration test targets
-IMAGE_TEST_TARGETS=(
-    "image_pipeline_tests"
-    "image_fuzz_tests"
-    "image_performance_regression_tests"
+EBOOK_TEST_TARGETS=(
+    "ebook_fuzz_tests"
+    "ebook_performance_regression_tests"
 )
 
-TOTAL_TARGETS=${#IMAGE_TEST_TARGETS[@]}
+TOTAL_TARGETS=${#EBOOK_TEST_TARGETS[@]}
 CARGO_TEST_ARGS=()
-for target in "${IMAGE_TEST_TARGETS[@]}"; do
+for target in "${EBOOK_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
 done
 ALL_BINS_EXIST=true
 DIRECT_BINS=()
-for target in "${IMAGE_TEST_TARGETS[@]}"; do
+for target in "${EBOOK_TEST_TARGETS[@]}"; do
     target_bin=""
     for candidate in $(ls -t "${BUILD_DIR}/${target}-"* 2>/dev/null || true); do
         if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
@@ -129,22 +126,22 @@ for target in "${IMAGE_TEST_TARGETS[@]}"; do
 done
 
 if [ "${ALL_BINS_EXIST}" = true ] && [ "${FORCE_REBUILD}" = false ]; then
-    echo "--> Executing ${TOTAL_TARGETS} Image test suites directly from pre-compiled binary cache..."
+    echo "--> Executing ${TOTAL_TARGETS} E-Book test suites directly from pre-compiled binary cache..."
     for bin in "${DIRECT_BINS[@]}"; do
         if ! "${bin}" --nocapture; then
-            echo "❌ Image test suite failed: $(basename "${bin}")"
+            echo "❌ E-Book test suite failed: $(basename "${bin}")"
             exit 1
         fi
     done
 else
-    echo "--> Executing ${TOTAL_TARGETS} Image test suites via unified test matrix..."
+    echo "--> Executing ${TOTAL_TARGETS} E-Book test suites via unified test matrix..."
     if ! cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine "${CARGO_TEST_ARGS[@]}" -- --nocapture; then
-        echo "❌ One or more Image test suites failed."
+        echo "❌ One or more E-Book test suites failed."
         exit 1
     fi
 fi
 
 echo ""
 echo "======================================================================"
-echo "🎉 ALL ${TOTAL_TARGETS}/${TOTAL_TARGETS} IMAGE TEST SUITES PASSED (INVARIANT 6 <= 3.0% OK)!"
+echo "🎉 ALL ${TOTAL_TARGETS}/${TOTAL_TARGETS} E-BOOK TEST SUITES PASSED (INVARIANT 6 <= 3.0% OK)!"
 echo "======================================================================"

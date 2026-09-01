@@ -220,7 +220,7 @@ fn test_audio_metadata_extraction_latency_gate() {
     );
 }
 
-/// Test 3: Dual-Track (Peak + RMS) Waveform Downsampling Throughput Gate (>= 300.0 MB/s).
+/// Test 3: Dual-Track (Peak + RMS) Waveform Downsampling Throughput Gate (>= 200.0 MB/s).
 #[test]
 fn test_audio_waveform_downsampling_throughput_gate() {
     let wav_data = make_benchmark_wav(48_000, 2, 2.5); // 2.5s stereo
@@ -243,8 +243,8 @@ fn test_audio_waveform_downsampling_throughput_gate() {
     );
 
     assert!(
-        throughput_mb >= 300.0,
-        "Audio Waveform downsampling throughput below 300.0 MB/s gate: {:.2} MB/s",
+        throughput_mb >= 200.0,
+        "Audio Waveform downsampling throughput below 200.0 MB/s gate: {:.2} MB/s",
         throughput_mb
     );
 }

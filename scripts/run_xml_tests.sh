@@ -72,9 +72,25 @@ if [ "${USE_RELEASE}" = true ]; then
     CARGO_FLAGS+=("--release")
 fi
 
+BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+
 # 1. In-crate library unit tests
 echo "--> Executing in-crate document_stream module unit tests..."
-cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib standards::document_stream -- --nocapture
+LIB_BIN=""
+if [ "${FORCE_REBUILD}" = false ]; then
+    for candidate in $(ls -t "${BUILD_DIR}/ttzip_engine-"* 2>/dev/null || true); do
+        if [ -x "${candidate}" ] && [[ ! "${candidate}" =~ \.(d|dSYM)$ ]]; then
+            LIB_BIN="${candidate}"
+            break
+        fi
+    done
+fi
+
+if [ -n "${LIB_BIN}" ]; then
+    "${LIB_BIN}" standards::document_stream --nocapture
+else
+    cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --lib standards::document_stream -- --nocapture
+fi
 
 # 2. Integration test targets
 XML_TEST_TARGETS=(
@@ -87,8 +103,6 @@ CARGO_TEST_ARGS=()
 for target in "${XML_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
 done
-
-BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
 ALL_BINS_EXIST=true
 DIRECT_BINS=()
 for target in "${XML_TEST_TARGETS[@]}"; do

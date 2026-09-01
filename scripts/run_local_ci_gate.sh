@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --bail               Stop immediately on first failed stage"
-            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite)"
+            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite)"
             echo "  --release            Pass --release profile to applicable test stages"
             echo "  --json <path>        Export structured JSON report"
             echo "  -h, --help           Show this help message"
@@ -109,6 +109,7 @@ declare -a STAGE_NAMES=(
     "Pure-Rust Image Decoder & Viewport Rendering Invariant 6 Gate"
     "Pure-Rust PDF Parser & Streaming Text Invariant 6 Gate"
     "Pure-Rust Audio Decoder & Waveform Invariant 6 Gate"
+    "Pure-Rust E-Book Parser & Spine Navigation Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -144,6 +145,7 @@ declare -a STAGE_KEYS=(
     "image-suite"
     "pdf-suite"
     "audio-suite"
+    "ebook-suite"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -180,6 +182,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_image_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_pdf_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_audio_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_ebook_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
@@ -208,17 +211,18 @@ if [[ -z "${TARGET_STAGE}" || "${TARGET_STAGE}" == *"suite"* ]]; then
     if [ -f "${PREFLIGHT_FINGERPRINT_FILE}" ] && [ "$(cat "${PREFLIGHT_FINGERPRINT_FILE}" 2>/dev/null || true)" = "${CURRENT_PREFLIGHT_FINGERPRINT}" ]; then
         echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation cache up-to-date (0.015s, hit: ${CURRENT_PREFLIGHT_FINGERPRINT:0:12}). Proceeding to stages.${C_RESET}\n"
     else
-        echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-checking workspace tests and dependencies...${C_RESET}"
+        echo -e "${C_CYAN}${C_BOLD}--> [Pre-flight] Pre-compiling workspace tests and tools in parallel...${C_RESET}"
         PREFLIGHT_START=$(python3 -c "import time; print(time.time())")
         (
             cd "${WORKSPACE_ROOT}/rust"
-            cargo check $([ "${USE_RELEASE}" = true ] && echo "--release") --tests -p ttzip-engine > /dev/null 2>&1 || true
+            cargo test $([ "${USE_RELEASE}" = true ] && echo "--release") --no-run --tests --workspace > /dev/null 2>&1 || true
+            cargo build $([ "${USE_RELEASE}" = true ] && echo "--release") --bin uniffi-bindgen --features full > /dev/null 2>&1 || true
         )
         mkdir -p "${WORKSPACE_ROOT}/rust/target"
         echo "${CURRENT_PREFLIGHT_FINGERPRINT}" > "${PREFLIGHT_FINGERPRINT_FILE}"
         PREFLIGHT_END=$(python3 -c "import time; print(time.time())")
         PREFLIGHT_DUR=$(python3 -c "print(round(${PREFLIGHT_END} - ${PREFLIGHT_START}, 3))")
-        echo -e "${C_GREEN}--> [Pre-flight] Pre-check ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
+        echo -e "${C_GREEN}--> [Pre-flight] Pre-compilation ready (${PREFLIGHT_DUR}s). Proceeding to stages.${C_RESET}\n"
     fi
 fi
 
@@ -310,48 +314,23 @@ import json
 import os
 import sys
 
-raw_input = sys.stdin.read()
-data = json.loads(raw_input)
+out_path = sys.argv[1]
+passed = int(sys.argv[2])
+failed = int(sys.argv[3])
+total_dur = float(sys.argv[4])
 
-out_path = data['out_path']
 report = {
-    'totalStages': len(data['stages']),
-    'passedStages': data['passedStages'],
-    'failedStages': data['failedStages'],
-    'totalDurationSeconds': data['totalDurationSeconds'],
-    'isSuccess': (data['failedStages'] == 0),
-    'stages': data['stages']
+    'totalStages': passed + failed,
+    'passedStages': passed,
+    'failedStages': failed,
+    'totalDurationSeconds': total_dur,
+    'isSuccess': (failed == 0),
 }
-
 os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
 with open(out_path, 'w') as f:
     json.dump(report, f, indent=2)
 print('Exported JSON gate report to ' + out_path)
-" << JSONPAYLOAD
-{
-  "out_path": "${JSON_REPORT_PATH}",
-  "passedStages": ${PASSED_STAGES},
-  "failedStages": ${FAILED_STAGES},
-  "totalDurationSeconds": ${GLOBAL_DURATION},
-  "stages": [
-$(for i in "${!STAGE_NAMES[@]}"; do
-    comma=","
-    if [ $i -eq $((${#STAGE_NAMES[@]} - 1)) ]; then comma=""; fi
-    cat << STAGE_ITEM
-    {
-      "stageIndex": $((i + 1)),
-      "key": "${STAGE_KEYS[$i]}",
-      "name": "${STAGE_NAMES[$i]}",
-      "command": "${STAGE_COMMANDS[$i]}",
-      "status": "${STAGE_STATUSES[$i]}",
-      "durationSeconds": ${STAGE_DURATIONS[$i]},
-      "diagnosticMessage": $(if [ "${STAGE_STATUSES[$i]}" = "fail" ]; then echo "\"Stage execution failed\""; else echo "null"; fi)
-    }${comma}
-STAGE_ITEM
-done)
-  ]
-}
-JSONPAYLOAD
+" "${JSON_REPORT_PATH}" "${PASSED_STAGES}" "${FAILED_STAGES}" "${GLOBAL_DURATION}"
 fi
 
 if [ ${FAILED_STAGES} -gt 0 ]; then

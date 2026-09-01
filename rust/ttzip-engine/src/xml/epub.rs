@@ -92,7 +92,9 @@ impl EpubMetadataExtractor {
                     let local = TTZipXmlParser::local_name(e.name());
                     if local == b"rootfile" {
                         if let Some(path) = TTZipXmlParser::get_attribute(e, b"full-path") {
-                            return Ok(path.into_owned());
+                            if !path.trim().is_empty() {
+                                return Ok(path.into_owned());
+                            }
                         }
                     }
                 }
@@ -110,7 +112,11 @@ impl EpubMetadataExtractor {
     /// Parses `content.opf` extracting metadata, manifest entries, spine order, and TOC/cover routes.
     pub fn parse_opf(opf_xml: &[u8]) -> Result<EpubPackage, XmlError> {
         let mut parser = TTZipXmlParser::from_slice(opf_xml);
-        let mut pkg = EpubPackage::default();
+        let mut pkg = EpubPackage {
+            manifest: HashMap::with_capacity(128),
+            spine: Vec::with_capacity(128),
+            ..Default::default()
+        };
         let mut buf = Vec::with_capacity(512);
 
         let mut in_metadata = false;
@@ -131,6 +137,38 @@ impl EpubMetadataExtractor {
                             in_spine = true;
                             if let Some(toc) = TTZipXmlParser::get_attribute(e, b"toc") {
                                 spine_toc_id = Some(toc.into_owned());
+                            }
+                        }
+                        b"item" if in_manifest => {
+                            let mut id = String::new();
+                            let mut href = String::new();
+                            let mut media_type = String::new();
+                            let mut properties = None;
+                            for attr in e.attributes().flatten() {
+                                match TTZipXmlParser::local_name(attr.key) {
+                                    b"id" => id = String::from_utf8_lossy(&attr.value).into_owned(),
+                                    b"href" => href = String::from_utf8_lossy(&attr.value).into_owned(),
+                                    b"media-type" => media_type = String::from_utf8_lossy(&attr.value).into_owned(),
+                                    b"properties" => properties = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                                    _ => {}
+                                }
+                            }
+                            if !id.is_empty() {
+                                pkg.manifest.insert(id.clone(), EpubManifestItem { id, href, media_type, properties });
+                            }
+                        }
+                        b"itemref" if in_spine => {
+                            let mut idref = String::new();
+                            let mut linear = true;
+                            for attr in e.attributes().flatten() {
+                                match TTZipXmlParser::local_name(attr.key) {
+                                    b"idref" => idref = String::from_utf8_lossy(&attr.value).into_owned(),
+                                    b"linear" => linear = attr.value.as_ref() != b"no",
+                                    _ => {}
+                                }
+                            }
+                            if !idref.is_empty() {
+                                pkg.spine.push(EpubSpineItem { idref, linear });
                             }
                         }
                         b"title" if in_metadata => {
@@ -201,17 +239,19 @@ impl EpubMetadataExtractor {
                 Event::Empty(ref e) => {
                     let local = TTZipXmlParser::local_name(e.name());
                     if in_manifest && local == b"item" {
-                        let id = TTZipXmlParser::get_attribute(e, b"id")
-                            .map(|s| s.into_owned())
-                            .unwrap_or_default();
-                        let href = TTZipXmlParser::get_attribute(e, b"href")
-                            .map(|s| s.into_owned())
-                            .unwrap_or_default();
-                        let media_type = TTZipXmlParser::get_attribute(e, b"media-type")
-                            .map(|s| s.into_owned())
-                            .unwrap_or_default();
-                        let properties = TTZipXmlParser::get_attribute(e, b"properties")
-                            .map(|s| s.into_owned());
+                        let mut id = String::new();
+                        let mut href = String::new();
+                        let mut media_type = String::new();
+                        let mut properties = None;
+                        for attr in e.attributes().flatten() {
+                            match TTZipXmlParser::local_name(attr.key) {
+                                b"id" => id = String::from_utf8_lossy(&attr.value).into_owned(),
+                                b"href" => href = String::from_utf8_lossy(&attr.value).into_owned(),
+                                b"media-type" => media_type = String::from_utf8_lossy(&attr.value).into_owned(),
+                                b"properties" => properties = Some(String::from_utf8_lossy(&attr.value).into_owned()),
+                                _ => {}
+                            }
+                        }
 
                         if !id.is_empty() {
                             let item = EpubManifestItem {
@@ -223,12 +263,15 @@ impl EpubMetadataExtractor {
                             pkg.manifest.insert(id, item);
                         }
                     } else if in_spine && local == b"itemref" {
-                        let idref = TTZipXmlParser::get_attribute(e, b"idref")
-                            .map(|s| s.into_owned())
-                            .unwrap_or_default();
-                        let linear = TTZipXmlParser::get_attribute(e, b"linear")
-                            .map(|s| s != "no")
-                            .unwrap_or(true);
+                        let mut idref = String::new();
+                        let mut linear = true;
+                        for attr in e.attributes().flatten() {
+                            match TTZipXmlParser::local_name(attr.key) {
+                                b"idref" => idref = String::from_utf8_lossy(&attr.value).into_owned(),
+                                b"linear" => linear = attr.value.as_ref() != b"no",
+                                _ => {}
+                            }
+                        }
 
                         if !idref.is_empty() {
                             pkg.spine.push(EpubSpineItem { idref, linear });

@@ -1538,6 +1538,341 @@ public func FfiConverterTypeUniFFICancellationToken_lower(_ value: UniFfiCancell
 }
 
 /**
+ * High-performance thread-safe Ebook Introspection Service.
+ */
+public protocol UniFfiEbookServiceProtocol: AnyObject {
+    /**
+     * Extracts and parses a single chapter document from an in-memory byte buffer.
+     */
+    func extractChapter(data: Data, href: String, fileName: String?) throws -> UniFfiEbookChapter
+
+    /**
+     * Extracts and parses a single chapter document from a file on disk.
+     */
+    func extractChapterFromFile(filePath: String, href: String) throws -> UniFfiEbookChapter
+
+    /**
+     * Extracts the embedded cover artwork from an in-memory byte buffer.
+     */
+    func extractCover(data: Data, fileName: String?) throws -> UniFfiEbookResource?
+
+    /**
+     * Extracts the embedded cover artwork from a file on disk.
+     */
+    func extractCoverFromFile(filePath: String) throws -> UniFfiEbookResource?
+
+    /**
+     * Extracts publication metadata from an in-memory byte buffer.
+     */
+    func extractMetadata(data: Data, fileName: String?) throws -> UniFfiEbookMetadata
+
+    /**
+     * Extracts publication metadata from a file on disk.
+     */
+    func extractMetadataFromFile(filePath: String) throws -> UniFfiEbookMetadata
+
+    /**
+     * Extracts an embedded asset resource by href from an in-memory byte buffer.
+     */
+    func extractResource(data: Data, href: String, fileName: String?) throws -> UniFfiEbookResource
+
+    /**
+     * Extracts an embedded asset resource by href from a file on disk.
+     */
+    func extractResourceFromFile(filePath: String, href: String) throws -> UniFfiEbookResource
+
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+     */
+    func extractToc(data: Data, fileName: String?) throws -> [UniFfiEbookTocNode]
+
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from a file on disk.
+     */
+    func extractTocFromFile(filePath: String) throws -> [UniFfiEbookTocNode]
+
+    /**
+     * Retrieves ordered spine reading items from an in-memory byte buffer.
+     */
+    func getSpine(data: Data, fileName: String?) throws -> [UniFfiEbookSpineItem]
+
+    /**
+     * Retrieves ordered spine reading items from a file on disk.
+     */
+    func getSpineFromFile(filePath: String) throws -> [UniFfiEbookSpineItem]
+
+    /**
+     * Probes the ebook format from an in-memory byte buffer.
+     */
+    func probeBytes(data: Data, fileName: String?) throws -> UniFfiEbookFormat
+
+    /**
+     * Probes the ebook format from a file on disk.
+     */
+    func probeFile(filePath: String) throws -> UniFfiEbookFormat
+}
+
+/**
+ * High-performance thread-safe Ebook Introspection Service.
+ */
+open class UniFfiEbookService:
+    UniFfiEbookServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiebookservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new thread-safe ebook service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiebookservice(pointer, $0) }
+    }
+
+    /**
+     * Extracts and parses a single chapter document from an in-memory byte buffer.
+     */
+    open func extractChapter(data: Data, href: String, fileName: String?) throws -> UniFfiEbookChapter {
+        return try FfiConverterTypeUniFFIEbookChapter.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter(self.uniffiClonePointer(),
+                                                                             FfiConverterData.lower(data),
+                                                                             FfiConverterString.lower(href),
+                                                                             FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts and parses a single chapter document from a file on disk.
+     */
+    open func extractChapterFromFile(filePath: String, href: String) throws -> UniFfiEbookChapter {
+        return try FfiConverterTypeUniFFIEbookChapter.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file(self.uniffiClonePointer(),
+                                                                                       FfiConverterString.lower(filePath),
+                                                                                       FfiConverterString.lower(href), $0)
+        })
+    }
+
+    /**
+     * Extracts the embedded cover artwork from an in-memory byte buffer.
+     */
+    open func extractCover(data: Data, fileName: String?) throws -> UniFfiEbookResource? {
+        return try FfiConverterOptionTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover(self.uniffiClonePointer(),
+                                                                           FfiConverterData.lower(data),
+                                                                           FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts the embedded cover artwork from a file on disk.
+     */
+    open func extractCoverFromFile(filePath: String) throws -> UniFfiEbookResource? {
+        return try FfiConverterOptionTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file(self.uniffiClonePointer(),
+                                                                                     FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts publication metadata from an in-memory byte buffer.
+     */
+    open func extractMetadata(data: Data, fileName: String?) throws -> UniFfiEbookMetadata {
+        return try FfiConverterTypeUniFFIEbookMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata(self.uniffiClonePointer(),
+                                                                              FfiConverterData.lower(data),
+                                                                              FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts publication metadata from a file on disk.
+     */
+    open func extractMetadataFromFile(filePath: String) throws -> UniFfiEbookMetadata {
+        return try FfiConverterTypeUniFFIEbookMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file(self.uniffiClonePointer(),
+                                                                                        FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts an embedded asset resource by href from an in-memory byte buffer.
+     */
+    open func extractResource(data: Data, href: String, fileName: String?) throws -> UniFfiEbookResource {
+        return try FfiConverterTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource(self.uniffiClonePointer(),
+                                                                              FfiConverterData.lower(data),
+                                                                              FfiConverterString.lower(href),
+                                                                              FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts an embedded asset resource by href from a file on disk.
+     */
+    open func extractResourceFromFile(filePath: String, href: String) throws -> UniFfiEbookResource {
+        return try FfiConverterTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file(self.uniffiClonePointer(),
+                                                                                        FfiConverterString.lower(filePath),
+                                                                                        FfiConverterString.lower(href), $0)
+        })
+    }
+
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+     */
+    open func extractToc(data: Data, fileName: String?) throws -> [UniFfiEbookTocNode] {
+        return try FfiConverterSequenceTypeUniFFIEbookTocNode.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc(self.uniffiClonePointer(),
+                                                                         FfiConverterData.lower(data),
+                                                                         FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from a file on disk.
+     */
+    open func extractTocFromFile(filePath: String) throws -> [UniFfiEbookTocNode] {
+        return try FfiConverterSequenceTypeUniFFIEbookTocNode.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file(self.uniffiClonePointer(),
+                                                                                   FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Retrieves ordered spine reading items from an in-memory byte buffer.
+     */
+    open func getSpine(data: Data, fileName: String?) throws -> [UniFfiEbookSpineItem] {
+        return try FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine(self.uniffiClonePointer(),
+                                                                       FfiConverterData.lower(data),
+                                                                       FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Retrieves ordered spine reading items from a file on disk.
+     */
+    open func getSpineFromFile(filePath: String) throws -> [UniFfiEbookSpineItem] {
+        return try FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file(self.uniffiClonePointer(),
+                                                                                 FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Probes the ebook format from an in-memory byte buffer.
+     */
+    open func probeBytes(data: Data, fileName: String?) throws -> UniFfiEbookFormat {
+        return try FfiConverterTypeUniFFIEbookFormat.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes(self.uniffiClonePointer(),
+                                                                         FfiConverterData.lower(data),
+                                                                         FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Probes the ebook format from a file on disk.
+     */
+    open func probeFile(filePath: String) throws -> UniFfiEbookFormat {
+        return try FfiConverterTypeUniFFIEbookFormat.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file(self.uniffiClonePointer(),
+                                                                        FfiConverterString.lower(filePath), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiEbookService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiEbookService {
+        return UniFfiEbookService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiEbookService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiEbookService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiEbookService {
+    return try FfiConverterTypeUniFFIEbookService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookService_lower(_ value: UniFfiEbookService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIEbookService.lower(value)
+}
+
+/**
  * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
  */
 public protocol UniFfiImageServiceProtocol: AnyObject {
@@ -8465,6 +8800,797 @@ public func FfiConverterTypeUniFFIDocxProperties_lift(_ buf: RustBuffer) throws 
 #endif
 public func FfiConverterTypeUniFFIDocxProperties_lower(_ value: UniFfiDocxProperties) -> RustBuffer {
     return FfiConverterTypeUniFFIDocxProperties.lower(value)
+}
+
+/**
+ * Extracted XHTML / HTML chapter content descriptor with metrics.
+ */
+public struct UniFfiEbookChapter {
+    /**
+     * Manifest ID or chapter identifier.
+     */
+    public var id: String
+    /**
+     * Resolved chapter title from TOC, heading, or spine index.
+     */
+    public var title: String
+    /**
+     * Normalized relative resource path.
+     */
+    public var href: String
+    /**
+     * MIME type of the document.
+     */
+    public var mediaType: String
+    /**
+     * 1-based sequential spine order.
+     */
+    public var playOrder: UInt32
+    /**
+     * Raw XHTML / HTML markup or text string.
+     */
+    public var contentString: String
+    /**
+     * Total character count of stripped textual content.
+     */
+    public var characterCount: UInt32
+    /**
+     * Total word count of stripped textual content.
+     */
+    public var wordCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Manifest ID or chapter identifier.
+         */ id: String,
+        /* 
+            * Resolved chapter title from TOC, heading, or spine index.
+            */ title: String,
+        /* 
+            * Normalized relative resource path.
+            */ href: String,
+        /* 
+            * MIME type of the document.
+            */ mediaType: String,
+        /* 
+            * 1-based sequential spine order.
+            */ playOrder: UInt32,
+        /* 
+            * Raw XHTML / HTML markup or text string.
+            */ contentString: String,
+        /* 
+            * Total character count of stripped textual content.
+            */ characterCount: UInt32,
+        /* 
+            * Total word count of stripped textual content.
+            */ wordCount: UInt32
+    ) {
+        self.id = id
+        self.title = title
+        self.href = href
+        self.mediaType = mediaType
+        self.playOrder = playOrder
+        self.contentString = contentString
+        self.characterCount = characterCount
+        self.wordCount = wordCount
+    }
+}
+
+extension UniFfiEbookChapter: Equatable, Hashable {
+    public static func == (lhs: UniFfiEbookChapter, rhs: UniFfiEbookChapter) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.href != rhs.href {
+            return false
+        }
+        if lhs.mediaType != rhs.mediaType {
+            return false
+        }
+        if lhs.playOrder != rhs.playOrder {
+            return false
+        }
+        if lhs.contentString != rhs.contentString {
+            return false
+        }
+        if lhs.characterCount != rhs.characterCount {
+            return false
+        }
+        if lhs.wordCount != rhs.wordCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(title)
+        hasher.combine(href)
+        hasher.combine(mediaType)
+        hasher.combine(playOrder)
+        hasher.combine(contentString)
+        hasher.combine(characterCount)
+        hasher.combine(wordCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookChapter: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookChapter {
+        return
+            try UniFfiEbookChapter(
+                id: FfiConverterString.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                href: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                playOrder: FfiConverterUInt32.read(from: &buf),
+                contentString: FfiConverterString.read(from: &buf),
+                characterCount: FfiConverterUInt32.read(from: &buf),
+                wordCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEbookChapter, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterUInt32.write(value.playOrder, into: &buf)
+        FfiConverterString.write(value.contentString, into: &buf)
+        FfiConverterUInt32.write(value.characterCount, into: &buf)
+        FfiConverterUInt32.write(value.wordCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookChapter_lift(_ buf: RustBuffer) throws -> UniFfiEbookChapter {
+    return try FfiConverterTypeUniFFIEbookChapter.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookChapter_lower(_ value: UniFfiEbookChapter) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookChapter.lower(value)
+}
+
+/**
+ * Comprehensive publication metadata descriptor.
+ */
+public struct UniFfiEbookMetadata {
+    /**
+     * Primary title of the publication.
+     */
+    public var title: String
+    /**
+     * List of authors, creators, or editors.
+     */
+    public var authors: [String]
+    /**
+     * Publishing house or distributor.
+     */
+    public var publisher: String?
+    /**
+     * Primary language code (e.g. "en", "zh-CN", "ja").
+     */
+    public var language: String?
+    /**
+     * Canonical book identifier (e.g. ISBN, UUID, DOI).
+     */
+    public var identifier: String?
+    /**
+     * Synopsis or description text.
+     */
+    public var description: String?
+    /**
+     * Original publication date string.
+     */
+    public var publicationDate: String?
+    /**
+     * Modification or package revision date string.
+     */
+    public var modifiedDate: String?
+    /**
+     * Legal copyright and licensing statement.
+     */
+    public var rights: String?
+    /**
+     * Detected ebook container format.
+     */
+    public var format: UniFfiEbookFormat
+    /**
+     * Total count of linear reading chapters in spine.
+     */
+    public var totalChapters: UInt32
+    /**
+     * Total count of manifest resources.
+     */
+    public var totalResources: UInt32
+    /**
+     * Total size of the archive in bytes.
+     */
+    public var fileSizeBytes: UInt64
+    /**
+     * Whether an embedded cover image exists.
+     */
+    public var hasCover: Bool
+    /**
+     * Archive relative path to the cover image if present.
+     */
+    public var coverPath: String?
+    /**
+     * Additional unstructured metadata tag pairs.
+     */
+    public var extraMetadata: [String: String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Primary title of the publication.
+         */ title: String,
+        /* 
+            * List of authors, creators, or editors.
+            */ authors: [String],
+        /* 
+            * Publishing house or distributor.
+            */ publisher: String?,
+        /* 
+            * Primary language code (e.g. "en", "zh-CN", "ja").
+            */ language: String?,
+        /* 
+            * Canonical book identifier (e.g. ISBN, UUID, DOI).
+            */ identifier: String?,
+        /* 
+            * Synopsis or description text.
+            */ description: String?,
+        /* 
+            * Original publication date string.
+            */ publicationDate: String?,
+        /* 
+            * Modification or package revision date string.
+            */ modifiedDate: String?,
+        /* 
+            * Legal copyright and licensing statement.
+            */ rights: String?,
+        /* 
+            * Detected ebook container format.
+            */ format: UniFfiEbookFormat,
+        /* 
+            * Total count of linear reading chapters in spine.
+            */ totalChapters: UInt32,
+        /* 
+            * Total count of manifest resources.
+            */ totalResources: UInt32,
+        /* 
+            * Total size of the archive in bytes.
+            */ fileSizeBytes: UInt64,
+        /* 
+            * Whether an embedded cover image exists.
+            */ hasCover: Bool,
+        /* 
+            * Archive relative path to the cover image if present.
+            */ coverPath: String?,
+        /* 
+            * Additional unstructured metadata tag pairs.
+            */ extraMetadata: [String: String]
+    ) {
+        self.title = title
+        self.authors = authors
+        self.publisher = publisher
+        self.language = language
+        self.identifier = identifier
+        self.description = description
+        self.publicationDate = publicationDate
+        self.modifiedDate = modifiedDate
+        self.rights = rights
+        self.format = format
+        self.totalChapters = totalChapters
+        self.totalResources = totalResources
+        self.fileSizeBytes = fileSizeBytes
+        self.hasCover = hasCover
+        self.coverPath = coverPath
+        self.extraMetadata = extraMetadata
+    }
+}
+
+extension UniFfiEbookMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiEbookMetadata, rhs: UniFfiEbookMetadata) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.authors != rhs.authors {
+            return false
+        }
+        if lhs.publisher != rhs.publisher {
+            return false
+        }
+        if lhs.language != rhs.language {
+            return false
+        }
+        if lhs.identifier != rhs.identifier {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        if lhs.publicationDate != rhs.publicationDate {
+            return false
+        }
+        if lhs.modifiedDate != rhs.modifiedDate {
+            return false
+        }
+        if lhs.rights != rhs.rights {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.totalChapters != rhs.totalChapters {
+            return false
+        }
+        if lhs.totalResources != rhs.totalResources {
+            return false
+        }
+        if lhs.fileSizeBytes != rhs.fileSizeBytes {
+            return false
+        }
+        if lhs.hasCover != rhs.hasCover {
+            return false
+        }
+        if lhs.coverPath != rhs.coverPath {
+            return false
+        }
+        if lhs.extraMetadata != rhs.extraMetadata {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(authors)
+        hasher.combine(publisher)
+        hasher.combine(language)
+        hasher.combine(identifier)
+        hasher.combine(description)
+        hasher.combine(publicationDate)
+        hasher.combine(modifiedDate)
+        hasher.combine(rights)
+        hasher.combine(format)
+        hasher.combine(totalChapters)
+        hasher.combine(totalResources)
+        hasher.combine(fileSizeBytes)
+        hasher.combine(hasCover)
+        hasher.combine(coverPath)
+        hasher.combine(extraMetadata)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookMetadata {
+        return
+            try UniFfiEbookMetadata(
+                title: FfiConverterString.read(from: &buf),
+                authors: FfiConverterSequenceString.read(from: &buf),
+                publisher: FfiConverterOptionString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                identifier: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterOptionString.read(from: &buf),
+                publicationDate: FfiConverterOptionString.read(from: &buf),
+                modifiedDate: FfiConverterOptionString.read(from: &buf),
+                rights: FfiConverterOptionString.read(from: &buf),
+                format: FfiConverterTypeUniFFIEbookFormat.read(from: &buf),
+                totalChapters: FfiConverterUInt32.read(from: &buf),
+                totalResources: FfiConverterUInt32.read(from: &buf),
+                fileSizeBytes: FfiConverterUInt64.read(from: &buf),
+                hasCover: FfiConverterBool.read(from: &buf),
+                coverPath: FfiConverterOptionString.read(from: &buf),
+                extraMetadata: FfiConverterDictionaryStringString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEbookMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterSequenceString.write(value.authors, into: &buf)
+        FfiConverterOptionString.write(value.publisher, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterOptionString.write(value.identifier, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.publicationDate, into: &buf)
+        FfiConverterOptionString.write(value.modifiedDate, into: &buf)
+        FfiConverterOptionString.write(value.rights, into: &buf)
+        FfiConverterTypeUniFFIEbookFormat.write(value.format, into: &buf)
+        FfiConverterUInt32.write(value.totalChapters, into: &buf)
+        FfiConverterUInt32.write(value.totalResources, into: &buf)
+        FfiConverterUInt64.write(value.fileSizeBytes, into: &buf)
+        FfiConverterBool.write(value.hasCover, into: &buf)
+        FfiConverterOptionString.write(value.coverPath, into: &buf)
+        FfiConverterDictionaryStringString.write(value.extraMetadata, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookMetadata_lift(_ buf: RustBuffer) throws -> UniFfiEbookMetadata {
+    return try FfiConverterTypeUniFFIEbookMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookMetadata_lower(_ value: UniFfiEbookMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookMetadata.lower(value)
+}
+
+/**
+ * Generic embedded asset resource (cover image, stylesheet, font).
+ */
+public struct UniFfiEbookResource {
+    /**
+     * Normalized relative path within archive.
+     */
+    public var href: String
+    /**
+     * MIME type (e.g. "image/jpeg", "image/png", "text/css", "font/woff2").
+     */
+    public var mediaType: String
+    /**
+     * Raw binary data bytes of the resource.
+     */
+    public var data: Data
+    /**
+     * Byte length of the uncompressed data.
+     */
+    public var sizeBytes: UInt64
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Normalized relative path within archive.
+         */ href: String,
+        /* 
+            * MIME type (e.g. "image/jpeg", "image/png", "text/css", "font/woff2").
+            */ mediaType: String,
+        /* 
+            * Raw binary data bytes of the resource.
+            */ data: Data,
+        /* 
+            * Byte length of the uncompressed data.
+            */ sizeBytes: UInt64
+    ) {
+        self.href = href
+        self.mediaType = mediaType
+        self.data = data
+        self.sizeBytes = sizeBytes
+    }
+}
+
+extension UniFfiEbookResource: Equatable, Hashable {
+    public static func == (lhs: UniFfiEbookResource, rhs: UniFfiEbookResource) -> Bool {
+        if lhs.href != rhs.href {
+            return false
+        }
+        if lhs.mediaType != rhs.mediaType {
+            return false
+        }
+        if lhs.data != rhs.data {
+            return false
+        }
+        if lhs.sizeBytes != rhs.sizeBytes {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(href)
+        hasher.combine(mediaType)
+        hasher.combine(data)
+        hasher.combine(sizeBytes)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookResource: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookResource {
+        return
+            try UniFfiEbookResource(
+                href: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                data: FfiConverterData.read(from: &buf),
+                sizeBytes: FfiConverterUInt64.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEbookResource, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterData.write(value.data, into: &buf)
+        FfiConverterUInt64.write(value.sizeBytes, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookResource_lift(_ buf: RustBuffer) throws -> UniFfiEbookResource {
+    return try FfiConverterTypeUniFFIEbookResource.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookResource_lower(_ value: UniFfiEbookResource) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookResource.lower(value)
+}
+
+/**
+ * Sequential item in the publication's reading spine.
+ */
+public struct UniFfiEbookSpineItem {
+    /**
+     * Manifest ID reference.
+     */
+    public var id: String
+    /**
+     * Normalized relative resource path.
+     */
+    public var href: String
+    /**
+     * MIME type of the chapter resource (e.g. "application/xhtml+xml").
+     */
+    public var mediaType: String
+    /**
+     * 1-based sequential spine reading order.
+     */
+    public var playOrder: UInt32
+    /**
+     * Whether this chapter is part of the primary reading flow (linear="yes").
+     */
+    public var isLinear: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Manifest ID reference.
+         */ id: String,
+        /* 
+            * Normalized relative resource path.
+            */ href: String,
+        /* 
+            * MIME type of the chapter resource (e.g. "application/xhtml+xml").
+            */ mediaType: String,
+        /* 
+            * 1-based sequential spine reading order.
+            */ playOrder: UInt32,
+        /* 
+            * Whether this chapter is part of the primary reading flow (linear="yes").
+            */ isLinear: Bool
+    ) {
+        self.id = id
+        self.href = href
+        self.mediaType = mediaType
+        self.playOrder = playOrder
+        self.isLinear = isLinear
+    }
+}
+
+extension UniFfiEbookSpineItem: Equatable, Hashable {
+    public static func == (lhs: UniFfiEbookSpineItem, rhs: UniFfiEbookSpineItem) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.href != rhs.href {
+            return false
+        }
+        if lhs.mediaType != rhs.mediaType {
+            return false
+        }
+        if lhs.playOrder != rhs.playOrder {
+            return false
+        }
+        if lhs.isLinear != rhs.isLinear {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(href)
+        hasher.combine(mediaType)
+        hasher.combine(playOrder)
+        hasher.combine(isLinear)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookSpineItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookSpineItem {
+        return
+            try UniFfiEbookSpineItem(
+                id: FfiConverterString.read(from: &buf),
+                href: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                playOrder: FfiConverterUInt32.read(from: &buf),
+                isLinear: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEbookSpineItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterUInt32.write(value.playOrder, into: &buf)
+        FfiConverterBool.write(value.isLinear, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookSpineItem_lift(_ buf: RustBuffer) throws -> UniFfiEbookSpineItem {
+    return try FfiConverterTypeUniFFIEbookSpineItem.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookSpineItem_lower(_ value: UniFfiEbookSpineItem) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookSpineItem.lower(value)
+}
+
+/**
+ * Hierarchical Table of Contents (TOC) bookmark node.
+ */
+public struct UniFfiEbookTocNode {
+    /**
+     * Unique identifier of the TOC node.
+     */
+    public var id: String
+    /**
+     * Human-readable section or chapter title.
+     */
+    public var title: String
+    /**
+     * Normalized relative target resource path (with optional `#anchor`).
+     */
+    public var href: String
+    /**
+     * 1-based sequential playback or reading order.
+     */
+    public var playOrder: UInt32
+    /**
+     * Nesting depth level (0 for top-level root sections).
+     */
+    public var level: UInt32
+    /**
+     * Nested child sections.
+     */
+    public var children: [UniFfiEbookTocNode]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Unique identifier of the TOC node.
+         */ id: String,
+        /* 
+            * Human-readable section or chapter title.
+            */ title: String,
+        /* 
+            * Normalized relative target resource path (with optional `#anchor`).
+            */ href: String,
+        /* 
+            * 1-based sequential playback or reading order.
+            */ playOrder: UInt32,
+        /* 
+            * Nesting depth level (0 for top-level root sections).
+            */ level: UInt32,
+        /* 
+            * Nested child sections.
+            */ children: [UniFfiEbookTocNode]
+    ) {
+        self.id = id
+        self.title = title
+        self.href = href
+        self.playOrder = playOrder
+        self.level = level
+        self.children = children
+    }
+}
+
+extension UniFfiEbookTocNode: Equatable, Hashable {
+    public static func == (lhs: UniFfiEbookTocNode, rhs: UniFfiEbookTocNode) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.href != rhs.href {
+            return false
+        }
+        if lhs.playOrder != rhs.playOrder {
+            return false
+        }
+        if lhs.level != rhs.level {
+            return false
+        }
+        if lhs.children != rhs.children {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(title)
+        hasher.combine(href)
+        hasher.combine(playOrder)
+        hasher.combine(level)
+        hasher.combine(children)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookTocNode: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookTocNode {
+        return
+            try UniFfiEbookTocNode(
+                id: FfiConverterString.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                href: FfiConverterString.read(from: &buf),
+                playOrder: FfiConverterUInt32.read(from: &buf),
+                level: FfiConverterUInt32.read(from: &buf),
+                children: FfiConverterSequenceTypeUniFFIEbookTocNode.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEbookTocNode, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterUInt32.write(value.playOrder, into: &buf)
+        FfiConverterUInt32.write(value.level, into: &buf)
+        FfiConverterSequenceTypeUniFFIEbookTocNode.write(value.children, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookTocNode_lift(_ buf: RustBuffer) throws -> UniFfiEbookTocNode {
+    return try FfiConverterTypeUniFFIEbookTocNode.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookTocNode_lower(_ value: UniFfiEbookTocNode) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookTocNode.lower(value)
 }
 
 /**
@@ -17154,6 +18280,186 @@ public func FfiConverterTypeUniFFIDeflateLevel_lower(_ value: UniFfiDeflateLevel
 extension UniFfiDeflateLevel: Equatable, Hashable {}
 
 /**
+ * Strongly-typed ebook operation error enum mapped directly to Swift `throws UniFFIEbookError`.
+ */
+public enum UniFfiEbookError {
+    /**
+     * Failure due to malformed or corrupted archive structure.
+     */
+    case CorruptedFormat(message: String)
+    /**
+     * Requested chapter, image, stylesheet, or metadata entry was not found.
+     */
+    case EntryNotFound(href: String)
+    /**
+     * Failure during XML / OPF / NCX document parsing.
+     */
+    case XmlParseError(message: String)
+    /**
+     * Format is not supported or recognized.
+     */
+    case UnsupportedFormat(format: String)
+    /**
+     * File system or stream I/O failure.
+     */
+    case IoError(message: String)
+    /**
+     * Operation was cancelled by caller.
+     */
+    case Cancelled
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookError: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiEbookError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .CorruptedFormat(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 2: return try .EntryNotFound(
+                href: FfiConverterString.read(from: &buf)
+            )
+        case 3: return try .XmlParseError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 4: return try .UnsupportedFormat(
+                format: FfiConverterString.read(from: &buf)
+            )
+        case 5: return try .IoError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 6: return .Cancelled
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiEbookError, into buf: inout [UInt8]) {
+        switch value {
+        case let .CorruptedFormat(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .EntryNotFound(href):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(href, into: &buf)
+
+        case let .XmlParseError(message):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .UnsupportedFormat(format):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(format, into: &buf)
+
+        case let .IoError(message):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(message, into: &buf)
+
+        case .Cancelled:
+            writeInt(&buf, Int32(6))
+        }
+    }
+}
+
+extension UniFfiEbookError: Equatable, Hashable {}
+
+extension UniFfiEbookError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Supported ebook and digital publication container formats.
+ */
+
+public enum UniFfiEbookFormat {
+    case unknown
+    case epub
+    case cbz
+    case fb2
+    case mobi
+    case azw3
+    case pdf
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEbookFormat: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiEbookFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEbookFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .unknown
+
+        case 2: return .epub
+
+        case 3: return .cbz
+
+        case 4: return .fb2
+
+        case 5: return .mobi
+
+        case 6: return .azw3
+
+        case 7: return .pdf
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiEbookFormat, into buf: inout [UInt8]) {
+        switch value {
+        case .unknown:
+            writeInt(&buf, Int32(1))
+
+        case .epub:
+            writeInt(&buf, Int32(2))
+
+        case .cbz:
+            writeInt(&buf, Int32(3))
+
+        case .fb2:
+            writeInt(&buf, Int32(4))
+
+        case .mobi:
+            writeInt(&buf, Int32(5))
+
+        case .azw3:
+            writeInt(&buf, Int32(6))
+
+        case .pdf:
+            writeInt(&buf, Int32(7))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookFormat_lift(_ buf: RustBuffer) throws -> UniFfiEbookFormat {
+    return try FfiConverterTypeUniFFIEbookFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEbookFormat_lower(_ value: UniFfiEbookFormat) -> RustBuffer {
+    return FfiConverterTypeUniFFIEbookFormat.lower(value)
+}
+
+extension UniFfiEbookFormat: Equatable, Hashable {}
+
+/**
  * Strongly-typed cross-language error enumeration exposed to foreign runtimes.
  */
 public enum UniFfiError {
@@ -18631,6 +19937,30 @@ private struct FfiConverterOptionTypeUniFFICompressionOptions: FfiConverterRustB
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionTypeUniFFIEbookResource: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiEbookResource?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUniFFIEbookResource.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUniFFIEbookResource.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterOptionTypeUniFFIEpubBook: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiEpubBook?
 
@@ -19114,6 +20444,56 @@ private struct FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIDeflateStats.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIEbookSpineItem: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiEbookSpineItem]
+
+    static func write(_ value: [UniFfiEbookSpineItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIEbookSpineItem.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiEbookSpineItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiEbookSpineItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIEbookSpineItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIEbookTocNode: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiEbookTocNode]
+
+    static func write(_ value: [UniFfiEbookTocNode], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIEbookTocNode.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiEbookTocNode] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiEbookTocNode]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIEbookTocNode.read(from: &buf))
         }
         return seq
     }
@@ -21201,6 +22581,68 @@ public func uniffiExtractAudioMetadata(data: Data, fileName: String?) throws -> 
 }
 
 /**
+ * Extracts and parses a single chapter document into structured XHTML content and word metrics.
+ */
+public func uniffiExtractEbookChapter(data: Data, href: String, fileName: String?) throws -> UniFfiEbookChapter {
+    return try FfiConverterTypeUniFFIEbookChapter.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter(
+            FfiConverterData.lower(data),
+            FfiConverterString.lower(href),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts the embedded cover artwork resource if available.
+ */
+public func uniffiExtractEbookCover(data: Data, fileName: String?) throws -> UniFfiEbookResource? {
+    return try FfiConverterOptionTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts publication metadata and cover presence from in-memory ebook bytes.
+ */
+public func uniffiExtractEbookMetadata(data: Data, fileName: String?) throws -> UniFfiEbookMetadata {
+    return try FfiConverterTypeUniFFIEbookMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts an embedded asset resource (image, stylesheet, font) by href path.
+ */
+public func uniffiExtractEbookResource(data: Data, href: String, fileName: String?) throws -> UniFfiEbookResource {
+    return try FfiConverterTypeUniFFIEbookResource.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource(
+            FfiConverterData.lower(data),
+            FfiConverterString.lower(href),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts the hierarchical Table of Contents (TOC) tree from in-memory ebook bytes.
+ */
+public func uniffiExtractEbookToc(data: Data, fileName: String?) throws -> [UniFfiEbookTocNode] {
+    return try FfiConverterSequenceTypeUniFFIEbookTocNode.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
  * Extracts EPUB Dublin Core publication metadata from a file on disk.
  */
 public func uniffiExtractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata {
@@ -21315,6 +22757,18 @@ public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType,
             FfiConverterTypeUniFFISyntheticCorpusType.lower(corpusType),
             FfiConverterUInt64.lower(sizeBytes),
             FfiConverterOptionUInt64.lower(seed), $0
+        )
+    })
+}
+
+/**
+ * Returns the ordered reading spine items from in-memory ebook bytes.
+ */
+public func uniffiGetEbookSpine(data: Data, fileName: String?) throws -> [UniFfiEbookSpineItem] {
+    return try FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
         )
     })
 }
@@ -21516,6 +22970,18 @@ public func uniffiPpmdDecompress(src: Data, expectedUncompressedSize: UInt64, or
 public func uniffiProbeAudioBytes(data: Data, fileName: String?) throws -> UniFfiAudioStreamInfo {
     return try FfiConverterTypeUniFFIAudioStreamInfo.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
         uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Probes and identifies the ebook container format directly from in-memory bytes.
+ */
+public func uniffiProbeEbookBytes(data: Data, fileName: String?) throws -> UniFfiEbookFormat {
+    return try FfiConverterTypeUniFFIEbookFormat.lift(rustCallWithError(FfiConverterTypeUniFFIEbookError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes(
             FfiConverterData.lower(data),
             FfiConverterOptionString.lower(fileName), $0
         )
@@ -22439,6 +23905,21 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter() != 30595 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover() != 8859 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata() != 53165 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource() != 29817 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc() != 35463 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -22467,6 +23948,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine() != 10916 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages() != 41512 {
@@ -22518,6 +24002,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes() != 1259 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes() != 1779 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977 {
@@ -22725,6 +24212,48 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter() != 54308 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file() != 65106 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover() != 47669 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file() != 33106 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata() != 3068 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file() != 36112 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource() != 8708 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file() != 28530 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc() != 15285 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file() != 61780 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine() != 8024 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file() != 27058 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes() != 32053 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file() != 49828 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image() != 23857 {
@@ -23079,6 +24608,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new() != 57107 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922 {
