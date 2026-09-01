@@ -57,8 +57,8 @@ curve25519-dalek = { version = "4.1", default-features = false, features = ["all
 subtle = { version = "2.6", default-features = false }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast"] }
 quick-xml = "0.36"
-roxmltree = { version = "0.20", optional = true }
-lopdf = { version = "0.34", default-features = false, features = ["nom_parser"], optional = true }
+roxmltree = "0.20"
+lopdf = { version = "0.34", default-features = false, features = ["nom_parser"] }
 zune-core = "0.4"
 zune-image = "0.4"
 image-webp = "0.2"
@@ -77,7 +77,7 @@ tree-sitter-swift = { version = "0.5", optional = true }
 [features]
 default = ["full"]
 archive = []
-probe = ["dep:roxmltree", "dep:lopdf"]
+probe = []
 syntax = [
     "dep:tree-sitter",
     "dep:tree-sitter-rust",

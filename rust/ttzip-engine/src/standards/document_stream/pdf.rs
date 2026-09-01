@@ -32,11 +32,20 @@ pub fn parse_pdf_from_memory(
     pdf_bytes: &[u8],
     max_pages_text: Option<u32>,
 ) -> Result<PdfDocumentInfo, DocumentStreamError> {
-    let doc = lopdf::Document::load_mem(pdf_bytes)
-        .map_err(|e| DocumentStreamError::PdfError(e.to_string()))?;
+    let load_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        lopdf::Document::load_mem(pdf_bytes)
+    }));
+    let doc = match load_res {
+        Ok(Ok(d)) => d,
+        Ok(Err(e)) => return Err(DocumentStreamError::PdfError(e.to_string())),
+        Err(_) => return Err(DocumentStreamError::PdfError("Malformed PDF payload caused parser abort".to_string())),
+    };
 
     let format_version = format!("PDF-{}", doc.version);
-    let pages = doc.get_pages();
+    let pages = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        doc.get_pages()
+    }))
+    .unwrap_or_default();
     let page_count = pages.len() as u32;
     let is_encrypted = doc.is_encrypted();
 
@@ -102,7 +111,10 @@ pub fn parse_pdf_from_memory(
 
     if pages_to_extract > 0 && !is_encrypted {
         let page_nums: Vec<u32> = (1..=pages_to_extract).collect();
-        if let Ok(text) = doc.extract_text(&page_nums) {
+        let extract_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            doc.extract_text(&page_nums)
+        }));
+        if let Ok(Ok(text)) = extract_res {
             let trimmed = text.trim();
             if !trimmed.is_empty() {
                 extracted_text = Some(trimmed.to_string());

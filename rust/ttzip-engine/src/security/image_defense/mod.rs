@@ -24,9 +24,9 @@
 pub mod exif_safety;
 pub mod icc_profile;
 pub mod malformed_chunk;
-pub mod pipeline;
+mod pipeline;
 pub mod pixel_bomb;
-pub mod sensitive;
+mod sensitive;
 pub mod watchdog;
 
 pub use exif_safety::{ExifInspectionSummary, ExifSafetyGuard};

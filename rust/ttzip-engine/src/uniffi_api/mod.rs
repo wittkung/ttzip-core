@@ -34,6 +34,7 @@ pub mod memory;
 #[cfg(feature = "probe")]
 pub mod metadata;
 pub mod mmap_stream;
+pub mod pdf_meta;
 pub mod plugin_auth;
 pub mod smart_extract;
 pub mod subtitles;
@@ -71,6 +72,7 @@ pub use memory::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
 pub use mmap_stream::*;
+pub use pdf_meta::*;
 pub use plugin_auth::*;
 pub use smart_extract::*;
 pub use subtitles::*;

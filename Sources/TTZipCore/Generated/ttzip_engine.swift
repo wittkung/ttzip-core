@@ -1839,6 +1839,280 @@ public func FfiConverterTypeUniFFIMmapReader_lower(_ value: UniFfiMmapReader) ->
 }
 
 /**
+ * Stateful UniFFI service managing PDF document metadata, outline trees, and full-text search.
+ */
+public protocol UniFfiPdfServiceProtocol: AnyObject {
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from a local filesystem path.
+     */
+    func extractAllPagesText(filePath: String, maxPages: UInt32?) throws -> [UniFfiPdfPageText]
+
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from an in-memory byte buffer.
+     */
+    func extractAllPagesTextFromBytes(data: Data, maxPages: UInt32?) throws -> [UniFfiPdfPageText]
+
+    /**
+     * Extracts PDF metadata properties from a local filesystem path.
+     */
+    func extractMetadata(filePath: String) throws -> UniFfiPdfMetadata
+
+    /**
+     * Extracts PDF metadata properties directly from an in-memory byte buffer.
+     */
+    func extractMetadataFromBytes(data: Data) throws -> UniFfiPdfMetadata
+
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from a local filesystem path.
+     */
+    func extractOutline(filePath: String) throws -> [UniFfiPdfOutlineNode]
+
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from an in-memory byte buffer.
+     */
+    func extractOutlineFromBytes(data: Data) throws -> [UniFfiPdfOutlineNode]
+
+    /**
+     * Extracts plain text from a specific 1-based page number from a local filesystem path.
+     */
+    func extractPageText(filePath: String, pageNumber: UInt32) throws -> UniFfiPdfPageText
+
+    /**
+     * Extracts plain text from a specific 1-based page number from an in-memory byte buffer.
+     */
+    func extractPageTextFromBytes(data: Data, pageNumber: UInt32) throws -> UniFfiPdfPageText
+
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from a local filesystem path.
+     */
+    func searchText(filePath: String, query: String, maxResults: UInt32, caseSensitive: Bool) throws -> [UniFfiPdfSearchResult]
+
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from an in-memory byte buffer.
+     */
+    func searchTextFromBytes(data: Data, query: String, maxResults: UInt32, caseSensitive: Bool) throws -> [UniFfiPdfSearchResult]
+}
+
+/**
+ * Stateful UniFFI service managing PDF document metadata, outline trees, and full-text search.
+ */
+open class UniFfiPdfService:
+    UniFfiPdfServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffipdfservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new thread-safe PDF service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffipdfservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffipdfservice(pointer, $0) }
+    }
+
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from a local filesystem path.
+     */
+    open func extractAllPagesText(filePath: String, maxPages: UInt32?) throws -> [UniFfiPdfPageText] {
+        return try FfiConverterSequenceTypeUniFFIPdfPageText.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text(self.uniffiClonePointer(),
+                                                                                  FfiConverterString.lower(filePath),
+                                                                                  FfiConverterOptionUInt32.lower(maxPages), $0)
+        })
+    }
+
+    /**
+     * Extracts plain text from all pages (or up to `max_pages`) from an in-memory byte buffer.
+     */
+    open func extractAllPagesTextFromBytes(data: Data, maxPages: UInt32?) throws -> [UniFfiPdfPageText] {
+        return try FfiConverterSequenceTypeUniFFIPdfPageText.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_all_pages_text_from_bytes(self.uniffiClonePointer(),
+                                                                                             FfiConverterData.lower(data),
+                                                                                             FfiConverterOptionUInt32.lower(maxPages), $0)
+        })
+    }
+
+    /**
+     * Extracts PDF metadata properties from a local filesystem path.
+     */
+    open func extractMetadata(filePath: String) throws -> UniFfiPdfMetadata {
+        return try FfiConverterTypeUniFFIPdfMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata(self.uniffiClonePointer(),
+                                                                            FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts PDF metadata properties directly from an in-memory byte buffer.
+     */
+    open func extractMetadataFromBytes(data: Data) throws -> UniFfiPdfMetadata {
+        return try FfiConverterTypeUniFFIPdfMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_metadata_from_bytes(self.uniffiClonePointer(),
+                                                                                       FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from a local filesystem path.
+     */
+    open func extractOutline(filePath: String) throws -> [UniFfiPdfOutlineNode] {
+        return try FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline(self.uniffiClonePointer(),
+                                                                           FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts the complete hierarchical outline bookmark tree from an in-memory byte buffer.
+     */
+    open func extractOutlineFromBytes(data: Data) throws -> [UniFfiPdfOutlineNode] {
+        return try FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_outline_from_bytes(self.uniffiClonePointer(),
+                                                                                      FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Extracts plain text from a specific 1-based page number from a local filesystem path.
+     */
+    open func extractPageText(filePath: String, pageNumber: UInt32) throws -> UniFfiPdfPageText {
+        return try FfiConverterTypeUniFFIPdfPageText.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text(self.uniffiClonePointer(),
+                                                                             FfiConverterString.lower(filePath),
+                                                                             FfiConverterUInt32.lower(pageNumber), $0)
+        })
+    }
+
+    /**
+     * Extracts plain text from a specific 1-based page number from an in-memory byte buffer.
+     */
+    open func extractPageTextFromBytes(data: Data, pageNumber: UInt32) throws -> UniFfiPdfPageText {
+        return try FfiConverterTypeUniFFIPdfPageText.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_extract_page_text_from_bytes(self.uniffiClonePointer(),
+                                                                                        FfiConverterData.lower(data),
+                                                                                        FfiConverterUInt32.lower(pageNumber), $0)
+        })
+    }
+
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from a local filesystem path.
+     */
+    open func searchText(filePath: String, query: String, maxResults: UInt32, caseSensitive: Bool) throws -> [UniFfiPdfSearchResult] {
+        return try FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text(self.uniffiClonePointer(),
+                                                                       FfiConverterString.lower(filePath),
+                                                                       FfiConverterString.lower(query),
+                                                                       FfiConverterUInt32.lower(maxResults),
+                                                                       FfiConverterBool.lower(caseSensitive), $0)
+        })
+    }
+
+    /**
+     * Performs full-text keyword search across all pages of a PDF document from an in-memory byte buffer.
+     */
+    open func searchTextFromBytes(data: Data, query: String, maxResults: UInt32, caseSensitive: Bool) throws -> [UniFfiPdfSearchResult] {
+        return try FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffipdfservice_search_text_from_bytes(self.uniffiClonePointer(),
+                                                                                  FfiConverterData.lower(data),
+                                                                                  FfiConverterString.lower(query),
+                                                                                  FfiConverterUInt32.lower(maxResults),
+                                                                                  FfiConverterBool.lower(caseSensitive), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiPdfService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPdfService {
+        return UniFfiPdfService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiPdfService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiPdfService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiPdfService {
+    return try FfiConverterTypeUniFFIPdfService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfService_lower(_ value: UniFfiPdfService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIPdfService.lower(value)
+}
+
+/**
  * Thread-safe cryptographic Ed25519 signer for `.ttplugin` manifests and certificates.
  */
 public protocol UniFfiPluginSignerProtocol: AnyObject {
@@ -10201,6 +10475,580 @@ public func FfiConverterTypeUniFFIPdfDocumentInfo_lower(_ value: UniFfiPdfDocume
 }
 
 /**
+ * Strongly-typed metadata record extracted from a PDF document.
+ */
+public struct UniFfiPdfMetadata {
+    /**
+     * Format specification version string (e.g. "PDF-1.7", "PDF-2.0").
+     */
+    public var formatVersion: String
+    /**
+     * Total number of pages in the document.
+     */
+    public var pageCount: UInt32
+    /**
+     * Document title string from Info dictionary or XMP metadata.
+     */
+    public var title: String?
+    /**
+     * Author or primary creator of the document.
+     */
+    public var author: String?
+    /**
+     * Subject matter or description.
+     */
+    public var subject: String?
+    /**
+     * Semicolon or comma-separated keyword tags.
+     */
+    public var keywords: String?
+    /**
+     * Authoring application or tool (e.g. "Adobe InDesign", "LaTeX").
+     */
+    public var creator: String?
+    /**
+     * PDF producer or conversion library (e.g. "Quartz PDFContext", "lopdf").
+     */
+    public var producer: String?
+    /**
+     * Document creation timestamp string (PDF ASN.1 date or ISO 8601).
+     */
+    public var creationDate: String?
+    /**
+     * Document modification timestamp string.
+     */
+    public var modificationDate: String?
+    /**
+     * Whether the document requires a password or encryption key to open.
+     */
+    public var isEncrypted: Bool
+    /**
+     * Size of the raw PDF file in bytes.
+     */
+    public var fileSizeBytes: UInt64
+    /**
+     * Whether the document contains a hierarchical bookmark or outline tree.
+     */
+    public var hasOutline: Bool
+    /**
+     * Additional custom key-value pairs parsed from the Info dictionary.
+     */
+    public var customProperties: [String: String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Format specification version string (e.g. "PDF-1.7", "PDF-2.0").
+         */ formatVersion: String,
+        /* 
+            * Total number of pages in the document.
+            */ pageCount: UInt32,
+        /* 
+            * Document title string from Info dictionary or XMP metadata.
+            */ title: String?,
+        /* 
+            * Author or primary creator of the document.
+            */ author: String?,
+        /* 
+            * Subject matter or description.
+            */ subject: String?,
+        /* 
+            * Semicolon or comma-separated keyword tags.
+            */ keywords: String?,
+        /* 
+            * Authoring application or tool (e.g. "Adobe InDesign", "LaTeX").
+            */ creator: String?,
+        /* 
+            * PDF producer or conversion library (e.g. "Quartz PDFContext", "lopdf").
+            */ producer: String?,
+        /* 
+            * Document creation timestamp string (PDF ASN.1 date or ISO 8601).
+            */ creationDate: String?,
+        /* 
+            * Document modification timestamp string.
+            */ modificationDate: String?,
+        /* 
+            * Whether the document requires a password or encryption key to open.
+            */ isEncrypted: Bool,
+        /* 
+            * Size of the raw PDF file in bytes.
+            */ fileSizeBytes: UInt64,
+        /* 
+            * Whether the document contains a hierarchical bookmark or outline tree.
+            */ hasOutline: Bool,
+        /* 
+            * Additional custom key-value pairs parsed from the Info dictionary.
+            */ customProperties: [String: String]
+    ) {
+        self.formatVersion = formatVersion
+        self.pageCount = pageCount
+        self.title = title
+        self.author = author
+        self.subject = subject
+        self.keywords = keywords
+        self.creator = creator
+        self.producer = producer
+        self.creationDate = creationDate
+        self.modificationDate = modificationDate
+        self.isEncrypted = isEncrypted
+        self.fileSizeBytes = fileSizeBytes
+        self.hasOutline = hasOutline
+        self.customProperties = customProperties
+    }
+}
+
+extension UniFfiPdfMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiPdfMetadata, rhs: UniFfiPdfMetadata) -> Bool {
+        if lhs.formatVersion != rhs.formatVersion {
+            return false
+        }
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.keywords != rhs.keywords {
+            return false
+        }
+        if lhs.creator != rhs.creator {
+            return false
+        }
+        if lhs.producer != rhs.producer {
+            return false
+        }
+        if lhs.creationDate != rhs.creationDate {
+            return false
+        }
+        if lhs.modificationDate != rhs.modificationDate {
+            return false
+        }
+        if lhs.isEncrypted != rhs.isEncrypted {
+            return false
+        }
+        if lhs.fileSizeBytes != rhs.fileSizeBytes {
+            return false
+        }
+        if lhs.hasOutline != rhs.hasOutline {
+            return false
+        }
+        if lhs.customProperties != rhs.customProperties {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatVersion)
+        hasher.combine(pageCount)
+        hasher.combine(title)
+        hasher.combine(author)
+        hasher.combine(subject)
+        hasher.combine(keywords)
+        hasher.combine(creator)
+        hasher.combine(producer)
+        hasher.combine(creationDate)
+        hasher.combine(modificationDate)
+        hasher.combine(isEncrypted)
+        hasher.combine(fileSizeBytes)
+        hasher.combine(hasOutline)
+        hasher.combine(customProperties)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfMetadata {
+        return
+            try UniFfiPdfMetadata(
+                formatVersion: FfiConverterString.read(from: &buf),
+                pageCount: FfiConverterUInt32.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                author: FfiConverterOptionString.read(from: &buf),
+                subject: FfiConverterOptionString.read(from: &buf),
+                keywords: FfiConverterOptionString.read(from: &buf),
+                creator: FfiConverterOptionString.read(from: &buf),
+                producer: FfiConverterOptionString.read(from: &buf),
+                creationDate: FfiConverterOptionString.read(from: &buf),
+                modificationDate: FfiConverterOptionString.read(from: &buf),
+                isEncrypted: FfiConverterBool.read(from: &buf),
+                fileSizeBytes: FfiConverterUInt64.read(from: &buf),
+                hasOutline: FfiConverterBool.read(from: &buf),
+                customProperties: FfiConverterDictionaryStringString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPdfMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatVersion, into: &buf)
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.subject, into: &buf)
+        FfiConverterOptionString.write(value.keywords, into: &buf)
+        FfiConverterOptionString.write(value.creator, into: &buf)
+        FfiConverterOptionString.write(value.producer, into: &buf)
+        FfiConverterOptionString.write(value.creationDate, into: &buf)
+        FfiConverterOptionString.write(value.modificationDate, into: &buf)
+        FfiConverterBool.write(value.isEncrypted, into: &buf)
+        FfiConverterUInt64.write(value.fileSizeBytes, into: &buf)
+        FfiConverterBool.write(value.hasOutline, into: &buf)
+        FfiConverterDictionaryStringString.write(value.customProperties, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfMetadata_lift(_ buf: RustBuffer) throws -> UniFfiPdfMetadata {
+    return try FfiConverterTypeUniFFIPdfMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfMetadata_lower(_ value: UniFfiPdfMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIPdfMetadata.lower(value)
+}
+
+/**
+ * Hierarchical bookmark or outline node in a PDF document outline tree.
+ */
+public struct UniFfiPdfOutlineNode {
+    /**
+     * Human-readable title label of the outline item.
+     */
+    public var title: String
+    /**
+     * 1-based target page number (1 if not directly linked or unresolved).
+     */
+    public var pageNumber: UInt32
+    /**
+     * Optional destination string or action URI (e.g. named target or external link).
+     */
+    public var dest: String?
+    /**
+     * Whether this outline node is initially in an expanded state.
+     */
+    public var isExpanded: Bool
+    /**
+     * Nested child outline items under this section heading.
+     */
+    public var children: [UniFfiPdfOutlineNode]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Human-readable title label of the outline item.
+         */ title: String,
+        /* 
+            * 1-based target page number (1 if not directly linked or unresolved).
+            */ pageNumber: UInt32,
+        /* 
+            * Optional destination string or action URI (e.g. named target or external link).
+            */ dest: String?,
+        /* 
+            * Whether this outline node is initially in an expanded state.
+            */ isExpanded: Bool,
+        /* 
+            * Nested child outline items under this section heading.
+            */ children: [UniFfiPdfOutlineNode]
+    ) {
+        self.title = title
+        self.pageNumber = pageNumber
+        self.dest = dest
+        self.isExpanded = isExpanded
+        self.children = children
+    }
+}
+
+extension UniFfiPdfOutlineNode: Equatable, Hashable {
+    public static func == (lhs: UniFfiPdfOutlineNode, rhs: UniFfiPdfOutlineNode) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.pageNumber != rhs.pageNumber {
+            return false
+        }
+        if lhs.dest != rhs.dest {
+            return false
+        }
+        if lhs.isExpanded != rhs.isExpanded {
+            return false
+        }
+        if lhs.children != rhs.children {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(pageNumber)
+        hasher.combine(dest)
+        hasher.combine(isExpanded)
+        hasher.combine(children)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfOutlineNode: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfOutlineNode {
+        return
+            try UniFfiPdfOutlineNode(
+                title: FfiConverterString.read(from: &buf),
+                pageNumber: FfiConverterUInt32.read(from: &buf),
+                dest: FfiConverterOptionString.read(from: &buf),
+                isExpanded: FfiConverterBool.read(from: &buf),
+                children: FfiConverterSequenceTypeUniFFIPdfOutlineNode.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPdfOutlineNode, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterUInt32.write(value.pageNumber, into: &buf)
+        FfiConverterOptionString.write(value.dest, into: &buf)
+        FfiConverterBool.write(value.isExpanded, into: &buf)
+        FfiConverterSequenceTypeUniFFIPdfOutlineNode.write(value.children, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfOutlineNode_lift(_ buf: RustBuffer) throws -> UniFfiPdfOutlineNode {
+    return try FfiConverterTypeUniFFIPdfOutlineNode.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfOutlineNode_lower(_ value: UniFfiPdfOutlineNode) -> RustBuffer {
+    return FfiConverterTypeUniFFIPdfOutlineNode.lower(value)
+}
+
+/**
+ * Extracted text content and metric properties for a specific PDF page.
+ */
+public struct UniFfiPdfPageText {
+    /**
+     * 1-based page number.
+     */
+    public var pageNumber: UInt32
+    /**
+     * Extracted plain text content of the page.
+     */
+    public var text: String
+    /**
+     * Total character count of the extracted page text.
+     */
+    public var characterCount: UInt32
+    /**
+     * Total word count of the extracted page text.
+     */
+    public var wordCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * 1-based page number.
+         */ pageNumber: UInt32,
+        /* 
+            * Extracted plain text content of the page.
+            */ text: String,
+        /* 
+            * Total character count of the extracted page text.
+            */ characterCount: UInt32,
+        /* 
+            * Total word count of the extracted page text.
+            */ wordCount: UInt32
+    ) {
+        self.pageNumber = pageNumber
+        self.text = text
+        self.characterCount = characterCount
+        self.wordCount = wordCount
+    }
+}
+
+extension UniFfiPdfPageText: Equatable, Hashable {
+    public static func == (lhs: UniFfiPdfPageText, rhs: UniFfiPdfPageText) -> Bool {
+        if lhs.pageNumber != rhs.pageNumber {
+            return false
+        }
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.characterCount != rhs.characterCount {
+            return false
+        }
+        if lhs.wordCount != rhs.wordCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageNumber)
+        hasher.combine(text)
+        hasher.combine(characterCount)
+        hasher.combine(wordCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfPageText: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfPageText {
+        return
+            try UniFfiPdfPageText(
+                pageNumber: FfiConverterUInt32.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                characterCount: FfiConverterUInt32.read(from: &buf),
+                wordCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPdfPageText, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageNumber, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterUInt32.write(value.characterCount, into: &buf)
+        FfiConverterUInt32.write(value.wordCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfPageText_lift(_ buf: RustBuffer) throws -> UniFfiPdfPageText {
+    return try FfiConverterTypeUniFFIPdfPageText.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfPageText_lower(_ value: UniFfiPdfPageText) -> RustBuffer {
+    return FfiConverterTypeUniFFIPdfPageText.lower(value)
+}
+
+/**
+ * Result entry from a full-text search across PDF document content streams.
+ */
+public struct UniFfiPdfSearchResult {
+    /**
+     * 1-based page number where the match occurred.
+     */
+    public var pageNumber: UInt32
+    /**
+     * Contextual snippet containing the matching query and surrounding text.
+     */
+    public var matchText: String
+    /**
+     * 0-based character offset of the match start within the page text.
+     */
+    public var charOffset: UInt32
+    /**
+     * Length of the matched substring in characters.
+     */
+    public var matchLength: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * 1-based page number where the match occurred.
+         */ pageNumber: UInt32,
+        /* 
+            * Contextual snippet containing the matching query and surrounding text.
+            */ matchText: String,
+        /* 
+            * 0-based character offset of the match start within the page text.
+            */ charOffset: UInt32,
+        /* 
+            * Length of the matched substring in characters.
+            */ matchLength: UInt32
+    ) {
+        self.pageNumber = pageNumber
+        self.matchText = matchText
+        self.charOffset = charOffset
+        self.matchLength = matchLength
+    }
+}
+
+extension UniFfiPdfSearchResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiPdfSearchResult, rhs: UniFfiPdfSearchResult) -> Bool {
+        if lhs.pageNumber != rhs.pageNumber {
+            return false
+        }
+        if lhs.matchText != rhs.matchText {
+            return false
+        }
+        if lhs.charOffset != rhs.charOffset {
+            return false
+        }
+        if lhs.matchLength != rhs.matchLength {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pageNumber)
+        hasher.combine(matchText)
+        hasher.combine(charOffset)
+        hasher.combine(matchLength)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPdfSearchResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPdfSearchResult {
+        return
+            try UniFfiPdfSearchResult(
+                pageNumber: FfiConverterUInt32.read(from: &buf),
+                matchText: FfiConverterString.read(from: &buf),
+                charOffset: FfiConverterUInt32.read(from: &buf),
+                matchLength: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPdfSearchResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pageNumber, into: &buf)
+        FfiConverterString.write(value.matchText, into: &buf)
+        FfiConverterUInt32.write(value.charOffset, into: &buf)
+        FfiConverterUInt32.write(value.matchLength, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfSearchResult_lift(_ buf: RustBuffer) throws -> UniFfiPdfSearchResult {
+    return try FfiConverterTypeUniFFIPdfSearchResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPdfSearchResult_lower(_ value: UniFfiPdfSearchResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIPdfSearchResult.lower(value)
+}
+
+/**
  * Structured playback timeline progress information exposed across UniFFI boundary.
  */
 public struct UniFfiPlaybackTimeInfo {
@@ -17316,6 +18164,81 @@ private struct FfiConverterSequenceTypeUniFFIParetoCodecPoint: FfiConverterRustB
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIPdfOutlineNode: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiPdfOutlineNode]
+
+    static func write(_ value: [UniFfiPdfOutlineNode], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIPdfOutlineNode.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiPdfOutlineNode] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiPdfOutlineNode]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIPdfOutlineNode.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIPdfPageText: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiPdfPageText]
+
+    static func write(_ value: [UniFfiPdfPageText], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIPdfPageText.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiPdfPageText] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiPdfPageText]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIPdfPageText.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIPdfSearchResult: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiPdfSearchResult]
+
+    static func write(_ value: [UniFfiPdfSearchResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIPdfSearchResult.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiPdfSearchResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiPdfSearchResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIPdfSearchResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFIRemediationResult: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiRemediationResult]
 
@@ -19028,6 +19951,40 @@ public func uniffiExtractOfficeOutline(filePath: String) throws -> UniFfiOfficeO
 }
 
 /**
+ * Extracts PDF metadata (title, author, subject, keywords, page count) from a file on disk.
+ */
+public func uniffiExtractPdfMetadata(filePath: String) throws -> UniFfiPdfMetadata {
+    return try FfiConverterTypeUniFFIPdfMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_metadata(
+            FfiConverterString.lower(filePath), $0
+        )
+    })
+}
+
+/**
+ * Extracts the hierarchical bookmark and outline tree from a PDF file on disk.
+ */
+public func uniffiExtractPdfOutline(filePath: String) throws -> [UniFfiPdfOutlineNode] {
+    return try FfiConverterSequenceTypeUniFFIPdfOutlineNode.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_outline(
+            FfiConverterString.lower(filePath), $0
+        )
+    })
+}
+
+/**
+ * Extracts plain text from a specific 1-based page number of a PDF file on disk.
+ */
+public func uniffiExtractPdfPageText(filePath: String, pageNumber: UInt32) throws -> UniFfiPdfPageText {
+    return try FfiConverterTypeUniFFIPdfPageText.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text(
+            FfiConverterString.lower(filePath),
+            FfiConverterUInt32.lower(pageNumber), $0
+        )
+    })
+}
+
+/**
  * Extracts structural outline symbol tree from source code text.
  */
 public func uniffiExtractSymbols(code: String, languageHint: String) -> [UniFfiSymbolNode] {
@@ -19289,6 +20246,20 @@ public func uniffiSampleViewport(data: Data, params: UniFfiViewportCropParams) t
         uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(
             FfiConverterData.lower(data),
             FfiConverterTypeUniFFIViewportCropParams.lower(params), $0
+        )
+    })
+}
+
+/**
+ * Searches for full-text occurrences of a query string across all pages of a PDF file on disk.
+ */
+public func uniffiSearchPdfText(filePath: String, query: String, maxResults: UInt32, caseSensitive: Bool) throws -> [UniFfiPdfSearchResult] {
+    return try FfiConverterSequenceTypeUniFFIPdfSearchResult.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(
+            FfiConverterString.lower(filePath),
+            FfiConverterString.lower(query),
+            FfiConverterUInt32.lower(maxResults),
+            FfiConverterBool.lower(caseSensitive), $0
         )
     })
 }
@@ -20163,6 +21134,15 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline() != 48634 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_metadata() != 64179 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_outline() != 26469 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text() != 59046 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -20227,6 +21207,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport() != 3307 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295 {
@@ -20458,6 +21441,36 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text() != 64119 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text_from_bytes() != 64381 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata() != 56476 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_metadata_from_bytes() != 16782 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline() != 33647 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_outline_from_bytes() != 47954 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text() != 54260 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_page_text_from_bytes() != 44910 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text() != 26030 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffipdfservice_search_text_from_bytes() != 24720 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_method_uniffipluginsigner_get_fingerprint_blake3() != 9786 {
@@ -20725,6 +21738,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new() != 36065 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffipluginsigner_from_seed_base64() != 648 {
