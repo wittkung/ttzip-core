@@ -32,6 +32,7 @@ pub mod i18n;
 pub mod image;
 pub mod media;
 pub mod memory;
+pub mod office;
 pub mod pdf;
 pub mod platform;
 pub mod runtime;
@@ -88,6 +89,7 @@ pub use image::{
 };
 pub use media::*;
 pub use memory::*;
+pub use office::*;
 pub use pdf::{
     PdfDestination, PdfError, PdfFlatOutlineItem, PdfHighlightSpan, PdfMetadata,
     PdfMetadataExtractor, PdfOutlineExtractor, PdfOutlineNode, PdfPageInfo, PdfPageText,

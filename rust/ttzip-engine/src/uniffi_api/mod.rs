@@ -38,6 +38,7 @@ pub mod metadata;
 pub mod mmap_stream;
 pub mod pdf_meta;
 pub mod plugin_auth;
+pub mod office_meta;
 pub mod smart_extract;
 pub mod subtitles;
 pub mod syntax;
@@ -49,6 +50,8 @@ pub mod vault;
 pub mod vfs;
 pub mod xml_meta;
 pub mod zopfli_opt;
+
+pub use office_meta::*;
 
 pub use ab_benchmark::*;
 pub use archive::*;

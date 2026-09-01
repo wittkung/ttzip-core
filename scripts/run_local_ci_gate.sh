@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --bail               Stop immediately on first failed stage"
-            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite)"
+            echo "  --stage <name>       Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite, office-suite)"
             echo "  --release            Pass --release profile to applicable test stages"
             echo "  --json <path>        Export structured JSON report"
             echo "  -h, --help           Show this help message"
@@ -110,6 +110,7 @@ declare -a STAGE_NAMES=(
     "Pure-Rust PDF Parser & Streaming Text Invariant 6 Gate"
     "Pure-Rust Audio Decoder & Waveform Invariant 6 Gate"
     "Pure-Rust E-Book Parser & Spine Navigation Invariant 6 Gate"
+    "Pure-Rust Office Suite Parser & Formula Engine Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -146,13 +147,14 @@ declare -a STAGE_KEYS=(
     "pdf-suite"
     "audio-suite"
     "ebook-suite"
+    "office-suite"
 )
 
 declare -a STAGE_COMMANDS=(
     "./scripts/lint_loc_gate.sh"
     "./scripts/lint_dag_gate.sh"
     "./scripts/verify_uniffi_symbols.sh"
-    "./scripts/build_sdk_framework.sh$([ "${USE_RELEASE}" = true ] && echo " --release" || echo " --debug") --native"
+    "./scripts/build_sdk_framework.sh$([ "${USE_RELEASE}" = true ] && echo " --release" || echo " --debug") --native --no-zip"
     "swift test --parallel"
 
     "swift run -c release ttzip-bench gate"
@@ -183,6 +185,7 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_pdf_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_audio_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_ebook_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_office_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}

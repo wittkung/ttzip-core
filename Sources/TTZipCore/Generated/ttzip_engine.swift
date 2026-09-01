@@ -2416,6 +2416,295 @@ public func FfiConverterTypeUniFFIMmapReader_lower(_ value: UniFfiMmapReader) ->
 }
 
 /**
+ * High-performance thread-safe Office Document Introspection Service.
+ */
+public protocol UniFfiOfficeServiceProtocol: AnyObject {
+    /**
+     * Converts a DOCX file from an in-memory byte buffer to Markdown.
+     */
+    func convertDocxToMarkdown(data: Data, fileName: String?) throws -> String
+
+    /**
+     * Converts a DOCX file on disk to Markdown.
+     */
+    func convertDocxToMarkdownFromFile(filePath: String) throws -> String
+
+    /**
+     * Dynamically evaluates a formula with optional context cells.
+     */
+    func evaluateFormula(formula: String, contextCells: [UniFfiCell]?) throws -> UniFfiCellValue
+
+    /**
+     * Extracts structured DOCX document model from an in-memory byte buffer.
+     */
+    func extractDocxDocument(data: Data, fileName: String?) throws -> UniFfiDocxDocument
+
+    /**
+     * Extracts structured DOCX document model from a file on disk.
+     */
+    func extractDocxDocumentFromFile(filePath: String) throws -> UniFfiDocxDocument
+
+    /**
+     * Extracts worksheet data from an in-memory XLSX byte buffer.
+     */
+    func extractSheetData(data: Data, sheetNameOrIndex: String, maxRows: UInt32?, fileName: String?) throws -> UniFfiSheetData
+
+    /**
+     * Extracts worksheet data from an XLSX file on disk.
+     */
+    func extractSheetDataFromFile(filePath: String, sheetNameOrIndex: String, maxRows: UInt32?) throws -> UniFfiSheetData
+
+    /**
+     * Extracts worksheet names from an in-memory XLSX byte buffer.
+     */
+    func extractSheetNames(data: Data, fileName: String?) throws -> [String]
+
+    /**
+     * Extracts worksheet names from an XLSX file on disk.
+     */
+    func extractSheetNamesFromFile(filePath: String) throws -> [String]
+
+    /**
+     * Probes the Office format from an in-memory byte buffer.
+     */
+    func probeBytes(data: Data, fileName: String?) throws -> UniFfiOfficeFormat
+
+    /**
+     * Probes the Office format from a file on disk.
+     */
+    func probeFile(filePath: String) throws -> UniFfiOfficeFormat
+}
+
+/**
+ * High-performance thread-safe Office Document Introspection Service.
+ */
+open class UniFfiOfficeService:
+    UniFfiOfficeServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiofficeservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new thread-safe office service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiofficeservice(pointer, $0) }
+    }
+
+    /**
+     * Converts a DOCX file from an in-memory byte buffer to Markdown.
+     */
+    open func convertDocxToMarkdown(data: Data, fileName: String?) throws -> String {
+        return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown(self.uniffiClonePointer(),
+                                                                                       FfiConverterData.lower(data),
+                                                                                       FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Converts a DOCX file on disk to Markdown.
+     */
+    open func convertDocxToMarkdownFromFile(filePath: String) throws -> String {
+        return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file(self.uniffiClonePointer(),
+                                                                                                 FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Dynamically evaluates a formula with optional context cells.
+     */
+    open func evaluateFormula(formula: String, contextCells: [UniFfiCell]?) throws -> UniFfiCellValue {
+        return try FfiConverterTypeUniFFICellValue.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula(self.uniffiClonePointer(),
+                                                                               FfiConverterString.lower(formula),
+                                                                               FfiConverterOptionSequenceTypeUniFFICell.lower(contextCells), $0)
+        })
+    }
+
+    /**
+     * Extracts structured DOCX document model from an in-memory byte buffer.
+     */
+    open func extractDocxDocument(data: Data, fileName: String?) throws -> UniFfiDocxDocument {
+        return try FfiConverterTypeUniFFIDocxDocument.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document(self.uniffiClonePointer(),
+                                                                                    FfiConverterData.lower(data),
+                                                                                    FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts structured DOCX document model from a file on disk.
+     */
+    open func extractDocxDocumentFromFile(filePath: String) throws -> UniFfiDocxDocument {
+        return try FfiConverterTypeUniFFIDocxDocument.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file(self.uniffiClonePointer(),
+                                                                                              FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts worksheet data from an in-memory XLSX byte buffer.
+     */
+    open func extractSheetData(data: Data, sheetNameOrIndex: String, maxRows: UInt32?, fileName: String?) throws -> UniFfiSheetData {
+        return try FfiConverterTypeUniFFISheetData.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data(self.uniffiClonePointer(),
+                                                                                 FfiConverterData.lower(data),
+                                                                                 FfiConverterString.lower(sheetNameOrIndex),
+                                                                                 FfiConverterOptionUInt32.lower(maxRows),
+                                                                                 FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts worksheet data from an XLSX file on disk.
+     */
+    open func extractSheetDataFromFile(filePath: String, sheetNameOrIndex: String, maxRows: UInt32?) throws -> UniFfiSheetData {
+        return try FfiConverterTypeUniFFISheetData.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file(self.uniffiClonePointer(),
+                                                                                           FfiConverterString.lower(filePath),
+                                                                                           FfiConverterString.lower(sheetNameOrIndex),
+                                                                                           FfiConverterOptionUInt32.lower(maxRows), $0)
+        })
+    }
+
+    /**
+     * Extracts worksheet names from an in-memory XLSX byte buffer.
+     */
+    open func extractSheetNames(data: Data, fileName: String?) throws -> [String] {
+        return try FfiConverterSequenceString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names(self.uniffiClonePointer(),
+                                                                                  FfiConverterData.lower(data),
+                                                                                  FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Extracts worksheet names from an XLSX file on disk.
+     */
+    open func extractSheetNamesFromFile(filePath: String) throws -> [String] {
+        return try FfiConverterSequenceString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file(self.uniffiClonePointer(),
+                                                                                            FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Probes the Office format from an in-memory byte buffer.
+     */
+    open func probeBytes(data: Data, fileName: String?) throws -> UniFfiOfficeFormat {
+        return try FfiConverterTypeUniFFIOfficeFormat.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes(self.uniffiClonePointer(),
+                                                                          FfiConverterData.lower(data),
+                                                                          FfiConverterOptionString.lower(fileName), $0)
+        })
+    }
+
+    /**
+     * Probes the Office format from a file on disk.
+     */
+    open func probeFile(filePath: String) throws -> UniFfiOfficeFormat {
+        return try FfiConverterTypeUniFFIOfficeFormat.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file(self.uniffiClonePointer(),
+                                                                         FfiConverterString.lower(filePath), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIOfficeService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiOfficeService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiOfficeService {
+        return UniFfiOfficeService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiOfficeService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiOfficeService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiOfficeService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiOfficeService {
+    return try FfiConverterTypeUniFFIOfficeService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeService_lower(_ value: UniFfiOfficeService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIOfficeService.lower(value)
+}
+
+/**
  * Stateful UniFFI service managing PDF document metadata, outline trees, and full-text search.
  */
 public protocol UniFfiPdfServiceProtocol: AnyObject {
@@ -7933,6 +8222,125 @@ public func FfiConverterTypeUniFFIBenchmarkPointResult_lower(_ value: UniFfiBenc
 }
 
 /**
+ * Strongly-typed single spreadsheet cell record with coordinates.
+ */
+public struct UniFfiCell {
+    /**
+     * 1-based row index.
+     */
+    public var row: UInt32
+    /**
+     * 1-based column index (1 = 'A', 2 = 'B', 27 = 'AA').
+     */
+    public var col: UInt32
+    /**
+     * Standard alphanumeric cell reference (e.g. "A1", "C15").
+     */
+    public var coordinate: String
+    /**
+     * Resolved typed cell value.
+     */
+    public var value: UniFfiCellValue
+    /**
+     * Raw formula string if cell contains a formula.
+     */
+    public var formula: String?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * 1-based row index.
+         */ row: UInt32,
+        /* 
+            * 1-based column index (1 = 'A', 2 = 'B', 27 = 'AA').
+            */ col: UInt32,
+        /* 
+            * Standard alphanumeric cell reference (e.g. "A1", "C15").
+            */ coordinate: String,
+        /* 
+            * Resolved typed cell value.
+            */ value: UniFfiCellValue,
+        /* 
+            * Raw formula string if cell contains a formula.
+            */ formula: String?
+    ) {
+        self.row = row
+        self.col = col
+        self.coordinate = coordinate
+        self.value = value
+        self.formula = formula
+    }
+}
+
+extension UniFfiCell: Equatable, Hashable {
+    public static func == (lhs: UniFfiCell, rhs: UniFfiCell) -> Bool {
+        if lhs.row != rhs.row {
+            return false
+        }
+        if lhs.col != rhs.col {
+            return false
+        }
+        if lhs.coordinate != rhs.coordinate {
+            return false
+        }
+        if lhs.value != rhs.value {
+            return false
+        }
+        if lhs.formula != rhs.formula {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(row)
+        hasher.combine(col)
+        hasher.combine(coordinate)
+        hasher.combine(value)
+        hasher.combine(formula)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICell: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCell {
+        return
+            try UniFfiCell(
+                row: FfiConverterUInt32.read(from: &buf),
+                col: FfiConverterUInt32.read(from: &buf),
+                coordinate: FfiConverterString.read(from: &buf),
+                value: FfiConverterTypeUniFFICellValue.read(from: &buf),
+                formula: FfiConverterOptionString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiCell, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.row, into: &buf)
+        FfiConverterUInt32.write(value.col, into: &buf)
+        FfiConverterString.write(value.coordinate, into: &buf)
+        FfiConverterTypeUniFFICellValue.write(value.value, into: &buf)
+        FfiConverterOptionString.write(value.formula, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICell_lift(_ buf: RustBuffer) throws -> UniFfiCell {
+    return try FfiConverterTypeUniFFICell.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICell_lower(_ value: UniFfiCell) -> RustBuffer {
+    return FfiConverterTypeUniFFICell.lower(value)
+}
+
+/**
  * Compression parameters and options container.
  */
 public struct UniFfiCompressionOptions {
@@ -8603,6 +9011,139 @@ public func FfiConverterTypeUniFFIDocumentMetadata_lower(_ value: UniFfiDocument
 }
 
 /**
+ * Comprehensive DOCX structured document representation.
+ */
+public struct UniFfiDocxDocument {
+    /**
+     * Document title if identified.
+     */
+    public var title: String?
+    /**
+     * Ordered paragraph sequence.
+     */
+    public var paragraphs: [UniFfiDocxParagraph]
+    /**
+     * Ordered table sequence.
+     */
+    public var tables: [UniFfiDocxTable]
+    /**
+     * Total computed word count.
+     */
+    public var totalWords: UInt32
+    /**
+     * Total computed character count.
+     */
+    public var totalCharacters: UInt32
+    /**
+     * Rendered standard GitHub-Flavored Markdown representation.
+     */
+    public var markdownContent: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Document title if identified.
+         */ title: String?,
+        /* 
+            * Ordered paragraph sequence.
+            */ paragraphs: [UniFfiDocxParagraph],
+        /* 
+            * Ordered table sequence.
+            */ tables: [UniFfiDocxTable],
+        /* 
+            * Total computed word count.
+            */ totalWords: UInt32,
+        /* 
+            * Total computed character count.
+            */ totalCharacters: UInt32,
+        /* 
+            * Rendered standard GitHub-Flavored Markdown representation.
+            */ markdownContent: String
+    ) {
+        self.title = title
+        self.paragraphs = paragraphs
+        self.tables = tables
+        self.totalWords = totalWords
+        self.totalCharacters = totalCharacters
+        self.markdownContent = markdownContent
+    }
+}
+
+extension UniFfiDocxDocument: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxDocument, rhs: UniFfiDocxDocument) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.paragraphs != rhs.paragraphs {
+            return false
+        }
+        if lhs.tables != rhs.tables {
+            return false
+        }
+        if lhs.totalWords != rhs.totalWords {
+            return false
+        }
+        if lhs.totalCharacters != rhs.totalCharacters {
+            return false
+        }
+        if lhs.markdownContent != rhs.markdownContent {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(paragraphs)
+        hasher.combine(tables)
+        hasher.combine(totalWords)
+        hasher.combine(totalCharacters)
+        hasher.combine(markdownContent)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxDocument: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxDocument {
+        return
+            try UniFfiDocxDocument(
+                title: FfiConverterOptionString.read(from: &buf),
+                paragraphs: FfiConverterSequenceTypeUniFFIDocxParagraph.read(from: &buf),
+                tables: FfiConverterSequenceTypeUniFFIDocxTable.read(from: &buf),
+                totalWords: FfiConverterUInt32.read(from: &buf),
+                totalCharacters: FfiConverterUInt32.read(from: &buf),
+                markdownContent: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxDocument, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterSequenceTypeUniFFIDocxParagraph.write(value.paragraphs, into: &buf)
+        FfiConverterSequenceTypeUniFFIDocxTable.write(value.tables, into: &buf)
+        FfiConverterUInt32.write(value.totalWords, into: &buf)
+        FfiConverterUInt32.write(value.totalCharacters, into: &buf)
+        FfiConverterString.write(value.markdownContent, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxDocument_lift(_ buf: RustBuffer) throws -> UniFfiDocxDocument {
+    return try FfiConverterTypeUniFFIDocxDocument.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxDocument_lower(_ value: UniFfiDocxDocument) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxDocument.lower(value)
+}
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 public struct UniFfiDocxExtractResult {
@@ -8672,6 +9213,125 @@ public func FfiConverterTypeUniFFIDocxExtractResult_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeUniFFIDocxExtractResult_lower(_ value: UniFfiDocxExtractResult) -> RustBuffer {
     return FfiConverterTypeUniFFIDocxExtractResult.lower(value)
+}
+
+/**
+ * A structured paragraph inside a DOCX document.
+ */
+public struct UniFfiDocxParagraph {
+    /**
+     * Style name (e.g. "Normal", "Heading 1", "List Paragraph").
+     */
+    public var style: String
+    /**
+     * Plain text content of the paragraph.
+     */
+    public var text: String
+    /**
+     * Heading level if detected (0 for Title, 1 for Heading 1, 2 for Heading 2, etc.).
+     */
+    public var headingLevel: UInt32?
+    /**
+     * Whether this paragraph is part of a bulleted or numbered list.
+     */
+    public var isListItem: Bool
+    /**
+     * 0-based indentation level for nested lists.
+     */
+    public var listLevel: UInt32?
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Style name (e.g. "Normal", "Heading 1", "List Paragraph").
+         */ style: String,
+        /* 
+            * Plain text content of the paragraph.
+            */ text: String,
+        /* 
+            * Heading level if detected (0 for Title, 1 for Heading 1, 2 for Heading 2, etc.).
+            */ headingLevel: UInt32?,
+        /* 
+            * Whether this paragraph is part of a bulleted or numbered list.
+            */ isListItem: Bool,
+        /* 
+            * 0-based indentation level for nested lists.
+            */ listLevel: UInt32?
+    ) {
+        self.style = style
+        self.text = text
+        self.headingLevel = headingLevel
+        self.isListItem = isListItem
+        self.listLevel = listLevel
+    }
+}
+
+extension UniFfiDocxParagraph: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxParagraph, rhs: UniFfiDocxParagraph) -> Bool {
+        if lhs.style != rhs.style {
+            return false
+        }
+        if lhs.text != rhs.text {
+            return false
+        }
+        if lhs.headingLevel != rhs.headingLevel {
+            return false
+        }
+        if lhs.isListItem != rhs.isListItem {
+            return false
+        }
+        if lhs.listLevel != rhs.listLevel {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(style)
+        hasher.combine(text)
+        hasher.combine(headingLevel)
+        hasher.combine(isListItem)
+        hasher.combine(listLevel)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxParagraph: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxParagraph {
+        return
+            try UniFfiDocxParagraph(
+                style: FfiConverterString.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                headingLevel: FfiConverterOptionUInt32.read(from: &buf),
+                isListItem: FfiConverterBool.read(from: &buf),
+                listLevel: FfiConverterOptionUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxParagraph, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.style, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterOptionUInt32.write(value.headingLevel, into: &buf)
+        FfiConverterBool.write(value.isListItem, into: &buf)
+        FfiConverterOptionUInt32.write(value.listLevel, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxParagraph_lift(_ buf: RustBuffer) throws -> UniFfiDocxParagraph {
+    return try FfiConverterTypeUniFFIDocxParagraph.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxParagraph_lower(_ value: UniFfiDocxParagraph) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxParagraph.lower(value)
 }
 
 /**
@@ -8800,6 +9460,174 @@ public func FfiConverterTypeUniFFIDocxProperties_lift(_ buf: RustBuffer) throws 
 #endif
 public func FfiConverterTypeUniFFIDocxProperties_lower(_ value: UniFfiDocxProperties) -> RustBuffer {
     return FfiConverterTypeUniFFIDocxProperties.lower(value)
+}
+
+/**
+ * A structured table extracted from a DOCX document.
+ */
+public struct UniFfiDocxTable {
+    /**
+     * Total row count.
+     */
+    public var totalRows: UInt32
+    /**
+     * Total column count.
+     */
+    public var totalCols: UInt32
+    /**
+     * Header row labels if detected.
+     */
+    public var headers: [String]
+    /**
+     * Table body rows.
+     */
+    public var rows: [UniFfiDocxTableRow]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Total row count.
+         */ totalRows: UInt32,
+        /* 
+            * Total column count.
+            */ totalCols: UInt32,
+        /* 
+            * Header row labels if detected.
+            */ headers: [String],
+        /* 
+            * Table body rows.
+            */ rows: [UniFfiDocxTableRow]
+    ) {
+        self.totalRows = totalRows
+        self.totalCols = totalCols
+        self.headers = headers
+        self.rows = rows
+    }
+}
+
+extension UniFfiDocxTable: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxTable, rhs: UniFfiDocxTable) -> Bool {
+        if lhs.totalRows != rhs.totalRows {
+            return false
+        }
+        if lhs.totalCols != rhs.totalCols {
+            return false
+        }
+        if lhs.headers != rhs.headers {
+            return false
+        }
+        if lhs.rows != rhs.rows {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(totalRows)
+        hasher.combine(totalCols)
+        hasher.combine(headers)
+        hasher.combine(rows)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxTable: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxTable {
+        return
+            try UniFfiDocxTable(
+                totalRows: FfiConverterUInt32.read(from: &buf),
+                totalCols: FfiConverterUInt32.read(from: &buf),
+                headers: FfiConverterSequenceString.read(from: &buf),
+                rows: FfiConverterSequenceTypeUniFFIDocxTableRow.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxTable, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.totalRows, into: &buf)
+        FfiConverterUInt32.write(value.totalCols, into: &buf)
+        FfiConverterSequenceString.write(value.headers, into: &buf)
+        FfiConverterSequenceTypeUniFFIDocxTableRow.write(value.rows, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxTable_lift(_ buf: RustBuffer) throws -> UniFfiDocxTable {
+    return try FfiConverterTypeUniFFIDocxTable.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxTable_lower(_ value: UniFfiDocxTable) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxTable.lower(value)
+}
+
+/**
+ * A single row within a DOCX table.
+ */
+public struct UniFfiDocxTableRow {
+    /**
+     * Cell string contents from left to right.
+     */
+    public var cells: [String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Cell string contents from left to right.
+         */ cells: [String]
+    ) {
+        self.cells = cells
+    }
+}
+
+extension UniFfiDocxTableRow: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocxTableRow, rhs: UniFfiDocxTableRow) -> Bool {
+        if lhs.cells != rhs.cells {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(cells)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocxTableRow: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocxTableRow {
+        return
+            try UniFfiDocxTableRow(
+                cells: FfiConverterSequenceString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocxTableRow, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.cells, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxTableRow_lift(_ buf: RustBuffer) throws -> UniFfiDocxTableRow {
+    return try FfiConverterTypeUniFFIDocxTableRow.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocxTableRow_lower(_ value: UniFfiDocxTableRow) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocxTableRow.lower(value)
 }
 
 /**
@@ -13930,6 +14758,230 @@ public func FfiConverterTypeUniFFIScenarioMatrixReport_lower(_ value: UniFfiScen
 }
 
 /**
+ * Extracted worksheet grid data structure with metrics.
+ */
+public struct UniFfiSheetData {
+    /**
+     * Worksheet name (e.g. "Sheet1", "Financial_Summary").
+     */
+    public var sheetName: String
+    /**
+     * 1-based sequential sheet index in workbook.
+     */
+    public var sheetIndex: UInt32
+    /**
+     * Total row count populated in the sheet.
+     */
+    public var totalRows: UInt32
+    /**
+     * Total column count populated in the sheet.
+     */
+    public var totalCols: UInt32
+    /**
+     * Declared dimension reference if present (e.g. "A1:G100").
+     */
+    public var dimensionRef: String?
+    /**
+     * Extracted row list.
+     */
+    public var rows: [UniFfiSheetRow]
+    /**
+     * Total shared strings referenced.
+     */
+    public var sharedStringsCount: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Worksheet name (e.g. "Sheet1", "Financial_Summary").
+         */ sheetName: String,
+        /* 
+            * 1-based sequential sheet index in workbook.
+            */ sheetIndex: UInt32,
+        /* 
+            * Total row count populated in the sheet.
+            */ totalRows: UInt32,
+        /* 
+            * Total column count populated in the sheet.
+            */ totalCols: UInt32,
+        /* 
+            * Declared dimension reference if present (e.g. "A1:G100").
+            */ dimensionRef: String?,
+        /* 
+            * Extracted row list.
+            */ rows: [UniFfiSheetRow],
+        /* 
+            * Total shared strings referenced.
+            */ sharedStringsCount: UInt32
+    ) {
+        self.sheetName = sheetName
+        self.sheetIndex = sheetIndex
+        self.totalRows = totalRows
+        self.totalCols = totalCols
+        self.dimensionRef = dimensionRef
+        self.rows = rows
+        self.sharedStringsCount = sharedStringsCount
+    }
+}
+
+extension UniFfiSheetData: Equatable, Hashable {
+    public static func == (lhs: UniFfiSheetData, rhs: UniFfiSheetData) -> Bool {
+        if lhs.sheetName != rhs.sheetName {
+            return false
+        }
+        if lhs.sheetIndex != rhs.sheetIndex {
+            return false
+        }
+        if lhs.totalRows != rhs.totalRows {
+            return false
+        }
+        if lhs.totalCols != rhs.totalCols {
+            return false
+        }
+        if lhs.dimensionRef != rhs.dimensionRef {
+            return false
+        }
+        if lhs.rows != rhs.rows {
+            return false
+        }
+        if lhs.sharedStringsCount != rhs.sharedStringsCount {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sheetName)
+        hasher.combine(sheetIndex)
+        hasher.combine(totalRows)
+        hasher.combine(totalCols)
+        hasher.combine(dimensionRef)
+        hasher.combine(rows)
+        hasher.combine(sharedStringsCount)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISheetData: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSheetData {
+        return
+            try UniFfiSheetData(
+                sheetName: FfiConverterString.read(from: &buf),
+                sheetIndex: FfiConverterUInt32.read(from: &buf),
+                totalRows: FfiConverterUInt32.read(from: &buf),
+                totalCols: FfiConverterUInt32.read(from: &buf),
+                dimensionRef: FfiConverterOptionString.read(from: &buf),
+                rows: FfiConverterSequenceTypeUniFFISheetRow.read(from: &buf),
+                sharedStringsCount: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSheetData, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sheetName, into: &buf)
+        FfiConverterUInt32.write(value.sheetIndex, into: &buf)
+        FfiConverterUInt32.write(value.totalRows, into: &buf)
+        FfiConverterUInt32.write(value.totalCols, into: &buf)
+        FfiConverterOptionString.write(value.dimensionRef, into: &buf)
+        FfiConverterSequenceTypeUniFFISheetRow.write(value.rows, into: &buf)
+        FfiConverterUInt32.write(value.sharedStringsCount, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISheetData_lift(_ buf: RustBuffer) throws -> UniFfiSheetData {
+    return try FfiConverterTypeUniFFISheetData.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISheetData_lower(_ value: UniFfiSheetData) -> RustBuffer {
+    return FfiConverterTypeUniFFISheetData.lower(value)
+}
+
+/**
+ * Sequential row in a spreadsheet worksheet grid.
+ */
+public struct UniFfiSheetRow {
+    /**
+     * 1-based row number.
+     */
+    public var rowNumber: UInt32
+    /**
+     * Non-empty cells contained in this row.
+     */
+    public var cells: [UniFfiCell]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * 1-based row number.
+         */ rowNumber: UInt32,
+        /* 
+            * Non-empty cells contained in this row.
+            */ cells: [UniFfiCell]
+    ) {
+        self.rowNumber = rowNumber
+        self.cells = cells
+    }
+}
+
+extension UniFfiSheetRow: Equatable, Hashable {
+    public static func == (lhs: UniFfiSheetRow, rhs: UniFfiSheetRow) -> Bool {
+        if lhs.rowNumber != rhs.rowNumber {
+            return false
+        }
+        if lhs.cells != rhs.cells {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(rowNumber)
+        hasher.combine(cells)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISheetRow: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSheetRow {
+        return
+            try UniFfiSheetRow(
+                rowNumber: FfiConverterUInt32.read(from: &buf),
+                cells: FfiConverterSequenceTypeUniFFICell.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSheetRow, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.rowNumber, into: &buf)
+        FfiConverterSequenceTypeUniFFICell.write(value.cells, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISheetRow_lift(_ buf: RustBuffer) throws -> UniFfiSheetRow {
+    return try FfiConverterTypeUniFFISheetRow.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISheetRow_lower(_ value: UniFfiSheetRow) -> RustBuffer {
+    return FfiConverterTypeUniFFISheetRow.lower(value)
+}
+
+/**
  * Smart extraction decision record exposed via UniFFI.
  */
 public struct UniFfiSmartExtractDecision {
@@ -17735,6 +18787,91 @@ extension UniFfiAuthStatus: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /* 
+ * Strongly-typed spreadsheet cell value descriptor.
+ */
+
+public enum UniFfiCellValue {
+    case empty
+    case text(value: String)
+    case number(value: Double)
+    case boolean(value: Bool)
+    case formula(expression: String, cachedValue: String?)
+    case error(message: String)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICellValue: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCellValue
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCellValue {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .empty
+
+        case 2: return try .text(value: FfiConverterString.read(from: &buf))
+
+        case 3: return try .number(value: FfiConverterDouble.read(from: &buf))
+
+        case 4: return try .boolean(value: FfiConverterBool.read(from: &buf))
+
+        case 5: return try .formula(expression: FfiConverterString.read(from: &buf), cachedValue: FfiConverterOptionString.read(from: &buf))
+
+        case 6: return try .error(message: FfiConverterString.read(from: &buf))
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiCellValue, into buf: inout [UInt8]) {
+        switch value {
+        case .empty:
+            writeInt(&buf, Int32(1))
+
+        case let .text(value):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(value, into: &buf)
+
+        case let .number(value):
+            writeInt(&buf, Int32(3))
+            FfiConverterDouble.write(value, into: &buf)
+
+        case let .boolean(value):
+            writeInt(&buf, Int32(4))
+            FfiConverterBool.write(value, into: &buf)
+
+        case let .formula(expression, cachedValue):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(expression, into: &buf)
+            FfiConverterOptionString.write(cachedValue, into: &buf)
+
+        case let .error(message):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(message, into: &buf)
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICellValue_lift(_ buf: RustBuffer) throws -> UniFfiCellValue {
+    return try FfiConverterTypeUniFFICellValue.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICellValue_lower(_ value: UniFfiCellValue) -> RustBuffer {
+    return FfiConverterTypeUniFFICellValue.lower(value)
+}
+
+extension UniFfiCellValue: Equatable, Hashable {}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
  * Compression codec identifier exposed to Swift and multi-language SDKs.
  */
 
@@ -18753,6 +19890,210 @@ public func FfiConverterTypeUniFFIMmapAdvice_lower(_ value: UniFfiMmapAdvice) ->
 }
 
 extension UniFfiMmapAdvice: Equatable, Hashable {}
+
+/**
+ * Strongly-typed Office operation error enum mapped directly to Swift `throws UniFFIOfficeError`.
+ */
+public enum UniFfiOfficeError {
+    /**
+     * Failure due to malformed or corrupted archive structure.
+     */
+    case CorruptedFormat(message: String)
+    /**
+     * Requested worksheet was not found in workbook.
+     */
+    case SheetNotFound(name: String)
+    /**
+     * Requested document part or resource was not found.
+     */
+    case EntryNotFound(path: String)
+    /**
+     * Failure during XML / OpenXML schema parsing.
+     */
+    case XmlParseError(message: String)
+    /**
+     * Dynamic formula calculation or parsing failure.
+     */
+    case FormulaEvaluationError(formula: String, reason: String)
+    /**
+     * Format is not supported or recognized.
+     */
+    case UnsupportedFormat(format: String)
+    /**
+     * File system or stream I/O failure.
+     */
+    case IoError(message: String)
+    /**
+     * Operation was cancelled by caller.
+     */
+    case Cancelled
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIOfficeError: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiOfficeError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiOfficeError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .CorruptedFormat(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 2: return try .SheetNotFound(
+                name: FfiConverterString.read(from: &buf)
+            )
+        case 3: return try .EntryNotFound(
+                path: FfiConverterString.read(from: &buf)
+            )
+        case 4: return try .XmlParseError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 5: return try .FormulaEvaluationError(
+                formula: FfiConverterString.read(from: &buf),
+                reason: FfiConverterString.read(from: &buf)
+            )
+        case 6: return try .UnsupportedFormat(
+                format: FfiConverterString.read(from: &buf)
+            )
+        case 7: return try .IoError(
+                message: FfiConverterString.read(from: &buf)
+            )
+        case 8: return .Cancelled
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiOfficeError, into buf: inout [UInt8]) {
+        switch value {
+        case let .CorruptedFormat(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .SheetNotFound(name):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(name, into: &buf)
+
+        case let .EntryNotFound(path):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(path, into: &buf)
+
+        case let .XmlParseError(message):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(message, into: &buf)
+
+        case let .FormulaEvaluationError(formula, reason):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(formula, into: &buf)
+            FfiConverterString.write(reason, into: &buf)
+
+        case let .UnsupportedFormat(format):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(format, into: &buf)
+
+        case let .IoError(message):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(message, into: &buf)
+
+        case .Cancelled:
+            writeInt(&buf, Int32(8))
+        }
+    }
+}
+
+extension UniFfiOfficeError: Equatable, Hashable {}
+
+extension UniFfiOfficeError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/* 
+ * Supported Office Open XML and OpenDocument container formats.
+ */
+
+public enum UniFfiOfficeFormat {
+    case unknown
+    case docx
+    case xlsx
+    case pptx
+    case odt
+    case ods
+    case odp
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIOfficeFormat: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiOfficeFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiOfficeFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .unknown
+
+        case 2: return .docx
+
+        case 3: return .xlsx
+
+        case 4: return .pptx
+
+        case 5: return .odt
+
+        case 6: return .ods
+
+        case 7: return .odp
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiOfficeFormat, into buf: inout [UInt8]) {
+        switch value {
+        case .unknown:
+            writeInt(&buf, Int32(1))
+
+        case .docx:
+            writeInt(&buf, Int32(2))
+
+        case .xlsx:
+            writeInt(&buf, Int32(3))
+
+        case .pptx:
+            writeInt(&buf, Int32(4))
+
+        case .odt:
+            writeInt(&buf, Int32(5))
+
+        case .ods:
+            writeInt(&buf, Int32(6))
+
+        case .odp:
+            writeInt(&buf, Int32(7))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeFormat_lift(_ buf: RustBuffer) throws -> UniFfiOfficeFormat {
+    return try FfiConverterTypeUniFFIOfficeFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeFormat_lower(_ value: UniFfiOfficeFormat) -> RustBuffer {
+    return FfiConverterTypeUniFFIOfficeFormat.lower(value)
+}
+
+extension UniFfiOfficeFormat: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -20177,6 +21518,30 @@ private struct FfiConverterOptionCallbackInterfaceUniFfiProgressCallback: FfiCon
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterOptionSequenceTypeUniFFICell: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiCell]?
+
+    static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceTypeUniFFICell.write(value, into: &buf)
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceTypeUniFFICell.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
     typealias SwiftType = [Float]
 
@@ -20402,6 +21767,31 @@ private struct FfiConverterSequenceTypeUniFFIBenchmarkPointResult: FfiConverterR
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFICell: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiCell]
+
+    static func write(_ value: [UniFfiCell], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFICell.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiCell] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiCell]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFICell.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiCorruptedEntry]
 
@@ -20444,6 +21834,81 @@ private struct FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIDeflateStats.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIDocxParagraph: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiDocxParagraph]
+
+    static func write(_ value: [UniFfiDocxParagraph], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIDocxParagraph.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiDocxParagraph] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiDocxParagraph]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIDocxParagraph.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIDocxTable: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiDocxTable]
+
+    static func write(_ value: [UniFfiDocxTable], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIDocxTable.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiDocxTable] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiDocxTable]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIDocxTable.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIDocxTableRow: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiDocxTableRow]
+
+    static func write(_ value: [UniFfiDocxTableRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIDocxTableRow.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiDocxTableRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiDocxTableRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIDocxTableRow.read(from: &buf))
         }
         return seq
     }
@@ -20919,6 +22384,31 @@ private struct FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint: FfiConverte
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIScenarioBenchmarkPoint.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFISheetRow: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiSheetRow]
+
+    static func write(_ value: [UniFfiSheetRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFISheetRow.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiSheetRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiSheetRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFISheetRow.read(from: &buf))
         }
         return seq
     }
@@ -22372,6 +23862,18 @@ public func uniffiCompressBuffer(codec: UniFfiCompressionCodec, src: Data, optio
 }
 
 /**
+ * Converts a DOCX document into standard GitHub-Flavored Markdown.
+ */
+public func uniffiConvertDocxToMarkdown(data: Data, fileName: String?) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
  * Computes CRC-32 (IEEE 802.3) checksum.
  */
 public func uniffiCrc32(data: Data) -> UInt32 {
@@ -22569,11 +24071,35 @@ public func uniffiDetectLanguage(filePathOrExt: String, firstLineHint: String?) 
 }
 
 /**
+ * Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
+ */
+public func uniffiEvaluateFormula(formula: String, contextCells: [UniFfiCell]?) throws -> UniFfiCellValue {
+    return try FfiConverterTypeUniFFICellValue.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula(
+            FfiConverterString.lower(formula),
+            FfiConverterOptionSequenceTypeUniFFICell.lower(contextCells), $0
+        )
+    })
+}
+
+/**
  * Extracts comprehensive metadata tags and embedded cover art from in-memory audio bytes.
  */
 public func uniffiExtractAudioMetadata(data: Data, fileName: String?) throws -> UniFfiAudioMetadata {
     return try FfiConverterTypeUniFFIAudioMetadata.lift(rustCallWithError(FfiConverterTypeUniFFIAudioError.lift) {
         uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts structured paragraphs, tables, and outline metrics from a DOCX archive.
+ */
+public func uniffiExtractDocxDocument(data: Data, fileName: String?) throws -> UniFfiDocxDocument {
+    return try FfiConverterTypeUniFFIDocxDocument.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document(
             FfiConverterData.lower(data),
             FfiConverterOptionString.lower(fileName), $0
         )
@@ -22705,6 +24231,32 @@ public func uniffiExtractPdfPageText(filePath: String, pageNumber: UInt32) throw
         uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text(
             FfiConverterString.lower(filePath),
             FfiConverterUInt32.lower(pageNumber), $0
+        )
+    })
+}
+
+/**
+ * Extracts parsed worksheet data with cell coordinates and values from an XLSX archive.
+ */
+public func uniffiExtractSheetData(data: Data, sheetNameOrIndex: String, maxRows: UInt32?, fileName: String?) throws -> UniFfiSheetData {
+    return try FfiConverterTypeUniFFISheetData.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data(
+            FfiConverterData.lower(data),
+            FfiConverterString.lower(sheetNameOrIndex),
+            FfiConverterOptionUInt32.lower(maxRows),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Extracts worksheet names from an in-memory XLSX spreadsheet archive.
+ */
+public func uniffiExtractSheetNames(data: Data, fileName: String?) throws -> [String] {
+    return try FfiConverterSequenceString.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
         )
     })
 }
@@ -22994,6 +24546,18 @@ public func uniffiProbeEbookBytes(data: Data, fileName: String?) throws -> UniFf
 public func uniffiProbeImageInfo(data: Data, fileName: String?) throws -> UniFfiImageInfo {
     return try FfiConverterTypeUniFFIImageInfo.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
         uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(
+            FfiConverterData.lower(data),
+            FfiConverterOptionString.lower(fileName), $0
+        )
+    })
+}
+
+/**
+ * Probes and identifies the Office document format directly from in-memory bytes.
+ */
+public func uniffiProbeOfficeBytes(data: Data, fileName: String?) throws -> UniFfiOfficeFormat {
+    return try FfiConverterTypeUniFFIOfficeFormat.lift(rustCallWithError(FfiConverterTypeUniFFIOfficeError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes(
             FfiConverterData.lower(data),
             FfiConverterOptionString.lower(fileName), $0
         )
@@ -23854,6 +25418,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer() != 35599 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown() != 45414 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_crc32() != 35952 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -23902,7 +25469,13 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document() != 31462 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter() != 30595 {
@@ -23936,6 +25509,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text() != 59046 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data() != 15349 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names() != 40858 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873 {
@@ -24008,6 +25587,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes() != 27541 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098 {
@@ -24316,6 +25898,39 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown() != 29157 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file() != 20969 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula() != 22296 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document() != 34353 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file() != 46508 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data() != 63843 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file() != 20051 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names() != 50623 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file() != 4656 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes() != 10124 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file() != 34964 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text() != 64119 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -24617,6 +26232,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new() != 38241 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new() != 36065 {

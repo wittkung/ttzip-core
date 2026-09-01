@@ -250,66 +250,87 @@ else
     copy_if_changed "${SLICE_DIR}/libTTZipVendor.a" "${XCFRAMEWORK_DIR}/macos-arm64/libTTZipVendor.a"
 fi
 
-# 5. 生成 UniFFI 绑定与 Scaffolding C 头文件（输出至临时目录并通过内容对比幂等写入）
-echo "--> [INFO] Generating Mozilla UniFFI bindings..."
-FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
-if [ ! -f "${FIRST_DYLIB}" ]; then
-    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
-fi
-if [ ! -f "${FIRST_DYLIB}" ]; then
-    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
-fi
+# 5. 生成 UniFFI 绑定与 Scaffolding C 头文件（仅在接口变更或产物缺失时执行，保护下游 SwiftPM 编译缓存）
+compute_uniffi_api_fingerprint() {
+    local git_root
+    git_root="$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null || echo "${REPO_ROOT}/..")"
+    (
+        git -C "${git_root}" diff HEAD -- core/rust/ttzip-engine/src/uniffi_api core/rust/ttzip-engine/src/lib.rs core/rust/ttzip-engine/Cargo.toml 2>/dev/null
+        git -C "${git_root}" ls-files --others --exclude-standard core/rust/ttzip-engine/src/uniffi_api 2>/dev/null
+    ) | shasum -a 256 | awk '{print $1}'
+}
 
-UNIFFI_BIN=""
-for candidate in \
-    "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
-    "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/uniffi-bindgen" \
-    "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
-    "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
-    "${RUST_DIR}/target/release/uniffi-bindgen" \
-    "${RUST_DIR}/target/debug/uniffi-bindgen"; do
-    if [ -x "${candidate}" ]; then
-        UNIFFI_BIN="${candidate}"
-        break
+UNIFFI_API_FINGERPRINT="$(compute_uniffi_api_fingerprint)"
+UNIFFI_CACHE_FILE="${EFFECTIVE_TARGET_DIR}/.uniffi_api_fingerprint"
+SAVED_UNIFFI_FINGERPRINT="$(cat "${UNIFFI_CACHE_FILE}" 2>/dev/null || true)"
+
+if [ "${FORCE_REBUILD}" = "1" ] \
+    || [ "${SAVED_UNIFFI_FINGERPRINT}" != "${UNIFFI_API_FINGERPRINT}" ] \
+    || [ ! -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ] \
+    || [ ! -f "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h" ]; then
+    echo "--> [INFO] Generating Mozilla UniFFI bindings (API signatures changed)..."
+    FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
+    if [ ! -f "${FIRST_DYLIB}" ]; then
+        FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
     fi
-done
+    if [ ! -f "${FIRST_DYLIB}" ]; then
+        FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
+    fi
 
-TMP_UNIFFI_DIR="$(mktemp -d /tmp/ttzip_uniffi.XXXXXX)"
+    UNIFFI_BIN=""
+    for candidate in \
+        "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
+        "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
+        "${RUST_DIR}/target/release/uniffi-bindgen" \
+        "${RUST_DIR}/target/debug/uniffi-bindgen"; do
+        if [ -x "${candidate}" ]; then
+            UNIFFI_BIN="${candidate}"
+            break
+        fi
+    done
 
-if [ -n "${UNIFFI_BIN}" ]; then
-    (
-        cd "${RUST_DIR}"
-        "${UNIFFI_BIN}" generate \
-            --library "${FIRST_DYLIB}" \
-            --language swift \
-            --out-dir "${TMP_UNIFFI_DIR}" \
-            --metadata-no-deps
-    )
+    TMP_UNIFFI_DIR="$(mktemp -d /tmp/ttzip_uniffi.XXXXXX)"
+
+    if [ -n "${UNIFFI_BIN}" ]; then
+        (
+            cd "${RUST_DIR}"
+            "${UNIFFI_BIN}" generate \
+                --library "${FIRST_DYLIB}" \
+                --language swift \
+                --out-dir "${TMP_UNIFFI_DIR}" \
+                --metadata-no-deps
+        )
+    else
+        (
+            cd "${RUST_DIR}"
+            cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                --library "${FIRST_DYLIB}" \
+                --language swift \
+                --out-dir "${TMP_UNIFFI_DIR}" \
+                --metadata-no-deps
+        )
+    fi
+
+    # 执行 Swift 6 并发安全后处理
+    if [ -f "${TMP_UNIFFI_DIR}/ttzip_engine.swift" ]; then
+        python3 "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" "${TMP_UNIFFI_DIR}/ttzip_engine.swift"
+        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engine.swift" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift"
+    fi
+
+    # 幂等部署 C-Bridge 头文件（仅在变化时覆盖，保护下游 SwiftPM 编译缓存）
+    if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" ]; then
+        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
+        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${SLICE_DIR}/Headers/ttzip_engineFFI.h"
+        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${XCFRAMEWORK_DIR}/macos-arm64/Headers/ttzip_engineFFI.h"
+    fi
+
+    rm -rf "${TMP_UNIFFI_DIR}"
+    echo "${UNIFFI_API_FINGERPRINT}" > "${UNIFFI_CACHE_FILE}"
 else
-    (
-        cd "${RUST_DIR}"
-        cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
-            --library "${FIRST_DYLIB}" \
-            --language swift \
-            --out-dir "${TMP_UNIFFI_DIR}" \
-            --metadata-no-deps
-    )
+    echo "⚡ [CACHE] UniFFI API signatures unchanged. Skipping uniffi-bindgen."
 fi
-
-# 执行 Swift 6 并发安全后处理
-if [ -f "${TMP_UNIFFI_DIR}/ttzip_engine.swift" ]; then
-    python3 "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" "${TMP_UNIFFI_DIR}/ttzip_engine.swift"
-    copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engine.swift" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift"
-fi
-
-# 幂等部署 C-Bridge 头文件（仅在变化时覆盖，保护下游 SwiftPM 编译缓存）
-if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" ]; then
-    copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
-    copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${SLICE_DIR}/Headers/ttzip_engineFFI.h"
-    copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${XCFRAMEWORK_DIR}/macos-arm64/Headers/ttzip_engineFFI.h"
-fi
-
-rm -rf "${TMP_UNIFFI_DIR}"
 
 # 6. 生成标准 XCFramework Info.plist（幂等写入）
 TMP_PLIST="$(mktemp /tmp/ttzip_plist.XXXXXX)"

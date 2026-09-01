@@ -5,7 +5,7 @@
 //
 // TTZip: High-performance native archiving and compression engine.
 
-//! DOCX streaming text extraction and Dublin Core metadata parsing via quick-xml SAX.
+//! High-performance streaming DOCX text extraction and Dublin Core metadata parsing via quick-xml SAX.
 
 use quick_xml::events::Event;
 use quick_xml::Reader as XmlReader;
