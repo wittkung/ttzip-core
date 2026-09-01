@@ -299,6 +299,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \
+                --no-format \
                 --metadata-no-deps
 
             if [ "${SWIFT_ONLY}" = "0" ]; then
@@ -307,6 +308,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
                     --library "${FIRST_DYLIB}" \
                     --language python \
                     --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
+                    --no-format \
                     --metadata-no-deps
 
                 mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
@@ -314,6 +316,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
                     --library "${FIRST_DYLIB}" \
                     --language kotlin \
                     --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
+                    --no-format \
                     --metadata-no-deps
             fi
         )
@@ -324,6 +327,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \
+                --no-format \
                 --metadata-no-deps
 
             if [ "${SWIFT_ONLY}" = "0" ]; then

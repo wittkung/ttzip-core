@@ -74,7 +74,8 @@ pub fn parse_docx_xml_content(xml_bytes: &[u8]) -> Result<(String, Vec<String>),
     reader.config_mut().trim_text(false);
 
     let mut buf = Vec::with_capacity(1024);
-    let mut paragraphs: Vec<String> = Vec::with_capacity(128);
+    let approx_paras = (xml_bytes.len() / 64).max(128);
+    let mut paragraphs: Vec<String> = Vec::with_capacity(approx_paras);
     let mut current_paragraph = String::with_capacity(512);
     let mut in_text = false;
 
@@ -122,10 +123,9 @@ pub fn parse_docx_xml_content(xml_bytes: &[u8]) -> Result<(String, Vec<String>),
                     b"p" => {
                         let trimmed = current_paragraph.trim();
                         if !trimmed.is_empty() {
-                            paragraphs.push(std::mem::take(&mut current_paragraph));
-                        } else {
-                            current_paragraph.clear();
+                            paragraphs.push(current_paragraph.clone());
                         }
+                        current_paragraph.clear();
                     }
                     b"t" => {
                         in_text = false;

@@ -28,6 +28,7 @@ pub mod crypto;
 pub mod ebook;
 pub mod ffi;
 pub mod fs;
+pub mod html;
 pub mod i18n;
 pub mod image;
 pub mod media;
@@ -82,6 +83,7 @@ pub use ebook::{
     EbookNavigationExtractor, EbookResource, EbookResourceExtractor, EbookResult, EbookTocNode,
     MobiExthRecord, MobiHeaderInfo, PalmDocHeader, SpineItem, TTZipEbookParser,
 };
+pub use html::*;
 pub use i18n::*;
 pub use image::{
     ColorSpacePipeline, DecodedImageFrame, ExifThumbnailExtractor, ImageBitDepth, ImageColorSpace,

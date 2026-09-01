@@ -220,7 +220,10 @@ final class TTZipCoreIntegrationTests: XCTestCase {
     // MARK: - 4. PasswordVaultManager Key Encryption & Memory-Safe Wiping
 
     func testPasswordVaultManagerEncryptionAndMemorySafeWiping() {
-        let vault = PasswordVaultManager.shared
+        let vaultURL = sandbox.fileURL(named: "test_vault_v4.enc")
+        let configURL = sandbox.fileURL(named: "test_config_v4.json")
+        let backupURL = sandbox.fileURL(named: "test_backup_v4.enc")
+        let vault = PasswordVaultManager(vaultURL: vaultURL, configURL: configURL, backupURL: backupURL)
         vault.resetToFirstRunState()
         defer { vault.resetToFirstRunState() }
 

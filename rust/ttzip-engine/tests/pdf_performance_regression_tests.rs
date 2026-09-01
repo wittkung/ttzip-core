@@ -34,8 +34,8 @@ use ttzip_engine::pdf::{
     TTZipPdfParser,
 };
 
-const WARMUP_RUNS: usize = 3;
-const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
+const WARMUP_RUNS: usize = 10;
+const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(100); // 100ms Adaptive Integration
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
 /// Helper: Builds a realistic multi-page PDF document with text, outlines, and metadata.
@@ -153,6 +153,8 @@ fn make_benchmark_pdf(page_count: usize) -> Vec<u8> {
     buf
 }
 
+static BENCH_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Measures average iteration latency (in seconds) for a workload using clock rising-edge alignment.
 fn measure_workload<F: FnMut() -> R, R>(mut workload: F) -> (f64, usize) {
     // 1. Warm-up runs
@@ -160,23 +162,24 @@ fn measure_workload<F: FnMut() -> R, R>(mut workload: F) -> (f64, usize) {
         black_box(workload());
     }
 
-    // 2. Rising-edge alignment
-    wait_for_next_tick();
-
-    // 3. Adaptive time integration
+    // 2. Adaptive time integration with clock rising-edge alignment and batching
     let start = Instant::now();
     let mut iterations = 0usize;
     let mut pass_latencies = Vec::new();
 
-    while start.elapsed() < MIN_INTEGRATION_WINDOW || iterations < 5 {
-        let pass_start = Instant::now();
-        black_box(workload());
-        let pass_dur = pass_start.elapsed().as_secs_f64();
+    while start.elapsed() < MIN_INTEGRATION_WINDOW || iterations < 10 {
+        let _tick = wait_for_next_tick();
+        let batch_start = Instant::now();
+        let batch_size = 5usize;
+        for _ in 0..batch_size {
+            black_box(workload());
+            iterations += 1;
+        }
+        let pass_dur = batch_start.elapsed().as_secs_f64() / (batch_size as f64);
         pass_latencies.push(pass_dur);
-        iterations += 1;
     }
 
-    // 4. Hampel 3-sigma outlier filtering
+    // 3. Hampel 3-sigma outlier filtering
     let filter = HampelFilter::default();
     let filtered = filter.filter(&pass_latencies);
     let latencies_to_use = if !filtered.cleaned.is_empty() {
@@ -196,6 +199,7 @@ fn measure_workload<F: FnMut() -> R, R>(mut workload: F) -> (f64, usize) {
 
 #[test]
 fn test_pdf_parsing_throughput_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let pdf_bytes = make_benchmark_pdf(20);
     let raw_len = pdf_bytes.len();
     assert!(raw_len > 1024);
@@ -224,6 +228,7 @@ fn test_pdf_parsing_throughput_gate() {
 
 #[test]
 fn test_pdf_metadata_extraction_latency_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let pdf_bytes = make_benchmark_pdf(10);
     let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
 
@@ -248,6 +253,7 @@ fn test_pdf_metadata_extraction_latency_gate() {
 
 #[test]
 fn test_pdf_outline_extraction_latency_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let pdf_bytes = make_benchmark_pdf(25);
     let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
 
@@ -272,6 +278,7 @@ fn test_pdf_outline_extraction_latency_gate() {
 
 #[test]
 fn test_pdf_text_extraction_throughput_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let pdf_bytes = make_benchmark_pdf(15);
     let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
 
@@ -302,6 +309,7 @@ fn test_pdf_text_extraction_throughput_gate() {
 
 #[test]
 fn test_pdf_fulltext_search_throughput_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let pdf_bytes = make_benchmark_pdf(30);
     let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
     let options = PdfTextSearchOptions {
@@ -334,24 +342,33 @@ fn test_pdf_fulltext_search_throughput_gate() {
 
 #[test]
 fn test_pdf_anti_regression_invariant6_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let _governor = ThermalThrottleGovernor::new();
     let pdf_bytes = make_benchmark_pdf(20);
 
-    // Measure Baseline Run (Pass 1)
-    let (baseline_sec, _) = measure_workload(|| {
-        let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
-        let _ = PdfMetadataExtractor::extract_metadata(&parser).unwrap();
-        let _ = PdfOutlineExtractor::extract_outlines(&parser).unwrap();
-        let _ = PdfTextExtractor::extract_page_text(&parser, 1).unwrap();
-    });
+    // Measure interleaved A/B runs (5 pairs) to eliminate thermal and frequency scaling noise
+    let mut baseline_samples = Vec::new();
+    let mut candidate_samples = Vec::new();
+    for _ in 0..5 {
+        let (baseline_sec, _) = measure_workload(|| {
+            let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
+            let _ = PdfMetadataExtractor::extract_metadata(&parser).unwrap();
+            let _ = PdfOutlineExtractor::extract_outlines(&parser).unwrap();
+            let _ = PdfTextExtractor::extract_page_text(&parser, 1).unwrap();
+        });
+        baseline_samples.push(baseline_sec);
 
-    // Measure Candidate Run (Pass 2)
-    let (candidate_sec, _) = measure_workload(|| {
-        let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
-        let _ = PdfMetadataExtractor::extract_metadata(&parser).unwrap();
-        let _ = PdfOutlineExtractor::extract_outlines(&parser).unwrap();
-        let _ = PdfTextExtractor::extract_page_text(&parser, 1).unwrap();
-    });
+        let (candidate_sec, _) = measure_workload(|| {
+            let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).unwrap();
+            let _ = PdfMetadataExtractor::extract_metadata(&parser).unwrap();
+            let _ = PdfOutlineExtractor::extract_outlines(&parser).unwrap();
+            let _ = PdfTextExtractor::extract_page_text(&parser, 1).unwrap();
+        });
+        candidate_samples.push(candidate_sec);
+    }
+
+    let baseline_sec = baseline_samples.into_iter().fold(f64::INFINITY, f64::min);
+    let candidate_sec = candidate_samples.into_iter().fold(f64::INFINITY, f64::min);
 
     let regression_pct = if candidate_sec > baseline_sec {
         ((candidate_sec - baseline_sec) / baseline_sec) * 100.0

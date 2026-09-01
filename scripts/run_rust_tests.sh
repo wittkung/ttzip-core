@@ -138,16 +138,122 @@ echo "   Working Directory: ${RUST_DIR}"
 echo "   Release Mode:      ${USE_RELEASE}"
 echo "================================================================"
 
-CARGO_FLAGS=()
+PROFILE="$(if [ "${USE_RELEASE}" = true ]; then echo 'release'; else echo 'debug'; fi)"
+CARGO_FLAGS=("--target" "aarch64-apple-darwin")
 if [ "${USE_RELEASE}" = true ]; then
     CARGO_FLAGS+=("--release")
 fi
 
+BUILD_DIR="${RUST_DIR}/target/aarch64-apple-darwin/${PROFILE}/deps"
+if [ ! -d "${BUILD_DIR}" ]; then
+    BUILD_DIR="${RUST_DIR}/target/${PROFILE}/deps"
+fi
+
+find_target_bin() {
+    local target="$1"
+    local bin
+    bin="$(ls -t "${BUILD_DIR}/${target}-"* 2>/dev/null | grep -v '\.' | head -n 1 || true)"
+    if [ -n "${bin}" ] && [ -x "${bin}" ]; then
+        echo "${bin}"
+    fi
+}
+
+ENGINE_BIN=""
+TUI_BIN=""
+PROP_BIN=""
+FUZZ_HARNESS_BIN=""
+FUZZ_DATA_BIN=""
+CAN_USE_DIRECT_BINS=true
+
+if [ "${RUN_UNIT}" = true ]; then
+    ENGINE_BIN="$(find_target_bin "ttzip_engine")"
+    TUI_BIN="$(find_target_bin "ttzip_tui")"
+    if [ -z "${ENGINE_BIN}" ] || [ -z "${TUI_BIN}" ]; then
+        CAN_USE_DIRECT_BINS=false
+    fi
+fi
+
+if [ "${RUN_PROPS}" = true ]; then
+    PROP_BIN="$(find_target_bin "property_tests")"
+    if [ -z "${PROP_BIN}" ]; then
+        CAN_USE_DIRECT_BINS=false
+    fi
+fi
+
+if [ "${RUN_FUZZ}" = true ]; then
+    FUZZ_HARNESS_BIN="$(find_target_bin "fuzz_harness")"
+    FUZZ_DATA_BIN="$(find_target_bin "fuzz_data_producer_tests")"
+    if [ -z "${FUZZ_HARNESS_BIN}" ] || [ -z "${FUZZ_DATA_BIN}" ]; then
+        CAN_USE_DIRECT_BINS=false
+    fi
+fi
+
 if [ "${RUN_UNIT}" = true ] || [ "${RUN_PROPS}" = true ] || [ "${RUN_FUZZ}" = true ]; then
-    echo "--> [1/2] Executing Unified Workspace Test Matrix..."
-    # Exclude benches and separate integration suites from unit test execution to focus on core fast unit tests
-    cargo test "${CARGO_FLAGS[@]}" --workspace --lib --bins
-    echo "✅ [PASS] Unified Workspace Tests completed successfully."
+    if [ "${CAN_USE_DIRECT_BINS}" = true ] && [ "${FORCE_REBUILD}" = false ]; then
+        echo "--> [1/2] Executing Rust Industrial Test Matrix in Parallel (Direct Binary Fast Path)..."
+        TMP_LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ttzip_rust_tests_XXXXXX")"
+        declare -A RUNNING_PIDS=()
+        declare -A SUITE_NAMES=()
+        declare -A SUITE_LOGS=()
+
+        launch_suite_bg() {
+            local suite_name="$1"
+            local suite_bin="$2"
+            local log_path="${TMP_LOG_DIR}/${suite_name}.log"
+            SUITE_NAMES["${suite_name}"]="${suite_name}"
+            SUITE_LOGS["${suite_name}"]="${log_path}"
+            (
+                "${suite_bin}" --nocapture > "${log_path}" 2>&1
+            ) &
+            RUNNING_PIDS["${suite_name}"]=$!
+        }
+
+        if [ "${RUN_UNIT}" = true ]; then
+            launch_suite_bg "ttzip_engine_unit" "${ENGINE_BIN}"
+            launch_suite_bg "ttzip_tui_unit" "${TUI_BIN}"
+        fi
+        if [ "${RUN_PROPS}" = true ]; then
+            launch_suite_bg "property_tests" "${PROP_BIN}"
+        fi
+        if [ "${RUN_FUZZ}" = true ]; then
+            launch_suite_bg "fuzz_harness" "${FUZZ_HARNESS_BIN}"
+            launch_suite_bg "fuzz_data_producer" "${FUZZ_DATA_BIN}"
+        fi
+
+        TESTS_FAILED=0
+        for s_name in "${!RUNNING_PIDS[@]}"; do
+            s_pid="${RUNNING_PIDS[${s_name}]}"
+            if ! wait "${s_pid}"; then
+                echo "❌ Test suite failed: ${s_name}"
+                if [ -f "${SUITE_LOGS[${s_name}]}" ]; then
+                    cat "${SUITE_LOGS[${s_name}]}"
+                fi
+                TESTS_FAILED=1
+            else
+                summary_line="$(grep -E "test result: ok\." "${SUITE_LOGS[${s_name}]}" 2>/dev/null | tail -n 1 || true)"
+                echo "   ✅ [PASS] ${s_name} (${summary_line:-ok})"
+            fi
+        done
+        rm -rf "${TMP_LOG_DIR}" 2>/dev/null || true
+
+        if [ "${TESTS_FAILED}" -ne 0 ]; then
+            echo "❌ One or more parallel Rust test suites failed."
+            exit 1
+        fi
+        echo "✅ [PASS] Unified Workspace Tests completed successfully in parallel."
+    else
+        echo "--> [1/2] Executing Unified Workspace Test Matrix via Cargo..."
+        if [ "${RUN_UNIT}" = true ]; then
+            cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine -p ttzip-tui --lib --bins
+        fi
+        if [ "${RUN_PROPS}" = true ]; then
+            cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --test property_tests
+        fi
+        if [ "${RUN_FUZZ}" = true ]; then
+            cargo test "${CARGO_FLAGS[@]}" -p ttzip-engine --test fuzz_harness --test fuzz_data_producer_tests
+        fi
+        echo "✅ [PASS] Unified Workspace Tests completed successfully."
+    fi
 fi
 
 # Micro-benchmarks

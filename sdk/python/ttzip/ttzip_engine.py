@@ -652,6 +652,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer() != 35599:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown() != 45414:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32() != 35952:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine() != 10627:
@@ -684,9 +686,25 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document() != 31462:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter() != 30595:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover() != 8859:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata() != 53165:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource() != 29817:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc() != 35463:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources() != 55101:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata() != 20046:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -698,6 +716,10 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text() != 59046:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data() != 15349:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names() != 40858:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205:
@@ -705,6 +727,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine() != 10916:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages() != 41512:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -715,6 +739,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code() != 41651:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport() != 42695:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new() != 57279:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -740,11 +766,23 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes() != 1259:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes() != 1779:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes() != 16506:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file() != 23714:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes() != 27541:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs() != 64735:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport() != 3307:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html() != 8664:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -878,6 +916,44 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter() != 54308:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file() != 65106:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover() != 47669:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file() != 33106:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata() != 3068:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file() != 36112:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource() != 8708:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file() != 28530:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc() != 15285:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file() != 61780:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine() != 8024:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file() != 27058:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes() != 32053:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file() != 49828:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources() != 33033:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes() != 38832:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file() != 8276:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs() != 55873:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize() != 3156:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image() != 23857:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image_from_file() != 29611:
@@ -917,6 +993,28 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence() != 64796:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown() != 29157:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file() != 20969:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula() != 22296:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document() != 34353:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file() != 46508:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data() != 63843:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file() != 20051:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names() != 50623:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file() != 4656:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes() != 10124:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file() != 34964:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text() != 64119:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1114,9 +1212,15 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new() != 57107:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new() != 64228:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new() != 38241:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new() != 36065:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1497,6 +1601,163 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset.argtypes 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiebookservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiebookservice.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiebookservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiebookservice.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffihtmlservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffihtmlservice.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffihtmlservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffihtmlservice.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiimageservice.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1659,6 +1920,96 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffimmapreader_stats.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiofficeservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiofficeservice.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiofficeservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiofficeservice.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffipdfservice.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3021,6 +3372,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_buffer.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_buffer.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc32.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3122,17 +3479,66 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_detect_language.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_detect_language.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3159,6 +3565,20 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_symbols.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3187,6 +3607,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus.argtypes
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_get_supported_languages.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
@@ -3218,6 +3644,10 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport.argtypes =
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new.restype = ctypes.c_void_p
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -3289,24 +3719,60 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_file.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_image_info.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_image_info.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_remediate_filename.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_remediate_filename.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sample_viewport.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sample_viewport.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -4134,6 +4600,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound.restype = cty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32.restype = ctypes.c_uint16
@@ -4182,12 +4651,36 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata.restype = ctypes.c_uint16
@@ -4203,6 +4696,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_outline.restype 
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols.restype = ctypes.c_uint16
@@ -4215,6 +4714,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform.rest
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages.restype = ctypes.c_uint16
@@ -4230,6 +4732,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code.restype = cty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.restype = ctypes.c_uint16
@@ -4266,15 +4771,33 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.restype = ctypes.c_uint16
@@ -4473,6 +4996,63 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_is_cancel
 _UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image.restype = ctypes.c_uint16
@@ -4533,6 +5113,39 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequen
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text.restype = ctypes.c_uint16
@@ -4827,12 +5440,21 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffibufferpool_new.restype
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new.restype = ctypes.c_uint16
@@ -5944,6 +6566,609 @@ class _UniffiConverterTypeUniFfiCancellationToken:
 
 
 
+class UniFfiEbookServiceProtocol(typing.Protocol):
+    """
+    High-performance thread-safe Ebook Introspection Service.
+    """
+
+    def extract_chapter(self, data: "bytes",href: "str",file_name: "typing.Optional[str]"):
+        """
+        Extracts and parses a single chapter document from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_chapter_from_file(self, file_path: "str",href: "str"):
+        """
+        Extracts and parses a single chapter document from a file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_cover(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts the embedded cover artwork from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_cover_from_file(self, file_path: "str"):
+        """
+        Extracts the embedded cover artwork from a file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_metadata(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts publication metadata from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_metadata_from_file(self, file_path: "str"):
+        """
+        Extracts publication metadata from a file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_resource(self, data: "bytes",href: "str",file_name: "typing.Optional[str]"):
+        """
+        Extracts an embedded asset resource by href from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_resource_from_file(self, file_path: "str",href: "str"):
+        """
+        Extracts an embedded asset resource by href from a file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_toc(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_toc_from_file(self, file_path: "str"):
+        """
+        Extracts hierarchical Table of Contents (TOC) from a file on disk.
+        """
+
+        raise NotImplementedError
+    def get_spine(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Retrieves ordered spine reading items from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def get_spine_from_file(self, file_path: "str"):
+        """
+        Retrieves ordered spine reading items from a file on disk.
+        """
+
+        raise NotImplementedError
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Probes the ebook format from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def probe_file(self, file_path: "str"):
+        """
+        Probes the ebook format from a file on disk.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiEbookService:
+    """
+    High-performance thread-safe Ebook Introspection Service.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Constructs a new thread-safe ebook service instance.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiebookservice, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiebookservice, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def extract_chapter(self, data: "bytes",href: "str",file_name: "typing.Optional[str]") -> "UniFfiEbookChapter":
+        """
+        Extracts and parses a single chapter document from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterString.check_lower(href)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiEbookChapter.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(href),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_chapter_from_file(self, file_path: "str",href: "str") -> "UniFfiEbookChapter":
+        """
+        Extracts and parses a single chapter document from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        _UniffiConverterString.check_lower(href)
+        
+        return _UniffiConverterTypeUniFfiEbookChapter.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path),
+        _UniffiConverterString.lower(href))
+        )
+
+
+
+
+
+    def extract_cover(self, data: "bytes",file_name: "typing.Optional[str]") -> "typing.Optional[UniFfiEbookResource]":
+        """
+        Extracts the embedded cover artwork from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterOptionalTypeUniFfiEbookResource.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_cover_from_file(self, file_path: "str") -> "typing.Optional[UniFfiEbookResource]":
+        """
+        Extracts the embedded cover artwork from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterOptionalTypeUniFfiEbookResource.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def extract_metadata(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiEbookMetadata":
+        """
+        Extracts publication metadata from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiEbookMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_metadata_from_file(self, file_path: "str") -> "UniFfiEbookMetadata":
+        """
+        Extracts publication metadata from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiEbookMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def extract_resource(self, data: "bytes",href: "str",file_name: "typing.Optional[str]") -> "UniFfiEbookResource":
+        """
+        Extracts an embedded asset resource by href from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterString.check_lower(href)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiEbookResource.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(href),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_resource_from_file(self, file_path: "str",href: "str") -> "UniFfiEbookResource":
+        """
+        Extracts an embedded asset resource by href from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        _UniffiConverterString.check_lower(href)
+        
+        return _UniffiConverterTypeUniFfiEbookResource.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path),
+        _UniffiConverterString.lower(href))
+        )
+
+
+
+
+
+    def extract_toc(self, data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[UniFfiEbookTocNode]":
+        """
+        Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterSequenceTypeUniFfiEbookTocNode.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_toc_from_file(self, file_path: "str") -> "typing.List[UniFfiEbookTocNode]":
+        """
+        Extracts hierarchical Table of Contents (TOC) from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterSequenceTypeUniFfiEbookTocNode.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def get_spine(self, data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[UniFfiEbookSpineItem]":
+        """
+        Retrieves ordered spine reading items from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterSequenceTypeUniFfiEbookSpineItem.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def get_spine_from_file(self, file_path: "str") -> "typing.List[UniFfiEbookSpineItem]":
+        """
+        Retrieves ordered spine reading items from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterSequenceTypeUniFfiEbookSpineItem.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiEbookFormat":
+        """
+        Probes the ebook format from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiEbookFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def probe_file(self, file_path: "str") -> "UniFfiEbookFormat":
+        """
+        Probes the ebook format from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiEbookFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiEbookService:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiEbookService._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiEbookService):
+        if not isinstance(value, UniFfiEbookService):
+            raise TypeError("Expected UniFfiEbookService instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiEbookServiceProtocol):
+        if not isinstance(value, UniFfiEbookService):
+            raise TypeError("Expected UniFfiEbookService instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiEbookServiceProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiHtmlServiceProtocol(typing.Protocol):
+    """
+    Stateful UniFFI service providing high-performance zero-copy HTML transformation and VFS routing.
+    """
+
+    def extract_resources(self, html_content: "str"):
+        """
+        Extracts all asset and resource links from HTML markup.
+        """
+
+        raise NotImplementedError
+    def probe_bytes(self, bytes: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Probes the format classification of an in-memory HTML byte buffer.
+        """
+
+        raise NotImplementedError
+    def probe_file(self, file_path: "str"):
+        """
+        Probes the format classification of a file on disk.
+        """
+
+        raise NotImplementedError
+    def rewrite_vfs(self, html_content: "str",base_vfs_prefix: "str",policy: "UniFfiHtmlSanitizationPolicy"):
+        """
+        Rewrites relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+        """
+
+        raise NotImplementedError
+    def sanitize(self, html_content: "str",policy: "UniFfiHtmlSanitizationPolicy"):
+        """
+        Sanitizes HTML markup according to security policy.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiHtmlService:
+    """
+    Stateful UniFFI service providing high-performance zero-copy HTML transformation and VFS routing.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Constructs a new thread-safe HTML transformation service instance.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffihtmlservice, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffihtmlservice, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def extract_resources(self, html_content: "str") -> "typing.List[UniFfiHtmlResourceLink]":
+        """
+        Extracts all asset and resource links from HTML markup.
+        """
+
+        _UniffiConverterString.check_lower(html_content)
+        
+        return _UniffiConverterSequenceTypeUniFfiHtmlResourceLink.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(html_content))
+        )
+
+
+
+
+
+    def probe_bytes(self, bytes: "bytes",file_name: "typing.Optional[str]") -> "UniFfiHtmlFormat":
+        """
+        Probes the format classification of an in-memory HTML byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(bytes)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiHtmlFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(bytes),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def probe_file(self, file_path: "str") -> "UniFfiHtmlFormat":
+        """
+        Probes the format classification of a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiHtmlFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def rewrite_vfs(self, html_content: "str",base_vfs_prefix: "str",policy: "UniFfiHtmlSanitizationPolicy") -> "UniFfiHtmlTransformResult":
+        """
+        Rewrites relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+        """
+
+        _UniffiConverterString.check_lower(html_content)
+        
+        _UniffiConverterString.check_lower(base_vfs_prefix)
+        
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.check_lower(policy)
+        
+        return _UniffiConverterTypeUniFfiHtmlTransformResult.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(html_content),
+        _UniffiConverterString.lower(base_vfs_prefix),
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.lower(policy))
+        )
+
+
+
+
+
+    def sanitize(self, html_content: "str",policy: "UniFfiHtmlSanitizationPolicy") -> "str":
+        """
+        Sanitizes HTML markup according to security policy.
+        """
+
+        _UniffiConverterString.check_lower(html_content)
+        
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.check_lower(policy)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(html_content),
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.lower(policy))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiHtmlService:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiHtmlService._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiHtmlService):
+        if not isinstance(value, UniFfiHtmlService):
+            raise TypeError("Expected UniFfiHtmlService instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiHtmlServiceProtocol):
+        if not isinstance(value, UniFfiHtmlService):
+            raise TypeError("Expected UniFfiHtmlService instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiHtmlServiceProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
 class UniFfiImageServiceProtocol(typing.Protocol):
     """
     Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
@@ -6568,6 +7793,348 @@ class _UniffiConverterTypeUniFfiMmapReader:
 
     @classmethod
     def write(cls, value: UniFfiMmapReaderProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiOfficeServiceProtocol(typing.Protocol):
+    """
+    High-performance thread-safe Office Document Introspection Service.
+    """
+
+    def convert_docx_to_markdown(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Converts a DOCX file from an in-memory byte buffer to Markdown.
+        """
+
+        raise NotImplementedError
+    def convert_docx_to_markdown_from_file(self, file_path: "str"):
+        """
+        Converts a DOCX file on disk to Markdown.
+        """
+
+        raise NotImplementedError
+    def evaluate_formula(self, formula: "str",context_cells: "typing.Optional[typing.List[UniFfiCell]]"):
+        """
+        Dynamically evaluates a formula with optional context cells.
+        """
+
+        raise NotImplementedError
+    def extract_docx_document(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts structured DOCX document model from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_docx_document_from_file(self, file_path: "str"):
+        """
+        Extracts structured DOCX document model from a file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_sheet_data(self, data: "bytes",sheet_name_or_index: "str",max_rows: "typing.Optional[int]",file_name: "typing.Optional[str]"):
+        """
+        Extracts worksheet data from an in-memory XLSX byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_sheet_data_from_file(self, file_path: "str",sheet_name_or_index: "str",max_rows: "typing.Optional[int]"):
+        """
+        Extracts worksheet data from an XLSX file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_sheet_names(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts worksheet names from an in-memory XLSX byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_sheet_names_from_file(self, file_path: "str"):
+        """
+        Extracts worksheet names from an XLSX file on disk.
+        """
+
+        raise NotImplementedError
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Probes the Office format from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def probe_file(self, file_path: "str"):
+        """
+        Probes the Office format from a file on disk.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiOfficeService:
+    """
+    High-performance thread-safe Office Document Introspection Service.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Constructs a new thread-safe office service instance.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiofficeservice, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiofficeservice, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def convert_docx_to_markdown(self, data: "bytes",file_name: "typing.Optional[str]") -> "str":
+        """
+        Converts a DOCX file from an in-memory byte buffer to Markdown.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def convert_docx_to_markdown_from_file(self, file_path: "str") -> "str":
+        """
+        Converts a DOCX file on disk to Markdown.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def evaluate_formula(self, formula: "str",context_cells: "typing.Optional[typing.List[UniFfiCell]]") -> "UniFfiCellValue":
+        """
+        Dynamically evaluates a formula with optional context cells.
+        """
+
+        _UniffiConverterString.check_lower(formula)
+        
+        _UniffiConverterOptionalSequenceTypeUniFfiCell.check_lower(context_cells)
+        
+        return _UniffiConverterTypeUniFfiCellValue.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(formula),
+        _UniffiConverterOptionalSequenceTypeUniFfiCell.lower(context_cells))
+        )
+
+
+
+
+
+    def extract_docx_document(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiDocxDocument":
+        """
+        Extracts structured DOCX document model from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiDocxDocument.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_docx_document_from_file(self, file_path: "str") -> "UniFfiDocxDocument":
+        """
+        Extracts structured DOCX document model from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiDocxDocument.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def extract_sheet_data(self, data: "bytes",sheet_name_or_index: "str",max_rows: "typing.Optional[int]",file_name: "typing.Optional[str]") -> "UniFfiSheetData":
+        """
+        Extracts worksheet data from an in-memory XLSX byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterString.check_lower(sheet_name_or_index)
+        
+        _UniffiConverterOptionalUInt32.check_lower(max_rows)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiSheetData.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(sheet_name_or_index),
+        _UniffiConverterOptionalUInt32.lower(max_rows),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_sheet_data_from_file(self, file_path: "str",sheet_name_or_index: "str",max_rows: "typing.Optional[int]") -> "UniFfiSheetData":
+        """
+        Extracts worksheet data from an XLSX file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        _UniffiConverterString.check_lower(sheet_name_or_index)
+        
+        _UniffiConverterOptionalUInt32.check_lower(max_rows)
+        
+        return _UniffiConverterTypeUniFfiSheetData.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path),
+        _UniffiConverterString.lower(sheet_name_or_index),
+        _UniffiConverterOptionalUInt32.lower(max_rows))
+        )
+
+
+
+
+
+    def extract_sheet_names(self, data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[str]":
+        """
+        Extracts worksheet names from an in-memory XLSX byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterSequenceString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_sheet_names_from_file(self, file_path: "str") -> "typing.List[str]":
+        """
+        Extracts worksheet names from an XLSX file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterSequenceString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiOfficeFormat":
+        """
+        Probes the Office format from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiOfficeFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def probe_file(self, file_path: "str") -> "UniFfiOfficeFormat":
+        """
+        Probes the Office format from a file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiOfficeFormat.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiOfficeService:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiOfficeService._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiOfficeService):
+        if not isinstance(value, UniFfiOfficeService):
+            raise TypeError("Expected UniFfiOfficeService instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiOfficeServiceProtocol):
+        if not isinstance(value, UniFfiOfficeService):
+            raise TypeError("Expected UniFfiOfficeService instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiOfficeServiceProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -11499,6 +13066,87 @@ class _UniffiConverterTypeUniFfiBenchmarkPointResult(_UniffiConverterRustBuffer)
         _UniffiConverterBool.write(value.is_on_convex_hull, buf)
 
 
+class UniFfiCell:
+    """
+    Strongly-typed single spreadsheet cell record with coordinates.
+    """
+
+    row: "int"
+    """
+    1-based row index.
+    """
+
+    col: "int"
+    """
+    1-based column index (1 = 'A', 2 = 'B', 27 = 'AA').
+    """
+
+    coordinate: "str"
+    """
+    Standard alphanumeric cell reference (e.g. "A1", "C15").
+    """
+
+    value: "UniFfiCellValue"
+    """
+    Resolved typed cell value.
+    """
+
+    formula: "typing.Optional[str]"
+    """
+    Raw formula string if cell contains a formula.
+    """
+
+    def __init__(self, *, row: "int", col: "int", coordinate: "str", value: "UniFfiCellValue", formula: "typing.Optional[str]"):
+        self.row = row
+        self.col = col
+        self.coordinate = coordinate
+        self.value = value
+        self.formula = formula
+
+    def __str__(self):
+        return "UniFfiCell(row={}, col={}, coordinate={}, value={}, formula={})".format(self.row, self.col, self.coordinate, self.value, self.formula)
+
+    def __eq__(self, other):
+        if self.row != other.row:
+            return False
+        if self.col != other.col:
+            return False
+        if self.coordinate != other.coordinate:
+            return False
+        if self.value != other.value:
+            return False
+        if self.formula != other.formula:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiCell(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiCell(
+            row=_UniffiConverterUInt32.read(buf),
+            col=_UniffiConverterUInt32.read(buf),
+            coordinate=_UniffiConverterString.read(buf),
+            value=_UniffiConverterTypeUniFfiCellValue.read(buf),
+            formula=_UniffiConverterOptionalString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.row)
+        _UniffiConverterUInt32.check_lower(value.col)
+        _UniffiConverterString.check_lower(value.coordinate)
+        _UniffiConverterTypeUniFfiCellValue.check_lower(value.value)
+        _UniffiConverterOptionalString.check_lower(value.formula)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.row, buf)
+        _UniffiConverterUInt32.write(value.col, buf)
+        _UniffiConverterString.write(value.coordinate, buf)
+        _UniffiConverterTypeUniFfiCellValue.write(value.value, buf)
+        _UniffiConverterOptionalString.write(value.formula, buf)
+
+
 class UniFfiCompressionOptions:
     """
     Compression parameters and options container.
@@ -11976,6 +13624,98 @@ class _UniffiConverterTypeUniFfiDocumentMetadata(_UniffiConverterRustBuffer):
         _UniffiConverterMapStringString.write(value.custom_properties, buf)
 
 
+class UniFfiDocxDocument:
+    """
+    Comprehensive DOCX structured document representation.
+    """
+
+    title: "typing.Optional[str]"
+    """
+    Document title if identified.
+    """
+
+    paragraphs: "typing.List[UniFfiDocxParagraph]"
+    """
+    Ordered paragraph sequence.
+    """
+
+    tables: "typing.List[UniFfiDocxTable]"
+    """
+    Ordered table sequence.
+    """
+
+    total_words: "int"
+    """
+    Total computed word count.
+    """
+
+    total_characters: "int"
+    """
+    Total computed character count.
+    """
+
+    markdown_content: "str"
+    """
+    Rendered standard GitHub-Flavored Markdown representation.
+    """
+
+    def __init__(self, *, title: "typing.Optional[str]", paragraphs: "typing.List[UniFfiDocxParagraph]", tables: "typing.List[UniFfiDocxTable]", total_words: "int", total_characters: "int", markdown_content: "str"):
+        self.title = title
+        self.paragraphs = paragraphs
+        self.tables = tables
+        self.total_words = total_words
+        self.total_characters = total_characters
+        self.markdown_content = markdown_content
+
+    def __str__(self):
+        return "UniFfiDocxDocument(title={}, paragraphs={}, tables={}, total_words={}, total_characters={}, markdown_content={})".format(self.title, self.paragraphs, self.tables, self.total_words, self.total_characters, self.markdown_content)
+
+    def __eq__(self, other):
+        if self.title != other.title:
+            return False
+        if self.paragraphs != other.paragraphs:
+            return False
+        if self.tables != other.tables:
+            return False
+        if self.total_words != other.total_words:
+            return False
+        if self.total_characters != other.total_characters:
+            return False
+        if self.markdown_content != other.markdown_content:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDocxDocument(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDocxDocument(
+            title=_UniffiConverterOptionalString.read(buf),
+            paragraphs=_UniffiConverterSequenceTypeUniFfiDocxParagraph.read(buf),
+            tables=_UniffiConverterSequenceTypeUniFfiDocxTable.read(buf),
+            total_words=_UniffiConverterUInt32.read(buf),
+            total_characters=_UniffiConverterUInt32.read(buf),
+            markdown_content=_UniffiConverterString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterSequenceTypeUniFfiDocxParagraph.check_lower(value.paragraphs)
+        _UniffiConverterSequenceTypeUniFfiDocxTable.check_lower(value.tables)
+        _UniffiConverterUInt32.check_lower(value.total_words)
+        _UniffiConverterUInt32.check_lower(value.total_characters)
+        _UniffiConverterString.check_lower(value.markdown_content)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterSequenceTypeUniFfiDocxParagraph.write(value.paragraphs, buf)
+        _UniffiConverterSequenceTypeUniFfiDocxTable.write(value.tables, buf)
+        _UniffiConverterUInt32.write(value.total_words, buf)
+        _UniffiConverterUInt32.write(value.total_characters, buf)
+        _UniffiConverterString.write(value.markdown_content, buf)
+
+
 class UniFfiDocxExtractResult:
     """
     Extracted DOCX plain text, paragraph list, and metadata.
@@ -12021,6 +13761,87 @@ class _UniffiConverterTypeUniFfiDocxExtractResult(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.full_text, buf)
         _UniffiConverterSequenceString.write(value.paragraphs, buf)
         _UniffiConverterTypeUniFfiDocxProperties.write(value.properties, buf)
+
+
+class UniFfiDocxParagraph:
+    """
+    A structured paragraph inside a DOCX document.
+    """
+
+    style: "str"
+    """
+    Style name (e.g. "Normal", "Heading 1", "List Paragraph").
+    """
+
+    text: "str"
+    """
+    Plain text content of the paragraph.
+    """
+
+    heading_level: "typing.Optional[int]"
+    """
+    Heading level if detected (0 for Title, 1 for Heading 1, 2 for Heading 2, etc.).
+    """
+
+    is_list_item: "bool"
+    """
+    Whether this paragraph is part of a bulleted or numbered list.
+    """
+
+    list_level: "typing.Optional[int]"
+    """
+    0-based indentation level for nested lists.
+    """
+
+    def __init__(self, *, style: "str", text: "str", heading_level: "typing.Optional[int]", is_list_item: "bool", list_level: "typing.Optional[int]"):
+        self.style = style
+        self.text = text
+        self.heading_level = heading_level
+        self.is_list_item = is_list_item
+        self.list_level = list_level
+
+    def __str__(self):
+        return "UniFfiDocxParagraph(style={}, text={}, heading_level={}, is_list_item={}, list_level={})".format(self.style, self.text, self.heading_level, self.is_list_item, self.list_level)
+
+    def __eq__(self, other):
+        if self.style != other.style:
+            return False
+        if self.text != other.text:
+            return False
+        if self.heading_level != other.heading_level:
+            return False
+        if self.is_list_item != other.is_list_item:
+            return False
+        if self.list_level != other.list_level:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDocxParagraph(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDocxParagraph(
+            style=_UniffiConverterString.read(buf),
+            text=_UniffiConverterString.read(buf),
+            heading_level=_UniffiConverterOptionalUInt32.read(buf),
+            is_list_item=_UniffiConverterBool.read(buf),
+            list_level=_UniffiConverterOptionalUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.style)
+        _UniffiConverterString.check_lower(value.text)
+        _UniffiConverterOptionalUInt32.check_lower(value.heading_level)
+        _UniffiConverterBool.check_lower(value.is_list_item)
+        _UniffiConverterOptionalUInt32.check_lower(value.list_level)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.style, buf)
+        _UniffiConverterString.write(value.text, buf)
+        _UniffiConverterOptionalUInt32.write(value.heading_level, buf)
+        _UniffiConverterBool.write(value.is_list_item, buf)
+        _UniffiConverterOptionalUInt32.write(value.list_level, buf)
 
 
 class UniFfiDocxProperties:
@@ -12117,6 +13938,672 @@ class _UniffiConverterTypeUniFfiDocxProperties(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.word_count, buf)
         _UniffiConverterUInt32.write(value.character_count, buf)
         _UniffiConverterUInt32.write(value.paragraph_count, buf)
+
+
+class UniFfiDocxTable:
+    """
+    A structured table extracted from a DOCX document.
+    """
+
+    total_rows: "int"
+    """
+    Total row count.
+    """
+
+    total_cols: "int"
+    """
+    Total column count.
+    """
+
+    headers: "typing.List[str]"
+    """
+    Header row labels if detected.
+    """
+
+    rows: "typing.List[UniFfiDocxTableRow]"
+    """
+    Table body rows.
+    """
+
+    def __init__(self, *, total_rows: "int", total_cols: "int", headers: "typing.List[str]", rows: "typing.List[UniFfiDocxTableRow]"):
+        self.total_rows = total_rows
+        self.total_cols = total_cols
+        self.headers = headers
+        self.rows = rows
+
+    def __str__(self):
+        return "UniFfiDocxTable(total_rows={}, total_cols={}, headers={}, rows={})".format(self.total_rows, self.total_cols, self.headers, self.rows)
+
+    def __eq__(self, other):
+        if self.total_rows != other.total_rows:
+            return False
+        if self.total_cols != other.total_cols:
+            return False
+        if self.headers != other.headers:
+            return False
+        if self.rows != other.rows:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDocxTable(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDocxTable(
+            total_rows=_UniffiConverterUInt32.read(buf),
+            total_cols=_UniffiConverterUInt32.read(buf),
+            headers=_UniffiConverterSequenceString.read(buf),
+            rows=_UniffiConverterSequenceTypeUniFfiDocxTableRow.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.total_rows)
+        _UniffiConverterUInt32.check_lower(value.total_cols)
+        _UniffiConverterSequenceString.check_lower(value.headers)
+        _UniffiConverterSequenceTypeUniFfiDocxTableRow.check_lower(value.rows)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.total_rows, buf)
+        _UniffiConverterUInt32.write(value.total_cols, buf)
+        _UniffiConverterSequenceString.write(value.headers, buf)
+        _UniffiConverterSequenceTypeUniFfiDocxTableRow.write(value.rows, buf)
+
+
+class UniFfiDocxTableRow:
+    """
+    A single row within a DOCX table.
+    """
+
+    cells: "typing.List[str]"
+    """
+    Cell string contents from left to right.
+    """
+
+    def __init__(self, *, cells: "typing.List[str]"):
+        self.cells = cells
+
+    def __str__(self):
+        return "UniFfiDocxTableRow(cells={})".format(self.cells)
+
+    def __eq__(self, other):
+        if self.cells != other.cells:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDocxTableRow(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDocxTableRow(
+            cells=_UniffiConverterSequenceString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterSequenceString.check_lower(value.cells)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterSequenceString.write(value.cells, buf)
+
+
+class UniFfiEbookChapter:
+    """
+    Extracted XHTML / HTML chapter content descriptor with metrics.
+    """
+
+    id: "str"
+    """
+    Manifest ID or chapter identifier.
+    """
+
+    title: "str"
+    """
+    Resolved chapter title from TOC, heading, or spine index.
+    """
+
+    href: "str"
+    """
+    Normalized relative resource path.
+    """
+
+    media_type: "str"
+    """
+    MIME type of the document.
+    """
+
+    play_order: "int"
+    """
+    1-based sequential spine order.
+    """
+
+    content_string: "str"
+    """
+    Raw XHTML / HTML markup or text string.
+    """
+
+    character_count: "int"
+    """
+    Total character count of stripped textual content.
+    """
+
+    word_count: "int"
+    """
+    Total word count of stripped textual content.
+    """
+
+    def __init__(self, *, id: "str", title: "str", href: "str", media_type: "str", play_order: "int", content_string: "str", character_count: "int", word_count: "int"):
+        self.id = id
+        self.title = title
+        self.href = href
+        self.media_type = media_type
+        self.play_order = play_order
+        self.content_string = content_string
+        self.character_count = character_count
+        self.word_count = word_count
+
+    def __str__(self):
+        return "UniFfiEbookChapter(id={}, title={}, href={}, media_type={}, play_order={}, content_string={}, character_count={}, word_count={})".format(self.id, self.title, self.href, self.media_type, self.play_order, self.content_string, self.character_count, self.word_count)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.title != other.title:
+            return False
+        if self.href != other.href:
+            return False
+        if self.media_type != other.media_type:
+            return False
+        if self.play_order != other.play_order:
+            return False
+        if self.content_string != other.content_string:
+            return False
+        if self.character_count != other.character_count:
+            return False
+        if self.word_count != other.word_count:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEbookChapter(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEbookChapter(
+            id=_UniffiConverterString.read(buf),
+            title=_UniffiConverterString.read(buf),
+            href=_UniffiConverterString.read(buf),
+            media_type=_UniffiConverterString.read(buf),
+            play_order=_UniffiConverterUInt32.read(buf),
+            content_string=_UniffiConverterString.read(buf),
+            character_count=_UniffiConverterUInt32.read(buf),
+            word_count=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.title)
+        _UniffiConverterString.check_lower(value.href)
+        _UniffiConverterString.check_lower(value.media_type)
+        _UniffiConverterUInt32.check_lower(value.play_order)
+        _UniffiConverterString.check_lower(value.content_string)
+        _UniffiConverterUInt32.check_lower(value.character_count)
+        _UniffiConverterUInt32.check_lower(value.word_count)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.id, buf)
+        _UniffiConverterString.write(value.title, buf)
+        _UniffiConverterString.write(value.href, buf)
+        _UniffiConverterString.write(value.media_type, buf)
+        _UniffiConverterUInt32.write(value.play_order, buf)
+        _UniffiConverterString.write(value.content_string, buf)
+        _UniffiConverterUInt32.write(value.character_count, buf)
+        _UniffiConverterUInt32.write(value.word_count, buf)
+
+
+class UniFfiEbookMetadata:
+    """
+    Comprehensive publication metadata descriptor.
+    """
+
+    title: "str"
+    """
+    Primary title of the publication.
+    """
+
+    authors: "typing.List[str]"
+    """
+    List of authors, creators, or editors.
+    """
+
+    publisher: "typing.Optional[str]"
+    """
+    Publishing house or distributor.
+    """
+
+    language: "typing.Optional[str]"
+    """
+    Primary language code (e.g. "en", "zh-CN", "ja").
+    """
+
+    identifier: "typing.Optional[str]"
+    """
+    Canonical book identifier (e.g. ISBN, UUID, DOI).
+    """
+
+    description: "typing.Optional[str]"
+    """
+    Synopsis or description text.
+    """
+
+    publication_date: "typing.Optional[str]"
+    """
+    Original publication date string.
+    """
+
+    modified_date: "typing.Optional[str]"
+    """
+    Modification or package revision date string.
+    """
+
+    rights: "typing.Optional[str]"
+    """
+    Legal copyright and licensing statement.
+    """
+
+    format: "UniFfiEbookFormat"
+    """
+    Detected ebook container format.
+    """
+
+    total_chapters: "int"
+    """
+    Total count of linear reading chapters in spine.
+    """
+
+    total_resources: "int"
+    """
+    Total count of manifest resources.
+    """
+
+    file_size_bytes: "int"
+    """
+    Total size of the archive in bytes.
+    """
+
+    has_cover: "bool"
+    """
+    Whether an embedded cover image exists.
+    """
+
+    cover_path: "typing.Optional[str]"
+    """
+    Archive relative path to the cover image if present.
+    """
+
+    extra_metadata: "dict[str, str]"
+    """
+    Additional unstructured metadata tag pairs.
+    """
+
+    def __init__(self, *, title: "str", authors: "typing.List[str]", publisher: "typing.Optional[str]", language: "typing.Optional[str]", identifier: "typing.Optional[str]", description: "typing.Optional[str]", publication_date: "typing.Optional[str]", modified_date: "typing.Optional[str]", rights: "typing.Optional[str]", format: "UniFfiEbookFormat", total_chapters: "int", total_resources: "int", file_size_bytes: "int", has_cover: "bool", cover_path: "typing.Optional[str]", extra_metadata: "dict[str, str]"):
+        self.title = title
+        self.authors = authors
+        self.publisher = publisher
+        self.language = language
+        self.identifier = identifier
+        self.description = description
+        self.publication_date = publication_date
+        self.modified_date = modified_date
+        self.rights = rights
+        self.format = format
+        self.total_chapters = total_chapters
+        self.total_resources = total_resources
+        self.file_size_bytes = file_size_bytes
+        self.has_cover = has_cover
+        self.cover_path = cover_path
+        self.extra_metadata = extra_metadata
+
+    def __str__(self):
+        return "UniFfiEbookMetadata(title={}, authors={}, publisher={}, language={}, identifier={}, description={}, publication_date={}, modified_date={}, rights={}, format={}, total_chapters={}, total_resources={}, file_size_bytes={}, has_cover={}, cover_path={}, extra_metadata={})".format(self.title, self.authors, self.publisher, self.language, self.identifier, self.description, self.publication_date, self.modified_date, self.rights, self.format, self.total_chapters, self.total_resources, self.file_size_bytes, self.has_cover, self.cover_path, self.extra_metadata)
+
+    def __eq__(self, other):
+        if self.title != other.title:
+            return False
+        if self.authors != other.authors:
+            return False
+        if self.publisher != other.publisher:
+            return False
+        if self.language != other.language:
+            return False
+        if self.identifier != other.identifier:
+            return False
+        if self.description != other.description:
+            return False
+        if self.publication_date != other.publication_date:
+            return False
+        if self.modified_date != other.modified_date:
+            return False
+        if self.rights != other.rights:
+            return False
+        if self.format != other.format:
+            return False
+        if self.total_chapters != other.total_chapters:
+            return False
+        if self.total_resources != other.total_resources:
+            return False
+        if self.file_size_bytes != other.file_size_bytes:
+            return False
+        if self.has_cover != other.has_cover:
+            return False
+        if self.cover_path != other.cover_path:
+            return False
+        if self.extra_metadata != other.extra_metadata:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEbookMetadata(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEbookMetadata(
+            title=_UniffiConverterString.read(buf),
+            authors=_UniffiConverterSequenceString.read(buf),
+            publisher=_UniffiConverterOptionalString.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            identifier=_UniffiConverterOptionalString.read(buf),
+            description=_UniffiConverterOptionalString.read(buf),
+            publication_date=_UniffiConverterOptionalString.read(buf),
+            modified_date=_UniffiConverterOptionalString.read(buf),
+            rights=_UniffiConverterOptionalString.read(buf),
+            format=_UniffiConverterTypeUniFfiEbookFormat.read(buf),
+            total_chapters=_UniffiConverterUInt32.read(buf),
+            total_resources=_UniffiConverterUInt32.read(buf),
+            file_size_bytes=_UniffiConverterUInt64.read(buf),
+            has_cover=_UniffiConverterBool.read(buf),
+            cover_path=_UniffiConverterOptionalString.read(buf),
+            extra_metadata=_UniffiConverterMapStringString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.title)
+        _UniffiConverterSequenceString.check_lower(value.authors)
+        _UniffiConverterOptionalString.check_lower(value.publisher)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterOptionalString.check_lower(value.identifier)
+        _UniffiConverterOptionalString.check_lower(value.description)
+        _UniffiConverterOptionalString.check_lower(value.publication_date)
+        _UniffiConverterOptionalString.check_lower(value.modified_date)
+        _UniffiConverterOptionalString.check_lower(value.rights)
+        _UniffiConverterTypeUniFfiEbookFormat.check_lower(value.format)
+        _UniffiConverterUInt32.check_lower(value.total_chapters)
+        _UniffiConverterUInt32.check_lower(value.total_resources)
+        _UniffiConverterUInt64.check_lower(value.file_size_bytes)
+        _UniffiConverterBool.check_lower(value.has_cover)
+        _UniffiConverterOptionalString.check_lower(value.cover_path)
+        _UniffiConverterMapStringString.check_lower(value.extra_metadata)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.title, buf)
+        _UniffiConverterSequenceString.write(value.authors, buf)
+        _UniffiConverterOptionalString.write(value.publisher, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterOptionalString.write(value.identifier, buf)
+        _UniffiConverterOptionalString.write(value.description, buf)
+        _UniffiConverterOptionalString.write(value.publication_date, buf)
+        _UniffiConverterOptionalString.write(value.modified_date, buf)
+        _UniffiConverterOptionalString.write(value.rights, buf)
+        _UniffiConverterTypeUniFfiEbookFormat.write(value.format, buf)
+        _UniffiConverterUInt32.write(value.total_chapters, buf)
+        _UniffiConverterUInt32.write(value.total_resources, buf)
+        _UniffiConverterUInt64.write(value.file_size_bytes, buf)
+        _UniffiConverterBool.write(value.has_cover, buf)
+        _UniffiConverterOptionalString.write(value.cover_path, buf)
+        _UniffiConverterMapStringString.write(value.extra_metadata, buf)
+
+
+class UniFfiEbookResource:
+    """
+    Generic embedded asset resource (cover image, stylesheet, font).
+    """
+
+    href: "str"
+    """
+    Normalized relative path within archive.
+    """
+
+    media_type: "str"
+    """
+    MIME type (e.g. "image/jpeg", "image/png", "text/css", "font/woff2").
+    """
+
+    data: "bytes"
+    """
+    Raw binary data bytes of the resource.
+    """
+
+    size_bytes: "int"
+    """
+    Byte length of the uncompressed data.
+    """
+
+    def __init__(self, *, href: "str", media_type: "str", data: "bytes", size_bytes: "int"):
+        self.href = href
+        self.media_type = media_type
+        self.data = data
+        self.size_bytes = size_bytes
+
+    def __str__(self):
+        return "UniFfiEbookResource(href={}, media_type={}, data={}, size_bytes={})".format(self.href, self.media_type, self.data, self.size_bytes)
+
+    def __eq__(self, other):
+        if self.href != other.href:
+            return False
+        if self.media_type != other.media_type:
+            return False
+        if self.data != other.data:
+            return False
+        if self.size_bytes != other.size_bytes:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEbookResource(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEbookResource(
+            href=_UniffiConverterString.read(buf),
+            media_type=_UniffiConverterString.read(buf),
+            data=_UniffiConverterBytes.read(buf),
+            size_bytes=_UniffiConverterUInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.href)
+        _UniffiConverterString.check_lower(value.media_type)
+        _UniffiConverterBytes.check_lower(value.data)
+        _UniffiConverterUInt64.check_lower(value.size_bytes)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.href, buf)
+        _UniffiConverterString.write(value.media_type, buf)
+        _UniffiConverterBytes.write(value.data, buf)
+        _UniffiConverterUInt64.write(value.size_bytes, buf)
+
+
+class UniFfiEbookSpineItem:
+    """
+    Sequential item in the publication's reading spine.
+    """
+
+    id: "str"
+    """
+    Manifest ID reference.
+    """
+
+    href: "str"
+    """
+    Normalized relative resource path.
+    """
+
+    media_type: "str"
+    """
+    MIME type of the chapter resource (e.g. "application/xhtml+xml").
+    """
+
+    play_order: "int"
+    """
+    1-based sequential spine reading order.
+    """
+
+    is_linear: "bool"
+    """
+    Whether this chapter is part of the primary reading flow (linear="yes").
+    """
+
+    def __init__(self, *, id: "str", href: "str", media_type: "str", play_order: "int", is_linear: "bool"):
+        self.id = id
+        self.href = href
+        self.media_type = media_type
+        self.play_order = play_order
+        self.is_linear = is_linear
+
+    def __str__(self):
+        return "UniFfiEbookSpineItem(id={}, href={}, media_type={}, play_order={}, is_linear={})".format(self.id, self.href, self.media_type, self.play_order, self.is_linear)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.href != other.href:
+            return False
+        if self.media_type != other.media_type:
+            return False
+        if self.play_order != other.play_order:
+            return False
+        if self.is_linear != other.is_linear:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEbookSpineItem(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEbookSpineItem(
+            id=_UniffiConverterString.read(buf),
+            href=_UniffiConverterString.read(buf),
+            media_type=_UniffiConverterString.read(buf),
+            play_order=_UniffiConverterUInt32.read(buf),
+            is_linear=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.href)
+        _UniffiConverterString.check_lower(value.media_type)
+        _UniffiConverterUInt32.check_lower(value.play_order)
+        _UniffiConverterBool.check_lower(value.is_linear)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.id, buf)
+        _UniffiConverterString.write(value.href, buf)
+        _UniffiConverterString.write(value.media_type, buf)
+        _UniffiConverterUInt32.write(value.play_order, buf)
+        _UniffiConverterBool.write(value.is_linear, buf)
+
+
+class UniFfiEbookTocNode:
+    """
+    Hierarchical Table of Contents (TOC) bookmark node.
+    """
+
+    id: "str"
+    """
+    Unique identifier of the TOC node.
+    """
+
+    title: "str"
+    """
+    Human-readable section or chapter title.
+    """
+
+    href: "str"
+    """
+    Normalized relative target resource path (with optional `#anchor`).
+    """
+
+    play_order: "int"
+    """
+    1-based sequential playback or reading order.
+    """
+
+    level: "int"
+    """
+    Nesting depth level (0 for top-level root sections).
+    """
+
+    children: "typing.List[UniFfiEbookTocNode]"
+    """
+    Nested child sections.
+    """
+
+    def __init__(self, *, id: "str", title: "str", href: "str", play_order: "int", level: "int", children: "typing.List[UniFfiEbookTocNode]"):
+        self.id = id
+        self.title = title
+        self.href = href
+        self.play_order = play_order
+        self.level = level
+        self.children = children
+
+    def __str__(self):
+        return "UniFfiEbookTocNode(id={}, title={}, href={}, play_order={}, level={}, children={})".format(self.id, self.title, self.href, self.play_order, self.level, self.children)
+
+    def __eq__(self, other):
+        if self.id != other.id:
+            return False
+        if self.title != other.title:
+            return False
+        if self.href != other.href:
+            return False
+        if self.play_order != other.play_order:
+            return False
+        if self.level != other.level:
+            return False
+        if self.children != other.children:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiEbookTocNode(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiEbookTocNode(
+            id=_UniffiConverterString.read(buf),
+            title=_UniffiConverterString.read(buf),
+            href=_UniffiConverterString.read(buf),
+            play_order=_UniffiConverterUInt32.read(buf),
+            level=_UniffiConverterUInt32.read(buf),
+            children=_UniffiConverterSequenceTypeUniFfiEbookTocNode.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.id)
+        _UniffiConverterString.check_lower(value.title)
+        _UniffiConverterString.check_lower(value.href)
+        _UniffiConverterUInt32.check_lower(value.play_order)
+        _UniffiConverterUInt32.check_lower(value.level)
+        _UniffiConverterSequenceTypeUniFfiEbookTocNode.check_lower(value.children)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.id, buf)
+        _UniffiConverterString.write(value.title, buf)
+        _UniffiConverterString.write(value.href, buf)
+        _UniffiConverterUInt32.write(value.play_order, buf)
+        _UniffiConverterUInt32.write(value.level, buf)
+        _UniffiConverterSequenceTypeUniFfiEbookTocNode.write(value.children, buf)
 
 
 class UniFfiEd25519Cert:
@@ -12873,6 +15360,315 @@ class _UniffiConverterTypeUniFfiHighlightToken(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.category, buf)
         _UniffiConverterUInt32.write(value.line_number, buf)
         _UniffiConverterUInt32.write(value.column, buf)
+
+
+class UniFfiHtmlResourceLink:
+    """
+    Extracted HTML resource link descriptor for archive assets (images, stylesheets, fonts, media).
+    """
+
+    tag_name: "str"
+    """
+    HTML tag name referencing the resource (e.g. "img", "link", "script", "source", "a").
+    """
+
+    attribute_name: "str"
+    """
+    Attribute name containing the resource target (e.g. "src", "href", "poster", "data").
+    """
+
+    original_uri: "str"
+    """
+    Original URI or relative path before transformation.
+    """
+
+    resolved_vfs_uri: "typing.Optional[str]"
+    """
+    Resolved `ttzip-vfs://` virtual filesystem URI if applicable.
+    """
+
+    resource_type: "str"
+    """
+    Classification category ("image", "stylesheet", "script", "font", "audio", "video", "link", "media", "other").
+    """
+
+    is_external: "bool"
+    """
+    Whether the URI points to an external remote network endpoint.
+    """
+
+    def __init__(self, *, tag_name: "str", attribute_name: "str", original_uri: "str", resolved_vfs_uri: "typing.Optional[str]", resource_type: "str", is_external: "bool"):
+        self.tag_name = tag_name
+        self.attribute_name = attribute_name
+        self.original_uri = original_uri
+        self.resolved_vfs_uri = resolved_vfs_uri
+        self.resource_type = resource_type
+        self.is_external = is_external
+
+    def __str__(self):
+        return "UniFfiHtmlResourceLink(tag_name={}, attribute_name={}, original_uri={}, resolved_vfs_uri={}, resource_type={}, is_external={})".format(self.tag_name, self.attribute_name, self.original_uri, self.resolved_vfs_uri, self.resource_type, self.is_external)
+
+    def __eq__(self, other):
+        if self.tag_name != other.tag_name:
+            return False
+        if self.attribute_name != other.attribute_name:
+            return False
+        if self.original_uri != other.original_uri:
+            return False
+        if self.resolved_vfs_uri != other.resolved_vfs_uri:
+            return False
+        if self.resource_type != other.resource_type:
+            return False
+        if self.is_external != other.is_external:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiHtmlResourceLink(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiHtmlResourceLink(
+            tag_name=_UniffiConverterString.read(buf),
+            attribute_name=_UniffiConverterString.read(buf),
+            original_uri=_UniffiConverterString.read(buf),
+            resolved_vfs_uri=_UniffiConverterOptionalString.read(buf),
+            resource_type=_UniffiConverterString.read(buf),
+            is_external=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.tag_name)
+        _UniffiConverterString.check_lower(value.attribute_name)
+        _UniffiConverterString.check_lower(value.original_uri)
+        _UniffiConverterOptionalString.check_lower(value.resolved_vfs_uri)
+        _UniffiConverterString.check_lower(value.resource_type)
+        _UniffiConverterBool.check_lower(value.is_external)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.tag_name, buf)
+        _UniffiConverterString.write(value.attribute_name, buf)
+        _UniffiConverterString.write(value.original_uri, buf)
+        _UniffiConverterOptionalString.write(value.resolved_vfs_uri, buf)
+        _UniffiConverterString.write(value.resource_type, buf)
+        _UniffiConverterBool.write(value.is_external, buf)
+
+
+class UniFfiHtmlSanitizationPolicy:
+    """
+    Sanitization and security policy governing HTML transformation and resource rewriting.
+    """
+
+    allow_scripts: "bool"
+    """
+    Whether JavaScript `<script>` elements and inline event handlers (`onclick`, etc.) are permitted.
+    """
+
+    allow_inline_styles: "bool"
+    """
+    Whether inline `style="..."` attributes and `<style>` blocks are permitted.
+    """
+
+    allow_external_resources: "bool"
+    """
+    Whether external network resources (e.g. `http://`, `https://`) are permitted.
+    """
+
+    allow_forms: "bool"
+    """
+    Whether interactive `<form>`, `<input>`, and `<button>` elements are permitted.
+    """
+
+    allow_iframes: "bool"
+    """
+    Whether embedded `<iframe>`, `<frame>`, `<object>`, or `<embed>` elements are permitted.
+    """
+
+    custom_allowed_tags: "typing.List[str]"
+    """
+    Optional whitelist of custom HTML tag names. If non-empty, unlisted tags are stripped.
+    """
+
+    custom_blocked_tags: "typing.List[str]"
+    """
+    List of explicit tag names to strip or remove from document.
+    """
+
+    def __init__(self, *, allow_scripts: "bool", allow_inline_styles: "bool", allow_external_resources: "bool", allow_forms: "bool", allow_iframes: "bool", custom_allowed_tags: "typing.List[str]", custom_blocked_tags: "typing.List[str]"):
+        self.allow_scripts = allow_scripts
+        self.allow_inline_styles = allow_inline_styles
+        self.allow_external_resources = allow_external_resources
+        self.allow_forms = allow_forms
+        self.allow_iframes = allow_iframes
+        self.custom_allowed_tags = custom_allowed_tags
+        self.custom_blocked_tags = custom_blocked_tags
+
+    def __str__(self):
+        return "UniFfiHtmlSanitizationPolicy(allow_scripts={}, allow_inline_styles={}, allow_external_resources={}, allow_forms={}, allow_iframes={}, custom_allowed_tags={}, custom_blocked_tags={})".format(self.allow_scripts, self.allow_inline_styles, self.allow_external_resources, self.allow_forms, self.allow_iframes, self.custom_allowed_tags, self.custom_blocked_tags)
+
+    def __eq__(self, other):
+        if self.allow_scripts != other.allow_scripts:
+            return False
+        if self.allow_inline_styles != other.allow_inline_styles:
+            return False
+        if self.allow_external_resources != other.allow_external_resources:
+            return False
+        if self.allow_forms != other.allow_forms:
+            return False
+        if self.allow_iframes != other.allow_iframes:
+            return False
+        if self.custom_allowed_tags != other.custom_allowed_tags:
+            return False
+        if self.custom_blocked_tags != other.custom_blocked_tags:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiHtmlSanitizationPolicy(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiHtmlSanitizationPolicy(
+            allow_scripts=_UniffiConverterBool.read(buf),
+            allow_inline_styles=_UniffiConverterBool.read(buf),
+            allow_external_resources=_UniffiConverterBool.read(buf),
+            allow_forms=_UniffiConverterBool.read(buf),
+            allow_iframes=_UniffiConverterBool.read(buf),
+            custom_allowed_tags=_UniffiConverterSequenceString.read(buf),
+            custom_blocked_tags=_UniffiConverterSequenceString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterBool.check_lower(value.allow_scripts)
+        _UniffiConverterBool.check_lower(value.allow_inline_styles)
+        _UniffiConverterBool.check_lower(value.allow_external_resources)
+        _UniffiConverterBool.check_lower(value.allow_forms)
+        _UniffiConverterBool.check_lower(value.allow_iframes)
+        _UniffiConverterSequenceString.check_lower(value.custom_allowed_tags)
+        _UniffiConverterSequenceString.check_lower(value.custom_blocked_tags)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterBool.write(value.allow_scripts, buf)
+        _UniffiConverterBool.write(value.allow_inline_styles, buf)
+        _UniffiConverterBool.write(value.allow_external_resources, buf)
+        _UniffiConverterBool.write(value.allow_forms, buf)
+        _UniffiConverterBool.write(value.allow_iframes, buf)
+        _UniffiConverterSequenceString.write(value.custom_allowed_tags, buf)
+        _UniffiConverterSequenceString.write(value.custom_blocked_tags, buf)
+
+
+class UniFfiHtmlTransformResult:
+    """
+    Result of HTML VFS rewriting, resource extraction, and structural inspection.
+    """
+
+    transformed_html: "str"
+    """
+    Transformed HTML markup with sanitized elements and rewritten `ttzip-vfs://` URLs.
+    """
+
+    extracted_resources: "typing.List[UniFfiHtmlResourceLink]"
+    """
+    All discovered and resolved external/internal resource links.
+    """
+
+    title: "typing.Optional[str]"
+    """
+    Document title extracted from `<title>` element if present.
+    """
+
+    charset: "typing.Optional[str]"
+    """
+    Detected or declared character set encoding from `<meta>` tags.
+    """
+
+    has_scripts: "bool"
+    """
+    Whether the source markup contained active `<script>` tags or inline event handlers.
+    """
+
+    has_inline_styles: "bool"
+    """
+    Whether the source markup contained styling rules or inline styles.
+    """
+
+    metrics_chars: "int"
+    """
+    Total text character count excluding markup tags.
+    """
+
+    metrics_words: "int"
+    """
+    Estimated word count excluding markup tags.
+    """
+
+    def __init__(self, *, transformed_html: "str", extracted_resources: "typing.List[UniFfiHtmlResourceLink]", title: "typing.Optional[str]", charset: "typing.Optional[str]", has_scripts: "bool", has_inline_styles: "bool", metrics_chars: "int", metrics_words: "int"):
+        self.transformed_html = transformed_html
+        self.extracted_resources = extracted_resources
+        self.title = title
+        self.charset = charset
+        self.has_scripts = has_scripts
+        self.has_inline_styles = has_inline_styles
+        self.metrics_chars = metrics_chars
+        self.metrics_words = metrics_words
+
+    def __str__(self):
+        return "UniFfiHtmlTransformResult(transformed_html={}, extracted_resources={}, title={}, charset={}, has_scripts={}, has_inline_styles={}, metrics_chars={}, metrics_words={})".format(self.transformed_html, self.extracted_resources, self.title, self.charset, self.has_scripts, self.has_inline_styles, self.metrics_chars, self.metrics_words)
+
+    def __eq__(self, other):
+        if self.transformed_html != other.transformed_html:
+            return False
+        if self.extracted_resources != other.extracted_resources:
+            return False
+        if self.title != other.title:
+            return False
+        if self.charset != other.charset:
+            return False
+        if self.has_scripts != other.has_scripts:
+            return False
+        if self.has_inline_styles != other.has_inline_styles:
+            return False
+        if self.metrics_chars != other.metrics_chars:
+            return False
+        if self.metrics_words != other.metrics_words:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiHtmlTransformResult(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiHtmlTransformResult(
+            transformed_html=_UniffiConverterString.read(buf),
+            extracted_resources=_UniffiConverterSequenceTypeUniFfiHtmlResourceLink.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            charset=_UniffiConverterOptionalString.read(buf),
+            has_scripts=_UniffiConverterBool.read(buf),
+            has_inline_styles=_UniffiConverterBool.read(buf),
+            metrics_chars=_UniffiConverterUInt32.read(buf),
+            metrics_words=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.transformed_html)
+        _UniffiConverterSequenceTypeUniFfiHtmlResourceLink.check_lower(value.extracted_resources)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterOptionalString.check_lower(value.charset)
+        _UniffiConverterBool.check_lower(value.has_scripts)
+        _UniffiConverterBool.check_lower(value.has_inline_styles)
+        _UniffiConverterUInt32.check_lower(value.metrics_chars)
+        _UniffiConverterUInt32.check_lower(value.metrics_words)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.transformed_html, buf)
+        _UniffiConverterSequenceTypeUniFfiHtmlResourceLink.write(value.extracted_resources, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterOptionalString.write(value.charset, buf)
+        _UniffiConverterBool.write(value.has_scripts, buf)
+        _UniffiConverterBool.write(value.has_inline_styles, buf)
+        _UniffiConverterUInt32.write(value.metrics_chars, buf)
+        _UniffiConverterUInt32.write(value.metrics_words, buf)
 
 
 class UniFfiImageFrame:
@@ -15174,6 +17970,157 @@ class _UniffiConverterTypeUniFfiScenarioMatrixReport(_UniffiConverterRustBuffer)
         _UniffiConverterDouble.write(value.peak_extract_throughput_mbs, buf)
         _UniffiConverterBool.write(value.all_invariants_passed, buf)
         _UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint.write(value.points, buf)
+
+
+class UniFfiSheetData:
+    """
+    Extracted worksheet grid data structure with metrics.
+    """
+
+    sheet_name: "str"
+    """
+    Worksheet name (e.g. "Sheet1", "Financial_Summary").
+    """
+
+    sheet_index: "int"
+    """
+    1-based sequential sheet index in workbook.
+    """
+
+    total_rows: "int"
+    """
+    Total row count populated in the sheet.
+    """
+
+    total_cols: "int"
+    """
+    Total column count populated in the sheet.
+    """
+
+    dimension_ref: "typing.Optional[str]"
+    """
+    Declared dimension reference if present (e.g. "A1:G100").
+    """
+
+    rows: "typing.List[UniFfiSheetRow]"
+    """
+    Extracted row list.
+    """
+
+    shared_strings_count: "int"
+    """
+    Total shared strings referenced.
+    """
+
+    def __init__(self, *, sheet_name: "str", sheet_index: "int", total_rows: "int", total_cols: "int", dimension_ref: "typing.Optional[str]", rows: "typing.List[UniFfiSheetRow]", shared_strings_count: "int"):
+        self.sheet_name = sheet_name
+        self.sheet_index = sheet_index
+        self.total_rows = total_rows
+        self.total_cols = total_cols
+        self.dimension_ref = dimension_ref
+        self.rows = rows
+        self.shared_strings_count = shared_strings_count
+
+    def __str__(self):
+        return "UniFfiSheetData(sheet_name={}, sheet_index={}, total_rows={}, total_cols={}, dimension_ref={}, rows={}, shared_strings_count={})".format(self.sheet_name, self.sheet_index, self.total_rows, self.total_cols, self.dimension_ref, self.rows, self.shared_strings_count)
+
+    def __eq__(self, other):
+        if self.sheet_name != other.sheet_name:
+            return False
+        if self.sheet_index != other.sheet_index:
+            return False
+        if self.total_rows != other.total_rows:
+            return False
+        if self.total_cols != other.total_cols:
+            return False
+        if self.dimension_ref != other.dimension_ref:
+            return False
+        if self.rows != other.rows:
+            return False
+        if self.shared_strings_count != other.shared_strings_count:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSheetData(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSheetData(
+            sheet_name=_UniffiConverterString.read(buf),
+            sheet_index=_UniffiConverterUInt32.read(buf),
+            total_rows=_UniffiConverterUInt32.read(buf),
+            total_cols=_UniffiConverterUInt32.read(buf),
+            dimension_ref=_UniffiConverterOptionalString.read(buf),
+            rows=_UniffiConverterSequenceTypeUniFfiSheetRow.read(buf),
+            shared_strings_count=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.sheet_name)
+        _UniffiConverterUInt32.check_lower(value.sheet_index)
+        _UniffiConverterUInt32.check_lower(value.total_rows)
+        _UniffiConverterUInt32.check_lower(value.total_cols)
+        _UniffiConverterOptionalString.check_lower(value.dimension_ref)
+        _UniffiConverterSequenceTypeUniFfiSheetRow.check_lower(value.rows)
+        _UniffiConverterUInt32.check_lower(value.shared_strings_count)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.sheet_name, buf)
+        _UniffiConverterUInt32.write(value.sheet_index, buf)
+        _UniffiConverterUInt32.write(value.total_rows, buf)
+        _UniffiConverterUInt32.write(value.total_cols, buf)
+        _UniffiConverterOptionalString.write(value.dimension_ref, buf)
+        _UniffiConverterSequenceTypeUniFfiSheetRow.write(value.rows, buf)
+        _UniffiConverterUInt32.write(value.shared_strings_count, buf)
+
+
+class UniFfiSheetRow:
+    """
+    Sequential row in a spreadsheet worksheet grid.
+    """
+
+    row_number: "int"
+    """
+    1-based row number.
+    """
+
+    cells: "typing.List[UniFfiCell]"
+    """
+    Non-empty cells contained in this row.
+    """
+
+    def __init__(self, *, row_number: "int", cells: "typing.List[UniFfiCell]"):
+        self.row_number = row_number
+        self.cells = cells
+
+    def __str__(self):
+        return "UniFfiSheetRow(row_number={}, cells={})".format(self.row_number, self.cells)
+
+    def __eq__(self, other):
+        if self.row_number != other.row_number:
+            return False
+        if self.cells != other.cells:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSheetRow(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSheetRow(
+            row_number=_UniffiConverterUInt32.read(buf),
+            cells=_UniffiConverterSequenceTypeUniFfiCell.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.row_number)
+        _UniffiConverterSequenceTypeUniFfiCell.check_lower(value.cells)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.row_number, buf)
+        _UniffiConverterSequenceTypeUniFfiCell.write(value.cells, buf)
 
 
 class UniFfiSmartExtractDecision:
@@ -18307,6 +21254,222 @@ class _UniffiConverterTypeUniFfiAuthStatus(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiCellValue:
+    """
+    Strongly-typed spreadsheet cell value descriptor.
+    """
+
+    def __init__(self):
+        raise RuntimeError("UniFfiCellValue cannot be instantiated directly")
+
+    # Each enum variant is a nested class of the enum itself.
+    class EMPTY:
+
+        def __init__(self,):
+            pass
+
+        def __str__(self):
+            return "UniFfiCellValue.EMPTY()".format()
+
+        def __eq__(self, other):
+            if not other.is_empty():
+                return False
+            return True
+    
+    class TEXT:
+        value: "str"
+
+        def __init__(self,value: "str"):
+            self.value = value
+
+        def __str__(self):
+            return "UniFfiCellValue.TEXT(value={})".format(self.value)
+
+        def __eq__(self, other):
+            if not other.is_text():
+                return False
+            if self.value != other.value:
+                return False
+            return True
+    
+    class NUMBER:
+        value: "float"
+
+        def __init__(self,value: "float"):
+            self.value = value
+
+        def __str__(self):
+            return "UniFfiCellValue.NUMBER(value={})".format(self.value)
+
+        def __eq__(self, other):
+            if not other.is_number():
+                return False
+            if self.value != other.value:
+                return False
+            return True
+    
+    class BOOLEAN:
+        value: "bool"
+
+        def __init__(self,value: "bool"):
+            self.value = value
+
+        def __str__(self):
+            return "UniFfiCellValue.BOOLEAN(value={})".format(self.value)
+
+        def __eq__(self, other):
+            if not other.is_boolean():
+                return False
+            if self.value != other.value:
+                return False
+            return True
+    
+    class FORMULA:
+        expression: "str"
+        cached_value: "typing.Optional[str]"
+
+        def __init__(self,expression: "str", cached_value: "typing.Optional[str]"):
+            self.expression = expression
+            self.cached_value = cached_value
+
+        def __str__(self):
+            return "UniFfiCellValue.FORMULA(expression={}, cached_value={})".format(self.expression, self.cached_value)
+
+        def __eq__(self, other):
+            if not other.is_formula():
+                return False
+            if self.expression != other.expression:
+                return False
+            if self.cached_value != other.cached_value:
+                return False
+            return True
+    
+    class ERROR:
+        message: "str"
+
+        def __init__(self,message: "str"):
+            self.message = message
+
+        def __str__(self):
+            return "UniFfiCellValue.ERROR(message={})".format(self.message)
+
+        def __eq__(self, other):
+            if not other.is_error():
+                return False
+            if self.message != other.message:
+                return False
+            return True
+    
+    
+
+    # For each variant, we have an `is_NAME` method for easily checking
+    # whether an instance is that variant.
+    def is_empty(self) -> bool:
+        return isinstance(self, UniFfiCellValue.EMPTY)
+    def is_text(self) -> bool:
+        return isinstance(self, UniFfiCellValue.TEXT)
+    def is_number(self) -> bool:
+        return isinstance(self, UniFfiCellValue.NUMBER)
+    def is_boolean(self) -> bool:
+        return isinstance(self, UniFfiCellValue.BOOLEAN)
+    def is_formula(self) -> bool:
+        return isinstance(self, UniFfiCellValue.FORMULA)
+    def is_error(self) -> bool:
+        return isinstance(self, UniFfiCellValue.ERROR)
+    
+
+# Now, a little trick - we make each nested variant class be a subclass of the main
+# enum class, so that method calls and instance checks etc will work intuitively.
+# We might be able to do this a little more neatly with a metaclass, but this'll do.
+UniFfiCellValue.EMPTY = type("UniFfiCellValue.EMPTY", (UniFfiCellValue.EMPTY, UniFfiCellValue,), {})  # type: ignore
+UniFfiCellValue.TEXT = type("UniFfiCellValue.TEXT", (UniFfiCellValue.TEXT, UniFfiCellValue,), {})  # type: ignore
+UniFfiCellValue.NUMBER = type("UniFfiCellValue.NUMBER", (UniFfiCellValue.NUMBER, UniFfiCellValue,), {})  # type: ignore
+UniFfiCellValue.BOOLEAN = type("UniFfiCellValue.BOOLEAN", (UniFfiCellValue.BOOLEAN, UniFfiCellValue,), {})  # type: ignore
+UniFfiCellValue.FORMULA = type("UniFfiCellValue.FORMULA", (UniFfiCellValue.FORMULA, UniFfiCellValue,), {})  # type: ignore
+UniFfiCellValue.ERROR = type("UniFfiCellValue.ERROR", (UniFfiCellValue.ERROR, UniFfiCellValue,), {})  # type: ignore
+
+
+
+
+class _UniffiConverterTypeUniFfiCellValue(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiCellValue.EMPTY(
+            )
+        if variant == 2:
+            return UniFfiCellValue.TEXT(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiCellValue.NUMBER(
+                _UniffiConverterDouble.read(buf),
+            )
+        if variant == 4:
+            return UniFfiCellValue.BOOLEAN(
+                _UniffiConverterBool.read(buf),
+            )
+        if variant == 5:
+            return UniFfiCellValue.FORMULA(
+                _UniffiConverterString.read(buf),
+                _UniffiConverterOptionalString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiCellValue.ERROR(
+                _UniffiConverterString.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value.is_empty():
+            return
+        if value.is_text():
+            _UniffiConverterString.check_lower(value.value)
+            return
+        if value.is_number():
+            _UniffiConverterDouble.check_lower(value.value)
+            return
+        if value.is_boolean():
+            _UniffiConverterBool.check_lower(value.value)
+            return
+        if value.is_formula():
+            _UniffiConverterString.check_lower(value.expression)
+            _UniffiConverterOptionalString.check_lower(value.cached_value)
+            return
+        if value.is_error():
+            _UniffiConverterString.check_lower(value.message)
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value.is_empty():
+            buf.write_i32(1)
+        if value.is_text():
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.value, buf)
+        if value.is_number():
+            buf.write_i32(3)
+            _UniffiConverterDouble.write(value.value, buf)
+        if value.is_boolean():
+            buf.write_i32(4)
+            _UniffiConverterBool.write(value.value, buf)
+        if value.is_formula():
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.expression, buf)
+            _UniffiConverterOptionalString.write(value.cached_value, buf)
+        if value.is_error():
+            buf.write_i32(6)
+            _UniffiConverterString.write(value.message, buf)
+
+
+
+
+
+
+
 class UniFfiCompressionCodec(enum.Enum):
     """
     Compression codec identifier exposed to Swift and multi-language SDKs.
@@ -18955,6 +22118,264 @@ class _UniffiConverterTypeUniFfiDeflateLevel(_UniffiConverterRustBuffer):
 
 
 
+# UniFfiEbookError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiEbookError(Exception):
+    """
+    Strongly-typed ebook operation error enum mapped directly to Swift `throws UniFFIEbookError`.
+    """
+
+    pass
+
+_UniffiTempUniFfiEbookError = UniFfiEbookError
+
+class UniFfiEbookError:  # type: ignore
+    """
+    Strongly-typed ebook operation error enum mapped directly to Swift `throws UniFFIEbookError`.
+    """
+
+    class CorruptedFormat(_UniffiTempUniFfiEbookError):
+        """
+        Failure due to malformed or corrupted archive structure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiEbookError.CorruptedFormat({})".format(str(self))
+    _UniffiTempUniFfiEbookError.CorruptedFormat = CorruptedFormat # type: ignore
+    class EntryNotFound(_UniffiTempUniFfiEbookError):
+        """
+        Requested chapter, image, stylesheet, or metadata entry was not found.
+        """
+
+        def __init__(self, href):
+            super().__init__(", ".join([
+                "href={!r}".format(href),
+            ]))
+            self.href = href
+
+        def __repr__(self):
+            return "UniFfiEbookError.EntryNotFound({})".format(str(self))
+    _UniffiTempUniFfiEbookError.EntryNotFound = EntryNotFound # type: ignore
+    class XmlParseError(_UniffiTempUniFfiEbookError):
+        """
+        Failure during XML / OPF / NCX document parsing.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiEbookError.XmlParseError({})".format(str(self))
+    _UniffiTempUniFfiEbookError.XmlParseError = XmlParseError # type: ignore
+    class UnsupportedFormat(_UniffiTempUniFfiEbookError):
+        """
+        Format is not supported or recognized.
+        """
+
+        def __init__(self, format):
+            super().__init__(", ".join([
+                "format={!r}".format(format),
+            ]))
+            self.format = format
+
+        def __repr__(self):
+            return "UniFfiEbookError.UnsupportedFormat({})".format(str(self))
+    _UniffiTempUniFfiEbookError.UnsupportedFormat = UnsupportedFormat # type: ignore
+    class IoError(_UniffiTempUniFfiEbookError):
+        """
+        File system or stream I/O failure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiEbookError.IoError({})".format(str(self))
+    _UniffiTempUniFfiEbookError.IoError = IoError # type: ignore
+    class Cancelled(_UniffiTempUniFfiEbookError):
+        """
+        Operation was cancelled by caller.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiEbookError.Cancelled({})".format(str(self))
+    _UniffiTempUniFfiEbookError.Cancelled = Cancelled # type: ignore
+
+UniFfiEbookError = _UniffiTempUniFfiEbookError # type: ignore
+del _UniffiTempUniFfiEbookError
+
+
+class _UniffiConverterTypeUniFfiEbookError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiEbookError.CorruptedFormat(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiEbookError.EntryNotFound(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiEbookError.XmlParseError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiEbookError.UnsupportedFormat(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 5:
+            return UniFfiEbookError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiEbookError.Cancelled(
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiEbookError.CorruptedFormat):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiEbookError.EntryNotFound):
+            _UniffiConverterString.check_lower(value.href)
+            return
+        if isinstance(value, UniFfiEbookError.XmlParseError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiEbookError.UnsupportedFormat):
+            _UniffiConverterString.check_lower(value.format)
+            return
+        if isinstance(value, UniFfiEbookError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiEbookError.Cancelled):
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiEbookError.CorruptedFormat):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiEbookError.EntryNotFound):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.href, buf)
+        if isinstance(value, UniFfiEbookError.XmlParseError):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiEbookError.UnsupportedFormat):
+            buf.write_i32(4)
+            _UniffiConverterString.write(value.format, buf)
+        if isinstance(value, UniFfiEbookError.IoError):
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiEbookError.Cancelled):
+            buf.write_i32(6)
+
+
+
+
+
+class UniFfiEbookFormat(enum.Enum):
+    """
+    Supported ebook and digital publication container formats.
+    """
+
+    UNKNOWN = 0
+    
+    EPUB = 1
+    
+    CBZ = 2
+    
+    FB2 = 3
+    
+    MOBI = 4
+    
+    AZW3 = 5
+    
+    PDF = 6
+    
+
+
+class _UniffiConverterTypeUniFfiEbookFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiEbookFormat.UNKNOWN
+        if variant == 2:
+            return UniFfiEbookFormat.EPUB
+        if variant == 3:
+            return UniFfiEbookFormat.CBZ
+        if variant == 4:
+            return UniFfiEbookFormat.FB2
+        if variant == 5:
+            return UniFfiEbookFormat.MOBI
+        if variant == 6:
+            return UniFfiEbookFormat.AZW3
+        if variant == 7:
+            return UniFfiEbookFormat.PDF
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiEbookFormat.UNKNOWN:
+            return
+        if value == UniFfiEbookFormat.EPUB:
+            return
+        if value == UniFfiEbookFormat.CBZ:
+            return
+        if value == UniFfiEbookFormat.FB2:
+            return
+        if value == UniFfiEbookFormat.MOBI:
+            return
+        if value == UniFfiEbookFormat.AZW3:
+            return
+        if value == UniFfiEbookFormat.PDF:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiEbookFormat.UNKNOWN:
+            buf.write_i32(1)
+        if value == UniFfiEbookFormat.EPUB:
+            buf.write_i32(2)
+        if value == UniFfiEbookFormat.CBZ:
+            buf.write_i32(3)
+        if value == UniFfiEbookFormat.FB2:
+            buf.write_i32(4)
+        if value == UniFfiEbookFormat.MOBI:
+            buf.write_i32(5)
+        if value == UniFfiEbookFormat.AZW3:
+            buf.write_i32(6)
+        if value == UniFfiEbookFormat.PDF:
+            buf.write_i32(7)
+
+
+
+
 # UniFfiError
 # We want to define each variant as a nested class that's also a subclass,
 # which is tricky in Python.  To accomplish this we're going to create each
@@ -19156,6 +22577,256 @@ class _UniffiConverterTypeUniFfiError(_UniffiConverterRustBuffer):
         if isinstance(value, UniFfiError.CryptoError):
             buf.write_i32(8)
             _UniffiConverterString.write(value.message, buf)
+
+
+# UniFfiHtmlError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiHtmlError(Exception):
+    """
+    Strongly-typed HTML transformation error enum mapped directly to Swift `throws UniFFIHtmlError`.
+    """
+
+    pass
+
+_UniffiTempUniFfiHtmlError = UniFfiHtmlError
+
+class UniFfiHtmlError:  # type: ignore
+    """
+    Strongly-typed HTML transformation error enum mapped directly to Swift `throws UniFFIHtmlError`.
+    """
+
+    class ParseError(_UniffiTempUniFfiHtmlError):
+        """
+        Failure during HTML parsing or tokenization.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiHtmlError.ParseError({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.ParseError = ParseError # type: ignore
+    class RewriteError(_UniffiTempUniFfiHtmlError):
+        """
+        Failure during stream rewriting or output serialization.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiHtmlError.RewriteError({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.RewriteError = RewriteError # type: ignore
+    class InvalidEncoding(_UniffiTempUniFfiHtmlError):
+        """
+        Document encoding is unsupported or malformed.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiHtmlError.InvalidEncoding({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.InvalidEncoding = InvalidEncoding # type: ignore
+    class SecurityViolation(_UniffiTempUniFfiHtmlError):
+        """
+        Document violates strict security constraints.
+        """
+
+        def __init__(self, reason):
+            super().__init__(", ".join([
+                "reason={!r}".format(reason),
+            ]))
+            self.reason = reason
+
+        def __repr__(self):
+            return "UniFfiHtmlError.SecurityViolation({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.SecurityViolation = SecurityViolation # type: ignore
+    class IoError(_UniffiTempUniFfiHtmlError):
+        """
+        File system or stream I/O failure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiHtmlError.IoError({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.IoError = IoError # type: ignore
+    class Cancelled(_UniffiTempUniFfiHtmlError):
+        """
+        Operation was cancelled by caller.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiHtmlError.Cancelled({})".format(str(self))
+    _UniffiTempUniFfiHtmlError.Cancelled = Cancelled # type: ignore
+
+UniFfiHtmlError = _UniffiTempUniFfiHtmlError # type: ignore
+del _UniffiTempUniFfiHtmlError
+
+
+class _UniffiConverterTypeUniFfiHtmlError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiHtmlError.ParseError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiHtmlError.RewriteError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiHtmlError.InvalidEncoding(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiHtmlError.SecurityViolation(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 5:
+            return UniFfiHtmlError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiHtmlError.Cancelled(
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiHtmlError.ParseError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiHtmlError.RewriteError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiHtmlError.InvalidEncoding):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiHtmlError.SecurityViolation):
+            _UniffiConverterString.check_lower(value.reason)
+            return
+        if isinstance(value, UniFfiHtmlError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiHtmlError.Cancelled):
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiHtmlError.ParseError):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiHtmlError.RewriteError):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiHtmlError.InvalidEncoding):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiHtmlError.SecurityViolation):
+            buf.write_i32(4)
+            _UniffiConverterString.write(value.reason, buf)
+        if isinstance(value, UniFfiHtmlError.IoError):
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiHtmlError.Cancelled):
+            buf.write_i32(6)
+
+
+
+
+
+class UniFfiHtmlFormat(enum.Enum):
+    """
+    Supported HTML-adjacent document and container formats.
+    """
+
+    UNKNOWN = 0
+    
+    HTML = 1
+    
+    XHTML = 2
+    
+    MHTML = 3
+    
+    HTML_FRAGMENT = 4
+    
+    SVG = 5
+    
+
+
+class _UniffiConverterTypeUniFfiHtmlFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiHtmlFormat.UNKNOWN
+        if variant == 2:
+            return UniFfiHtmlFormat.HTML
+        if variant == 3:
+            return UniFfiHtmlFormat.XHTML
+        if variant == 4:
+            return UniFfiHtmlFormat.MHTML
+        if variant == 5:
+            return UniFfiHtmlFormat.HTML_FRAGMENT
+        if variant == 6:
+            return UniFfiHtmlFormat.SVG
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiHtmlFormat.UNKNOWN:
+            return
+        if value == UniFfiHtmlFormat.HTML:
+            return
+        if value == UniFfiHtmlFormat.XHTML:
+            return
+        if value == UniFfiHtmlFormat.MHTML:
+            return
+        if value == UniFfiHtmlFormat.HTML_FRAGMENT:
+            return
+        if value == UniFfiHtmlFormat.SVG:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiHtmlFormat.UNKNOWN:
+            buf.write_i32(1)
+        if value == UniFfiHtmlFormat.HTML:
+            buf.write_i32(2)
+        if value == UniFfiHtmlFormat.XHTML:
+            buf.write_i32(3)
+        if value == UniFfiHtmlFormat.MHTML:
+            buf.write_i32(4)
+        if value == UniFfiHtmlFormat.HTML_FRAGMENT:
+            buf.write_i32(5)
+        if value == UniFfiHtmlFormat.SVG:
+            buf.write_i32(6)
+
+
 
 
 
@@ -19392,6 +23063,317 @@ class _UniffiConverterTypeUniFfiMmapAdvice(_UniffiConverterRustBuffer):
             buf.write_i32(4)
         if value == UniFfiMmapAdvice.DONT_NEED:
             buf.write_i32(5)
+
+
+
+
+# UniFfiOfficeError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiOfficeError(Exception):
+    """
+    Strongly-typed Office operation error enum mapped directly to Swift `throws UniFFIOfficeError`.
+    """
+
+    pass
+
+_UniffiTempUniFfiOfficeError = UniFfiOfficeError
+
+class UniFfiOfficeError:  # type: ignore
+    """
+    Strongly-typed Office operation error enum mapped directly to Swift `throws UniFFIOfficeError`.
+    """
+
+    class CorruptedFormat(_UniffiTempUniFfiOfficeError):
+        """
+        Failure due to malformed or corrupted archive structure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiOfficeError.CorruptedFormat({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.CorruptedFormat = CorruptedFormat # type: ignore
+    class SheetNotFound(_UniffiTempUniFfiOfficeError):
+        """
+        Requested worksheet was not found in workbook.
+        """
+
+        def __init__(self, name):
+            super().__init__(", ".join([
+                "name={!r}".format(name),
+            ]))
+            self.name = name
+
+        def __repr__(self):
+            return "UniFfiOfficeError.SheetNotFound({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.SheetNotFound = SheetNotFound # type: ignore
+    class EntryNotFound(_UniffiTempUniFfiOfficeError):
+        """
+        Requested document part or resource was not found.
+        """
+
+        def __init__(self, path):
+            super().__init__(", ".join([
+                "path={!r}".format(path),
+            ]))
+            self.path = path
+
+        def __repr__(self):
+            return "UniFfiOfficeError.EntryNotFound({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.EntryNotFound = EntryNotFound # type: ignore
+    class XmlParseError(_UniffiTempUniFfiOfficeError):
+        """
+        Failure during XML / OpenXML schema parsing.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiOfficeError.XmlParseError({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.XmlParseError = XmlParseError # type: ignore
+    class FormulaEvaluationError(_UniffiTempUniFfiOfficeError):
+        """
+        Dynamic formula calculation or parsing failure.
+        """
+
+        def __init__(self, formula, reason):
+            super().__init__(", ".join([
+                "formula={!r}".format(formula),
+                "reason={!r}".format(reason),
+            ]))
+            self.formula = formula
+            self.reason = reason
+
+        def __repr__(self):
+            return "UniFfiOfficeError.FormulaEvaluationError({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.FormulaEvaluationError = FormulaEvaluationError # type: ignore
+    class UnsupportedFormat(_UniffiTempUniFfiOfficeError):
+        """
+        Format is not supported or recognized.
+        """
+
+        def __init__(self, format):
+            super().__init__(", ".join([
+                "format={!r}".format(format),
+            ]))
+            self.format = format
+
+        def __repr__(self):
+            return "UniFfiOfficeError.UnsupportedFormat({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.UnsupportedFormat = UnsupportedFormat # type: ignore
+    class IoError(_UniffiTempUniFfiOfficeError):
+        """
+        File system or stream I/O failure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiOfficeError.IoError({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.IoError = IoError # type: ignore
+    class Cancelled(_UniffiTempUniFfiOfficeError):
+        """
+        Operation was cancelled by caller.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiOfficeError.Cancelled({})".format(str(self))
+    _UniffiTempUniFfiOfficeError.Cancelled = Cancelled # type: ignore
+
+UniFfiOfficeError = _UniffiTempUniFfiOfficeError # type: ignore
+del _UniffiTempUniFfiOfficeError
+
+
+class _UniffiConverterTypeUniFfiOfficeError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiOfficeError.CorruptedFormat(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiOfficeError.SheetNotFound(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiOfficeError.EntryNotFound(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiOfficeError.XmlParseError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 5:
+            return UniFfiOfficeError.FormulaEvaluationError(
+                _UniffiConverterString.read(buf),
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiOfficeError.UnsupportedFormat(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 7:
+            return UniFfiOfficeError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 8:
+            return UniFfiOfficeError.Cancelled(
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiOfficeError.CorruptedFormat):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiOfficeError.SheetNotFound):
+            _UniffiConverterString.check_lower(value.name)
+            return
+        if isinstance(value, UniFfiOfficeError.EntryNotFound):
+            _UniffiConverterString.check_lower(value.path)
+            return
+        if isinstance(value, UniFfiOfficeError.XmlParseError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiOfficeError.FormulaEvaluationError):
+            _UniffiConverterString.check_lower(value.formula)
+            _UniffiConverterString.check_lower(value.reason)
+            return
+        if isinstance(value, UniFfiOfficeError.UnsupportedFormat):
+            _UniffiConverterString.check_lower(value.format)
+            return
+        if isinstance(value, UniFfiOfficeError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiOfficeError.Cancelled):
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiOfficeError.CorruptedFormat):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiOfficeError.SheetNotFound):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.name, buf)
+        if isinstance(value, UniFfiOfficeError.EntryNotFound):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.path, buf)
+        if isinstance(value, UniFfiOfficeError.XmlParseError):
+            buf.write_i32(4)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiOfficeError.FormulaEvaluationError):
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.formula, buf)
+            _UniffiConverterString.write(value.reason, buf)
+        if isinstance(value, UniFfiOfficeError.UnsupportedFormat):
+            buf.write_i32(6)
+            _UniffiConverterString.write(value.format, buf)
+        if isinstance(value, UniFfiOfficeError.IoError):
+            buf.write_i32(7)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiOfficeError.Cancelled):
+            buf.write_i32(8)
+
+
+
+
+
+class UniFfiOfficeFormat(enum.Enum):
+    """
+    Supported Office Open XML and OpenDocument container formats.
+    """
+
+    UNKNOWN = 0
+    
+    DOCX = 1
+    
+    XLSX = 2
+    
+    PPTX = 3
+    
+    ODT = 4
+    
+    ODS = 5
+    
+    ODP = 6
+    
+
+
+class _UniffiConverterTypeUniFfiOfficeFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiOfficeFormat.UNKNOWN
+        if variant == 2:
+            return UniFfiOfficeFormat.DOCX
+        if variant == 3:
+            return UniFfiOfficeFormat.XLSX
+        if variant == 4:
+            return UniFfiOfficeFormat.PPTX
+        if variant == 5:
+            return UniFfiOfficeFormat.ODT
+        if variant == 6:
+            return UniFfiOfficeFormat.ODS
+        if variant == 7:
+            return UniFfiOfficeFormat.ODP
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiOfficeFormat.UNKNOWN:
+            return
+        if value == UniFfiOfficeFormat.DOCX:
+            return
+        if value == UniFfiOfficeFormat.XLSX:
+            return
+        if value == UniFfiOfficeFormat.PPTX:
+            return
+        if value == UniFfiOfficeFormat.ODT:
+            return
+        if value == UniFfiOfficeFormat.ODS:
+            return
+        if value == UniFfiOfficeFormat.ODP:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiOfficeFormat.UNKNOWN:
+            buf.write_i32(1)
+        if value == UniFfiOfficeFormat.DOCX:
+            buf.write_i32(2)
+        if value == UniFfiOfficeFormat.XLSX:
+            buf.write_i32(3)
+        if value == UniFfiOfficeFormat.PPTX:
+            buf.write_i32(4)
+        if value == UniFfiOfficeFormat.ODT:
+            buf.write_i32(5)
+        if value == UniFfiOfficeFormat.ODS:
+            buf.write_i32(6)
+        if value == UniFfiOfficeFormat.ODP:
+            buf.write_i32(7)
 
 
 
@@ -20559,6 +24541,33 @@ class _UniffiConverterOptionalTypeUniFfiCompressionOptions(_UniffiConverterRustB
 
 
 
+class _UniffiConverterOptionalTypeUniFfiEbookResource(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiEbookResource.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiEbookResource.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiEbookResource.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalTypeUniFfiEpubBook(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -20802,6 +24811,33 @@ class _UniffiConverterOptionalTypeUniFfiProgressCallback(_UniffiConverterRustBuf
 
 
 
+class _UniffiConverterOptionalSequenceTypeUniFfiCell(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterSequenceTypeUniFfiCell.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterSequenceTypeUniFfiCell.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterSequenceTypeUniFfiCell.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterSequenceFloat(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -21027,6 +25063,31 @@ class _UniffiConverterSequenceTypeUniFfiBenchmarkPointResult(_UniffiConverterRus
 
 
 
+class _UniffiConverterSequenceTypeUniFfiCell(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiCell.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiCell.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiCell.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiCorruptedEntry(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -21073,6 +25134,131 @@ class _UniffiConverterSequenceTypeUniFfiDeflateStats(_UniffiConverterRustBuffer)
 
         return [
             _UniffiConverterTypeUniFfiDeflateStats.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiDocxParagraph(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxParagraph.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxParagraph.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiDocxParagraph.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiDocxTable(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxTable.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxTable.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiDocxTable.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiDocxTableRow(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxTableRow.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiDocxTableRow.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiDocxTableRow.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiEbookSpineItem(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiEbookSpineItem.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiEbookSpineItem.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiEbookSpineItem.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiEbookTocNode(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiEbookTocNode.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiEbookTocNode.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiEbookTocNode.read(buf) for i in range(count)
         ]
 
 
@@ -21198,6 +25384,31 @@ class _UniffiConverterSequenceTypeUniFfiHighlightToken(_UniffiConverterRustBuffe
 
         return [
             _UniffiConverterTypeUniFfiHighlightToken.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiHtmlResourceLink(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiHtmlResourceLink.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiHtmlResourceLink.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiHtmlResourceLink.read(buf) for i in range(count)
         ]
 
 
@@ -21498,6 +25709,31 @@ class _UniffiConverterSequenceTypeUniFfiScenarioBenchmarkPoint(_UniffiConverterR
 
         return [
             _UniffiConverterTypeUniFfiScenarioBenchmarkPoint.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiSheetRow(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiSheetRow.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiSheetRow.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiSheetRow.read(buf) for i in range(count)
         ]
 
 
@@ -23189,6 +27425,20 @@ def uniffi_compress_buffer(codec: "UniFfiCompressionCodec",src: "bytes",options:
         _UniffiConverterOptionalTypeUniFfiCompressionOptions.lower(options)))
 
 
+def uniffi_convert_docx_to_markdown(data: "bytes",file_name: "typing.Optional[str]") -> "str":
+    """
+    Converts a DOCX document into standard GitHub-Flavored Markdown.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
 def uniffi_crc32(data: "bytes") -> "int":
     """
     Computes CRC-32 (IEEE 802.3) checksum.
@@ -23428,6 +27678,20 @@ def uniffi_detect_language(file_path_or_ext: "str",first_line_hint: "typing.Opti
         _UniffiConverterOptionalString.lower(first_line_hint)))
 
 
+def uniffi_evaluate_formula(formula: "str",context_cells: "typing.Optional[typing.List[UniFfiCell]]") -> "UniFfiCellValue":
+    """
+    Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
+    """
+
+    _UniffiConverterString.check_lower(formula)
+    
+    _UniffiConverterOptionalSequenceTypeUniFfiCell.check_lower(context_cells)
+    
+    return _UniffiConverterTypeUniFfiCellValue.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula,
+        _UniffiConverterString.lower(formula),
+        _UniffiConverterOptionalSequenceTypeUniFfiCell.lower(context_cells)))
+
+
 def uniffi_extract_audio_metadata(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiAudioMetadata":
     """
     Extracts comprehensive metadata tags and embedded cover art from in-memory audio bytes.
@@ -23442,6 +27706,96 @@ def uniffi_extract_audio_metadata(data: "bytes",file_name: "typing.Optional[str]
         _UniffiConverterOptionalString.lower(file_name)))
 
 
+def uniffi_extract_docx_document(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiDocxDocument":
+    """
+    Extracts structured paragraphs, tables, and outline metrics from a DOCX archive.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiDocxDocument.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_ebook_chapter(data: "bytes",href: "str",file_name: "typing.Optional[str]") -> "UniFfiEbookChapter":
+    """
+    Extracts and parses a single chapter document into structured XHTML content and word metrics.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterString.check_lower(href)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiEbookChapter.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(href),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_ebook_cover(data: "bytes",file_name: "typing.Optional[str]") -> "typing.Optional[UniFfiEbookResource]":
+    """
+    Extracts the embedded cover artwork resource if available.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterOptionalTypeUniFfiEbookResource.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_ebook_metadata(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiEbookMetadata":
+    """
+    Extracts publication metadata and cover presence from in-memory ebook bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiEbookMetadata.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_ebook_resource(data: "bytes",href: "str",file_name: "typing.Optional[str]") -> "UniFfiEbookResource":
+    """
+    Extracts an embedded asset resource (image, stylesheet, font) by href path.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterString.check_lower(href)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiEbookResource.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(href),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_ebook_toc(data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[UniFfiEbookTocNode]":
+    """
+    Extracts the hierarchical Table of Contents (TOC) tree from in-memory ebook bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterSequenceTypeUniFfiEbookTocNode.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
 def uniffi_extract_epub_metadata(file_path: "str") -> "UniFfiEpubMetadata":
     """
     Extracts EPUB Dublin Core publication metadata from a file on disk.
@@ -23451,6 +27805,17 @@ def uniffi_extract_epub_metadata(file_path: "str") -> "UniFfiEpubMetadata":
     
     return _UniffiConverterTypeUniFfiEpubMetadata.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata,
         _UniffiConverterString.lower(file_path)))
+
+
+def uniffi_extract_html_resources(html_content: "str") -> "typing.List[UniFfiHtmlResourceLink]":
+    """
+    Extracts all asset and resource links (images, stylesheets, scripts, audio/video) from HTML markup.
+    """
+
+    _UniffiConverterString.check_lower(html_content)
+    
+    return _UniffiConverterSequenceTypeUniFfiHtmlResourceLink.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources,
+        _UniffiConverterString.lower(html_content)))
 
 
 def uniffi_extract_office_metadata(file_path: "str") -> "UniFfiDocumentMetadata":
@@ -23509,6 +27874,40 @@ def uniffi_extract_pdf_page_text(file_path: "str",page_number: "int") -> "UniFfi
     return _UniffiConverterTypeUniFfiPdfPageText.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text,
         _UniffiConverterString.lower(file_path),
         _UniffiConverterUInt32.lower(page_number)))
+
+
+def uniffi_extract_sheet_data(data: "bytes",sheet_name_or_index: "str",max_rows: "typing.Optional[int]",file_name: "typing.Optional[str]") -> "UniFfiSheetData":
+    """
+    Extracts parsed worksheet data with cell coordinates and values from an XLSX archive.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterString.check_lower(sheet_name_or_index)
+    
+    _UniffiConverterOptionalUInt32.check_lower(max_rows)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiSheetData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterString.lower(sheet_name_or_index),
+        _UniffiConverterOptionalUInt32.lower(max_rows),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_sheet_names(data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[str]":
+    """
+    Extracts worksheet names from an in-memory XLSX spreadsheet archive.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterSequenceString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
 
 
 def uniffi_extract_symbols(code: "str",language_hint: "str") -> "typing.List[UniFfiSymbolNode]":
@@ -23577,6 +27976,20 @@ def uniffi_generate_synthetic_corpus(corpus_type: "UniFfiSyntheticCorpusType",si
         _UniffiConverterTypeUniFfiSyntheticCorpusType.lower(corpus_type),
         _UniffiConverterUInt64.lower(size_bytes),
         _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_get_ebook_spine(data: "bytes",file_name: "typing.Optional[str]") -> "typing.List[UniFfiEbookSpineItem]":
+    """
+    Returns the ordered reading spine items from in-memory ebook bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterSequenceTypeUniFfiEbookSpineItem.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
 
 
 def uniffi_get_supported_languages() -> "typing.List[UniFfiLanguageInfo]":
@@ -23650,6 +28063,14 @@ def uniffi_highlight_code_viewport(code: "str",language_hint: "str",start_line: 
         _UniffiConverterString.lower(language_hint),
         _UniffiConverterUInt32.lower(start_line),
         _UniffiConverterUInt32.lower(line_count)))
+
+
+def uniffi_html_service_new() -> "UniFfiHtmlService":
+    """
+    Instantiates a new thread-safe HTML preview & transformation service.
+    """
+
+    return _UniffiConverterTypeUniFfiHtmlService.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new,))
 
 
 def uniffi_lz4_compress_fast(src: "bytes",acceleration: "int") -> "bytes":
@@ -23817,6 +28238,45 @@ def uniffi_probe_audio_bytes(data: "bytes",file_name: "typing.Optional[str]") ->
         _UniffiConverterOptionalString.lower(file_name)))
 
 
+def uniffi_probe_ebook_bytes(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiEbookFormat":
+    """
+    Probes and identifies the ebook container format directly from in-memory bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiEbookFormat.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiEbookError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_probe_html_bytes(bytes: "bytes",file_name: "typing.Optional[str]") -> "UniFfiHtmlFormat":
+    """
+    Probes the format classification of an in-memory HTML or markup byte buffer.
+    """
+
+    _UniffiConverterBytes.check_lower(bytes)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiHtmlFormat.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes,
+        _UniffiConverterBytes.lower(bytes),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_probe_html_file(file_path: "str") -> "UniFfiHtmlFormat":
+    """
+    Probes the format classification of a file on disk.
+    """
+
+    _UniffiConverterString.check_lower(file_path)
+    
+    return _UniffiConverterTypeUniFfiHtmlFormat.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_html_file,
+        _UniffiConverterString.lower(file_path)))
+
+
 def uniffi_probe_image_info(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiImageInfo":
     """
     Probes image format, dimensions, color space, and EXIF tags without full pixel decompression.
@@ -23827,6 +28287,20 @@ def uniffi_probe_image_info(data: "bytes",file_name: "typing.Optional[str]") -> 
     _UniffiConverterOptionalString.check_lower(file_name)
     
     return _UniffiConverterTypeUniFfiImageInfo.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_image_info,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_probe_office_bytes(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiOfficeFormat":
+    """
+    Probes and identifies the Office document format directly from in-memory bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiOfficeFormat.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiOfficeError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes,
         _UniffiConverterBytes.lower(data),
         _UniffiConverterOptionalString.lower(file_name)))
 
@@ -23845,6 +28319,23 @@ def uniffi_remediate_filename(raw_bytes: "bytes",fallback_encoding: "typing.Opti
         _UniffiConverterOptionalString.lower(fallback_encoding)))
 
 
+def uniffi_rewrite_html_vfs(html_content: "str",base_vfs_prefix: "str",policy: "UniFfiHtmlSanitizationPolicy") -> "UniFfiHtmlTransformResult":
+    """
+    Rewrites HTML relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+    """
+
+    _UniffiConverterString.check_lower(html_content)
+    
+    _UniffiConverterString.check_lower(base_vfs_prefix)
+    
+    _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.check_lower(policy)
+    
+    return _UniffiConverterTypeUniFfiHtmlTransformResult.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs,
+        _UniffiConverterString.lower(html_content),
+        _UniffiConverterString.lower(base_vfs_prefix),
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.lower(policy)))
+
+
 def uniffi_sample_viewport(data: "bytes",params: "UniFfiViewportCropParams") -> "UniFfiViewportTile":
     """
     Samples a cropped viewport tile from an in-memory image buffer.
@@ -23857,6 +28348,20 @@ def uniffi_sample_viewport(data: "bytes",params: "UniFfiViewportCropParams") -> 
     return _UniffiConverterTypeUniFfiViewportTile.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sample_viewport,
         _UniffiConverterBytes.lower(data),
         _UniffiConverterTypeUniFfiViewportCropParams.lower(params)))
+
+
+def uniffi_sanitize_html(html_content: "str",policy: "UniFfiHtmlSanitizationPolicy") -> "str":
+    """
+    Sanitizes HTML markup according to security policy without changing relative paths.
+    """
+
+    _UniffiConverterString.check_lower(html_content)
+    
+    _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.check_lower(policy)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiHtmlError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html,
+        _UniffiConverterString.lower(html_content),
+        _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.lower(policy)))
 
 
 def uniffi_search_pdf_text(file_path: "str",query: "str",max_results: "int",case_sensitive: "bool") -> "typing.List[UniFfiPdfSearchResult]":
@@ -24519,16 +29024,23 @@ __all__ = [
     "TtZipError",
     "UniFfiAudioError",
     "UniFfiAuthStatus",
+    "UniFfiCellValue",
     "UniFfiCompressionCodec",
     "UniFfiCorpusType",
     "UniFfiDecisionVerdict",
     "UniFfiDeflateArbitrationStrategy",
     "UniFfiDeflateEngine",
     "UniFfiDeflateLevel",
+    "UniFfiEbookError",
+    "UniFfiEbookFormat",
     "UniFfiError",
+    "UniFfiHtmlError",
+    "UniFfiHtmlFormat",
     "UniFfiLicenseResult",
     "UniFfiMediaTrackType",
     "UniFfiMmapAdvice",
+    "UniFfiOfficeError",
+    "UniFfiOfficeFormat",
     "UniFfiPlayerState",
     "UniFfiSubtitleAlignment",
     "UniFfiSubtitleFormat",
@@ -24559,13 +29071,23 @@ __all__ = [
     "UniFfiAudioWaveform",
     "UniFfiBenchmarkMatrixReport",
     "UniFfiBenchmarkPointResult",
+    "UniFfiCell",
     "UniFfiCompressionOptions",
     "UniFfiCorruptedEntry",
     "UniFfiDeflateStats",
     "UniFfiDetectedEncoding",
     "UniFfiDocumentMetadata",
+    "UniFfiDocxDocument",
     "UniFfiDocxExtractResult",
+    "UniFfiDocxParagraph",
     "UniFfiDocxProperties",
+    "UniFfiDocxTable",
+    "UniFfiDocxTableRow",
+    "UniFfiEbookChapter",
+    "UniFfiEbookMetadata",
+    "UniFfiEbookResource",
+    "UniFfiEbookSpineItem",
+    "UniFfiEbookTocNode",
     "UniFfiEd25519Cert",
     "UniFfiEncodingInfo",
     "UniFfiEntryMetadata",
@@ -24576,6 +29098,9 @@ __all__ = [
     "UniFfiEpubMetadata",
     "UniFfiEpubParseResult",
     "UniFfiHighlightToken",
+    "UniFfiHtmlResourceLink",
+    "UniFfiHtmlSanitizationPolicy",
+    "UniFfiHtmlTransformResult",
     "UniFfiImageFrame",
     "UniFfiImageInfo",
     "UniFfiIntegrityReport",
@@ -24603,6 +29128,8 @@ __all__ = [
     "UniFfiRemediationResult",
     "UniFfiScenarioBenchmarkPoint",
     "UniFfiScenarioMatrixReport",
+    "UniFfiSheetData",
+    "UniFfiSheetRow",
     "UniFfiSmartExtractDecision",
     "UniFfiSubtitleColor",
     "UniFfiSubtitleDialogue",
@@ -24727,6 +29254,7 @@ __all__ = [
     "uniffi_bzip2_decompress",
     "uniffi_compress_bound",
     "uniffi_compress_buffer",
+    "uniffi_convert_docx_to_markdown",
     "uniffi_crc32",
     "uniffi_crc32_combine",
     "uniffi_crc32_rolling",
@@ -24743,22 +29271,34 @@ __all__ = [
     "uniffi_deflate_dual_verify_roundtrip",
     "uniffi_detect_encoding",
     "uniffi_detect_language",
+    "uniffi_evaluate_formula",
     "uniffi_extract_audio_metadata",
+    "uniffi_extract_docx_document",
+    "uniffi_extract_ebook_chapter",
+    "uniffi_extract_ebook_cover",
+    "uniffi_extract_ebook_metadata",
+    "uniffi_extract_ebook_resource",
+    "uniffi_extract_ebook_toc",
     "uniffi_extract_epub_metadata",
+    "uniffi_extract_html_resources",
     "uniffi_extract_office_metadata",
     "uniffi_extract_office_outline",
     "uniffi_extract_pdf_metadata",
     "uniffi_extract_pdf_outline",
     "uniffi_extract_pdf_page_text",
+    "uniffi_extract_sheet_data",
+    "uniffi_extract_sheet_names",
     "uniffi_extract_symbols",
     "uniffi_extract_thumbnail",
     "uniffi_generate_audio_waveform",
     "uniffi_generate_synthetic_corpus",
+    "uniffi_get_ebook_spine",
     "uniffi_get_supported_languages",
     "uniffi_gzip_compress",
     "uniffi_gzip_decompress",
     "uniffi_highlight_code",
     "uniffi_highlight_code_viewport",
+    "uniffi_html_service_new",
     "uniffi_lz4_compress_fast",
     "uniffi_lz4_compress_hc",
     "uniffi_lz4_decompress",
@@ -24771,9 +29311,15 @@ __all__ = [
     "uniffi_ppmd_compress",
     "uniffi_ppmd_decompress",
     "uniffi_probe_audio_bytes",
+    "uniffi_probe_ebook_bytes",
+    "uniffi_probe_html_bytes",
+    "uniffi_probe_html_file",
     "uniffi_probe_image_info",
+    "uniffi_probe_office_bytes",
     "uniffi_remediate_filename",
+    "uniffi_rewrite_html_vfs",
     "uniffi_sample_viewport",
+    "uniffi_sanitize_html",
     "uniffi_search_pdf_text",
     "uniffi_snappy_compress",
     "uniffi_snappy_decompress",
@@ -24821,8 +29367,11 @@ __all__ = [
     "UniFfiAudioService",
     "UniFfiBufferPool",
     "UniFfiCancellationToken",
+    "UniFfiEbookService",
+    "UniFfiHtmlService",
     "UniFfiImageService",
     "UniFfiMmapReader",
+    "UniFfiOfficeService",
     "UniFfiPdfService",
     "UniFfiPluginSigner",
     "UniFfiPluginVerifier",

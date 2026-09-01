@@ -27,6 +27,7 @@ pub mod ebook_meta;
 pub mod epub;
 pub mod error_mapping;
 pub mod extraction;
+pub mod html_meta;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod image_meta;
@@ -82,6 +83,7 @@ pub use ebook_meta::{
 pub use epub::*;
 pub use error_mapping::*;
 pub use extraction::*;
+pub use html_meta::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use image_meta::*;

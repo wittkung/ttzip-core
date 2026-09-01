@@ -67,7 +67,8 @@ echo "   Working Directory: ${RUST_DIR}"
 echo "   Profile:           $(if [ "${USE_RELEASE}" = true ]; then echo 'Release'; else echo 'Debug'; fi)"
 echo "======================================================================"
 
-CARGO_FLAGS=()
+PROFILE="$(if [ "${USE_RELEASE}" = true ]; then echo 'release'; else echo 'debug'; fi)"
+CARGO_FLAGS=("--target" "aarch64-apple-darwin")
 if [ "${USE_RELEASE}" = true ]; then
     CARGO_FLAGS+=("--release")
 fi
@@ -94,9 +95,10 @@ for target in "${XZ_TEST_TARGETS[@]}"; do
     CARGO_TEST_ARGS+=("--test" "${target}")
 done
 
-cd "${RUST_DIR}"
-
-BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+BUILD_DIR="${RUST_DIR}/target/aarch64-apple-darwin/${PROFILE}/deps"
+if [ ! -d "${BUILD_DIR}" ]; then
+    BUILD_DIR="${RUST_DIR}/target/${PROFILE}/deps"
+fi
 ALL_BINS_EXIST=true
 DIRECT_BINS=()
 for target in "${XZ_TEST_TARGETS[@]}"; do

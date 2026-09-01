@@ -174,7 +174,7 @@ impl SyntaxEngine {
 #[cfg(feature = "syntax")]
 fn classify_node(kind: &str, parent: Option<&str>) -> Option<HighlightCategory> {
     if kind.contains("comment") { return Some(HighlightCategory::Comment); }
-    if kind.contains("string") || kind == "char_literal" || kind == "character" { return Some(HighlightCategory::String); }
+    if kind.contains("string") || kind == "char_literal" || kind == "character" || kind.contains("attribute_value") || kind == "quoted_attribute_value" { return Some(HighlightCategory::String); }
     if kind.contains("number") || kind.contains("integer") || kind.contains("float") || kind == "int" { return Some(HighlightCategory::Number); }
     if kind.contains("type") || kind == "primitive_type" || kind == "class_name" { return Some(HighlightCategory::Type); }
     if kind == "identifier" || kind == "field_identifier" {
@@ -183,8 +183,8 @@ fn classify_node(kind: &str, parent: Option<&str>) -> Option<HighlightCategory> 
             if pk.contains("type") { return Some(HighlightCategory::Type); }
         }
     }
-    if is_keyword_kind(kind) { return Some(HighlightCategory::Keyword); }
-    if is_operator_kind(kind) { return Some(HighlightCategory::Operator); }
+    if is_keyword_kind(kind) || kind == "tag_name" || kind == "doctype" || kind == "attribute_name" { return Some(HighlightCategory::Keyword); }
+    if is_operator_kind(kind) || kind == "<" || kind == ">" || kind == "</" || kind == "/>" || kind == "=" { return Some(HighlightCategory::Operator); }
     None
 }
 

@@ -30,10 +30,10 @@ strip = true
 
 
 [profile.test]
-opt-level = 1
+opt-level = 2
 debug = 1
 codegen-units = 16
-split-debuginfo = "unpacked"
+split-debuginfo = "off"
 
 [profile.test.package."*"]
 opt-level = 3

@@ -58,6 +58,7 @@ subtle = { version = "2.6", default-features = false }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast"] }
 quick-xml = "0.36"
 roxmltree = "0.20"
+lol_html = "2.2"
 lopdf = { version = "0.34", default-features = false, features = ["nom_parser"] }
 zune-core = "0.4"
 zune-image = "0.4"

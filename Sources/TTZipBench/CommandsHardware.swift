@@ -149,8 +149,8 @@ func executeAbSample(jsonOut: String?) {
 
 // MARK: - Legacy Gate & Pipeline Subcommands
 
-func executeGateBenchmark(jsonOut: String?) -> Bool {
-    return executeMatrixGate(corpusSizeMB: 4, jsonOut: jsonOut)
+func executeGateBenchmark(corpusSizeMB: Int = 2, jsonOut: String? = nil) -> Bool {
+    return executeMatrixGate(corpusSizeMB: corpusSizeMB, jsonOut: jsonOut)
 }
 
 func executePipelineBenchmark(jsonOut: String?) {

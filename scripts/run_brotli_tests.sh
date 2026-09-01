@@ -29,12 +29,14 @@ export RAYON_NUM_THREADS="2"
 
 USE_RELEASE=false
 FORCE_REBUILD=false
+GATE_MODE="${GATE_MODE:-0}"
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
     echo "  --release        Execute test binaries under release profile"
     echo "  --force, -f      Force full test execution regardless of cache"
+    echo "  --gate           CI/Gate mode (skip redundant lib unit tests when already run by workspace runner)"
     echo "  --help, -h       Show this help message"
     exit 0
 }
@@ -47,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --force|-f)
             FORCE_REBUILD=true
+            shift
+            ;;
+        --gate)
+            GATE_MODE="1"
             shift
             ;;
         --help|-h)
@@ -67,7 +73,8 @@ echo "   Working Directory: ${RUST_DIR}"
 echo "   Profile:           $(if [ "${USE_RELEASE}" = true ]; then echo 'Release'; else echo 'Debug'; fi)"
 echo "======================================================================"
 
-CARGO_FLAGS=()
+PROFILE="$(if [ "${USE_RELEASE}" = true ]; then echo 'release'; else echo 'debug'; fi)"
+CARGO_FLAGS=("--target" "aarch64-apple-darwin")
 if [ "${USE_RELEASE}" = true ]; then
     CARGO_FLAGS+=("--release")
 fi
@@ -96,7 +103,10 @@ done
 
 cd "${RUST_DIR}"
 
-BUILD_DIR="$(if [ "${USE_RELEASE}" = true ]; then echo "${RUST_DIR}/target/release/deps"; else echo "${RUST_DIR}/target/debug/deps"; fi)"
+BUILD_DIR="${RUST_DIR}/target/aarch64-apple-darwin/${PROFILE}/deps"
+if [ ! -d "${BUILD_DIR}" ]; then
+    BUILD_DIR="${RUST_DIR}/target/${PROFILE}/deps"
+fi
 ALL_BINS_EXIST=true
 DIRECT_BINS=()
 for target in "${BROTLI_TEST_TARGETS[@]}"; do

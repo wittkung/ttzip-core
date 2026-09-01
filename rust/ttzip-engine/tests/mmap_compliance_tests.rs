@@ -8,7 +8,7 @@
 //! Official memmap2 cross-platform compliance test suite and TTZip 6-layer defense verification.
 
 use std::fs::{self, File, OpenOptions};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 use ttzip_engine::security::{
     safe_map_anonymous, safe_map_file, safe_map_file_range, system_page_size,
@@ -17,8 +17,11 @@ use ttzip_engine::security::{
 };
 use ttzip_engine::types::TTZipStatus;
 
+static MMAP_TEST_LOCK: Mutex<()> = Mutex::new(());
+
 #[test]
 fn test_empty_file_mapping() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("empty.dat");
     File::create(&path).expect("Failed to create empty file");
@@ -42,6 +45,7 @@ fn test_empty_file_mapping() {
 
 #[test]
 fn test_empty_range_mapping() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("data.dat");
     let payload = b"Hello, TTZip Safe Mmap Defense!";
@@ -57,6 +61,7 @@ fn test_empty_range_mapping() {
 
 #[test]
 fn test_full_file_mapping() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("full.dat");
     let payload = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -74,6 +79,7 @@ fn test_full_file_mapping() {
 
 #[test]
 fn test_range_mapping_aligned_and_unaligned() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("range.dat");
 
@@ -156,6 +162,7 @@ fn test_page_boundary_guard_modular_arithmetic() {
 
 #[test]
 fn test_anonymous_mapping() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let view = safe_map_anonymous(4096).expect("Failed anonymous map");
     assert_eq!(view.len(), 4096);
     assert!(!view.is_empty());
@@ -173,6 +180,7 @@ fn test_anonymous_mapping() {
 
 #[test]
 fn test_multithreaded_concurrent_reads() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("concurrent.dat");
 
@@ -284,6 +292,7 @@ fn test_extreme_negative_and_overflow_offsets() {
 
 #[test]
 fn test_resident_memory_budget_circuit_breaker() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let dir = tempdir().expect("Failed to create tempdir");
     let path = dir.path().join("budget.dat");
     fs::write(&path, vec![0x42; 2048]).expect("Failed to write file");
@@ -316,6 +325,7 @@ fn test_resident_memory_budget_circuit_breaker() {
 
 #[test]
 fn test_resource_handle_raii_tracking() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let baseline_count = MmapResourceGuard::active_count();
     let baseline_bytes = MmapResourceGuard::allocated_bytes();
 
@@ -340,6 +350,7 @@ fn test_resource_handle_raii_tracking() {
 
 #[test]
 fn test_subslice_bounds_and_errors() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let view = safe_map_anonymous(100).expect("Failed map");
 
     // Valid sub-slices
@@ -364,6 +375,7 @@ fn test_subslice_bounds_and_errors() {
 
 #[test]
 fn test_madvise_hints() {
+    let _lock = MMAP_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let view = safe_map_anonymous(4096).expect("Failed anonymous map");
     assert!(view.advise_sequential().is_ok());
     assert!(view.advise_dontneed().is_ok());

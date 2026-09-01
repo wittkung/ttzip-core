@@ -1478,6 +1478,116 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1577,6 +1687,56 @@ internal interface UniffiLib : Library {
     ): Byte
     fun uniffi_ttzip_engine_fn_method_unifficancellationtoken_reset(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_ttzip_engine_fn_clone_uniffiebookservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiebookservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter(`ptr`: Pointer,`data`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource(`ptr`: Pointer,`data`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffihtmlservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffihtmlservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources(`ptr`: Pointer,`htmlContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes(`ptr`: Pointer,`bytes`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs(`ptr`: Pointer,`htmlContent`: RustBuffer.ByValue,`baseVfsPrefix`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize(`ptr`: Pointer,`htmlContent`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffiimageservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffiimageservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1628,6 +1788,34 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_method_uniffimmapreader_search_subsequence(`ptr`: Pointer,`pattern`: RustBuffer.ByValue,`startOffset`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffimmapreader_stats(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffiofficeservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiofficeservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula(`ptr`: Pointer,`formula`: RustBuffer.ByValue,`contextCells`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data(`ptr`: Pointer,`data`: RustBuffer.ByValue,`sheetNameOrIndex`: RustBuffer.ByValue,`maxRows`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`sheetNameOrIndex`: RustBuffer.ByValue,`maxRows`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffipdfservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
@@ -2085,6 +2273,8 @@ internal interface UniffiLib : Library {
     ): Long
     fun uniffi_ttzip_engine_fn_func_uniffi_compress_buffer(`codec`: RustBuffer.ByValue,`src`: RustBuffer.ByValue,`options`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_crc32(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
     fun uniffi_ttzip_engine_fn_func_uniffi_crc32_combine(`crc1`: Int,`crc2`: Int,`len2`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2117,9 +2307,25 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_detect_language(`filePathOrExt`: RustBuffer.ByValue,`firstLineHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula(`formula`: RustBuffer.ByValue,`contextCells`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter(`data`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource(`data`: RustBuffer.ByValue,`href`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources(`htmlContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2131,6 +2337,10 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_pdf_page_text(`filePath`: RustBuffer.ByValue,`pageNumber`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data(`data`: RustBuffer.ByValue,`sheetNameOrIndex`: RustBuffer.ByValue,`maxRows`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2138,6 +2348,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(`data`: RustBuffer.ByValue,`bucketCount`: Int,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_get_supported_languages(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2149,6 +2361,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`startLine`: Int,`lineCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_html_service_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(`src`: RustBuffer.ByValue,`acceleration`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -2173,11 +2387,23 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes(`bytes`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_html_file(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(`rawBytes`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs(`htmlContent`: RustBuffer.ByValue,`baseVfsPrefix`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(`data`: RustBuffer.ByValue,`params`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_sanitize_html(`htmlContent`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(`filePath`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2567,6 +2793,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_crc32(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_crc32_combine(
@@ -2599,9 +2827,25 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_detect_language(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata(
     ): Short
@@ -2613,6 +2857,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail(
@@ -2620,6 +2868,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages(
     ): Short
@@ -2630,6 +2880,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_highlight_code(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_html_service_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(
     ): Short
@@ -2655,11 +2907,23 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text(
     ): Short
@@ -2793,6 +3057,44 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image_from_file(
@@ -2832,6 +3134,28 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_search_subsequence(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text(
     ): Short
@@ -3029,9 +3353,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new(
     ): Short
@@ -3372,6 +3702,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_buffer() != 35599.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_convert_docx_to_markdown() != 45414.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32() != 35952.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3420,10 +3753,34 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_docx_document() != 31462.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_chapter() != 30595.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_cover() != 8859.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_metadata() != 53165.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_resource() != 29817.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_ebook_toc() != 35463.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources() != 55101.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata() != 20046.toShort()) {
@@ -3441,6 +3798,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_pdf_page_text() != 59046.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_data() != 15349.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_sheet_names() != 40858.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3451,6 +3814,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_get_ebook_spine() != 10916.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages() != 41512.toShort()) {
@@ -3466,6 +3832,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport() != 42695.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new() != 57279.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593.toShort()) {
@@ -3504,13 +3873,31 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_audio_bytes() != 1259.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes() != 1779.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes() != 16506.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file() != 23714.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info() != 30977.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes() != 27541.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs() != 64735.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport() != 3307.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html() != 8664.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777.toShort()) {
@@ -3711,6 +4098,63 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_unifficancellationtoken_reset() != 4194.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter() != 54308.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_chapter_from_file() != 65106.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover() != 47669.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_cover_from_file() != 33106.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata() != 3068.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_metadata_from_file() != 36112.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource() != 8708.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_resource_from_file() != 28530.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc() != 15285.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_extract_toc_from_file() != 61780.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine() != 8024.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_get_spine_from_file() != 27058.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes() != 32053.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file() != 49828.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources() != 33033.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes() != 38832.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file() != 8276.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs() != 55873.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize() != 3156.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_decode_image() != 23857.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3769,6 +4213,39 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_stats() != 29410.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown() != 29157.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_convert_docx_to_markdown_from_file() != 20969.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_evaluate_formula() != 22296.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document() != 34353.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_docx_document_from_file() != 46508.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data() != 63843.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_data_from_file() != 20051.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names() != 50623.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_extract_sheet_names_from_file() != 4656.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_bytes() != 10124.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiofficeservice_probe_file() != 34964.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffipdfservice_extract_all_pages_text() != 64119.toShort()) {
@@ -4065,10 +4542,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new() != 45982.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new() != 57107.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new() != 64228.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new() != 38241.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffipdfservice_new() != 36065.toShort()) {
@@ -6268,6 +6754,879 @@ public object FfiConverterTypeUniFFICancellationToken: FfiConverter<UniFfiCancel
 
 
 /**
+ * High-performance thread-safe Ebook Introspection Service.
+ */
+public interface UniFfiEbookServiceInterface {
+    
+    /**
+     * Extracts and parses a single chapter document from an in-memory byte buffer.
+     */
+    fun `extractChapter`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookChapter
+    
+    /**
+     * Extracts and parses a single chapter document from a file on disk.
+     */
+    fun `extractChapterFromFile`(`filePath`: kotlin.String, `href`: kotlin.String): UniFfiEbookChapter
+    
+    /**
+     * Extracts the embedded cover artwork from an in-memory byte buffer.
+     */
+    fun `extractCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookResource?
+    
+    /**
+     * Extracts the embedded cover artwork from a file on disk.
+     */
+    fun `extractCoverFromFile`(`filePath`: kotlin.String): UniFfiEbookResource?
+    
+    /**
+     * Extracts publication metadata from an in-memory byte buffer.
+     */
+    fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookMetadata
+    
+    /**
+     * Extracts publication metadata from a file on disk.
+     */
+    fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiEbookMetadata
+    
+    /**
+     * Extracts an embedded asset resource by href from an in-memory byte buffer.
+     */
+    fun `extractResource`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookResource
+    
+    /**
+     * Extracts an embedded asset resource by href from a file on disk.
+     */
+    fun `extractResourceFromFile`(`filePath`: kotlin.String, `href`: kotlin.String): UniFfiEbookResource
+    
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+     */
+    fun `extractToc`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookTocNode>
+    
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from a file on disk.
+     */
+    fun `extractTocFromFile`(`filePath`: kotlin.String): List<UniFfiEbookTocNode>
+    
+    /**
+     * Retrieves ordered spine reading items from an in-memory byte buffer.
+     */
+    fun `getSpine`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookSpineItem>
+    
+    /**
+     * Retrieves ordered spine reading items from a file on disk.
+     */
+    fun `getSpineFromFile`(`filePath`: kotlin.String): List<UniFfiEbookSpineItem>
+    
+    /**
+     * Probes the ebook format from an in-memory byte buffer.
+     */
+    fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookFormat
+    
+    /**
+     * Probes the ebook format from a file on disk.
+     */
+    fun `probeFile`(`filePath`: kotlin.String): UniFfiEbookFormat
+    
+    companion object
+}
+
+/**
+ * High-performance thread-safe Ebook Introspection Service.
+ */
+open class UniFfiEbookService: Disposable, AutoCloseable, UniFfiEbookServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe ebook service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiebookservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiebookservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiebookservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Extracts and parses a single chapter document from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractChapter`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookChapter {
+            return FfiConverterTypeUniFFIEbookChapter.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`href`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts and parses a single chapter document from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractChapterFromFile`(`filePath`: kotlin.String, `href`: kotlin.String): UniFfiEbookChapter {
+            return FfiConverterTypeUniFFIEbookChapter.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_chapter_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterString.lower(`href`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts the embedded cover artwork from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookResource? {
+            return FfiConverterOptionalTypeUniFFIEbookResource.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts the embedded cover artwork from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractCoverFromFile`(`filePath`: kotlin.String): UniFfiEbookResource? {
+            return FfiConverterOptionalTypeUniFFIEbookResource.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_cover_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts publication metadata from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookMetadata {
+            return FfiConverterTypeUniFFIEbookMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts publication metadata from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiEbookMetadata {
+            return FfiConverterTypeUniFFIEbookMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_metadata_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts an embedded asset resource by href from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractResource`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookResource {
+            return FfiConverterTypeUniFFIEbookResource.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`href`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts an embedded asset resource by href from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractResourceFromFile`(`filePath`: kotlin.String, `href`: kotlin.String): UniFfiEbookResource {
+            return FfiConverterTypeUniFFIEbookResource.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_resource_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterString.lower(`href`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractToc`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookTocNode> {
+            return FfiConverterSequenceTypeUniFFIEbookTocNode.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts hierarchical Table of Contents (TOC) from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `extractTocFromFile`(`filePath`: kotlin.String): List<UniFfiEbookTocNode> {
+            return FfiConverterSequenceTypeUniFFIEbookTocNode.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_extract_toc_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Retrieves ordered spine reading items from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `getSpine`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookSpineItem> {
+            return FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Retrieves ordered spine reading items from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `getSpineFromFile`(`filePath`: kotlin.String): List<UniFfiEbookSpineItem> {
+            return FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_get_spine_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the ebook format from an in-memory byte buffer.
+     */
+    @Throws(UniFfiEbookException::class)override fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookFormat {
+            return FfiConverterTypeUniFFIEbookFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the ebook format from a file on disk.
+     */
+    @Throws(UniFfiEbookException::class)override fun `probeFile`(`filePath`: kotlin.String): UniFfiEbookFormat {
+            return FfiConverterTypeUniFFIEbookFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookService: FfiConverter<UniFfiEbookService, Pointer> {
+
+    override fun lower(value: UniFfiEbookService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiEbookService {
+        return UniFfiEbookService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiEbookService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiEbookService) = 8UL
+
+    override fun write(value: UniFfiEbookService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Stateful UniFFI service providing high-performance zero-copy HTML transformation and VFS routing.
+ */
+public interface UniFfiHtmlServiceInterface {
+    
+    /**
+     * Extracts all asset and resource links from HTML markup.
+     */
+    fun `extractResources`(`htmlContent`: kotlin.String): List<UniFfiHtmlResourceLink>
+    
+    /**
+     * Probes the format classification of an in-memory HTML byte buffer.
+     */
+    fun `probeBytes`(`bytes`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiHtmlFormat
+    
+    /**
+     * Probes the format classification of a file on disk.
+     */
+    fun `probeFile`(`filePath`: kotlin.String): UniFfiHtmlFormat
+    
+    /**
+     * Rewrites relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+     */
+    fun `rewriteVfs`(`htmlContent`: kotlin.String, `baseVfsPrefix`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): UniFfiHtmlTransformResult
+    
+    /**
+     * Sanitizes HTML markup according to security policy.
+     */
+    fun `sanitize`(`htmlContent`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Stateful UniFFI service providing high-performance zero-copy HTML transformation and VFS routing.
+ */
+open class UniFfiHtmlService: Disposable, AutoCloseable, UniFfiHtmlServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe HTML transformation service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffihtmlservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffihtmlservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Extracts all asset and resource links from HTML markup.
+     */
+    @Throws(UniFfiHtmlException::class)override fun `extractResources`(`htmlContent`: kotlin.String): List<UniFfiHtmlResourceLink> {
+            return FfiConverterSequenceTypeUniFFIHtmlResourceLink.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources(
+        it, FfiConverterString.lower(`htmlContent`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the format classification of an in-memory HTML byte buffer.
+     */
+    @Throws(UniFfiHtmlException::class)override fun `probeBytes`(`bytes`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiHtmlFormat {
+            return FfiConverterTypeUniFFIHtmlFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes(
+        it, FfiConverterByteArray.lower(`bytes`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the format classification of a file on disk.
+     */
+    @Throws(UniFfiHtmlException::class)override fun `probeFile`(`filePath`: kotlin.String): UniFfiHtmlFormat {
+            return FfiConverterTypeUniFFIHtmlFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Rewrites relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+     */
+    @Throws(UniFfiHtmlException::class)override fun `rewriteVfs`(`htmlContent`: kotlin.String, `baseVfsPrefix`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): UniFfiHtmlTransformResult {
+            return FfiConverterTypeUniFFIHtmlTransformResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs(
+        it, FfiConverterString.lower(`htmlContent`),FfiConverterString.lower(`baseVfsPrefix`),FfiConverterTypeUniFFIHtmlSanitizationPolicy.lower(`policy`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Sanitizes HTML markup according to security policy.
+     */
+    @Throws(UniFfiHtmlException::class)override fun `sanitize`(`htmlContent`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize(
+        it, FfiConverterString.lower(`htmlContent`),FfiConverterTypeUniFFIHtmlSanitizationPolicy.lower(`policy`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlService: FfiConverter<UniFfiHtmlService, Pointer> {
+
+    override fun lower(value: UniFfiHtmlService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiHtmlService {
+        return UniFfiHtmlService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiHtmlService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiHtmlService) = 8UL
+
+    override fun write(value: UniFfiHtmlService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Stateful Mozilla UniFFI image processing service exposing decoding, thumbnailing, and viewport pipelines.
  */
 public interface UniFfiImageServiceInterface {
@@ -7055,6 +8414,474 @@ public object FfiConverterTypeUniFFIMmapReader: FfiConverter<UniFfiMmapReader, P
     override fun allocationSize(value: UniFfiMmapReader) = 8UL
 
     override fun write(value: UniFfiMmapReader, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * High-performance thread-safe Office Document Introspection Service.
+ */
+public interface UniFfiOfficeServiceInterface {
+    
+    /**
+     * Converts a DOCX file from an in-memory byte buffer to Markdown.
+     */
+    fun `convertDocxToMarkdown`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.String
+    
+    /**
+     * Converts a DOCX file on disk to Markdown.
+     */
+    fun `convertDocxToMarkdownFromFile`(`filePath`: kotlin.String): kotlin.String
+    
+    /**
+     * Dynamically evaluates a formula with optional context cells.
+     */
+    fun `evaluateFormula`(`formula`: kotlin.String, `contextCells`: List<UniFfiCell>?): UniFfiCellValue
+    
+    /**
+     * Extracts structured DOCX document model from an in-memory byte buffer.
+     */
+    fun `extractDocxDocument`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiDocxDocument
+    
+    /**
+     * Extracts structured DOCX document model from a file on disk.
+     */
+    fun `extractDocxDocumentFromFile`(`filePath`: kotlin.String): UniFfiDocxDocument
+    
+    /**
+     * Extracts worksheet data from an in-memory XLSX byte buffer.
+     */
+    fun `extractSheetData`(`data`: kotlin.ByteArray, `sheetNameOrIndex`: kotlin.String, `maxRows`: kotlin.UInt?, `fileName`: kotlin.String?): UniFfiSheetData
+    
+    /**
+     * Extracts worksheet data from an XLSX file on disk.
+     */
+    fun `extractSheetDataFromFile`(`filePath`: kotlin.String, `sheetNameOrIndex`: kotlin.String, `maxRows`: kotlin.UInt?): UniFfiSheetData
+    
+    /**
+     * Extracts worksheet names from an in-memory XLSX byte buffer.
+     */
+    fun `extractSheetNames`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<kotlin.String>
+    
+    /**
+     * Extracts worksheet names from an XLSX file on disk.
+     */
+    fun `extractSheetNamesFromFile`(`filePath`: kotlin.String): List<kotlin.String>
+    
+    /**
+     * Probes the Office format from an in-memory byte buffer.
+     */
+    fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiOfficeFormat
+    
+    /**
+     * Probes the Office format from a file on disk.
+     */
+    fun `probeFile`(`filePath`: kotlin.String): UniFfiOfficeFormat
+    
+    companion object
+}
+
+/**
+ * High-performance thread-safe Office Document Introspection Service.
+ */
+open class UniFfiOfficeService: Disposable, AutoCloseable, UniFfiOfficeServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe office service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiofficeservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiofficeservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiofficeservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Converts a DOCX file from an in-memory byte buffer to Markdown.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `convertDocxToMarkdown`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Converts a DOCX file on disk to Markdown.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `convertDocxToMarkdownFromFile`(`filePath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_convert_docx_to_markdown_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Dynamically evaluates a formula with optional context cells.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `evaluateFormula`(`formula`: kotlin.String, `contextCells`: List<UniFfiCell>?): UniFfiCellValue {
+            return FfiConverterTypeUniFFICellValue.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_evaluate_formula(
+        it, FfiConverterString.lower(`formula`),FfiConverterOptionalSequenceTypeUniFFICell.lower(`contextCells`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts structured DOCX document model from an in-memory byte buffer.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractDocxDocument`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiDocxDocument {
+            return FfiConverterTypeUniFFIDocxDocument.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts structured DOCX document model from a file on disk.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractDocxDocumentFromFile`(`filePath`: kotlin.String): UniFfiDocxDocument {
+            return FfiConverterTypeUniFFIDocxDocument.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_docx_document_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts worksheet data from an in-memory XLSX byte buffer.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractSheetData`(`data`: kotlin.ByteArray, `sheetNameOrIndex`: kotlin.String, `maxRows`: kotlin.UInt?, `fileName`: kotlin.String?): UniFfiSheetData {
+            return FfiConverterTypeUniFFISheetData.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`sheetNameOrIndex`),FfiConverterOptionalUInt.lower(`maxRows`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts worksheet data from an XLSX file on disk.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractSheetDataFromFile`(`filePath`: kotlin.String, `sheetNameOrIndex`: kotlin.String, `maxRows`: kotlin.UInt?): UniFfiSheetData {
+            return FfiConverterTypeUniFFISheetData.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_data_from_file(
+        it, FfiConverterString.lower(`filePath`),FfiConverterString.lower(`sheetNameOrIndex`),FfiConverterOptionalUInt.lower(`maxRows`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts worksheet names from an in-memory XLSX byte buffer.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractSheetNames`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts worksheet names from an XLSX file on disk.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `extractSheetNamesFromFile`(`filePath`: kotlin.String): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_extract_sheet_names_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the Office format from an in-memory byte buffer.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiOfficeFormat {
+            return FfiConverterTypeUniFFIOfficeFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes the Office format from a file on disk.
+     */
+    @Throws(UniFfiOfficeException::class)override fun `probeFile`(`filePath`: kotlin.String): UniFfiOfficeFormat {
+            return FfiConverterTypeUniFFIOfficeFormat.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiofficeservice_probe_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIOfficeService: FfiConverter<UniFfiOfficeService, Pointer> {
+
+    override fun lower(value: UniFfiOfficeService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiOfficeService {
+        return UniFfiOfficeService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiOfficeService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiOfficeService) = 8UL
+
+    override fun write(value: UniFfiOfficeService, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -13054,6 +14881,68 @@ public object FfiConverterTypeUniFFIBenchmarkPointResult: FfiConverterRustBuffer
 
 
 /**
+ * Strongly-typed single spreadsheet cell record with coordinates.
+ */
+data class UniFfiCell (
+    /**
+     * 1-based row index.
+     */
+    var `row`: kotlin.UInt, 
+    /**
+     * 1-based column index (1 = 'A', 2 = 'B', 27 = 'AA').
+     */
+    var `col`: kotlin.UInt, 
+    /**
+     * Standard alphanumeric cell reference (e.g. "A1", "C15").
+     */
+    var `coordinate`: kotlin.String, 
+    /**
+     * Resolved typed cell value.
+     */
+    var `value`: UniFfiCellValue, 
+    /**
+     * Raw formula string if cell contains a formula.
+     */
+    var `formula`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFICell: FfiConverterRustBuffer<UniFfiCell> {
+    override fun read(buf: ByteBuffer): UniFfiCell {
+        return UniFfiCell(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUniFFICellValue.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiCell) = (
+            FfiConverterUInt.allocationSize(value.`row`) +
+            FfiConverterUInt.allocationSize(value.`col`) +
+            FfiConverterString.allocationSize(value.`coordinate`) +
+            FfiConverterTypeUniFFICellValue.allocationSize(value.`value`) +
+            FfiConverterOptionalString.allocationSize(value.`formula`)
+    )
+
+    override fun write(value: UniFfiCell, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`row`, buf)
+            FfiConverterUInt.write(value.`col`, buf)
+            FfiConverterString.write(value.`coordinate`, buf)
+            FfiConverterTypeUniFFICellValue.write(value.`value`, buf)
+            FfiConverterOptionalString.write(value.`formula`, buf)
+    }
+}
+
+
+
+/**
  * Compression parameters and options container.
  */
 data class UniFfiCompressionOptions (
@@ -13403,6 +15292,75 @@ public object FfiConverterTypeUniFFIDocumentMetadata: FfiConverterRustBuffer<Uni
 
 
 /**
+ * Comprehensive DOCX structured document representation.
+ */
+data class UniFfiDocxDocument (
+    /**
+     * Document title if identified.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Ordered paragraph sequence.
+     */
+    var `paragraphs`: List<UniFfiDocxParagraph>, 
+    /**
+     * Ordered table sequence.
+     */
+    var `tables`: List<UniFfiDocxTable>, 
+    /**
+     * Total computed word count.
+     */
+    var `totalWords`: kotlin.UInt, 
+    /**
+     * Total computed character count.
+     */
+    var `totalCharacters`: kotlin.UInt, 
+    /**
+     * Rendered standard GitHub-Flavored Markdown representation.
+     */
+    var `markdownContent`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDocxDocument: FfiConverterRustBuffer<UniFfiDocxDocument> {
+    override fun read(buf: ByteBuffer): UniFfiDocxDocument {
+        return UniFfiDocxDocument(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeUniFFIDocxParagraph.read(buf),
+            FfiConverterSequenceTypeUniFFIDocxTable.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDocxDocument) = (
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterSequenceTypeUniFFIDocxParagraph.allocationSize(value.`paragraphs`) +
+            FfiConverterSequenceTypeUniFFIDocxTable.allocationSize(value.`tables`) +
+            FfiConverterUInt.allocationSize(value.`totalWords`) +
+            FfiConverterUInt.allocationSize(value.`totalCharacters`) +
+            FfiConverterString.allocationSize(value.`markdownContent`)
+    )
+
+    override fun write(value: UniFfiDocxDocument, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterSequenceTypeUniFFIDocxParagraph.write(value.`paragraphs`, buf)
+            FfiConverterSequenceTypeUniFFIDocxTable.write(value.`tables`, buf)
+            FfiConverterUInt.write(value.`totalWords`, buf)
+            FfiConverterUInt.write(value.`totalCharacters`, buf)
+            FfiConverterString.write(value.`markdownContent`, buf)
+    }
+}
+
+
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 data class UniFfiDocxExtractResult (
@@ -13436,6 +15394,68 @@ public object FfiConverterTypeUniFFIDocxExtractResult: FfiConverterRustBuffer<Un
             FfiConverterString.write(value.`fullText`, buf)
             FfiConverterSequenceString.write(value.`paragraphs`, buf)
             FfiConverterTypeUniFFIDocxProperties.write(value.`properties`, buf)
+    }
+}
+
+
+
+/**
+ * A structured paragraph inside a DOCX document.
+ */
+data class UniFfiDocxParagraph (
+    /**
+     * Style name (e.g. "Normal", "Heading 1", "List Paragraph").
+     */
+    var `style`: kotlin.String, 
+    /**
+     * Plain text content of the paragraph.
+     */
+    var `text`: kotlin.String, 
+    /**
+     * Heading level if detected (0 for Title, 1 for Heading 1, 2 for Heading 2, etc.).
+     */
+    var `headingLevel`: kotlin.UInt?, 
+    /**
+     * Whether this paragraph is part of a bulleted or numbered list.
+     */
+    var `isListItem`: kotlin.Boolean, 
+    /**
+     * 0-based indentation level for nested lists.
+     */
+    var `listLevel`: kotlin.UInt?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDocxParagraph: FfiConverterRustBuffer<UniFfiDocxParagraph> {
+    override fun read(buf: ByteBuffer): UniFfiDocxParagraph {
+        return UniFfiDocxParagraph(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDocxParagraph) = (
+            FfiConverterString.allocationSize(value.`style`) +
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterOptionalUInt.allocationSize(value.`headingLevel`) +
+            FfiConverterBoolean.allocationSize(value.`isListItem`) +
+            FfiConverterOptionalUInt.allocationSize(value.`listLevel`)
+    )
+
+    override fun write(value: UniFfiDocxParagraph, buf: ByteBuffer) {
+            FfiConverterString.write(value.`style`, buf)
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterOptionalUInt.write(value.`headingLevel`, buf)
+            FfiConverterBoolean.write(value.`isListItem`, buf)
+            FfiConverterOptionalUInt.write(value.`listLevel`, buf)
     }
 }
 
@@ -13503,6 +15523,503 @@ public object FfiConverterTypeUniFFIDocxProperties: FfiConverterRustBuffer<UniFf
             FfiConverterUInt.write(value.`wordCount`, buf)
             FfiConverterUInt.write(value.`characterCount`, buf)
             FfiConverterUInt.write(value.`paragraphCount`, buf)
+    }
+}
+
+
+
+/**
+ * A structured table extracted from a DOCX document.
+ */
+data class UniFfiDocxTable (
+    /**
+     * Total row count.
+     */
+    var `totalRows`: kotlin.UInt, 
+    /**
+     * Total column count.
+     */
+    var `totalCols`: kotlin.UInt, 
+    /**
+     * Header row labels if detected.
+     */
+    var `headers`: List<kotlin.String>, 
+    /**
+     * Table body rows.
+     */
+    var `rows`: List<UniFfiDocxTableRow>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDocxTable: FfiConverterRustBuffer<UniFfiDocxTable> {
+    override fun read(buf: ByteBuffer): UniFfiDocxTable {
+        return UniFfiDocxTable(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceTypeUniFFIDocxTableRow.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDocxTable) = (
+            FfiConverterUInt.allocationSize(value.`totalRows`) +
+            FfiConverterUInt.allocationSize(value.`totalCols`) +
+            FfiConverterSequenceString.allocationSize(value.`headers`) +
+            FfiConverterSequenceTypeUniFFIDocxTableRow.allocationSize(value.`rows`)
+    )
+
+    override fun write(value: UniFfiDocxTable, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`totalRows`, buf)
+            FfiConverterUInt.write(value.`totalCols`, buf)
+            FfiConverterSequenceString.write(value.`headers`, buf)
+            FfiConverterSequenceTypeUniFFIDocxTableRow.write(value.`rows`, buf)
+    }
+}
+
+
+
+/**
+ * A single row within a DOCX table.
+ */
+data class UniFfiDocxTableRow (
+    /**
+     * Cell string contents from left to right.
+     */
+    var `cells`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDocxTableRow: FfiConverterRustBuffer<UniFfiDocxTableRow> {
+    override fun read(buf: ByteBuffer): UniFfiDocxTableRow {
+        return UniFfiDocxTableRow(
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDocxTableRow) = (
+            FfiConverterSequenceString.allocationSize(value.`cells`)
+    )
+
+    override fun write(value: UniFfiDocxTableRow, buf: ByteBuffer) {
+            FfiConverterSequenceString.write(value.`cells`, buf)
+    }
+}
+
+
+
+/**
+ * Extracted XHTML / HTML chapter content descriptor with metrics.
+ */
+data class UniFfiEbookChapter (
+    /**
+     * Manifest ID or chapter identifier.
+     */
+    var `id`: kotlin.String, 
+    /**
+     * Resolved chapter title from TOC, heading, or spine index.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * Normalized relative resource path.
+     */
+    var `href`: kotlin.String, 
+    /**
+     * MIME type of the document.
+     */
+    var `mediaType`: kotlin.String, 
+    /**
+     * 1-based sequential spine order.
+     */
+    var `playOrder`: kotlin.UInt, 
+    /**
+     * Raw XHTML / HTML markup or text string.
+     */
+    var `contentString`: kotlin.String, 
+    /**
+     * Total character count of stripped textual content.
+     */
+    var `characterCount`: kotlin.UInt, 
+    /**
+     * Total word count of stripped textual content.
+     */
+    var `wordCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookChapter: FfiConverterRustBuffer<UniFfiEbookChapter> {
+    override fun read(buf: ByteBuffer): UniFfiEbookChapter {
+        return UniFfiEbookChapter(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEbookChapter) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`href`) +
+            FfiConverterString.allocationSize(value.`mediaType`) +
+            FfiConverterUInt.allocationSize(value.`playOrder`) +
+            FfiConverterString.allocationSize(value.`contentString`) +
+            FfiConverterUInt.allocationSize(value.`characterCount`) +
+            FfiConverterUInt.allocationSize(value.`wordCount`)
+    )
+
+    override fun write(value: UniFfiEbookChapter, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`href`, buf)
+            FfiConverterString.write(value.`mediaType`, buf)
+            FfiConverterUInt.write(value.`playOrder`, buf)
+            FfiConverterString.write(value.`contentString`, buf)
+            FfiConverterUInt.write(value.`characterCount`, buf)
+            FfiConverterUInt.write(value.`wordCount`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive publication metadata descriptor.
+ */
+data class UniFfiEbookMetadata (
+    /**
+     * Primary title of the publication.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * List of authors, creators, or editors.
+     */
+    var `authors`: List<kotlin.String>, 
+    /**
+     * Publishing house or distributor.
+     */
+    var `publisher`: kotlin.String?, 
+    /**
+     * Primary language code (e.g. "en", "zh-CN", "ja").
+     */
+    var `language`: kotlin.String?, 
+    /**
+     * Canonical book identifier (e.g. ISBN, UUID, DOI).
+     */
+    var `identifier`: kotlin.String?, 
+    /**
+     * Synopsis or description text.
+     */
+    var `description`: kotlin.String?, 
+    /**
+     * Original publication date string.
+     */
+    var `publicationDate`: kotlin.String?, 
+    /**
+     * Modification or package revision date string.
+     */
+    var `modifiedDate`: kotlin.String?, 
+    /**
+     * Legal copyright and licensing statement.
+     */
+    var `rights`: kotlin.String?, 
+    /**
+     * Detected ebook container format.
+     */
+    var `format`: UniFfiEbookFormat, 
+    /**
+     * Total count of linear reading chapters in spine.
+     */
+    var `totalChapters`: kotlin.UInt, 
+    /**
+     * Total count of manifest resources.
+     */
+    var `totalResources`: kotlin.UInt, 
+    /**
+     * Total size of the archive in bytes.
+     */
+    var `fileSizeBytes`: kotlin.ULong, 
+    /**
+     * Whether an embedded cover image exists.
+     */
+    var `hasCover`: kotlin.Boolean, 
+    /**
+     * Archive relative path to the cover image if present.
+     */
+    var `coverPath`: kotlin.String?, 
+    /**
+     * Additional unstructured metadata tag pairs.
+     */
+    var `extraMetadata`: Map<kotlin.String, kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookMetadata: FfiConverterRustBuffer<UniFfiEbookMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiEbookMetadata {
+        return UniFfiEbookMetadata(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeUniFFIEbookFormat.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterMapStringString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEbookMetadata) = (
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterSequenceString.allocationSize(value.`authors`) +
+            FfiConverterOptionalString.allocationSize(value.`publisher`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterOptionalString.allocationSize(value.`identifier`) +
+            FfiConverterOptionalString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`publicationDate`) +
+            FfiConverterOptionalString.allocationSize(value.`modifiedDate`) +
+            FfiConverterOptionalString.allocationSize(value.`rights`) +
+            FfiConverterTypeUniFFIEbookFormat.allocationSize(value.`format`) +
+            FfiConverterUInt.allocationSize(value.`totalChapters`) +
+            FfiConverterUInt.allocationSize(value.`totalResources`) +
+            FfiConverterULong.allocationSize(value.`fileSizeBytes`) +
+            FfiConverterBoolean.allocationSize(value.`hasCover`) +
+            FfiConverterOptionalString.allocationSize(value.`coverPath`) +
+            FfiConverterMapStringString.allocationSize(value.`extraMetadata`)
+    )
+
+    override fun write(value: UniFfiEbookMetadata, buf: ByteBuffer) {
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterSequenceString.write(value.`authors`, buf)
+            FfiConverterOptionalString.write(value.`publisher`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterOptionalString.write(value.`identifier`, buf)
+            FfiConverterOptionalString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`publicationDate`, buf)
+            FfiConverterOptionalString.write(value.`modifiedDate`, buf)
+            FfiConverterOptionalString.write(value.`rights`, buf)
+            FfiConverterTypeUniFFIEbookFormat.write(value.`format`, buf)
+            FfiConverterUInt.write(value.`totalChapters`, buf)
+            FfiConverterUInt.write(value.`totalResources`, buf)
+            FfiConverterULong.write(value.`fileSizeBytes`, buf)
+            FfiConverterBoolean.write(value.`hasCover`, buf)
+            FfiConverterOptionalString.write(value.`coverPath`, buf)
+            FfiConverterMapStringString.write(value.`extraMetadata`, buf)
+    }
+}
+
+
+
+/**
+ * Generic embedded asset resource (cover image, stylesheet, font).
+ */
+data class UniFfiEbookResource (
+    /**
+     * Normalized relative path within archive.
+     */
+    var `href`: kotlin.String, 
+    /**
+     * MIME type (e.g. "image/jpeg", "image/png", "text/css", "font/woff2").
+     */
+    var `mediaType`: kotlin.String, 
+    /**
+     * Raw binary data bytes of the resource.
+     */
+    var `data`: kotlin.ByteArray, 
+    /**
+     * Byte length of the uncompressed data.
+     */
+    var `sizeBytes`: kotlin.ULong
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookResource: FfiConverterRustBuffer<UniFfiEbookResource> {
+    override fun read(buf: ByteBuffer): UniFfiEbookResource {
+        return UniFfiEbookResource(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEbookResource) = (
+            FfiConverterString.allocationSize(value.`href`) +
+            FfiConverterString.allocationSize(value.`mediaType`) +
+            FfiConverterByteArray.allocationSize(value.`data`) +
+            FfiConverterULong.allocationSize(value.`sizeBytes`)
+    )
+
+    override fun write(value: UniFfiEbookResource, buf: ByteBuffer) {
+            FfiConverterString.write(value.`href`, buf)
+            FfiConverterString.write(value.`mediaType`, buf)
+            FfiConverterByteArray.write(value.`data`, buf)
+            FfiConverterULong.write(value.`sizeBytes`, buf)
+    }
+}
+
+
+
+/**
+ * Sequential item in the publication's reading spine.
+ */
+data class UniFfiEbookSpineItem (
+    /**
+     * Manifest ID reference.
+     */
+    var `id`: kotlin.String, 
+    /**
+     * Normalized relative resource path.
+     */
+    var `href`: kotlin.String, 
+    /**
+     * MIME type of the chapter resource (e.g. "application/xhtml+xml").
+     */
+    var `mediaType`: kotlin.String, 
+    /**
+     * 1-based sequential spine reading order.
+     */
+    var `playOrder`: kotlin.UInt, 
+    /**
+     * Whether this chapter is part of the primary reading flow (linear="yes").
+     */
+    var `isLinear`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookSpineItem: FfiConverterRustBuffer<UniFfiEbookSpineItem> {
+    override fun read(buf: ByteBuffer): UniFfiEbookSpineItem {
+        return UniFfiEbookSpineItem(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEbookSpineItem) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`href`) +
+            FfiConverterString.allocationSize(value.`mediaType`) +
+            FfiConverterUInt.allocationSize(value.`playOrder`) +
+            FfiConverterBoolean.allocationSize(value.`isLinear`)
+    )
+
+    override fun write(value: UniFfiEbookSpineItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`href`, buf)
+            FfiConverterString.write(value.`mediaType`, buf)
+            FfiConverterUInt.write(value.`playOrder`, buf)
+            FfiConverterBoolean.write(value.`isLinear`, buf)
+    }
+}
+
+
+
+/**
+ * Hierarchical Table of Contents (TOC) bookmark node.
+ */
+data class UniFfiEbookTocNode (
+    /**
+     * Unique identifier of the TOC node.
+     */
+    var `id`: kotlin.String, 
+    /**
+     * Human-readable section or chapter title.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * Normalized relative target resource path (with optional `#anchor`).
+     */
+    var `href`: kotlin.String, 
+    /**
+     * 1-based sequential playback or reading order.
+     */
+    var `playOrder`: kotlin.UInt, 
+    /**
+     * Nesting depth level (0 for top-level root sections).
+     */
+    var `level`: kotlin.UInt, 
+    /**
+     * Nested child sections.
+     */
+    var `children`: List<UniFfiEbookTocNode>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookTocNode: FfiConverterRustBuffer<UniFfiEbookTocNode> {
+    override fun read(buf: ByteBuffer): UniFfiEbookTocNode {
+        return UniFfiEbookTocNode(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeUniFFIEbookTocNode.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEbookTocNode) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`href`) +
+            FfiConverterUInt.allocationSize(value.`playOrder`) +
+            FfiConverterUInt.allocationSize(value.`level`) +
+            FfiConverterSequenceTypeUniFFIEbookTocNode.allocationSize(value.`children`)
+    )
+
+    override fun write(value: UniFfiEbookTocNode, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`href`, buf)
+            FfiConverterUInt.write(value.`playOrder`, buf)
+            FfiConverterUInt.write(value.`level`, buf)
+            FfiConverterSequenceTypeUniFFIEbookTocNode.write(value.`children`, buf)
     }
 }
 
@@ -14075,6 +16592,234 @@ public object FfiConverterTypeUniFFIHighlightToken: FfiConverterRustBuffer<UniFf
             FfiConverterString.write(value.`category`, buf)
             FfiConverterUInt.write(value.`lineNumber`, buf)
             FfiConverterUInt.write(value.`column`, buf)
+    }
+}
+
+
+
+/**
+ * Extracted HTML resource link descriptor for archive assets (images, stylesheets, fonts, media).
+ */
+data class UniFfiHtmlResourceLink (
+    /**
+     * HTML tag name referencing the resource (e.g. "img", "link", "script", "source", "a").
+     */
+    var `tagName`: kotlin.String, 
+    /**
+     * Attribute name containing the resource target (e.g. "src", "href", "poster", "data").
+     */
+    var `attributeName`: kotlin.String, 
+    /**
+     * Original URI or relative path before transformation.
+     */
+    var `originalUri`: kotlin.String, 
+    /**
+     * Resolved `ttzip-vfs://` virtual filesystem URI if applicable.
+     */
+    var `resolvedVfsUri`: kotlin.String?, 
+    /**
+     * Classification category ("image", "stylesheet", "script", "font", "audio", "video", "link", "media", "other").
+     */
+    var `resourceType`: kotlin.String, 
+    /**
+     * Whether the URI points to an external remote network endpoint.
+     */
+    var `isExternal`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlResourceLink: FfiConverterRustBuffer<UniFfiHtmlResourceLink> {
+    override fun read(buf: ByteBuffer): UniFfiHtmlResourceLink {
+        return UniFfiHtmlResourceLink(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiHtmlResourceLink) = (
+            FfiConverterString.allocationSize(value.`tagName`) +
+            FfiConverterString.allocationSize(value.`attributeName`) +
+            FfiConverterString.allocationSize(value.`originalUri`) +
+            FfiConverterOptionalString.allocationSize(value.`resolvedVfsUri`) +
+            FfiConverterString.allocationSize(value.`resourceType`) +
+            FfiConverterBoolean.allocationSize(value.`isExternal`)
+    )
+
+    override fun write(value: UniFfiHtmlResourceLink, buf: ByteBuffer) {
+            FfiConverterString.write(value.`tagName`, buf)
+            FfiConverterString.write(value.`attributeName`, buf)
+            FfiConverterString.write(value.`originalUri`, buf)
+            FfiConverterOptionalString.write(value.`resolvedVfsUri`, buf)
+            FfiConverterString.write(value.`resourceType`, buf)
+            FfiConverterBoolean.write(value.`isExternal`, buf)
+    }
+}
+
+
+
+/**
+ * Sanitization and security policy governing HTML transformation and resource rewriting.
+ */
+data class UniFfiHtmlSanitizationPolicy (
+    /**
+     * Whether JavaScript `<script>` elements and inline event handlers (`onclick`, etc.) are permitted.
+     */
+    var `allowScripts`: kotlin.Boolean, 
+    /**
+     * Whether inline `style="..."` attributes and `<style>` blocks are permitted.
+     */
+    var `allowInlineStyles`: kotlin.Boolean, 
+    /**
+     * Whether external network resources (e.g. `http://`, `https://`) are permitted.
+     */
+    var `allowExternalResources`: kotlin.Boolean, 
+    /**
+     * Whether interactive `<form>`, `<input>`, and `<button>` elements are permitted.
+     */
+    var `allowForms`: kotlin.Boolean, 
+    /**
+     * Whether embedded `<iframe>`, `<frame>`, `<object>`, or `<embed>` elements are permitted.
+     */
+    var `allowIframes`: kotlin.Boolean, 
+    /**
+     * Optional whitelist of custom HTML tag names. If non-empty, unlisted tags are stripped.
+     */
+    var `customAllowedTags`: List<kotlin.String>, 
+    /**
+     * List of explicit tag names to strip or remove from document.
+     */
+    var `customBlockedTags`: List<kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlSanitizationPolicy: FfiConverterRustBuffer<UniFfiHtmlSanitizationPolicy> {
+    override fun read(buf: ByteBuffer): UniFfiHtmlSanitizationPolicy {
+        return UniFfiHtmlSanitizationPolicy(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiHtmlSanitizationPolicy) = (
+            FfiConverterBoolean.allocationSize(value.`allowScripts`) +
+            FfiConverterBoolean.allocationSize(value.`allowInlineStyles`) +
+            FfiConverterBoolean.allocationSize(value.`allowExternalResources`) +
+            FfiConverterBoolean.allocationSize(value.`allowForms`) +
+            FfiConverterBoolean.allocationSize(value.`allowIframes`) +
+            FfiConverterSequenceString.allocationSize(value.`customAllowedTags`) +
+            FfiConverterSequenceString.allocationSize(value.`customBlockedTags`)
+    )
+
+    override fun write(value: UniFfiHtmlSanitizationPolicy, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`allowScripts`, buf)
+            FfiConverterBoolean.write(value.`allowInlineStyles`, buf)
+            FfiConverterBoolean.write(value.`allowExternalResources`, buf)
+            FfiConverterBoolean.write(value.`allowForms`, buf)
+            FfiConverterBoolean.write(value.`allowIframes`, buf)
+            FfiConverterSequenceString.write(value.`customAllowedTags`, buf)
+            FfiConverterSequenceString.write(value.`customBlockedTags`, buf)
+    }
+}
+
+
+
+/**
+ * Result of HTML VFS rewriting, resource extraction, and structural inspection.
+ */
+data class UniFfiHtmlTransformResult (
+    /**
+     * Transformed HTML markup with sanitized elements and rewritten `ttzip-vfs://` URLs.
+     */
+    var `transformedHtml`: kotlin.String, 
+    /**
+     * All discovered and resolved external/internal resource links.
+     */
+    var `extractedResources`: List<UniFfiHtmlResourceLink>, 
+    /**
+     * Document title extracted from `<title>` element if present.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Detected or declared character set encoding from `<meta>` tags.
+     */
+    var `charset`: kotlin.String?, 
+    /**
+     * Whether the source markup contained active `<script>` tags or inline event handlers.
+     */
+    var `hasScripts`: kotlin.Boolean, 
+    /**
+     * Whether the source markup contained styling rules or inline styles.
+     */
+    var `hasInlineStyles`: kotlin.Boolean, 
+    /**
+     * Total text character count excluding markup tags.
+     */
+    var `metricsChars`: kotlin.UInt, 
+    /**
+     * Estimated word count excluding markup tags.
+     */
+    var `metricsWords`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlTransformResult: FfiConverterRustBuffer<UniFfiHtmlTransformResult> {
+    override fun read(buf: ByteBuffer): UniFfiHtmlTransformResult {
+        return UniFfiHtmlTransformResult(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeUniFFIHtmlResourceLink.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiHtmlTransformResult) = (
+            FfiConverterString.allocationSize(value.`transformedHtml`) +
+            FfiConverterSequenceTypeUniFFIHtmlResourceLink.allocationSize(value.`extractedResources`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`charset`) +
+            FfiConverterBoolean.allocationSize(value.`hasScripts`) +
+            FfiConverterBoolean.allocationSize(value.`hasInlineStyles`) +
+            FfiConverterUInt.allocationSize(value.`metricsChars`) +
+            FfiConverterUInt.allocationSize(value.`metricsWords`)
+    )
+
+    override fun write(value: UniFfiHtmlTransformResult, buf: ByteBuffer) {
+            FfiConverterString.write(value.`transformedHtml`, buf)
+            FfiConverterSequenceTypeUniFFIHtmlResourceLink.write(value.`extractedResources`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`charset`, buf)
+            FfiConverterBoolean.write(value.`hasScripts`, buf)
+            FfiConverterBoolean.write(value.`hasInlineStyles`, buf)
+            FfiConverterUInt.write(value.`metricsChars`, buf)
+            FfiConverterUInt.write(value.`metricsWords`, buf)
     }
 }
 
@@ -15772,6 +18517,123 @@ public object FfiConverterTypeUniFFIScenarioMatrixReport: FfiConverterRustBuffer
             FfiConverterDouble.write(value.`peakExtractThroughputMbs`, buf)
             FfiConverterBoolean.write(value.`allInvariantsPassed`, buf)
             FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint.write(value.`points`, buf)
+    }
+}
+
+
+
+/**
+ * Extracted worksheet grid data structure with metrics.
+ */
+data class UniFfiSheetData (
+    /**
+     * Worksheet name (e.g. "Sheet1", "Financial_Summary").
+     */
+    var `sheetName`: kotlin.String, 
+    /**
+     * 1-based sequential sheet index in workbook.
+     */
+    var `sheetIndex`: kotlin.UInt, 
+    /**
+     * Total row count populated in the sheet.
+     */
+    var `totalRows`: kotlin.UInt, 
+    /**
+     * Total column count populated in the sheet.
+     */
+    var `totalCols`: kotlin.UInt, 
+    /**
+     * Declared dimension reference if present (e.g. "A1:G100").
+     */
+    var `dimensionRef`: kotlin.String?, 
+    /**
+     * Extracted row list.
+     */
+    var `rows`: List<UniFfiSheetRow>, 
+    /**
+     * Total shared strings referenced.
+     */
+    var `sharedStringsCount`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISheetData: FfiConverterRustBuffer<UniFfiSheetData> {
+    override fun read(buf: ByteBuffer): UniFfiSheetData {
+        return UniFfiSheetData(
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeUniFFISheetRow.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSheetData) = (
+            FfiConverterString.allocationSize(value.`sheetName`) +
+            FfiConverterUInt.allocationSize(value.`sheetIndex`) +
+            FfiConverterUInt.allocationSize(value.`totalRows`) +
+            FfiConverterUInt.allocationSize(value.`totalCols`) +
+            FfiConverterOptionalString.allocationSize(value.`dimensionRef`) +
+            FfiConverterSequenceTypeUniFFISheetRow.allocationSize(value.`rows`) +
+            FfiConverterUInt.allocationSize(value.`sharedStringsCount`)
+    )
+
+    override fun write(value: UniFfiSheetData, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sheetName`, buf)
+            FfiConverterUInt.write(value.`sheetIndex`, buf)
+            FfiConverterUInt.write(value.`totalRows`, buf)
+            FfiConverterUInt.write(value.`totalCols`, buf)
+            FfiConverterOptionalString.write(value.`dimensionRef`, buf)
+            FfiConverterSequenceTypeUniFFISheetRow.write(value.`rows`, buf)
+            FfiConverterUInt.write(value.`sharedStringsCount`, buf)
+    }
+}
+
+
+
+/**
+ * Sequential row in a spreadsheet worksheet grid.
+ */
+data class UniFfiSheetRow (
+    /**
+     * 1-based row number.
+     */
+    var `rowNumber`: kotlin.UInt, 
+    /**
+     * Non-empty cells contained in this row.
+     */
+    var `cells`: List<UniFfiCell>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISheetRow: FfiConverterRustBuffer<UniFfiSheetRow> {
+    override fun read(buf: ByteBuffer): UniFfiSheetRow {
+        return UniFfiSheetRow(
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeUniFFICell.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSheetRow) = (
+            FfiConverterUInt.allocationSize(value.`rowNumber`) +
+            FfiConverterSequenceTypeUniFFICell.allocationSize(value.`cells`)
+    )
+
+    override fun write(value: UniFfiSheetRow, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`rowNumber`, buf)
+            FfiConverterSequenceTypeUniFFICell.write(value.`cells`, buf)
     }
 }
 
@@ -17970,6 +20832,157 @@ public object FfiConverterTypeUniFFIAuthStatus: FfiConverterRustBuffer<UniFfiAut
 
 
 /**
+ * Strongly-typed spreadsheet cell value descriptor.
+ */
+sealed class UniFfiCellValue {
+    
+    object Empty : UniFfiCellValue()
+    
+    
+    data class Text(
+        val `value`: kotlin.String) : UniFfiCellValue() {
+        companion object
+    }
+    
+    data class Number(
+        val `value`: kotlin.Double) : UniFfiCellValue() {
+        companion object
+    }
+    
+    data class Boolean(
+        val `value`: kotlin.Boolean) : UniFfiCellValue() {
+        companion object
+    }
+    
+    data class Formula(
+        val `expression`: kotlin.String, 
+        val `cachedValue`: kotlin.String?) : UniFfiCellValue() {
+        companion object
+    }
+    
+    data class Error(
+        val `message`: kotlin.String) : UniFfiCellValue() {
+        companion object
+    }
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFICellValue : FfiConverterRustBuffer<UniFfiCellValue>{
+    override fun read(buf: ByteBuffer): UniFfiCellValue {
+        return when(buf.getInt()) {
+            1 -> UniFfiCellValue.Empty
+            2 -> UniFfiCellValue.Text(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiCellValue.Number(
+                FfiConverterDouble.read(buf),
+                )
+            4 -> UniFfiCellValue.Boolean(
+                FfiConverterBoolean.read(buf),
+                )
+            5 -> UniFfiCellValue.Formula(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            6 -> UniFfiCellValue.Error(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiCellValue) = when(value) {
+        is UniFfiCellValue.Empty -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is UniFfiCellValue.Text -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`value`)
+            )
+        }
+        is UniFfiCellValue.Number -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterDouble.allocationSize(value.`value`)
+            )
+        }
+        is UniFfiCellValue.Boolean -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`value`)
+            )
+        }
+        is UniFfiCellValue.Formula -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`expression`)
+                + FfiConverterOptionalString.allocationSize(value.`cachedValue`)
+            )
+        }
+        is UniFfiCellValue.Error -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+        }
+    }
+
+    override fun write(value: UniFfiCellValue, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiCellValue.Empty -> {
+                buf.putInt(1)
+                Unit
+            }
+            is UniFfiCellValue.Text -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`value`, buf)
+                Unit
+            }
+            is UniFfiCellValue.Number -> {
+                buf.putInt(3)
+                FfiConverterDouble.write(value.`value`, buf)
+                Unit
+            }
+            is UniFfiCellValue.Boolean -> {
+                buf.putInt(4)
+                FfiConverterBoolean.write(value.`value`, buf)
+                Unit
+            }
+            is UniFfiCellValue.Formula -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`expression`, buf)
+                FfiConverterOptionalString.write(value.`cachedValue`, buf)
+                Unit
+            }
+            is UniFfiCellValue.Error -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
  * Compression codec identifier exposed to Swift and multi-language SDKs.
  */
 
@@ -18322,6 +21335,223 @@ public object FfiConverterTypeUniFFIDeflateLevel : FfiConverterRustBuffer<UniFfi
 
 
 /**
+ * Strongly-typed ebook operation error enum mapped directly to Swift `throws UniFFIEbookError`.
+ */
+sealed class UniFfiEbookException: kotlin.Exception() {
+    
+    /**
+     * Failure due to malformed or corrupted archive structure.
+     */
+    class CorruptedFormat(
+        
+        val `message`: kotlin.String
+        ) : UniFfiEbookException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Requested chapter, image, stylesheet, or metadata entry was not found.
+     */
+    class EntryNotFound(
+        
+        val `href`: kotlin.String
+        ) : UniFfiEbookException() {
+        override val message
+            get() = "href=${ `href` }"
+    }
+    
+    /**
+     * Failure during XML / OPF / NCX document parsing.
+     */
+    class XmlParseException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiEbookException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Format is not supported or recognized.
+     */
+    class UnsupportedFormat(
+        
+        val `format`: kotlin.String
+        ) : UniFfiEbookException() {
+        override val message
+            get() = "format=${ `format` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiEbookException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Operation was cancelled by caller.
+     */
+    class Cancelled(
+        ) : UniFfiEbookException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiEbookException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiEbookException = FfiConverterTypeUniFFIEbookError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookError : FfiConverterRustBuffer<UniFfiEbookException> {
+    override fun read(buf: ByteBuffer): UniFfiEbookException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiEbookException.CorruptedFormat(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiEbookException.EntryNotFound(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiEbookException.XmlParseException(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiEbookException.UnsupportedFormat(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiEbookException.IoException(
+                FfiConverterString.read(buf),
+                )
+            6 -> UniFfiEbookException.Cancelled()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiEbookException): ULong {
+        return when(value) {
+            is UniFfiEbookException.CorruptedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiEbookException.EntryNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`href`)
+            )
+            is UniFfiEbookException.XmlParseException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiEbookException.UnsupportedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`format`)
+            )
+            is UniFfiEbookException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiEbookException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UniFfiEbookException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiEbookException.CorruptedFormat -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiEbookException.EntryNotFound -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`href`, buf)
+                Unit
+            }
+            is UniFfiEbookException.XmlParseException -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiEbookException.UnsupportedFormat -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`format`, buf)
+                Unit
+            }
+            is UniFfiEbookException.IoException -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiEbookException.Cancelled -> {
+                buf.putInt(6)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Supported ebook and digital publication container formats.
+ */
+
+enum class UniFfiEbookFormat {
+    
+    UNKNOWN,
+    EPUB,
+    CBZ,
+    FB2,
+    MOBI,
+    AZW3,
+    PDF;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEbookFormat: FfiConverterRustBuffer<UniFfiEbookFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiEbookFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiEbookFormat) = 4UL
+
+    override fun write(value: UniFfiEbookFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+/**
  * Strongly-typed cross-language error enumeration exposed to foreign runtimes.
  */
 sealed class UniFfiException: kotlin.Exception() {
@@ -18533,6 +21763,222 @@ public object FfiConverterTypeUniFFIError : FfiConverterRustBuffer<UniFfiExcepti
 
 
 
+
+
+/**
+ * Strongly-typed HTML transformation error enum mapped directly to Swift `throws UniFFIHtmlError`.
+ */
+sealed class UniFfiHtmlException: kotlin.Exception() {
+    
+    /**
+     * Failure during HTML parsing or tokenization.
+     */
+    class ParseException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Failure during stream rewriting or output serialization.
+     */
+    class RewriteException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Document encoding is unsupported or malformed.
+     */
+    class InvalidEncoding(
+        
+        val `message`: kotlin.String
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Document violates strict security constraints.
+     */
+    class SecurityViolation(
+        
+        val `reason`: kotlin.String
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Operation was cancelled by caller.
+     */
+    class Cancelled(
+        ) : UniFfiHtmlException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiHtmlException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiHtmlException = FfiConverterTypeUniFFIHtmlError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlError : FfiConverterRustBuffer<UniFfiHtmlException> {
+    override fun read(buf: ByteBuffer): UniFfiHtmlException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiHtmlException.ParseException(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiHtmlException.RewriteException(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiHtmlException.InvalidEncoding(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiHtmlException.SecurityViolation(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiHtmlException.IoException(
+                FfiConverterString.read(buf),
+                )
+            6 -> UniFfiHtmlException.Cancelled()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiHtmlException): ULong {
+        return when(value) {
+            is UniFfiHtmlException.ParseException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiHtmlException.RewriteException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiHtmlException.InvalidEncoding -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiHtmlException.SecurityViolation -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is UniFfiHtmlException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiHtmlException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UniFfiHtmlException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiHtmlException.ParseException -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiHtmlException.RewriteException -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiHtmlException.InvalidEncoding -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiHtmlException.SecurityViolation -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is UniFfiHtmlException.IoException -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiHtmlException.Cancelled -> {
+                buf.putInt(6)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Supported HTML-adjacent document and container formats.
+ */
+
+enum class UniFfiHtmlFormat {
+    
+    UNKNOWN,
+    HTML,
+    XHTML,
+    MHTML,
+    HTML_FRAGMENT,
+    SVG;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHtmlFormat: FfiConverterRustBuffer<UniFfiHtmlFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiHtmlFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiHtmlFormat) = 4UL
+
+    override fun write(value: UniFfiHtmlFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 /**
  * Verification result enumeration exposed to UniFFI.
  */
@@ -18682,6 +22128,276 @@ public object FfiConverterTypeUniFFIMmapAdvice: FfiConverterRustBuffer<UniFfiMma
     override fun allocationSize(value: UniFfiMmapAdvice) = 4UL
 
     override fun write(value: UniFfiMmapAdvice, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+/**
+ * Strongly-typed Office operation error enum mapped directly to Swift `throws UniFFIOfficeError`.
+ */
+sealed class UniFfiOfficeException: kotlin.Exception() {
+    
+    /**
+     * Failure due to malformed or corrupted archive structure.
+     */
+    class CorruptedFormat(
+        
+        val `message`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Requested worksheet was not found in workbook.
+     */
+    class SheetNotFound(
+        
+        val `name`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "name=${ `name` }"
+    }
+    
+    /**
+     * Requested document part or resource was not found.
+     */
+    class EntryNotFound(
+        
+        val `path`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "path=${ `path` }"
+    }
+    
+    /**
+     * Failure during XML / OpenXML schema parsing.
+     */
+    class XmlParseException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Dynamic formula calculation or parsing failure.
+     */
+    class FormulaEvaluationException(
+        
+        val `formula`: kotlin.String, 
+        
+        val `reason`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "formula=${ `formula` }, reason=${ `reason` }"
+    }
+    
+    /**
+     * Format is not supported or recognized.
+     */
+    class UnsupportedFormat(
+        
+        val `format`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "format=${ `format` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Operation was cancelled by caller.
+     */
+    class Cancelled(
+        ) : UniFfiOfficeException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiOfficeException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiOfficeException = FfiConverterTypeUniFFIOfficeError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIOfficeError : FfiConverterRustBuffer<UniFfiOfficeException> {
+    override fun read(buf: ByteBuffer): UniFfiOfficeException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiOfficeException.CorruptedFormat(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiOfficeException.SheetNotFound(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiOfficeException.EntryNotFound(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiOfficeException.XmlParseException(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiOfficeException.FormulaEvaluationException(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            6 -> UniFfiOfficeException.UnsupportedFormat(
+                FfiConverterString.read(buf),
+                )
+            7 -> UniFfiOfficeException.IoException(
+                FfiConverterString.read(buf),
+                )
+            8 -> UniFfiOfficeException.Cancelled()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiOfficeException): ULong {
+        return when(value) {
+            is UniFfiOfficeException.CorruptedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiOfficeException.SheetNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`name`)
+            )
+            is UniFfiOfficeException.EntryNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`path`)
+            )
+            is UniFfiOfficeException.XmlParseException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiOfficeException.FormulaEvaluationException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`formula`)
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is UniFfiOfficeException.UnsupportedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`format`)
+            )
+            is UniFfiOfficeException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiOfficeException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UniFfiOfficeException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiOfficeException.CorruptedFormat -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.SheetNotFound -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`name`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.EntryNotFound -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`path`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.XmlParseException -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.FormulaEvaluationException -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`formula`, buf)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.UnsupportedFormat -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`format`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.IoException -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiOfficeException.Cancelled -> {
+                buf.putInt(8)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Supported Office Open XML and OpenDocument container formats.
+ */
+
+enum class UniFfiOfficeFormat {
+    
+    UNKNOWN,
+    DOCX,
+    XLSX,
+    PPTX,
+    ODT,
+    ODS,
+    ODP;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIOfficeFormat: FfiConverterRustBuffer<UniFfiOfficeFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiOfficeFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiOfficeFormat) = 4UL
+
+    override fun write(value: UniFfiOfficeFormat, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -19719,6 +23435,38 @@ public object FfiConverterOptionalTypeUniFFICompressionOptions: FfiConverterRust
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUniFFIEbookResource: FfiConverterRustBuffer<UniFfiEbookResource?> {
+    override fun read(buf: ByteBuffer): UniFfiEbookResource? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFIEbookResource.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiEbookResource?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFIEbookResource.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiEbookResource?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFIEbookResource.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeUniFFIEpubBook: FfiConverterRustBuffer<UniFfiEpubBook?> {
     override fun read(buf: ByteBuffer): UniFfiEpubBook? {
         if (buf.get().toInt() == 0) {
@@ -20007,6 +23755,38 @@ public object FfiConverterOptionalTypeUniFFIProgressCallback: FfiConverterRustBu
 /**
  * @suppress
  */
+public object FfiConverterOptionalSequenceTypeUniFFICell: FfiConverterRustBuffer<List<UniFfiCell>?> {
+    override fun read(buf: ByteBuffer): List<UniFfiCell>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceTypeUniFFICell.read(buf)
+    }
+
+    override fun allocationSize(value: List<UniFfiCell>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceTypeUniFFICell.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<UniFfiCell>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceTypeUniFFICell.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceFloat: FfiConverterRustBuffer<List<kotlin.Float>> {
     override fun read(buf: ByteBuffer): List<kotlin.Float> {
         val len = buf.getInt()
@@ -20259,6 +24039,34 @@ public object FfiConverterSequenceTypeUniFFIBenchmarkPointResult: FfiConverterRu
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFICell: FfiConverterRustBuffer<List<UniFfiCell>> {
+    override fun read(buf: ByteBuffer): List<UniFfiCell> {
+        val len = buf.getInt()
+        return List<UniFfiCell>(len) {
+            FfiConverterTypeUniFFICell.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiCell>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFICell.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiCell>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFICell.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFICorruptedEntry: FfiConverterRustBuffer<List<UniFfiCorruptedEntry>> {
     override fun read(buf: ByteBuffer): List<UniFfiCorruptedEntry> {
         val len = buf.getInt()
@@ -20305,6 +24113,146 @@ public object FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffer
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIDeflateStats.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIDocxParagraph: FfiConverterRustBuffer<List<UniFfiDocxParagraph>> {
+    override fun read(buf: ByteBuffer): List<UniFfiDocxParagraph> {
+        val len = buf.getInt()
+        return List<UniFfiDocxParagraph>(len) {
+            FfiConverterTypeUniFFIDocxParagraph.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiDocxParagraph>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIDocxParagraph.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiDocxParagraph>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIDocxParagraph.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIDocxTable: FfiConverterRustBuffer<List<UniFfiDocxTable>> {
+    override fun read(buf: ByteBuffer): List<UniFfiDocxTable> {
+        val len = buf.getInt()
+        return List<UniFfiDocxTable>(len) {
+            FfiConverterTypeUniFFIDocxTable.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiDocxTable>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIDocxTable.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiDocxTable>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIDocxTable.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIDocxTableRow: FfiConverterRustBuffer<List<UniFfiDocxTableRow>> {
+    override fun read(buf: ByteBuffer): List<UniFfiDocxTableRow> {
+        val len = buf.getInt()
+        return List<UniFfiDocxTableRow>(len) {
+            FfiConverterTypeUniFFIDocxTableRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiDocxTableRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIDocxTableRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiDocxTableRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIDocxTableRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIEbookSpineItem: FfiConverterRustBuffer<List<UniFfiEbookSpineItem>> {
+    override fun read(buf: ByteBuffer): List<UniFfiEbookSpineItem> {
+        val len = buf.getInt()
+        return List<UniFfiEbookSpineItem>(len) {
+            FfiConverterTypeUniFFIEbookSpineItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiEbookSpineItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIEbookSpineItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiEbookSpineItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIEbookSpineItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIEbookTocNode: FfiConverterRustBuffer<List<UniFfiEbookTocNode>> {
+    override fun read(buf: ByteBuffer): List<UniFfiEbookTocNode> {
+        val len = buf.getInt()
+        return List<UniFfiEbookTocNode>(len) {
+            FfiConverterTypeUniFFIEbookTocNode.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiEbookTocNode>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIEbookTocNode.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiEbookTocNode>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIEbookTocNode.write(it, buf)
         }
     }
 }
@@ -20445,6 +24393,34 @@ public object FfiConverterSequenceTypeUniFFIHighlightToken: FfiConverterRustBuff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIHighlightToken.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIHtmlResourceLink: FfiConverterRustBuffer<List<UniFfiHtmlResourceLink>> {
+    override fun read(buf: ByteBuffer): List<UniFfiHtmlResourceLink> {
+        val len = buf.getInt()
+        return List<UniFfiHtmlResourceLink>(len) {
+            FfiConverterTypeUniFFIHtmlResourceLink.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiHtmlResourceLink>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIHtmlResourceLink.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiHtmlResourceLink>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIHtmlResourceLink.write(it, buf)
         }
     }
 }
@@ -20781,6 +24757,34 @@ public object FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint: FfiConverter
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIScenarioBenchmarkPoint.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFISheetRow: FfiConverterRustBuffer<List<UniFfiSheetRow>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSheetRow> {
+        val len = buf.getInt()
+        return List<UniFfiSheetRow>(len) {
+            FfiConverterTypeUniFFISheetRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSheetRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISheetRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSheetRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISheetRow.write(it, buf)
         }
     }
 }
@@ -22337,6 +26341,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Converts a DOCX document into standard GitHub-Flavored Markdown.
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiConvertDocxToMarkdown`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_convert_docx_to_markdown(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Computes CRC-32 (IEEE 802.3) checksum.
          */ fun `uniffiCrc32`(`data`: kotlin.ByteArray): kotlin.UInt {
             return FfiConverterUInt.lift(
@@ -22538,12 +26555,103 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiEvaluateFormula`(`formula`: kotlin.String, `contextCells`: List<UniFfiCell>?): UniFfiCellValue {
+            return FfiConverterTypeUniFFICellValue.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula(
+        FfiConverterString.lower(`formula`),FfiConverterOptionalSequenceTypeUniFFICell.lower(`contextCells`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts comprehensive metadata tags and embedded cover art from in-memory audio bytes.
          */
     @Throws(UniFfiAudioException::class) fun `uniffiExtractAudioMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiAudioMetadata {
             return FfiConverterTypeUniFFIAudioMetadata.lift(
     uniffiRustCallWithError(UniFfiAudioException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts structured paragraphs, tables, and outline metrics from a DOCX archive.
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiExtractDocxDocument`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiDocxDocument {
+            return FfiConverterTypeUniFFIDocxDocument.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_docx_document(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts and parses a single chapter document into structured XHTML content and word metrics.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiExtractEbookChapter`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookChapter {
+            return FfiConverterTypeUniFFIEbookChapter.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_chapter(
+        FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`href`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts the embedded cover artwork resource if available.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiExtractEbookCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookResource? {
+            return FfiConverterOptionalTypeUniFFIEbookResource.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_cover(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts publication metadata and cover presence from in-memory ebook bytes.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiExtractEbookMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookMetadata {
+            return FfiConverterTypeUniFFIEbookMetadata.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_metadata(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts an embedded asset resource (image, stylesheet, font) by href path.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiExtractEbookResource`(`data`: kotlin.ByteArray, `href`: kotlin.String, `fileName`: kotlin.String?): UniFfiEbookResource {
+            return FfiConverterTypeUniFFIEbookResource.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_resource(
+        FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`href`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts the hierarchical Table of Contents (TOC) tree from in-memory ebook bytes.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiExtractEbookToc`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookTocNode> {
+            return FfiConverterSequenceTypeUniFFIEbookTocNode.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc(
         FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
 }
     )
@@ -22558,6 +26666,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(
         FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts all asset and resource links (images, stylesheets, scripts, audio/video) from HTML markup.
+         */
+    @Throws(UniFfiHtmlException::class) fun `uniffiExtractHtmlResources`(`htmlContent`: kotlin.String): List<UniFfiHtmlResourceLink> {
+            return FfiConverterSequenceTypeUniFFIHtmlResourceLink.lift(
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources(
+        FfiConverterString.lower(`htmlContent`),_status)
 }
     )
     }
@@ -22629,6 +26750,32 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Extracts parsed worksheet data with cell coordinates and values from an XLSX archive.
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiExtractSheetData`(`data`: kotlin.ByteArray, `sheetNameOrIndex`: kotlin.String, `maxRows`: kotlin.UInt?, `fileName`: kotlin.String?): UniFfiSheetData {
+            return FfiConverterTypeUniFFISheetData.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_data(
+        FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`sheetNameOrIndex`),FfiConverterOptionalUInt.lower(`maxRows`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts worksheet names from an in-memory XLSX spreadsheet archive.
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiExtractSheetNames`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_sheet_names(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts structural outline symbol tree from source code text.
          */ fun `uniffiExtractSymbols`(`code`: kotlin.String, `languageHint`: kotlin.String): List<UniFfiSymbolNode> {
             return FfiConverterSequenceTypeUniFFISymbolNode.lift(
@@ -22673,6 +26820,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(
         FfiConverterTypeUniFFISyntheticCorpusType.lower(`corpusType`),FfiConverterULong.lower(`sizeBytes`),FfiConverterOptionalULong.lower(`seed`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns the ordered reading spine items from in-memory ebook bytes.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiGetEbookSpine`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): List<UniFfiEbookSpineItem> {
+            return FfiConverterSequenceTypeUniFFIEbookSpineItem.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_get_ebook_spine(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
 }
     )
     }
@@ -22735,6 +26895,18 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(
         FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),FfiConverterUInt.lower(`startLine`),FfiConverterUInt.lower(`lineCount`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Instantiates a new thread-safe HTML preview & transformation service.
+         */ fun `uniffiHtmlServiceNew`(): UniFfiHtmlService {
+            return FfiConverterTypeUniFFIHtmlService.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_html_service_new(
+        _status)
 }
     )
     }
@@ -22897,12 +27069,64 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Probes and identifies the ebook container format directly from in-memory bytes.
+         */
+    @Throws(UniFfiEbookException::class) fun `uniffiProbeEbookBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiEbookFormat {
+            return FfiConverterTypeUniFFIEbookFormat.lift(
+    uniffiRustCallWithError(UniFfiEbookException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Probes the format classification of an in-memory HTML or markup byte buffer.
+         */
+    @Throws(UniFfiHtmlException::class) fun `uniffiProbeHtmlBytes`(`bytes`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiHtmlFormat {
+            return FfiConverterTypeUniFFIHtmlFormat.lift(
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes(
+        FfiConverterByteArray.lower(`bytes`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Probes the format classification of a file on disk.
+         */
+    @Throws(UniFfiHtmlException::class) fun `uniffiProbeHtmlFile`(`filePath`: kotlin.String): UniFfiHtmlFormat {
+            return FfiConverterTypeUniFFIHtmlFormat.lift(
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_html_file(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Probes image format, dimensions, color space, and EXIF tags without full pixel decompression.
          */
     @Throws(TtZipException::class) fun `uniffiProbeImageInfo`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiImageInfo {
             return FfiConverterTypeUniFFIImageInfo.lift(
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Probes and identifies the Office document format directly from in-memory bytes.
+         */
+    @Throws(UniFfiOfficeException::class) fun `uniffiProbeOfficeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiOfficeFormat {
+            return FfiConverterTypeUniFFIOfficeFormat.lift(
+    uniffiRustCallWithError(UniFfiOfficeException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes(
         FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
 }
     )
@@ -22922,6 +27146,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Rewrites HTML relative resource links to `ttzip-vfs://` URLs and sanitizes DOM markup according to policy.
+         */
+    @Throws(UniFfiHtmlException::class) fun `uniffiRewriteHtmlVfs`(`htmlContent`: kotlin.String, `baseVfsPrefix`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): UniFfiHtmlTransformResult {
+            return FfiConverterTypeUniFFIHtmlTransformResult.lift(
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs(
+        FfiConverterString.lower(`htmlContent`),FfiConverterString.lower(`baseVfsPrefix`),FfiConverterTypeUniFFIHtmlSanitizationPolicy.lower(`policy`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Samples a cropped viewport tile from an in-memory image buffer.
          */
     @Throws(TtZipException::class) fun `uniffiSampleViewport`(`data`: kotlin.ByteArray, `params`: UniFfiViewportCropParams): UniFfiViewportTile {
@@ -22929,6 +27166,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(
         FfiConverterByteArray.lower(`data`),FfiConverterTypeUniFFIViewportCropParams.lower(`params`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sanitizes HTML markup according to security policy without changing relative paths.
+         */
+    @Throws(UniFfiHtmlException::class) fun `uniffiSanitizeHtml`(`htmlContent`: kotlin.String, `policy`: UniFfiHtmlSanitizationPolicy): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(UniFfiHtmlException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html(
+        FfiConverterString.lower(`htmlContent`),FfiConverterTypeUniFFIHtmlSanitizationPolicy.lower(`policy`),_status)
 }
     )
     }

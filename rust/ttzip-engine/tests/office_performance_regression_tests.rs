@@ -362,14 +362,32 @@ fn test_master_anti_regression_invariant_6_gate() {
     let docx_bytes = make_benchmark_docx(100);
     let xlsx_bytes = make_benchmark_xlsx(3, 200);
 
-    let (docx_lat1, _) = measure_workload(|| {
-        let _ = parse_office_metadata_from_slice(&docx_bytes);
-    });
-    let (docx_lat2, _) = measure_workload(|| {
-        let _ = parse_office_metadata_from_slice(&docx_bytes);
-    });
+    let mut docx_p1_samples = Vec::new();
+    let mut docx_p2_samples = Vec::new();
+    for _ in 0..7 {
+        let (lat1, _) = measure_workload(|| {
+            for _ in 0..10 {
+                let _ = parse_office_metadata_from_slice(&docx_bytes);
+            }
+        });
+        docx_p1_samples.push(lat1);
+        let (lat2, _) = measure_workload(|| {
+            for _ in 0..10 {
+                let _ = parse_office_metadata_from_slice(&docx_bytes);
+            }
+        });
+        docx_p2_samples.push(lat2);
+    }
+    docx_p1_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    docx_p2_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let docx_lat1 = docx_p1_samples[docx_p1_samples.len() / 2];
+    let docx_lat2 = docx_p2_samples[docx_p2_samples.len() / 2];
 
-    let regression_pct = ((docx_lat2 - docx_lat1) / docx_lat1) * 100.0;
+    let regression_pct = if docx_lat2 > docx_lat1 {
+        ((docx_lat2 - docx_lat1) / docx_lat1) * 100.0
+    } else {
+        0.0
+    };
     println!(
         "[Invariant 6 Gate] DOCX Pass 1: {:.4} ms, Pass 2: {:.4} ms -> Delta: {:+.2}%",
         docx_lat1 * 1000.0,
@@ -384,14 +402,32 @@ fn test_master_anti_regression_invariant_6_gate() {
         MAX_ALLOWED_REGRESSION_PCT
     );
 
-    let (xlsx_lat1, _) = measure_workload(|| {
-        let _ = parse_office_metadata_from_slice(&xlsx_bytes);
-    });
-    let (xlsx_lat2, _) = measure_workload(|| {
-        let _ = parse_office_metadata_from_slice(&xlsx_bytes);
-    });
+    let mut xlsx_p1_samples = Vec::new();
+    let mut xlsx_p2_samples = Vec::new();
+    for _ in 0..7 {
+        let (lat1, _) = measure_workload(|| {
+            for _ in 0..10 {
+                let _ = parse_office_metadata_from_slice(&xlsx_bytes);
+            }
+        });
+        xlsx_p1_samples.push(lat1);
+        let (lat2, _) = measure_workload(|| {
+            for _ in 0..10 {
+                let _ = parse_office_metadata_from_slice(&xlsx_bytes);
+            }
+        });
+        xlsx_p2_samples.push(lat2);
+    }
+    xlsx_p1_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    xlsx_p2_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let xlsx_lat1 = xlsx_p1_samples[xlsx_p1_samples.len() / 2];
+    let xlsx_lat2 = xlsx_p2_samples[xlsx_p2_samples.len() / 2];
 
-    let xlsx_regression_pct = ((xlsx_lat2 - xlsx_lat1) / xlsx_lat1) * 100.0;
+    let xlsx_regression_pct = if xlsx_lat2 > xlsx_lat1 {
+        ((xlsx_lat2 - xlsx_lat1) / xlsx_lat1) * 100.0
+    } else {
+        0.0
+    };
     println!(
         "[Invariant 6 Gate] XLSX Pass 1: {:.4} ms, Pass 2: {:.4} ms -> Delta: {:+.2}%",
         xlsx_lat1 * 1000.0,

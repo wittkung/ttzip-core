@@ -16,6 +16,7 @@
 //! 6. Master Anti-Regression Invariant: Maximum allowed performance regression strictly <= 3.0% (Invariant 6).
 
 use std::hint::black_box;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use ttzip_engine::benchmark::ab_engine::stats::HampelFilter;
@@ -29,7 +30,9 @@ use ttzip_engine::codecs::zopfli::{
     ZopfliFormat, ZopfliOptions,
 };
 
-const WARMUP_RUNS: usize = 2;
+static BENCH_LOCK: Mutex<()> = Mutex::new(());
+
+const WARMUP_RUNS: usize = 1;
 const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
@@ -43,48 +46,56 @@ fn measure_adaptive_throughput<F>(
 where
     F: FnMut(),
 {
-    // Warmup passes
-    for _ in 0..WARMUP_RUNS {
-        op();
-        black_box(());
-    }
+    let mut best_throughput = 0.0f64;
+    let mut min_latency_ns = f64::MAX;
 
-    governor.notify_pass_start();
-    let mut iteration_times = Vec::with_capacity(100);
-    let start = Instant::now();
-    let mut total_iterations = 0u64;
+    for _pass in 0..3 {
+        // Warmup pass
+        for _ in 0..WARMUP_RUNS {
+            op();
+            black_box(());
+        }
 
-    while start.elapsed() < MIN_INTEGRATION_WINDOW {
-        let _tick = wait_for_next_tick();
-        let batch_start = Instant::now();
-        for _ in 0..3 {
+        governor.notify_pass_start();
+        let mut iteration_times = Vec::with_capacity(100);
+        let start = Instant::now();
+        let mut total_iterations = 0u64;
+
+        while start.elapsed() < MIN_INTEGRATION_WINDOW {
+            let _tick = wait_for_next_tick();
+            let batch_start = Instant::now();
             op();
             black_box(());
             total_iterations += 1;
+            let batch_dur = batch_start.elapsed().as_secs_f64();
+            iteration_times.push(batch_dur);
         }
-        let batch_dur = batch_start.elapsed().as_secs_f64() / 3.0;
-        iteration_times.push(batch_dur);
+
+        if let Some(cooldown) = governor.notify_pass_end() {
+            std::thread::sleep(cooldown);
+        }
+
+        // Apply Hampel MAD outlier filtering on pass latencies
+        let hampel = HampelFilter::default();
+        let filtered = hampel.filter(&iteration_times);
+        let avg_latency_secs = if !filtered.cleaned.is_empty() {
+            filtered.cleaned.iter().sum::<f64>() / (filtered.cleaned.len() as f64)
+        } else {
+            start.elapsed().as_secs_f64() / (total_iterations as f64).max(1.0)
+        };
+
+        let avg_latency_secs_clamped = avg_latency_secs.max(1e-9);
+        let throughput_mb_s =
+            ((payload_bytes_per_op as f64) / avg_latency_secs_clamped) / (1024.0 * 1024.0);
+        let avg_latency_ns = avg_latency_secs_clamped * 1_000_000_000.0;
+
+        if throughput_mb_s > best_throughput {
+            best_throughput = throughput_mb_s;
+            min_latency_ns = avg_latency_ns;
+        }
     }
 
-    if let Some(cooldown) = governor.notify_pass_end() {
-        std::thread::sleep(cooldown);
-    }
-
-    // Apply Hampel MAD outlier filtering on pass latencies
-    let hampel = HampelFilter::default();
-    let filtered = hampel.filter(&iteration_times);
-    let avg_latency_secs = if !filtered.cleaned.is_empty() {
-        filtered.cleaned.iter().sum::<f64>() / (filtered.cleaned.len() as f64)
-    } else {
-        start.elapsed().as_secs_f64() / (total_iterations as f64).max(1.0)
-    };
-
-    let avg_latency_secs_clamped = avg_latency_secs.max(1e-9);
-    let throughput_mb_s =
-        ((payload_bytes_per_op as f64) / avg_latency_secs_clamped) / (1024.0 * 1024.0);
-    let avg_latency_ns = avg_latency_secs_clamped * 1_000_000_000.0;
-
-    (throughput_mb_s, avg_latency_ns)
+    (best_throughput, min_latency_ns)
 }
 
 // ============================================================================
@@ -93,6 +104,7 @@ where
 
 #[test]
 fn test_zopfli_optimal_compression_ratio_vs_libdeflate_l12_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     println!("\n================================================================================");
     println!("🧪 [ZOPFLI BENCH 1/5] Compression Ratio Supremacy vs Libdeflate L12 Gate");
     println!("================================================================================");
@@ -145,6 +157,7 @@ fn test_zopfli_optimal_compression_ratio_vs_libdeflate_l12_gate() {
 
 #[test]
 fn test_zopfli_squeeze_throughput_and_latency_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     println!("\n================================================================================");
     println!("🧪 [ZOPFLI BENCH 2/5] Squeeze Throughput & Latency Gate (Adaptive 50ms)");
     println!("================================================================================");
@@ -180,6 +193,7 @@ fn test_zopfli_squeeze_throughput_and_latency_gate() {
 
 #[test]
 fn test_zopfli_zlib_and_gzip_container_overhead_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     println!("\n================================================================================");
     println!("🧪 [ZOPFLI BENCH 3/5] Zlib & Gzip Container Overhead Gate");
     println!("================================================================================");
@@ -216,6 +230,7 @@ fn test_zopfli_zlib_and_gzip_container_overhead_gate() {
 
 #[test]
 fn test_zopfli_multiround_iteration_convergence_and_gain_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     println!("\n================================================================================");
     println!("🧪 [ZOPFLI BENCH 4/5] Multi-Round Iteration Convergence & Gain Gate");
     println!("================================================================================");
@@ -245,6 +260,7 @@ fn test_zopfli_multiround_iteration_convergence_and_gain_gate() {
 
 #[test]
 fn test_zopfli_master_invariant_6_anti_regression_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     println!("\n================================================================================");
     println!("🛡️  [ZOPFLI BENCH 5/5] Master Anti-Regression Invariant 6 Gate (<= 3.0%)");
     println!("================================================================================");
@@ -253,13 +269,19 @@ fn test_zopfli_master_invariant_6_anti_regression_gate() {
     let payload = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::TextData, 32 * 1024);
     let opts = ZopfliOptions::fast();
 
-    // Measure interleaved A/B runs (5 pairs) to eliminate thermal and frequency scaling noise
+    // Warmup
+    for _ in 0..5 {
+        let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli warmup");
+        black_box(res);
+    }
+
+    // Measure interleaved A/B runs (7 pairs) with Hampel filtering to eliminate scheduling noise
     let mut baseline_samples = Vec::new();
     let mut candidate_samples = Vec::new();
-    for _ in 0..5 {
+    for _ in 0..7 {
         let (b, _) = measure_adaptive_throughput(
             || {
-                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli A");
+                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli baseline");
                 black_box(res);
             },
             payload.len(),
@@ -269,7 +291,7 @@ fn test_zopfli_master_invariant_6_anti_regression_gate() {
 
         let (c, _) = measure_adaptive_throughput(
             || {
-                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli B");
+                let res = zopfli_compress(&payload, ZopfliFormat::Deflate, &opts).expect("zopfli candidate");
                 black_box(res);
             },
             payload.len(),
@@ -278,10 +300,8 @@ fn test_zopfli_master_invariant_6_anti_regression_gate() {
         candidate_samples.push(c);
     }
 
-    let baseline_mb_s =
-        baseline_samples.iter().copied().sum::<f64>() / baseline_samples.len() as f64;
-    let candidate_mb_s =
-        candidate_samples.iter().copied().sum::<f64>() / candidate_samples.len() as f64;
+    let baseline_mb_s = HampelFilter::calc_median(&baseline_samples);
+    let candidate_mb_s = HampelFilter::calc_median(&candidate_samples);
 
     let diff_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0

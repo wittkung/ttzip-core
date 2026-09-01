@@ -45,7 +45,10 @@ def scan_loc_gate(root_dir: Path, max_loc: int = MAX_LOC_THRESHOLD):
 
         for root, dirs, files in os.walk(dir_path):
             # Prune ignored directories in-place
-            dirs[:] = [d for d in dirs if d not in IGNORED_DIRS]
+            dirs[:] = [
+                d for d in dirs
+                if d not in IGNORED_DIRS and not d.startswith("target") and not d.startswith(".build") and not d.startswith(".")
+            ]
 
             for file in files:
                 if file in IGNORED_FILENAMES:

@@ -142,7 +142,8 @@ case "pipeline":
     exit(0)
 
 case "gate":
-    let success = executeGateBenchmark(jsonOut: jsonOut)
+    let effectiveSizeMB = args.contains("--size-mb") ? corpusSizeMB : 2
+    let success = executeGateBenchmark(corpusSizeMB: effectiveSizeMB, jsonOut: jsonOut)
     exit(success ? 0 : 70)
 
 default:

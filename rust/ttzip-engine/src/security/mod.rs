@@ -15,6 +15,7 @@ pub mod bzip2_defense;
 pub mod deflate_ng_defense;
 pub mod ebook_defense;
 pub mod ed25519_defense;
+pub mod html_defense;
 pub mod image_defense;
 pub mod libdeflate_defense;
 pub mod license;
@@ -45,6 +46,17 @@ pub use bzip2_defense::*;
 pub use deflate_ng_defense::*;
 pub use ebook_defense::*;
 pub use ed25519_defense::*;
+pub use html_defense::{
+    AttributeQuotaGuard, AttributeQuotaReport, ExternalNetworkSandboxGuard, HtmlDefenseError,
+    HtmlDefenseOptions, HtmlDefenseReport, HtmlMemoryBudgetGuard, HtmlSanitizerGuard,
+    HtmlSecurityPipeline, HtmlSecurityPipelineResult, NetworkSandboxOptions,
+    NetworkSandboxReport, SanitizerReport, SensitiveHtmlBuffer, TagDepthReport,
+    TagNestingDepthGuard, DEFAULT_HTML_TRUNCATION_THRESHOLD, DEFAULT_MAX_HTML_ATTRIBUTE_LEN,
+    DEFAULT_MAX_HTML_ATTRIBUTES_PER_ELEMENT, DEFAULT_MAX_HTML_DEPTH,
+    DEFAULT_MAX_HTML_MEMORY_BUDGET, DEFAULT_MAX_HTML_TEXT_CHUNK_LEN,
+    DEFAULT_MAX_HTML_TOTAL_ATTRIBUTE_LEN, DEFAULT_MAX_UNCLOSED_TAGS, DEFAULT_STRICT_CSP_CONTENT,
+    DEFAULT_VFS_URI_PREFIX, HTML_TRUNCATION_BANNER,
+};
 pub use image_defense::*;
 pub use libdeflate_defense::*;
 pub use license::*;

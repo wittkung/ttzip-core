@@ -436,7 +436,7 @@ impl PdfTextExtractor {
         content: &Content,
         font_cmaps: &HashMap<Vec<u8>, ToUnicodeCMap>,
     ) -> String {
-        let mut out = String::new();
+        let mut out = String::with_capacity(4096);
         let mut current_font: Option<Vec<u8>> = None;
         let mut in_text_object = false;
 

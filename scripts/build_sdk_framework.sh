@@ -137,8 +137,8 @@ copy_if_changed() {
 compute_fingerprint() {
     local git_tree dirty_diff top_vendor_diff rustc_ver script_hash
     git_tree="$(git -C "${REPO_ROOT}" rev-parse HEAD:rust 2>/dev/null || echo "no-git")"
-    dirty_diff="$( (git -C "${REPO_ROOT}" diff HEAD -- rust vendor 2>/dev/null; git -C "${REPO_ROOT}" ls-files --others --exclude-standard rust vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
-    top_vendor_diff="$( (git -C "${REPO_ROOT}/.." diff HEAD -- vendor 2>/dev/null; git -C "${REPO_ROOT}/.." ls-files --others --exclude-standard vendor 2>/dev/null) | shasum -a 256 | awk '{print $1}')"
+    dirty_diff="$( (git -C "${REPO_ROOT}" diff HEAD -- rust vendor 2>/dev/null || true; git -C "${REPO_ROOT}" ls-files --others --exclude-standard rust vendor 2>/dev/null || true) | shasum -a 256 | awk '{print $1}')"
+    top_vendor_diff="$( (git -C "${REPO_ROOT}/.." diff HEAD -- vendor 2>/dev/null || true; git -C "${REPO_ROOT}/.." ls-files --others --exclude-standard vendor 2>/dev/null || true) | shasum -a 256 | awk '{print $1}')"
     rustc_ver="$(rustc -Vv 2>/dev/null | shasum -a 256 | awk '{print $1}')"
     script_hash="$(shasum -a 256 "${BASH_SOURCE[0]}" "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" 2>/dev/null | shasum -a 256 | awk '{print $1}')"
     printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s" \
@@ -146,18 +146,29 @@ compute_fingerprint() {
         | shasum -a 256 | awk '{print $1}'
 }
 
-
 CURRENT_FINGERPRINT="$(compute_fingerprint)"
 
+save_fingerprint() {
+    local target_file="$1"
+    local fp="$2"
+    local tmp_file
+    mkdir -p "$(dirname "${target_file}")"
+    tmp_file="$(mktemp "${target_file}.XXXXXX")"
+    echo "${fp}" > "${tmp_file}"
+    mv -f "${tmp_file}" "${target_file}"
+}
+
 check_artifacts_exist() {
-    [ -f "${XCFRAMEWORK_DIR}/Info.plist" ] || return 1
-    [ -f "${SLICE_DIR}/libTTZipVendor.a" ] || return 1
-    [ -f "${SLICE_DIR}/Headers/ttzip_engineFFI.h" ] || return 1
-    [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ] || return 1
-    [ -f "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h" ] || return 1
+    [ -s "${XCFRAMEWORK_DIR}/Info.plist" ] || return 1
+    [ -s "${SLICE_DIR}/libTTZipVendor.a" ] || return 1
+    [ -s "${SLICE_DIR}/Headers/ttzip_engineFFI.h" ] || return 1
+    [ -s "${XCFRAMEWORK_DIR}/macos-arm64/libTTZipVendor.a" ] || return 1
+    [ -s "${XCFRAMEWORK_DIR}/macos-arm64/Headers/ttzip_engineFFI.h" ] || return 1
+    [ -s "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ] || return 1
+    [ -s "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h" ] || return 1
     if [ "${NO_ZIP}" = "0" ]; then
-        [ -f "${DIST_DIR}/TTZipVendor-v${VERSION}.xcframework.zip" ] || return 1
-        [ -f "${DIST_DIR}/TTZipVendor-v${VERSION}.xcframework.zip.sha256" ] || return 1
+        [ -s "${DIST_DIR}/TTZipVendor-v${VERSION}.xcframework.zip" ] || return 1
+        [ -s "${DIST_DIR}/TTZipVendor-v${VERSION}.xcframework.zip.sha256" ] || return 1
     fi
     return 0
 }
@@ -183,15 +194,17 @@ mkdir -p "${SLICE_DIR}/Headers" "${XCFRAMEWORK_DIR}/macos-arm64/Headers"
 
 if [ "${BUILD_NATIVE_ONLY}" = "1" ]; then
     echo "--> [INFO] Fast Path: Building native architecture only (${HOST_ARCH} ${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.a"
-    if [ ! -f "${TARGET_LIB}" ]; then
-        TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a"
+    if [ -f "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a" ]; then
+        if [ ! -f "${TARGET_LIB}" ] || [ "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a" -nt "${TARGET_LIB}" ]; then
+            TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a"
+        fi
     fi
-    CODEC_LIB="$(ls -t ${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
+    CODEC_LIB="$(ls -t "${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/build"/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
     if [ -z "${CODEC_LIB}" ]; then
-        CODEC_LIB="$(find "${EFFECTIVE_TARGET_DIR}" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
+        CODEC_LIB="$(ls -t "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/build"/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
     fi
     
     if [ -n "${CODEC_LIB}" ] && [ -f "${CODEC_LIB}" ]; then
@@ -210,7 +223,7 @@ else
     done
 
     echo "--> [INFO] Building ttzip-engine for arm64 & x86_64 via unified Cargo Jobserver (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine \
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib --bin uniffi-bindgen \
         --target "aarch64-apple-darwin" \
         --target "x86_64-apple-darwin" \
         ${CARGO_FLAGS} ${OFFLINE_FLAG}
@@ -222,15 +235,8 @@ else
     ARM64_COMBINED="/tmp/libTTZip_arm64.a"
     X86_64_COMBINED="/tmp/libTTZip_x86_64.a"
 
-    CODEC_LIB_ARM64="$(ls -t ${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
-    if [ -z "${CODEC_LIB_ARM64}" ]; then
-        CODEC_LIB_ARM64="$(find "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-    fi
-
-    CODEC_LIB_X86_64="$(ls -t ${EFFECTIVE_TARGET_DIR}/x86_64-apple-darwin/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
-    if [ -z "${CODEC_LIB_X86_64}" ]; then
-        CODEC_LIB_X86_64="$(find "${EFFECTIVE_TARGET_DIR}/x86_64-apple-darwin" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
-    fi
+    CODEC_LIB_ARM64="$(ls -t "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/build"/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
+    CODEC_LIB_X86_64="$(ls -t "${EFFECTIVE_TARGET_DIR}/x86_64-apple-darwin/${BUILD_MODE}/build"/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
 
     if [ -n "${CODEC_LIB_ARM64}" ] && [ -f "${CODEC_LIB_ARM64}" ]; then
         libtool -static -no_warning_for_no_symbols -o "${ARM64_COMBINED}" "${BUILT_ARM64_LIB}" "${CODEC_LIB_ARM64}"
@@ -252,11 +258,20 @@ fi
 
 # 5. 生成 UniFFI 绑定与 Scaffolding C 头文件（仅在接口变更或产物缺失时执行，保护下游 SwiftPM 编译缓存）
 compute_uniffi_api_fingerprint() {
-    local git_root
-    git_root="$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null || echo "${REPO_ROOT}/..")"
+    local git_root rel_rust
+    git_root="$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null || echo "${REPO_ROOT}")"
+    if [ -d "${git_root}/rust/ttzip-engine" ]; then
+        rel_rust="rust/ttzip-engine"
+    elif [ -d "${git_root}/core/rust/ttzip-engine" ]; then
+        rel_rust="core/rust/ttzip-engine"
+    else
+        rel_rust="rust/ttzip-engine"
+    fi
     (
-        git -C "${git_root}" diff HEAD -- core/rust/ttzip-engine/src/uniffi_api core/rust/ttzip-engine/src/lib.rs core/rust/ttzip-engine/Cargo.toml 2>/dev/null
-        git -C "${git_root}" ls-files --others --exclude-standard core/rust/ttzip-engine/src/uniffi_api 2>/dev/null
+        git -C "${git_root}" rev-parse "HEAD:${rel_rust}/src/uniffi_api" 2>/dev/null || true
+        git -C "${git_root}" diff HEAD -- "${rel_rust}/src/uniffi_api" "${rel_rust}/src/lib.rs" "${rel_rust}/Cargo.toml" 2>/dev/null || true
+        git -C "${git_root}" ls-files --others --exclude-standard "${rel_rust}/src/uniffi_api" 2>/dev/null || true
+        find "${REPO_ROOT}/rust/ttzip-engine/src/uniffi_api" "${REPO_ROOT}/rust/ttzip-engine/src/lib.rs" -type f -exec shasum -a 256 {} + 2>/dev/null || true
     ) | shasum -a 256 | awk '{print $1}'
 }
 
@@ -270,11 +285,14 @@ if [ "${FORCE_REBUILD}" = "1" ] \
     || [ ! -f "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h" ]; then
     echo "--> [INFO] Generating Mozilla UniFFI bindings (API signatures changed)..."
     FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.dylib"
-    if [ ! -f "${FIRST_DYLIB}" ]; then
-        FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
-    fi
-    if [ ! -f "${FIRST_DYLIB}" ]; then
-        FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
+    if [ -f "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib" ]; then
+        if [ ! -f "${FIRST_DYLIB}" ] || [ "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib" -nt "${FIRST_DYLIB}" ]; then
+            FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
+        fi
+    elif [ -f "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib" ]; then
+        if [ ! -f "${FIRST_DYLIB}" ] || [ "${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib" -nt "${FIRST_DYLIB}" ]; then
+            FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.dylib"
+        fi
     fi
 
     UNIFFI_BIN=""
@@ -300,6 +318,7 @@ if [ "${FORCE_REBUILD}" = "1" ] \
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \
+                --no-format \
                 --metadata-no-deps
         )
     else
@@ -309,6 +328,7 @@ if [ "${FORCE_REBUILD}" = "1" ] \
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \
+                --no-format \
                 --metadata-no-deps
         )
     fi
@@ -327,13 +347,13 @@ if [ "${FORCE_REBUILD}" = "1" ] \
     fi
 
     rm -rf "${TMP_UNIFFI_DIR}"
-    echo "${UNIFFI_API_FINGERPRINT}" > "${UNIFFI_CACHE_FILE}"
+    save_fingerprint "${UNIFFI_CACHE_FILE}" "${UNIFFI_API_FINGERPRINT}"
 else
     echo "⚡ [CACHE] UniFFI API signatures unchanged. Skipping uniffi-bindgen."
 fi
 
 # 6. 生成标准 XCFramework Info.plist（幂等写入）
-TMP_PLIST="$(mktemp /tmp/ttzip_plist.XXXXXX)"
+TMP_PLIST="${EFFECTIVE_TARGET_DIR}/ttzip_plist_tmp.xml"
 cat << 'EOF' > "${TMP_PLIST}"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -398,7 +418,7 @@ if [ "${NO_ZIP}" = "0" ]; then
     echo "${CHECKSUM}" > "${DIST_DIR}/${ZIP_NAME}.sha256"
 
     # 落盘成功构建指纹
-    echo "${CURRENT_FINGERPRINT}" > "${FINGERPRINT_FILE}"
+    save_fingerprint "${FINGERPRINT_FILE}" "${CURRENT_FINGERPRINT}"
 
     echo "======================================================================"
     echo "✅ [SUCCESS] TTZipCore Universal SDK built successfully!"
@@ -409,7 +429,7 @@ if [ "${NO_ZIP}" = "0" ]; then
     echo "======================================================================"
 else
     # 落盘成功构建指纹
-    echo "${CURRENT_FINGERPRINT}" > "${FINGERPRINT_FILE}"
+    save_fingerprint "${FINGERPRINT_FILE}" "${CURRENT_FINGERPRINT}"
 
     echo "======================================================================"
     echo "✅ [SUCCESS] TTZipCore SDK ready in ${XCFRAMEWORK_DIR}"

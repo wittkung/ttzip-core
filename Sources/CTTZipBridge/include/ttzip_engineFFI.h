@@ -566,6 +566,47 @@ RustBuffer uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_bytes(void*_No
 RustBuffer uniffi_ttzip_engine_fn_method_uniffiebookservice_probe_file(void*_Nonnull ptr, RustBuffer file_path, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIHTMLSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIHTMLSERVICE
+void*_Nonnull uniffi_ttzip_engine_fn_clone_uniffihtmlservice(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FREE_UNIFFIHTMLSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FREE_UNIFFIHTMLSERVICE
+void uniffi_ttzip_engine_fn_free_uniffihtmlservice(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CONSTRUCTOR_UNIFFIHTMLSERVICE_NEW
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CONSTRUCTOR_UNIFFIHTMLSERVICE_NEW
+void*_Nonnull uniffi_ttzip_engine_fn_constructor_uniffihtmlservice_new(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_EXTRACT_RESOURCES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_EXTRACT_RESOURCES
+RustBuffer uniffi_ttzip_engine_fn_method_uniffihtmlservice_extract_resources(void*_Nonnull ptr, RustBuffer html_content, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_PROBE_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_PROBE_BYTES
+RustBuffer uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_bytes(void*_Nonnull ptr, RustBuffer bytes, RustBuffer file_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_PROBE_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_PROBE_FILE
+RustBuffer uniffi_ttzip_engine_fn_method_uniffihtmlservice_probe_file(void*_Nonnull ptr, RustBuffer file_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_REWRITE_VFS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_REWRITE_VFS
+RustBuffer uniffi_ttzip_engine_fn_method_uniffihtmlservice_rewrite_vfs(void*_Nonnull ptr, RustBuffer html_content, RustBuffer base_vfs_prefix, RustBuffer policy, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_SANITIZE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_METHOD_UNIFFIHTMLSERVICE_SANITIZE
+RustBuffer uniffi_ttzip_engine_fn_method_uniffihtmlservice_sanitize(void*_Nonnull ptr, RustBuffer html_content, RustBuffer policy, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIIMAGESERVICE
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_CLONE_UNIFFIIMAGESERVICE
 void*_Nonnull uniffi_ttzip_engine_fn_clone_uniffiimageservice(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -2050,6 +2091,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_ebook_toc(RustBuffer data,
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(RustBuffer file_path, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_HTML_RESOURCES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_HTML_RESOURCES
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_html_resources(RustBuffer html_content, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_OFFICE_METADATA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_OFFICE_METADATA
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(RustBuffer file_path, RustCallStatus *_Nonnull out_status
@@ -2136,6 +2182,12 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_highlight_code(RustBuffer code, Ru
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(RustBuffer code, RustBuffer language_hint, uint32_t start_line, uint32_t line_count, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_HTML_SERVICE_NEW
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_HTML_SERVICE_NEW
+void*_Nonnull uniffi_ttzip_engine_fn_func_uniffi_html_service_new(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(RustBuffer src, int32_t acceleration, RustCallStatus *_Nonnull out_status
@@ -2201,6 +2253,16 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_audio_bytes(RustBuffer data,
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_ebook_bytes(RustBuffer data, RustBuffer file_name, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_HTML_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_HTML_BYTES
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_html_bytes(RustBuffer bytes, RustBuffer file_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_HTML_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_HTML_FILE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_html_file(RustBuffer file_path, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_IMAGE_INFO
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PROBE_IMAGE_INFO
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_image_info(RustBuffer data, RustBuffer file_name, RustCallStatus *_Nonnull out_status
@@ -2216,9 +2278,19 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes(RustBuffer data
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(RustBuffer raw_bytes, RustBuffer fallback_encoding, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_REWRITE_HTML_VFS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_REWRITE_HTML_VFS
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs(RustBuffer html_content, RustBuffer base_vfs_prefix, RustBuffer policy, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SAMPLE_VIEWPORT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SAMPLE_VIEWPORT
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(RustBuffer data, RustBuffer params, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SANITIZE_HTML
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SANITIZE_HTML
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_sanitize_html(RustBuffer html_content, RustBuffer policy, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SEARCH_PDF_TEXT
@@ -3445,6 +3517,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_HTML_RESOURCES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_HTML_RESOURCES
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_html_resources(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_OFFICE_METADATA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_OFFICE_METADATA
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata(void
@@ -3547,6 +3625,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_HTML_SERVICE_NEW
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_HTML_SERVICE_NEW
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_html_service_new(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(void
@@ -3625,6 +3709,18 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_probe_ebook_bytes(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_HTML_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_HTML_BYTES
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_probe_html_bytes(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_HTML_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_HTML_FILE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_probe_html_file(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_IMAGE_INFO
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PROBE_IMAGE_INFO
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info(void
@@ -3643,9 +3739,21 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_REWRITE_HTML_VFS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_REWRITE_HTML_VFS
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SAMPLE_VIEWPORT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SAMPLE_VIEWPORT
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SANITIZE_HTML
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SANITIZE_HTML
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html(void
     
 );
 #endif
@@ -4126,6 +4234,36 @@ uint16_t uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_bytes(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIEBOOKSERVICE_PROBE_FILE
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIEBOOKSERVICE_PROBE_FILE
 uint16_t uniffi_ttzip_engine_checksum_method_uniffiebookservice_probe_file(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_EXTRACT_RESOURCES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_EXTRACT_RESOURCES
+uint16_t uniffi_ttzip_engine_checksum_method_uniffihtmlservice_extract_resources(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_PROBE_BYTES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_PROBE_BYTES
+uint16_t uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_bytes(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_PROBE_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_PROBE_FILE
+uint16_t uniffi_ttzip_engine_checksum_method_uniffihtmlservice_probe_file(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_REWRITE_VFS
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_REWRITE_VFS
+uint16_t uniffi_ttzip_engine_checksum_method_uniffihtmlservice_rewrite_vfs(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_SANITIZE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIHTMLSERVICE_SANITIZE
+uint16_t uniffi_ttzip_engine_checksum_method_uniffihtmlservice_sanitize(void
     
 );
 #endif
@@ -4906,6 +5044,12 @@ uint16_t uniffi_ttzip_engine_checksum_constructor_unifficancellationtoken_new(vo
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIEBOOKSERVICE_NEW
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIEBOOKSERVICE_NEW
 uint16_t uniffi_ttzip_engine_checksum_constructor_uniffiebookservice_new(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIHTMLSERVICE_NEW
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_CONSTRUCTOR_UNIFFIHTMLSERVICE_NEW
+uint16_t uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new(void
     
 );
 #endif
