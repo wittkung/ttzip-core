@@ -20,6 +20,7 @@ pub mod mmap_defense;
 pub mod path_sanitizer;
 pub mod secure_extract;
 pub mod snappy_defense;
+pub mod syntax_defense;
 pub mod tar_defense;
 pub mod text_encoding_defense;
 pub mod uniffi_defense;
@@ -44,6 +45,7 @@ pub use mmap_defense::*;
 pub use path_sanitizer::*;
 pub use secure_extract::*;
 pub use snappy_defense::*;
+pub use syntax_defense::*;
 pub use tar_defense::*;
 pub use text_encoding_defense::*;
 pub use uniffi_defense::*;
@@ -51,7 +53,3 @@ pub use xml_defense::*;
 pub use xz_defense::*;
 pub use zip_defense::*;
 pub use zopfli_defense::*;
-
-
-
-

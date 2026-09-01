@@ -152,7 +152,7 @@ fn test_target_03_mixed_heterogeneous_codepages_concatenation() {
     let res = catch_unwind(|| {
         let (name, conf) = detect_charset_with_confidence(&mixed);
         assert!(!name.is_empty());
-        assert!(conf >= 0.0 && conf <= 1.0);
+        assert!((0.0..=1.0).contains(&conf));
         let sanitized = sanitize_filename(&mixed);
         assert!(!sanitized.is_empty());
     });

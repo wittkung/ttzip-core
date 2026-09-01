@@ -77,27 +77,48 @@ impl SupportedLanguage {
 }
 
 pub struct Utf16Index {
-    byte_to_u16: Vec<u32>,
+    byte_to_u16: Option<Vec<u32>>,
     total_u16: u32,
+    total_bytes: usize,
 }
 
 impl Utf16Index {
     pub fn new(text: &str) -> Self {
-        let mut byte_to_u16 = Vec::with_capacity(text.len() + 1);
+        let total_bytes = text.len();
+        if text.is_ascii() {
+            return Self {
+                byte_to_u16: None,
+                total_u16: total_bytes as u32,
+                total_bytes,
+            };
+        }
+        let mut byte_to_u16 = Vec::with_capacity(total_bytes + 1);
         let mut acc = 0u32;
         for b in text.bytes() {
             byte_to_u16.push(acc);
-            if (b as i8) >= -0x40 { acc += if b < 0xF0 { 1 } else { 2 }; }
+            if (b as i8) >= -0x40 {
+                acc += if b < 0xF0 { 1 } else { 2 };
+            }
         }
         byte_to_u16.push(acc);
-        Self { byte_to_u16, total_u16: acc }
+        Self {
+            byte_to_u16: Some(byte_to_u16),
+            total_u16: acc,
+            total_bytes,
+        }
     }
 
     #[inline]
     pub fn byte_range_to_utf16(&self, start: usize, end: usize) -> (u32, u32) {
-        let loc = self.byte_to_u16.get(start).copied().unwrap_or(self.total_u16);
-        let end_loc = self.byte_to_u16.get(end).copied().unwrap_or(self.total_u16);
-        (loc, end_loc.saturating_sub(loc))
+        if let Some(ref map) = self.byte_to_u16 {
+            let loc = map.get(start).copied().unwrap_or(self.total_u16);
+            let end_loc = map.get(end).copied().unwrap_or(self.total_u16);
+            (loc, end_loc.saturating_sub(loc))
+        } else {
+            let loc = start.min(self.total_bytes) as u32;
+            let end_loc = end.min(self.total_bytes) as u32;
+            (loc, end_loc.saturating_sub(loc))
+        }
     }
 }
 
@@ -186,31 +207,49 @@ fn is_operator_kind(k: &str) -> bool {
 #[cfg(feature = "syntax")]
 fn collect_tokens(tree: &tree_sitter::Tree, source: &str) -> Vec<TokenSpan> {
     let index = Utf16Index::new(source);
-    let mut spans = Vec::with_capacity(256);
+    let mut spans = Vec::with_capacity(512);
     let mut cursor = tree.walk();
+    let mut visited_children = false;
 
-    fn walk(cursor: &mut tree_sitter::TreeCursor, idx: &Utf16Index, spans: &mut Vec<TokenSpan>, parent: Option<&str>) {
+    loop {
         let node = cursor.node();
         let kind = node.kind();
-        if node.child_count() == 0 || kind.contains("string") || kind.contains("comment") {
-            if let Some(cat) = classify_node(kind, parent) {
-                let (sb, eb) = (node.start_byte(), node.end_byte());
-                if eb > sb {
-                    let (loc, len) = idx.byte_range_to_utf16(sb, eb);
-                    spans.push(TokenSpan { start_byte: sb as u32, end_byte: eb as u32, utf16_location: loc, utf16_length: len, category: cat });
+        let child_count = node.child_count();
+        let is_leaf_or_opaque = child_count == 0 || kind.contains("string") || kind.contains("comment");
+
+        if !visited_children {
+            if is_leaf_or_opaque {
+                let parent_kind = if kind == "identifier" || kind == "field_identifier" {
+                    node.parent().map(|p| p.kind())
+                } else {
+                    None
+                };
+                if let Some(cat) = classify_node(kind, parent_kind) {
+                    let (sb, eb) = (node.start_byte(), node.end_byte());
+                    if eb > sb {
+                        let (loc, len) = index.byte_range_to_utf16(sb, eb);
+                        spans.push(TokenSpan {
+                            start_byte: sb as u32,
+                            end_byte: eb as u32,
+                            utf16_location: loc,
+                            utf16_length: len,
+                            category: cat,
+                        });
+                    }
                 }
+            } else if cursor.goto_first_child() {
+                continue;
             }
-            return;
         }
-        if cursor.goto_first_child() {
-            loop {
-                walk(cursor, idx, spans, Some(kind));
-                if !cursor.goto_next_sibling() { break; }
-            }
-            cursor.goto_parent();
+
+        if cursor.goto_next_sibling() {
+            visited_children = false;
+        } else if cursor.goto_parent() {
+            visited_children = true;
+        } else {
+            break;
         }
     }
-    walk(&mut cursor, &index, &mut spans, None);
     spans
 }
 

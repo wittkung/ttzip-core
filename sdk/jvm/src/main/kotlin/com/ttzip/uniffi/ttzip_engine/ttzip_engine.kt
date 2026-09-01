@@ -1310,6 +1310,86 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1487,6 +1567,22 @@ internal interface UniffiLib : Library {
     ): Double
     fun uniffi_ttzip_engine_fn_method_uniffiprogressreporter_update(`ptr`: Pointer,`processed`: Long,`currentEntry`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    fun uniffi_ttzip_engine_fn_clone_uniffisyntaxservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffisyntaxservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffisyntaxservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_detect_language(`ptr`: Pointer,`filePathOrExt`: RustBuffer.ByValue,`firstLineHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_extract_symbols(`ptr`: Pointer,`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_get_supported_languages(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code(`ptr`: Pointer,`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`maxLength`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_viewport(`ptr`: Pointer,`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`startLine`: Int,`lineCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1537,6 +1633,26 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_ttzip_engine_fn_method_uniffittzipmediaplayer_update_playback_time(`ptr`: Pointer,`currentMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_ttzip_engine_fn_clone_uniffitextencodingservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffitextencodingservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffitextencodingservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_detect_encoding(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filename(`ptr`: Pointer,`rawBytes`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filenames_batch(`ptr`: Pointer,`items`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_mojibake_utf8(`ptr`: Pointer,`text`: RustBuffer.ByValue,`sourceEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_supported_encodings(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_from_utf8(`ptr`: Pointer,`text`: RustBuffer.ByValue,`encodingName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_to_utf8(`ptr`: Pointer,`data`: RustBuffer.ByValue,`encodingName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffivfstree(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffivfstree(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1555,6 +1671,28 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_clone_uniffixmlmetaservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffixmlmetaservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffixmlmetaservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes(`ptr`: Pointer,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata_from_bytes(`ptr`: Pointer,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline_from_bytes(`ptr`: Pointer,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_from_bytes(`ptr`: Pointer,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_xml(`ptr`: Pointer,`xmlContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffizopflioptimizer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffizopflioptimizer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1813,11 +1951,29 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_deflate_dual_verify_roundtrip(`src`: RustBuffer.ByValue,`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    fun uniffi_ttzip_engine_fn_func_uniffi_detect_encoding(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_detect_language(`filePathOrExt`: RustBuffer.ByValue,`firstLineHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_office_outline(`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_get_supported_languages(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_gzip_compress(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_highlight_code(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`maxLength`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`startLine`: Int,`lineCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(`src`: RustBuffer.ByValue,`acceleration`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1833,9 +1989,15 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_parse_plist_from_bytes(`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_parse_plist_xml(`xmlContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_ppmd_compress(`src`: RustBuffer.ByValue,`order`: Int,`memMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,`order`: Int,`memMb`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(`rawBytes`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1844,6 +2006,10 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(`data`: RustBuffer.ByValue,`encodingName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt(`key`: RustBuffer.ByValue,`iv`: RustBuffer.ByValue,`ciphertext`: RustBuffer.ByValue,`aad`: RustBuffer.ByValue,`tag`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2243,11 +2409,29 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_detect_language(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_highlight_code(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(
     ): Short
@@ -2263,9 +2447,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_xml(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress(
     ): Short
@@ -2274,6 +2464,10 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt(
     ): Short
@@ -2447,6 +2641,16 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_detect_language(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_extract_symbols(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_get_supported_languages(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks(
@@ -2491,6 +2695,20 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_detect_encoding(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filename(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filenames_batch(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_mojibake_utf8(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_supported_encodings(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_from_utf8(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_to_utf8(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children_paged(
@@ -2502,6 +2720,22 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_search(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_from_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_xml(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark(
     ): Short
@@ -2549,9 +2783,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new(
     ): Short
@@ -2904,13 +3144,40 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip() != 38120.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding() != 7884.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata() != 20046.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline() != 48634.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages() != 41512.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress() != 57781.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code() != 41651.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport() != 42695.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593.toShort()) {
@@ -2934,10 +3201,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes() != 33550.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_xml() != 21988.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress() != 37741.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295.toShort()) {
@@ -2950,6 +3226,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new() != 20108.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738.toShort()) {
@@ -3210,6 +3492,21 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update() != 56030.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_detect_language() != 34711.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_extract_symbols() != 40101.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_get_supported_languages() != 51173.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code() != 6380.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport() != 65465.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3276,6 +3573,27 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time() != 4733.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_detect_encoding() != 28063.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filename() != 33783.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filenames_batch() != 17662.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_mojibake_utf8() != 50492.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_supported_encodings() != 53568.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_from_utf8() != 27924.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_to_utf8() != 31079.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3292,6 +3610,30 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata() != 49679.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes() != 5563.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata() != 35213.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata_from_bytes() != 31977.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline() != 43034.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline_from_bytes() != 16662.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_from_bytes() != 15214.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_xml() != 42455.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark() != 50597.toShort()) {
@@ -3363,10 +3705,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new() != 21494.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new() != 49553.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_new() != 23761.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new() != 47668.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new() != 28814.toShort()) {
@@ -6837,6 +7188,343 @@ public object FfiConverterTypeUniFFIProgressReporter: FfiConverter<UniFfiProgres
 
 
 /**
+ * Stateful UniFFI service managing syntax tokenization, language detection, and outline extraction.
+ */
+public interface UniFfiSyntaxServiceInterface {
+    
+    /**
+     * Detects language from filename, extension, and optional first line content (e.g. shebang).
+     */
+    fun `detectLanguage`(`filePathOrExt`: kotlin.String, `firstLineHint`: kotlin.String?): UniFfiLanguageInfo
+    
+    /**
+     * Extracts hierarchical symbol outline tree (functions, classes, structs, traits, headings).
+     */
+    fun `extractSymbols`(`code`: kotlin.String, `languageHint`: kotlin.String): List<UniFfiSymbolNode>
+    
+    /**
+     * Returns list of all known programming and markup languages supported by the engine.
+     */
+    fun `getSupportedLanguages`(): List<UniFfiLanguageInfo>
+    
+    /**
+     * Tokenizes source code into UTF-16 NSRange highlight tokens with optional max length truncation.
+     */
+    fun `highlightCode`(`code`: kotlin.String, `languageHint`: kotlin.String, `maxLength`: kotlin.UInt): List<UniFfiHighlightToken>
+    
+    /**
+     * Tokenizes source code restricted to a specific line viewport for high-performance virtualized rendering.
+     */
+    fun `highlightCodeViewport`(`code`: kotlin.String, `languageHint`: kotlin.String, `startLine`: kotlin.UInt, `lineCount`: kotlin.UInt): List<UniFfiHighlightToken>
+    
+    companion object
+}
+
+/**
+ * Stateful UniFFI service managing syntax tokenization, language detection, and outline extraction.
+ */
+open class UniFfiSyntaxService: Disposable, AutoCloseable, UniFfiSyntaxServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe syntax metadata service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffisyntaxservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffisyntaxservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffisyntaxservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Detects language from filename, extension, and optional first line content (e.g. shebang).
+     */override fun `detectLanguage`(`filePathOrExt`: kotlin.String, `firstLineHint`: kotlin.String?): UniFfiLanguageInfo {
+            return FfiConverterTypeUniFFILanguageInfo.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_detect_language(
+        it, FfiConverterString.lower(`filePathOrExt`),FfiConverterOptionalString.lower(`firstLineHint`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts hierarchical symbol outline tree (functions, classes, structs, traits, headings).
+     */override fun `extractSymbols`(`code`: kotlin.String, `languageHint`: kotlin.String): List<UniFfiSymbolNode> {
+            return FfiConverterSequenceTypeUniFFISymbolNode.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_extract_symbols(
+        it, FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns list of all known programming and markup languages supported by the engine.
+     */override fun `getSupportedLanguages`(): List<UniFfiLanguageInfo> {
+            return FfiConverterSequenceTypeUniFFILanguageInfo.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_get_supported_languages(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Tokenizes source code into UTF-16 NSRange highlight tokens with optional max length truncation.
+     */override fun `highlightCode`(`code`: kotlin.String, `languageHint`: kotlin.String, `maxLength`: kotlin.UInt): List<UniFfiHighlightToken> {
+            return FfiConverterSequenceTypeUniFFIHighlightToken.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code(
+        it, FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),FfiConverterUInt.lower(`maxLength`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Tokenizes source code restricted to a specific line viewport for high-performance virtualized rendering.
+     */override fun `highlightCodeViewport`(`code`: kotlin.String, `languageHint`: kotlin.String, `startLine`: kotlin.UInt, `lineCount`: kotlin.UInt): List<UniFfiHighlightToken> {
+            return FfiConverterSequenceTypeUniFFIHighlightToken.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_viewport(
+        it, FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),FfiConverterUInt.lower(`startLine`),FfiConverterUInt.lower(`lineCount`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISyntaxService: FfiConverter<UniFfiSyntaxService, Pointer> {
+
+    override fun lower(value: UniFfiSyntaxService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiSyntaxService {
+        return UniFfiSyntaxService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiSyntaxService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiSyntaxService) = 8UL
+
+    override fun write(value: UniFfiSyntaxService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Cross-language UniFFI MediaPlayer controller object.
  */
 public interface UniFfittZipMediaPlayerInterface {
@@ -7511,6 +8199,385 @@ public object FfiConverterTypeUniFFITTZipMediaPlayer: FfiConverter<UniFfittZipMe
 
 
 /**
+ * Character encoding and filename remediation service exposed via UniFFI.
+ */
+public interface UniFfiTextEncodingServiceInterface {
+    
+    /**
+     * Detects character set encoding for given raw byte sequence with confidence scoring.
+     */
+    fun `detectEncoding`(`data`: kotlin.ByteArray): UniFfiDetectedEncoding
+    
+    /**
+     * Remediates raw filename bytes into clean UTF-8 with automatic sniffing or fallback.
+     */
+    fun `remediateFilename`(`rawBytes`: kotlin.ByteArray, `fallbackEncoding`: kotlin.String?): UniFfiRemediationResult
+    
+    /**
+     * Batch remediates a collection of raw filename byte sequences.
+     */
+    fun `remediateFilenamesBatch`(`items`: List<kotlin.ByteArray>, `fallbackEncoding`: kotlin.String?): List<UniFfiRemediationResult>
+    
+    /**
+     * Attempts to repair mojibake in a UTF-8 string caused by misinterpreting legacy bytes as Windows-1252/Latin-1.
+     */
+    fun `remediateMojibakeUtf8`(`text`: kotlin.String, `sourceEncoding`: kotlin.String?): UniFfiRemediationResult
+    
+    /**
+     * Returns a list of all pre-configured standard and legacy encodings supported by TTZip.
+     */
+    fun `supportedEncodings`(): List<UniFfiEncodingInfo>
+    
+    /**
+     * Transcodes a UTF-8 string into target legacy or Unicode byte sequence.
+     */
+    fun `transcodeFromUtf8`(`text`: kotlin.String, `encodingName`: kotlin.String): kotlin.ByteArray
+    
+    /**
+     * Transcodes raw byte sequence to valid UTF-8 String using the specified encoding.
+     */
+    fun `transcodeToUtf8`(`data`: kotlin.ByteArray, `encodingName`: kotlin.String): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Character encoding and filename remediation service exposed via UniFFI.
+ */
+open class UniFfiTextEncodingService: Disposable, AutoCloseable, UniFfiTextEncodingServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Creates a new instance of the text encoding service.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffitextencodingservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffitextencodingservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffitextencodingservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Detects character set encoding for given raw byte sequence with confidence scoring.
+     */override fun `detectEncoding`(`data`: kotlin.ByteArray): UniFfiDetectedEncoding {
+            return FfiConverterTypeUniFFIDetectedEncoding.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_detect_encoding(
+        it, FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Remediates raw filename bytes into clean UTF-8 with automatic sniffing or fallback.
+     */override fun `remediateFilename`(`rawBytes`: kotlin.ByteArray, `fallbackEncoding`: kotlin.String?): UniFfiRemediationResult {
+            return FfiConverterTypeUniFFIRemediationResult.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filename(
+        it, FfiConverterByteArray.lower(`rawBytes`),FfiConverterOptionalString.lower(`fallbackEncoding`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Batch remediates a collection of raw filename byte sequences.
+     */override fun `remediateFilenamesBatch`(`items`: List<kotlin.ByteArray>, `fallbackEncoding`: kotlin.String?): List<UniFfiRemediationResult> {
+            return FfiConverterSequenceTypeUniFFIRemediationResult.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filenames_batch(
+        it, FfiConverterSequenceByteArray.lower(`items`),FfiConverterOptionalString.lower(`fallbackEncoding`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Attempts to repair mojibake in a UTF-8 string caused by misinterpreting legacy bytes as Windows-1252/Latin-1.
+     */override fun `remediateMojibakeUtf8`(`text`: kotlin.String, `sourceEncoding`: kotlin.String?): UniFfiRemediationResult {
+            return FfiConverterTypeUniFFIRemediationResult.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_mojibake_utf8(
+        it, FfiConverterString.lower(`text`),FfiConverterOptionalString.lower(`sourceEncoding`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Returns a list of all pre-configured standard and legacy encodings supported by TTZip.
+     */override fun `supportedEncodings`(): List<UniFfiEncodingInfo> {
+            return FfiConverterSequenceTypeUniFFIEncodingInfo.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_supported_encodings(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Transcodes a UTF-8 string into target legacy or Unicode byte sequence.
+     */
+    @Throws(TtZipException::class)override fun `transcodeFromUtf8`(`text`: kotlin.String, `encodingName`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_from_utf8(
+        it, FfiConverterString.lower(`text`),FfiConverterString.lower(`encodingName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Transcodes raw byte sequence to valid UTF-8 String using the specified encoding.
+     */
+    @Throws(TtZipException::class)override fun `transcodeToUtf8`(`data`: kotlin.ByteArray, `encodingName`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_to_utf8(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`encodingName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITextEncodingService: FfiConverter<UniFfiTextEncodingService, Pointer> {
+
+    override fun lower(value: UniFfiTextEncodingService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiTextEncodingService {
+        return UniFfiTextEncodingService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiTextEncodingService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiTextEncodingService) = 8UL
+
+    override fun write(value: UniFfiTextEncodingService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
  */
 public interface UniFfiVfsTreeInterface {
@@ -7727,6 +8794,411 @@ public object FfiConverterTypeUniFFIVfsTree: FfiConverter<UniFfiVfsTree, Pointer
     override fun allocationSize(value: UniFfiVfsTree) = 8UL
 
     override fun write(value: UniFfiVfsTree, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Stateful UniFFI service managing XML and Office/EPUB/Plist document metadata extraction.
+ */
+public interface UniFfiXmlMetaServiceInterface {
+    
+    /**
+     * Extracts EPUB publication metadata from a filesystem path.
+     */
+    fun `extractEpubMetadata`(`filePath`: kotlin.String): UniFfiEpubMetadata
+    
+    /**
+     * Extracts EPUB publication metadata directly from an in-memory byte buffer.
+     */
+    fun `extractEpubMetadataFromBytes`(`bytes`: kotlin.ByteArray): UniFfiEpubMetadata
+    
+    /**
+     * Extracts Office document metadata from a filesystem path.
+     */
+    fun `extractOfficeMetadata`(`filePath`: kotlin.String): UniFfiDocumentMetadata
+    
+    /**
+     * Extracts Office document metadata directly from an in-memory byte buffer.
+     */
+    fun `extractOfficeMetadataFromBytes`(`bytes`: kotlin.ByteArray): UniFfiDocumentMetadata
+    
+    /**
+     * Extracts structural outline from an Office document file path.
+     */
+    fun `extractOfficeOutline`(`filePath`: kotlin.String): UniFfiOfficeOutline
+    
+    /**
+     * Extracts structural outline from an in-memory Office document byte buffer.
+     */
+    fun `extractOfficeOutlineFromBytes`(`bytes`: kotlin.ByteArray): UniFfiOfficeOutline
+    
+    /**
+     * Deserializes an Apple XML Property List byte buffer into a structured dictionary.
+     */
+    fun `parsePlistFromBytes`(`bytes`: kotlin.ByteArray): UniFfiPlistDictionary
+    
+    /**
+     * Deserializes an Apple XML Property List string into a structured dictionary.
+     */
+    fun `parsePlistXml`(`xmlContent`: kotlin.String): UniFfiPlistDictionary
+    
+    companion object
+}
+
+/**
+ * Stateful UniFFI service managing XML and Office/EPUB/Plist document metadata extraction.
+ */
+open class UniFfiXmlMetaService: Disposable, AutoCloseable, UniFfiXmlMetaServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new XML metadata service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffixmlmetaservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffixmlmetaservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffixmlmetaservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Extracts EPUB publication metadata from a filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractEpubMetadata`(`filePath`: kotlin.String): UniFfiEpubMetadata {
+            return FfiConverterTypeUniFFIEpubMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts EPUB publication metadata directly from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractEpubMetadataFromBytes`(`bytes`: kotlin.ByteArray): UniFfiEpubMetadata {
+            return FfiConverterTypeUniFFIEpubMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes(
+        it, FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts Office document metadata from a filesystem path.
+     */
+    @Throws(TtZipException::class)override fun `extractOfficeMetadata`(`filePath`: kotlin.String): UniFfiDocumentMetadata {
+            return FfiConverterTypeUniFFIDocumentMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts Office document metadata directly from an in-memory byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractOfficeMetadataFromBytes`(`bytes`: kotlin.ByteArray): UniFfiDocumentMetadata {
+            return FfiConverterTypeUniFFIDocumentMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata_from_bytes(
+        it, FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts structural outline from an Office document file path.
+     */
+    @Throws(TtZipException::class)override fun `extractOfficeOutline`(`filePath`: kotlin.String): UniFfiOfficeOutline {
+            return FfiConverterTypeUniFFIOfficeOutline.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts structural outline from an in-memory Office document byte buffer.
+     */
+    @Throws(TtZipException::class)override fun `extractOfficeOutlineFromBytes`(`bytes`: kotlin.ByteArray): UniFfiOfficeOutline {
+            return FfiConverterTypeUniFFIOfficeOutline.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline_from_bytes(
+        it, FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Deserializes an Apple XML Property List byte buffer into a structured dictionary.
+     */
+    @Throws(TtZipException::class)override fun `parsePlistFromBytes`(`bytes`: kotlin.ByteArray): UniFfiPlistDictionary {
+            return FfiConverterTypeUniFFIPlistDictionary.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_from_bytes(
+        it, FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Deserializes an Apple XML Property List string into a structured dictionary.
+     */
+    @Throws(TtZipException::class)override fun `parsePlistXml`(`xmlContent`: kotlin.String): UniFfiPlistDictionary {
+            return FfiConverterTypeUniFFIPlistDictionary.lift(
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_xml(
+        it, FfiConverterString.lower(`xmlContent`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIXmlMetaService: FfiConverter<UniFfiXmlMetaService, Pointer> {
+
+    override fun lower(value: UniFfiXmlMetaService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiXmlMetaService {
+        return UniFfiXmlMetaService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiXmlMetaService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiXmlMetaService) = 8UL
+
+    override fun write(value: UniFfiXmlMetaService, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -9629,6 +11101,214 @@ public object FfiConverterTypeUniFFIDeflateStats: FfiConverterRustBuffer<UniFfiD
 
 
 /**
+ * Result of automated character set sniffing and confidence scoring.
+ */
+data class UniFfiDetectedEncoding (
+    /**
+     * Canonical detected character set name.
+     */
+    var `encodingName`: kotlin.String, 
+    /**
+     * Statistical confidence score bounded in [0.0..1.0].
+     */
+    var `confidence`: kotlin.Float, 
+    /**
+     * Whether the payload transcoded into valid UTF-8 without replacement characters.
+     */
+    var `isLossless`: kotlin.Boolean, 
+    /**
+     * UTF-8 decoded text sample preview (capped to 128 characters/bytes).
+     */
+    var `samplePreview`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDetectedEncoding: FfiConverterRustBuffer<UniFfiDetectedEncoding> {
+    override fun read(buf: ByteBuffer): UniFfiDetectedEncoding {
+        return UniFfiDetectedEncoding(
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDetectedEncoding) = (
+            FfiConverterString.allocationSize(value.`encodingName`) +
+            FfiConverterFloat.allocationSize(value.`confidence`) +
+            FfiConverterBoolean.allocationSize(value.`isLossless`) +
+            FfiConverterString.allocationSize(value.`samplePreview`)
+    )
+
+    override fun write(value: UniFfiDetectedEncoding, buf: ByteBuffer) {
+            FfiConverterString.write(value.`encodingName`, buf)
+            FfiConverterFloat.write(value.`confidence`, buf)
+            FfiConverterBoolean.write(value.`isLossless`, buf)
+            FfiConverterString.write(value.`samplePreview`, buf)
+    }
+}
+
+
+
+/**
+ * Universal document metadata record exposing Dublin Core and Office attributes.
+ */
+data class UniFfiDocumentMetadata (
+    /**
+     * Document format classification (e.g. "DOCX", "XLSX", "PPTX", "EPUB", "PropertyList").
+     */
+    var `formatName`: kotlin.String, 
+    /**
+     * Document title or book name.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Primary author, creator, or composer.
+     */
+    var `author`: kotlin.String?, 
+    /**
+     * Subject matter or topic category.
+     */
+    var `subject`: kotlin.String?, 
+    /**
+     * Summary description, abstract, or comments.
+     */
+    var `description`: kotlin.String?, 
+    /**
+     * Comma-separated keyword tags.
+     */
+    var `keywords`: kotlin.String?, 
+    /**
+     * Creation timestamp string (ISO 8601 or W3CDTF).
+     */
+    var `createdDate`: kotlin.String?, 
+    /**
+     * Last modification timestamp string.
+     */
+    var `modifiedDate`: kotlin.String?, 
+    /**
+     * Name of the last user who edited the document.
+     */
+    var `lastModifiedBy`: kotlin.String?, 
+    /**
+     * Authoring application or software generator.
+     */
+    var `application`: kotlin.String?, 
+    /**
+     * Total page count for paginated documents (0 if not applicable).
+     */
+    var `pageCount`: kotlin.UInt, 
+    /**
+     * Estimated or recorded word count.
+     */
+    var `wordCount`: kotlin.UInt, 
+    /**
+     * Total character count.
+     */
+    var `characterCount`: kotlin.UInt, 
+    /**
+     * Total slide count for presentation documents.
+     */
+    var `slideCount`: kotlin.UInt, 
+    /**
+     * Total worksheet count for spreadsheet documents.
+     */
+    var `sheetCount`: kotlin.UInt, 
+    /**
+     * List of worksheet names in spreadsheet workbooks.
+     */
+    var `sheetNames`: List<kotlin.String>, 
+    /**
+     * Extracted slide titles or section header labels.
+     */
+    var `slideTitles`: List<kotlin.String>, 
+    /**
+     * Arbitrary key-value custom properties map.
+     */
+    var `customProperties`: Map<kotlin.String, kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDocumentMetadata: FfiConverterRustBuffer<UniFfiDocumentMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiDocumentMetadata {
+        return UniFfiDocumentMetadata(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterMapStringString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDocumentMetadata) = (
+            FfiConverterString.allocationSize(value.`formatName`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`subject`) +
+            FfiConverterOptionalString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`keywords`) +
+            FfiConverterOptionalString.allocationSize(value.`createdDate`) +
+            FfiConverterOptionalString.allocationSize(value.`modifiedDate`) +
+            FfiConverterOptionalString.allocationSize(value.`lastModifiedBy`) +
+            FfiConverterOptionalString.allocationSize(value.`application`) +
+            FfiConverterUInt.allocationSize(value.`pageCount`) +
+            FfiConverterUInt.allocationSize(value.`wordCount`) +
+            FfiConverterUInt.allocationSize(value.`characterCount`) +
+            FfiConverterUInt.allocationSize(value.`slideCount`) +
+            FfiConverterUInt.allocationSize(value.`sheetCount`) +
+            FfiConverterSequenceString.allocationSize(value.`sheetNames`) +
+            FfiConverterSequenceString.allocationSize(value.`slideTitles`) +
+            FfiConverterMapStringString.allocationSize(value.`customProperties`)
+    )
+
+    override fun write(value: UniFfiDocumentMetadata, buf: ByteBuffer) {
+            FfiConverterString.write(value.`formatName`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`subject`, buf)
+            FfiConverterOptionalString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`keywords`, buf)
+            FfiConverterOptionalString.write(value.`createdDate`, buf)
+            FfiConverterOptionalString.write(value.`modifiedDate`, buf)
+            FfiConverterOptionalString.write(value.`lastModifiedBy`, buf)
+            FfiConverterOptionalString.write(value.`application`, buf)
+            FfiConverterUInt.write(value.`pageCount`, buf)
+            FfiConverterUInt.write(value.`wordCount`, buf)
+            FfiConverterUInt.write(value.`characterCount`, buf)
+            FfiConverterUInt.write(value.`slideCount`, buf)
+            FfiConverterUInt.write(value.`sheetCount`, buf)
+            FfiConverterSequenceString.write(value.`sheetNames`, buf)
+            FfiConverterSequenceString.write(value.`slideTitles`, buf)
+            FfiConverterMapStringString.write(value.`customProperties`, buf)
+    }
+}
+
+
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 data class UniFfiDocxExtractResult (
@@ -9812,6 +11492,75 @@ public object FfiConverterTypeUniFFIEd25519Cert: FfiConverterRustBuffer<UniFfiEd
             FfiConverterLong.write(value.`expiresAtEpochSecs`, buf)
             FfiConverterString.write(value.`signatureBase64`, buf)
             FfiConverterString.write(value.`fingerprintSha256`, buf)
+    }
+}
+
+
+
+/**
+ * Strongly-typed character encoding metadata record exposed via UniFFI.
+ */
+data class UniFfiEncodingInfo (
+    /**
+     * Canonical identifier (e.g. "UTF-8", "GB18030", "Shift_JIS", "Big5").
+     */
+    var `name`: kotlin.String, 
+    /**
+     * User-facing descriptive display title with region / script info.
+     */
+    var `displayName`: kotlin.String, 
+    /**
+     * Standard IANA encoding label string.
+     */
+    var `ianaName`: kotlin.String, 
+    /**
+     * Whether the encoding belongs to the Unicode standard family.
+     */
+    var `isUnicode`: kotlin.Boolean, 
+    /**
+     * Whether the encoding is a CJK (Chinese, Japanese, Korean) multibyte codepage.
+     */
+    var `isCjk`: kotlin.Boolean, 
+    /**
+     * Whether the encoding represents a single-byte (8-bit) legacy codepage.
+     */
+    var `isSingleByte`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIEncodingInfo: FfiConverterRustBuffer<UniFfiEncodingInfo> {
+    override fun read(buf: ByteBuffer): UniFfiEncodingInfo {
+        return UniFfiEncodingInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiEncodingInfo) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterString.allocationSize(value.`ianaName`) +
+            FfiConverterBoolean.allocationSize(value.`isUnicode`) +
+            FfiConverterBoolean.allocationSize(value.`isCjk`) +
+            FfiConverterBoolean.allocationSize(value.`isSingleByte`)
+    )
+
+    override fun write(value: UniFfiEncodingInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterString.write(value.`ianaName`, buf)
+            FfiConverterBoolean.write(value.`isUnicode`, buf)
+            FfiConverterBoolean.write(value.`isCjk`, buf)
+            FfiConverterBoolean.write(value.`isSingleByte`, buf)
     }
 }
 
@@ -10039,17 +11788,44 @@ public object FfiConverterTypeUniFFIEpubCoverData: FfiConverterRustBuffer<UniFfi
 
 
 /**
- * Metadata record of an EPUB book.
+ * Dublin Core metadata record for EPUB digital publications.
  */
 data class UniFfiEpubMetadata (
+    /**
+     * Title of the publication.
+     */
     var `title`: kotlin.String, 
+    /**
+     * List of contributing authors and creators.
+     */
     var `authors`: List<kotlin.String>, 
+    /**
+     * Publishing house or entity.
+     */
     var `publisher`: kotlin.String?, 
+    /**
+     * Primary language code (e.g. "en", "zh-CN").
+     */
     var `language`: kotlin.String?, 
+    /**
+     * ISBN, DOI, or unique package identifier.
+     */
     var `identifier`: kotlin.String?, 
+    /**
+     * Book synopsis or description.
+     */
     var `description`: kotlin.String?, 
+    /**
+     * Initial publication date string.
+     */
     var `publicationDate`: kotlin.String?, 
+    /**
+     * Last modified timestamp string.
+     */
     var `modifiedDate`: kotlin.String?, 
+    /**
+     * Copyright and intellectual property statement.
+     */
     var `rights`: kotlin.String?
 ) {
     
@@ -10149,6 +11925,68 @@ public object FfiConverterTypeUniFFIEpubParseResult: FfiConverterRustBuffer<UniF
 
 
 /**
+ * High-precision highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
+ */
+data class UniFfiHighlightToken (
+    /**
+     * Zero-based character start index in UTF-16 code units (NSRange location).
+     */
+    var `location`: kotlin.UInt, 
+    /**
+     * Length of token span in UTF-16 code units (NSRange length).
+     */
+    var `length`: kotlin.UInt, 
+    /**
+     * Syntactic category ("keyword", "string", "number", "type", "function", "comment", "operator", etc.).
+     */
+    var `category`: kotlin.String, 
+    /**
+     * 1-based source line number for fast viewport filtering.
+     */
+    var `lineNumber`: kotlin.UInt, 
+    /**
+     * 0-based character column offset in UTF-16 code units.
+     */
+    var `column`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIHighlightToken: FfiConverterRustBuffer<UniFfiHighlightToken> {
+    override fun read(buf: ByteBuffer): UniFfiHighlightToken {
+        return UniFfiHighlightToken(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiHighlightToken) = (
+            FfiConverterUInt.allocationSize(value.`location`) +
+            FfiConverterUInt.allocationSize(value.`length`) +
+            FfiConverterString.allocationSize(value.`category`) +
+            FfiConverterUInt.allocationSize(value.`lineNumber`) +
+            FfiConverterUInt.allocationSize(value.`column`)
+    )
+
+    override fun write(value: UniFfiHighlightToken, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`location`, buf)
+            FfiConverterUInt.write(value.`length`, buf)
+            FfiConverterString.write(value.`category`, buf)
+            FfiConverterUInt.write(value.`lineNumber`, buf)
+            FfiConverterUInt.write(value.`column`, buf)
+    }
+}
+
+
+
+/**
  * Comprehensive archive integrity report.
  */
 data class UniFfiIntegrityReport (
@@ -10194,6 +12032,68 @@ public object FfiConverterTypeUniFFIIntegrityReport: FfiConverterRustBuffer<UniF
             FfiConverterSequenceTypeUniFFICorruptedEntry.write(value.`corruptedEntries`, buf)
             FfiConverterULong.write(value.`elapsedNanos`, buf)
             FfiConverterOptionalString.write(value.`errorMessage`, buf)
+    }
+}
+
+
+
+/**
+ * Metadata descriptor of a programming or markup language supported by TTZip.
+ */
+data class UniFfiLanguageInfo (
+    /**
+     * Canonical language identifier string (e.g. "rust", "swift", "python", "json").
+     */
+    var `languageId`: kotlin.String, 
+    /**
+     * Human-readable display name (e.g. "Rust", "Swift", "Python", "JSON").
+     */
+    var `displayName`: kotlin.String, 
+    /**
+     * List of standard file extensions associated with this language without leading dot.
+     */
+    var `fileExtensions`: List<kotlin.String>, 
+    /**
+     * Standard MIME content types.
+     */
+    var `mimeTypes`: List<kotlin.String>, 
+    /**
+     * Whether high-precision AST / Tree-sitter parsing is natively supported.
+     */
+    var `isSupported`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFILanguageInfo: FfiConverterRustBuffer<UniFfiLanguageInfo> {
+    override fun read(buf: ByteBuffer): UniFfiLanguageInfo {
+        return UniFfiLanguageInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiLanguageInfo) = (
+            FfiConverterString.allocationSize(value.`languageId`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterSequenceString.allocationSize(value.`fileExtensions`) +
+            FfiConverterSequenceString.allocationSize(value.`mimeTypes`) +
+            FfiConverterBoolean.allocationSize(value.`isSupported`)
+    )
+
+    override fun write(value: UniFfiLanguageInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`languageId`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterSequenceString.write(value.`fileExtensions`, buf)
+            FfiConverterSequenceString.write(value.`mimeTypes`, buf)
+            FfiConverterBoolean.write(value.`isSupported`, buf)
     }
 }
 
@@ -10694,6 +12594,75 @@ public object FfiConverterTypeUniFFIMultimodalEntryMetadata: FfiConverterRustBuf
 
 
 /**
+ * Structural outline of an Office compound document.
+ */
+data class UniFfiOfficeOutline (
+    /**
+     * High-level document category (e.g. "Word Processing", "Spreadsheet", "Presentation").
+     */
+    var `documentType`: kotlin.String, 
+    /**
+     * Ordered list of section headings and paragraph titles (for DOCX).
+     */
+    var `headings`: List<kotlin.String>, 
+    /**
+     * Ordered list of sheet names (for XLSX).
+     */
+    var `sheets`: List<kotlin.String>, 
+    /**
+     * Ordered list of slide titles and notes headers (for PPTX).
+     */
+    var `slides`: List<kotlin.String>, 
+    /**
+     * Total aggregate count of structural sections across all types.
+     */
+    var `totalSections`: kotlin.UInt, 
+    /**
+     * Leading plain text preview excerpt of the document content.
+     */
+    var `summaryPreview`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIOfficeOutline: FfiConverterRustBuffer<UniFfiOfficeOutline> {
+    override fun read(buf: ByteBuffer): UniFfiOfficeOutline {
+        return UniFfiOfficeOutline(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiOfficeOutline) = (
+            FfiConverterString.allocationSize(value.`documentType`) +
+            FfiConverterSequenceString.allocationSize(value.`headings`) +
+            FfiConverterSequenceString.allocationSize(value.`sheets`) +
+            FfiConverterSequenceString.allocationSize(value.`slides`) +
+            FfiConverterUInt.allocationSize(value.`totalSections`) +
+            FfiConverterString.allocationSize(value.`summaryPreview`)
+    )
+
+    override fun write(value: UniFfiOfficeOutline, buf: ByteBuffer) {
+            FfiConverterString.write(value.`documentType`, buf)
+            FfiConverterSequenceString.write(value.`headings`, buf)
+            FfiConverterSequenceString.write(value.`sheets`, buf)
+            FfiConverterSequenceString.write(value.`slides`, buf)
+            FfiConverterUInt.write(value.`totalSections`, buf)
+            FfiConverterString.write(value.`summaryPreview`, buf)
+    }
+}
+
+
+
+/**
  * Parent directory and autocompletion prefix record.
  */
 data class UniFfiParentAndPrefix (
@@ -10896,6 +12865,158 @@ public object FfiConverterTypeUniFFIPlaybackTimeInfo: FfiConverterRustBuffer<Uni
             FfiConverterULong.write(value.`currentMs`, buf)
             FfiConverterULong.write(value.`durationMs`, buf)
             FfiConverterDouble.write(value.`positionRatio`, buf)
+    }
+}
+
+
+
+/**
+ * Parsed Apple Property List (XML plist) key-value dictionary.
+ */
+data class UniFfiPlistDictionary (
+    /**
+     * Bundle identifier (`CFBundleIdentifier`) if present.
+     */
+    var `bundleIdentifier`: kotlin.String?, 
+    /**
+     * Application display or bundle name (`CFBundleName` / `CFBundleDisplayName`).
+     */
+    var `bundleName`: kotlin.String?, 
+    /**
+     * Build version number string (`CFBundleVersion`).
+     */
+    var `bundleVersion`: kotlin.String?, 
+    /**
+     * Marketing release version string (`CFBundleShortVersionString`).
+     */
+    var `bundleShortVersion`: kotlin.String?, 
+    /**
+     * Minimum macOS deployment target version (`LSMinimumSystemVersion`).
+     */
+    var `minimumOsVersion`: kotlin.String?, 
+    /**
+     * Main binary executable name (`CFBundleExecutable`).
+     */
+    var `executableName`: kotlin.String?, 
+    /**
+     * All top-level key-value string pairs in the dictionary.
+     */
+    var `entries`: Map<kotlin.String, kotlin.String>, 
+    /**
+     * Complete raw XML text for inspection.
+     */
+    var `rawXml`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIPlistDictionary: FfiConverterRustBuffer<UniFfiPlistDictionary> {
+    override fun read(buf: ByteBuffer): UniFfiPlistDictionary {
+        return UniFfiPlistDictionary(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterMapStringString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiPlistDictionary) = (
+            FfiConverterOptionalString.allocationSize(value.`bundleIdentifier`) +
+            FfiConverterOptionalString.allocationSize(value.`bundleName`) +
+            FfiConverterOptionalString.allocationSize(value.`bundleVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`bundleShortVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`minimumOsVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`executableName`) +
+            FfiConverterMapStringString.allocationSize(value.`entries`) +
+            FfiConverterString.allocationSize(value.`rawXml`)
+    )
+
+    override fun write(value: UniFfiPlistDictionary, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`bundleIdentifier`, buf)
+            FfiConverterOptionalString.write(value.`bundleName`, buf)
+            FfiConverterOptionalString.write(value.`bundleVersion`, buf)
+            FfiConverterOptionalString.write(value.`bundleShortVersion`, buf)
+            FfiConverterOptionalString.write(value.`minimumOsVersion`, buf)
+            FfiConverterOptionalString.write(value.`executableName`, buf)
+            FfiConverterMapStringString.write(value.`entries`, buf)
+            FfiConverterString.write(value.`rawXml`, buf)
+    }
+}
+
+
+
+/**
+ * Remediation outcome for a filename or string entry.
+ */
+data class UniFfiRemediationResult (
+    /**
+     * Original raw filename string (lossy UTF-8 representation).
+     */
+    var `originalName`: kotlin.String, 
+    /**
+     * Remediated, clean UTF-8 string output.
+     */
+    var `remediatedName`: kotlin.String, 
+    /**
+     * Encoding applied during transcoding or remediation.
+     */
+    var `encodingUsed`: kotlin.String, 
+    /**
+     * Confidence score of the applied encoding [0.0..1.0].
+     */
+    var `confidence`: kotlin.Float, 
+    /**
+     * Whether any byte translation or transformation was performed.
+     */
+    var `wasRemediated`: kotlin.Boolean, 
+    /**
+     * Whether unmapped bytes or replacement characters (U+FFFD) were produced.
+     */
+    var `hasUnmappedChars`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIRemediationResult: FfiConverterRustBuffer<UniFfiRemediationResult> {
+    override fun read(buf: ByteBuffer): UniFfiRemediationResult {
+        return UniFfiRemediationResult(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiRemediationResult) = (
+            FfiConverterString.allocationSize(value.`originalName`) +
+            FfiConverterString.allocationSize(value.`remediatedName`) +
+            FfiConverterString.allocationSize(value.`encodingUsed`) +
+            FfiConverterFloat.allocationSize(value.`confidence`) +
+            FfiConverterBoolean.allocationSize(value.`wasRemediated`) +
+            FfiConverterBoolean.allocationSize(value.`hasUnmappedChars`)
+    )
+
+    override fun write(value: UniFfiRemediationResult, buf: ByteBuffer) {
+            FfiConverterString.write(value.`originalName`, buf)
+            FfiConverterString.write(value.`remediatedName`, buf)
+            FfiConverterString.write(value.`encodingUsed`, buf)
+            FfiConverterFloat.write(value.`confidence`, buf)
+            FfiConverterBoolean.write(value.`wasRemediated`, buf)
+            FfiConverterBoolean.write(value.`hasUnmappedChars`, buf)
     }
 }
 
@@ -11558,6 +13679,82 @@ public object FfiConverterTypeUniFFISubtitleTrack: FfiConverterRustBuffer<UniFfi
             FfiConverterString.write(value.`format`, buf)
             FfiConverterBoolean.write(value.`isSelected`, buf)
             FfiConverterBoolean.write(value.`isExternal`, buf)
+    }
+}
+
+
+
+/**
+ * Hierarchical structural symbol node for document and source code outline tree.
+ */
+data class UniFfiSymbolNode (
+    /**
+     * Identifier name (e.g. "struct ArchiveReader", "func decompress()").
+     */
+    var `name`: kotlin.String, 
+    /**
+     * Symbol semantic classification ("function", "struct", "enum", "class", "interface", "trait", "impl", "variable", "constant", "module", "type", "macro", "heading", "property").
+     */
+    var `kind`: kotlin.String, 
+    /**
+     * Zero-based character start index in UTF-16 code units.
+     */
+    var `location`: kotlin.UInt, 
+    /**
+     * Length of symbol span in UTF-16 code units.
+     */
+    var `length`: kotlin.UInt, 
+    /**
+     * 1-based source line number of the declaration.
+     */
+    var `lineNumber`: kotlin.UInt, 
+    /**
+     * Optional additional signature, type, or detail description.
+     */
+    var `detail`: kotlin.String?, 
+    /**
+     * Hierarchical nested child symbols (e.g. methods and properties inside a class or struct).
+     */
+    var `children`: List<UniFfiSymbolNode>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISymbolNode: FfiConverterRustBuffer<UniFfiSymbolNode> {
+    override fun read(buf: ByteBuffer): UniFfiSymbolNode {
+        return UniFfiSymbolNode(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeUniFFISymbolNode.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSymbolNode) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`kind`) +
+            FfiConverterUInt.allocationSize(value.`location`) +
+            FfiConverterUInt.allocationSize(value.`length`) +
+            FfiConverterUInt.allocationSize(value.`lineNumber`) +
+            FfiConverterOptionalString.allocationSize(value.`detail`) +
+            FfiConverterSequenceTypeUniFFISymbolNode.allocationSize(value.`children`)
+    )
+
+    override fun write(value: UniFfiSymbolNode, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`kind`, buf)
+            FfiConverterUInt.write(value.`location`, buf)
+            FfiConverterUInt.write(value.`length`, buf)
+            FfiConverterUInt.write(value.`lineNumber`, buf)
+            FfiConverterOptionalString.write(value.`detail`, buf)
+            FfiConverterSequenceTypeUniFFISymbolNode.write(value.`children`, buf)
     }
 }
 
@@ -14852,6 +17049,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.ByteArray>> {
+    override fun read(buf: ByteBuffer): List<kotlin.ByteArray> {
+        val len = buf.getInt()
+        return List<kotlin.ByteArray>(len) {
+            FfiConverterByteArray.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.ByteArray>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterByteArray.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.ByteArray>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterByteArray.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeDiskItemSummary: FfiConverterRustBuffer<List<DiskItemSummary>> {
     override fun read(buf: ByteBuffer): List<DiskItemSummary> {
         val len = buf.getInt()
@@ -15048,6 +17273,34 @@ public object FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIEncodingInfo: FfiConverterRustBuffer<List<UniFfiEncodingInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiEncodingInfo> {
+        val len = buf.getInt()
+        return List<UniFfiEncodingInfo>(len) {
+            FfiConverterTypeUniFFIEncodingInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiEncodingInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIEncodingInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiEncodingInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIEncodingInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIEntryMetadata: FfiConverterRustBuffer<List<UniFfiEntryMetadata>> {
     override fun read(buf: ByteBuffer): List<UniFfiEntryMetadata> {
         val len = buf.getInt()
@@ -15122,6 +17375,62 @@ public object FfiConverterSequenceTypeUniFFIEpubChapterItem: FfiConverterRustBuf
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIEpubChapterItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIHighlightToken: FfiConverterRustBuffer<List<UniFfiHighlightToken>> {
+    override fun read(buf: ByteBuffer): List<UniFfiHighlightToken> {
+        val len = buf.getInt()
+        return List<UniFfiHighlightToken>(len) {
+            FfiConverterTypeUniFFIHighlightToken.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiHighlightToken>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIHighlightToken.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiHighlightToken>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIHighlightToken.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFILanguageInfo: FfiConverterRustBuffer<List<UniFfiLanguageInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiLanguageInfo> {
+        val len = buf.getInt()
+        return List<UniFfiLanguageInfo>(len) {
+            FfiConverterTypeUniFFILanguageInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiLanguageInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFILanguageInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiLanguageInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFILanguageInfo.write(it, buf)
         }
     }
 }
@@ -15300,6 +17609,34 @@ public object FfiConverterSequenceTypeUniFFIParetoCodecPoint: FfiConverterRustBu
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIRemediationResult: FfiConverterRustBuffer<List<UniFfiRemediationResult>> {
+    override fun read(buf: ByteBuffer): List<UniFfiRemediationResult> {
+        val len = buf.getInt()
+        return List<UniFfiRemediationResult>(len) {
+            FfiConverterTypeUniFFIRemediationResult.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiRemediationResult>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIRemediationResult.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiRemediationResult>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIRemediationResult.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIScenarioBenchmarkPoint: FfiConverterRustBuffer<List<UniFfiScenarioBenchmarkPoint>> {
     override fun read(buf: ByteBuffer): List<UniFfiScenarioBenchmarkPoint> {
         val len = buf.getInt()
@@ -15402,6 +17739,34 @@ public object FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuffe
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFISubtitleTrack.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFISymbolNode: FfiConverterRustBuffer<List<UniFfiSymbolNode>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSymbolNode> {
+        val len = buf.getInt()
+        return List<UniFfiSymbolNode>(len) {
+            FfiConverterTypeUniFFISymbolNode.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSymbolNode>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISymbolNode.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSymbolNode>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISymbolNode.write(it, buf)
         }
     }
 }
@@ -16997,12 +19362,99 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Standalone convenience function for character encoding sniffing.
+         */ fun `uniffiDetectEncoding`(`data`: kotlin.ByteArray): UniFfiDetectedEncoding {
+            return FfiConverterTypeUniFFIDetectedEncoding.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_detect_encoding(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detects language from filename, extension, and optional first line content hint.
+         */ fun `uniffiDetectLanguage`(`filePathOrExt`: kotlin.String, `firstLineHint`: kotlin.String?): UniFfiLanguageInfo {
+            return FfiConverterTypeUniFFILanguageInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_detect_language(
+        FfiConverterString.lower(`filePathOrExt`),FfiConverterOptionalString.lower(`firstLineHint`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts EPUB Dublin Core publication metadata from a file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractEpubMetadata`(`filePath`: kotlin.String): UniFfiEpubMetadata {
+            return FfiConverterTypeUniFFIEpubMetadata.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts Office document metadata (DOCX, XLSX, PPTX) from a file on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractOfficeMetadata`(`filePath`: kotlin.String): UniFfiDocumentMetadata {
+            return FfiConverterTypeUniFFIDocumentMetadata.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts structural outline and preview text from an Office document on disk.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractOfficeOutline`(`filePath`: kotlin.String): UniFfiOfficeOutline {
+            return FfiConverterTypeUniFFIOfficeOutline.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_office_outline(
+        FfiConverterString.lower(`filePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts structural outline symbol tree from source code text.
+         */ fun `uniffiExtractSymbols`(`code`: kotlin.String, `languageHint`: kotlin.String): List<UniFfiSymbolNode> {
+            return FfiConverterSequenceTypeUniFFISymbolNode.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(
+        FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
          */ fun `uniffiGenerateSyntheticCorpus`(`corpusType`: UniFfiSyntheticCorpusType, `sizeBytes`: kotlin.ULong, `seed`: kotlin.ULong?): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(
         FfiConverterTypeUniFFISyntheticCorpusType.lower(`corpusType`),FfiConverterULong.lower(`sizeBytes`),FfiConverterOptionalULong.lower(`seed`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Returns list of all known programming and markup languages supported by the engine.
+         */ fun `uniffiGetSupportedLanguages`(): List<UniFfiLanguageInfo> {
+            return FfiConverterSequenceTypeUniFFILanguageInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_get_supported_languages(
+        _status)
 }
     )
     }
@@ -17029,6 +19481,30 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tokenizes source code into high-precision UTF-16 NSRange highlight tokens.
+         */ fun `uniffiHighlightCode`(`code`: kotlin.String, `languageHint`: kotlin.String, `maxLength`: kotlin.UInt): List<UniFfiHighlightToken> {
+            return FfiConverterSequenceTypeUniFFIHighlightToken.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_highlight_code(
+        FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),FfiConverterUInt.lower(`maxLength`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Tokenizes source code restricted to a line viewport [start_line, start_line + line_count).
+         */ fun `uniffiHighlightCodeViewport`(`code`: kotlin.String, `languageHint`: kotlin.String, `startLine`: kotlin.UInt, `lineCount`: kotlin.UInt): List<UniFfiHighlightToken> {
+            return FfiConverterSequenceTypeUniFFIHighlightToken.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(
+        FfiConverterString.lower(`code`),FfiConverterString.lower(`languageHint`),FfiConverterUInt.lower(`startLine`),FfiConverterUInt.lower(`lineCount`),_status)
 }
     )
     }
@@ -17126,6 +19602,32 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Deserializes an Apple XML Property List from raw bytes.
+         */
+    @Throws(TtZipException::class) fun `uniffiParsePlistFromBytes`(`bytes`: kotlin.ByteArray): UniFfiPlistDictionary {
+            return FfiConverterTypeUniFFIPlistDictionary.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_parse_plist_from_bytes(
+        FfiConverterByteArray.lower(`bytes`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Deserializes an Apple XML Property List string into a structured dictionary.
+         */
+    @Throws(TtZipException::class) fun `uniffiParsePlistXml`(`xmlContent`: kotlin.String): UniFfiPlistDictionary {
+            return FfiConverterTypeUniFFIPlistDictionary.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_parse_plist_xml(
+        FfiConverterString.lower(`xmlContent`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Compresses buffer with PPMd Model H (orders 2..16, mem_mb 2..256).
          */
     @Throws(TtZipException::class) fun `uniffiPpmdCompress`(`src`: kotlin.ByteArray, `order`: kotlin.UInt, `memMb`: kotlin.UInt): kotlin.ByteArray {
@@ -17146,6 +19648,18 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_ppmd_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),FfiConverterUInt.lower(`order`),FfiConverterUInt.lower(`memMb`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Standalone convenience function for single filename remediation.
+         */ fun `uniffiRemediateFilename`(`rawBytes`: kotlin.ByteArray, `fallbackEncoding`: kotlin.String?): UniFfiRemediationResult {
+            return FfiConverterTypeUniFFIRemediationResult.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(
+        FfiConverterByteArray.lower(`rawBytes`),FfiConverterOptionalString.lower(`fallbackEncoding`),_status)
 }
     )
     }
@@ -17198,6 +19712,31 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(
         FfiConverterByteArray.lower(`src`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Instantiates a new thread-safe syntax metadata service.
+         */ fun `uniffiSyntaxServiceNew`(): UniFfiSyntaxService {
+            return FfiConverterTypeUniFFISyntaxService.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Standalone convenience function for transcoding raw bytes to UTF-8.
+         */
+    @Throws(TtZipException::class) fun `uniffiTranscodeToUtf8`(`data`: kotlin.ByteArray, `encodingName`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(
+        FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`encodingName`),_status)
 }
     )
     }

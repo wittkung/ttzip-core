@@ -2330,6 +2330,201 @@ public func FfiConverterTypeUniFFIProgressReporter_lower(_ value: UniFfiProgress
 }
 
 /**
+ * Stateful UniFFI service managing syntax tokenization, language detection, and outline extraction.
+ */
+public protocol UniFfiSyntaxServiceProtocol: AnyObject {
+    /**
+     * Detects language from filename, extension, and optional first line content (e.g. shebang).
+     */
+    func detectLanguage(filePathOrExt: String, firstLineHint: String?) -> UniFfiLanguageInfo
+
+    /**
+     * Extracts hierarchical symbol outline tree (functions, classes, structs, traits, headings).
+     */
+    func extractSymbols(code: String, languageHint: String) -> [UniFfiSymbolNode]
+
+    /**
+     * Returns list of all known programming and markup languages supported by the engine.
+     */
+    func getSupportedLanguages() -> [UniFfiLanguageInfo]
+
+    /**
+     * Tokenizes source code into UTF-16 NSRange highlight tokens with optional max length truncation.
+     */
+    func highlightCode(code: String, languageHint: String, maxLength: UInt32) -> [UniFfiHighlightToken]
+
+    /**
+     * Tokenizes source code restricted to a specific line viewport for high-performance virtualized rendering.
+     */
+    func highlightCodeViewport(code: String, languageHint: String, startLine: UInt32, lineCount: UInt32) -> [UniFfiHighlightToken]
+}
+
+/**
+ * Stateful UniFFI service managing syntax tokenization, language detection, and outline extraction.
+ */
+open class UniFfiSyntaxService:
+    UniFfiSyntaxServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffisyntaxservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new thread-safe syntax metadata service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffisyntaxservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffisyntaxservice(pointer, $0) }
+    }
+
+    /**
+     * Detects language from filename, extension, and optional first line content (e.g. shebang).
+     */
+    open func detectLanguage(filePathOrExt: String, firstLineHint: String?) -> UniFfiLanguageInfo {
+        return try! FfiConverterTypeUniFFILanguageInfo.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffisyntaxservice_detect_language(self.uniffiClonePointer(),
+                                                                              FfiConverterString.lower(filePathOrExt),
+                                                                              FfiConverterOptionString.lower(firstLineHint), $0)
+        })
+    }
+
+    /**
+     * Extracts hierarchical symbol outline tree (functions, classes, structs, traits, headings).
+     */
+    open func extractSymbols(code: String, languageHint: String) -> [UniFfiSymbolNode] {
+        return try! FfiConverterSequenceTypeUniFFISymbolNode.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffisyntaxservice_extract_symbols(self.uniffiClonePointer(),
+                                                                              FfiConverterString.lower(code),
+                                                                              FfiConverterString.lower(languageHint), $0)
+        })
+    }
+
+    /**
+     * Returns list of all known programming and markup languages supported by the engine.
+     */
+    open func getSupportedLanguages() -> [UniFfiLanguageInfo] {
+        return try! FfiConverterSequenceTypeUniFFILanguageInfo.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffisyntaxservice_get_supported_languages(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Tokenizes source code into UTF-16 NSRange highlight tokens with optional max length truncation.
+     */
+    open func highlightCode(code: String, languageHint: String, maxLength: UInt32) -> [UniFfiHighlightToken] {
+        return try! FfiConverterSequenceTypeUniFFIHighlightToken.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code(self.uniffiClonePointer(),
+                                                                             FfiConverterString.lower(code),
+                                                                             FfiConverterString.lower(languageHint),
+                                                                             FfiConverterUInt32.lower(maxLength), $0)
+        })
+    }
+
+    /**
+     * Tokenizes source code restricted to a specific line viewport for high-performance virtualized rendering.
+     */
+    open func highlightCodeViewport(code: String, languageHint: String, startLine: UInt32, lineCount: UInt32) -> [UniFfiHighlightToken] {
+        return try! FfiConverterSequenceTypeUniFFIHighlightToken.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_viewport(self.uniffiClonePointer(),
+                                                                                      FfiConverterString.lower(code),
+                                                                                      FfiConverterString.lower(languageHint),
+                                                                                      FfiConverterUInt32.lower(startLine),
+                                                                                      FfiConverterUInt32.lower(lineCount), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISyntaxService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiSyntaxService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiSyntaxService {
+        return UniFfiSyntaxService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiSyntaxService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSyntaxService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiSyntaxService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISyntaxService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiSyntaxService {
+    return try FfiConverterTypeUniFFISyntaxService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISyntaxService_lower(_ value: UniFfiSyntaxService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFISyntaxService.lower(value)
+}
+
+/**
  * Cross-language UniFFI MediaPlayer controller object.
  */
 public protocol UniFfittZipMediaPlayerProtocol: AnyObject {
@@ -7612,6 +7807,125 @@ public func FfiConverterTypeUniFFIEpubParseResult_lower(_ value: UniFfiEpubParse
 }
 
 /**
+ * High-precision highlight token span exposed across UniFFI boundary with UTF-16 NSRange metrics.
+ */
+public struct UniFfiHighlightToken {
+    /**
+     * Zero-based character start index in UTF-16 code units (NSRange location).
+     */
+    public var location: UInt32
+    /**
+     * Length of token span in UTF-16 code units (NSRange length).
+     */
+    public var length: UInt32
+    /**
+     * Syntactic category ("keyword", "string", "number", "type", "function", "comment", "operator", etc.).
+     */
+    public var category: String
+    /**
+     * 1-based source line number for fast viewport filtering.
+     */
+    public var lineNumber: UInt32
+    /**
+     * 0-based character column offset in UTF-16 code units.
+     */
+    public var column: UInt32
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Zero-based character start index in UTF-16 code units (NSRange location).
+         */ location: UInt32,
+        /* 
+            * Length of token span in UTF-16 code units (NSRange length).
+            */ length: UInt32,
+        /* 
+            * Syntactic category ("keyword", "string", "number", "type", "function", "comment", "operator", etc.).
+            */ category: String,
+        /* 
+            * 1-based source line number for fast viewport filtering.
+            */ lineNumber: UInt32,
+        /* 
+            * 0-based character column offset in UTF-16 code units.
+            */ column: UInt32
+    ) {
+        self.location = location
+        self.length = length
+        self.category = category
+        self.lineNumber = lineNumber
+        self.column = column
+    }
+}
+
+extension UniFfiHighlightToken: Equatable, Hashable {
+    public static func == (lhs: UniFfiHighlightToken, rhs: UniFfiHighlightToken) -> Bool {
+        if lhs.location != rhs.location {
+            return false
+        }
+        if lhs.length != rhs.length {
+            return false
+        }
+        if lhs.category != rhs.category {
+            return false
+        }
+        if lhs.lineNumber != rhs.lineNumber {
+            return false
+        }
+        if lhs.column != rhs.column {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(location)
+        hasher.combine(length)
+        hasher.combine(category)
+        hasher.combine(lineNumber)
+        hasher.combine(column)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIHighlightToken: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiHighlightToken {
+        return
+            try UniFfiHighlightToken(
+                location: FfiConverterUInt32.read(from: &buf),
+                length: FfiConverterUInt32.read(from: &buf),
+                category: FfiConverterString.read(from: &buf),
+                lineNumber: FfiConverterUInt32.read(from: &buf),
+                column: FfiConverterUInt32.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiHighlightToken, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.location, into: &buf)
+        FfiConverterUInt32.write(value.length, into: &buf)
+        FfiConverterString.write(value.category, into: &buf)
+        FfiConverterUInt32.write(value.lineNumber, into: &buf)
+        FfiConverterUInt32.write(value.column, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIHighlightToken_lift(_ buf: RustBuffer) throws -> UniFfiHighlightToken {
+    return try FfiConverterTypeUniFFIHighlightToken.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIHighlightToken_lower(_ value: UniFfiHighlightToken) -> RustBuffer {
+    return FfiConverterTypeUniFFIHighlightToken.lower(value)
+}
+
+/**
  * Comprehensive archive integrity report.
  */
 public struct UniFfiIntegrityReport {
@@ -7705,6 +8019,125 @@ public func FfiConverterTypeUniFFIIntegrityReport_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeUniFFIIntegrityReport_lower(_ value: UniFfiIntegrityReport) -> RustBuffer {
     return FfiConverterTypeUniFFIIntegrityReport.lower(value)
+}
+
+/**
+ * Metadata descriptor of a programming or markup language supported by TTZip.
+ */
+public struct UniFfiLanguageInfo {
+    /**
+     * Canonical language identifier string (e.g. "rust", "swift", "python", "json").
+     */
+    public var languageId: String
+    /**
+     * Human-readable display name (e.g. "Rust", "Swift", "Python", "JSON").
+     */
+    public var displayName: String
+    /**
+     * List of standard file extensions associated with this language without leading dot.
+     */
+    public var fileExtensions: [String]
+    /**
+     * Standard MIME content types.
+     */
+    public var mimeTypes: [String]
+    /**
+     * Whether high-precision AST / Tree-sitter parsing is natively supported.
+     */
+    public var isSupported: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Canonical language identifier string (e.g. "rust", "swift", "python", "json").
+         */ languageId: String,
+        /* 
+            * Human-readable display name (e.g. "Rust", "Swift", "Python", "JSON").
+            */ displayName: String,
+        /* 
+            * List of standard file extensions associated with this language without leading dot.
+            */ fileExtensions: [String],
+        /* 
+            * Standard MIME content types.
+            */ mimeTypes: [String],
+        /* 
+            * Whether high-precision AST / Tree-sitter parsing is natively supported.
+            */ isSupported: Bool
+    ) {
+        self.languageId = languageId
+        self.displayName = displayName
+        self.fileExtensions = fileExtensions
+        self.mimeTypes = mimeTypes
+        self.isSupported = isSupported
+    }
+}
+
+extension UniFfiLanguageInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiLanguageInfo, rhs: UniFfiLanguageInfo) -> Bool {
+        if lhs.languageId != rhs.languageId {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.fileExtensions != rhs.fileExtensions {
+            return false
+        }
+        if lhs.mimeTypes != rhs.mimeTypes {
+            return false
+        }
+        if lhs.isSupported != rhs.isSupported {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(languageId)
+        hasher.combine(displayName)
+        hasher.combine(fileExtensions)
+        hasher.combine(mimeTypes)
+        hasher.combine(isSupported)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFILanguageInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiLanguageInfo {
+        return
+            try UniFfiLanguageInfo(
+                languageId: FfiConverterString.read(from: &buf),
+                displayName: FfiConverterString.read(from: &buf),
+                fileExtensions: FfiConverterSequenceString.read(from: &buf),
+                mimeTypes: FfiConverterSequenceString.read(from: &buf),
+                isSupported: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiLanguageInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.languageId, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterSequenceString.write(value.fileExtensions, into: &buf)
+        FfiConverterSequenceString.write(value.mimeTypes, into: &buf)
+        FfiConverterBool.write(value.isSupported, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFILanguageInfo_lift(_ buf: RustBuffer) throws -> UniFfiLanguageInfo {
+    return try FfiConverterTypeUniFFILanguageInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFILanguageInfo_lower(_ value: UniFfiLanguageInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFILanguageInfo.lower(value)
 }
 
 /**
@@ -10717,6 +11150,153 @@ public func FfiConverterTypeUniFFISubtitleTrack_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeUniFFISubtitleTrack_lower(_ value: UniFfiSubtitleTrack) -> RustBuffer {
     return FfiConverterTypeUniFFISubtitleTrack.lower(value)
+}
+
+/**
+ * Hierarchical structural symbol node for document and source code outline tree.
+ */
+public struct UniFfiSymbolNode {
+    /**
+     * Identifier name (e.g. "struct ArchiveReader", "func decompress()").
+     */
+    public var name: String
+    /**
+     * Symbol semantic classification ("function", "struct", "enum", "class", "interface", "trait", "impl", "variable", "constant", "module", "type", "macro", "heading", "property").
+     */
+    public var kind: String
+    /**
+     * Zero-based character start index in UTF-16 code units.
+     */
+    public var location: UInt32
+    /**
+     * Length of symbol span in UTF-16 code units.
+     */
+    public var length: UInt32
+    /**
+     * 1-based source line number of the declaration.
+     */
+    public var lineNumber: UInt32
+    /**
+     * Optional additional signature, type, or detail description.
+     */
+    public var detail: String?
+    /**
+     * Hierarchical nested child symbols (e.g. methods and properties inside a class or struct).
+     */
+    public var children: [UniFfiSymbolNode]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Identifier name (e.g. "struct ArchiveReader", "func decompress()").
+         */ name: String,
+        /* 
+            * Symbol semantic classification ("function", "struct", "enum", "class", "interface", "trait", "impl", "variable", "constant", "module", "type", "macro", "heading", "property").
+            */ kind: String,
+        /* 
+            * Zero-based character start index in UTF-16 code units.
+            */ location: UInt32,
+        /* 
+            * Length of symbol span in UTF-16 code units.
+            */ length: UInt32,
+        /* 
+            * 1-based source line number of the declaration.
+            */ lineNumber: UInt32,
+        /* 
+            * Optional additional signature, type, or detail description.
+            */ detail: String?,
+        /* 
+            * Hierarchical nested child symbols (e.g. methods and properties inside a class or struct).
+            */ children: [UniFfiSymbolNode]
+    ) {
+        self.name = name
+        self.kind = kind
+        self.location = location
+        self.length = length
+        self.lineNumber = lineNumber
+        self.detail = detail
+        self.children = children
+    }
+}
+
+extension UniFfiSymbolNode: Equatable, Hashable {
+    public static func == (lhs: UniFfiSymbolNode, rhs: UniFfiSymbolNode) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.kind != rhs.kind {
+            return false
+        }
+        if lhs.location != rhs.location {
+            return false
+        }
+        if lhs.length != rhs.length {
+            return false
+        }
+        if lhs.lineNumber != rhs.lineNumber {
+            return false
+        }
+        if lhs.detail != rhs.detail {
+            return false
+        }
+        if lhs.children != rhs.children {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(kind)
+        hasher.combine(location)
+        hasher.combine(length)
+        hasher.combine(lineNumber)
+        hasher.combine(detail)
+        hasher.combine(children)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFISymbolNode: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiSymbolNode {
+        return
+            try UniFfiSymbolNode(
+                name: FfiConverterString.read(from: &buf),
+                kind: FfiConverterString.read(from: &buf),
+                location: FfiConverterUInt32.read(from: &buf),
+                length: FfiConverterUInt32.read(from: &buf),
+                lineNumber: FfiConverterUInt32.read(from: &buf),
+                detail: FfiConverterOptionString.read(from: &buf),
+                children: FfiConverterSequenceTypeUniFFISymbolNode.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiSymbolNode, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterUInt32.write(value.location, into: &buf)
+        FfiConverterUInt32.write(value.length, into: &buf)
+        FfiConverterUInt32.write(value.lineNumber, into: &buf)
+        FfiConverterOptionString.write(value.detail, into: &buf)
+        FfiConverterSequenceTypeUniFFISymbolNode.write(value.children, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISymbolNode_lift(_ buf: RustBuffer) throws -> UniFfiSymbolNode {
+    return try FfiConverterTypeUniFFISymbolNode.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFISymbolNode_lower(_ value: UniFfiSymbolNode) -> RustBuffer {
+    return FfiConverterTypeUniFFISymbolNode.lower(value)
 }
 
 /**
@@ -15481,6 +16061,56 @@ private struct FfiConverterSequenceTypeUniFFIEpubChapterItem: FfiConverterRustBu
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceTypeUniFFIHighlightToken: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiHighlightToken]
+
+    static func write(_ value: [UniFfiHighlightToken], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIHighlightToken.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiHighlightToken] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiHighlightToken]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIHighlightToken.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFILanguageInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiLanguageInfo]
+
+    static func write(_ value: [UniFfiLanguageInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFILanguageInfo.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiLanguageInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiLanguageInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFILanguageInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeUniFFIMediaAttachment: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiMediaAttachment]
 
@@ -15748,6 +16378,31 @@ private struct FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFISubtitleTrack.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFISymbolNode: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiSymbolNode]
+
+    static func write(_ value: [UniFfiSymbolNode], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFISymbolNode.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiSymbolNode] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiSymbolNode]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFISymbolNode.read(from: &buf))
         }
         return seq
     }
@@ -17261,6 +17916,18 @@ public func uniffiDetectEncoding(data: Data) -> UniFfiDetectedEncoding {
 }
 
 /**
+ * Detects language from filename, extension, and optional first line content hint.
+ */
+public func uniffiDetectLanguage(filePathOrExt: String, firstLineHint: String?) -> UniFfiLanguageInfo {
+    return try! FfiConverterTypeUniFFILanguageInfo.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_detect_language(
+            FfiConverterString.lower(filePathOrExt),
+            FfiConverterOptionString.lower(firstLineHint), $0
+        )
+    })
+}
+
+/**
  * Extracts EPUB Dublin Core publication metadata from a file on disk.
  */
 public func uniffiExtractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata {
@@ -17294,6 +17961,18 @@ public func uniffiExtractOfficeOutline(filePath: String) throws -> UniFfiOfficeO
 }
 
 /**
+ * Extracts structural outline symbol tree from source code text.
+ */
+public func uniffiExtractSymbols(code: String, languageHint: String) -> [UniFfiSymbolNode] {
+    return try! FfiConverterSequenceTypeUniFFISymbolNode.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(
+            FfiConverterString.lower(code),
+            FfiConverterString.lower(languageHint), $0
+        )
+    })
+}
+
+/**
  * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
  */
 public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType, sizeBytes: UInt64, seed: UInt64?) -> Data {
@@ -17303,6 +17982,15 @@ public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType,
             FfiConverterUInt64.lower(sizeBytes),
             FfiConverterOptionUInt64.lower(seed), $0
         )
+    })
+}
+
+/**
+ * Returns list of all known programming and markup languages supported by the engine.
+ */
+public func uniffiGetSupportedLanguages() -> [UniFfiLanguageInfo] {
+    return try! FfiConverterSequenceTypeUniFFILanguageInfo.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_get_supported_languages($0)
     })
 }
 
@@ -17326,6 +18014,33 @@ public func uniffiGzipDecompress(src: Data, expectedUncompressedSize: UInt64) th
         uniffi_ttzip_engine_fn_func_uniffi_gzip_decompress(
             FfiConverterData.lower(src),
             FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Tokenizes source code into high-precision UTF-16 NSRange highlight tokens.
+ */
+public func uniffiHighlightCode(code: String, languageHint: String, maxLength: UInt32) -> [UniFfiHighlightToken] {
+    return try! FfiConverterSequenceTypeUniFFIHighlightToken.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_highlight_code(
+            FfiConverterString.lower(code),
+            FfiConverterString.lower(languageHint),
+            FfiConverterUInt32.lower(maxLength), $0
+        )
+    })
+}
+
+/**
+ * Tokenizes source code restricted to a line viewport [start_line, start_line + line_count).
+ */
+public func uniffiHighlightCodeViewport(code: String, languageHint: String, startLine: UInt32, lineCount: UInt32) -> [UniFfiHighlightToken] {
+    return try! FfiConverterSequenceTypeUniFFIHighlightToken.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_highlight_code_viewport(
+            FfiConverterString.lower(code),
+            FfiConverterString.lower(languageHint),
+            FfiConverterUInt32.lower(startLine),
+            FfiConverterUInt32.lower(lineCount), $0
         )
     })
 }
@@ -17514,6 +18229,15 @@ public func uniffiSnappyFrameEncode(src: Data) throws -> Data {
         uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(
             FfiConverterData.lower(src), $0
         )
+    })
+}
+
+/**
+ * Instantiates a new thread-safe syntax metadata service.
+ */
+public func uniffiSyntaxServiceNew() -> UniFfiSyntaxService {
+    return try! FfiConverterTypeUniFFISyntaxService.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new($0)
     })
 }
 
@@ -18319,6 +19043,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding() != 7884 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -18328,13 +19055,25 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline() != 48634 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols() != 52873 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_get_supported_languages() != 41512 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_gzip_compress() != 58381 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_gzip_decompress() != 57781 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_highlight_code() != 41651 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport() != 42695 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593 {
@@ -18383,6 +19122,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new() != 20108 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381 {
@@ -18646,6 +19388,21 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffiprogressreporter_update() != 56030 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_detect_language() != 34711 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_extract_symbols() != 40101 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_get_supported_languages() != 51173 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code() != 6380 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport() != 65465 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -18842,6 +19599,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new() != 21494 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new() != 49553 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586 {

@@ -21,9 +21,9 @@
 //! 6. **Sensitive XML Buffer** ([`SensitiveXmlBuffer`]):
 //!    Zero-allocation / zeroize-on-drop memory erasure for credentials and secret XML metadata.
 
-pub mod guards;
-pub mod pipeline;
-pub mod recovery;
+mod guards;
+mod pipeline;
+mod recovery;
 
 #[cfg(test)]
 mod tests;

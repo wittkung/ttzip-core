@@ -321,7 +321,7 @@ fn test_resource_handle_raii_tracking() {
 
     {
         let view1 = safe_map_anonymous(1024).expect("Failed map 1");
-        assert!(MmapResourceGuard::active_count() >= baseline_count + 1);
+        assert!(MmapResourceGuard::active_count() > baseline_count);
         assert!(MmapResourceGuard::allocated_bytes() >= baseline_bytes + 1024);
 
         {
@@ -333,7 +333,7 @@ fn test_resource_handle_raii_tracking() {
         }
 
         // view2 dropped
-        assert!(MmapResourceGuard::active_count() >= baseline_count + 1);
+        assert!(MmapResourceGuard::active_count() > baseline_count);
         assert_eq!(view1.len(), 1024);
     }
 }

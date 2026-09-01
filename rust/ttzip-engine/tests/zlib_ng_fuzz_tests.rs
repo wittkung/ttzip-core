@@ -273,7 +273,7 @@ fn test_target_06_1000_task_concurrent_dual_engine_arbitration() {
             *b = prng.next_u8();
         }
 
-        let level = (task_id % 13) as i32;
+        let level = task_id % 13;
 
         // 1. TTZip Compress -> flate2 Decompress (Zlib)
         let bound = zlib_compress_bound(raw.len(), level);

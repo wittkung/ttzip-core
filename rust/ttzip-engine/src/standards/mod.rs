@@ -48,4 +48,6 @@ pub use subtitles::{
     SubtitleColor, SubtitleDialogue, SubtitleFormat, SubtitleScript, SubtitleSpan, SubtitleStyle,
     SubtitleTimeline,
 };
-pub use syntax_highlight::*;
+pub use syntax_highlight::{
+    highlight_spans, tokenize_code, HighlightCategory, TokenSpan,
+};
