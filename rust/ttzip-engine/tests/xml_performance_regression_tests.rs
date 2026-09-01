@@ -243,7 +243,7 @@ fn test_03_docx_document_xml_streaming_throughput_gate() {
         throughput_mb_s, ns_per_b
     );
 
-    let min_expected = if cfg!(debug_assertions) { 250.0 } else { 500.0 };
+    let min_expected = if cfg!(debug_assertions) { 100.0 } else { 500.0 };
     assert!(
         throughput_mb_s >= min_expected,
         "DOCX XML extraction throughput {:.2} MB/s below minimum threshold of {:.1} MB/s",

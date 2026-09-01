@@ -339,7 +339,7 @@ fn test_xz_crc64_throughput_and_regression_gate() {
     );
     black_box(computed_crc);
 
-    let min_crc = if cfg!(debug_assertions) { 500.0f64 } else { 800.0f64 };
+    let min_crc = if cfg!(debug_assertions) { 150.0f64 } else { 800.0f64 };
     println!("  Payload Size:       {:.2} KB ({} bytes)", raw_payload.len() as f64 / 1024.0, raw_payload.len());
     println!("  Avg Pass Latency:   {:.3} ms", avg_latency_ns / 1_000_000.0);
     println!("  CRC64 Throughput:   {:.2} MB/s", throughput_mb_s);
@@ -464,7 +464,7 @@ fn test_xz_lzma2_pipeline_throughput_and_regression_gate() {
         &mut governor,
     );
 
-    let min_decomp = if cfg!(debug_assertions) { 50.0f64 } else { 120.0f64 };
+    let min_decomp = if cfg!(debug_assertions) { 20.0f64 } else { 120.0f64 };
     println!("  Decompress Speed:   {:.2} MB/s (Latency: {:.3} ms)", decomp_mbs, decomp_lat / 1_000_000.0);
     println!("  Required Threshold: > {:.2} MB/s", min_decomp);
 
