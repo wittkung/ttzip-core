@@ -37,6 +37,7 @@ pub mod sevenz;
 pub mod standards;
 pub mod tar;
 pub mod testing;
+pub mod text;
 pub mod types;
 pub mod uniffi_api;
 pub mod utils;
@@ -71,6 +72,16 @@ pub use sevenz::{
     SevenZHeaderInfo,
 };
 pub use standards::*;
+pub use text::{
+    clean_control_characters, decode_to_utf8, decode_to_utf8_lossless, decode_to_utf8_lossy,
+    detect_encoding, detect_encoding_with_confidence, encode_from_utf8, encode_from_utf8_lossless,
+    lookup_encoding_by_name, normalize_and_sanitize_path, normalize_nfc, normalize_nfd,
+    normalize_nfkc, normalize_nfkd, remediate_filename_bytes, remediate_text, sanitize_text_path,
+    CandidateEncoding, ConfidenceLevel, DetectionResult, GarbledTextRemediator, PathSanitizeError,
+    RemediationConfidence, RemediationResult, TTZipEncodingDetector, TTZipTextTranscoder,
+    TextTranscodeError, TranscodeOptions, TranscodeStats, UnicodeNormalizer,
+    DEFAULT_TRANSCODE_BUFFER_SIZE,
+};
 pub use types::*;
 pub use uniffi_api::{
     archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*, media::*,

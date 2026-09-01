@@ -39,14 +39,11 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
     }
 
     let is_valid_utf8 = std::str::from_utf8(data).is_ok();
+    if is_valid_utf8 {
+        return ("UTF-8".to_string(), 1.0);
+    }
 
-    // 2. Chardetng oracle prediction
-    let mut chardet = EncodingDetector::new();
-    chardet.feed(data, true);
-    let chardet_guess = chardet.guess(None, true);
-    let chardet_name = chardet_guess.name();
-
-    // 3. CSM State Machine Pruning & 2-Byte Bigram Statistical Evaluation
+    // 2. CSM State Machine Pruning & 2-Byte Bigram Statistical Evaluation (Fast SIMD/Array Pass)
     let mut csm_gb = CodingStateMachine::new(CharsetKind::Gb18030);
     let mut csm_sjis = CodingStateMachine::new(CharsetKind::ShiftJis);
     let mut csm_big5 = CodingStateMachine::new(CharsetKind::Big5);
@@ -58,35 +55,95 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
     let mut score_big5: u32 = 0;
     let mut score_euckr: u32 = 0;
 
+    let mut gb_ok = true;
+    let mut sjis_ok = true;
+    let mut big5_ok = true;
+    let mut euckr_ok = true;
+
     for &b in data {
-        if let Some((tok, len)) = csm_gb.feed_byte(b) {
-            if len == 2 {
-                score_gb += score_gb18030_2byte(tok[0], tok[1]);
+        if gb_ok {
+            if let Some((tok, len)) = csm_gb.feed_byte(b) {
+                if len == 2 {
+                    score_gb += score_gb18030_2byte(tok[0], tok[1]);
+                }
+            } else if !csm_gb.is_valid() {
+                gb_ok = false;
             }
         }
-        if let Some((tok, len)) = csm_sjis.feed_byte(b) {
-            if len == 2 {
-                score_sjis += score_shift_jis_2byte(tok[0], tok[1]);
+        if sjis_ok {
+            if let Some((tok, len)) = csm_sjis.feed_byte(b) {
+                if len == 2 {
+                    score_sjis += score_shift_jis_2byte(tok[0], tok[1]);
+                }
+            } else if !csm_sjis.is_valid() {
+                sjis_ok = false;
             }
         }
-        if let Some((tok, len)) = csm_big5.feed_byte(b) {
-            if len == 2 {
-                score_big5 += score_big5_2byte(tok[0], tok[1]);
+        if big5_ok {
+            if let Some((tok, len)) = csm_big5.feed_byte(b) {
+                if len == 2 {
+                    score_big5 += score_big5_2byte(tok[0], tok[1]);
+                }
+            } else if !csm_big5.is_valid() {
+                big5_ok = false;
             }
         }
-        if let Some((tok, len)) = csm_euckr.feed_byte(b) {
-            if len == 2 {
-                score_euckr += score_euc_kr_2byte(tok[0], tok[1]);
+        if euckr_ok {
+            if let Some((tok, len)) = csm_euckr.feed_byte(b) {
+                if len == 2 {
+                    score_euckr += score_euc_kr_2byte(tok[0], tok[1]);
+                }
+            } else if !csm_euckr.is_valid() {
+                euckr_ok = false;
             }
         }
         let _ = csm_win.feed_byte(b);
     }
 
+    let density_gb = if csm_gb.is_valid() && csm_gb.multibyte_chars() > 0 {
+        (score_gb as f32) / (csm_gb.multibyte_chars() as f32 * 100.0)
+    } else {
+        0.0
+    };
+    let density_sjis = if csm_sjis.is_valid() && csm_sjis.multibyte_chars() > 0 {
+        (score_sjis as f32) / (csm_sjis.multibyte_chars() as f32 * 100.0)
+    } else {
+        0.0
+    };
+    let density_big5 = if csm_big5.is_valid() && csm_big5.multibyte_chars() > 0 {
+        (score_big5 as f32) / (csm_big5.multibyte_chars() as f32 * 100.0)
+    } else {
+        0.0
+    };
+    let density_euckr = if csm_euckr.is_valid() && csm_euckr.multibyte_chars() > 0 {
+        (score_euckr as f32) / (csm_euckr.multibyte_chars() as f32 * 100.0)
+    } else {
+        0.0
+    };
+
+    // Fast-path: If single decisive CJK match with strong bigram density
+    let cjk_scores = [
+        (CharsetKind::Gb18030, density_gb),
+        (CharsetKind::ShiftJis, density_sjis),
+        (CharsetKind::Big5, density_big5),
+        (CharsetKind::EucKr, density_euckr),
+    ];
+    let mut sorted_cjk = cjk_scores;
+    sorted_cjk.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    if sorted_cjk[0].1 > 0.15 && (sorted_cjk[0].1 > sorted_cjk[1].1 * 1.12 || sorted_cjk[1].1 == 0.0) {
+        return (sorted_cjk[0].0.canonical_name().to_string(), (sorted_cjk[0].1 * 0.95).min(1.0));
+    }
+
+    // 3. Chardetng oracle prediction fallback
+    let mut chardet = EncodingDetector::new();
+    chardet.feed(data, true);
+    let chardet_guess = chardet.guess(None, true);
+    let chardet_name = chardet_guess.name();
+
     let is_chardet_gb = chardet_name.eq_ignore_ascii_case("gb18030") || chardet_name.eq_ignore_ascii_case("gbk");
     let is_chardet_sjis = chardet_name.eq_ignore_ascii_case("shift_jis");
     let is_chardet_big5 = chardet_name.eq_ignore_ascii_case("big5");
     let is_chardet_euckr = chardet_name.eq_ignore_ascii_case("euc-kr");
-    let is_chardet_utf8 = chardet_name.eq_ignore_ascii_case("utf-8");
     let is_chardet_win1252 = chardet_name.eq_ignore_ascii_case("windows-1252");
 
     let calc_confidence = |is_valid: bool, mb_count: usize, acc_score: u32, is_chardet: bool| -> f32 {
@@ -123,18 +180,6 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
             final_confidence: calc_confidence(csm_euckr.is_valid(), csm_euckr.multibyte_chars(), score_euckr, is_chardet_euckr),
         },
     ];
-
-    // If UTF-8 is strictly valid:
-    // If valid UTF-8 and no candidate has overwhelmingly high CJK score (> 0.9) while chardet predicts legacy, prefer UTF-8.
-    if is_valid_utf8 {
-        let best_legacy = candidates.iter().max_by(|a, b| a.final_confidence.partial_cmp(&b.final_confidence).unwrap());
-        if let Some(best) = best_legacy {
-            if best.final_confidence > 0.85 && !is_chardet_utf8 {
-                return (best.kind.canonical_name().to_string(), best.final_confidence);
-            }
-        }
-        return ("UTF-8".to_string(), if is_chardet_utf8 { 0.99 } else { 0.92 });
-    }
 
     // Find the highest confidence among valid CJK candidates
     let best_candidate = candidates

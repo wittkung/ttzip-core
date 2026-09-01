@@ -2764,6 +2764,229 @@ public func FfiConverterTypeUniFFITTZipMediaPlayer_lower(_ value: UniFfittZipMed
 }
 
 /**
+ * Character encoding and filename remediation service exposed via UniFFI.
+ */
+public protocol UniFfiTextEncodingServiceProtocol: AnyObject {
+    /**
+     * Detects character set encoding for given raw byte sequence with confidence scoring.
+     */
+    func detectEncoding(data: Data) -> UniFfiDetectedEncoding
+
+    /**
+     * Remediates raw filename bytes into clean UTF-8 with automatic sniffing or fallback.
+     */
+    func remediateFilename(rawBytes: Data, fallbackEncoding: String?) -> UniFfiRemediationResult
+
+    /**
+     * Batch remediates a collection of raw filename byte sequences.
+     */
+    func remediateFilenamesBatch(items: [Data], fallbackEncoding: String?) -> [UniFfiRemediationResult]
+
+    /**
+     * Attempts to repair mojibake in a UTF-8 string caused by misinterpreting legacy bytes as Windows-1252/Latin-1.
+     */
+    func remediateMojibakeUtf8(text: String, sourceEncoding: String?) -> UniFfiRemediationResult
+
+    /**
+     * Returns a list of all pre-configured standard and legacy encodings supported by TTZip.
+     */
+    func supportedEncodings() -> [UniFfiEncodingInfo]
+
+    /**
+     * Transcodes a UTF-8 string into target legacy or Unicode byte sequence.
+     */
+    func transcodeFromUtf8(text: String, encodingName: String) throws -> Data
+
+    /**
+     * Transcodes raw byte sequence to valid UTF-8 String using the specified encoding.
+     */
+    func transcodeToUtf8(data: Data, encodingName: String) throws -> String
+}
+
+/**
+ * Character encoding and filename remediation service exposed via UniFFI.
+ */
+open class UniFfiTextEncodingService:
+    UniFfiTextEncodingServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffitextencodingservice(self.pointer, $0) }
+    }
+
+    /**
+     * Creates a new instance of the text encoding service.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffitextencodingservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffitextencodingservice(pointer, $0) }
+    }
+
+    /**
+     * Detects character set encoding for given raw byte sequence with confidence scoring.
+     */
+    open func detectEncoding(data: Data) -> UniFfiDetectedEncoding {
+        return try! FfiConverterTypeUniFFIDetectedEncoding.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_detect_encoding(self.uniffiClonePointer(),
+                                                                                    FfiConverterData.lower(data), $0)
+        })
+    }
+
+    /**
+     * Remediates raw filename bytes into clean UTF-8 with automatic sniffing or fallback.
+     */
+    open func remediateFilename(rawBytes: Data, fallbackEncoding: String?) -> UniFfiRemediationResult {
+        return try! FfiConverterTypeUniFFIRemediationResult.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filename(self.uniffiClonePointer(),
+                                                                                       FfiConverterData.lower(rawBytes),
+                                                                                       FfiConverterOptionString.lower(fallbackEncoding), $0)
+        })
+    }
+
+    /**
+     * Batch remediates a collection of raw filename byte sequences.
+     */
+    open func remediateFilenamesBatch(items: [Data], fallbackEncoding: String?) -> [UniFfiRemediationResult] {
+        return try! FfiConverterSequenceTypeUniFFIRemediationResult.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_filenames_batch(self.uniffiClonePointer(),
+                                                                                              FfiConverterSequenceData.lower(items),
+                                                                                              FfiConverterOptionString.lower(fallbackEncoding), $0)
+        })
+    }
+
+    /**
+     * Attempts to repair mojibake in a UTF-8 string caused by misinterpreting legacy bytes as Windows-1252/Latin-1.
+     */
+    open func remediateMojibakeUtf8(text: String, sourceEncoding: String?) -> UniFfiRemediationResult {
+        return try! FfiConverterTypeUniFFIRemediationResult.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_remediate_mojibake_utf8(self.uniffiClonePointer(),
+                                                                                            FfiConverterString.lower(text),
+                                                                                            FfiConverterOptionString.lower(sourceEncoding), $0)
+        })
+    }
+
+    /**
+     * Returns a list of all pre-configured standard and legacy encodings supported by TTZip.
+     */
+    open func supportedEncodings() -> [UniFfiEncodingInfo] {
+        return try! FfiConverterSequenceTypeUniFFIEncodingInfo.lift(try! rustCall {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_supported_encodings(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    /**
+     * Transcodes a UTF-8 string into target legacy or Unicode byte sequence.
+     */
+    open func transcodeFromUtf8(text: String, encodingName: String) throws -> Data {
+        return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_from_utf8(self.uniffiClonePointer(),
+                                                                                        FfiConverterString.lower(text),
+                                                                                        FfiConverterString.lower(encodingName), $0)
+        })
+    }
+
+    /**
+     * Transcodes raw byte sequence to valid UTF-8 String using the specified encoding.
+     */
+    open func transcodeToUtf8(data: Data, encodingName: String) throws -> String {
+        return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffitextencodingservice_transcode_to_utf8(self.uniffiClonePointer(),
+                                                                                      FfiConverterData.lower(data),
+                                                                                      FfiConverterString.lower(encodingName), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITextEncodingService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiTextEncodingService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiTextEncodingService {
+        return UniFfiTextEncodingService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiTextEncodingService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiTextEncodingService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiTextEncodingService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITextEncodingService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiTextEncodingService {
+    return try FfiConverterTypeUniFFITextEncodingService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITextEncodingService_lower(_ value: UniFfiTextEncodingService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFITextEncodingService.lower(value)
+}
+
+/**
  * Thread-safe in-memory VFS Tree object exposed to Swift and multi-language SDKs.
  */
 public protocol UniFfiVfsTreeProtocol: AnyObject {
@@ -5574,6 +5797,111 @@ public func FfiConverterTypeUniFFIDeflateStats_lower(_ value: UniFfiDeflateStats
 }
 
 /**
+ * Result of automated character set sniffing and confidence scoring.
+ */
+public struct UniFfiDetectedEncoding {
+    /**
+     * Canonical detected character set name.
+     */
+    public var encodingName: String
+    /**
+     * Statistical confidence score bounded in [0.0..1.0].
+     */
+    public var confidence: Float
+    /**
+     * Whether the payload transcoded into valid UTF-8 without replacement characters.
+     */
+    public var isLossless: Bool
+    /**
+     * UTF-8 decoded text sample preview (capped to 128 characters/bytes).
+     */
+    public var samplePreview: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Canonical detected character set name.
+         */ encodingName: String,
+        /* 
+            * Statistical confidence score bounded in [0.0..1.0].
+            */ confidence: Float,
+        /* 
+            * Whether the payload transcoded into valid UTF-8 without replacement characters.
+            */ isLossless: Bool,
+        /* 
+            * UTF-8 decoded text sample preview (capped to 128 characters/bytes).
+            */ samplePreview: String
+    ) {
+        self.encodingName = encodingName
+        self.confidence = confidence
+        self.isLossless = isLossless
+        self.samplePreview = samplePreview
+    }
+}
+
+extension UniFfiDetectedEncoding: Equatable, Hashable {
+    public static func == (lhs: UniFfiDetectedEncoding, rhs: UniFfiDetectedEncoding) -> Bool {
+        if lhs.encodingName != rhs.encodingName {
+            return false
+        }
+        if lhs.confidence != rhs.confidence {
+            return false
+        }
+        if lhs.isLossless != rhs.isLossless {
+            return false
+        }
+        if lhs.samplePreview != rhs.samplePreview {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(encodingName)
+        hasher.combine(confidence)
+        hasher.combine(isLossless)
+        hasher.combine(samplePreview)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDetectedEncoding: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDetectedEncoding {
+        return
+            try UniFfiDetectedEncoding(
+                encodingName: FfiConverterString.read(from: &buf),
+                confidence: FfiConverterFloat.read(from: &buf),
+                isLossless: FfiConverterBool.read(from: &buf),
+                samplePreview: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDetectedEncoding, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.encodingName, into: &buf)
+        FfiConverterFloat.write(value.confidence, into: &buf)
+        FfiConverterBool.write(value.isLossless, into: &buf)
+        FfiConverterString.write(value.samplePreview, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDetectedEncoding_lift(_ buf: RustBuffer) throws -> UniFfiDetectedEncoding {
+    return try FfiConverterTypeUniFFIDetectedEncoding.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDetectedEncoding_lower(_ value: UniFfiDetectedEncoding) -> RustBuffer {
+    return FfiConverterTypeUniFFIDetectedEncoding.lower(value)
+}
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 public struct UniFfiDocxExtractResult {
@@ -5932,6 +6260,139 @@ public func FfiConverterTypeUniFFIEd25519Cert_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeUniFFIEd25519Cert_lower(_ value: UniFfiEd25519Cert) -> RustBuffer {
     return FfiConverterTypeUniFFIEd25519Cert.lower(value)
+}
+
+/**
+ * Strongly-typed character encoding metadata record exposed via UniFFI.
+ */
+public struct UniFfiEncodingInfo {
+    /**
+     * Canonical identifier (e.g. "UTF-8", "GB18030", "Shift_JIS", "Big5").
+     */
+    public var name: String
+    /**
+     * User-facing descriptive display title with region / script info.
+     */
+    public var displayName: String
+    /**
+     * Standard IANA encoding label string.
+     */
+    public var ianaName: String
+    /**
+     * Whether the encoding belongs to the Unicode standard family.
+     */
+    public var isUnicode: Bool
+    /**
+     * Whether the encoding is a CJK (Chinese, Japanese, Korean) multibyte codepage.
+     */
+    public var isCjk: Bool
+    /**
+     * Whether the encoding represents a single-byte (8-bit) legacy codepage.
+     */
+    public var isSingleByte: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Canonical identifier (e.g. "UTF-8", "GB18030", "Shift_JIS", "Big5").
+         */ name: String,
+        /* 
+            * User-facing descriptive display title with region / script info.
+            */ displayName: String,
+        /* 
+            * Standard IANA encoding label string.
+            */ ianaName: String,
+        /* 
+            * Whether the encoding belongs to the Unicode standard family.
+            */ isUnicode: Bool,
+        /* 
+            * Whether the encoding is a CJK (Chinese, Japanese, Korean) multibyte codepage.
+            */ isCjk: Bool,
+        /* 
+            * Whether the encoding represents a single-byte (8-bit) legacy codepage.
+            */ isSingleByte: Bool
+    ) {
+        self.name = name
+        self.displayName = displayName
+        self.ianaName = ianaName
+        self.isUnicode = isUnicode
+        self.isCjk = isCjk
+        self.isSingleByte = isSingleByte
+    }
+}
+
+extension UniFfiEncodingInfo: Equatable, Hashable {
+    public static func == (lhs: UniFfiEncodingInfo, rhs: UniFfiEncodingInfo) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.ianaName != rhs.ianaName {
+            return false
+        }
+        if lhs.isUnicode != rhs.isUnicode {
+            return false
+        }
+        if lhs.isCjk != rhs.isCjk {
+            return false
+        }
+        if lhs.isSingleByte != rhs.isSingleByte {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(displayName)
+        hasher.combine(ianaName)
+        hasher.combine(isUnicode)
+        hasher.combine(isCjk)
+        hasher.combine(isSingleByte)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIEncodingInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiEncodingInfo {
+        return
+            try UniFfiEncodingInfo(
+                name: FfiConverterString.read(from: &buf),
+                displayName: FfiConverterString.read(from: &buf),
+                ianaName: FfiConverterString.read(from: &buf),
+                isUnicode: FfiConverterBool.read(from: &buf),
+                isCjk: FfiConverterBool.read(from: &buf),
+                isSingleByte: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiEncodingInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterString.write(value.ianaName, into: &buf)
+        FfiConverterBool.write(value.isUnicode, into: &buf)
+        FfiConverterBool.write(value.isCjk, into: &buf)
+        FfiConverterBool.write(value.isSingleByte, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEncodingInfo_lift(_ buf: RustBuffer) throws -> UniFfiEncodingInfo {
+    return try FfiConverterTypeUniFFIEncodingInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIEncodingInfo_lower(_ value: UniFfiEncodingInfo) -> RustBuffer {
+    return FfiConverterTypeUniFFIEncodingInfo.lower(value)
 }
 
 /**
@@ -7974,6 +8435,139 @@ public func FfiConverterTypeUniFFIPlaybackTimeInfo_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeUniFFIPlaybackTimeInfo_lower(_ value: UniFfiPlaybackTimeInfo) -> RustBuffer {
     return FfiConverterTypeUniFFIPlaybackTimeInfo.lower(value)
+}
+
+/**
+ * Remediation outcome for a filename or string entry.
+ */
+public struct UniFfiRemediationResult {
+    /**
+     * Original raw filename string (lossy UTF-8 representation).
+     */
+    public var originalName: String
+    /**
+     * Remediated, clean UTF-8 string output.
+     */
+    public var remediatedName: String
+    /**
+     * Encoding applied during transcoding or remediation.
+     */
+    public var encodingUsed: String
+    /**
+     * Confidence score of the applied encoding [0.0..1.0].
+     */
+    public var confidence: Float
+    /**
+     * Whether any byte translation or transformation was performed.
+     */
+    public var wasRemediated: Bool
+    /**
+     * Whether unmapped bytes or replacement characters (U+FFFD) were produced.
+     */
+    public var hasUnmappedChars: Bool
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Original raw filename string (lossy UTF-8 representation).
+         */ originalName: String,
+        /* 
+            * Remediated, clean UTF-8 string output.
+            */ remediatedName: String,
+        /* 
+            * Encoding applied during transcoding or remediation.
+            */ encodingUsed: String,
+        /* 
+            * Confidence score of the applied encoding [0.0..1.0].
+            */ confidence: Float,
+        /* 
+            * Whether any byte translation or transformation was performed.
+            */ wasRemediated: Bool,
+        /* 
+            * Whether unmapped bytes or replacement characters (U+FFFD) were produced.
+            */ hasUnmappedChars: Bool
+    ) {
+        self.originalName = originalName
+        self.remediatedName = remediatedName
+        self.encodingUsed = encodingUsed
+        self.confidence = confidence
+        self.wasRemediated = wasRemediated
+        self.hasUnmappedChars = hasUnmappedChars
+    }
+}
+
+extension UniFfiRemediationResult: Equatable, Hashable {
+    public static func == (lhs: UniFfiRemediationResult, rhs: UniFfiRemediationResult) -> Bool {
+        if lhs.originalName != rhs.originalName {
+            return false
+        }
+        if lhs.remediatedName != rhs.remediatedName {
+            return false
+        }
+        if lhs.encodingUsed != rhs.encodingUsed {
+            return false
+        }
+        if lhs.confidence != rhs.confidence {
+            return false
+        }
+        if lhs.wasRemediated != rhs.wasRemediated {
+            return false
+        }
+        if lhs.hasUnmappedChars != rhs.hasUnmappedChars {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(originalName)
+        hasher.combine(remediatedName)
+        hasher.combine(encodingUsed)
+        hasher.combine(confidence)
+        hasher.combine(wasRemediated)
+        hasher.combine(hasUnmappedChars)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIRemediationResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiRemediationResult {
+        return
+            try UniFfiRemediationResult(
+                originalName: FfiConverterString.read(from: &buf),
+                remediatedName: FfiConverterString.read(from: &buf),
+                encodingUsed: FfiConverterString.read(from: &buf),
+                confidence: FfiConverterFloat.read(from: &buf),
+                wasRemediated: FfiConverterBool.read(from: &buf),
+                hasUnmappedChars: FfiConverterBool.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiRemediationResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.originalName, into: &buf)
+        FfiConverterString.write(value.remediatedName, into: &buf)
+        FfiConverterString.write(value.encodingUsed, into: &buf)
+        FfiConverterFloat.write(value.confidence, into: &buf)
+        FfiConverterBool.write(value.wasRemediated, into: &buf)
+        FfiConverterBool.write(value.hasUnmappedChars, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIRemediationResult_lift(_ buf: RustBuffer) throws -> UniFfiRemediationResult {
+    return try FfiConverterTypeUniFFIRemediationResult.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIRemediationResult_lower(_ value: UniFfiRemediationResult) -> RustBuffer {
+    return FfiConverterTypeUniFFIRemediationResult.lower(value)
 }
 
 /**
@@ -13703,6 +14297,31 @@ private struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
+private struct FfiConverterSequenceData: FfiConverterRustBuffer {
+    typealias SwiftType = [Data]
+
+    static func write(_ value: [Data], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterData.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Data] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Data]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterData.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
 private struct FfiConverterSequenceTypeDiskItemSummary: FfiConverterRustBuffer {
     typealias SwiftType = [DiskItemSummary]
 
@@ -13870,6 +14489,31 @@ private struct FfiConverterSequenceTypeUniFFIDeflateStats: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIDeflateStats.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIEncodingInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiEncodingInfo]
+
+    static func write(_ value: [UniFfiEncodingInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIEncodingInfo.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiEncodingInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiEncodingInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIEncodingInfo.read(from: &buf))
         }
         return seq
     }
@@ -14095,6 +14739,31 @@ private struct FfiConverterSequenceTypeUniFFIParetoCodecPoint: FfiConverterRustB
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             try seq.append(FfiConverterTypeUniFFIParetoCodecPoint.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+private struct FfiConverterSequenceTypeUniFFIRemediationResult: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiRemediationResult]
+
+    static func write(_ value: [UniFfiRemediationResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIRemediationResult.write(item, into: &buf)
+        }
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiRemediationResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiRemediationResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            try seq.append(FfiConverterTypeUniFFIRemediationResult.read(from: &buf))
         }
         return seq
     }
@@ -15697,6 +16366,17 @@ public func uniffiDeflateDualVerifyRoundtrip(src: Data, level: UniFfiDeflateLeve
 }
 
 /**
+ * Standalone convenience function for character encoding sniffing.
+ */
+public func uniffiDetectEncoding(data: Data) -> UniFfiDetectedEncoding {
+    return try! FfiConverterTypeUniFFIDetectedEncoding.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_detect_encoding(
+            FfiConverterData.lower(data), $0
+        )
+    })
+}
+
+/**
  * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
  */
 public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType, sizeBytes: UInt64, seed: UInt64?) -> Data {
@@ -15843,6 +16523,18 @@ public func uniffiPpmdDecompress(src: Data, expectedUncompressedSize: UInt64, or
 }
 
 /**
+ * Standalone convenience function for single filename remediation.
+ */
+public func uniffiRemediateFilename(rawBytes: Data, fallbackEncoding: String?) -> UniFfiRemediationResult {
+    return try! FfiConverterTypeUniFFIRemediationResult.lift(try! rustCall {
+        uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(
+            FfiConverterData.lower(rawBytes),
+            FfiConverterOptionString.lower(fallbackEncoding), $0
+        )
+    })
+}
+
+/**
  * Compresses buffer with raw Snappy block format.
  */
 public func uniffiSnappyCompress(src: Data) throws -> Data {
@@ -15882,6 +16574,18 @@ public func uniffiSnappyFrameEncode(src: Data) throws -> Data {
     return try FfiConverterData.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
         uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(
             FfiConverterData.lower(src), $0
+        )
+    })
+}
+
+/**
+ * Standalone convenience function for transcoding raw bytes to UTF-8.
+ */
+public func uniffiTranscodeToUtf8(data: Data, encodingName: String) throws -> String {
+    return try FfiConverterString.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(
+            FfiConverterData.lower(data),
+            FfiConverterString.lower(encodingName), $0
         )
     })
 }
@@ -16673,6 +17377,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_deflate_dual_verify_roundtrip() != 38120 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding() != 7884 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16709,6 +17416,9 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_decompress() != 30671 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16719,6 +17429,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738 {
@@ -17045,6 +17758,27 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_update_playback_time() != 4733 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_detect_encoding() != 28063 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filename() != 33783 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_filenames_batch() != 17662 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_remediate_mojibake_utf8() != 50492 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_supported_encodings() != 53568 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_from_utf8() != 27924 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffitextencodingservice_transcode_to_utf8() != 31079 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffivfstree_get_children() != 43490 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17133,6 +17867,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_new() != 23761 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319 {

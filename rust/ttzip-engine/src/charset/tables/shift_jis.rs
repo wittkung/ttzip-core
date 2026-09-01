@@ -56,10 +56,10 @@ pub fn score_shift_jis_2byte(b0: u8, b1: u8) -> u32 {
         => 100,
 
         // 5. Shift-JIS Level 1 Kanji Zone (0x889F..=0x9872)
-        _ if (0x88..=0x98).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 60,
+        _ if (0x88..=0x98).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 70,
 
         // 6. Shift-JIS Level 2 Kanji Zone (0x989F..=0xEA40, 0xE0..=0xFC)
-        _ if (0xE0..=0xFC).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 40,
+        _ if (0xE0..=0xFC).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 10,
 
         _ => 0,
     }

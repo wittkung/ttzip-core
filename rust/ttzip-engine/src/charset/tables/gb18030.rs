@@ -84,13 +84,13 @@ pub fn score_gb18030_2byte(b0: u8, b1: u8) -> u32 {
         => 100,
 
         // 2. High frequency Common Hanzi Zone in GB2312 (Level 1 Hanzi: 0xB0A1..=0xD7F9)
-        _ if (0xB0..=0xD7).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 60,
+        _ if (0xB0..=0xD7).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 70,
 
         // 3. Level 2 Hanzi in GB2312: (0xD8..=0xF7, 0xA1..=0xFE)
-        _ if (0xD8..=0xF7).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 40,
+        _ if (0xD8..=0xF7).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 10,
 
         // 4. Extended GBK User Defined / Rare Char Zone: 0x81..0xFE with 0x40..0xFE
-        _ if (0x81..=0xFE).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFE).contains(&b1)) => 20,
+        _ if (0x81..=0xFE).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFE).contains(&b1)) => 5,
 
         _ => 0,
     }
