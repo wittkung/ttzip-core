@@ -351,8 +351,8 @@ fn test_zlib_ng_invariant_6_commit_diff_anti_regression() {
         candidate_samples.push(c);
     }
 
-    let baseline_mb_s = HampelFilter::calc_median(&baseline_samples);
-    let candidate_mb_s = HampelFilter::calc_median(&candidate_samples);
+    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
+    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
 
     let diff_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0

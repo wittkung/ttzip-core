@@ -382,10 +382,8 @@ fn test_06_master_anti_regression_invariant_6_gate() {
         candidate_samples.push(c);
     }
 
-    baseline_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    candidate_samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let baseline_mb_s = baseline_samples[baseline_samples.len() / 2];
-    let candidate_mb_s = candidate_samples[candidate_samples.len() / 2];
+    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
+    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
 
     let regression_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0
