@@ -42,6 +42,7 @@ pub mod types;
 pub mod uniffi_api;
 pub mod utils;
 pub mod vfs;
+pub mod xml;
 pub mod xz;
 pub mod zip;
 
@@ -49,6 +50,13 @@ pub use analytics::*;
 pub use api::*;
 pub use checksum::{Adler32Hasher, Crc32Hasher};
 pub use utils::*;
+pub use xml::{
+    extract_single_element_text, AdaptiveBufferPool, ApplePlistParser, DocxOutline,
+    DocxOutlineItem, EpubManifestItem, EpubMetadataExtractor, EpubPackage, EpubPackageMetadata,
+    EpubSpineItem, EpubToc, EpubTocNode, InfoPlistMeta, OfficeAppProperties,
+    OfficeCoreProperties, OfficeXmlExtractor, PlistValue, PptxSlideOutline, TTZipXmlParser,
+    XlsxSheetInfo, XlsxWorkbookMeta, XmlError,
+};
 pub use archive::{
     compute_volume_path, detect_volume_chain, drill_down_nested_archive, find_next_pk_signature,
     open_virtual_file_stream, repair_damaged_tar, repair_damaged_zip, ArchiveBuilder,

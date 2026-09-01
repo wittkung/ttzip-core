@@ -78,19 +78,7 @@ impl From<DocxDocument> for UniFFIDocxExtractResult {
 // 2. EPUB UniFFI Records
 // ============================================================================
 
-/// Metadata record of an EPUB book.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct UniFFIEpubMetadata {
-    pub title: String,
-    pub authors: Vec<String>,
-    pub publisher: Option<String>,
-    pub language: Option<String>,
-    pub identifier: Option<String>,
-    pub description: Option<String>,
-    pub publication_date: Option<String>,
-    pub modified_date: Option<String>,
-    pub rights: Option<String>,
-}
+pub use super::xml_meta::UniFFIEpubMetadata;
 
 impl From<EpubMetadata> for UniFFIEpubMetadata {
     fn from(m: EpubMetadata) -> Self {

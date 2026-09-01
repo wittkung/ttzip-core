@@ -42,6 +42,7 @@ pub mod transaction;
 pub mod types;
 pub mod vault;
 pub mod vfs;
+pub mod xml_meta;
 pub mod zopfli_opt;
 
 pub use ab_benchmark::*;
@@ -76,6 +77,7 @@ pub use transaction::*;
 pub use types::*;
 pub use vault::*;
 pub use vfs::*;
+pub use xml_meta::*;
 pub use zopfli_opt::*;
 pub use crate::archive::nested_vfs::VirtualFileStream;
 pub use crate::security::license::*;

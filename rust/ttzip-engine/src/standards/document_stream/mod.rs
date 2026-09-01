@@ -10,9 +10,9 @@
 //! - **EPUB**: In-memory container resolution, metadata, spine, TOC, and cover image byte streaming via `roxmltree`
 //! - **PDF**: Cross-reference table, Info dictionary, and page content stream text extraction via `lopdf`
 
-pub mod docx;
-pub mod epub;
-pub mod pdf;
+pub(crate) mod docx;
+pub(crate) mod epub;
+pub(crate) mod pdf;
 
 #[cfg(test)]
 mod tests;

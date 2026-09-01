@@ -3157,6 +3157,240 @@ public func FfiConverterTypeUniFFIVfsTree_lower(_ value: UniFfiVfsTree) -> Unsaf
 }
 
 /**
+ * Stateful UniFFI service managing XML and Office/EPUB/Plist document metadata extraction.
+ */
+public protocol UniFfiXmlMetaServiceProtocol: AnyObject {
+    /**
+     * Extracts EPUB publication metadata from a filesystem path.
+     */
+    func extractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata
+
+    /**
+     * Extracts EPUB publication metadata directly from an in-memory byte buffer.
+     */
+    func extractEpubMetadataFromBytes(bytes: Data) throws -> UniFfiEpubMetadata
+
+    /**
+     * Extracts Office document metadata from a filesystem path.
+     */
+    func extractOfficeMetadata(filePath: String) throws -> UniFfiDocumentMetadata
+
+    /**
+     * Extracts Office document metadata directly from an in-memory byte buffer.
+     */
+    func extractOfficeMetadataFromBytes(bytes: Data) throws -> UniFfiDocumentMetadata
+
+    /**
+     * Extracts structural outline from an Office document file path.
+     */
+    func extractOfficeOutline(filePath: String) throws -> UniFfiOfficeOutline
+
+    /**
+     * Extracts structural outline from an in-memory Office document byte buffer.
+     */
+    func extractOfficeOutlineFromBytes(bytes: Data) throws -> UniFfiOfficeOutline
+
+    /**
+     * Deserializes an Apple XML Property List byte buffer into a structured dictionary.
+     */
+    func parsePlistFromBytes(bytes: Data) throws -> UniFfiPlistDictionary
+
+    /**
+     * Deserializes an Apple XML Property List string into a structured dictionary.
+     */
+    func parsePlistXml(xmlContent: String) throws -> UniFfiPlistDictionary
+}
+
+/**
+ * Stateful UniFFI service managing XML and Office/EPUB/Plist document metadata extraction.
+ */
+open class UniFfiXmlMetaService:
+    UniFfiXmlMetaServiceProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    // Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffixmlmetaservice(self.pointer, $0) }
+    }
+
+    /**
+     * Constructs a new XML metadata service instance.
+     */
+    public convenience init() {
+        let pointer =
+            try! rustCall {
+                uniffi_ttzip_engine_fn_constructor_uniffixmlmetaservice_new($0)
+            }
+        self.init(unsafeFromRawPointer: pointer)
+    }
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffixmlmetaservice(pointer, $0) }
+    }
+
+    /**
+     * Extracts EPUB publication metadata from a filesystem path.
+     */
+    open func extractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata {
+        return try FfiConverterTypeUniFFIEpubMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata(self.uniffiClonePointer(),
+                                                                                     FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts EPUB publication metadata directly from an in-memory byte buffer.
+     */
+    open func extractEpubMetadataFromBytes(bytes: Data) throws -> UniFfiEpubMetadata {
+        return try FfiConverterTypeUniFFIEpubMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes(self.uniffiClonePointer(),
+                                                                                                FfiConverterData.lower(bytes), $0)
+        })
+    }
+
+    /**
+     * Extracts Office document metadata from a filesystem path.
+     */
+    open func extractOfficeMetadata(filePath: String) throws -> UniFfiDocumentMetadata {
+        return try FfiConverterTypeUniFFIDocumentMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata(self.uniffiClonePointer(),
+                                                                                       FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts Office document metadata directly from an in-memory byte buffer.
+     */
+    open func extractOfficeMetadataFromBytes(bytes: Data) throws -> UniFfiDocumentMetadata {
+        return try FfiConverterTypeUniFFIDocumentMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_metadata_from_bytes(self.uniffiClonePointer(),
+                                                                                                  FfiConverterData.lower(bytes), $0)
+        })
+    }
+
+    /**
+     * Extracts structural outline from an Office document file path.
+     */
+    open func extractOfficeOutline(filePath: String) throws -> UniFfiOfficeOutline {
+        return try FfiConverterTypeUniFFIOfficeOutline.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline(self.uniffiClonePointer(),
+                                                                                      FfiConverterString.lower(filePath), $0)
+        })
+    }
+
+    /**
+     * Extracts structural outline from an in-memory Office document byte buffer.
+     */
+    open func extractOfficeOutlineFromBytes(bytes: Data) throws -> UniFfiOfficeOutline {
+        return try FfiConverterTypeUniFFIOfficeOutline.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_extract_office_outline_from_bytes(self.uniffiClonePointer(),
+                                                                                                 FfiConverterData.lower(bytes), $0)
+        })
+    }
+
+    /**
+     * Deserializes an Apple XML Property List byte buffer into a structured dictionary.
+     */
+    open func parsePlistFromBytes(bytes: Data) throws -> UniFfiPlistDictionary {
+        return try FfiConverterTypeUniFFIPlistDictionary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_from_bytes(self.uniffiClonePointer(),
+                                                                                      FfiConverterData.lower(bytes), $0)
+        })
+    }
+
+    /**
+     * Deserializes an Apple XML Property List string into a structured dictionary.
+     */
+    open func parsePlistXml(xmlContent: String) throws -> UniFfiPlistDictionary {
+        return try FfiConverterTypeUniFFIPlistDictionary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+            uniffi_ttzip_engine_fn_method_uniffixmlmetaservice_parse_plist_xml(self.uniffiClonePointer(),
+                                                                               FfiConverterString.lower(xmlContent), $0)
+        })
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIXmlMetaService: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiXmlMetaService
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiXmlMetaService {
+        return UniFfiXmlMetaService(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiXmlMetaService) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiXmlMetaService {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiXmlMetaService, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIXmlMetaService_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiXmlMetaService {
+    return try FfiConverterTypeUniFFIXmlMetaService.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIXmlMetaService_lower(_ value: UniFfiXmlMetaService) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIXmlMetaService.lower(value)
+}
+
+/**
  * Stateful UniFFI object wrapper for managing and running Zopfli optimizations.
  */
 public protocol UniFfiZopfliOptimizerProtocol: AnyObject {
@@ -5902,6 +6136,307 @@ public func FfiConverterTypeUniFFIDetectedEncoding_lower(_ value: UniFfiDetected
 }
 
 /**
+ * Universal document metadata record exposing Dublin Core and Office attributes.
+ */
+public struct UniFfiDocumentMetadata {
+    /**
+     * Document format classification (e.g. "DOCX", "XLSX", "PPTX", "EPUB", "PropertyList").
+     */
+    public var formatName: String
+    /**
+     * Document title or book name.
+     */
+    public var title: String?
+    /**
+     * Primary author, creator, or composer.
+     */
+    public var author: String?
+    /**
+     * Subject matter or topic category.
+     */
+    public var subject: String?
+    /**
+     * Summary description, abstract, or comments.
+     */
+    public var description: String?
+    /**
+     * Comma-separated keyword tags.
+     */
+    public var keywords: String?
+    /**
+     * Creation timestamp string (ISO 8601 or W3CDTF).
+     */
+    public var createdDate: String?
+    /**
+     * Last modification timestamp string.
+     */
+    public var modifiedDate: String?
+    /**
+     * Name of the last user who edited the document.
+     */
+    public var lastModifiedBy: String?
+    /**
+     * Authoring application or software generator.
+     */
+    public var application: String?
+    /**
+     * Total page count for paginated documents (0 if not applicable).
+     */
+    public var pageCount: UInt32
+    /**
+     * Estimated or recorded word count.
+     */
+    public var wordCount: UInt32
+    /**
+     * Total character count.
+     */
+    public var characterCount: UInt32
+    /**
+     * Total slide count for presentation documents.
+     */
+    public var slideCount: UInt32
+    /**
+     * Total worksheet count for spreadsheet documents.
+     */
+    public var sheetCount: UInt32
+    /**
+     * List of worksheet names in spreadsheet workbooks.
+     */
+    public var sheetNames: [String]
+    /**
+     * Extracted slide titles or section header labels.
+     */
+    public var slideTitles: [String]
+    /**
+     * Arbitrary key-value custom properties map.
+     */
+    public var customProperties: [String: String]
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Document format classification (e.g. "DOCX", "XLSX", "PPTX", "EPUB", "PropertyList").
+         */ formatName: String,
+        /* 
+            * Document title or book name.
+            */ title: String?,
+        /* 
+            * Primary author, creator, or composer.
+            */ author: String?,
+        /* 
+            * Subject matter or topic category.
+            */ subject: String?,
+        /* 
+            * Summary description, abstract, or comments.
+            */ description: String?,
+        /* 
+            * Comma-separated keyword tags.
+            */ keywords: String?,
+        /* 
+            * Creation timestamp string (ISO 8601 or W3CDTF).
+            */ createdDate: String?,
+        /* 
+            * Last modification timestamp string.
+            */ modifiedDate: String?,
+        /* 
+            * Name of the last user who edited the document.
+            */ lastModifiedBy: String?,
+        /* 
+            * Authoring application or software generator.
+            */ application: String?,
+        /* 
+            * Total page count for paginated documents (0 if not applicable).
+            */ pageCount: UInt32,
+        /* 
+            * Estimated or recorded word count.
+            */ wordCount: UInt32,
+        /* 
+            * Total character count.
+            */ characterCount: UInt32,
+        /* 
+            * Total slide count for presentation documents.
+            */ slideCount: UInt32,
+        /* 
+            * Total worksheet count for spreadsheet documents.
+            */ sheetCount: UInt32,
+        /* 
+            * List of worksheet names in spreadsheet workbooks.
+            */ sheetNames: [String],
+        /* 
+            * Extracted slide titles or section header labels.
+            */ slideTitles: [String],
+        /* 
+            * Arbitrary key-value custom properties map.
+            */ customProperties: [String: String]
+    ) {
+        self.formatName = formatName
+        self.title = title
+        self.author = author
+        self.subject = subject
+        self.description = description
+        self.keywords = keywords
+        self.createdDate = createdDate
+        self.modifiedDate = modifiedDate
+        self.lastModifiedBy = lastModifiedBy
+        self.application = application
+        self.pageCount = pageCount
+        self.wordCount = wordCount
+        self.characterCount = characterCount
+        self.slideCount = slideCount
+        self.sheetCount = sheetCount
+        self.sheetNames = sheetNames
+        self.slideTitles = slideTitles
+        self.customProperties = customProperties
+    }
+}
+
+extension UniFfiDocumentMetadata: Equatable, Hashable {
+    public static func == (lhs: UniFfiDocumentMetadata, rhs: UniFfiDocumentMetadata) -> Bool {
+        if lhs.formatName != rhs.formatName {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.author != rhs.author {
+            return false
+        }
+        if lhs.subject != rhs.subject {
+            return false
+        }
+        if lhs.description != rhs.description {
+            return false
+        }
+        if lhs.keywords != rhs.keywords {
+            return false
+        }
+        if lhs.createdDate != rhs.createdDate {
+            return false
+        }
+        if lhs.modifiedDate != rhs.modifiedDate {
+            return false
+        }
+        if lhs.lastModifiedBy != rhs.lastModifiedBy {
+            return false
+        }
+        if lhs.application != rhs.application {
+            return false
+        }
+        if lhs.pageCount != rhs.pageCount {
+            return false
+        }
+        if lhs.wordCount != rhs.wordCount {
+            return false
+        }
+        if lhs.characterCount != rhs.characterCount {
+            return false
+        }
+        if lhs.slideCount != rhs.slideCount {
+            return false
+        }
+        if lhs.sheetCount != rhs.sheetCount {
+            return false
+        }
+        if lhs.sheetNames != rhs.sheetNames {
+            return false
+        }
+        if lhs.slideTitles != rhs.slideTitles {
+            return false
+        }
+        if lhs.customProperties != rhs.customProperties {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(formatName)
+        hasher.combine(title)
+        hasher.combine(author)
+        hasher.combine(subject)
+        hasher.combine(description)
+        hasher.combine(keywords)
+        hasher.combine(createdDate)
+        hasher.combine(modifiedDate)
+        hasher.combine(lastModifiedBy)
+        hasher.combine(application)
+        hasher.combine(pageCount)
+        hasher.combine(wordCount)
+        hasher.combine(characterCount)
+        hasher.combine(slideCount)
+        hasher.combine(sheetCount)
+        hasher.combine(sheetNames)
+        hasher.combine(slideTitles)
+        hasher.combine(customProperties)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDocumentMetadata: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDocumentMetadata {
+        return
+            try UniFfiDocumentMetadata(
+                formatName: FfiConverterString.read(from: &buf),
+                title: FfiConverterOptionString.read(from: &buf),
+                author: FfiConverterOptionString.read(from: &buf),
+                subject: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterOptionString.read(from: &buf),
+                keywords: FfiConverterOptionString.read(from: &buf),
+                createdDate: FfiConverterOptionString.read(from: &buf),
+                modifiedDate: FfiConverterOptionString.read(from: &buf),
+                lastModifiedBy: FfiConverterOptionString.read(from: &buf),
+                application: FfiConverterOptionString.read(from: &buf),
+                pageCount: FfiConverterUInt32.read(from: &buf),
+                wordCount: FfiConverterUInt32.read(from: &buf),
+                characterCount: FfiConverterUInt32.read(from: &buf),
+                slideCount: FfiConverterUInt32.read(from: &buf),
+                sheetCount: FfiConverterUInt32.read(from: &buf),
+                sheetNames: FfiConverterSequenceString.read(from: &buf),
+                slideTitles: FfiConverterSequenceString.read(from: &buf),
+                customProperties: FfiConverterDictionaryStringString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiDocumentMetadata, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.formatName, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.subject, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.keywords, into: &buf)
+        FfiConverterOptionString.write(value.createdDate, into: &buf)
+        FfiConverterOptionString.write(value.modifiedDate, into: &buf)
+        FfiConverterOptionString.write(value.lastModifiedBy, into: &buf)
+        FfiConverterOptionString.write(value.application, into: &buf)
+        FfiConverterUInt32.write(value.pageCount, into: &buf)
+        FfiConverterUInt32.write(value.wordCount, into: &buf)
+        FfiConverterUInt32.write(value.characterCount, into: &buf)
+        FfiConverterUInt32.write(value.slideCount, into: &buf)
+        FfiConverterUInt32.write(value.sheetCount, into: &buf)
+        FfiConverterSequenceString.write(value.sheetNames, into: &buf)
+        FfiConverterSequenceString.write(value.slideTitles, into: &buf)
+        FfiConverterDictionaryStringString.write(value.customProperties, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocumentMetadata_lift(_ buf: RustBuffer) throws -> UniFfiDocumentMetadata {
+    return try FfiConverterTypeUniFFIDocumentMetadata.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDocumentMetadata_lower(_ value: UniFfiDocumentMetadata) -> RustBuffer {
+    return FfiConverterTypeUniFFIDocumentMetadata.lower(value)
+}
+
+/**
  * Extracted DOCX plain text, paragraph list, and metadata.
  */
 public struct UniFfiDocxExtractResult {
@@ -6814,22 +7349,77 @@ public func FfiConverterTypeUniFFIEpubCoverData_lower(_ value: UniFfiEpubCoverDa
 }
 
 /**
- * Metadata record of an EPUB book.
+ * Dublin Core metadata record for EPUB digital publications.
  */
 public struct UniFfiEpubMetadata {
+    /**
+     * Title of the publication.
+     */
     public var title: String
+    /**
+     * List of contributing authors and creators.
+     */
     public var authors: [String]
+    /**
+     * Publishing house or entity.
+     */
     public var publisher: String?
+    /**
+     * Primary language code (e.g. "en", "zh-CN").
+     */
     public var language: String?
+    /**
+     * ISBN, DOI, or unique package identifier.
+     */
     public var identifier: String?
+    /**
+     * Book synopsis or description.
+     */
     public var description: String?
+    /**
+     * Initial publication date string.
+     */
     public var publicationDate: String?
+    /**
+     * Last modified timestamp string.
+     */
     public var modifiedDate: String?
+    /**
+     * Copyright and intellectual property statement.
+     */
     public var rights: String?
 
     /// Default memberwise initializers are never public by default, so we
     /// declare one manually.
-    public init(title: String, authors: [String], publisher: String?, language: String?, identifier: String?, description: String?, publicationDate: String?, modifiedDate: String?, rights: String?) {
+    public init(
+        /* 
+         * Title of the publication.
+         */ title: String,
+        /* 
+            * List of contributing authors and creators.
+            */ authors: [String],
+        /* 
+            * Publishing house or entity.
+            */ publisher: String?,
+        /* 
+            * Primary language code (e.g. "en", "zh-CN").
+            */ language: String?,
+        /* 
+            * ISBN, DOI, or unique package identifier.
+            */ identifier: String?,
+        /* 
+            * Book synopsis or description.
+            */ description: String?,
+        /* 
+            * Initial publication date string.
+            */ publicationDate: String?,
+        /* 
+            * Last modified timestamp string.
+            */ modifiedDate: String?,
+        /* 
+            * Copyright and intellectual property statement.
+            */ rights: String?
+    ) {
         self.title = title
         self.authors = authors
         self.publisher = publisher
@@ -8046,6 +8636,139 @@ public func FfiConverterTypeUniFFIMultimodalEntryMetadata_lower(_ value: UniFfiM
 }
 
 /**
+ * Structural outline of an Office compound document.
+ */
+public struct UniFfiOfficeOutline {
+    /**
+     * High-level document category (e.g. "Word Processing", "Spreadsheet", "Presentation").
+     */
+    public var documentType: String
+    /**
+     * Ordered list of section headings and paragraph titles (for DOCX).
+     */
+    public var headings: [String]
+    /**
+     * Ordered list of sheet names (for XLSX).
+     */
+    public var sheets: [String]
+    /**
+     * Ordered list of slide titles and notes headers (for PPTX).
+     */
+    public var slides: [String]
+    /**
+     * Total aggregate count of structural sections across all types.
+     */
+    public var totalSections: UInt32
+    /**
+     * Leading plain text preview excerpt of the document content.
+     */
+    public var summaryPreview: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * High-level document category (e.g. "Word Processing", "Spreadsheet", "Presentation").
+         */ documentType: String,
+        /* 
+            * Ordered list of section headings and paragraph titles (for DOCX).
+            */ headings: [String],
+        /* 
+            * Ordered list of sheet names (for XLSX).
+            */ sheets: [String],
+        /* 
+            * Ordered list of slide titles and notes headers (for PPTX).
+            */ slides: [String],
+        /* 
+            * Total aggregate count of structural sections across all types.
+            */ totalSections: UInt32,
+        /* 
+            * Leading plain text preview excerpt of the document content.
+            */ summaryPreview: String
+    ) {
+        self.documentType = documentType
+        self.headings = headings
+        self.sheets = sheets
+        self.slides = slides
+        self.totalSections = totalSections
+        self.summaryPreview = summaryPreview
+    }
+}
+
+extension UniFfiOfficeOutline: Equatable, Hashable {
+    public static func == (lhs: UniFfiOfficeOutline, rhs: UniFfiOfficeOutline) -> Bool {
+        if lhs.documentType != rhs.documentType {
+            return false
+        }
+        if lhs.headings != rhs.headings {
+            return false
+        }
+        if lhs.sheets != rhs.sheets {
+            return false
+        }
+        if lhs.slides != rhs.slides {
+            return false
+        }
+        if lhs.totalSections != rhs.totalSections {
+            return false
+        }
+        if lhs.summaryPreview != rhs.summaryPreview {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(documentType)
+        hasher.combine(headings)
+        hasher.combine(sheets)
+        hasher.combine(slides)
+        hasher.combine(totalSections)
+        hasher.combine(summaryPreview)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIOfficeOutline: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiOfficeOutline {
+        return
+            try UniFfiOfficeOutline(
+                documentType: FfiConverterString.read(from: &buf),
+                headings: FfiConverterSequenceString.read(from: &buf),
+                sheets: FfiConverterSequenceString.read(from: &buf),
+                slides: FfiConverterSequenceString.read(from: &buf),
+                totalSections: FfiConverterUInt32.read(from: &buf),
+                summaryPreview: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiOfficeOutline, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.documentType, into: &buf)
+        FfiConverterSequenceString.write(value.headings, into: &buf)
+        FfiConverterSequenceString.write(value.sheets, into: &buf)
+        FfiConverterSequenceString.write(value.slides, into: &buf)
+        FfiConverterUInt32.write(value.totalSections, into: &buf)
+        FfiConverterString.write(value.summaryPreview, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeOutline_lift(_ buf: RustBuffer) throws -> UniFfiOfficeOutline {
+    return try FfiConverterTypeUniFFIOfficeOutline.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIOfficeOutline_lower(_ value: UniFfiOfficeOutline) -> RustBuffer {
+    return FfiConverterTypeUniFFIOfficeOutline.lower(value)
+}
+
+/**
  * Parent directory and autocompletion prefix record.
  */
 public struct UniFfiParentAndPrefix {
@@ -8435,6 +9158,167 @@ public func FfiConverterTypeUniFFIPlaybackTimeInfo_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeUniFFIPlaybackTimeInfo_lower(_ value: UniFfiPlaybackTimeInfo) -> RustBuffer {
     return FfiConverterTypeUniFFIPlaybackTimeInfo.lower(value)
+}
+
+/**
+ * Parsed Apple Property List (XML plist) key-value dictionary.
+ */
+public struct UniFfiPlistDictionary {
+    /**
+     * Bundle identifier (`CFBundleIdentifier`) if present.
+     */
+    public var bundleIdentifier: String?
+    /**
+     * Application display or bundle name (`CFBundleName` / `CFBundleDisplayName`).
+     */
+    public var bundleName: String?
+    /**
+     * Build version number string (`CFBundleVersion`).
+     */
+    public var bundleVersion: String?
+    /**
+     * Marketing release version string (`CFBundleShortVersionString`).
+     */
+    public var bundleShortVersion: String?
+    /**
+     * Minimum macOS deployment target version (`LSMinimumSystemVersion`).
+     */
+    public var minimumOsVersion: String?
+    /**
+     * Main binary executable name (`CFBundleExecutable`).
+     */
+    public var executableName: String?
+    /**
+     * All top-level key-value string pairs in the dictionary.
+     */
+    public var entries: [String: String]
+    /**
+     * Complete raw XML text for inspection.
+     */
+    public var rawXml: String
+
+    /// Default memberwise initializers are never public by default, so we
+    /// declare one manually.
+    public init(
+        /* 
+         * Bundle identifier (`CFBundleIdentifier`) if present.
+         */ bundleIdentifier: String?,
+        /* 
+            * Application display or bundle name (`CFBundleName` / `CFBundleDisplayName`).
+            */ bundleName: String?,
+        /* 
+            * Build version number string (`CFBundleVersion`).
+            */ bundleVersion: String?,
+        /* 
+            * Marketing release version string (`CFBundleShortVersionString`).
+            */ bundleShortVersion: String?,
+        /* 
+            * Minimum macOS deployment target version (`LSMinimumSystemVersion`).
+            */ minimumOsVersion: String?,
+        /* 
+            * Main binary executable name (`CFBundleExecutable`).
+            */ executableName: String?,
+        /* 
+            * All top-level key-value string pairs in the dictionary.
+            */ entries: [String: String],
+        /* 
+            * Complete raw XML text for inspection.
+            */ rawXml: String
+    ) {
+        self.bundleIdentifier = bundleIdentifier
+        self.bundleName = bundleName
+        self.bundleVersion = bundleVersion
+        self.bundleShortVersion = bundleShortVersion
+        self.minimumOsVersion = minimumOsVersion
+        self.executableName = executableName
+        self.entries = entries
+        self.rawXml = rawXml
+    }
+}
+
+extension UniFfiPlistDictionary: Equatable, Hashable {
+    public static func == (lhs: UniFfiPlistDictionary, rhs: UniFfiPlistDictionary) -> Bool {
+        if lhs.bundleIdentifier != rhs.bundleIdentifier {
+            return false
+        }
+        if lhs.bundleName != rhs.bundleName {
+            return false
+        }
+        if lhs.bundleVersion != rhs.bundleVersion {
+            return false
+        }
+        if lhs.bundleShortVersion != rhs.bundleShortVersion {
+            return false
+        }
+        if lhs.minimumOsVersion != rhs.minimumOsVersion {
+            return false
+        }
+        if lhs.executableName != rhs.executableName {
+            return false
+        }
+        if lhs.entries != rhs.entries {
+            return false
+        }
+        if lhs.rawXml != rhs.rawXml {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(bundleIdentifier)
+        hasher.combine(bundleName)
+        hasher.combine(bundleVersion)
+        hasher.combine(bundleShortVersion)
+        hasher.combine(minimumOsVersion)
+        hasher.combine(executableName)
+        hasher.combine(entries)
+        hasher.combine(rawXml)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIPlistDictionary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiPlistDictionary {
+        return
+            try UniFfiPlistDictionary(
+                bundleIdentifier: FfiConverterOptionString.read(from: &buf),
+                bundleName: FfiConverterOptionString.read(from: &buf),
+                bundleVersion: FfiConverterOptionString.read(from: &buf),
+                bundleShortVersion: FfiConverterOptionString.read(from: &buf),
+                minimumOsVersion: FfiConverterOptionString.read(from: &buf),
+                executableName: FfiConverterOptionString.read(from: &buf),
+                entries: FfiConverterDictionaryStringString.read(from: &buf),
+                rawXml: FfiConverterString.read(from: &buf)
+            )
+    }
+
+    public static func write(_ value: UniFfiPlistDictionary, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.bundleIdentifier, into: &buf)
+        FfiConverterOptionString.write(value.bundleName, into: &buf)
+        FfiConverterOptionString.write(value.bundleVersion, into: &buf)
+        FfiConverterOptionString.write(value.bundleShortVersion, into: &buf)
+        FfiConverterOptionString.write(value.minimumOsVersion, into: &buf)
+        FfiConverterOptionString.write(value.executableName, into: &buf)
+        FfiConverterDictionaryStringString.write(value.entries, into: &buf)
+        FfiConverterString.write(value.rawXml, into: &buf)
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlistDictionary_lift(_ buf: RustBuffer) throws -> UniFfiPlistDictionary {
+    return try FfiConverterTypeUniFFIPlistDictionary.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIPlistDictionary_lower(_ value: UniFfiPlistDictionary) -> RustBuffer {
+    return FfiConverterTypeUniFFIPlistDictionary.lower(value)
 }
 
 /**
@@ -16377,6 +17261,39 @@ public func uniffiDetectEncoding(data: Data) -> UniFfiDetectedEncoding {
 }
 
 /**
+ * Extracts EPUB Dublin Core publication metadata from a file on disk.
+ */
+public func uniffiExtractEpubMetadata(filePath: String) throws -> UniFfiEpubMetadata {
+    return try FfiConverterTypeUniFFIEpubMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_epub_metadata(
+            FfiConverterString.lower(filePath), $0
+        )
+    })
+}
+
+/**
+ * Extracts Office document metadata (DOCX, XLSX, PPTX) from a file on disk.
+ */
+public func uniffiExtractOfficeMetadata(filePath: String) throws -> UniFfiDocumentMetadata {
+    return try FfiConverterTypeUniFFIDocumentMetadata.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_office_metadata(
+            FfiConverterString.lower(filePath), $0
+        )
+    })
+}
+
+/**
+ * Extracts structural outline and preview text from an Office document on disk.
+ */
+public func uniffiExtractOfficeOutline(filePath: String) throws -> UniFfiOfficeOutline {
+    return try FfiConverterTypeUniFFIOfficeOutline.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_extract_office_outline(
+            FfiConverterString.lower(filePath), $0
+        )
+    })
+}
+
+/**
  * Generates a deterministic mathematical synthetic corpus of specified type and byte size.
  */
 public func uniffiGenerateSyntheticCorpus(corpusType: UniFfiSyntheticCorpusType, sizeBytes: UInt64, seed: UInt64?) -> Data {
@@ -16491,6 +17408,28 @@ public func uniffiLzvnDecompress(src: Data, expectedUncompressedSize: UInt64) th
         uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
             FfiConverterData.lower(src),
             FfiConverterUInt64.lower(expectedUncompressedSize), $0
+        )
+    })
+}
+
+/**
+ * Deserializes an Apple XML Property List from raw bytes.
+ */
+public func uniffiParsePlistFromBytes(bytes: Data) throws -> UniFfiPlistDictionary {
+    return try FfiConverterTypeUniFFIPlistDictionary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_parse_plist_from_bytes(
+            FfiConverterData.lower(bytes), $0
+        )
+    })
+}
+
+/**
+ * Deserializes an Apple XML Property List string into a structured dictionary.
+ */
+public func uniffiParsePlistXml(xmlContent: String) throws -> UniFfiPlistDictionary {
+    return try FfiConverterTypeUniFFIPlistDictionary.lift(rustCallWithError(FfiConverterTypeTTZipError.lift) {
+        uniffi_ttzip_engine_fn_func_uniffi_parse_plist_xml(
+            FfiConverterString.lower(xmlContent), $0
         )
     })
 }
@@ -17380,6 +18319,15 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding() != 7884 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_epub_metadata() != 32250 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_office_metadata() != 20046 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_extract_office_outline() != 48634 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17408,6 +18356,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes() != 33550 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_xml() != 21988 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_func_uniffi_ppmd_compress() != 37741 {
@@ -17797,6 +18751,30 @@ private let initializationResult: InitializationResult = {
     if uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata() != 49679 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata_from_bytes() != 5563 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata() != 35213 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_metadata_from_bytes() != 31977 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline() != 43034 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_office_outline_from_bytes() != 16662 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_from_bytes() != 15214 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_parse_plist_xml() != 42455 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_ttzip_engine_checksum_method_uniffizopflioptimizer_benchmark() != 50597 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17873,6 +18851,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new() != 47668 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_ttzip_engine_checksum_constructor_uniffizopflioptimizer_new() != 28814 {
