@@ -224,8 +224,11 @@ mod tests {
 
     #[test]
     fn test_repair_damaged_zip_corrupt_tail() {
-        let temp_dir = std::env::temp_dir().join("ttzip_test_repair_zip");
-        let _ = fs::create_dir_all(&temp_dir);
+        let temp_dir_obj = tempfile::Builder::new()
+            .prefix("ttzip_test_repair_zip_")
+            .tempdir()
+            .expect("tempdir");
+        let temp_dir = temp_dir_obj.path();
 
         let good_item = ZipCompressedItem {
             rel_path: "document.txt".to_string(),
@@ -253,7 +256,5 @@ mod tests {
         let count = repair_damaged_zip(&damaged_file, &repaired_file).expect("repair");
         assert_eq!(count, 1);
         assert!(repaired_file.exists());
-
-        let _ = fs::remove_dir_all(&temp_dir);
     }
 }

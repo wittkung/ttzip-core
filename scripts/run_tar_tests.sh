@@ -110,7 +110,7 @@ for target in "${TAR_TEST_TARGETS[@]}"; do
         fi
     done
     if [ -n "${target_bin}" ]; then
-        if [ -f "ttzip-engine/tests/${target}.rs" ] && [ "ttzip-engine/tests/${target}.rs" -nt "${target_bin}" ]; then
+        if [ -f "${RUST_DIR}/ttzip-engine/tests/${target}.rs" ] && [ "${RUST_DIR}/ttzip-engine/tests/${target}.rs" -nt "${target_bin}" ]; then
             ALL_BINS_EXIST=false
             break
         fi
