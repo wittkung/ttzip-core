@@ -519,3 +519,118 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sevenz::header::{SevenZCoder, SevenZFileMeta, SevenZFolder, SevenZHeaderInfo};
+
+    #[test]
+    fn test_solid_folder_index_empty_header() {
+        let info = SevenZHeaderInfo::default();
+        let index = SolidFolderIndex::build(&info);
+        assert!(index.is_empty());
+        assert_eq!(index.file_count(), 0);
+        assert_eq!(index.folder_count(), 1);
+        assert_eq!(index.lookup(0), None);
+        assert_eq!(index.lookup_by_path("file.txt"), None);
+    }
+
+    #[test]
+    fn test_solid_folder_index_multi_stream_offsets_and_lookup() {
+        let mut info = SevenZHeaderInfo::default();
+        info.folders = vec![SevenZFolder {
+            coders: vec![SevenZCoder {
+                method_id: 0x21,
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: vec![0x10],
+            }],
+            unpack_sizes: vec![1000],
+            crc: Some(0x12345678),
+            num_unpack_streams: 3,
+            packed_offset: 32,
+            packed_len: 400,
+        }];
+        info.stream_sizes = vec![200, 300, 500];
+        info.stream_crcs = vec![0xAAAA, 0xBBBB, 0xCCCC];
+        info.files = vec![
+            SevenZFileMeta {
+                rel_path: "folder/dir".to_string(),
+                is_directory: true,
+                is_empty_stream: false,
+                mtime_epoch_secs: None,
+                mode: 0,
+            },
+            SevenZFileMeta {
+                rel_path: "folder/a.txt".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                mtime_epoch_secs: None,
+                mode: 0,
+            },
+            SevenZFileMeta {
+                rel_path: "folder/b.txt".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                mtime_epoch_secs: None,
+                mode: 0,
+            },
+            SevenZFileMeta {
+                rel_path: "c.txt".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                mtime_epoch_secs: None,
+                mode: 0,
+            },
+        ];
+
+        let index = SolidFolderIndex::build(&info);
+        assert_eq!(index.file_count(), 4);
+        assert_eq!(index.folder_count(), 1);
+
+        // Directory entry
+        let dir_entry = index.lookup(0).unwrap();
+        assert!(dir_entry.is_directory);
+        assert_eq!(dir_entry.uncompressed_size, 0);
+
+        // File 1: folder/a.txt (size 200, offset 0..200)
+        let f1 = index.lookup(1).unwrap();
+        assert_eq!(f1.offset_start, 0);
+        assert_eq!(f1.offset_end, 200);
+        assert_eq!(f1.uncompressed_size, 200);
+        assert_eq!(f1.crc, Some(0xAAAA));
+
+        // File 2: folder/b.txt (size 300, offset 200..500)
+        let f2 = index.lookup(2).unwrap();
+        assert_eq!(f2.offset_start, 200);
+        assert_eq!(f2.offset_end, 500);
+        assert_eq!(f2.uncompressed_size, 300);
+        assert_eq!(f2.crc, Some(0xBBBB));
+
+        // File 3: c.txt (size 500, offset 500..1000)
+        let f3 = index.lookup(3).unwrap();
+        assert_eq!(f3.offset_start, 500);
+        assert_eq!(f3.offset_end, 1000);
+        assert_eq!(f3.uncompressed_size, 500);
+        assert_eq!(f3.crc, Some(0xCCCC));
+
+        // Path lookup with backslash and normalized slashes
+        assert_eq!(
+            index.lookup_by_path("folder\\a.txt").map(|e| e.file_index),
+            Some(1)
+        );
+        assert_eq!(
+            index.lookup_by_path("/folder/b.txt").map(|e| e.file_index),
+            Some(2)
+        );
+        assert_eq!(index.lookup_by_path("c.txt").map(|e| e.file_index), Some(3));
+
+        // Folder stream range check
+        assert_eq!(index.folder_stream_range(0, 0), Some((0, 200)));
+        assert_eq!(index.folder_stream_range(0, 1), Some((200, 500)));
+        assert_eq!(index.folder_stream_range(0, 2), Some((500, 1000)));
+        assert_eq!(index.folder_stream_range(0, 3), None);
+    }
+}
+

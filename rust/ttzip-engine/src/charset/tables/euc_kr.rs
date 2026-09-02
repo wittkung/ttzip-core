@@ -81,7 +81,7 @@ pub fn score_euc_kr_2byte(b0: u8, b1: u8) -> u32 {
         _ if (0xB0..=0xC8).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 70,
 
         // 3. Extended CP949 Hangul Syllables (0x81..0xA0 and non-standard range)
-        _ if (0x81..=0xFE).contains(&b0) && ((0x41..=0x5A).contains(&b1) || (0x61..=0x7A).contains(&b1) || (0x81..=0xFE).contains(&b1)) => 30,
+        _ if (0x81..=0xFE).contains(&b0) && ((0x41..=0x5A).contains(&b1) || (0x61..=0x7A).contains(&b1) || (0x81..=0xFE).contains(&b1)) => 5,
 
         _ => 0,
     }

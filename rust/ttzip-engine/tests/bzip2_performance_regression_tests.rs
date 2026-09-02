@@ -19,12 +19,14 @@ use std::time::{Duration, Instant};
 
 use ttzip_engine::benchmark::ab_engine::stats::HampelFilter;
 use ttzip_engine::benchmark::ab_engine::thermal::ThermalThrottleGovernor;
+use ttzip_engine::benchmark::ab_engine::timing::wait_for_next_tick;
 use ttzip_engine::codecs::bzip2::{
     bwt_block_sort, bzip2_compress_vec, bzip2_decompress_vec, inverse_bwt_fast,
 };
 
-const WARMUP_RUNS: usize = 2;
-const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(50); // 50ms Adaptive Integration
+const WARMUP_RUNS: usize = 3;
+const MIN_INTEGRATION_WINDOW: Duration = Duration::from_millis(100); // 100ms Adaptive Integration
+const MIN_SAMPLE_ITERATIONS: usize = 5; // Enforce minimum 5 samples for Hampel MAD filter
 const MAX_ALLOWED_REGRESSION_PCT: f64 = 3.0; // Invariant 6 Hard Gate
 
 static BENCH_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -49,7 +51,7 @@ fn generate_realistic_corpus(size: usize) -> Vec<u8> {
     payload
 }
 
-/// Measures adaptive throughput (MB/s) over at least 50ms with clock rising-edge alignment,
+/// Measures adaptive throughput (MB/s) over at least 100ms with clock rising-edge alignment,
 /// Hampel 3-sigma outlier filtering, and thermal protection throttling.
 fn measure_adaptive_throughput<F>(
     mut op: F,
@@ -69,11 +71,12 @@ where
         }
 
         governor.notify_pass_start();
+        let _tick = wait_for_next_tick();
         let mut iteration_times = Vec::with_capacity(100);
         let start = Instant::now();
         let mut total_iterations = 0u64;
 
-        while start.elapsed() < MIN_INTEGRATION_WINDOW {
+        while start.elapsed() < MIN_INTEGRATION_WINDOW || (total_iterations as usize) < MIN_SAMPLE_ITERATIONS {
             let batch_start = Instant::now();
             op();
             black_box(());
@@ -120,6 +123,7 @@ where
 
 #[test]
 fn test_bzip2_bwt_throughput_and_regression_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut governor = ThermalThrottleGovernor::new();
     let payload = generate_realistic_corpus(32 * 1024);
 
@@ -144,6 +148,7 @@ fn test_bzip2_bwt_throughput_and_regression_gate() {
 
 #[test]
 fn test_bzip2_inverse_bwt_throughput_and_regression_gate() {
+    let _lock = BENCH_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut governor = ThermalThrottleGovernor::new();
     let payload = generate_realistic_corpus(32 * 1024);
 
@@ -278,10 +283,21 @@ fn test_bzip2_full_pipeline_throughput_and_commit_diff_gate() {
         }
     }
 
-    let baseline_enc_mbs = baseline_enc_samples.into_iter().fold(0.0f64, f64::max);
-    let candidate_enc_mbs = candidate_enc_samples.into_iter().fold(0.0f64, f64::max);
-    let baseline_dec_mbs = baseline_dec_samples.into_iter().fold(0.0f64, f64::max);
-    let candidate_dec_mbs = candidate_dec_samples.into_iter().fold(0.0f64, f64::max);
+    let mut be_sorted = baseline_enc_samples;
+    be_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let baseline_enc_mbs = be_sorted[be_sorted.len() / 2];
+
+    let mut ce_sorted = candidate_enc_samples;
+    ce_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let candidate_enc_mbs = ce_sorted[ce_sorted.len() / 2];
+
+    let mut bd_sorted = baseline_dec_samples;
+    bd_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let baseline_dec_mbs = bd_sorted[bd_sorted.len() / 2];
+
+    let mut cd_sorted = candidate_dec_samples;
+    cd_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let candidate_dec_mbs = cd_sorted[cd_sorted.len() / 2];
 
     let enc_regression = if candidate_enc_mbs < baseline_enc_mbs {
         ((baseline_enc_mbs - candidate_enc_mbs) / baseline_enc_mbs) * 100.0

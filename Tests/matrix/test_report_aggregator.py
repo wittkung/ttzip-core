@@ -21,13 +21,22 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, Union
 
+_core_dir = Path(__file__).resolve().parent.parent.parent
 CONTRACT_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent
+    _core_dir
     / "specs"
     / "006-multi-language-sdk-automated-testing-framework"
     / "contracts"
     / "sdk-test-report-contract.json"
 )
+if not CONTRACT_PATH.exists():
+    CONTRACT_PATH = (
+        _core_dir.parent
+        / "specs"
+        / "006-multi-language-sdk-automated-testing-framework"
+        / "contracts"
+        / "sdk-test-report-contract.json"
+    )
 
 
 class TestSuiteResult:

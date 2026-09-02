@@ -20,6 +20,7 @@ pub mod image_defense;
 pub mod libdeflate_defense;
 pub mod license;
 pub mod lzfse_defense;
+pub mod media_defense;
 pub mod mmap_defense;
 pub mod office_defense;
 pub mod path_sanitizer;
@@ -27,6 +28,7 @@ pub mod pdf_defense;
 pub mod secure_extract;
 pub mod snappy_defense;
 pub mod syntax_defense;
+pub mod system_defense;
 pub mod tar_defense;
 pub mod text_encoding_defense;
 pub mod uniffi_defense;
@@ -61,6 +63,7 @@ pub use image_defense::*;
 pub use libdeflate_defense::*;
 pub use license::*;
 pub use lzfse_defense::*;
+pub use media_defense::*;
 pub use mmap_defense::*;
 pub use office_defense::*;
 pub use path_sanitizer::*;
@@ -68,6 +71,15 @@ pub use pdf_defense::*;
 pub use secure_extract::*;
 pub use snappy_defense::*;
 pub use syntax_defense::*;
+pub use system_defense::{
+    AppcastSignatureGuard, BinaryDeltaBudgetOptions, BinaryDeltaMemoryBudgetGuard,
+    DeltaMemoryPermit, PathTraversalOptions, PathTraversalProtectionGuard, SandboxEscapingGuard,
+    SandboxEscapingOptions, SensitiveCredentialBuffer, SensitiveCredentialString,
+    SystemDefenseError, SystemDefenseOptions, SystemPreflightReport, SystemSecurityPipeline,
+    SystemUpdateRequest, TempDirectoryCleanupGuard, TempDirectoryGuard,
+    DEFAULT_MAX_DELTA_EXPANSION_RATIO, DEFAULT_MAX_DELTA_INSTRUCTIONS,
+    DEFAULT_MAX_DELTA_MEMORY_BUDGET, DEFAULT_MAX_DELTA_PATCH_SIZE,
+};
 pub use tar_defense::*;
 pub use text_encoding_defense::*;
 pub use uniffi_defense::*;

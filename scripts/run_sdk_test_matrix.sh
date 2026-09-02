@@ -15,6 +15,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+export CLANG_MODULE_CACHE_PATH="${REPO_ROOT}/.build/clang-module-cache"
+export SWIFT_MODULE_CACHE_PATH="${REPO_ROOT}/.build/swift-module-cache"
+mkdir -p "${CLANG_MODULE_CACHE_PATH}" "${SWIFT_MODULE_CACHE_PATH}" 2>/dev/null || true
+
 # ANSI Color codes
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -306,7 +310,7 @@ if check_category_enabled "unit"; then
 
     # 2. Swift 6 SDK
     run_sdk_test "swift" "Swift 6 TTZipCore Package" \
-        "swift test --filter UniFFISymbolGateTests" \
+        "swift test --disable-sandbox --filter UniFFISymbolGateTests" \
         3
 
     # 3. Python 3 SDK
@@ -363,6 +367,7 @@ export_and_exit() {
     if [[ -z "${final_json_path}" ]]; then
         final_json_path="${TMP_RUN_DIR}/summary_report.json"
     fi
+    mkdir -p "$(dirname "${final_json_path}")" 2>/dev/null || true
 
     python3 "${REPO_ROOT}/tests/matrix/test_report_aggregator.py" \
         --toolchains-json "${TOOLCHAINS_JSON}" \

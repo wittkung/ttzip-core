@@ -22,6 +22,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+export CLANG_MODULE_CACHE_PATH="${REPO_ROOT}/.build/clang-module-cache"
+export SWIFT_MODULE_CACHE_PATH="${REPO_ROOT}/.build/swift-module-cache"
+mkdir -p "${CLANG_MODULE_CACHE_PATH}" "${SWIFT_MODULE_CACHE_PATH}" 2>/dev/null || true
+
 JSON_OUT=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -101,7 +105,7 @@ run_suite "rust" "Rust Microkernel & C-ABI" "cargo test -p ttzip-engine --manife
 
 # 2. Swift 6 SDK
 echo ">>> [2/9] Testing Swift 6 Core SDK..."
-run_suite "swift" "Swift 6 TTZipCore Package" "swift test --filter UniFFISymbolGateTests" "swift"
+run_suite "swift" "Swift 6 TTZipCore Package" "swift test --disable-sandbox --filter UniFFISymbolGateTests" "swift"
 
 # 3. Python 3 SDK
 echo ">>> [3/9] Testing Python PyO3 SDK (16 Formats Matrix)..."

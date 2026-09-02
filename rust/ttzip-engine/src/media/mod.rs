@@ -12,6 +12,7 @@
 
 pub mod player;
 pub mod types;
+pub mod video;
 
 #[cfg(test)]
 mod tests;
@@ -21,3 +22,5 @@ pub use types::{
     AudioTrack, PlaybackTimeInfo, PlayerEvent, PlayerState, SubtitleTrack, VideoDimension,
     VideoTrack,
 };
+pub use video::*;
+

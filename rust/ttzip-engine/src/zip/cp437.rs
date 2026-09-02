@@ -81,33 +81,90 @@ pub fn decode_cp437(bytes: &[u8]) -> Cow<'_, str> {
     }
 }
 
-/// Decodes a ZIP filename according to PKZIP specifications and Language Encoding Flag (Bit 11).
+/// Decodes a ZIP filename according to PKZIP specifications, Language Encoding Flag (Bit 11),
+/// and smart heuristic character set detection.
 ///
 /// If `is_utf8_flag_set` is true:
-/// - Attempts strict UTF-8 decoding.
-/// - If invalid UTF-8 sequences are encountered, gracefully falls back to CP437.
+/// - Fast path: attempts strict UTF-8 decoding.
+/// - If invalid UTF-8 sequences are encountered, gracefully falls back to smart charset sanitization.
 ///
 /// If `is_utf8_flag_set` is false:
-/// - First attempts valid UTF-8 detection (many modern ZIP archivers write UTF-8 without setting Bit 11).
-/// - If valid UTF-8 and contains non-ASCII multi-byte sequences, uses UTF-8.
-/// - Otherwise, decodes via CP437.
+/// - Fast path: if valid ASCII or valid UTF-8, returns UTF-8 string directly.
+/// - Fallback: legacy non-UTF8 archive (GB18030, Shift-JIS, Big5, EUC-KR, Windows-1252, CP437).
+///   Uses `crate::charset::sanitize_filename` to heuristically detect encoding and transcode cleanly.
 pub fn decode_zip_filename(bytes: &[u8], is_utf8_flag_set: bool) -> String {
     if is_utf8_flag_set {
         if let Ok(utf8_str) = std::str::from_utf8(bytes) {
             return utf8_str.to_string();
         }
-        return decode_cp437(bytes).into_owned();
+        return crate::charset::sanitize_filename(bytes);
     }
 
-    // When bit 11 is not set, check if it's already valid UTF-8 with multibyte sequences
+    // When bit 11 is not set, check if it's already valid UTF-8
     if let Ok(utf8_str) = std::str::from_utf8(bytes) {
-        // If it is pure ASCII or valid UTF-8, use UTF-8 string
-        if utf8_str.is_ascii() {
-            return utf8_str.to_string();
-        }
         return utf8_str.to_string();
     }
 
-    // Fallback to CP437
-    decode_cp437(bytes).into_owned()
+    // Heuristically detect encoding (GB18030, Shift-JIS, Big5, EUC-KR, Windows-1252, CP437) and sanitize
+    crate::charset::sanitize_filename(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cp437_ascii_zero_allocation() {
+        let ascii_bytes = b"standard_english_filename_12345.txt";
+        let cow = decode_cp437(ascii_bytes);
+        assert!(matches!(cow, Cow::Borrowed(_)));
+        assert_eq!(cow, "standard_english_filename_12345.txt");
+    }
+
+    #[test]
+    fn test_cp437_german_umlauts() {
+        let german_bytes = b"\x84\x94\x81 \x8e\x99\x9a \xe1";
+        let decoded = decode_cp437(german_bytes);
+        assert_eq!(decoded, "äöü ÄÖÜ ß");
+    }
+
+    #[test]
+    fn test_decode_zip_filename_utf8_bit11_set() {
+        let utf8_name = "你好_Dokument_2026.pdf".as_bytes();
+        assert_eq!(decode_zip_filename(utf8_name, true), "你好_Dokument_2026.pdf");
+    }
+
+    #[test]
+    fn test_decode_zip_filename_legacy_gbk_without_bit11() {
+        let text = "你好测试文件资料包.txt";
+        let (encoded_bytes, _, _) = encoding_rs::GB18030.encode(text);
+        assert_eq!(decode_zip_filename(&encoded_bytes, false), text);
+    }
+
+    #[test]
+    fn test_decode_zip_filename_legacy_shift_jis_without_bit11() {
+        let text = "日本語テストファイル作成.zip";
+        let (encoded_bytes, _, _) = encoding_rs::SHIFT_JIS.encode(text);
+        assert_eq!(decode_zip_filename(&encoded_bytes, false), text);
+    }
+
+    #[test]
+    fn test_decode_zip_filename_legacy_euc_kr_without_bit11() {
+        let text = "한국어테스트문서파일.txt";
+        let (encoded_bytes, _, _) = encoding_rs::EUC_KR.encode(text);
+        assert_eq!(decode_zip_filename(&encoded_bytes, false), text);
+    }
+
+    #[test]
+    fn test_decode_zip_filename_legacy_big5_without_bit11() {
+        let text = "測試繁體中文檔案說明.txt";
+        let (encoded_bytes, _, _) = encoding_rs::BIG5.encode(text);
+        assert_eq!(decode_zip_filename(&encoded_bytes, false), text);
+    }
+
+    #[test]
+    fn test_decode_zip_filename_cp437_fallback() {
+        let cp437_name = b"M\x81nchen_Gr\x84tz.log";
+        assert_eq!(decode_zip_filename(cp437_name, false), "München_Grätz.log");
+    }
 }

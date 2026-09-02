@@ -44,15 +44,29 @@ pub mod smart_extract;
 pub mod subtitles;
 pub mod syntax;
 pub mod syntax_meta;
+pub mod system_meta;
 pub mod text_encoding;
 pub mod transaction;
 pub mod types;
 pub mod vault;
 pub mod vfs;
+pub mod video_meta;
 pub mod xml_meta;
 pub mod zopfli_opt;
 
+pub use system_meta::{
+    uniffi_apply_delta_patch, uniffi_calculate_tree_hash, uniffi_create_delta_patch,
+    uniffi_verify_appcast_signature, UniFFIAppcastItem, UniFFIAppcastMetadata,
+    UniFFIDeltaFormat, UniFFIDeltaPatchResult, UniFFISystemError, UniFFISystemService,
+    TTZIP_DELTA_HEADER_LEN, TTZIP_DELTA_MAGIC,
+};
 pub use office_meta::*;
+pub use video_meta::{
+    extract_video_cover_from_bytes, parse_video_metadata_from_bytes, uniffi_extract_video_cover,
+    uniffi_extract_video_metadata, uniffi_probe_video_bytes, UniFFIAudioCodec, UniFFIAudioTrackInfo,
+    UniFFIChapterInfo, UniFFISubtitleTrackInfo, UniFFIVideoCodec, UniFFIVideoError,
+    UniFFIVideoFormat, UniFFIVideoMetadata, UniFFIVideoService, UniFFIVideoTrackInfo,
+};
 
 pub use ab_benchmark::*;
 pub use archive::*;

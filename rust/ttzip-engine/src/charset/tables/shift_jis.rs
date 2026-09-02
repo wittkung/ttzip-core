@@ -21,9 +21,9 @@ pub fn score_shift_jis_2byte(b0: u8, b1: u8) -> u32 {
         return 100;
     }
 
-    // 3. Japanese Punctuation & Symbols (0x8140..=0x81AC, e.g. "ー" 0x815B, "、" 0x8141, "。" 0x8142)
-    if (0x8140..=0x81AC).contains(&code) {
-        return 90;
+    // 3. Distinctive Japanese Punctuation (Choonpu "ー" 0x815B, Touten "、" 0x8141, Kuten "。" 0x8142, Kagikakko "「" 0x8175, "」" 0x8176)
+    if matches!(code, 0x815B | 0x8141 | 0x8142 | 0x8175 | 0x8176 | 0x8145) {
+        return 80;
     }
 
     // 4. Ultra-high frequency Kanji in Shift-JIS
@@ -43,12 +43,12 @@ pub fn score_shift_jis_2byte(b0: u8, b1: u8) -> u32 {
         | 0x8B9E // 京
         | 0x8F6F // 出
         | 0x97CD // 力
-        | 0x8F88 // 処
+        | 0x8F88 // 处
         | 0x979D // 理
         | 0x8E77 // 指
         | 0x92E8 // 定
-        | 0x95BD // 閉
-        | 0x8A4A // 開
+        | 0x95BD // 闭
+        | 0x8A4A // 开
         | 0x8D87 // 再
         | 0x90B6 // 生
         | 0x959F // 表
@@ -60,6 +60,9 @@ pub fn score_shift_jis_2byte(b0: u8, b1: u8) -> u32 {
 
         // 6. Shift-JIS Level 2 Kanji Zone (0x989F..=0xEA40, 0xE0..=0xFC)
         _ if (0xE0..=0xFC).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 10,
+
+        // 7. General Shift-JIS Punctuation/Symbols (0x8140..=0x81AC)
+        _ if (0x8140..=0x81AC).contains(&code) => 5,
 
         _ => 0,
     }

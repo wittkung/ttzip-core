@@ -322,8 +322,13 @@ fn test_zopfli_master_invariant_6_anti_regression_gate() {
         }
     }
 
-    let baseline_mb_s = baseline_samples.into_iter().fold(0.0f64, f64::max);
-    let candidate_mb_s = candidate_samples.into_iter().fold(0.0f64, f64::max);
+    let mut b_sorted = baseline_samples;
+    b_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let baseline_mb_s = b_sorted[b_sorted.len() / 2];
+
+    let mut c_sorted = candidate_samples;
+    c_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let candidate_mb_s = c_sorted[c_sorted.len() / 2];
 
     let diff_pct = if candidate_mb_s < baseline_mb_s {
         ((baseline_mb_s - candidate_mb_s) / baseline_mb_s) * 100.0

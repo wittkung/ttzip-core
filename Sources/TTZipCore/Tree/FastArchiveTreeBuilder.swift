@@ -56,11 +56,11 @@ public final class FastArchiveTreeBuilder: @unchecked Sendable {
 
                 let isLast = (slashIndex == path.endIndex)
                 let compStr = String(component)
-                let subPath = String(path[..<slashIndex])
 
                 if let child = current.children[compStr] {
                     current = child
                 } else {
+                    let subPath = String(path[..<slashIndex])
                     let isDir = isLast ? entry.isDirectory : true
                     let newNode = FastNode(
                         name: compStr,
@@ -95,12 +95,21 @@ public final class FastArchiveTreeBuilder: @unchecked Sendable {
                 )
             }
 
-            let sortedChildren = node.children.values.sorted { a, b in
+            let sortedList = node.children.values.sorted { a, b in
                 if a.isDirectory != b.isDirectory { return a.isDirectory }
                 return a.name < b.name
-            }.map { convert(node: $0) }
+            }
 
-            let totalSize = sortedChildren.reduce(Int64(0)) { $0 + $1.uncompressedSize }
+            var totalSize: Int64 = 0
+            var convertedChildren: [ArchiveTreeNode] = []
+            convertedChildren.reserveCapacity(sortedList.count)
+
+            for childNode in sortedList {
+                let converted = convert(node: childNode)
+                totalSize += converted.uncompressedSize
+                convertedChildren.append(converted)
+            }
+
             return ArchiveTreeNode(
                 id: node.fullPath,
                 name: node.name,
@@ -108,14 +117,16 @@ public final class FastArchiveTreeBuilder: @unchecked Sendable {
                 uncompressedSize: totalSize,
                 isDirectory: true,
                 detectedEncoding: node.detectedEncoding,
-                children: sortedChildren,
+                children: convertedChildren,
                 entry: node.entry
             )
         }
 
-        return root.children.values.sorted { a, b in
+        let sortedRoots = root.children.values.sorted { a, b in
             if a.isDirectory != b.isDirectory { return a.isDirectory }
             return a.name < b.name
-        }.map { convert(node: $0) }
+        }
+
+        return sortedRoots.map { convert(node: $0) }
     }
 }

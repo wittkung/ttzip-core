@@ -40,6 +40,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::{Read, Seek, SeekFrom, Write};
+    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
@@ -134,4 +135,107 @@ mod tests {
         reader.read_exact(&mut end_buf).unwrap();
         assert_eq!(&end_buf[..], &sample_data[1100..1500]);
     }
+
+    #[test]
+    fn test_detect_volume_chain_part_n_rar_format() {
+        let dir = tempdir().unwrap();
+        let part1 = dir.path().join("backup.part1.rar");
+        let part2 = dir.path().join("backup.part2.rar");
+        let part3 = dir.path().join("backup.part3.rar");
+
+        fs::write(&part1, b"PART1_BYTES").unwrap();
+        fs::write(&part2, b"PART2_BYTES").unwrap();
+        fs::write(&part3, b"PART3_BYTES").unwrap();
+
+        // Detect from part 2 seed
+        let chain = detect_volume_chain(&part2).unwrap();
+        assert_eq!(chain.len(), 3);
+        assert_eq!(chain[0], part1);
+        assert_eq!(chain[1], part2);
+        assert_eq!(chain[2], part3);
+
+        // Virtual reader stitches all 3 parts
+        let mut vreader = VirtualMultiVolumeReader::from_volumes(chain).unwrap();
+        let mut combined = String::new();
+        vreader.read_to_string(&mut combined).unwrap();
+        assert_eq!(combined, "PART1_BYTESPART2_BYTESPART3_BYTES");
+    }
+
+    #[test]
+    fn test_detect_volume_chain_base_zero_and_pkzip_chain() {
+        let dir = tempdir().unwrap();
+        // Base-0 numbered extension: data.7z.000, data.7z.001, data.7z.002
+        let z0 = dir.path().join("data.7z.000");
+        let z1 = dir.path().join("data.7z.001");
+        let z2 = dir.path().join("data.7z.002");
+
+        fs::write(&z0, b"ZERO").unwrap();
+        fs::write(&z1, b"ONE_").unwrap();
+        fs::write(&z2, b"TWO_").unwrap();
+
+        let chain = detect_volume_chain(&z1).unwrap();
+        assert_eq!(chain.len(), 3);
+        assert_eq!(chain[0], z0);
+        assert_eq!(chain[1], z1);
+        assert_eq!(chain[2], z2);
+
+        // PKZIP spanned: pack.z01, pack.z02, pack.zip
+        let p_z01 = dir.path().join("pack.z01");
+        let p_z02 = dir.path().join("pack.z02");
+        let p_zip = dir.path().join("pack.zip");
+
+        fs::write(&p_z01, b"SEG1_").unwrap();
+        fs::write(&p_z02, b"SEG2_").unwrap();
+        fs::write(&p_zip, b"FINAL").unwrap();
+
+        let pkzip_chain = detect_volume_chain(&p_zip).unwrap();
+        assert_eq!(pkzip_chain.len(), 3);
+        assert_eq!(pkzip_chain[0], p_z01);
+        assert_eq!(pkzip_chain[1], p_z02);
+        assert_eq!(pkzip_chain[2], p_zip);
+
+        let mut pk_reader = VirtualMultiVolumeReader::from_volumes(pkzip_chain).unwrap();
+        let mut pk_combined = String::new();
+        pk_reader.read_to_string(&mut pk_combined).unwrap();
+        assert_eq!(pk_combined, "SEG1_SEG2_FINAL");
+    }
+
+    #[test]
+    fn test_detect_volume_chain_non_existent_seed_returns_error() {
+        let non_existent = Path::new("/tmp/definitely_not_existing_volume_file.7z.001");
+        let res = detect_volume_chain(non_existent);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_virtual_multi_volume_reader_seek_from_current_and_end() {
+        let dir = tempdir().unwrap();
+        let p1 = dir.path().join("stream.001");
+        let p2 = dir.path().join("stream.002");
+        let p3 = dir.path().join("stream.003");
+
+        fs::write(&p1, b"0123456789").unwrap(); // 10 bytes
+        fs::write(&p2, b"ABCDEFGHIJ").unwrap(); // 10 bytes
+        fs::write(&p3, b"KLMNOPQRST").unwrap(); // 10 bytes
+
+        let mut reader = VirtualMultiVolumeReader::from_volumes(vec![p1, p2, p3]).unwrap();
+        assert_eq!(reader.total_size(), 30);
+
+        // SeekFrom::End(-5) -> offset 25
+        reader.seek(SeekFrom::End(-5)).unwrap();
+        let mut buf = [0u8; 5];
+        reader.read_exact(&mut buf).unwrap();
+        assert_eq!(&buf, b"PQRST");
+
+        // SeekFrom::Current(-15) from offset 30 -> offset 15 (in volume 2)
+        reader.seek(SeekFrom::Current(-15)).unwrap();
+        let mut buf2 = [0u8; 5];
+        reader.read_exact(&mut buf2).unwrap();
+        assert_eq!(&buf2, b"FGHIJ");
+
+        // Seeking to negative offset should error
+        let err = reader.seek(SeekFrom::Current(-50));
+        assert!(err.is_err());
+    }
 }
+

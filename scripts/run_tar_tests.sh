@@ -49,6 +49,10 @@ while [[ $# -gt 0 ]]; do
             FORCE_REBUILD=true
             shift
             ;;
+        --gate)
+            GATE_MODE="1"
+            shift
+            ;;
         --help|-h)
             usage
             ;;

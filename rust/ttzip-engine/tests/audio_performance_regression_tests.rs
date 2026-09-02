@@ -309,48 +309,56 @@ fn test_audio_anti_regression_invariant6_gate() {
         wait_for_next_tick();
         if i % 2 == 0 {
             let t0 = Instant::now();
-            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
-            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
-            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
-                black_box(pkt);
+            for _ in 0..8 {
+                let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+                let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+                while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                    black_box(pkt);
+                }
+                let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+                let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             }
-            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
-            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             let dur_b = t0.elapsed().as_secs_f64();
-            baseline_samples.push((wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
+            baseline_samples.push((8.0 * wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
 
             let t1 = Instant::now();
-            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
-            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
-            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
-                black_box(pkt);
+            for _ in 0..8 {
+                let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+                let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+                while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                    black_box(pkt);
+                }
+                let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+                let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             }
-            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
-            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             let dur_c = t1.elapsed().as_secs_f64();
-            candidate_samples.push((wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
+            candidate_samples.push((8.0 * wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
         } else {
             let t1 = Instant::now();
-            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
-            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
-            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
-                black_box(pkt);
+            for _ in 0..8 {
+                let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+                let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+                while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                    black_box(pkt);
+                }
+                let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+                let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             }
-            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
-            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             let dur_c = t1.elapsed().as_secs_f64();
-            candidate_samples.push((wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
+            candidate_samples.push((8.0 * wav_data.len() as f64) / dur_c / (1024.0 * 1024.0));
 
             let t0 = Instant::now();
-            let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
-            let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
-            while let Ok(Some(pkt)) = decoder.decode_next_packet() {
-                black_box(pkt);
+            for _ in 0..8 {
+                let _ = pipeline.inspect_stream_header(&wav_data).unwrap();
+                let mut decoder = TTZipAudioDecoder::open_from_bytes(&wav_data).unwrap();
+                while let Ok(Some(pkt)) = decoder.decode_next_packet() {
+                    black_box(pkt);
+                }
+                let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
+                let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             }
-            let _ = AudioMetadataExtractor::extract_from_bytes(&wav_data).unwrap();
-            let _ = AudioWaveformSampler::sample_waveform_from_bytes(&wav_data, 64).unwrap();
             let dur_b = t0.elapsed().as_secs_f64();
-            baseline_samples.push((wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
+            baseline_samples.push((8.0 * wav_data.len() as f64) / dur_b / (1024.0 * 1024.0));
         }
     }
 

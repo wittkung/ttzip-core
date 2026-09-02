@@ -21,13 +21,13 @@
 //! 6. **Sensitive Audio Buffer** ([`SensitiveAudioBuffer`]):
 //!    Zero-allocation / zeroize-on-drop audio memory erasure for confidential, cryptographic, and processed PCM streams.
 
-pub mod channel_rate;
-pub mod cover_art;
-pub mod frame_loop;
-pub mod id3_safety;
-pub mod memory_budget;
-pub mod pipeline;
-pub mod sensitive;
+mod channel_rate;
+mod cover_art;
+mod frame_loop;
+mod id3_safety;
+mod memory_budget;
+mod pipeline;
+mod sensitive;
 
 pub use channel_rate::{AudioChannelRateGuard, ChannelRateConfig};
 pub use cover_art::{CoverArtFormat, CoverArtInfo, CoverArtQuotaGuard};

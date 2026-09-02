@@ -88,6 +88,10 @@ pub fn sanitize_filename_to_slice(data: &[u8], out_buf: &mut [u8]) -> Result<usi
 }
 
 /// Convenience helper to sanitize raw filename bytes to a safe UTF-8 String.
+///
+/// Automatically detects legacy multi-byte character encodings (GB18030, Shift-JIS, Big5, EUC-KR,
+/// Windows-1252) using Coding State Machine (CSM) and bigram statistics, and falls back to
+/// Code Page 437 (DOS Latin US) table decoding for unclassified single-byte extended ASCII.
 pub fn sanitize_filename(data: &[u8]) -> String {
     if data.is_empty() {
         return String::new();
@@ -95,6 +99,12 @@ pub fn sanitize_filename(data: &[u8]) -> String {
     if let Ok(s) = std::str::from_utf8(data) {
         return s.to_string();
     }
-    let detected = detect_charset(data).unwrap_or_else(|| "UTF-8".to_string());
-    transcode_to_utf8(data, &detected).unwrap_or_else(|_| String::from_utf8_lossy(data).into_owned())
+    let (detected, conf) = crate::charset::detect_charset_with_confidence(data);
+    if conf >= 0.20 && detected != "UTF-8" {
+        if let Ok(transcoded) = transcode_to_utf8(data, &detected) {
+            return transcoded;
+        }
+    }
+    // Fallback: decode via CP437 for DOS legacy extended ASCII strings
+    crate::zip::cp437::decode_cp437(data).into_owned()
 }

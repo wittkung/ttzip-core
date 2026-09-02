@@ -41,6 +41,7 @@ pub mod security;
 pub mod sevenz;
 pub mod standards;
 pub mod syntax;
+pub mod system;
 pub mod tar;
 pub mod testing;
 pub mod text;
@@ -107,6 +108,11 @@ pub use sevenz::{
 };
 pub use standards::*;
 pub use syntax::*;
+pub use system::{
+    BsDiffControl, BsDiffPatch, DeltaCommand, DeltaError, DeltaFormat, DeltaPatchHeader,
+    DeltaPatchResult, DeltaResult, TTZipBsDiff, TTZipBsPatch, TTZipDeltaArchive, TTZipDeltaEngine,
+    DELTA_TREE_HASH_SEED,
+};
 pub use text::{
     clean_control_characters, decode_to_utf8, decode_to_utf8_lossless, decode_to_utf8_lossy,
     detect_encoding, detect_encoding_with_confidence, encode_from_utf8, encode_from_utf8_lossless,

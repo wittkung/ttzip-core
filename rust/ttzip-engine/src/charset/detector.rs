@@ -154,6 +154,11 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
             return if is_chardet { 0.5 } else { 0.1 };
         }
         let base_density = (acc_score as f32) / (mb_count as f32 * 100.0);
+        // Genuine CJK multi-byte text will have substantial bigram density (>= 0.20).
+        // If density is below 0.20, it is random or single-byte CP437 ASCII pair collisions.
+        if base_density < 0.20 {
+            return 0.0;
+        }
         let chardet_boost = if is_chardet { 0.35 } else { 0.0 };
         (base_density * 0.75 + chardet_boost).min(1.0)
     };

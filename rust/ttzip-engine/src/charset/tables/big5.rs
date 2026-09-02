@@ -72,7 +72,7 @@ pub fn score_big5_2byte(b0: u8, b1: u8) -> u32 {
         _ if (0xC9..=0xF9).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0xA1..=0xFE).contains(&b1)) => 10,
 
         // 4. Other Big5 User-Defined / Extended Zone
-        _ if (0x81..=0xFE).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0xA1..=0xFE).contains(&b1)) => 5,
+        _ if (0x81..=0xFE).contains(&b0) && (0xA1..=0xFE).contains(&b1) => 5,
 
         _ => 0,
     }

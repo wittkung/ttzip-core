@@ -31,7 +31,7 @@ C_BLUE="\033[1;34m"
 C_CYAN="\033[1;36m"
 
 # Options & Defaults
-DEFAULT_JOBS="$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 8)"
+DEFAULT_JOBS=6
 MAX_JOBS="${DEFAULT_JOBS}"
 BAIL_ON_FAILURE=false
 TARGET_STAGE=""
@@ -44,7 +44,7 @@ show_help() {
     echo "Options:"
     echo "  -j, --jobs <N>       Maximum number of concurrent worker processes (default: ${DEFAULT_JOBS})"
     echo "  --bail               Stop immediately on first failed stage"
-    echo "  --stage <name|idx>   Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite, office-suite, html-suite)"
+    echo "  -s, --stage <name|idx> Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite, office-suite, html-suite, video-suite, system-suite)"
     echo "  --release            Pass --release profile to applicable test stages"
     echo "  --json <path>        Export structured JSON report"
     echo "  -h, --help           Show this help message"
@@ -68,7 +68,7 @@ while [[ $# -gt 0 ]]; do
             BAIL_ON_FAILURE=true
             shift
             ;;
-        --stage)
+        -s|--stage)
             TARGET_STAGE="$2"
             shift 2
             ;;
@@ -104,7 +104,7 @@ if ! [[ "${MAX_JOBS}" =~ ^[1-9][0-9]*$ ]]; then
     MAX_JOBS="${DEFAULT_JOBS}"
 fi
 
-# Stage Definitions (35 Total)
+# Stage Definitions (37 Total)
 declare -a STAGE_NAMES=(
     "Single-File LOC Defense Gate (<= 800 LOC)"
     "Architecture & Module Dependency DAG Gate"
@@ -141,6 +141,8 @@ declare -a STAGE_NAMES=(
     "Pure-Rust E-Book Parser & Spine Navigation Invariant 6 Gate"
     "Pure-Rust Office Suite Parser & Formula Engine Invariant 6 Gate"
     "Pure-Rust HTML Streaming Rewriter & VFS Router Invariant 6 Gate"
+    "Pure-Rust Video Demuxer & Metadata Extraction Invariant 6 Gate"
+    "Pure-Rust BinaryDelta Engine & System Security Invariant 6 Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -179,6 +181,8 @@ declare -a STAGE_KEYS=(
     "ebook-suite"
     "office-suite"
     "html-suite"
+    "video-suite"
+    "system-suite"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -189,34 +193,36 @@ declare -a STAGE_COMMANDS=(
     "swift test --disable-sandbox --parallel"
     "swift run --disable-sandbox -c release ttzip-bench gate"
     "./scripts/run_rust_tests.sh --unit --props --fuzz$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_7z_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_zip_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_tar_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_7z_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_zip_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_tar_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_deflate_defense_tests.sh"
-    "./scripts/run_libarchive_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_lz4_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_lzma2_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_xz_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_brotli_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_snappy_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_lzfse_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_bzip2_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_libdeflate_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_blake3_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_ed25519_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_mmap_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_uniffi_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_zlib_ng_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_zopfli_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_text_encoding_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_xml_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_syntax_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_image_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_pdf_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_audio_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_ebook_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_office_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
-    "./scripts/run_html_tests.sh$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_libarchive_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lz4_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lzma2_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_xz_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_brotli_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_snappy_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_lzfse_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_bzip2_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_libdeflate_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_blake3_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_ed25519_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_mmap_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_uniffi_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_zlib_ng_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_zopfli_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_text_encoding_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_xml_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_syntax_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_image_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_pdf_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_audio_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_ebook_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_office_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_html_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_video_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_system_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
@@ -246,6 +252,11 @@ run_stage_bg() {
         start_ts=$(python3 -c "import time; print(time.time())")
         set +e
         export GATE_MODE=1
+        export RUST_TEST_THREADS=2
+        export RAYON_NUM_THREADS=1
+        export CLANG_MODULE_CACHE_PATH="${WORKSPACE_ROOT}/.build/module-cache"
+        export SWIFTPM_MODULECACHE_OVERRIDE="${WORKSPACE_ROOT}/.build/module-cache"
+        mkdir -p "${WORKSPACE_ROOT}/.build/module-cache"
         (
             cd "${WORKSPACE_ROOT}"
             eval "${cmd}"
@@ -404,12 +415,17 @@ else
 
     # --- Phase 3: Full Concurrent Worker Pool (Track A, Track B, Track C) ---
     if [ "${PIPELINE_BAIL}" = false ]; then
+        (
+            cd "${WORKSPACE_ROOT}/rust"
+            cargo test --target aarch64-apple-darwin -p ttzip-engine --tests --no-run >/dev/null 2>&1 || true
+        )
+
         declare -a WORK_QUEUE=(
             5 11
             7 8 9 10
             12 13 14 15 16 17 18 19 20
             21 22 23 24
-            25 26 27 28 29 30 31 32 33 34 35
+            25 26 27 28 29 30 31 32 33 34 35 36 37
         )
 
         # Prefill Worker Pool up to MAX_JOBS
