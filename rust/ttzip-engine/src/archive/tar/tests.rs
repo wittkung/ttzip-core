@@ -187,15 +187,10 @@ use std::fs;
         writer.append_file("folder/sub/data.bin", &[1, 2, 3, 4, 5], 0o600, 1700000000).unwrap();
         writer.finish().unwrap();
 
-        let temp_dir = std::env::temp_dir().join(format!(
-            "ttzip_tar_test_extract_{}_{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        let _ = fs::remove_dir_all(&temp_dir);
+        let temp_dir = tempfile::Builder::new()
+            .prefix("ttzip_tar_test_extract_")
+            .tempdir()
+            .unwrap();
 
         let archive = TarArchive::open_slice(&archive_bytes).unwrap();
         let options = TTZipExtractOptions {
@@ -211,16 +206,14 @@ use std::fs;
             user_data: std::ptr::null_mut(),
         };
 
-        let report = archive.extract_all(&temp_dir, &options).unwrap();
+        let report = archive.extract_all(temp_dir.path(), &options).unwrap();
         assert_eq!(report.processed_entries_count, 2);
 
-        let content1 = fs::read(temp_dir.join("folder/sample.txt")).unwrap();
+        let content1 = fs::read(temp_dir.path().join("folder/sample.txt")).unwrap();
         assert_eq!(content1, b"Hello from pure Rust TAR engine!");
 
-        let content2 = fs::read(temp_dir.join("folder/sub/data.bin")).unwrap();
+        let content2 = fs::read(temp_dir.path().join("folder/sub/data.bin")).unwrap();
         assert_eq!(content2, vec![1, 2, 3, 4, 5]);
-
-        let _ = fs::remove_dir_all(&temp_dir);
     }
 
     #[test]

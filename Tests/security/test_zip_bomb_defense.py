@@ -34,8 +34,8 @@ class TestZipBombDefense(unittest.TestCase):
         cls.registry = SdkDriverRegistry()
         cls.registry.ensure_binaries_built()
         cls.sdks = cls.registry.get_available_sdks()
-        cls.fixtures_dir = Path(__file__).resolve().parent / "fixtures"
-        cls.fixtures_dir.mkdir(parents=True, exist_ok=True)
+        cls._temp_dir = tempfile.TemporaryDirectory(prefix="ttzip_fixtures_bomb_")
+        cls.fixtures_dir = Path(cls._temp_dir.name)
         cls.bomb_path, cls.ratio = create_zip_bomb(cls.fixtures_dir / "malicious_zip_bomb.zip", uncompressed_mb=100)
         cls.aggregator = get_security_aggregator()
 
@@ -87,6 +87,8 @@ class TestZipBombDefense(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        if hasattr(cls, "_temp_dir"):
+            cls._temp_dir.cleanup()
         report_file = cls.aggregator.write_report()
         print(f"  [+] Updated Security Gate Report: {report_file}")
 

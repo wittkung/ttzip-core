@@ -284,7 +284,6 @@ pub fn ttzip_remove_path_fast(path: &Path) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
     use std::os::unix::io::AsRawFd;
 
     #[test]
@@ -311,14 +310,10 @@ mod tests {
 
     #[test]
     fn test_apfs_preallocate_temp_file() {
-        let temp_path = std::env::temp_dir().join("ttzip_preallocate_test.bin");
-        let file = File::create(&temp_path).expect("create temp file");
-        let fd = file.as_raw_fd();
+        let temp_file = tempfile::NamedTempFile::new().expect("create temp file");
+        let fd = temp_file.as_file().as_raw_fd();
 
         let res = apfs_preallocate(fd, 65536);
         assert!(res.is_ok());
-
-        drop(file);
-        let _ = std::fs::remove_file(&temp_path);
     }
 }

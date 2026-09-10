@@ -29,6 +29,28 @@ use crate::sevenz::writer::create_7z_solid_archive_bytes;
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
 use crate::zip::writer::{assemble_zip_archive, ZipCompressedItem, ZipInputItem};
 
+/// RAII guard ensuring temporary benchmarking scratchpad directories are always cleaned up.
+struct TempDirGuard {
+    path: std::path::PathBuf,
+}
+
+impl TempDirGuard {
+    fn new(path: std::path::PathBuf) -> Self {
+        let _ = std::fs::create_dir_all(&path);
+        Self { path }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
 /// Parameters for constructing a `ScenarioBenchmarkPoint`.
 #[derive(Debug, Clone)]
 pub struct ScenarioPointParams<'a> {
@@ -404,8 +426,8 @@ pub fn eval_inplace_scenario(
     initial_items: &[ZipInputItem],
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
     let orig_bytes: usize = initial_items.iter().map(|it| it.data.len()).sum();
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_bench_inplace_{}_{}", id, std::process::id()));
-    let _ = std::fs::create_dir_all(&temp_dir);
+    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_bench_inplace_{}_{}", id, std::process::id())));
+    let temp_dir = temp_dir_guard.path();
 
     let (ext, initial_bytes) = match format {
         TTZipArchiveFormat::Zip => {
@@ -449,7 +471,6 @@ pub fn eval_inplace_scenario(
     let mutate_micros = t0.elapsed().as_micros() as u64;
 
     let modified_bytes = std::fs::read(&archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-    let _ = std::fs::remove_dir_all(&temp_dir);
     let rss_after = get_current_rss_bytes();
 
     let passed = !modified_bytes.is_empty();
@@ -522,8 +543,8 @@ pub fn eval_damaged_repair_scenario(
     display_name: &str,
     options_summary: &str,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_repair_bench_{}_{}", id, std::process::id()));
-    let _ = std::fs::create_dir_all(&temp_dir);
+    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_repair_bench_{}_{}", id, std::process::id())));
+    let temp_dir = temp_dir_guard.path();
 
     let damaged_file = temp_dir.join("damaged_input.bin");
     let repaired_file = temp_dir.join("repaired_output.bin");
@@ -571,7 +592,6 @@ pub fn eval_damaged_repair_scenario(
     let repair_micros = t0.elapsed().as_micros() as u64;
 
     let repaired_bytes = std::fs::read(&repaired_file).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-    let _ = std::fs::remove_dir_all(&temp_dir);
     let rss_after = get_current_rss_bytes();
 
     let passed = salvaged_count >= 1 && !repaired_bytes.is_empty();
@@ -602,8 +622,8 @@ pub fn eval_apfs_scenario(
     options_summary: &str,
     size_bytes: usize,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_apfs_bench_{}_{}", id, std::process::id()));
-    let _ = std::fs::create_dir_all(&temp_dir);
+    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_apfs_bench_{}_{}", id, std::process::id())));
+    let temp_dir = temp_dir_guard.path();
 
     let src_file = temp_dir.join("source.dat");
     let dst_file = temp_dir.join("cloned.dat");
@@ -622,7 +642,6 @@ pub fn eval_apfs_scenario(
     let prealloc_ok = apfs_preallocate(file.as_raw_fd(), size_bytes as i64).is_ok();
     let prealloc_micros = t1.elapsed().as_micros() as u64;
 
-    let _ = std::fs::remove_dir_all(&temp_dir);
     let rss_after = get_current_rss_bytes();
 
     let passed = clone_ok && prealloc_ok;

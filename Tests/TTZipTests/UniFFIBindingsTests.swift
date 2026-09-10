@@ -30,7 +30,7 @@ final class UniFFIBindingsTests: XCTestCase {
     }
 
     func testArchiveFormatDetection() {
-        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("test_dummy.zip")
+        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("test_dummy_\(UUID().uuidString).zip")
         let zipMagic: [UInt8] = [0x50, 0x4B, 0x03, 0x04, 0x00, 0x00]
         try? Data(zipMagic).write(to: tempUrl)
         defer { try? FileManager.default.removeItem(at: tempUrl) }

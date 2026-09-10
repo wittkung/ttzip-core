@@ -636,6 +636,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch() != 11705:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3() != 58283:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed() != 53031:
@@ -647,6 +649,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress() != 11629:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress() != 61807:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_calculate_tree_hash() != 44589:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound() != 53214:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -661,6 +665,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling() != 3460:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_create_delta_patch() != 37402:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream() != 14907:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -724,6 +730,10 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover() != 26142:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437:
@@ -776,6 +786,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes() != 27541:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_video_bytes() != 64205:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs() != 64735:
@@ -805,6 +817,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt() != 44392:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt() != 53726:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_verify_appcast_signature() != 64042:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt() != 12928:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1092,6 +1106,18 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport() != 65465:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_apply_delta_patch() != 12782:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_calculate_tree_hash() != 24231:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_check_version_monotonicity() != 19649:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_create_delta_patch() != 33610:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_parse_appcast_json() != 17703:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_verify_appcast_signature() != 18637:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks() != 64896:
@@ -1161,6 +1187,18 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_search() != 22151:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover() != 30779:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover_from_file() != 6120:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata() != 17865:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata_from_file() != 3983:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_bytes() != 3862:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_file() != 42920:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata() != 49679:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1238,11 +1276,15 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new() != 49553:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffisystemservice_new() != 5446:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_new() != 23761:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffivideoservice_new() != 25407:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new() != 47668:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -2350,6 +2392,63 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_view
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_viewport.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffisystemservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffisystemservice.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffisystemservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffisystemservice.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffisystemservice_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffisystemservice_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_apply_delta_patch.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_apply_delta_patch.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_calculate_tree_hash.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_calculate_tree_hash.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_check_version_monotonicity.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_check_version_monotonicity.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_create_delta_patch.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_create_delta_patch.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_parse_appcast_json.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_parse_appcast_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_verify_appcast_signature.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_verify_appcast_signature.restype = ctypes.c_int8
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -2600,6 +2699,59 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries.argtypes = 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffivideoservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffivideoservice.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffivideoservice.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffivideoservice.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffivideoservice_new.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffivideoservice_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata_from_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_bytes.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_file.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffixmlmetaservice.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3322,6 +3474,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_blake3.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3358,6 +3517,11 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_calculate_tree_hash.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_calculate_tree_hash.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_compress_bound.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint64,
@@ -3402,6 +3566,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_create_delta_patch.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_create_delta_patch.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_decode_audio_stream.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3593,6 +3764,18 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint32,
@@ -3748,6 +3931,12 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_video_bytes.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_video_bytes.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_remediate_filename.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3845,6 +4034,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt.ar
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_verify_appcast_signature.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_verify_appcast_signature.restype = ctypes.c_int8
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -4576,6 +4772,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32.restype = ctypes.c_u
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_blake3.restype = ctypes.c_uint16
@@ -4594,6 +4793,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress.restype = cty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_calculate_tree_hash.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_calculate_tree_hash.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound.restype = ctypes.c_uint16
@@ -4615,6 +4817,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling.restype = ctyp
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc64.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_crc64.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_create_delta_patch.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_create_delta_patch.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream.restype = ctypes.c_uint16
@@ -4708,6 +4913,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform.restype = ctypes.c_uint16
@@ -4786,6 +4997,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_image_info.restype = c
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_video_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_probe_video_bytes.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename.restype = ctypes.c_uint16
@@ -4831,6 +5045,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decr
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_verify_appcast_signature.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_verify_appcast_signature.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt.restype = ctypes.c_uint16
@@ -5260,6 +5477,24 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_cod
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_apply_delta_patch.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_apply_delta_patch.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_calculate_tree_hash.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_calculate_tree_hash.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_check_version_monotonicity.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_check_version_monotonicity.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_create_delta_patch.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_create_delta_patch.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_parse_appcast_json.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_parse_appcast_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_verify_appcast_signature.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_verify_appcast_signature.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume.restype = ctypes.c_uint16
@@ -5365,6 +5600,24 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_search.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata_from_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_bytes.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_bytes.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata.restype = ctypes.c_uint16
@@ -5479,6 +5732,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiprogressreporter_new.r
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffisystemservice_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffisystemservice_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new.restype = ctypes.c_uint16
@@ -5488,6 +5744,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_ne
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivideoservice_new.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffivideoservice_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new.restype = ctypes.c_uint16
@@ -9454,6 +9713,229 @@ class _UniffiConverterTypeUniFfiSyntaxService:
 
 
 
+class UniFfiSystemServiceProtocol(typing.Protocol):
+    """
+    Thread-safe system update, delta patch, and appcast verification engine service.
+    """
+
+    def apply_delta_patch(self, base_bytes: "bytes",patch_bytes: "bytes",expected_target_hash: "typing.Optional[str]"):
+        """
+        Applies a binary delta patch onto base bytes directly in memory.
+        """
+
+        raise NotImplementedError
+    def calculate_tree_hash(self, root_path: "str"):
+        """
+        Recursively computes deterministic Merkle tree hash for a local directory or file.
+        """
+
+        raise NotImplementedError
+    def check_version_monotonicity(self, current_version: "str",incoming_version: "str"):
+        """
+        Validates version monotonicity preventing downgrade attacks.
+        """
+
+        raise NotImplementedError
+    def create_delta_patch(self, base_bytes: "bytes",target_bytes: "bytes",format: "UniFfiDeltaFormat"):
+        """
+        Creates a binary delta patch from base bytes to target bytes.
+        """
+
+        raise NotImplementedError
+    def parse_appcast_json(self, json_content: "str"):
+        """
+        Parses JSON representation of an Appcast feed metadata and release items.
+        """
+
+        raise NotImplementedError
+    def verify_appcast_signature(self, appcast_bytes: "bytes",signature_base64: "str",public_key_base64: "str"):
+        """
+        Verifies detached Ed25519 signature of Appcast bytes.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiSystemService:
+    """
+    Thread-safe system update, delta patch, and appcast verification engine service.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Constructs a new thread-safe system update service instance.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffisystemservice_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffisystemservice, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffisystemservice, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def apply_delta_patch(self, base_bytes: "bytes",patch_bytes: "bytes",expected_target_hash: "typing.Optional[str]") -> "UniFfiDeltaPatchResult":
+        """
+        Applies a binary delta patch onto base bytes directly in memory.
+        """
+
+        _UniffiConverterBytes.check_lower(base_bytes)
+        
+        _UniffiConverterBytes.check_lower(patch_bytes)
+        
+        _UniffiConverterOptionalString.check_lower(expected_target_hash)
+        
+        return _UniffiConverterTypeUniFfiDeltaPatchResult.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_apply_delta_patch,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(base_bytes),
+        _UniffiConverterBytes.lower(patch_bytes),
+        _UniffiConverterOptionalString.lower(expected_target_hash))
+        )
+
+
+
+
+
+    def calculate_tree_hash(self, root_path: "str") -> "str":
+        """
+        Recursively computes deterministic Merkle tree hash for a local directory or file.
+        """
+
+        _UniffiConverterString.check_lower(root_path)
+        
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_calculate_tree_hash,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(root_path))
+        )
+
+
+
+
+
+    def check_version_monotonicity(self, current_version: "str",incoming_version: "str") -> "bool":
+        """
+        Validates version monotonicity preventing downgrade attacks.
+        """
+
+        _UniffiConverterString.check_lower(current_version)
+        
+        _UniffiConverterString.check_lower(incoming_version)
+        
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_check_version_monotonicity,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(current_version),
+        _UniffiConverterString.lower(incoming_version))
+        )
+
+
+
+
+
+    def create_delta_patch(self, base_bytes: "bytes",target_bytes: "bytes",format: "UniFfiDeltaFormat") -> "bytes":
+        """
+        Creates a binary delta patch from base bytes to target bytes.
+        """
+
+        _UniffiConverterBytes.check_lower(base_bytes)
+        
+        _UniffiConverterBytes.check_lower(target_bytes)
+        
+        _UniffiConverterTypeUniFfiDeltaFormat.check_lower(format)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_create_delta_patch,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(base_bytes),
+        _UniffiConverterBytes.lower(target_bytes),
+        _UniffiConverterTypeUniFfiDeltaFormat.lower(format))
+        )
+
+
+
+
+
+    def parse_appcast_json(self, json_content: "str") -> "UniFfiAppcastMetadata":
+        """
+        Parses JSON representation of an Appcast feed metadata and release items.
+        """
+
+        _UniffiConverterString.check_lower(json_content)
+        
+        return _UniffiConverterTypeUniFfiAppcastMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_parse_appcast_json,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(json_content))
+        )
+
+
+
+
+
+    def verify_appcast_signature(self, appcast_bytes: "bytes",signature_base64: "str",public_key_base64: "str") -> "bool":
+        """
+        Verifies detached Ed25519 signature of Appcast bytes.
+        """
+
+        _UniffiConverterBytes.check_lower(appcast_bytes)
+        
+        _UniffiConverterString.check_lower(signature_base64)
+        
+        _UniffiConverterString.check_lower(public_key_base64)
+        
+        return _UniffiConverterBool.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffisystemservice_verify_appcast_signature,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(appcast_bytes),
+        _UniffiConverterString.lower(signature_base64),
+        _UniffiConverterString.lower(public_key_base64))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiSystemService:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiSystemService._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiSystemService):
+        if not isinstance(value, UniFfiSystemService):
+            raise TypeError("Expected UniFfiSystemService instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiSystemServiceProtocol):
+        if not isinstance(value, UniFfiSystemService):
+            raise TypeError("Expected UniFfiSystemService instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiSystemServiceProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
 class UniFfiTextEncodingServiceProtocol(typing.Protocol):
     """
     Character encoding and filename remediation service exposed via UniFFI.
@@ -9855,6 +10337,217 @@ class _UniffiConverterTypeUniFfiVfsTree:
 
     @classmethod
     def write(cls, value: UniFfiVfsTreeProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiVideoServiceProtocol(typing.Protocol):
+    """
+    High-performance Mozilla UniFFI video engine service exposing probing, track topology, and cover art extraction.
+    """
+
+    def extract_cover(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts raw embedded cover art bytes from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_cover_from_file(self, file_path: "str"):
+        """
+        Extracts raw embedded cover art bytes from a local video file on disk.
+        """
+
+        raise NotImplementedError
+    def extract_metadata(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Extracts comprehensive video metadata from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def extract_metadata_from_file(self, file_path: "str"):
+        """
+        Extracts comprehensive video metadata from a local video file on disk.
+        """
+
+        raise NotImplementedError
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]"):
+        """
+        Probes technical video metadata from an in-memory byte buffer.
+        """
+
+        raise NotImplementedError
+    def probe_file(self, file_path: "str"):
+        """
+        Probes technical video metadata from a local video file on disk.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiVideoService:
+    """
+    High-performance Mozilla UniFFI video engine service exposing probing, track topology, and cover art extraction.
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        """
+        Constructs a new thread-safe video service instance.
+        """
+
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffivideoservice_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffivideoservice, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffivideoservice, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def extract_cover(self, data: "bytes",file_name: "typing.Optional[str]") -> "bytes":
+        """
+        Extracts raw embedded cover art bytes from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_cover_from_file(self, file_path: "str") -> "bytes":
+        """
+        Extracts raw embedded cover art bytes from a local video file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def extract_metadata(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiVideoMetadata":
+        """
+        Extracts comprehensive video metadata from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiVideoMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def extract_metadata_from_file(self, file_path: "str") -> "UniFfiVideoMetadata":
+        """
+        Extracts comprehensive video metadata from a local video file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiVideoMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata_from_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+    def probe_bytes(self, data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiVideoMetadata":
+        """
+        Probes technical video metadata from an in-memory byte buffer.
+        """
+
+        _UniffiConverterBytes.check_lower(data)
+        
+        _UniffiConverterOptionalString.check_lower(file_name)
+        
+        return _UniffiConverterTypeUniFfiVideoMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_bytes,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name))
+        )
+
+
+
+
+
+    def probe_file(self, file_path: "str") -> "UniFfiVideoMetadata":
+        """
+        Probes technical video metadata from a local video file on disk.
+        """
+
+        _UniffiConverterString.check_lower(file_path)
+        
+        return _UniffiConverterTypeUniFfiVideoMetadata.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_file,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(file_path))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiVideoService:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiVideoService._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiVideoService):
+        if not isinstance(value, UniFfiVideoService):
+            raise TypeError("Expected UniFfiVideoService instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiVideoServiceProtocol):
+        if not isinstance(value, UniFfiVideoService):
+            raise TypeError("Expected UniFfiVideoService instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiVideoServiceProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -12139,6 +12832,300 @@ class _UniffiConverterTypeUniFfiAeadResult(_UniffiConverterRustBuffer):
         _UniffiConverterBytes.write(value.tag, buf)
 
 
+class UniFfiAppcastItem:
+    """
+    Single release entry in an Appcast update feed.
+    """
+
+    version: "str"
+    """
+    Semantic version string (e.g. "1.2.0").
+    """
+
+    build_number: "int"
+    """
+    Monotonically increasing build integer (e.g. 10200).
+    """
+
+    min_os_version: "str"
+    """
+    Minimum compatible macOS version requirement (e.g. "14.0").
+    """
+
+    release_notes_url: "typing.Optional[str]"
+    """
+    Optional URL pointing to release notes or changelog markdown/html.
+    """
+
+    download_url: "str"
+    """
+    Full package download URL (.zip, .dmg, or .pkg).
+    """
+
+    download_size: "int"
+    """
+    Full package payload size in bytes.
+    """
+
+    signature_ed25519: "str"
+    """
+    Detached Ed25519 digital signature of the full package in Base64 representation.
+    """
+
+    sha256: "str"
+    """
+    Hex-encoded NIST SHA-256 digest of the full target package.
+    """
+
+    delta_patch_url: "typing.Optional[str]"
+    """
+    Optional URL for delta patch package from a specific previous base version.
+    """
+
+    delta_base_version: "typing.Optional[str]"
+    """
+    Previous base version string required by the delta patch (e.g. "1.1.9").
+    """
+
+    delta_signature_ed25519: "typing.Optional[str]"
+    """
+    Detached Ed25519 digital signature of the delta patch payload in Base64 representation.
+    """
+
+    delta_size: "typing.Optional[int]"
+    """
+    Delta patch package payload size in bytes.
+    """
+
+    is_critical: "bool"
+    """
+    Whether this update is marked as a critical security patch.
+    """
+
+    published_at_epoch_secs: "int"
+    """
+    Publication timestamp in seconds since Unix epoch.
+    """
+
+    def __init__(self, *, version: "str", build_number: "int", min_os_version: "str", release_notes_url: "typing.Optional[str]", download_url: "str", download_size: "int", signature_ed25519: "str", sha256: "str", delta_patch_url: "typing.Optional[str]", delta_base_version: "typing.Optional[str]", delta_signature_ed25519: "typing.Optional[str]", delta_size: "typing.Optional[int]", is_critical: "bool", published_at_epoch_secs: "int"):
+        self.version = version
+        self.build_number = build_number
+        self.min_os_version = min_os_version
+        self.release_notes_url = release_notes_url
+        self.download_url = download_url
+        self.download_size = download_size
+        self.signature_ed25519 = signature_ed25519
+        self.sha256 = sha256
+        self.delta_patch_url = delta_patch_url
+        self.delta_base_version = delta_base_version
+        self.delta_signature_ed25519 = delta_signature_ed25519
+        self.delta_size = delta_size
+        self.is_critical = is_critical
+        self.published_at_epoch_secs = published_at_epoch_secs
+
+    def __str__(self):
+        return "UniFfiAppcastItem(version={}, build_number={}, min_os_version={}, release_notes_url={}, download_url={}, download_size={}, signature_ed25519={}, sha256={}, delta_patch_url={}, delta_base_version={}, delta_signature_ed25519={}, delta_size={}, is_critical={}, published_at_epoch_secs={})".format(self.version, self.build_number, self.min_os_version, self.release_notes_url, self.download_url, self.download_size, self.signature_ed25519, self.sha256, self.delta_patch_url, self.delta_base_version, self.delta_signature_ed25519, self.delta_size, self.is_critical, self.published_at_epoch_secs)
+
+    def __eq__(self, other):
+        if self.version != other.version:
+            return False
+        if self.build_number != other.build_number:
+            return False
+        if self.min_os_version != other.min_os_version:
+            return False
+        if self.release_notes_url != other.release_notes_url:
+            return False
+        if self.download_url != other.download_url:
+            return False
+        if self.download_size != other.download_size:
+            return False
+        if self.signature_ed25519 != other.signature_ed25519:
+            return False
+        if self.sha256 != other.sha256:
+            return False
+        if self.delta_patch_url != other.delta_patch_url:
+            return False
+        if self.delta_base_version != other.delta_base_version:
+            return False
+        if self.delta_signature_ed25519 != other.delta_signature_ed25519:
+            return False
+        if self.delta_size != other.delta_size:
+            return False
+        if self.is_critical != other.is_critical:
+            return False
+        if self.published_at_epoch_secs != other.published_at_epoch_secs:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAppcastItem(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAppcastItem(
+            version=_UniffiConverterString.read(buf),
+            build_number=_UniffiConverterUInt64.read(buf),
+            min_os_version=_UniffiConverterString.read(buf),
+            release_notes_url=_UniffiConverterOptionalString.read(buf),
+            download_url=_UniffiConverterString.read(buf),
+            download_size=_UniffiConverterUInt64.read(buf),
+            signature_ed25519=_UniffiConverterString.read(buf),
+            sha256=_UniffiConverterString.read(buf),
+            delta_patch_url=_UniffiConverterOptionalString.read(buf),
+            delta_base_version=_UniffiConverterOptionalString.read(buf),
+            delta_signature_ed25519=_UniffiConverterOptionalString.read(buf),
+            delta_size=_UniffiConverterOptionalUInt64.read(buf),
+            is_critical=_UniffiConverterBool.read(buf),
+            published_at_epoch_secs=_UniffiConverterInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.version)
+        _UniffiConverterUInt64.check_lower(value.build_number)
+        _UniffiConverterString.check_lower(value.min_os_version)
+        _UniffiConverterOptionalString.check_lower(value.release_notes_url)
+        _UniffiConverterString.check_lower(value.download_url)
+        _UniffiConverterUInt64.check_lower(value.download_size)
+        _UniffiConverterString.check_lower(value.signature_ed25519)
+        _UniffiConverterString.check_lower(value.sha256)
+        _UniffiConverterOptionalString.check_lower(value.delta_patch_url)
+        _UniffiConverterOptionalString.check_lower(value.delta_base_version)
+        _UniffiConverterOptionalString.check_lower(value.delta_signature_ed25519)
+        _UniffiConverterOptionalUInt64.check_lower(value.delta_size)
+        _UniffiConverterBool.check_lower(value.is_critical)
+        _UniffiConverterInt64.check_lower(value.published_at_epoch_secs)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.version, buf)
+        _UniffiConverterUInt64.write(value.build_number, buf)
+        _UniffiConverterString.write(value.min_os_version, buf)
+        _UniffiConverterOptionalString.write(value.release_notes_url, buf)
+        _UniffiConverterString.write(value.download_url, buf)
+        _UniffiConverterUInt64.write(value.download_size, buf)
+        _UniffiConverterString.write(value.signature_ed25519, buf)
+        _UniffiConverterString.write(value.sha256, buf)
+        _UniffiConverterOptionalString.write(value.delta_patch_url, buf)
+        _UniffiConverterOptionalString.write(value.delta_base_version, buf)
+        _UniffiConverterOptionalString.write(value.delta_signature_ed25519, buf)
+        _UniffiConverterOptionalUInt64.write(value.delta_size, buf)
+        _UniffiConverterBool.write(value.is_critical, buf)
+        _UniffiConverterInt64.write(value.published_at_epoch_secs, buf)
+
+
+class UniFfiAppcastMetadata:
+    """
+    Comprehensive Appcast feed metadata and parsed items.
+    """
+
+    channel: "str"
+    """
+    Distribution channel (e.g. "stable", "beta", "nightly").
+    """
+
+    title: "str"
+    """
+    Application feed title or product display name.
+    """
+
+    feed_url: "str"
+    """
+    Source feed URL.
+    """
+
+    latest_version: "str"
+    """
+    Latest available semantic version string in the feed.
+    """
+
+    latest_build: "int"
+    """
+    Latest available build integer in the feed.
+    """
+
+    items: "typing.List[UniFfiAppcastItem]"
+    """
+    List of all parsed update candidate items.
+    """
+
+    signature_valid: "bool"
+    """
+    Whether feed digital signature passed cryptographic verification.
+    """
+
+    checked_at_epoch_secs: "int"
+    """
+    Timestamp when this feed was checked/retrieved.
+    """
+
+    def __init__(self, *, channel: "str", title: "str", feed_url: "str", latest_version: "str", latest_build: "int", items: "typing.List[UniFfiAppcastItem]", signature_valid: "bool", checked_at_epoch_secs: "int"):
+        self.channel = channel
+        self.title = title
+        self.feed_url = feed_url
+        self.latest_version = latest_version
+        self.latest_build = latest_build
+        self.items = items
+        self.signature_valid = signature_valid
+        self.checked_at_epoch_secs = checked_at_epoch_secs
+
+    def __str__(self):
+        return "UniFfiAppcastMetadata(channel={}, title={}, feed_url={}, latest_version={}, latest_build={}, items={}, signature_valid={}, checked_at_epoch_secs={})".format(self.channel, self.title, self.feed_url, self.latest_version, self.latest_build, self.items, self.signature_valid, self.checked_at_epoch_secs)
+
+    def __eq__(self, other):
+        if self.channel != other.channel:
+            return False
+        if self.title != other.title:
+            return False
+        if self.feed_url != other.feed_url:
+            return False
+        if self.latest_version != other.latest_version:
+            return False
+        if self.latest_build != other.latest_build:
+            return False
+        if self.items != other.items:
+            return False
+        if self.signature_valid != other.signature_valid:
+            return False
+        if self.checked_at_epoch_secs != other.checked_at_epoch_secs:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAppcastMetadata(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAppcastMetadata(
+            channel=_UniffiConverterString.read(buf),
+            title=_UniffiConverterString.read(buf),
+            feed_url=_UniffiConverterString.read(buf),
+            latest_version=_UniffiConverterString.read(buf),
+            latest_build=_UniffiConverterUInt64.read(buf),
+            items=_UniffiConverterSequenceTypeUniFfiAppcastItem.read(buf),
+            signature_valid=_UniffiConverterBool.read(buf),
+            checked_at_epoch_secs=_UniffiConverterInt64.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.channel)
+        _UniffiConverterString.check_lower(value.title)
+        _UniffiConverterString.check_lower(value.feed_url)
+        _UniffiConverterString.check_lower(value.latest_version)
+        _UniffiConverterUInt64.check_lower(value.latest_build)
+        _UniffiConverterSequenceTypeUniFfiAppcastItem.check_lower(value.items)
+        _UniffiConverterBool.check_lower(value.signature_valid)
+        _UniffiConverterInt64.check_lower(value.checked_at_epoch_secs)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.channel, buf)
+        _UniffiConverterString.write(value.title, buf)
+        _UniffiConverterString.write(value.feed_url, buf)
+        _UniffiConverterString.write(value.latest_version, buf)
+        _UniffiConverterUInt64.write(value.latest_build, buf)
+        _UniffiConverterSequenceTypeUniFfiAppcastItem.write(value.items, buf)
+        _UniffiConverterBool.write(value.signature_valid, buf)
+        _UniffiConverterInt64.write(value.checked_at_epoch_secs, buf)
+
+
 class UniFfiAudioCoverArt:
     """
     Embedded picture/album artwork metadata extracted from audio tags.
@@ -12747,6 +13734,153 @@ class _UniffiConverterTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_selected, buf)
 
 
+class UniFfiAudioTrackInfo:
+    """
+    Technical stream properties of an individual audio track within the video.
+    """
+
+    track_id: "int"
+    """
+    1-based index or container track ID.
+    """
+
+    codec: "UniFfiAudioCodec"
+    """
+    Strongly-typed audio codec enumeration.
+    """
+
+    codec_name: "str"
+    """
+    Detailed or raw codec descriptor string (e.g. "mp4a.40.2", "opus", "ac-3").
+    """
+
+    sample_rate: "int"
+    """
+    Audio sample rate in Hertz (e.g. 44100, 48000).
+    """
+
+    channels: "int"
+    """
+    Number of audio channels (e.g. 2 for stereo, 6 for 5.1 surround).
+    """
+
+    channel_layout: "str"
+    """
+    Audio channel layout descriptor (e.g. "Stereo", "5.1", "7.1.4").
+    """
+
+    bit_depth: "typing.Optional[int]"
+    """
+    Audio sample bit depth if applicable (e.g. 16, 24).
+    """
+
+    bitrate_kbps: "int"
+    """
+    Average audio bitrate in kilobits per second.
+    """
+
+    language: "typing.Optional[str]"
+    """
+    ISO 639-2 language code (e.g. "eng", "zho", "jpn").
+    """
+
+    title: "typing.Optional[str]"
+    """
+    Descriptive track name or title (e.g. "Director's Commentary").
+    """
+
+    is_default: "bool"
+    """
+    Whether this track is designated as the default audio track.
+    """
+
+    def __init__(self, *, track_id: "int", codec: "UniFfiAudioCodec", codec_name: "str", sample_rate: "int", channels: "int", channel_layout: "str", bit_depth: "typing.Optional[int]", bitrate_kbps: "int", language: "typing.Optional[str]", title: "typing.Optional[str]", is_default: "bool"):
+        self.track_id = track_id
+        self.codec = codec
+        self.codec_name = codec_name
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_layout = channel_layout
+        self.bit_depth = bit_depth
+        self.bitrate_kbps = bitrate_kbps
+        self.language = language
+        self.title = title
+        self.is_default = is_default
+
+    def __str__(self):
+        return "UniFfiAudioTrackInfo(track_id={}, codec={}, codec_name={}, sample_rate={}, channels={}, channel_layout={}, bit_depth={}, bitrate_kbps={}, language={}, title={}, is_default={})".format(self.track_id, self.codec, self.codec_name, self.sample_rate, self.channels, self.channel_layout, self.bit_depth, self.bitrate_kbps, self.language, self.title, self.is_default)
+
+    def __eq__(self, other):
+        if self.track_id != other.track_id:
+            return False
+        if self.codec != other.codec:
+            return False
+        if self.codec_name != other.codec_name:
+            return False
+        if self.sample_rate != other.sample_rate:
+            return False
+        if self.channels != other.channels:
+            return False
+        if self.channel_layout != other.channel_layout:
+            return False
+        if self.bit_depth != other.bit_depth:
+            return False
+        if self.bitrate_kbps != other.bitrate_kbps:
+            return False
+        if self.language != other.language:
+            return False
+        if self.title != other.title:
+            return False
+        if self.is_default != other.is_default:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAudioTrackInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAudioTrackInfo(
+            track_id=_UniffiConverterUInt32.read(buf),
+            codec=_UniffiConverterTypeUniFfiAudioCodec.read(buf),
+            codec_name=_UniffiConverterString.read(buf),
+            sample_rate=_UniffiConverterUInt32.read(buf),
+            channels=_UniffiConverterUInt32.read(buf),
+            channel_layout=_UniffiConverterString.read(buf),
+            bit_depth=_UniffiConverterOptionalUInt32.read(buf),
+            bitrate_kbps=_UniffiConverterUInt32.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            is_default=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.track_id)
+        _UniffiConverterTypeUniFfiAudioCodec.check_lower(value.codec)
+        _UniffiConverterString.check_lower(value.codec_name)
+        _UniffiConverterUInt32.check_lower(value.sample_rate)
+        _UniffiConverterUInt32.check_lower(value.channels)
+        _UniffiConverterString.check_lower(value.channel_layout)
+        _UniffiConverterOptionalUInt32.check_lower(value.bit_depth)
+        _UniffiConverterUInt32.check_lower(value.bitrate_kbps)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterBool.check_lower(value.is_default)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.track_id, buf)
+        _UniffiConverterTypeUniFfiAudioCodec.write(value.codec, buf)
+        _UniffiConverterString.write(value.codec_name, buf)
+        _UniffiConverterUInt32.write(value.sample_rate, buf)
+        _UniffiConverterUInt32.write(value.channels, buf)
+        _UniffiConverterString.write(value.channel_layout, buf)
+        _UniffiConverterOptionalUInt32.write(value.bit_depth, buf)
+        _UniffiConverterUInt32.write(value.bitrate_kbps, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterBool.write(value.is_default, buf)
+
+
 class UniFfiAudioWaveform:
     """
     Normalized acoustic peak and RMS waveform amplitude envelope.
@@ -13147,6 +14281,76 @@ class _UniffiConverterTypeUniFfiCell(_UniffiConverterRustBuffer):
         _UniffiConverterOptionalString.write(value.formula, buf)
 
 
+class UniFfiChapterInfo:
+    """
+    Chapter navigation marker in the video timeline.
+    """
+
+    chapter_id: "int"
+    """
+    1-based sequential chapter index.
+    """
+
+    title: "str"
+    """
+    Descriptive chapter title.
+    """
+
+    start_time_seconds: "float"
+    """
+    Chapter start timestamp in seconds from video origin.
+    """
+
+    end_time_seconds: "float"
+    """
+    Chapter end timestamp in seconds.
+    """
+
+    def __init__(self, *, chapter_id: "int", title: "str", start_time_seconds: "float", end_time_seconds: "float"):
+        self.chapter_id = chapter_id
+        self.title = title
+        self.start_time_seconds = start_time_seconds
+        self.end_time_seconds = end_time_seconds
+
+    def __str__(self):
+        return "UniFfiChapterInfo(chapter_id={}, title={}, start_time_seconds={}, end_time_seconds={})".format(self.chapter_id, self.title, self.start_time_seconds, self.end_time_seconds)
+
+    def __eq__(self, other):
+        if self.chapter_id != other.chapter_id:
+            return False
+        if self.title != other.title:
+            return False
+        if self.start_time_seconds != other.start_time_seconds:
+            return False
+        if self.end_time_seconds != other.end_time_seconds:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiChapterInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiChapterInfo(
+            chapter_id=_UniffiConverterUInt32.read(buf),
+            title=_UniffiConverterString.read(buf),
+            start_time_seconds=_UniffiConverterDouble.read(buf),
+            end_time_seconds=_UniffiConverterDouble.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.chapter_id)
+        _UniffiConverterString.check_lower(value.title)
+        _UniffiConverterDouble.check_lower(value.start_time_seconds)
+        _UniffiConverterDouble.check_lower(value.end_time_seconds)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.chapter_id, buf)
+        _UniffiConverterString.write(value.title, buf)
+        _UniffiConverterDouble.write(value.start_time_seconds, buf)
+        _UniffiConverterDouble.write(value.end_time_seconds, buf)
+
+
 class UniFfiCompressionOptions:
     """
     Compression parameters and options container.
@@ -13328,6 +14532,109 @@ class _UniffiConverterTypeUniFfiDeflateStats(_UniffiConverterRustBuffer):
         _UniffiConverterDouble.write(value.compression_ratio, buf)
         _UniffiConverterUInt64.write(value.duration_nanos, buf)
         _UniffiConverterDouble.write(value.throughput_mbs, buf)
+
+
+class UniFfiDeltaPatchResult:
+    """
+    Result of an in-memory or stream delta patch application operation.
+    """
+
+    success: "bool"
+    """
+    Whether patch reconstruction and hash verification succeeded.
+    """
+
+    patch_size: "int"
+    """
+    Size in bytes of the applied delta patch package.
+    """
+
+    target_size: "int"
+    """
+    Size in bytes of the reconstructed target payload.
+    """
+
+    target_hash: "str"
+    """
+    Hex-encoded SHA-256 digest of the reconstructed target data.
+    """
+
+    applied_in_memory: "bool"
+    """
+    Whether the patch was executed directly in memory without disk staging.
+    """
+
+    duration_ms: "float"
+    """
+    Execution duration in milliseconds.
+    """
+
+    patched_bytes: "bytes"
+    """
+    Reconstructed target binary bytes.
+    """
+
+    def __init__(self, *, success: "bool", patch_size: "int", target_size: "int", target_hash: "str", applied_in_memory: "bool", duration_ms: "float", patched_bytes: "bytes"):
+        self.success = success
+        self.patch_size = patch_size
+        self.target_size = target_size
+        self.target_hash = target_hash
+        self.applied_in_memory = applied_in_memory
+        self.duration_ms = duration_ms
+        self.patched_bytes = patched_bytes
+
+    def __str__(self):
+        return "UniFfiDeltaPatchResult(success={}, patch_size={}, target_size={}, target_hash={}, applied_in_memory={}, duration_ms={}, patched_bytes={})".format(self.success, self.patch_size, self.target_size, self.target_hash, self.applied_in_memory, self.duration_ms, self.patched_bytes)
+
+    def __eq__(self, other):
+        if self.success != other.success:
+            return False
+        if self.patch_size != other.patch_size:
+            return False
+        if self.target_size != other.target_size:
+            return False
+        if self.target_hash != other.target_hash:
+            return False
+        if self.applied_in_memory != other.applied_in_memory:
+            return False
+        if self.duration_ms != other.duration_ms:
+            return False
+        if self.patched_bytes != other.patched_bytes:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiDeltaPatchResult(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiDeltaPatchResult(
+            success=_UniffiConverterBool.read(buf),
+            patch_size=_UniffiConverterUInt64.read(buf),
+            target_size=_UniffiConverterUInt64.read(buf),
+            target_hash=_UniffiConverterString.read(buf),
+            applied_in_memory=_UniffiConverterBool.read(buf),
+            duration_ms=_UniffiConverterDouble.read(buf),
+            patched_bytes=_UniffiConverterBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterBool.check_lower(value.success)
+        _UniffiConverterUInt64.check_lower(value.patch_size)
+        _UniffiConverterUInt64.check_lower(value.target_size)
+        _UniffiConverterString.check_lower(value.target_hash)
+        _UniffiConverterBool.check_lower(value.applied_in_memory)
+        _UniffiConverterDouble.check_lower(value.duration_ms)
+        _UniffiConverterBytes.check_lower(value.patched_bytes)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterBool.write(value.success, buf)
+        _UniffiConverterUInt64.write(value.patch_size, buf)
+        _UniffiConverterUInt64.write(value.target_size, buf)
+        _UniffiConverterString.write(value.target_hash, buf)
+        _UniffiConverterBool.write(value.applied_in_memory, buf)
+        _UniffiConverterDouble.write(value.duration_ms, buf)
+        _UniffiConverterBytes.write(value.patched_bytes, buf)
 
 
 class UniFfiDetectedEncoding:
@@ -18858,6 +20165,109 @@ class _UniffiConverterTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer):
         _UniffiConverterBool.write(value.is_external, buf)
 
 
+class UniFfiSubtitleTrackInfo:
+    """
+    Information regarding an embedded subtitle or timed text track.
+    """
+
+    track_id: "int"
+    """
+    1-based index or container track ID.
+    """
+
+    format: "str"
+    """
+    Subtitle format/codec (e.g. "SubRip (SRT)", "ASS/SSA", "VobSub", "tx3g").
+    """
+
+    language: "typing.Optional[str]"
+    """
+    ISO 639-2 language code (e.g. "eng", "spa", "fra").
+    """
+
+    title: "typing.Optional[str]"
+    """
+    Subtitle track display name or description.
+    """
+
+    is_forced: "bool"
+    """
+    Whether this subtitle track is marked for forced display.
+    """
+
+    is_default: "bool"
+    """
+    Whether this subtitle track is marked as default.
+    """
+
+    is_sdh: "bool"
+    """
+    Whether this subtitle track contains SDH (Subtitles for Deaf and Hard of Hearing).
+    """
+
+    def __init__(self, *, track_id: "int", format: "str", language: "typing.Optional[str]", title: "typing.Optional[str]", is_forced: "bool", is_default: "bool", is_sdh: "bool"):
+        self.track_id = track_id
+        self.format = format
+        self.language = language
+        self.title = title
+        self.is_forced = is_forced
+        self.is_default = is_default
+        self.is_sdh = is_sdh
+
+    def __str__(self):
+        return "UniFfiSubtitleTrackInfo(track_id={}, format={}, language={}, title={}, is_forced={}, is_default={}, is_sdh={})".format(self.track_id, self.format, self.language, self.title, self.is_forced, self.is_default, self.is_sdh)
+
+    def __eq__(self, other):
+        if self.track_id != other.track_id:
+            return False
+        if self.format != other.format:
+            return False
+        if self.language != other.language:
+            return False
+        if self.title != other.title:
+            return False
+        if self.is_forced != other.is_forced:
+            return False
+        if self.is_default != other.is_default:
+            return False
+        if self.is_sdh != other.is_sdh:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiSubtitleTrackInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiSubtitleTrackInfo(
+            track_id=_UniffiConverterUInt32.read(buf),
+            format=_UniffiConverterString.read(buf),
+            language=_UniffiConverterOptionalString.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            is_forced=_UniffiConverterBool.read(buf),
+            is_default=_UniffiConverterBool.read(buf),
+            is_sdh=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.track_id)
+        _UniffiConverterString.check_lower(value.format)
+        _UniffiConverterOptionalString.check_lower(value.language)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterBool.check_lower(value.is_forced)
+        _UniffiConverterBool.check_lower(value.is_default)
+        _UniffiConverterBool.check_lower(value.is_sdh)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.track_id, buf)
+        _UniffiConverterString.write(value.format, buf)
+        _UniffiConverterOptionalString.write(value.language, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterBool.write(value.is_forced, buf)
+        _UniffiConverterBool.write(value.is_default, buf)
+        _UniffiConverterBool.write(value.is_sdh, buf)
+
+
 class UniFfiSymbolNode:
     """
     Hierarchical structural symbol node for document and source code outline tree.
@@ -19565,6 +20975,208 @@ class _UniffiConverterTypeUniFfiVideoDimension(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.height, buf)
 
 
+class UniFfiVideoMetadata:
+    """
+    Comprehensive high-level video container and media stream metadata record.
+    """
+
+    format: "UniFfiVideoFormat"
+    """
+    Identified video container format.
+    """
+
+    container_name: "str"
+    """
+    Human-readable container name (e.g. "MPEG-4 Part 14 Video (MP4)").
+    """
+
+    duration_seconds: "float"
+    """
+    Total duration of the video container in seconds.
+    """
+
+    file_size_bytes: "int"
+    """
+    Total byte size of the video file/stream.
+    """
+
+    bitrate_kbps: "int"
+    """
+    Total overall average bitrate in kilobits per second.
+    """
+
+    video_tracks: "typing.List[UniFfiVideoTrackInfo]"
+    """
+    List of video streams/tracks found in container.
+    """
+
+    audio_tracks: "typing.List[UniFfiAudioTrackInfo]"
+    """
+    List of audio streams/tracks found in container.
+    """
+
+    subtitle_tracks: "typing.List[UniFfiSubtitleTrackInfo]"
+    """
+    List of embedded subtitle tracks found in container.
+    """
+
+    chapters: "typing.List[UniFfiChapterInfo]"
+    """
+    List of chapter markers in chronological order.
+    """
+
+    title: "typing.Optional[str]"
+    """
+    Media title if present in tags.
+    """
+
+    artist_or_director: "typing.Optional[str]"
+    """
+    Director, artist, or author credit if present.
+    """
+
+    creation_date: "typing.Optional[str]"
+    """
+    Release date or creation timestamp string.
+    """
+
+    encoder: "typing.Optional[str]"
+    """
+    Encoding application or multiplexer tool.
+    """
+
+    has_cover: "bool"
+    """
+    Whether embedded cover / poster art is available.
+    """
+
+    cover_mime_type: "typing.Optional[str]"
+    """
+    MIME type of the embedded cover art if present (e.g. "image/jpeg", "image/png").
+    """
+
+    extra_tags: "dict[str, str]"
+    """
+    Additional unstructured key-value tag metadata.
+    """
+
+    def __init__(self, *, format: "UniFfiVideoFormat", container_name: "str", duration_seconds: "float", file_size_bytes: "int", bitrate_kbps: "int", video_tracks: "typing.List[UniFfiVideoTrackInfo]", audio_tracks: "typing.List[UniFfiAudioTrackInfo]", subtitle_tracks: "typing.List[UniFfiSubtitleTrackInfo]", chapters: "typing.List[UniFfiChapterInfo]", title: "typing.Optional[str]", artist_or_director: "typing.Optional[str]", creation_date: "typing.Optional[str]", encoder: "typing.Optional[str]", has_cover: "bool", cover_mime_type: "typing.Optional[str]", extra_tags: "dict[str, str]"):
+        self.format = format
+        self.container_name = container_name
+        self.duration_seconds = duration_seconds
+        self.file_size_bytes = file_size_bytes
+        self.bitrate_kbps = bitrate_kbps
+        self.video_tracks = video_tracks
+        self.audio_tracks = audio_tracks
+        self.subtitle_tracks = subtitle_tracks
+        self.chapters = chapters
+        self.title = title
+        self.artist_or_director = artist_or_director
+        self.creation_date = creation_date
+        self.encoder = encoder
+        self.has_cover = has_cover
+        self.cover_mime_type = cover_mime_type
+        self.extra_tags = extra_tags
+
+    def __str__(self):
+        return "UniFfiVideoMetadata(format={}, container_name={}, duration_seconds={}, file_size_bytes={}, bitrate_kbps={}, video_tracks={}, audio_tracks={}, subtitle_tracks={}, chapters={}, title={}, artist_or_director={}, creation_date={}, encoder={}, has_cover={}, cover_mime_type={}, extra_tags={})".format(self.format, self.container_name, self.duration_seconds, self.file_size_bytes, self.bitrate_kbps, self.video_tracks, self.audio_tracks, self.subtitle_tracks, self.chapters, self.title, self.artist_or_director, self.creation_date, self.encoder, self.has_cover, self.cover_mime_type, self.extra_tags)
+
+    def __eq__(self, other):
+        if self.format != other.format:
+            return False
+        if self.container_name != other.container_name:
+            return False
+        if self.duration_seconds != other.duration_seconds:
+            return False
+        if self.file_size_bytes != other.file_size_bytes:
+            return False
+        if self.bitrate_kbps != other.bitrate_kbps:
+            return False
+        if self.video_tracks != other.video_tracks:
+            return False
+        if self.audio_tracks != other.audio_tracks:
+            return False
+        if self.subtitle_tracks != other.subtitle_tracks:
+            return False
+        if self.chapters != other.chapters:
+            return False
+        if self.title != other.title:
+            return False
+        if self.artist_or_director != other.artist_or_director:
+            return False
+        if self.creation_date != other.creation_date:
+            return False
+        if self.encoder != other.encoder:
+            return False
+        if self.has_cover != other.has_cover:
+            return False
+        if self.cover_mime_type != other.cover_mime_type:
+            return False
+        if self.extra_tags != other.extra_tags:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiVideoMetadata(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiVideoMetadata(
+            format=_UniffiConverterTypeUniFfiVideoFormat.read(buf),
+            container_name=_UniffiConverterString.read(buf),
+            duration_seconds=_UniffiConverterDouble.read(buf),
+            file_size_bytes=_UniffiConverterUInt64.read(buf),
+            bitrate_kbps=_UniffiConverterUInt32.read(buf),
+            video_tracks=_UniffiConverterSequenceTypeUniFfiVideoTrackInfo.read(buf),
+            audio_tracks=_UniffiConverterSequenceTypeUniFfiAudioTrackInfo.read(buf),
+            subtitle_tracks=_UniffiConverterSequenceTypeUniFfiSubtitleTrackInfo.read(buf),
+            chapters=_UniffiConverterSequenceTypeUniFfiChapterInfo.read(buf),
+            title=_UniffiConverterOptionalString.read(buf),
+            artist_or_director=_UniffiConverterOptionalString.read(buf),
+            creation_date=_UniffiConverterOptionalString.read(buf),
+            encoder=_UniffiConverterOptionalString.read(buf),
+            has_cover=_UniffiConverterBool.read(buf),
+            cover_mime_type=_UniffiConverterOptionalString.read(buf),
+            extra_tags=_UniffiConverterMapStringString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterTypeUniFfiVideoFormat.check_lower(value.format)
+        _UniffiConverterString.check_lower(value.container_name)
+        _UniffiConverterDouble.check_lower(value.duration_seconds)
+        _UniffiConverterUInt64.check_lower(value.file_size_bytes)
+        _UniffiConverterUInt32.check_lower(value.bitrate_kbps)
+        _UniffiConverterSequenceTypeUniFfiVideoTrackInfo.check_lower(value.video_tracks)
+        _UniffiConverterSequenceTypeUniFfiAudioTrackInfo.check_lower(value.audio_tracks)
+        _UniffiConverterSequenceTypeUniFfiSubtitleTrackInfo.check_lower(value.subtitle_tracks)
+        _UniffiConverterSequenceTypeUniFfiChapterInfo.check_lower(value.chapters)
+        _UniffiConverterOptionalString.check_lower(value.title)
+        _UniffiConverterOptionalString.check_lower(value.artist_or_director)
+        _UniffiConverterOptionalString.check_lower(value.creation_date)
+        _UniffiConverterOptionalString.check_lower(value.encoder)
+        _UniffiConverterBool.check_lower(value.has_cover)
+        _UniffiConverterOptionalString.check_lower(value.cover_mime_type)
+        _UniffiConverterMapStringString.check_lower(value.extra_tags)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterTypeUniFfiVideoFormat.write(value.format, buf)
+        _UniffiConverterString.write(value.container_name, buf)
+        _UniffiConverterDouble.write(value.duration_seconds, buf)
+        _UniffiConverterUInt64.write(value.file_size_bytes, buf)
+        _UniffiConverterUInt32.write(value.bitrate_kbps, buf)
+        _UniffiConverterSequenceTypeUniFfiVideoTrackInfo.write(value.video_tracks, buf)
+        _UniffiConverterSequenceTypeUniFfiAudioTrackInfo.write(value.audio_tracks, buf)
+        _UniffiConverterSequenceTypeUniFfiSubtitleTrackInfo.write(value.subtitle_tracks, buf)
+        _UniffiConverterSequenceTypeUniFfiChapterInfo.write(value.chapters, buf)
+        _UniffiConverterOptionalString.write(value.title, buf)
+        _UniffiConverterOptionalString.write(value.artist_or_director, buf)
+        _UniffiConverterOptionalString.write(value.creation_date, buf)
+        _UniffiConverterOptionalString.write(value.encoder, buf)
+        _UniffiConverterBool.write(value.has_cover, buf)
+        _UniffiConverterOptionalString.write(value.cover_mime_type, buf)
+        _UniffiConverterMapStringString.write(value.extra_tags, buf)
+
+
 class UniFfiVideoTrack:
     """
     Video track metadata exposed across UniFFI boundary.
@@ -19638,6 +21250,164 @@ class _UniffiConverterTypeUniFfiVideoTrack(_UniffiConverterRustBuffer):
         _UniffiConverterUInt32.write(value.height, buf)
         _UniffiConverterDouble.write(value.fps, buf)
         _UniffiConverterBool.write(value.is_selected, buf)
+
+
+class UniFfiVideoTrackInfo:
+    """
+    Technical stream properties of an individual video track.
+    """
+
+    track_id: "int"
+    """
+    1-based index or container track ID.
+    """
+
+    codec: "UniFfiVideoCodec"
+    """
+    Strongly-typed video codec enumeration.
+    """
+
+    codec_name: "str"
+    """
+    Detailed or raw codec descriptor string (e.g. "avc1", "hev1", "vp09.00").
+    """
+
+    width: "int"
+    """
+    Video frame width in pixels.
+    """
+
+    height: "int"
+    """
+    Video frame height in pixels.
+    """
+
+    frame_rate: "float"
+    """
+    Frame rate in frames per second (e.g. 23.976, 29.97, 60.0).
+    """
+
+    bitrate_kbps: "int"
+    """
+    Average video bitrate in kilobits per second.
+    """
+
+    duration_seconds: "float"
+    """
+    Duration of this video track in seconds.
+    """
+
+    aspect_ratio: "str"
+    """
+    Aspect ratio string representation (e.g. "16:9", "4:3", "2.39:1").
+    """
+
+    color_space: "typing.Optional[str]"
+    """
+    Color primaries or color space (e.g. "BT.709", "BT.2020", "Display P3").
+    """
+
+    hdr_format: "typing.Optional[str]"
+    """
+    High Dynamic Range format if present (e.g. "HDR10", "Dolby Vision", "HLG").
+    """
+
+    rotation_degrees: "int"
+    """
+    Display rotation in clockwise degrees (0, 90, 180, 270).
+    """
+
+    def __init__(self, *, track_id: "int", codec: "UniFfiVideoCodec", codec_name: "str", width: "int", height: "int", frame_rate: "float", bitrate_kbps: "int", duration_seconds: "float", aspect_ratio: "str", color_space: "typing.Optional[str]", hdr_format: "typing.Optional[str]", rotation_degrees: "int"):
+        self.track_id = track_id
+        self.codec = codec
+        self.codec_name = codec_name
+        self.width = width
+        self.height = height
+        self.frame_rate = frame_rate
+        self.bitrate_kbps = bitrate_kbps
+        self.duration_seconds = duration_seconds
+        self.aspect_ratio = aspect_ratio
+        self.color_space = color_space
+        self.hdr_format = hdr_format
+        self.rotation_degrees = rotation_degrees
+
+    def __str__(self):
+        return "UniFfiVideoTrackInfo(track_id={}, codec={}, codec_name={}, width={}, height={}, frame_rate={}, bitrate_kbps={}, duration_seconds={}, aspect_ratio={}, color_space={}, hdr_format={}, rotation_degrees={})".format(self.track_id, self.codec, self.codec_name, self.width, self.height, self.frame_rate, self.bitrate_kbps, self.duration_seconds, self.aspect_ratio, self.color_space, self.hdr_format, self.rotation_degrees)
+
+    def __eq__(self, other):
+        if self.track_id != other.track_id:
+            return False
+        if self.codec != other.codec:
+            return False
+        if self.codec_name != other.codec_name:
+            return False
+        if self.width != other.width:
+            return False
+        if self.height != other.height:
+            return False
+        if self.frame_rate != other.frame_rate:
+            return False
+        if self.bitrate_kbps != other.bitrate_kbps:
+            return False
+        if self.duration_seconds != other.duration_seconds:
+            return False
+        if self.aspect_ratio != other.aspect_ratio:
+            return False
+        if self.color_space != other.color_space:
+            return False
+        if self.hdr_format != other.hdr_format:
+            return False
+        if self.rotation_degrees != other.rotation_degrees:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiVideoTrackInfo(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiVideoTrackInfo(
+            track_id=_UniffiConverterUInt32.read(buf),
+            codec=_UniffiConverterTypeUniFfiVideoCodec.read(buf),
+            codec_name=_UniffiConverterString.read(buf),
+            width=_UniffiConverterUInt32.read(buf),
+            height=_UniffiConverterUInt32.read(buf),
+            frame_rate=_UniffiConverterDouble.read(buf),
+            bitrate_kbps=_UniffiConverterUInt32.read(buf),
+            duration_seconds=_UniffiConverterDouble.read(buf),
+            aspect_ratio=_UniffiConverterString.read(buf),
+            color_space=_UniffiConverterOptionalString.read(buf),
+            hdr_format=_UniffiConverterOptionalString.read(buf),
+            rotation_degrees=_UniffiConverterUInt32.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterUInt32.check_lower(value.track_id)
+        _UniffiConverterTypeUniFfiVideoCodec.check_lower(value.codec)
+        _UniffiConverterString.check_lower(value.codec_name)
+        _UniffiConverterUInt32.check_lower(value.width)
+        _UniffiConverterUInt32.check_lower(value.height)
+        _UniffiConverterDouble.check_lower(value.frame_rate)
+        _UniffiConverterUInt32.check_lower(value.bitrate_kbps)
+        _UniffiConverterDouble.check_lower(value.duration_seconds)
+        _UniffiConverterString.check_lower(value.aspect_ratio)
+        _UniffiConverterOptionalString.check_lower(value.color_space)
+        _UniffiConverterOptionalString.check_lower(value.hdr_format)
+        _UniffiConverterUInt32.check_lower(value.rotation_degrees)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterUInt32.write(value.track_id, buf)
+        _UniffiConverterTypeUniFfiVideoCodec.write(value.codec, buf)
+        _UniffiConverterString.write(value.codec_name, buf)
+        _UniffiConverterUInt32.write(value.width, buf)
+        _UniffiConverterUInt32.write(value.height, buf)
+        _UniffiConverterDouble.write(value.frame_rate, buf)
+        _UniffiConverterUInt32.write(value.bitrate_kbps, buf)
+        _UniffiConverterDouble.write(value.duration_seconds, buf)
+        _UniffiConverterString.write(value.aspect_ratio, buf)
+        _UniffiConverterOptionalString.write(value.color_space, buf)
+        _UniffiConverterOptionalString.write(value.hdr_format, buf)
+        _UniffiConverterUInt32.write(value.rotation_degrees, buf)
 
 
 class UniFfiViewportCropParams:
@@ -20995,6 +22765,152 @@ class _UniffiConverterTypeTtZipError(_UniffiConverterRustBuffer):
             buf.write_i32(7)
 
 
+
+
+
+class UniFfiAudioCodec(enum.Enum):
+    """
+    Audio track codec classifications within video containers.
+    """
+
+    AAC = 0
+    """
+    Advanced Audio Coding (AAC).
+    """
+
+    
+    AC3 = 1
+    """
+    Dolby Digital (AC-3).
+    """
+
+    
+    EAC3 = 2
+    """
+    Dolby Digital Plus (Enhanced AC-3 / E-AC-3).
+    """
+
+    
+    OPUS = 3
+    """
+    Opus Audio Codec.
+    """
+
+    
+    FLAC = 4
+    """
+    Free Lossless Audio Codec (FLAC).
+    """
+
+    
+    VORBIS = 5
+    """
+    Ogg Vorbis.
+    """
+
+    
+    MP3 = 6
+    """
+    MPEG-1 Audio Layer III (MP3).
+    """
+
+    
+    ALAC = 7
+    """
+    Apple Lossless Audio Codec (ALAC).
+    """
+
+    
+    PCM = 8
+    """
+    Uncompressed Linear PCM.
+    """
+
+    
+    UNKNOWN = 9
+    """
+    Unrecognized audio codec.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiAudioCodec(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiAudioCodec.AAC
+        if variant == 2:
+            return UniFfiAudioCodec.AC3
+        if variant == 3:
+            return UniFfiAudioCodec.EAC3
+        if variant == 4:
+            return UniFfiAudioCodec.OPUS
+        if variant == 5:
+            return UniFfiAudioCodec.FLAC
+        if variant == 6:
+            return UniFfiAudioCodec.VORBIS
+        if variant == 7:
+            return UniFfiAudioCodec.MP3
+        if variant == 8:
+            return UniFfiAudioCodec.ALAC
+        if variant == 9:
+            return UniFfiAudioCodec.PCM
+        if variant == 10:
+            return UniFfiAudioCodec.UNKNOWN
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiAudioCodec.AAC:
+            return
+        if value == UniFfiAudioCodec.AC3:
+            return
+        if value == UniFfiAudioCodec.EAC3:
+            return
+        if value == UniFfiAudioCodec.OPUS:
+            return
+        if value == UniFfiAudioCodec.FLAC:
+            return
+        if value == UniFfiAudioCodec.VORBIS:
+            return
+        if value == UniFfiAudioCodec.MP3:
+            return
+        if value == UniFfiAudioCodec.ALAC:
+            return
+        if value == UniFfiAudioCodec.PCM:
+            return
+        if value == UniFfiAudioCodec.UNKNOWN:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiAudioCodec.AAC:
+            buf.write_i32(1)
+        if value == UniFfiAudioCodec.AC3:
+            buf.write_i32(2)
+        if value == UniFfiAudioCodec.EAC3:
+            buf.write_i32(3)
+        if value == UniFfiAudioCodec.OPUS:
+            buf.write_i32(4)
+        if value == UniFfiAudioCodec.FLAC:
+            buf.write_i32(5)
+        if value == UniFfiAudioCodec.VORBIS:
+            buf.write_i32(6)
+        if value == UniFfiAudioCodec.MP3:
+            buf.write_i32(7)
+        if value == UniFfiAudioCodec.ALAC:
+            buf.write_i32(8)
+        if value == UniFfiAudioCodec.PCM:
+            buf.write_i32(9)
+        if value == UniFfiAudioCodec.UNKNOWN:
+            buf.write_i32(10)
+
+
+
+
 # UniFfiAudioError
 # We want to define each variant as a nested class that's also a subclass,
 # which is tricky in Python.  To accomplish this we're going to create each
@@ -22114,6 +24030,68 @@ class _UniffiConverterTypeUniFfiDeflateLevel(_UniffiConverterRustBuffer):
         if value.is_custom():
             buf.write_i32(6)
             _UniffiConverterInt32.write(value.level, buf)
+
+
+
+
+
+
+
+class UniFfiDeltaFormat(enum.Enum):
+    """
+    Supported binary serialization and compression formats for delta patches.
+    """
+
+    RAW_BYTE_BLOCK = 0
+    """
+    Raw uncompressed byte-level delta instructions (fastest creation/application).
+    """
+
+    
+    ZSTD_COMPRESSED = 1
+    """
+    Zstandard compressed delta payload for optimal bandwidth minimization.
+    """
+
+    
+    FLATE_COMPRESSED = 2
+    """
+    Standard Flate/Deflate compressed delta payload.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiDeltaFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDeltaFormat.RAW_BYTE_BLOCK
+        if variant == 2:
+            return UniFfiDeltaFormat.ZSTD_COMPRESSED
+        if variant == 3:
+            return UniFfiDeltaFormat.FLATE_COMPRESSED
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiDeltaFormat.RAW_BYTE_BLOCK:
+            return
+        if value == UniFfiDeltaFormat.ZSTD_COMPRESSED:
+            return
+        if value == UniFfiDeltaFormat.FLATE_COMPRESSED:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiDeltaFormat.RAW_BYTE_BLOCK:
+            buf.write_i32(1)
+        if value == UniFfiDeltaFormat.ZSTD_COMPRESSED:
+            buf.write_i32(2)
+        if value == UniFfiDeltaFormat.FLATE_COMPRESSED:
+            buf.write_i32(3)
 
 
 
@@ -23746,6 +25724,751 @@ class _UniffiConverterTypeUniFfiSyntheticCorpusType(_UniffiConverterRustBuffer):
 
 
 
+# UniFfiSystemError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiSystemError(Exception):
+    """
+    Strongly-typed error enum mapped directly to Swift `throws UniFFISystemError`.
+    """
+
+    pass
+
+_UniffiTempUniFfiSystemError = UniFfiSystemError
+
+class UniFfiSystemError:  # type: ignore
+    """
+    Strongly-typed error enum mapped directly to Swift `throws UniFFISystemError`.
+    """
+
+    class InvalidSignature(_UniffiTempUniFfiSystemError):
+        """
+        Digital signature or public key validation failure.
+        """
+
+        def __init__(self, reason):
+            super().__init__(", ".join([
+                "reason={!r}".format(reason),
+            ]))
+            self.reason = reason
+
+        def __repr__(self):
+            return "UniFfiSystemError.InvalidSignature({})".format(str(self))
+    _UniffiTempUniFfiSystemError.InvalidSignature = InvalidSignature # type: ignore
+    class PatchFailed(_UniffiTempUniFfiSystemError):
+        """
+        Binary delta patch creation or application failure.
+        """
+
+        def __init__(self, reason):
+            super().__init__(", ".join([
+                "reason={!r}".format(reason),
+            ]))
+            self.reason = reason
+
+        def __repr__(self):
+            return "UniFfiSystemError.PatchFailed({})".format(str(self))
+    _UniffiTempUniFfiSystemError.PatchFailed = PatchFailed # type: ignore
+    class VersionDowngradeForbidden(_UniffiTempUniFfiSystemError):
+        """
+        Attempted update violates version monotonicity (downgrade prevention).
+        """
+
+        def __init__(self, current_version, incoming_version):
+            super().__init__(", ".join([
+                "current_version={!r}".format(current_version),
+                "incoming_version={!r}".format(incoming_version),
+            ]))
+            self.current_version = current_version
+            self.incoming_version = incoming_version
+
+        def __repr__(self):
+            return "UniFfiSystemError.VersionDowngradeForbidden({})".format(str(self))
+    _UniffiTempUniFfiSystemError.VersionDowngradeForbidden = VersionDowngradeForbidden # type: ignore
+    class IoError(_UniffiTempUniFfiSystemError):
+        """
+        File system or stream I/O failure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiSystemError.IoError({})".format(str(self))
+    _UniffiTempUniFfiSystemError.IoError = IoError # type: ignore
+    class CorruptData(_UniffiTempUniFfiSystemError):
+        """
+        Corrupt data, magic mismatch, or integrity checksum failure.
+        """
+
+        def __init__(self, details):
+            super().__init__(", ".join([
+                "details={!r}".format(details),
+            ]))
+            self.details = details
+
+        def __repr__(self):
+            return "UniFfiSystemError.CorruptData({})".format(str(self))
+    _UniffiTempUniFfiSystemError.CorruptData = CorruptData # type: ignore
+    class AppcastParseError(_UniffiTempUniFfiSystemError):
+        """
+        Appcast feed parsing error.
+        """
+
+        def __init__(self, details):
+            super().__init__(", ".join([
+                "details={!r}".format(details),
+            ]))
+            self.details = details
+
+        def __repr__(self):
+            return "UniFfiSystemError.AppcastParseError({})".format(str(self))
+    _UniffiTempUniFfiSystemError.AppcastParseError = AppcastParseError # type: ignore
+    class Cancelled(_UniffiTempUniFfiSystemError):
+        """
+        System update or patch operation was explicitly cancelled.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiSystemError.Cancelled({})".format(str(self))
+    _UniffiTempUniFfiSystemError.Cancelled = Cancelled # type: ignore
+    class VerificationFailed(_UniffiTempUniFfiSystemError):
+        """
+        General security policy or integrity verification violation.
+        """
+
+        def __init__(self, reason):
+            super().__init__(", ".join([
+                "reason={!r}".format(reason),
+            ]))
+            self.reason = reason
+
+        def __repr__(self):
+            return "UniFfiSystemError.VerificationFailed({})".format(str(self))
+    _UniffiTempUniFfiSystemError.VerificationFailed = VerificationFailed # type: ignore
+
+UniFfiSystemError = _UniffiTempUniFfiSystemError # type: ignore
+del _UniffiTempUniFfiSystemError
+
+
+class _UniffiConverterTypeUniFfiSystemError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiSystemError.InvalidSignature(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiSystemError.PatchFailed(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiSystemError.VersionDowngradeForbidden(
+                _UniffiConverterString.read(buf),
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiSystemError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 5:
+            return UniFfiSystemError.CorruptData(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 6:
+            return UniFfiSystemError.AppcastParseError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 7:
+            return UniFfiSystemError.Cancelled(
+            )
+        if variant == 8:
+            return UniFfiSystemError.VerificationFailed(
+                _UniffiConverterString.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiSystemError.InvalidSignature):
+            _UniffiConverterString.check_lower(value.reason)
+            return
+        if isinstance(value, UniFfiSystemError.PatchFailed):
+            _UniffiConverterString.check_lower(value.reason)
+            return
+        if isinstance(value, UniFfiSystemError.VersionDowngradeForbidden):
+            _UniffiConverterString.check_lower(value.current_version)
+            _UniffiConverterString.check_lower(value.incoming_version)
+            return
+        if isinstance(value, UniFfiSystemError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiSystemError.CorruptData):
+            _UniffiConverterString.check_lower(value.details)
+            return
+        if isinstance(value, UniFfiSystemError.AppcastParseError):
+            _UniffiConverterString.check_lower(value.details)
+            return
+        if isinstance(value, UniFfiSystemError.Cancelled):
+            return
+        if isinstance(value, UniFfiSystemError.VerificationFailed):
+            _UniffiConverterString.check_lower(value.reason)
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiSystemError.InvalidSignature):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.reason, buf)
+        if isinstance(value, UniFfiSystemError.PatchFailed):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.reason, buf)
+        if isinstance(value, UniFfiSystemError.VersionDowngradeForbidden):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.current_version, buf)
+            _UniffiConverterString.write(value.incoming_version, buf)
+        if isinstance(value, UniFfiSystemError.IoError):
+            buf.write_i32(4)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiSystemError.CorruptData):
+            buf.write_i32(5)
+            _UniffiConverterString.write(value.details, buf)
+        if isinstance(value, UniFfiSystemError.AppcastParseError):
+            buf.write_i32(6)
+            _UniffiConverterString.write(value.details, buf)
+        if isinstance(value, UniFfiSystemError.Cancelled):
+            buf.write_i32(7)
+        if isinstance(value, UniFfiSystemError.VerificationFailed):
+            buf.write_i32(8)
+            _UniffiConverterString.write(value.reason, buf)
+
+
+
+
+
+class UniFfiVideoCodec(enum.Enum):
+    """
+    Video track codec classifications.
+    """
+
+    H264 = 0
+    """
+    Advanced Video Coding (AVC / H.264).
+    """
+
+    
+    HEVC = 1
+    """
+    High Efficiency Video Coding (HEVC / H.265).
+    """
+
+    
+    AV1 = 2
+    """
+    AOMedia Video 1 (AV1).
+    """
+
+    
+    VP9 = 3
+    """
+    Google VP9.
+    """
+
+    
+    VP8 = 4
+    """
+    Google VP8.
+    """
+
+    
+    PRO_RES = 5
+    """
+    Apple ProRes family.
+    """
+
+    
+    THEORA = 6
+    """
+    Xiph Theora.
+    """
+
+    
+    MPEG4 = 7
+    """
+    MPEG-4 Part 2 Visual (DivX / Xvid).
+    """
+
+    
+    MPEG2 = 8
+    """
+    MPEG-2 Video.
+    """
+
+    
+    UNKNOWN = 9
+    """
+    Unrecognized video codec.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiVideoCodec(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiVideoCodec.H264
+        if variant == 2:
+            return UniFfiVideoCodec.HEVC
+        if variant == 3:
+            return UniFfiVideoCodec.AV1
+        if variant == 4:
+            return UniFfiVideoCodec.VP9
+        if variant == 5:
+            return UniFfiVideoCodec.VP8
+        if variant == 6:
+            return UniFfiVideoCodec.PRO_RES
+        if variant == 7:
+            return UniFfiVideoCodec.THEORA
+        if variant == 8:
+            return UniFfiVideoCodec.MPEG4
+        if variant == 9:
+            return UniFfiVideoCodec.MPEG2
+        if variant == 10:
+            return UniFfiVideoCodec.UNKNOWN
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiVideoCodec.H264:
+            return
+        if value == UniFfiVideoCodec.HEVC:
+            return
+        if value == UniFfiVideoCodec.AV1:
+            return
+        if value == UniFfiVideoCodec.VP9:
+            return
+        if value == UniFfiVideoCodec.VP8:
+            return
+        if value == UniFfiVideoCodec.PRO_RES:
+            return
+        if value == UniFfiVideoCodec.THEORA:
+            return
+        if value == UniFfiVideoCodec.MPEG4:
+            return
+        if value == UniFfiVideoCodec.MPEG2:
+            return
+        if value == UniFfiVideoCodec.UNKNOWN:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiVideoCodec.H264:
+            buf.write_i32(1)
+        if value == UniFfiVideoCodec.HEVC:
+            buf.write_i32(2)
+        if value == UniFfiVideoCodec.AV1:
+            buf.write_i32(3)
+        if value == UniFfiVideoCodec.VP9:
+            buf.write_i32(4)
+        if value == UniFfiVideoCodec.VP8:
+            buf.write_i32(5)
+        if value == UniFfiVideoCodec.PRO_RES:
+            buf.write_i32(6)
+        if value == UniFfiVideoCodec.THEORA:
+            buf.write_i32(7)
+        if value == UniFfiVideoCodec.MPEG4:
+            buf.write_i32(8)
+        if value == UniFfiVideoCodec.MPEG2:
+            buf.write_i32(9)
+        if value == UniFfiVideoCodec.UNKNOWN:
+            buf.write_i32(10)
+
+
+
+
+# UniFfiVideoError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class UniFfiVideoError(Exception):
+    """
+    Strongly-typed video metadata errors mapped directly to Swift `throws UniFFIVideoError`.
+    """
+
+    pass
+
+_UniffiTempUniFfiVideoError = UniFfiVideoError
+
+class UniFfiVideoError:  # type: ignore
+    """
+    Strongly-typed video metadata errors mapped directly to Swift `throws UniFFIVideoError`.
+    """
+
+    class UnsupportedFormat(_UniffiTempUniFfiVideoError):
+        """
+        The container or codec format is not supported.
+        """
+
+        def __init__(self, format):
+            super().__init__(", ".join([
+                "format={!r}".format(format),
+            ]))
+            self.format = format
+
+        def __repr__(self):
+            return "UniFfiVideoError.UnsupportedFormat({})".format(str(self))
+    _UniffiTempUniFfiVideoError.UnsupportedFormat = UnsupportedFormat # type: ignore
+    class ParseError(_UniffiTempUniFfiVideoError):
+        """
+        Failure encountered while parsing video container atoms or headers.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiVideoError.ParseError({})".format(str(self))
+    _UniffiTempUniFfiVideoError.ParseError = ParseError # type: ignore
+    class IoError(_UniffiTempUniFfiVideoError):
+        """
+        File system or stream I/O failure.
+        """
+
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "UniFfiVideoError.IoError({})".format(str(self))
+    _UniffiTempUniFfiVideoError.IoError = IoError # type: ignore
+    class CorruptedData(_UniffiTempUniFfiVideoError):
+        """
+        The video bitstream or container header is corrupted or prematurely truncated.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiVideoError.CorruptedData({})".format(str(self))
+    _UniffiTempUniFfiVideoError.CorruptedData = CorruptedData # type: ignore
+    class TrackNotFound(_UniffiTempUniFfiVideoError):
+        """
+        Specified track ID was not found in container.
+        """
+
+        def __init__(self, track_id):
+            super().__init__(", ".join([
+                "track_id={!r}".format(track_id),
+            ]))
+            self.track_id = track_id
+
+        def __repr__(self):
+            return "UniFfiVideoError.TrackNotFound({})".format(str(self))
+    _UniffiTempUniFfiVideoError.TrackNotFound = TrackNotFound # type: ignore
+    class CoverArtNotFound(_UniffiTempUniFfiVideoError):
+        """
+        No embedded poster or cover art was found in video container.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiVideoError.CoverArtNotFound({})".format(str(self))
+    _UniffiTempUniFfiVideoError.CoverArtNotFound = CoverArtNotFound # type: ignore
+    class InvalidParameter(_UniffiTempUniFfiVideoError):
+        """
+        Supplied parameter is invalid or out of bounds.
+        """
+
+        def __init__(self, parameter):
+            super().__init__(", ".join([
+                "parameter={!r}".format(parameter),
+            ]))
+            self.parameter = parameter
+
+        def __repr__(self):
+            return "UniFfiVideoError.InvalidParameter({})".format(str(self))
+    _UniffiTempUniFfiVideoError.InvalidParameter = InvalidParameter # type: ignore
+    class Cancelled(_UniffiTempUniFfiVideoError):
+        """
+        Video operation was explicitly cancelled.
+        """
+
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "UniFfiVideoError.Cancelled({})".format(str(self))
+    _UniffiTempUniFfiVideoError.Cancelled = Cancelled # type: ignore
+
+UniFfiVideoError = _UniffiTempUniFfiVideoError # type: ignore
+del _UniffiTempUniFfiVideoError
+
+
+class _UniffiConverterTypeUniFfiVideoError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiVideoError.UnsupportedFormat(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 2:
+            return UniFfiVideoError.ParseError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 3:
+            return UniFfiVideoError.IoError(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 4:
+            return UniFfiVideoError.CorruptedData(
+            )
+        if variant == 5:
+            return UniFfiVideoError.TrackNotFound(
+                _UniffiConverterUInt32.read(buf),
+            )
+        if variant == 6:
+            return UniFfiVideoError.CoverArtNotFound(
+            )
+        if variant == 7:
+            return UniFfiVideoError.InvalidParameter(
+                _UniffiConverterString.read(buf),
+            )
+        if variant == 8:
+            return UniFfiVideoError.Cancelled(
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, UniFfiVideoError.UnsupportedFormat):
+            _UniffiConverterString.check_lower(value.format)
+            return
+        if isinstance(value, UniFfiVideoError.ParseError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiVideoError.IoError):
+            _UniffiConverterString.check_lower(value.message)
+            return
+        if isinstance(value, UniFfiVideoError.CorruptedData):
+            return
+        if isinstance(value, UniFfiVideoError.TrackNotFound):
+            _UniffiConverterUInt32.check_lower(value.track_id)
+            return
+        if isinstance(value, UniFfiVideoError.CoverArtNotFound):
+            return
+        if isinstance(value, UniFfiVideoError.InvalidParameter):
+            _UniffiConverterString.check_lower(value.parameter)
+            return
+        if isinstance(value, UniFfiVideoError.Cancelled):
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, UniFfiVideoError.UnsupportedFormat):
+            buf.write_i32(1)
+            _UniffiConverterString.write(value.format, buf)
+        if isinstance(value, UniFfiVideoError.ParseError):
+            buf.write_i32(2)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiVideoError.IoError):
+            buf.write_i32(3)
+            _UniffiConverterString.write(value.message, buf)
+        if isinstance(value, UniFfiVideoError.CorruptedData):
+            buf.write_i32(4)
+        if isinstance(value, UniFfiVideoError.TrackNotFound):
+            buf.write_i32(5)
+            _UniffiConverterUInt32.write(value.track_id, buf)
+        if isinstance(value, UniFfiVideoError.CoverArtNotFound):
+            buf.write_i32(6)
+        if isinstance(value, UniFfiVideoError.InvalidParameter):
+            buf.write_i32(7)
+            _UniffiConverterString.write(value.parameter, buf)
+        if isinstance(value, UniFfiVideoError.Cancelled):
+            buf.write_i32(8)
+
+
+
+
+
+class UniFfiVideoFormat(enum.Enum):
+    """
+    Supported video container and format classifications.
+    """
+
+    MP4 = 0
+    """
+    MPEG-4 Part 14 container (.mp4).
+    """
+
+    
+    M4V = 1
+    """
+    Apple MPEG-4 video format (.m4v).
+    """
+
+    
+    MOV = 2
+    """
+    Apple QuickTime Movie container (.mov, .qt).
+    """
+
+    
+    MKV = 3
+    """
+    Matroska Multimedia Container (.mkv).
+    """
+
+    
+    WEBM = 4
+    """
+    WebM open media format (.webm).
+    """
+
+    
+    AVI = 5
+    """
+    Audio Video Interleave (.avi).
+    """
+
+    
+    WMV = 6
+    """
+    Windows Media Video (.wmv, .asf).
+    """
+
+    
+    FLV = 7
+    """
+    Flash Video format (.flv).
+    """
+
+    
+    TS = 8
+    """
+    MPEG Transport Stream (.ts, .m2ts).
+    """
+
+    
+    OGV = 9
+    """
+    Ogg Theora video container (.ogv).
+    """
+
+    
+    UNKNOWN = 10
+    """
+    Unrecognized or generic video format.
+    """
+
+    
+
+
+class _UniffiConverterTypeUniFfiVideoFormat(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiVideoFormat.MP4
+        if variant == 2:
+            return UniFfiVideoFormat.M4V
+        if variant == 3:
+            return UniFfiVideoFormat.MOV
+        if variant == 4:
+            return UniFfiVideoFormat.MKV
+        if variant == 5:
+            return UniFfiVideoFormat.WEBM
+        if variant == 6:
+            return UniFfiVideoFormat.AVI
+        if variant == 7:
+            return UniFfiVideoFormat.WMV
+        if variant == 8:
+            return UniFfiVideoFormat.FLV
+        if variant == 9:
+            return UniFfiVideoFormat.TS
+        if variant == 10:
+            return UniFfiVideoFormat.OGV
+        if variant == 11:
+            return UniFfiVideoFormat.UNKNOWN
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiVideoFormat.MP4:
+            return
+        if value == UniFfiVideoFormat.M4V:
+            return
+        if value == UniFfiVideoFormat.MOV:
+            return
+        if value == UniFfiVideoFormat.MKV:
+            return
+        if value == UniFfiVideoFormat.WEBM:
+            return
+        if value == UniFfiVideoFormat.AVI:
+            return
+        if value == UniFfiVideoFormat.WMV:
+            return
+        if value == UniFfiVideoFormat.FLV:
+            return
+        if value == UniFfiVideoFormat.TS:
+            return
+        if value == UniFfiVideoFormat.OGV:
+            return
+        if value == UniFfiVideoFormat.UNKNOWN:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiVideoFormat.MP4:
+            buf.write_i32(1)
+        if value == UniFfiVideoFormat.M4V:
+            buf.write_i32(2)
+        if value == UniFfiVideoFormat.MOV:
+            buf.write_i32(3)
+        if value == UniFfiVideoFormat.MKV:
+            buf.write_i32(4)
+        if value == UniFfiVideoFormat.WEBM:
+            buf.write_i32(5)
+        if value == UniFfiVideoFormat.AVI:
+            buf.write_i32(6)
+        if value == UniFfiVideoFormat.WMV:
+            buf.write_i32(7)
+        if value == UniFfiVideoFormat.FLV:
+            buf.write_i32(8)
+        if value == UniFfiVideoFormat.TS:
+            buf.write_i32(9)
+        if value == UniFfiVideoFormat.OGV:
+            buf.write_i32(10)
+        if value == UniFfiVideoFormat.UNKNOWN:
+            buf.write_i32(11)
+
+
+
+
 
 
 
@@ -24988,6 +27711,31 @@ class _UniffiConverterSequenceTypePathSuggestionItem(_UniffiConverterRustBuffer)
 
 
 
+class _UniffiConverterSequenceTypeUniFfiAppcastItem(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiAppcastItem.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiAppcastItem.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiAppcastItem.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiAudioPacket(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -25038,6 +27786,31 @@ class _UniffiConverterSequenceTypeUniFfiAudioTrack(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterSequenceTypeUniFfiAudioTrackInfo(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiAudioTrackInfo.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiAudioTrackInfo.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiAudioTrackInfo.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiBenchmarkPointResult(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -25084,6 +27857,31 @@ class _UniffiConverterSequenceTypeUniFfiCell(_UniffiConverterRustBuffer):
 
         return [
             _UniffiConverterTypeUniFfiCell.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiChapterInfo(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiChapterInfo.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiChapterInfo.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiChapterInfo.read(buf) for i in range(count)
         ]
 
 
@@ -25813,6 +28611,31 @@ class _UniffiConverterSequenceTypeUniFfiSubtitleTrack(_UniffiConverterRustBuffer
 
 
 
+class _UniffiConverterSequenceTypeUniFfiSubtitleTrackInfo(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleTrackInfo.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiSubtitleTrackInfo.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiSubtitleTrackInfo.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiSymbolNode(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -25959,6 +28782,31 @@ class _UniffiConverterSequenceTypeUniFfiVideoTrack(_UniffiConverterRustBuffer):
 
         return [
             _UniffiConverterTypeUniFfiVideoTrack.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiVideoTrackInfo(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiVideoTrackInfo.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiVideoTrackInfo.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiVideoTrackInfo.read(buf) for i in range(count)
         ]
 
 
@@ -27307,6 +30155,23 @@ def uniffi_adler32_rolling(initial: "int",data: "bytes") -> "int":
         _UniffiConverterBytes.lower(data)))
 
 
+def uniffi_apply_delta_patch(base_bytes: "bytes",patch_bytes: "bytes",expected_target_hash: "typing.Optional[str]") -> "UniFfiDeltaPatchResult":
+    """
+    Applies a binary delta patch package onto base bytes, reconstructing target bytes in-memory.
+    """
+
+    _UniffiConverterBytes.check_lower(base_bytes)
+    
+    _UniffiConverterBytes.check_lower(patch_bytes)
+    
+    _UniffiConverterOptionalString.check_lower(expected_target_hash)
+    
+    return _UniffiConverterTypeUniFfiDeltaPatchResult.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch,
+        _UniffiConverterBytes.lower(base_bytes),
+        _UniffiConverterBytes.lower(patch_bytes),
+        _UniffiConverterOptionalString.lower(expected_target_hash)))
+
+
 def uniffi_blake3(data: "bytes") -> "bytes":
     """
     Computes unkeyed 256-bit BLAKE3 hash returning 32-byte digest.
@@ -27389,6 +30254,17 @@ def uniffi_bzip2_decompress(src: "bytes",expected_uncompressed_size: "typing.Opt
     return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress,
         _UniffiConverterBytes.lower(src),
         _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_calculate_tree_hash(root_path: "str") -> "str":
+    """
+    Recursively computes deterministic cryptographic Merkle tree hash of a file or directory hierarchy.
+    """
+
+    _UniffiConverterString.check_lower(root_path)
+    
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_calculate_tree_hash,
+        _UniffiConverterString.lower(root_path)))
 
 
 def uniffi_compress_bound(codec: "UniFfiCompressionCodec",src_len: "int",level: "typing.Optional[int]") -> "int":
@@ -27493,6 +30369,23 @@ def uniffi_crc64(data: "bytes",seed: "typing.Optional[int]") -> "int":
     return _UniffiConverterUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_crc64,
         _UniffiConverterBytes.lower(data),
         _UniffiConverterOptionalUInt64.lower(seed)))
+
+
+def uniffi_create_delta_patch(base_bytes: "bytes",target_bytes: "bytes",format: "UniFfiDeltaFormat") -> "bytes":
+    """
+    Creates a binary delta patch package from a base byte buffer to target byte buffer.
+    """
+
+    _UniffiConverterBytes.check_lower(base_bytes)
+    
+    _UniffiConverterBytes.check_lower(target_bytes)
+    
+    _UniffiConverterTypeUniFfiDeltaFormat.check_lower(format)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_create_delta_patch,
+        _UniffiConverterBytes.lower(base_bytes),
+        _UniffiConverterBytes.lower(target_bytes),
+        _UniffiConverterTypeUniFfiDeltaFormat.lower(format)))
 
 
 def uniffi_decode_audio_stream(data: "bytes",max_packets: "typing.Optional[int]",file_name: "typing.Optional[str]") -> "typing.List[UniFfiAudioPacket]":
@@ -27944,6 +30837,34 @@ def uniffi_extract_thumbnail(data: "bytes",max_width: "int",max_height: "int",fi
         _UniffiConverterOptionalString.lower(filter_type)))
 
 
+def uniffi_extract_video_cover(data: "bytes",file_name: "typing.Optional[str]") -> "bytes":
+    """
+    Extracts raw embedded poster or cover art image bytes from in-memory video bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
+def uniffi_extract_video_metadata(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiVideoMetadata":
+    """
+    Extracts comprehensive metadata tags, track topology, and cover art info from in-memory video bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiVideoMetadata.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
 def uniffi_generate_audio_waveform(data: "bytes",bucket_count: "int",file_name: "typing.Optional[str]") -> "UniFfiAudioWaveform":
     """
     Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
@@ -28305,6 +31226,20 @@ def uniffi_probe_office_bytes(data: "bytes",file_name: "typing.Optional[str]") -
         _UniffiConverterOptionalString.lower(file_name)))
 
 
+def uniffi_probe_video_bytes(data: "bytes",file_name: "typing.Optional[str]") -> "UniFfiVideoMetadata":
+    """
+    Probes technical stream parameters and container properties from in-memory video bytes without full decoding.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    _UniffiConverterOptionalString.check_lower(file_name)
+    
+    return _UniffiConverterTypeUniFfiVideoMetadata.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiVideoError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_probe_video_bytes,
+        _UniffiConverterBytes.lower(data),
+        _UniffiConverterOptionalString.lower(file_name)))
+
+
 def uniffi_remediate_filename(raw_bytes: "bytes",fallback_encoding: "typing.Optional[str]") -> "UniFfiRemediationResult":
     """
     Standalone convenience function for single filename remediation.
@@ -28534,6 +31469,23 @@ def uniffi_vault_chacha20_poly1305_encrypt(key: "bytes",nonce: "bytes",plaintext
         _UniffiConverterBytes.lower(nonce),
         _UniffiConverterBytes.lower(plaintext),
         _UniffiConverterBytes.lower(aad)))
+
+
+def uniffi_verify_appcast_signature(appcast_bytes: "bytes",signature_base64: "str",public_key_base64: "str") -> "bool":
+    """
+    Verifies detached Ed25519 digital signature of an Appcast feed or artifact bytes.
+    """
+
+    _UniffiConverterBytes.check_lower(appcast_bytes)
+    
+    _UniffiConverterString.check_lower(signature_base64)
+    
+    _UniffiConverterString.check_lower(public_key_base64)
+    
+    return _UniffiConverterBool.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeUniFfiSystemError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_verify_appcast_signature,
+        _UniffiConverterBytes.lower(appcast_bytes),
+        _UniffiConverterString.lower(signature_base64),
+        _UniffiConverterString.lower(public_key_base64)))
 
 
 def uniffi_winzip_aes256_decrypt(password: "str",enc_payload: "bytes") -> "bytes":
@@ -29022,6 +31974,7 @@ __all__ = [
     "FileMediaType",
     "ThumbnailSamplingFilter",
     "TtZipError",
+    "UniFfiAudioCodec",
     "UniFfiAudioError",
     "UniFfiAuthStatus",
     "UniFfiCellValue",
@@ -29031,6 +31984,7 @@ __all__ = [
     "UniFfiDeflateArbitrationStrategy",
     "UniFfiDeflateEngine",
     "UniFfiDeflateLevel",
+    "UniFfiDeltaFormat",
     "UniFfiEbookError",
     "UniFfiEbookFormat",
     "UniFfiError",
@@ -29045,6 +31999,10 @@ __all__ = [
     "UniFfiSubtitleAlignment",
     "UniFfiSubtitleFormat",
     "UniFfiSyntheticCorpusType",
+    "UniFfiSystemError",
+    "UniFfiVideoCodec",
+    "UniFfiVideoError",
+    "UniFfiVideoFormat",
     "UniFfiZopfliFormat",
     "UniFfiZopfliPreset",
     "AudioMetadataRecord",
@@ -29063,18 +32021,23 @@ __all__ = [
     "UniFfiAbBenchmarkReport",
     "UniFfiAbOrchestratorConfig",
     "UniFfiAeadResult",
+    "UniFfiAppcastItem",
+    "UniFfiAppcastMetadata",
     "UniFfiAudioCoverArt",
     "UniFfiAudioMetadata",
     "UniFfiAudioPacket",
     "UniFfiAudioStreamInfo",
     "UniFfiAudioTrack",
+    "UniFfiAudioTrackInfo",
     "UniFfiAudioWaveform",
     "UniFfiBenchmarkMatrixReport",
     "UniFfiBenchmarkPointResult",
     "UniFfiCell",
+    "UniFfiChapterInfo",
     "UniFfiCompressionOptions",
     "UniFfiCorruptedEntry",
     "UniFfiDeflateStats",
+    "UniFfiDeltaPatchResult",
     "UniFfiDetectedEncoding",
     "UniFfiDocumentMetadata",
     "UniFfiDocxDocument",
@@ -29138,6 +32101,7 @@ __all__ = [
     "UniFfiSubtitleSpan",
     "UniFfiSubtitleStyle",
     "UniFfiSubtitleTrack",
+    "UniFfiSubtitleTrackInfo",
     "UniFfiSymbolNode",
     "UniFfiTargetAbReportItem",
     "UniFfiThumbnailResult",
@@ -29148,7 +32112,9 @@ __all__ = [
     "UniFfiVfsPagedResult",
     "UniFfiVfsStats",
     "UniFfiVideoDimension",
+    "UniFfiVideoMetadata",
     "UniFfiVideoTrack",
+    "UniFfiVideoTrackInfo",
     "UniFfiViewportCropParams",
     "UniFfiViewportTile",
     "UniFfiWalCommitResult",
@@ -29246,12 +32212,14 @@ __all__ = [
     "uniffi_7z_aes256_encrypt",
     "uniffi_adler32",
     "uniffi_adler32_rolling",
+    "uniffi_apply_delta_patch",
     "uniffi_blake3",
     "uniffi_blake3_keyed",
     "uniffi_brotli_compress",
     "uniffi_brotli_decompress",
     "uniffi_bzip2_compress",
     "uniffi_bzip2_decompress",
+    "uniffi_calculate_tree_hash",
     "uniffi_compress_bound",
     "uniffi_compress_buffer",
     "uniffi_convert_docx_to_markdown",
@@ -29259,6 +32227,7 @@ __all__ = [
     "uniffi_crc32_combine",
     "uniffi_crc32_rolling",
     "uniffi_crc64",
+    "uniffi_create_delta_patch",
     "uniffi_decode_audio_stream",
     "uniffi_decode_image",
     "uniffi_decompress_buffer",
@@ -29290,6 +32259,8 @@ __all__ = [
     "uniffi_extract_sheet_names",
     "uniffi_extract_symbols",
     "uniffi_extract_thumbnail",
+    "uniffi_extract_video_cover",
+    "uniffi_extract_video_metadata",
     "uniffi_generate_audio_waveform",
     "uniffi_generate_synthetic_corpus",
     "uniffi_get_ebook_spine",
@@ -29316,6 +32287,7 @@ __all__ = [
     "uniffi_probe_html_file",
     "uniffi_probe_image_info",
     "uniffi_probe_office_bytes",
+    "uniffi_probe_video_bytes",
     "uniffi_remediate_filename",
     "uniffi_rewrite_html_vfs",
     "uniffi_sample_viewport",
@@ -29331,6 +32303,7 @@ __all__ = [
     "uniffi_vault_aes_gcm_encrypt",
     "uniffi_vault_chacha20_poly1305_decrypt",
     "uniffi_vault_chacha20_poly1305_encrypt",
+    "uniffi_verify_appcast_signature",
     "uniffi_winzip_aes256_decrypt",
     "uniffi_winzip_aes256_derive_keys",
     "uniffi_winzip_aes256_encrypt",
@@ -29377,9 +32350,11 @@ __all__ = [
     "UniFfiPluginVerifier",
     "UniFfiProgressReporter",
     "UniFfiSyntaxService",
+    "UniFfiSystemService",
     "UniFfittZipMediaPlayer",
     "UniFfiTextEncodingService",
     "UniFfiVfsTree",
+    "UniFfiVideoService",
     "UniFfiXmlMetaService",
     "UniFfiZopfliOptimizer",
     "VirtualFileStream",

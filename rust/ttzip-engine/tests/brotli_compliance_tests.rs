@@ -425,11 +425,13 @@ fn test_file_level_decompression_roundtrip() {
     let compressed = read_testdata("quickfox.compressed");
     let expected_raw = read_testdata("quickfox");
 
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_brotli_test_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::Builder::new()
+        .prefix("ttzip_brotli_test_")
+        .tempdir()
+        .expect("create temp dir");
 
-    let comp_file = temp_dir.join("quickfox.br");
-    let decomp_file = temp_dir.join("quickfox.out");
+    let comp_file = temp_dir.path().join("quickfox.br");
+    let decomp_file = temp_dir.path().join("quickfox.out");
 
     fs::write(&comp_file, &compressed).expect("write comp file");
 
@@ -441,6 +443,4 @@ fn test_file_level_decompression_roundtrip() {
 
     let decomp_content = fs::read(&decomp_file).expect("read decomp file");
     assert_eq!(decomp_content, expected_raw);
-
-    let _ = fs::remove_dir_all(temp_dir);
 }

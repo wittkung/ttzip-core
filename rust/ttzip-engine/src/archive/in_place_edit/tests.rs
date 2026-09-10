@@ -18,10 +18,9 @@ use std::fs;
 
 #[test]
 fn test_in_place_zip_append_replace_delete_transaction() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_zip_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let archive_path = temp_dir.join("test_inplace.zip");
+    let archive_path = temp_dir.path().join("test_inplace.zip");
     let initial_items = vec![
         ZipInputItem { rel_path: "file1.txt".to_string(), data: b"Original Content 1".to_vec(), mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false },
         ZipInputItem { rel_path: "file2.txt".to_string(), data: b"Original Content 2".to_vec(), mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false },
@@ -31,8 +30,8 @@ fn test_in_place_zip_append_replace_delete_transaction() {
     let zip_bytes = assemble_zip_archive(&compressed).unwrap();
     fs::write(&archive_path, zip_bytes).unwrap();
 
-    let f_rep = temp_dir.join("replaced2.txt");
-    let f_app = temp_dir.join("appended4.txt");
+    let f_rep = temp_dir.path().join("replaced2.txt");
+    let f_app = temp_dir.path().join("appended4.txt");
     fs::write(&f_rep, b"UPDATED CONTENT 2").unwrap();
     fs::write(&f_app, b"NEW CONTENT 4").unwrap();
 
@@ -52,16 +51,13 @@ fn test_in_place_zip_append_replace_delete_transaction() {
 
     let idx2 = zip.entries().iter().position(|e| e.rel_path == "file2.txt").unwrap();
     assert_eq!(zip.extract_entry_bytes(idx2, None).unwrap(), b"UPDATED CONTENT 2");
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_zip_rollback_on_cancel() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_rollback_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let archive_path = temp_dir.join("test_rollback.zip");
+    let archive_path = temp_dir.path().join("test_rollback.zip");
     let initial_items = vec![
         ZipInputItem { rel_path: "keep.txt".to_string(), data: b"Keep me unchanged".to_vec(), mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false },
     ];
@@ -69,7 +65,7 @@ fn test_in_place_zip_rollback_on_cancel() {
     let zip_bytes = assemble_zip_archive(&compressed).unwrap();
     fs::write(&archive_path, &zip_bytes).unwrap();
 
-    let f_junk = temp_dir.join("junk.txt");
+    let f_junk = temp_dir.path().join("junk.txt");
     fs::write(&f_junk, b"JUNK").unwrap();
 
     let mut session = InPlaceArchiveSession::begin(&archive_path, Some(TTZipArchiveFormat::Zip)).unwrap();
@@ -80,16 +76,13 @@ fn test_in_place_zip_rollback_on_cancel() {
     let zip = ZipArchive::open_slice(&mapped).unwrap();
     let data = zip.extract_entry_bytes(0, None).unwrap();
     assert_eq!(data, b"Keep me unchanged");
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_7z_append_replace_delete() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_7z_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let archive_path = temp_dir.join("test.7z");
+    let archive_path = temp_dir.path().join("test.7z");
     let initial_items = vec![
         ZipInputItem { rel_path: "doc1.txt".to_string(), data: b"Doc 1".to_vec(), mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false },
         ZipInputItem { rel_path: "doc2.txt".to_string(), data: b"Doc 2".to_vec(), mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false },
@@ -97,8 +90,8 @@ fn test_in_place_7z_append_replace_delete() {
     let bytes = create_7z_solid_archive_bytes(&initial_items, 3, 2).unwrap();
     fs::write(&archive_path, bytes).unwrap();
 
-    let f_rep = temp_dir.join("rep.txt");
-    let f_app = temp_dir.join("app.txt");
+    let f_rep = temp_dir.path().join("rep.txt");
+    let f_app = temp_dir.path().join("app.txt");
     fs::write(&f_rep, b"Replaced Doc 2").unwrap();
     fs::write(&f_app, b"Appended Doc 3").unwrap();
 
@@ -111,19 +104,16 @@ fn test_in_place_7z_append_replace_delete() {
     let mapped = fs::read(&archive_path).unwrap();
     let archive = SevenZArchive::open_slice(&mapped).unwrap();
     assert_eq!(archive.len(), 2);
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_tar_append_replace_delete() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_tar_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let archive_path = temp_dir.join("test.tar");
+    let archive_path = temp_dir.path().join("test.tar");
     let mut initial_tar = Vec::new();
-    let f1 = temp_dir.join("a.txt");
-    let f2 = temp_dir.join("b.txt");
+    let f1 = temp_dir.path().join("a.txt");
+    let f2 = temp_dir.path().join("b.txt");
     fs::write(&f1, b"File A Original Content").unwrap();
     fs::write(&f2, b"File B Original Content").unwrap();
 
@@ -132,8 +122,8 @@ fn test_in_place_tar_append_replace_delete() {
     initial_tar.extend_from_slice(&[0u8; 1024]);
     fs::write(&archive_path, &initial_tar).unwrap();
 
-    let f_b_new = temp_dir.join("b_new.txt");
-    let f_c = temp_dir.join("c.txt");
+    let f_b_new = temp_dir.path().join("b_new.txt");
+    let f_c = temp_dir.path().join("c.txt");
     fs::write(&f_b_new, b"File B Replaced").unwrap();
     fs::write(&f_c, b"File C Appended").unwrap();
 
@@ -150,22 +140,19 @@ fn test_in_place_tar_append_replace_delete() {
     assert_eq!(archive.extract_entry_bytes(0).unwrap(), b"File B Replaced");
     assert_eq!(archive.entries()[1].path, "c.txt");
     assert_eq!(archive.extract_entry_bytes(1).unwrap(), b"File C Appended");
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_single_stream_and_wal() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_single_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let gz_path = temp_dir.join("data.txt.gz");
+    let gz_path = temp_dir.path().join("data.txt.gz");
     let mut gz_buf = vec![0u8; 1024];
     let c_len = gzip_compress(b"Initial single stream text", &mut gz_buf, 6).unwrap();
     gz_buf.truncate(c_len);
     fs::write(&gz_path, &gz_buf).unwrap();
 
-    let new_src = temp_dir.join("new_data.txt");
+    let new_src = temp_dir.path().join("new_data.txt");
     fs::write(&new_src, b"Updated Single Stream Data Content").unwrap();
 
     let mut session = InPlaceArchiveSession::begin(&gz_path, None).unwrap();
@@ -176,8 +163,6 @@ fn test_in_place_single_stream_and_wal() {
     let mut decomp = vec![0u8; 1024];
     let d_len = crate::codecs::deflate::gzip_decompress(&read_gz, &mut decomp).unwrap();
     assert_eq!(&decomp[..d_len], b"Updated Single Stream Data Content");
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
@@ -194,11 +179,10 @@ fn test_piece_tree_interval_remapping_assembly() {
     assert_eq!(pt.pieces.len(), 3);
 
     // Test assembling to file
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_pt_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
-    let orig_p = temp_dir.join("orig.bin");
-    let wal_p = temp_dir.join("wal.bin");
-    let out_p = temp_dir.join("out.bin");
+    let temp_dir = tempfile::tempdir().unwrap();
+    let orig_p = temp_dir.path().join("orig.bin");
+    let wal_p = temp_dir.path().join("wal.bin");
+    let out_p = temp_dir.path().join("out.bin");
 
     let orig_data = vec![0xAAu8; 100];
     let wal_data = vec![0xBBu8; 15];
@@ -217,17 +201,14 @@ fn test_piece_tree_interval_remapping_assembly() {
     assert_eq!(&result[0..20], &vec![0xAAu8; 20][..]);
     assert_eq!(&result[20..35], &vec![0xBBu8; 15][..]);
     assert_eq!(&result[35..105], &vec![0xAAu8; 70][..]);
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_wal_mutation_apfs_atomic_commit_and_crash_rollback() {
     use crate::archive::wal_mutation::{append_wal_mutation, commit_wal_to_archive, rollback_wal_mutation, inspect_wal_status};
 
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_wal_apfs_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
-    let archive_p = temp_dir.join("data_archive.bin");
+    let temp_dir = tempfile::tempdir().unwrap();
+    let archive_p = temp_dir.path().join("data_archive.bin");
 
     // Write initial 1MB payload
     let initial_data = vec![1u8; 1024 * 1024];
@@ -255,16 +236,13 @@ fn test_wal_mutation_apfs_atomic_commit_and_crash_rollback() {
     let cleaned = rollback_wal_mutation(&archive_p).unwrap();
     assert!(cleaned);
     assert!(inspect_wal_status(&archive_p).unwrap().is_none());
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_zip_stream_splicing_zero_recompression_and_integrity() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_splicing_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
-    let archive_path = temp_dir.join("splicing_orig.zip");
+    let archive_path = temp_dir.path().join("splicing_orig.zip");
 
     // Generate large compressible payloads to test 64KB chunked stream splicing
     let chunk_payload = vec![0x55u8; 256 * 1024]; // 256 KB
@@ -308,8 +286,8 @@ fn test_in_place_zip_stream_splicing_zero_recompression_and_integrity() {
     let orig_raw_payload = orig_zip_bytes[orig_payload_off..orig_payload_off + orig_e0.compressed_size as usize].to_vec();
 
     // Prepare mutation files
-    let rep_file = temp_dir.join("new_rep.txt");
-    let app_file = temp_dir.join("new_app.bin");
+    let rep_file = temp_dir.path().join("new_rep.txt");
+    let app_file = temp_dir.path().join("new_app.bin");
     fs::write(&rep_file, b"BRAND NEW REPLACED TEXT CONTENT 2026").unwrap();
     fs::write(&app_file, vec![0x77u8; 128 * 1024]).unwrap();
 
@@ -346,24 +324,21 @@ fn test_in_place_zip_stream_splicing_zero_recompression_and_integrity() {
 
     let e2_data = updated_archive.extract_entry_bytes(2, None).unwrap();
     assert_eq!(e2_data, vec![0x77u8; 128 * 1024]);
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_in_place_single_stream_multi_codec_and_zstd_streaming() {
-    let temp_dir = std::env::temp_dir().join(format!("ttzip_test_inplace_single_multi_{}", std::process::id()));
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_dir = tempfile::tempdir().unwrap();
 
     // 1. Test Zstandard in-place update
-    let zst_path = temp_dir.join("test_file.txt.zst");
+    let zst_path = temp_dir.path().join("test_file.txt.zst");
     let initial_data = b"Initial Zstandard Single Stream Payload 2026";
     let mut zst_buf = vec![0u8; crate::codecs::zstd::zstd_compress_bound(initial_data.len())];
     let c_len = crate::codecs::zstd::zstd_compress(initial_data, &mut zst_buf, 3).unwrap();
     zst_buf.truncate(c_len);
     fs::write(&zst_path, &zst_buf).unwrap();
 
-    let rep_file = temp_dir.join("rep_zstd.txt");
+    let rep_file = temp_dir.path().join("rep_zstd.txt");
     fs::write(&rep_file, b"Updated Zstandard Single Stream Content Successfully!").unwrap();
 
     let mut session = InPlaceArchiveSession::begin(&zst_path, None).unwrap();
@@ -380,7 +355,5 @@ fn test_in_place_single_stream_multi_codec_and_zstd_streaming() {
     bad_session.delete("test_file.txt").unwrap();
     let res = bad_session.commit();
     assert_eq!(res, Err(TTZipStatus::ErrInvalidParam));
-
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 

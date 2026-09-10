@@ -1588,6 +1588,52 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1929,6 +1975,24 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffisyntaxservice_highlight_code_viewport(`ptr`: Pointer,`code`: RustBuffer.ByValue,`languageHint`: RustBuffer.ByValue,`startLine`: Int,`lineCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffisystemservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffisystemservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffisystemservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_apply_delta_patch(`ptr`: Pointer,`baseBytes`: RustBuffer.ByValue,`patchBytes`: RustBuffer.ByValue,`expectedTargetHash`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_calculate_tree_hash(`ptr`: Pointer,`rootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_check_version_monotonicity(`ptr`: Pointer,`currentVersion`: RustBuffer.ByValue,`incomingVersion`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_create_delta_patch(`ptr`: Pointer,`baseBytes`: RustBuffer.ByValue,`targetBytes`: RustBuffer.ByValue,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_parse_appcast_json(`ptr`: Pointer,`jsonContent`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffisystemservice_verify_appcast_signature(`ptr`: Pointer,`appcastBytes`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_ttzip_engine_fn_clone_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffittzipmediaplayer(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -2017,6 +2081,24 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffivfstree_total_entries(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_clone_uniffivideoservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffivideoservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffivideoservice_new(uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_bytes(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_clone_uniffixmlmetaservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffixmlmetaservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -2257,6 +2339,8 @@ internal interface UniffiLib : Library {
     ): Int
     fun uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling(`initial`: Int,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    fun uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch(`baseBytes`: RustBuffer.ByValue,`patchBytes`: RustBuffer.ByValue,`expectedTargetHash`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_blake3(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_blake3_keyed(`data`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2268,6 +2352,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_bzip2_compress(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_calculate_tree_hash(`rootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_compress_bound(`codec`: RustBuffer.ByValue,`srcLen`: Long,`level`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
@@ -2283,6 +2369,8 @@ internal interface UniffiLib : Library {
     ): Int
     fun uniffi_ttzip_engine_fn_func_uniffi_crc64(`data`: RustBuffer.ByValue,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    fun uniffi_ttzip_engine_fn_func_uniffi_create_delta_patch(`baseBytes`: RustBuffer.ByValue,`targetBytes`: RustBuffer.ByValue,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_decode_audio_stream(`data`: RustBuffer.ByValue,`maxPackets`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_decode_image(`data`: RustBuffer.ByValue,`maxDimension`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2345,6 +2433,10 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(`data`: RustBuffer.ByValue,`bucketCount`: Int,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2397,6 +2489,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_probe_office_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_probe_video_bytes(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_remediate_filename(`rawBytes`: RustBuffer.ByValue,`fallbackEncoding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_rewrite_html_vfs(`htmlContent`: RustBuffer.ByValue,`baseVfsPrefix`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2427,6 +2521,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt(`key`: RustBuffer.ByValue,`nonce`: RustBuffer.ByValue,`plaintext`: RustBuffer.ByValue,`aad`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_verify_appcast_signature(`appcastBytes`: RustBuffer.ByValue,`signatureBase64`: RustBuffer.ByValue,`publicKeyBase64`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_decrypt(`password`: RustBuffer.ByValue,`encPayload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_winzip_aes256_derive_keys(`password`: RustBuffer.ByValue,`salt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2777,6 +2873,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_blake3(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_blake3_keyed(
@@ -2788,6 +2886,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_bzip2_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_calculate_tree_hash(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_compress_bound(
     ): Short
@@ -2802,6 +2902,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_crc32_rolling(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_crc64(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_create_delta_patch(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream(
     ): Short
@@ -2865,6 +2967,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
@@ -2917,6 +3023,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_probe_video_bytes(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_rewrite_html_vfs(
@@ -2946,6 +3054,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_decrypt(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_verify_appcast_signature(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt(
     ): Short
@@ -3233,6 +3343,18 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_apply_delta_patch(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_calculate_tree_hash(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_check_version_monotonicity(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_create_delta_patch(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_parse_appcast_json(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffisystemservice_verify_appcast_signature(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_get_audio_tracks(
@@ -3302,6 +3424,18 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_search(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_bytes(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_file(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata(
     ): Short
@@ -3379,11 +3513,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffisystemservice_new(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffitextencodingservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffivideoservice_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new(
     ): Short
@@ -3678,6 +3816,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch() != 11705.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3() != 58283.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3694,6 +3835,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_bzip2_decompress() != 61807.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_calculate_tree_hash() != 44589.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_compress_bound() != 53214.toShort()) {
@@ -3715,6 +3859,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_crc64() != 29246.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_create_delta_patch() != 37402.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_decode_audio_stream() != 14907.toShort()) {
@@ -3810,6 +3957,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover() != 26142.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3888,6 +4041,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_office_bytes() != 27541.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_probe_video_bytes() != 64205.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_remediate_filename() != 58098.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3931,6 +4087,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_chacha20_poly1305_encrypt() != 53726.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_verify_appcast_signature() != 64042.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_winzip_aes256_decrypt() != 12928.toShort()) {
@@ -4362,6 +4521,24 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_method_uniffisyntaxservice_highlight_code_viewport() != 65465.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_apply_delta_patch() != 12782.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_calculate_tree_hash() != 24231.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_check_version_monotonicity() != 19649.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_create_delta_patch() != 33610.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_parse_appcast_json() != 17703.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffisystemservice_verify_appcast_signature() != 18637.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffittzipmediaplayer_effective_volume() != 1913.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4465,6 +4642,24 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffivfstree_total_entries() != 56586.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover() != 30779.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_cover_from_file() != 6120.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata() != 17865.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_extract_metadata_from_file() != 3983.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_bytes() != 3862.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffivideoservice_probe_file() != 42920.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffixmlmetaservice_extract_epub_metadata() != 49679.toShort()) {
@@ -4581,6 +4776,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffisyntaxservice_new() != 49553.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffisystemservice_new() != 5446.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffittzipmediaplayer_new() != 54586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4588,6 +4786,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffivfstree_build() != 42319.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffivideoservice_new() != 25407.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffixmlmetaservice_new() != 47668.toShort()) {
@@ -10996,6 +11197,369 @@ public object FfiConverterTypeUniFFISyntaxService: FfiConverter<UniFfiSyntaxServ
 
 
 /**
+ * Thread-safe system update, delta patch, and appcast verification engine service.
+ */
+public interface UniFfiSystemServiceInterface {
+    
+    /**
+     * Applies a binary delta patch onto base bytes directly in memory.
+     */
+    fun `applyDeltaPatch`(`baseBytes`: kotlin.ByteArray, `patchBytes`: kotlin.ByteArray, `expectedTargetHash`: kotlin.String?): UniFfiDeltaPatchResult
+    
+    /**
+     * Recursively computes deterministic Merkle tree hash for a local directory or file.
+     */
+    fun `calculateTreeHash`(`rootPath`: kotlin.String): kotlin.String
+    
+    /**
+     * Validates version monotonicity preventing downgrade attacks.
+     */
+    fun `checkVersionMonotonicity`(`currentVersion`: kotlin.String, `incomingVersion`: kotlin.String): kotlin.Boolean
+    
+    /**
+     * Creates a binary delta patch from base bytes to target bytes.
+     */
+    fun `createDeltaPatch`(`baseBytes`: kotlin.ByteArray, `targetBytes`: kotlin.ByteArray, `format`: UniFfiDeltaFormat): kotlin.ByteArray
+    
+    /**
+     * Parses JSON representation of an Appcast feed metadata and release items.
+     */
+    fun `parseAppcastJson`(`jsonContent`: kotlin.String): UniFfiAppcastMetadata
+    
+    /**
+     * Verifies detached Ed25519 signature of Appcast bytes.
+     */
+    fun `verifyAppcastSignature`(`appcastBytes`: kotlin.ByteArray, `signatureBase64`: kotlin.String, `publicKeyBase64`: kotlin.String): kotlin.Boolean
+    
+    companion object
+}
+
+/**
+ * Thread-safe system update, delta patch, and appcast verification engine service.
+ */
+open class UniFfiSystemService: Disposable, AutoCloseable, UniFfiSystemServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe system update service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffisystemservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffisystemservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffisystemservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Applies a binary delta patch onto base bytes directly in memory.
+     */
+    @Throws(UniFfiSystemException::class)override fun `applyDeltaPatch`(`baseBytes`: kotlin.ByteArray, `patchBytes`: kotlin.ByteArray, `expectedTargetHash`: kotlin.String?): UniFfiDeltaPatchResult {
+            return FfiConverterTypeUniFFIDeltaPatchResult.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_apply_delta_patch(
+        it, FfiConverterByteArray.lower(`baseBytes`),FfiConverterByteArray.lower(`patchBytes`),FfiConverterOptionalString.lower(`expectedTargetHash`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Recursively computes deterministic Merkle tree hash for a local directory or file.
+     */
+    @Throws(UniFfiSystemException::class)override fun `calculateTreeHash`(`rootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_calculate_tree_hash(
+        it, FfiConverterString.lower(`rootPath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Validates version monotonicity preventing downgrade attacks.
+     */
+    @Throws(UniFfiSystemException::class)override fun `checkVersionMonotonicity`(`currentVersion`: kotlin.String, `incomingVersion`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_check_version_monotonicity(
+        it, FfiConverterString.lower(`currentVersion`),FfiConverterString.lower(`incomingVersion`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Creates a binary delta patch from base bytes to target bytes.
+     */
+    @Throws(UniFfiSystemException::class)override fun `createDeltaPatch`(`baseBytes`: kotlin.ByteArray, `targetBytes`: kotlin.ByteArray, `format`: UniFfiDeltaFormat): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_create_delta_patch(
+        it, FfiConverterByteArray.lower(`baseBytes`),FfiConverterByteArray.lower(`targetBytes`),FfiConverterTypeUniFFIDeltaFormat.lower(`format`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Parses JSON representation of an Appcast feed metadata and release items.
+     */
+    @Throws(UniFfiSystemException::class)override fun `parseAppcastJson`(`jsonContent`: kotlin.String): UniFfiAppcastMetadata {
+            return FfiConverterTypeUniFFIAppcastMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_parse_appcast_json(
+        it, FfiConverterString.lower(`jsonContent`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Verifies detached Ed25519 signature of Appcast bytes.
+     */
+    @Throws(UniFfiSystemException::class)override fun `verifyAppcastSignature`(`appcastBytes`: kotlin.ByteArray, `signatureBase64`: kotlin.String, `publicKeyBase64`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffisystemservice_verify_appcast_signature(
+        it, FfiConverterByteArray.lower(`appcastBytes`),FfiConverterString.lower(`signatureBase64`),FfiConverterString.lower(`publicKeyBase64`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISystemService: FfiConverter<UniFfiSystemService, Pointer> {
+
+    override fun lower(value: UniFfiSystemService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiSystemService {
+        return UniFfiSystemService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiSystemService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiSystemService) = 8UL
+
+    override fun write(value: UniFfiSystemService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Cross-language UniFFI MediaPlayer controller object.
  */
 public interface UniFfittZipMediaPlayerInterface {
@@ -12265,6 +12829,369 @@ public object FfiConverterTypeUniFFIVfsTree: FfiConverter<UniFfiVfsTree, Pointer
     override fun allocationSize(value: UniFfiVfsTree) = 8UL
 
     override fun write(value: UniFfiVfsTree, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * High-performance Mozilla UniFFI video engine service exposing probing, track topology, and cover art extraction.
+ */
+public interface UniFfiVideoServiceInterface {
+    
+    /**
+     * Extracts raw embedded cover art bytes from an in-memory byte buffer.
+     */
+    fun `extractCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.ByteArray
+    
+    /**
+     * Extracts raw embedded cover art bytes from a local video file on disk.
+     */
+    fun `extractCoverFromFile`(`filePath`: kotlin.String): kotlin.ByteArray
+    
+    /**
+     * Extracts comprehensive video metadata from an in-memory byte buffer.
+     */
+    fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata
+    
+    /**
+     * Extracts comprehensive video metadata from a local video file on disk.
+     */
+    fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiVideoMetadata
+    
+    /**
+     * Probes technical video metadata from an in-memory byte buffer.
+     */
+    fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata
+    
+    /**
+     * Probes technical video metadata from a local video file on disk.
+     */
+    fun `probeFile`(`filePath`: kotlin.String): UniFfiVideoMetadata
+    
+    companion object
+}
+
+/**
+ * High-performance Mozilla UniFFI video engine service exposing probing, track topology, and cover art extraction.
+ */
+open class UniFfiVideoService: Disposable, AutoCloseable, UniFfiVideoServiceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+    /**
+     * Constructs a new thread-safe video service instance.
+     */
+    constructor() :
+        this(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffivideoservice_new(
+        _status)
+}
+    )
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffivideoservice(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffivideoservice(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Extracts raw embedded cover art bytes from an in-memory byte buffer.
+     */
+    @Throws(UniFfiVideoException::class)override fun `extractCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts raw embedded cover art bytes from a local video file on disk.
+     */
+    @Throws(UniFfiVideoException::class)override fun `extractCoverFromFile`(`filePath`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_cover_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts comprehensive video metadata from an in-memory byte buffer.
+     */
+    @Throws(UniFfiVideoException::class)override fun `extractMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Extracts comprehensive video metadata from a local video file on disk.
+     */
+    @Throws(UniFfiVideoException::class)override fun `extractMetadataFromFile`(`filePath`: kotlin.String): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_extract_metadata_from_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes technical video metadata from an in-memory byte buffer.
+     */
+    @Throws(UniFfiVideoException::class)override fun `probeBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_bytes(
+        it, FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Probes technical video metadata from a local video file on disk.
+     */
+    @Throws(UniFfiVideoException::class)override fun `probeFile`(`filePath`: kotlin.String): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    callWithPointer {
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffivideoservice_probe_file(
+        it, FfiConverterString.lower(`filePath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoService: FfiConverter<UniFfiVideoService, Pointer> {
+
+    override fun lower(value: UniFfiVideoService): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiVideoService {
+        return UniFfiVideoService(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiVideoService {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiVideoService) = 8UL
+
+    override fun write(value: UniFfiVideoService, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -14222,6 +15149,214 @@ public object FfiConverterTypeUniFFIAeadResult: FfiConverterRustBuffer<UniFfiAea
 
 
 /**
+ * Single release entry in an Appcast update feed.
+ */
+data class UniFfiAppcastItem (
+    /**
+     * Semantic version string (e.g. "1.2.0").
+     */
+    var `version`: kotlin.String, 
+    /**
+     * Monotonically increasing build integer (e.g. 10200).
+     */
+    var `buildNumber`: kotlin.ULong, 
+    /**
+     * Minimum compatible macOS version requirement (e.g. "14.0").
+     */
+    var `minOsVersion`: kotlin.String, 
+    /**
+     * Optional URL pointing to release notes or changelog markdown/html.
+     */
+    var `releaseNotesUrl`: kotlin.String?, 
+    /**
+     * Full package download URL (.zip, .dmg, or .pkg).
+     */
+    var `downloadUrl`: kotlin.String, 
+    /**
+     * Full package payload size in bytes.
+     */
+    var `downloadSize`: kotlin.ULong, 
+    /**
+     * Detached Ed25519 digital signature of the full package in Base64 representation.
+     */
+    var `signatureEd25519`: kotlin.String, 
+    /**
+     * Hex-encoded NIST SHA-256 digest of the full target package.
+     */
+    var `sha256`: kotlin.String, 
+    /**
+     * Optional URL for delta patch package from a specific previous base version.
+     */
+    var `deltaPatchUrl`: kotlin.String?, 
+    /**
+     * Previous base version string required by the delta patch (e.g. "1.1.9").
+     */
+    var `deltaBaseVersion`: kotlin.String?, 
+    /**
+     * Detached Ed25519 digital signature of the delta patch payload in Base64 representation.
+     */
+    var `deltaSignatureEd25519`: kotlin.String?, 
+    /**
+     * Delta patch package payload size in bytes.
+     */
+    var `deltaSize`: kotlin.ULong?, 
+    /**
+     * Whether this update is marked as a critical security patch.
+     */
+    var `isCritical`: kotlin.Boolean, 
+    /**
+     * Publication timestamp in seconds since Unix epoch.
+     */
+    var `publishedAtEpochSecs`: kotlin.Long
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAppcastItem: FfiConverterRustBuffer<UniFfiAppcastItem> {
+    override fun read(buf: ByteBuffer): UniFfiAppcastItem {
+        return UniFfiAppcastItem(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAppcastItem) = (
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterULong.allocationSize(value.`buildNumber`) +
+            FfiConverterString.allocationSize(value.`minOsVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`releaseNotesUrl`) +
+            FfiConverterString.allocationSize(value.`downloadUrl`) +
+            FfiConverterULong.allocationSize(value.`downloadSize`) +
+            FfiConverterString.allocationSize(value.`signatureEd25519`) +
+            FfiConverterString.allocationSize(value.`sha256`) +
+            FfiConverterOptionalString.allocationSize(value.`deltaPatchUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`deltaBaseVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`deltaSignatureEd25519`) +
+            FfiConverterOptionalULong.allocationSize(value.`deltaSize`) +
+            FfiConverterBoolean.allocationSize(value.`isCritical`) +
+            FfiConverterLong.allocationSize(value.`publishedAtEpochSecs`)
+    )
+
+    override fun write(value: UniFfiAppcastItem, buf: ByteBuffer) {
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterULong.write(value.`buildNumber`, buf)
+            FfiConverterString.write(value.`minOsVersion`, buf)
+            FfiConverterOptionalString.write(value.`releaseNotesUrl`, buf)
+            FfiConverterString.write(value.`downloadUrl`, buf)
+            FfiConverterULong.write(value.`downloadSize`, buf)
+            FfiConverterString.write(value.`signatureEd25519`, buf)
+            FfiConverterString.write(value.`sha256`, buf)
+            FfiConverterOptionalString.write(value.`deltaPatchUrl`, buf)
+            FfiConverterOptionalString.write(value.`deltaBaseVersion`, buf)
+            FfiConverterOptionalString.write(value.`deltaSignatureEd25519`, buf)
+            FfiConverterOptionalULong.write(value.`deltaSize`, buf)
+            FfiConverterBoolean.write(value.`isCritical`, buf)
+            FfiConverterLong.write(value.`publishedAtEpochSecs`, buf)
+    }
+}
+
+
+
+/**
+ * Comprehensive Appcast feed metadata and parsed items.
+ */
+data class UniFfiAppcastMetadata (
+    /**
+     * Distribution channel (e.g. "stable", "beta", "nightly").
+     */
+    var `channel`: kotlin.String, 
+    /**
+     * Application feed title or product display name.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * Source feed URL.
+     */
+    var `feedUrl`: kotlin.String, 
+    /**
+     * Latest available semantic version string in the feed.
+     */
+    var `latestVersion`: kotlin.String, 
+    /**
+     * Latest available build integer in the feed.
+     */
+    var `latestBuild`: kotlin.ULong, 
+    /**
+     * List of all parsed update candidate items.
+     */
+    var `items`: List<UniFfiAppcastItem>, 
+    /**
+     * Whether feed digital signature passed cryptographic verification.
+     */
+    var `signatureValid`: kotlin.Boolean, 
+    /**
+     * Timestamp when this feed was checked/retrieved.
+     */
+    var `checkedAtEpochSecs`: kotlin.Long
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAppcastMetadata: FfiConverterRustBuffer<UniFfiAppcastMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiAppcastMetadata {
+        return UniFfiAppcastMetadata(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterSequenceTypeUniFFIAppcastItem.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAppcastMetadata) = (
+            FfiConverterString.allocationSize(value.`channel`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`feedUrl`) +
+            FfiConverterString.allocationSize(value.`latestVersion`) +
+            FfiConverterULong.allocationSize(value.`latestBuild`) +
+            FfiConverterSequenceTypeUniFFIAppcastItem.allocationSize(value.`items`) +
+            FfiConverterBoolean.allocationSize(value.`signatureValid`) +
+            FfiConverterLong.allocationSize(value.`checkedAtEpochSecs`)
+    )
+
+    override fun write(value: UniFfiAppcastMetadata, buf: ByteBuffer) {
+            FfiConverterString.write(value.`channel`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`feedUrl`, buf)
+            FfiConverterString.write(value.`latestVersion`, buf)
+            FfiConverterULong.write(value.`latestBuild`, buf)
+            FfiConverterSequenceTypeUniFFIAppcastItem.write(value.`items`, buf)
+            FfiConverterBoolean.write(value.`signatureValid`, buf)
+            FfiConverterLong.write(value.`checkedAtEpochSecs`, buf)
+    }
+}
+
+
+
+/**
  * Embedded picture/album artwork metadata extracted from audio tags.
  */
 data class UniFfiAudioCoverArt (
@@ -14658,6 +15793,110 @@ public object FfiConverterTypeUniFFIAudioTrack: FfiConverterRustBuffer<UniFfiAud
 
 
 /**
+ * Technical stream properties of an individual audio track within the video.
+ */
+data class UniFfiAudioTrackInfo (
+    /**
+     * 1-based index or container track ID.
+     */
+    var `trackId`: kotlin.UInt, 
+    /**
+     * Strongly-typed audio codec enumeration.
+     */
+    var `codec`: UniFfiAudioCodec, 
+    /**
+     * Detailed or raw codec descriptor string (e.g. "mp4a.40.2", "opus", "ac-3").
+     */
+    var `codecName`: kotlin.String, 
+    /**
+     * Audio sample rate in Hertz (e.g. 44100, 48000).
+     */
+    var `sampleRate`: kotlin.UInt, 
+    /**
+     * Number of audio channels (e.g. 2 for stereo, 6 for 5.1 surround).
+     */
+    var `channels`: kotlin.UInt, 
+    /**
+     * Audio channel layout descriptor (e.g. "Stereo", "5.1", "7.1.4").
+     */
+    var `channelLayout`: kotlin.String, 
+    /**
+     * Audio sample bit depth if applicable (e.g. 16, 24).
+     */
+    var `bitDepth`: kotlin.UInt?, 
+    /**
+     * Average audio bitrate in kilobits per second.
+     */
+    var `bitrateKbps`: kotlin.UInt, 
+    /**
+     * ISO 639-2 language code (e.g. "eng", "zho", "jpn").
+     */
+    var `language`: kotlin.String?, 
+    /**
+     * Descriptive track name or title (e.g. "Director's Commentary").
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Whether this track is designated as the default audio track.
+     */
+    var `isDefault`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioTrackInfo: FfiConverterRustBuffer<UniFfiAudioTrackInfo> {
+    override fun read(buf: ByteBuffer): UniFfiAudioTrackInfo {
+        return UniFfiAudioTrackInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeUniFFIAudioCodec.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAudioTrackInfo) = (
+            FfiConverterUInt.allocationSize(value.`trackId`) +
+            FfiConverterTypeUniFFIAudioCodec.allocationSize(value.`codec`) +
+            FfiConverterString.allocationSize(value.`codecName`) +
+            FfiConverterUInt.allocationSize(value.`sampleRate`) +
+            FfiConverterUInt.allocationSize(value.`channels`) +
+            FfiConverterString.allocationSize(value.`channelLayout`) +
+            FfiConverterOptionalUInt.allocationSize(value.`bitDepth`) +
+            FfiConverterUInt.allocationSize(value.`bitrateKbps`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterBoolean.allocationSize(value.`isDefault`)
+    )
+
+    override fun write(value: UniFfiAudioTrackInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`trackId`, buf)
+            FfiConverterTypeUniFFIAudioCodec.write(value.`codec`, buf)
+            FfiConverterString.write(value.`codecName`, buf)
+            FfiConverterUInt.write(value.`sampleRate`, buf)
+            FfiConverterUInt.write(value.`channels`, buf)
+            FfiConverterString.write(value.`channelLayout`, buf)
+            FfiConverterOptionalUInt.write(value.`bitDepth`, buf)
+            FfiConverterUInt.write(value.`bitrateKbps`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterBoolean.write(value.`isDefault`, buf)
+    }
+}
+
+
+
+/**
  * Normalized acoustic peak and RMS waveform amplitude envelope.
  */
 data class UniFfiAudioWaveform (
@@ -14943,6 +16182,61 @@ public object FfiConverterTypeUniFFICell: FfiConverterRustBuffer<UniFfiCell> {
 
 
 /**
+ * Chapter navigation marker in the video timeline.
+ */
+data class UniFfiChapterInfo (
+    /**
+     * 1-based sequential chapter index.
+     */
+    var `chapterId`: kotlin.UInt, 
+    /**
+     * Descriptive chapter title.
+     */
+    var `title`: kotlin.String, 
+    /**
+     * Chapter start timestamp in seconds from video origin.
+     */
+    var `startTimeSeconds`: kotlin.Double, 
+    /**
+     * Chapter end timestamp in seconds.
+     */
+    var `endTimeSeconds`: kotlin.Double
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIChapterInfo: FfiConverterRustBuffer<UniFfiChapterInfo> {
+    override fun read(buf: ByteBuffer): UniFfiChapterInfo {
+        return UniFfiChapterInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiChapterInfo) = (
+            FfiConverterUInt.allocationSize(value.`chapterId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterDouble.allocationSize(value.`startTimeSeconds`) +
+            FfiConverterDouble.allocationSize(value.`endTimeSeconds`)
+    )
+
+    override fun write(value: UniFfiChapterInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`chapterId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterDouble.write(value.`startTimeSeconds`, buf)
+            FfiConverterDouble.write(value.`endTimeSeconds`, buf)
+    }
+}
+
+
+
+/**
  * Compression parameters and options container.
  */
 data class UniFfiCompressionOptions (
@@ -15078,6 +16372,82 @@ public object FfiConverterTypeUniFFIDeflateStats: FfiConverterRustBuffer<UniFfiD
             FfiConverterDouble.write(value.`compressionRatio`, buf)
             FfiConverterULong.write(value.`durationNanos`, buf)
             FfiConverterDouble.write(value.`throughputMbs`, buf)
+    }
+}
+
+
+
+/**
+ * Result of an in-memory or stream delta patch application operation.
+ */
+data class UniFfiDeltaPatchResult (
+    /**
+     * Whether patch reconstruction and hash verification succeeded.
+     */
+    var `success`: kotlin.Boolean, 
+    /**
+     * Size in bytes of the applied delta patch package.
+     */
+    var `patchSize`: kotlin.ULong, 
+    /**
+     * Size in bytes of the reconstructed target payload.
+     */
+    var `targetSize`: kotlin.ULong, 
+    /**
+     * Hex-encoded SHA-256 digest of the reconstructed target data.
+     */
+    var `targetHash`: kotlin.String, 
+    /**
+     * Whether the patch was executed directly in memory without disk staging.
+     */
+    var `appliedInMemory`: kotlin.Boolean, 
+    /**
+     * Execution duration in milliseconds.
+     */
+    var `durationMs`: kotlin.Double, 
+    /**
+     * Reconstructed target binary bytes.
+     */
+    var `patchedBytes`: kotlin.ByteArray
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeltaPatchResult: FfiConverterRustBuffer<UniFfiDeltaPatchResult> {
+    override fun read(buf: ByteBuffer): UniFfiDeltaPatchResult {
+        return UniFfiDeltaPatchResult(
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiDeltaPatchResult) = (
+            FfiConverterBoolean.allocationSize(value.`success`) +
+            FfiConverterULong.allocationSize(value.`patchSize`) +
+            FfiConverterULong.allocationSize(value.`targetSize`) +
+            FfiConverterString.allocationSize(value.`targetHash`) +
+            FfiConverterBoolean.allocationSize(value.`appliedInMemory`) +
+            FfiConverterDouble.allocationSize(value.`durationMs`) +
+            FfiConverterByteArray.allocationSize(value.`patchedBytes`)
+    )
+
+    override fun write(value: UniFfiDeltaPatchResult, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`success`, buf)
+            FfiConverterULong.write(value.`patchSize`, buf)
+            FfiConverterULong.write(value.`targetSize`, buf)
+            FfiConverterString.write(value.`targetHash`, buf)
+            FfiConverterBoolean.write(value.`appliedInMemory`, buf)
+            FfiConverterDouble.write(value.`durationMs`, buf)
+            FfiConverterByteArray.write(value.`patchedBytes`, buf)
     }
 }
 
@@ -19160,6 +20530,82 @@ public object FfiConverterTypeUniFFISubtitleTrack: FfiConverterRustBuffer<UniFfi
 
 
 /**
+ * Information regarding an embedded subtitle or timed text track.
+ */
+data class UniFfiSubtitleTrackInfo (
+    /**
+     * 1-based index or container track ID.
+     */
+    var `trackId`: kotlin.UInt, 
+    /**
+     * Subtitle format/codec (e.g. "SubRip (SRT)", "ASS/SSA", "VobSub", "tx3g").
+     */
+    var `format`: kotlin.String, 
+    /**
+     * ISO 639-2 language code (e.g. "eng", "spa", "fra").
+     */
+    var `language`: kotlin.String?, 
+    /**
+     * Subtitle track display name or description.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Whether this subtitle track is marked for forced display.
+     */
+    var `isForced`: kotlin.Boolean, 
+    /**
+     * Whether this subtitle track is marked as default.
+     */
+    var `isDefault`: kotlin.Boolean, 
+    /**
+     * Whether this subtitle track contains SDH (Subtitles for Deaf and Hard of Hearing).
+     */
+    var `isSdh`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISubtitleTrackInfo: FfiConverterRustBuffer<UniFfiSubtitleTrackInfo> {
+    override fun read(buf: ByteBuffer): UniFfiSubtitleTrackInfo {
+        return UniFfiSubtitleTrackInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiSubtitleTrackInfo) = (
+            FfiConverterUInt.allocationSize(value.`trackId`) +
+            FfiConverterString.allocationSize(value.`format`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterBoolean.allocationSize(value.`isForced`) +
+            FfiConverterBoolean.allocationSize(value.`isDefault`) +
+            FfiConverterBoolean.allocationSize(value.`isSdh`)
+    )
+
+    override fun write(value: UniFfiSubtitleTrackInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`trackId`, buf)
+            FfiConverterString.write(value.`format`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterBoolean.write(value.`isForced`, buf)
+            FfiConverterBoolean.write(value.`isDefault`, buf)
+            FfiConverterBoolean.write(value.`isSdh`, buf)
+    }
+}
+
+
+
+/**
  * Hierarchical structural symbol node for document and source code outline tree.
  */
 data class UniFfiSymbolNode (
@@ -19694,6 +21140,145 @@ public object FfiConverterTypeUniFFIVideoDimension: FfiConverterRustBuffer<UniFf
 
 
 /**
+ * Comprehensive high-level video container and media stream metadata record.
+ */
+data class UniFfiVideoMetadata (
+    /**
+     * Identified video container format.
+     */
+    var `format`: UniFfiVideoFormat, 
+    /**
+     * Human-readable container name (e.g. "MPEG-4 Part 14 Video (MP4)").
+     */
+    var `containerName`: kotlin.String, 
+    /**
+     * Total duration of the video container in seconds.
+     */
+    var `durationSeconds`: kotlin.Double, 
+    /**
+     * Total byte size of the video file/stream.
+     */
+    var `fileSizeBytes`: kotlin.ULong, 
+    /**
+     * Total overall average bitrate in kilobits per second.
+     */
+    var `bitrateKbps`: kotlin.UInt, 
+    /**
+     * List of video streams/tracks found in container.
+     */
+    var `videoTracks`: List<UniFfiVideoTrackInfo>, 
+    /**
+     * List of audio streams/tracks found in container.
+     */
+    var `audioTracks`: List<UniFfiAudioTrackInfo>, 
+    /**
+     * List of embedded subtitle tracks found in container.
+     */
+    var `subtitleTracks`: List<UniFfiSubtitleTrackInfo>, 
+    /**
+     * List of chapter markers in chronological order.
+     */
+    var `chapters`: List<UniFfiChapterInfo>, 
+    /**
+     * Media title if present in tags.
+     */
+    var `title`: kotlin.String?, 
+    /**
+     * Director, artist, or author credit if present.
+     */
+    var `artistOrDirector`: kotlin.String?, 
+    /**
+     * Release date or creation timestamp string.
+     */
+    var `creationDate`: kotlin.String?, 
+    /**
+     * Encoding application or multiplexer tool.
+     */
+    var `encoder`: kotlin.String?, 
+    /**
+     * Whether embedded cover / poster art is available.
+     */
+    var `hasCover`: kotlin.Boolean, 
+    /**
+     * MIME type of the embedded cover art if present (e.g. "image/jpeg", "image/png").
+     */
+    var `coverMimeType`: kotlin.String?, 
+    /**
+     * Additional unstructured key-value tag metadata.
+     */
+    var `extraTags`: Map<kotlin.String, kotlin.String>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoMetadata: FfiConverterRustBuffer<UniFfiVideoMetadata> {
+    override fun read(buf: ByteBuffer): UniFfiVideoMetadata {
+        return UniFfiVideoMetadata(
+            FfiConverterTypeUniFFIVideoFormat.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceTypeUniFFIVideoTrackInfo.read(buf),
+            FfiConverterSequenceTypeUniFFIAudioTrackInfo.read(buf),
+            FfiConverterSequenceTypeUniFFISubtitleTrackInfo.read(buf),
+            FfiConverterSequenceTypeUniFFIChapterInfo.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterMapStringString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiVideoMetadata) = (
+            FfiConverterTypeUniFFIVideoFormat.allocationSize(value.`format`) +
+            FfiConverterString.allocationSize(value.`containerName`) +
+            FfiConverterDouble.allocationSize(value.`durationSeconds`) +
+            FfiConverterULong.allocationSize(value.`fileSizeBytes`) +
+            FfiConverterUInt.allocationSize(value.`bitrateKbps`) +
+            FfiConverterSequenceTypeUniFFIVideoTrackInfo.allocationSize(value.`videoTracks`) +
+            FfiConverterSequenceTypeUniFFIAudioTrackInfo.allocationSize(value.`audioTracks`) +
+            FfiConverterSequenceTypeUniFFISubtitleTrackInfo.allocationSize(value.`subtitleTracks`) +
+            FfiConverterSequenceTypeUniFFIChapterInfo.allocationSize(value.`chapters`) +
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`artistOrDirector`) +
+            FfiConverterOptionalString.allocationSize(value.`creationDate`) +
+            FfiConverterOptionalString.allocationSize(value.`encoder`) +
+            FfiConverterBoolean.allocationSize(value.`hasCover`) +
+            FfiConverterOptionalString.allocationSize(value.`coverMimeType`) +
+            FfiConverterMapStringString.allocationSize(value.`extraTags`)
+    )
+
+    override fun write(value: UniFfiVideoMetadata, buf: ByteBuffer) {
+            FfiConverterTypeUniFFIVideoFormat.write(value.`format`, buf)
+            FfiConverterString.write(value.`containerName`, buf)
+            FfiConverterDouble.write(value.`durationSeconds`, buf)
+            FfiConverterULong.write(value.`fileSizeBytes`, buf)
+            FfiConverterUInt.write(value.`bitrateKbps`, buf)
+            FfiConverterSequenceTypeUniFFIVideoTrackInfo.write(value.`videoTracks`, buf)
+            FfiConverterSequenceTypeUniFFIAudioTrackInfo.write(value.`audioTracks`, buf)
+            FfiConverterSequenceTypeUniFFISubtitleTrackInfo.write(value.`subtitleTracks`, buf)
+            FfiConverterSequenceTypeUniFFIChapterInfo.write(value.`chapters`, buf)
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`artistOrDirector`, buf)
+            FfiConverterOptionalString.write(value.`creationDate`, buf)
+            FfiConverterOptionalString.write(value.`encoder`, buf)
+            FfiConverterBoolean.write(value.`hasCover`, buf)
+            FfiConverterOptionalString.write(value.`coverMimeType`, buf)
+            FfiConverterMapStringString.write(value.`extraTags`, buf)
+    }
+}
+
+
+
+/**
  * Video track metadata exposed across UniFFI boundary.
  */
 data class UniFfiVideoTrack (
@@ -19743,6 +21328,117 @@ public object FfiConverterTypeUniFFIVideoTrack: FfiConverterRustBuffer<UniFfiVid
             FfiConverterUInt.write(value.`height`, buf)
             FfiConverterDouble.write(value.`fps`, buf)
             FfiConverterBoolean.write(value.`isSelected`, buf)
+    }
+}
+
+
+
+/**
+ * Technical stream properties of an individual video track.
+ */
+data class UniFfiVideoTrackInfo (
+    /**
+     * 1-based index or container track ID.
+     */
+    var `trackId`: kotlin.UInt, 
+    /**
+     * Strongly-typed video codec enumeration.
+     */
+    var `codec`: UniFfiVideoCodec, 
+    /**
+     * Detailed or raw codec descriptor string (e.g. "avc1", "hev1", "vp09.00").
+     */
+    var `codecName`: kotlin.String, 
+    /**
+     * Video frame width in pixels.
+     */
+    var `width`: kotlin.UInt, 
+    /**
+     * Video frame height in pixels.
+     */
+    var `height`: kotlin.UInt, 
+    /**
+     * Frame rate in frames per second (e.g. 23.976, 29.97, 60.0).
+     */
+    var `frameRate`: kotlin.Double, 
+    /**
+     * Average video bitrate in kilobits per second.
+     */
+    var `bitrateKbps`: kotlin.UInt, 
+    /**
+     * Duration of this video track in seconds.
+     */
+    var `durationSeconds`: kotlin.Double, 
+    /**
+     * Aspect ratio string representation (e.g. "16:9", "4:3", "2.39:1").
+     */
+    var `aspectRatio`: kotlin.String, 
+    /**
+     * Color primaries or color space (e.g. "BT.709", "BT.2020", "Display P3").
+     */
+    var `colorSpace`: kotlin.String?, 
+    /**
+     * High Dynamic Range format if present (e.g. "HDR10", "Dolby Vision", "HLG").
+     */
+    var `hdrFormat`: kotlin.String?, 
+    /**
+     * Display rotation in clockwise degrees (0, 90, 180, 270).
+     */
+    var `rotationDegrees`: kotlin.UInt
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoTrackInfo: FfiConverterRustBuffer<UniFfiVideoTrackInfo> {
+    override fun read(buf: ByteBuffer): UniFfiVideoTrackInfo {
+        return UniFfiVideoTrackInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeUniFFIVideoCodec.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiVideoTrackInfo) = (
+            FfiConverterUInt.allocationSize(value.`trackId`) +
+            FfiConverterTypeUniFFIVideoCodec.allocationSize(value.`codec`) +
+            FfiConverterString.allocationSize(value.`codecName`) +
+            FfiConverterUInt.allocationSize(value.`width`) +
+            FfiConverterUInt.allocationSize(value.`height`) +
+            FfiConverterDouble.allocationSize(value.`frameRate`) +
+            FfiConverterUInt.allocationSize(value.`bitrateKbps`) +
+            FfiConverterDouble.allocationSize(value.`durationSeconds`) +
+            FfiConverterString.allocationSize(value.`aspectRatio`) +
+            FfiConverterOptionalString.allocationSize(value.`colorSpace`) +
+            FfiConverterOptionalString.allocationSize(value.`hdrFormat`) +
+            FfiConverterUInt.allocationSize(value.`rotationDegrees`)
+    )
+
+    override fun write(value: UniFfiVideoTrackInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`trackId`, buf)
+            FfiConverterTypeUniFFIVideoCodec.write(value.`codec`, buf)
+            FfiConverterString.write(value.`codecName`, buf)
+            FfiConverterUInt.write(value.`width`, buf)
+            FfiConverterUInt.write(value.`height`, buf)
+            FfiConverterDouble.write(value.`frameRate`, buf)
+            FfiConverterUInt.write(value.`bitrateKbps`, buf)
+            FfiConverterDouble.write(value.`durationSeconds`, buf)
+            FfiConverterString.write(value.`aspectRatio`, buf)
+            FfiConverterOptionalString.write(value.`colorSpace`, buf)
+            FfiConverterOptionalString.write(value.`hdrFormat`, buf)
+            FfiConverterUInt.write(value.`rotationDegrees`, buf)
     }
 }
 
@@ -20607,6 +22303,77 @@ public object FfiConverterTypeThumbnailSamplingFilter: FfiConverterRustBuffer<Th
 
 
 
+/**
+ * Audio track codec classifications within video containers.
+ */
+
+enum class UniFfiAudioCodec {
+    
+    /**
+     * Advanced Audio Coding (AAC).
+     */
+    AAC,
+    /**
+     * Dolby Digital (AC-3).
+     */
+    AC3,
+    /**
+     * Dolby Digital Plus (Enhanced AC-3 / E-AC-3).
+     */
+    EAC3,
+    /**
+     * Opus Audio Codec.
+     */
+    OPUS,
+    /**
+     * Free Lossless Audio Codec (FLAC).
+     */
+    FLAC,
+    /**
+     * Ogg Vorbis.
+     */
+    VORBIS,
+    /**
+     * MPEG-1 Audio Layer III (MP3).
+     */
+    MP3,
+    /**
+     * Apple Lossless Audio Codec (ALAC).
+     */
+    ALAC,
+    /**
+     * Uncompressed Linear PCM.
+     */
+    PCM,
+    /**
+     * Unrecognized audio codec.
+     */
+    UNKNOWN;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAudioCodec: FfiConverterRustBuffer<UniFfiAudioCodec> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiAudioCodec.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiAudioCodec) = 4UL
+
+    override fun write(value: UniFfiAudioCodec, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -21325,6 +23092,49 @@ public object FfiConverterTypeUniFFIDeflateLevel : FfiConverterRustBuffer<UniFfi
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Supported binary serialization and compression formats for delta patches.
+ */
+
+enum class UniFfiDeltaFormat {
+    
+    /**
+     * Raw uncompressed byte-level delta instructions (fastest creation/application).
+     */
+    RAW_BYTE_BLOCK,
+    /**
+     * Zstandard compressed delta payload for optimal bandwidth minimization.
+     */
+    ZSTD_COMPRESSED,
+    /**
+     * Standard Flate/Deflate compressed delta payload.
+     */
+    FLATE_COMPRESSED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeltaFormat: FfiConverterRustBuffer<UniFfiDeltaFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiDeltaFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiDeltaFormat) = 4UL
+
+    override fun write(value: UniFfiDeltaFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -22575,6 +24385,599 @@ public object FfiConverterTypeUniFFISyntheticCorpusType: FfiConverterRustBuffer<
     override fun allocationSize(value: UniFfiSyntheticCorpusType) = 4UL
 
     override fun write(value: UniFfiSyntheticCorpusType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+/**
+ * Strongly-typed error enum mapped directly to Swift `throws UniFFISystemError`.
+ */
+sealed class UniFfiSystemException: kotlin.Exception() {
+    
+    /**
+     * Digital signature or public key validation failure.
+     */
+    class InvalidSignature(
+        
+        val `reason`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    /**
+     * Binary delta patch creation or application failure.
+     */
+    class PatchFailed(
+        
+        val `reason`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    /**
+     * Attempted update violates version monotonicity (downgrade prevention).
+     */
+    class VersionDowngradeForbidden(
+        
+        val `currentVersion`: kotlin.String, 
+        
+        val `incomingVersion`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "currentVersion=${ `currentVersion` }, incomingVersion=${ `incomingVersion` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * Corrupt data, magic mismatch, or integrity checksum failure.
+     */
+    class CorruptData(
+        
+        val `details`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    /**
+     * Appcast feed parsing error.
+     */
+    class AppcastParseException(
+        
+        val `details`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "details=${ `details` }"
+    }
+    
+    /**
+     * System update or patch operation was explicitly cancelled.
+     */
+    class Cancelled(
+        ) : UniFfiSystemException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * General security policy or integrity verification violation.
+     */
+    class VerificationFailed(
+        
+        val `reason`: kotlin.String
+        ) : UniFfiSystemException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiSystemException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiSystemException = FfiConverterTypeUniFFISystemError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFISystemError : FfiConverterRustBuffer<UniFfiSystemException> {
+    override fun read(buf: ByteBuffer): UniFfiSystemException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiSystemException.InvalidSignature(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiSystemException.PatchFailed(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiSystemException.VersionDowngradeForbidden(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiSystemException.IoException(
+                FfiConverterString.read(buf),
+                )
+            5 -> UniFfiSystemException.CorruptData(
+                FfiConverterString.read(buf),
+                )
+            6 -> UniFfiSystemException.AppcastParseException(
+                FfiConverterString.read(buf),
+                )
+            7 -> UniFfiSystemException.Cancelled()
+            8 -> UniFfiSystemException.VerificationFailed(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiSystemException): ULong {
+        return when(value) {
+            is UniFfiSystemException.InvalidSignature -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is UniFfiSystemException.PatchFailed -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is UniFfiSystemException.VersionDowngradeForbidden -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`currentVersion`)
+                + FfiConverterString.allocationSize(value.`incomingVersion`)
+            )
+            is UniFfiSystemException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiSystemException.CorruptData -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is UniFfiSystemException.AppcastParseException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`details`)
+            )
+            is UniFfiSystemException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is UniFfiSystemException.VerificationFailed -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: UniFfiSystemException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiSystemException.InvalidSignature -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is UniFfiSystemException.PatchFailed -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is UniFfiSystemException.VersionDowngradeForbidden -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`currentVersion`, buf)
+                FfiConverterString.write(value.`incomingVersion`, buf)
+                Unit
+            }
+            is UniFfiSystemException.IoException -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiSystemException.CorruptData -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is UniFfiSystemException.AppcastParseException -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`details`, buf)
+                Unit
+            }
+            is UniFfiSystemException.Cancelled -> {
+                buf.putInt(7)
+                Unit
+            }
+            is UniFfiSystemException.VerificationFailed -> {
+                buf.putInt(8)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Video track codec classifications.
+ */
+
+enum class UniFfiVideoCodec {
+    
+    /**
+     * Advanced Video Coding (AVC / H.264).
+     */
+    H264,
+    /**
+     * High Efficiency Video Coding (HEVC / H.265).
+     */
+    HEVC,
+    /**
+     * AOMedia Video 1 (AV1).
+     */
+    AV1,
+    /**
+     * Google VP9.
+     */
+    VP9,
+    /**
+     * Google VP8.
+     */
+    VP8,
+    /**
+     * Apple ProRes family.
+     */
+    PRO_RES,
+    /**
+     * Xiph Theora.
+     */
+    THEORA,
+    /**
+     * MPEG-4 Part 2 Visual (DivX / Xvid).
+     */
+    MPEG4,
+    /**
+     * MPEG-2 Video.
+     */
+    MPEG2,
+    /**
+     * Unrecognized video codec.
+     */
+    UNKNOWN;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoCodec: FfiConverterRustBuffer<UniFfiVideoCodec> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiVideoCodec.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiVideoCodec) = 4UL
+
+    override fun write(value: UniFfiVideoCodec, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+
+/**
+ * Strongly-typed video metadata errors mapped directly to Swift `throws UniFFIVideoError`.
+ */
+sealed class UniFfiVideoException: kotlin.Exception() {
+    
+    /**
+     * The container or codec format is not supported.
+     */
+    class UnsupportedFormat(
+        
+        val `format`: kotlin.String
+        ) : UniFfiVideoException() {
+        override val message
+            get() = "format=${ `format` }"
+    }
+    
+    /**
+     * Failure encountered while parsing video container atoms or headers.
+     */
+    class ParseException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiVideoException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * File system or stream I/O failure.
+     */
+    class IoException(
+        
+        val `message`: kotlin.String
+        ) : UniFfiVideoException() {
+        override val message
+            get() = "message=${ `message` }"
+    }
+    
+    /**
+     * The video bitstream or container header is corrupted or prematurely truncated.
+     */
+    class CorruptedData(
+        ) : UniFfiVideoException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * Specified track ID was not found in container.
+     */
+    class TrackNotFound(
+        
+        val `trackId`: kotlin.UInt
+        ) : UniFfiVideoException() {
+        override val message
+            get() = "trackId=${ `trackId` }"
+    }
+    
+    /**
+     * No embedded poster or cover art was found in video container.
+     */
+    class CoverArtNotFound(
+        ) : UniFfiVideoException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * Supplied parameter is invalid or out of bounds.
+     */
+    class InvalidParameter(
+        
+        val `parameter`: kotlin.String
+        ) : UniFfiVideoException() {
+        override val message
+            get() = "parameter=${ `parameter` }"
+    }
+    
+    /**
+     * Video operation was explicitly cancelled.
+     */
+    class Cancelled(
+        ) : UniFfiVideoException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UniFfiVideoException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UniFfiVideoException = FfiConverterTypeUniFFIVideoError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoError : FfiConverterRustBuffer<UniFfiVideoException> {
+    override fun read(buf: ByteBuffer): UniFfiVideoException {
+        
+
+        return when(buf.getInt()) {
+            1 -> UniFfiVideoException.UnsupportedFormat(
+                FfiConverterString.read(buf),
+                )
+            2 -> UniFfiVideoException.ParseException(
+                FfiConverterString.read(buf),
+                )
+            3 -> UniFfiVideoException.IoException(
+                FfiConverterString.read(buf),
+                )
+            4 -> UniFfiVideoException.CorruptedData()
+            5 -> UniFfiVideoException.TrackNotFound(
+                FfiConverterUInt.read(buf),
+                )
+            6 -> UniFfiVideoException.CoverArtNotFound()
+            7 -> UniFfiVideoException.InvalidParameter(
+                FfiConverterString.read(buf),
+                )
+            8 -> UniFfiVideoException.Cancelled()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UniFfiVideoException): ULong {
+        return when(value) {
+            is UniFfiVideoException.UnsupportedFormat -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`format`)
+            )
+            is UniFfiVideoException.ParseException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiVideoException.IoException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`message`)
+            )
+            is UniFfiVideoException.CorruptedData -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is UniFfiVideoException.TrackNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterUInt.allocationSize(value.`trackId`)
+            )
+            is UniFfiVideoException.CoverArtNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is UniFfiVideoException.InvalidParameter -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`parameter`)
+            )
+            is UniFfiVideoException.Cancelled -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UniFfiVideoException, buf: ByteBuffer) {
+        when(value) {
+            is UniFfiVideoException.UnsupportedFormat -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`format`, buf)
+                Unit
+            }
+            is UniFfiVideoException.ParseException -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiVideoException.IoException -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`message`, buf)
+                Unit
+            }
+            is UniFfiVideoException.CorruptedData -> {
+                buf.putInt(4)
+                Unit
+            }
+            is UniFfiVideoException.TrackNotFound -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`trackId`, buf)
+                Unit
+            }
+            is UniFfiVideoException.CoverArtNotFound -> {
+                buf.putInt(6)
+                Unit
+            }
+            is UniFfiVideoException.InvalidParameter -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`parameter`, buf)
+                Unit
+            }
+            is UniFfiVideoException.Cancelled -> {
+                buf.putInt(8)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Supported video container and format classifications.
+ */
+
+enum class UniFfiVideoFormat {
+    
+    /**
+     * MPEG-4 Part 14 container (.mp4).
+     */
+    MP4,
+    /**
+     * Apple MPEG-4 video format (.m4v).
+     */
+    M4V,
+    /**
+     * Apple QuickTime Movie container (.mov, .qt).
+     */
+    MOV,
+    /**
+     * Matroska Multimedia Container (.mkv).
+     */
+    MKV,
+    /**
+     * WebM open media format (.webm).
+     */
+    WEBM,
+    /**
+     * Audio Video Interleave (.avi).
+     */
+    AVI,
+    /**
+     * Windows Media Video (.wmv, .asf).
+     */
+    WMV,
+    /**
+     * Flash Video format (.flv).
+     */
+    FLV,
+    /**
+     * MPEG Transport Stream (.ts, .m2ts).
+     */
+    TS,
+    /**
+     * Ogg Theora video container (.ogv).
+     */
+    OGV,
+    /**
+     * Unrecognized or generic video format.
+     */
+    UNKNOWN;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVideoFormat: FfiConverterRustBuffer<UniFfiVideoFormat> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiVideoFormat.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiVideoFormat) = 4UL
+
+    override fun write(value: UniFfiVideoFormat, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -23955,6 +26358,34 @@ public object FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIAppcastItem: FfiConverterRustBuffer<List<UniFfiAppcastItem>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAppcastItem> {
+        val len = buf.getInt()
+        return List<UniFfiAppcastItem>(len) {
+            FfiConverterTypeUniFFIAppcastItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAppcastItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAppcastItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAppcastItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAppcastItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIAudioPacket: FfiConverterRustBuffer<List<UniFfiAudioPacket>> {
     override fun read(buf: ByteBuffer): List<UniFfiAudioPacket> {
         val len = buf.getInt()
@@ -24011,6 +26442,34 @@ public object FfiConverterSequenceTypeUniFFIAudioTrack: FfiConverterRustBuffer<L
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIAudioTrackInfo: FfiConverterRustBuffer<List<UniFfiAudioTrackInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAudioTrackInfo> {
+        val len = buf.getInt()
+        return List<UniFfiAudioTrackInfo>(len) {
+            FfiConverterTypeUniFFIAudioTrackInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAudioTrackInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAudioTrackInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAudioTrackInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAudioTrackInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIBenchmarkPointResult: FfiConverterRustBuffer<List<UniFfiBenchmarkPointResult>> {
     override fun read(buf: ByteBuffer): List<UniFfiBenchmarkPointResult> {
         val len = buf.getInt()
@@ -24057,6 +26516,34 @@ public object FfiConverterSequenceTypeUniFFICell: FfiConverterRustBuffer<List<Un
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFICell.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIChapterInfo: FfiConverterRustBuffer<List<UniFfiChapterInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiChapterInfo> {
+        val len = buf.getInt()
+        return List<UniFfiChapterInfo>(len) {
+            FfiConverterTypeUniFFIChapterInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiChapterInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIChapterInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiChapterInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIChapterInfo.write(it, buf)
         }
     }
 }
@@ -24879,6 +27366,34 @@ public object FfiConverterSequenceTypeUniFFISubtitleTrack: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFISubtitleTrackInfo: FfiConverterRustBuffer<List<UniFfiSubtitleTrackInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiSubtitleTrackInfo> {
+        val len = buf.getInt()
+        return List<UniFfiSubtitleTrackInfo>(len) {
+            FfiConverterTypeUniFFISubtitleTrackInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiSubtitleTrackInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFISubtitleTrackInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiSubtitleTrackInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFISubtitleTrackInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFISymbolNode: FfiConverterRustBuffer<List<UniFfiSymbolNode>> {
     override fun read(buf: ByteBuffer): List<UniFfiSymbolNode> {
         val len = buf.getInt()
@@ -25037,6 +27552,34 @@ public object FfiConverterSequenceTypeUniFFIVideoTrack: FfiConverterRustBuffer<L
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFIVideoTrack.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIVideoTrackInfo: FfiConverterRustBuffer<List<UniFfiVideoTrackInfo>> {
+    override fun read(buf: ByteBuffer): List<UniFfiVideoTrackInfo> {
+        val len = buf.getInt()
+        return List<UniFfiVideoTrackInfo>(len) {
+            FfiConverterTypeUniFFIVideoTrackInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiVideoTrackInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIVideoTrackInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiVideoTrackInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIVideoTrackInfo.write(it, buf)
         }
     }
 }
@@ -26239,6 +28782,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Applies a binary delta patch package onto base bytes, reconstructing target bytes in-memory.
+         */
+    @Throws(UniFfiSystemException::class) fun `uniffiApplyDeltaPatch`(`baseBytes`: kotlin.ByteArray, `patchBytes`: kotlin.ByteArray, `expectedTargetHash`: kotlin.String?): UniFfiDeltaPatchResult {
+            return FfiConverterTypeUniFFIDeltaPatchResult.lift(
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch(
+        FfiConverterByteArray.lower(`baseBytes`),FfiConverterByteArray.lower(`patchBytes`),FfiConverterOptionalString.lower(`expectedTargetHash`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Computes unkeyed 256-bit BLAKE3 hash returning 32-byte digest.
          */ fun `uniffiBlake3`(`data`: kotlin.ByteArray): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
@@ -26310,6 +28866,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_bzip2_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterOptionalULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Recursively computes deterministic cryptographic Merkle tree hash of a file or directory hierarchy.
+         */
+    @Throws(UniFfiSystemException::class) fun `uniffiCalculateTreeHash`(`rootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_calculate_tree_hash(
+        FfiConverterString.lower(`rootPath`),_status)
 }
     )
     }
@@ -26396,6 +28965,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_crc64(
         FfiConverterByteArray.lower(`data`),FfiConverterOptionalULong.lower(`seed`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Creates a binary delta patch package from a base byte buffer to target byte buffer.
+         */
+    @Throws(UniFfiSystemException::class) fun `uniffiCreateDeltaPatch`(`baseBytes`: kotlin.ByteArray, `targetBytes`: kotlin.ByteArray, `format`: UniFfiDeltaFormat): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_create_delta_patch(
+        FfiConverterByteArray.lower(`baseBytes`),FfiConverterByteArray.lower(`targetBytes`),FfiConverterTypeUniFFIDeltaFormat.lower(`format`),_status)
 }
     )
     }
@@ -26801,6 +29383,32 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Extracts raw embedded poster or cover art image bytes from in-memory video bytes.
+         */
+    @Throws(UniFfiVideoException::class) fun `uniffiExtractVideoCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Extracts comprehensive metadata tags, track topology, and cover art info from in-memory video bytes.
+         */
+    @Throws(UniFfiVideoException::class) fun `uniffiExtractVideoMetadata`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
          */
     @Throws(UniFfiAudioException::class) fun `uniffiGenerateAudioWaveform`(`data`: kotlin.ByteArray, `bucketCount`: kotlin.UInt, `fileName`: kotlin.String?): UniFfiAudioWaveform {
@@ -27134,6 +29742,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Probes technical stream parameters and container properties from in-memory video bytes without full decoding.
+         */
+    @Throws(UniFfiVideoException::class) fun `uniffiProbeVideoBytes`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): UniFfiVideoMetadata {
+            return FfiConverterTypeUniFFIVideoMetadata.lift(
+    uniffiRustCallWithError(UniFfiVideoException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_probe_video_bytes(
+        FfiConverterByteArray.lower(`data`),FfiConverterOptionalString.lower(`fileName`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Standalone convenience function for single filename remediation.
          */ fun `uniffiRemediateFilename`(`rawBytes`: kotlin.ByteArray, `fallbackEncoding`: kotlin.String?): UniFfiRemediationResult {
             return FfiConverterTypeUniFFIRemediationResult.lift(
@@ -27321,6 +29942,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_vault_chacha20_poly1305_encrypt(
         FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`nonce`),FfiConverterByteArray.lower(`plaintext`),FfiConverterByteArray.lower(`aad`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Verifies detached Ed25519 digital signature of an Appcast feed or artifact bytes.
+         */
+    @Throws(UniFfiSystemException::class) fun `uniffiVerifyAppcastSignature`(`appcastBytes`: kotlin.ByteArray, `signatureBase64`: kotlin.String, `publicKeyBase64`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(UniFfiSystemException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_verify_appcast_signature(
+        FfiConverterByteArray.lower(`appcastBytes`),FfiConverterString.lower(`signatureBase64`),FfiConverterString.lower(`publicKeyBase64`),_status)
 }
     )
     }
