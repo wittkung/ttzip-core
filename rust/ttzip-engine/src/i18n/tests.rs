@@ -14,7 +14,16 @@ use std::collections::HashSet;
 #[test]
 fn test_all_catalogs_have_equal_keys_and_no_missing_entries() {
     let en_keys: HashSet<&str> = catalogs::en::STRINGS.iter().map(|&(k, _)| k).collect();
-    assert_eq!(en_keys.len(), 415, "English catalog should have exactly 415 keys");
+    assert_eq!(en_keys.len(), 432, "English catalog should have exactly 432 keys");
+
+    for window in catalogs::en::STRINGS.windows(2) {
+        assert!(
+            window[0].0 < window[1].0,
+            "English catalog is not sorted: '{}' >= '{}'",
+            window[0].0,
+            window[1].0
+        );
+    }
 
     let languages = [
         AppLanguage::ZhHans,
@@ -26,7 +35,18 @@ fn test_all_catalogs_have_equal_keys_and_no_missing_entries() {
     ];
 
     for lang in &languages {
-        let cat_keys: HashSet<&str> = lang_slice(lang).iter().map(|&(k, _)| k).collect();
+        let slice = lang_slice(lang);
+        for window in slice.windows(2) {
+            assert!(
+                window[0].0 < window[1].0,
+                "Language {:?} catalog is not sorted: '{}' >= '{}'",
+                lang,
+                window[0].0,
+                window[1].0
+            );
+        }
+
+        let cat_keys: HashSet<&str> = slice.iter().map(|&(k, _)| k).collect();
         let missing: Vec<_> = en_keys.difference(&cat_keys).collect();
         assert!(
             missing.is_empty(),
@@ -66,6 +86,15 @@ fn test_zero_alloc_lookup_performance() {
 
     let val_fr = engine.get_string("sidebar.vault", AppLanguage::Fr);
     assert_eq!(val_fr, "Coffre-fort");
+
+    let val_inspector = engine.get_string("inspector.title", AppLanguage::ZhHans);
+    assert_eq!(val_inspector, "检视器");
+
+    let val_calc = engine.get_string("common.calculating", AppLanguage::ZhHant);
+    assert_eq!(val_calc, "計算中...");
+
+    let val_units = engine.get_string("units.files_and_directories", AppLanguage::En);
+    assert_eq!(val_units, "%1$d Files · %2$d Directories");
 }
 
 #[test]

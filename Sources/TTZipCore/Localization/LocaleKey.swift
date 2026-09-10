@@ -48,6 +48,9 @@ public enum L10n {
         case chooseFolder = "common.choose_folder"
         case browse = "common.browse"
         case refresh = "common.refresh"
+        case newArchiveShortcut = "common.new_archive_shortcut"
+        case calculating = "common.calculating"
+        case unknown = "common.unknown"
     }
     
     // MARK: - 2. Sidebar Navigation & Layout
@@ -314,7 +317,7 @@ public enum L10n {
         Benchmark.self, Presets.self, Vault.self, Settings.self, Queue.self,
         Preview.self, Menu.self, Dialogs.self, Errors.self, Units.self,
         CLI.self, Notification.self, Diagnostics.self, Recovery.self,
-        QuickLook.self, FinderSync.self
+        QuickLook.self, FinderSync.self, Inspector.self
     ]
     
     /// Returns all defined raw keys across all localization namespaces.
@@ -457,6 +460,7 @@ extension L10n {
         case itemsCount = "units.items_count"
         case coresCount = "units.cores_count"
         case unifiedMemoryGB = "units.unified_memory_gb"
+        case filesAndDirectories = "units.files_and_directories"
     }
     
     // MARK: - 16. Standalone CLI Output
@@ -532,12 +536,29 @@ extension L10n {
         case extractHereTitle = "findersync.extract_here_title"
         case extractSubfolderTitle = "findersync.extract_subfolder_title"
         case inspectTitle = "findersync.inspect_title"
-        case autofillTitle = "findersync.autofill_title"
+        case autofillTitle = "findersync.autofill_vault_title"
         case computeHashTitle = "findersync.compute_hash_title"
         case compress7zTitle = "findersync.compress_7z_title"
         case compressZipTitle = "findersync.compress_zip_title"
         case compressSeparateTitle = "findersync.compress_separate_title"
         case compressDeleteSourceTitle = "findersync.compress_delete_source_title"
         case compressAdvancedTitle = "findersync.compress_advanced_title"
+    }
+    
+    // MARK: - 22. Inspector Panel & Directory Canvas
+    public enum Inspector: String, LocaleKeyProtocol, CaseIterable {
+        case title = "inspector.title"
+        case contentBreakdown = "inspector.content_breakdown"
+        case currentDirectory = "inspector.current_directory"
+        case directoryCanvas = "inspector.directory_canvas"
+        case emptyDirectory = "inspector.empty_directory"
+        case emptyDirectoryDesc = "inspector.empty_directory_desc"
+        case fileSystem = "inspector.file_system"
+        case items = "inspector.items"
+        case modified = "inspector.modified"
+        case overviewFs = "inspector.overview_fs"
+        case ownerGroup = "inspector.owner_group"
+        case permissions = "inspector.permissions"
+        case size = "inspector.size"
     }
 }
