@@ -657,6 +657,9 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 internal interface UniffiCallbackInterfaceProgressHandlerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceUniFfiProgressCallbackMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -672,6 +675,22 @@ internal open class UniffiVTableCallbackInterfaceProgressHandler(
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceProgressHandler) {
         `onProgress` = other.`onProgress`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
+}
+@Structure.FieldOrder("onDevicesChanged", "uniffiFree")
+internal open class UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(
+    @JvmField internal var `onDevicesChanged`: UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `onDevicesChanged`: UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(`onDevicesChanged`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceUniFfiDeviceEventListener) {
+        `onDevicesChanged` = other.`onDevicesChanged`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -1634,6 +1653,28 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1645,6 +1686,7 @@ internal interface UniffiLib : Library {
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
                 uniffiCallbackInterfaceProgressHandler.register(lib)
+                uniffiCallbackInterfaceUniFFIDeviceEventListener.register(lib)
                 uniffiCallbackInterfaceUniFFIProgressCallback.register(lib)
                 }
         }
@@ -2161,6 +2203,8 @@ internal interface UniffiLib : Library {
     ): Long
     fun uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(`vtable`: UniffiVTableCallbackInterfaceProgressHandler,
     ): Unit
+    fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(`vtable`: UniffiVTableCallbackInterfaceUniFfiDeviceEventListener,
+    ): Unit
     fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(`vtable`: UniffiVTableCallbackInterfaceUniFfiProgressCallback,
     ): Unit
     fun uniffi_ttzip_engine_fn_func_apply_in_place_entry_mutation(`archivePath`: RustBuffer.ByValue,`entryPath`: RustBuffer.ByValue,`newData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2395,6 +2439,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_detect_language(`filePathOrExt`: RustBuffer.ByValue,`firstLineHint`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_download_file(`deviceId`: RustBuffer.ByValue,`remotePath`: RustBuffer.ByValue,`localPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula(`formula`: RustBuffer.ByValue,`contextCells`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_audio_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2433,6 +2479,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(`data`: RustBuffer.ByValue,`maxWidth`: Int,`maxHeight`: Int,`filterType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_extract_to_device(`archivePath`: RustBuffer.ByValue,`destinationDeviceId`: RustBuffer.ByValue,`destinationDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2455,6 +2503,10 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_html_service_new(uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
+    fun uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive(`deviceId`: RustBuffer.ByValue,`archivePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_list_device_directory(`deviceId`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(`src`: RustBuffer.ByValue,`acceleration`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -2468,6 +2520,10 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_open_device(`deviceId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device(`host`: RustBuffer.ByValue,`port`: Short,`pin`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_parse_plist_from_bytes(`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2499,6 +2555,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_sanitize_html(`htmlContent`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(`filePath`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2509,9 +2567,15 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring(`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring(uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new(uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(`data`: RustBuffer.ByValue,`encodingName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_upload_file(`deviceId`: RustBuffer.ByValue,`localPath`: RustBuffer.ByValue,`remoteDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt(`key`: RustBuffer.ByValue,`iv`: RustBuffer.ByValue,`ciphertext`: RustBuffer.ByValue,`aad`: RustBuffer.ByValue,`tag`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2929,6 +2993,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_detect_language(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_download_file(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata(
@@ -2967,6 +3033,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata(
@@ -2989,6 +3057,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_html_service_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc(
@@ -3002,6 +3074,10 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_open_device(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes(
     ): Short
@@ -3033,6 +3109,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress(
@@ -3043,9 +3121,15 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_upload_file(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt(
     ): Short
@@ -3533,6 +3617,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_method_progresshandler_on_progress(
     ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed(
+    ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress(
     ): Short
     fun ffi_ttzip_engine_uniffi_contract_version(
@@ -3900,6 +3986,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_download_file() != 49260.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3957,6 +4046,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device() != 48815.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover() != 26142.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3990,6 +4082,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new() != 57279.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive() != 9315.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4009,6 +4107,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device() != 8415.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes() != 33550.toShort()) {
@@ -4056,6 +4160,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html() != 8664.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices() != 40150.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4071,10 +4178,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring() != 36397.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring() != 37312.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new() != 20108.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_upload_file() != 934.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738.toShort()) {
@@ -4804,6 +4920,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360.toShort()) {
@@ -15149,6 +15268,120 @@ public object FfiConverterTypeUniFFIAeadResult: FfiConverterRustBuffer<UniFfiAea
 
 
 /**
+ * UniFFI record representing an attached Android hardware or network device.
+ */
+data class UniFfiAndroidDevice (
+    var `deviceId`: kotlin.String, 
+    var `displayName`: kotlin.String, 
+    var `vendorId`: kotlin.UShort, 
+    var `productId`: kotlin.UShort, 
+    var `serialNumber`: kotlin.String, 
+    var `connectionType`: UniFfiConnectionType, 
+    var `status`: UniFfiDeviceStatus, 
+    var `storagePartitions`: List<UniFfiStoragePartition>
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAndroidDevice: FfiConverterRustBuffer<UniFfiAndroidDevice> {
+    override fun read(buf: ByteBuffer): UniFfiAndroidDevice {
+        return UniFfiAndroidDevice(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUniFFIConnectionType.read(buf),
+            FfiConverterTypeUniFFIDeviceStatus.read(buf),
+            FfiConverterSequenceTypeUniFFIStoragePartition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAndroidDevice) = (
+            FfiConverterString.allocationSize(value.`deviceId`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterUShort.allocationSize(value.`vendorId`) +
+            FfiConverterUShort.allocationSize(value.`productId`) +
+            FfiConverterString.allocationSize(value.`serialNumber`) +
+            FfiConverterTypeUniFFIConnectionType.allocationSize(value.`connectionType`) +
+            FfiConverterTypeUniFFIDeviceStatus.allocationSize(value.`status`) +
+            FfiConverterSequenceTypeUniFFIStoragePartition.allocationSize(value.`storagePartitions`)
+    )
+
+    override fun write(value: UniFfiAndroidDevice, buf: ByteBuffer) {
+            FfiConverterString.write(value.`deviceId`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterUShort.write(value.`vendorId`, buf)
+            FfiConverterUShort.write(value.`productId`, buf)
+            FfiConverterString.write(value.`serialNumber`, buf)
+            FfiConverterTypeUniFFIConnectionType.write(value.`connectionType`, buf)
+            FfiConverterTypeUniFFIDeviceStatus.write(value.`status`, buf)
+            FfiConverterSequenceTypeUniFFIStoragePartition.write(value.`storagePartitions`, buf)
+    }
+}
+
+
+
+/**
+ * UniFFI record representing a remote VFS node in the Android file hierarchy.
+ */
+data class UniFfiAndroidVfsNode (
+    var `path`: kotlin.String, 
+    var `name`: kotlin.String, 
+    var `entryType`: UniFfiVfsEntryType, 
+    var `sizeBytes`: kotlin.ULong, 
+    var `modifiedTimestamp`: kotlin.ULong, 
+    var `objectHandle`: kotlin.UInt?, 
+    var `isRestricted`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIAndroidVfsNode: FfiConverterRustBuffer<UniFfiAndroidVfsNode> {
+    override fun read(buf: ByteBuffer): UniFfiAndroidVfsNode {
+        return UniFfiAndroidVfsNode(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUniFFIVfsEntryType.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiAndroidVfsNode) = (
+            FfiConverterString.allocationSize(value.`path`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterTypeUniFFIVfsEntryType.allocationSize(value.`entryType`) +
+            FfiConverterULong.allocationSize(value.`sizeBytes`) +
+            FfiConverterULong.allocationSize(value.`modifiedTimestamp`) +
+            FfiConverterOptionalUInt.allocationSize(value.`objectHandle`) +
+            FfiConverterBoolean.allocationSize(value.`isRestricted`)
+    )
+
+    override fun write(value: UniFfiAndroidVfsNode, buf: ByteBuffer) {
+            FfiConverterString.write(value.`path`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterTypeUniFFIVfsEntryType.write(value.`entryType`, buf)
+            FfiConverterULong.write(value.`sizeBytes`, buf)
+            FfiConverterULong.write(value.`modifiedTimestamp`, buf)
+            FfiConverterOptionalUInt.write(value.`objectHandle`, buf)
+            FfiConverterBoolean.write(value.`isRestricted`, buf)
+    }
+}
+
+
+
+/**
  * Single release entry in an Appcast update feed.
  */
 data class UniFfiAppcastItem (
@@ -20065,6 +20298,57 @@ public object FfiConverterTypeUniFFISmartExtractDecision: FfiConverterRustBuffer
 
 
 /**
+ * UniFFI record describing an individual storage volume or SD card partition.
+ */
+data class UniFfiStoragePartition (
+    var `partitionId`: kotlin.String, 
+    var `displayName`: kotlin.String, 
+    var `totalBytes`: kotlin.ULong, 
+    var `availableBytes`: kotlin.ULong, 
+    var `rootPath`: kotlin.String, 
+    var `isRemovable`: kotlin.Boolean
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIStoragePartition: FfiConverterRustBuffer<UniFfiStoragePartition> {
+    override fun read(buf: ByteBuffer): UniFfiStoragePartition {
+        return UniFfiStoragePartition(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiStoragePartition) = (
+            FfiConverterString.allocationSize(value.`partitionId`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterULong.allocationSize(value.`totalBytes`) +
+            FfiConverterULong.allocationSize(value.`availableBytes`) +
+            FfiConverterString.allocationSize(value.`rootPath`) +
+            FfiConverterBoolean.allocationSize(value.`isRemovable`)
+    )
+
+    override fun write(value: UniFfiStoragePartition, buf: ByteBuffer) {
+            FfiConverterString.write(value.`partitionId`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterULong.write(value.`totalBytes`, buf)
+            FfiConverterULong.write(value.`availableBytes`, buf)
+            FfiConverterString.write(value.`rootPath`, buf)
+            FfiConverterBoolean.write(value.`isRemovable`, buf)
+    }
+}
+
+
+
+/**
  * 8-bit RGBA color representation for subtitle styling across FFI boundary.
  */
 data class UniFfiSubtitleColor (
@@ -20915,6 +21199,69 @@ public object FfiConverterTypeUniFFITransactionDiff: FfiConverterRustBuffer<UniF
             FfiConverterString.write(value.`oldHash`, buf)
             FfiConverterString.write(value.`newHash`, buf)
             FfiConverterULong.write(value.`bytesWritten`, buf)
+    }
+}
+
+
+
+/**
+ * UniFFI record representing an ongoing or completed transfer job.
+ */
+data class UniFfiTransferJob (
+    var `jobId`: kotlin.String, 
+    var `direction`: UniFfiTransferDirection, 
+    var `sourcePath`: kotlin.String, 
+    var `destinationPath`: kotlin.String, 
+    var `totalBytes`: kotlin.ULong, 
+    var `transferredBytes`: kotlin.ULong, 
+    var `currentSpeedBps`: kotlin.ULong, 
+    var `status`: UniFfiTransferStatus, 
+    var `errorMessage`: kotlin.String?
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITransferJob: FfiConverterRustBuffer<UniFfiTransferJob> {
+    override fun read(buf: ByteBuffer): UniFfiTransferJob {
+        return UniFfiTransferJob(
+            FfiConverterString.read(buf),
+            FfiConverterTypeUniFFITransferDirection.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeUniFFITransferStatus.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UniFfiTransferJob) = (
+            FfiConverterString.allocationSize(value.`jobId`) +
+            FfiConverterTypeUniFFITransferDirection.allocationSize(value.`direction`) +
+            FfiConverterString.allocationSize(value.`sourcePath`) +
+            FfiConverterString.allocationSize(value.`destinationPath`) +
+            FfiConverterULong.allocationSize(value.`totalBytes`) +
+            FfiConverterULong.allocationSize(value.`transferredBytes`) +
+            FfiConverterULong.allocationSize(value.`currentSpeedBps`) +
+            FfiConverterTypeUniFFITransferStatus.allocationSize(value.`status`) +
+            FfiConverterOptionalString.allocationSize(value.`errorMessage`)
+    )
+
+    override fun write(value: UniFfiTransferJob, buf: ByteBuffer) {
+            FfiConverterString.write(value.`jobId`, buf)
+            FfiConverterTypeUniFFITransferDirection.write(value.`direction`, buf)
+            FfiConverterString.write(value.`sourcePath`, buf)
+            FfiConverterString.write(value.`destinationPath`, buf)
+            FfiConverterULong.write(value.`totalBytes`, buf)
+            FfiConverterULong.write(value.`transferredBytes`, buf)
+            FfiConverterULong.write(value.`currentSpeedBps`, buf)
+            FfiConverterTypeUniFFITransferStatus.write(value.`status`, buf)
+            FfiConverterOptionalString.write(value.`errorMessage`, buf)
     }
 }
 
@@ -22795,6 +23142,40 @@ public object FfiConverterTypeUniFFICompressionCodec: FfiConverterRustBuffer<Uni
 
 
 /**
+ * UniFFI-exported connection channel type.
+ */
+
+enum class UniFfiConnectionType {
+    
+    USB_MTP,
+    USB_ADB,
+    WIRELESS_ADB;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIConnectionType: FfiConverterRustBuffer<UniFfiConnectionType> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiConnectionType.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiConnectionType) = 4UL
+
+    override fun write(value: UniFfiConnectionType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Strongly typed corpus types for benchmark dataset selection.
  */
 
@@ -23134,6 +23515,43 @@ public object FfiConverterTypeUniFFIDeltaFormat: FfiConverterRustBuffer<UniFfiDe
     override fun allocationSize(value: UniFfiDeltaFormat) = 4UL
 
     override fun write(value: UniFfiDeltaFormat, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * UniFFI-exported device lifecycle status.
+ */
+
+enum class UniFfiDeviceStatus {
+    
+    CONNECTING,
+    SEIZING_INTERFACE,
+    CONNECTED,
+    STALLED,
+    DISCONNECTED,
+    ERROR;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeviceStatus: FfiConverterRustBuffer<UniFfiDeviceStatus> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiDeviceStatus.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiDeviceStatus) = 4UL
+
+    override fun write(value: UniFfiDeviceStatus, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -24626,6 +25044,112 @@ public object FfiConverterTypeUniFFISystemError : FfiConverterRustBuffer<UniFfiS
 
 
 /**
+ * UniFFI-exported file transfer pipeline direction.
+ */
+
+enum class UniFfiTransferDirection {
+    
+    MAC_TO_ANDROID,
+    ANDROID_TO_MAC,
+    DIRECT_PIPELINE_EXTRACT;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITransferDirection: FfiConverterRustBuffer<UniFfiTransferDirection> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiTransferDirection.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiTransferDirection) = 4UL
+
+    override fun write(value: UniFfiTransferDirection, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * UniFFI-exported transfer execution status.
+ */
+
+enum class UniFfiTransferStatus {
+    
+    QUEUED,
+    TRANSFERRING,
+    PAUSED,
+    CANCELLING,
+    COMPLETED,
+    FAILED;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFITransferStatus: FfiConverterRustBuffer<UniFfiTransferStatus> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiTransferStatus.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiTransferStatus) = 4UL
+
+    override fun write(value: UniFfiTransferStatus, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * UniFFI-exported VFS entry category.
+ */
+
+enum class UniFfiVfsEntryType {
+    
+    FILE,
+    DIRECTORY,
+    SYMLINK,
+    RESTRICTED_DIRECTORY;
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIVfsEntryType: FfiConverterRustBuffer<UniFfiVfsEntryType> {
+    override fun read(buf: ByteBuffer) = try {
+        UniFfiVfsEntryType.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UniFfiVfsEntryType) = 4UL
+
+    override fun write(value: UniFfiVfsEntryType, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Video track codec classifications.
  */
 
@@ -25162,6 +25686,64 @@ internal object uniffiCallbackInterfaceProgressHandler {
  * @suppress
  */
 public object FfiConverterTypeProgressHandler: FfiConverterCallbackInterface<ProgressHandler>()
+
+
+
+
+
+/**
+ * Cross-language callback interface notified upon physical USB hardware change.
+ */
+public interface UniFfiDeviceEventListener {
+    
+    /**
+     * Invoked whenever a USB device matching MTP/ADB is attached or detached.
+     */
+    fun `onDevicesChanged`()
+    
+    companion object
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceUniFFIDeviceEventListener {
+    internal object `onDevicesChanged`: UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeUniFFIDeviceEventListener.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onDevicesChanged`(
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeUniFFIDeviceEventListener.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceUniFfiDeviceEventListener.UniffiByValue(
+        `onDevicesChanged`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(vtable)
+    }
+}
+
+/**
+ * The ffiConverter which transforms the Callbacks in to handles to pass to Rust.
+ *
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIDeviceEventListener: FfiConverterCallbackInterface<UniFfiDeviceEventListener>()
 
 
 
@@ -26358,6 +26940,62 @@ public object FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeUniFFIAndroidDevice: FfiConverterRustBuffer<List<UniFfiAndroidDevice>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAndroidDevice> {
+        val len = buf.getInt()
+        return List<UniFfiAndroidDevice>(len) {
+            FfiConverterTypeUniFFIAndroidDevice.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAndroidDevice>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAndroidDevice.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAndroidDevice>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAndroidDevice.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIAndroidVfsNode: FfiConverterRustBuffer<List<UniFfiAndroidVfsNode>> {
+    override fun read(buf: ByteBuffer): List<UniFfiAndroidVfsNode> {
+        val len = buf.getInt()
+        return List<UniFfiAndroidVfsNode>(len) {
+            FfiConverterTypeUniFFIAndroidVfsNode.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiAndroidVfsNode>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIAndroidVfsNode.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiAndroidVfsNode>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIAndroidVfsNode.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeUniFFIAppcastItem: FfiConverterRustBuffer<List<UniFfiAppcastItem>> {
     override fun read(buf: ByteBuffer): List<UniFfiAppcastItem> {
         val len = buf.getInt()
@@ -27272,6 +27910,34 @@ public object FfiConverterSequenceTypeUniFFISheetRow: FfiConverterRustBuffer<Lis
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeUniFFISheetRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUniFFIStoragePartition: FfiConverterRustBuffer<List<UniFfiStoragePartition>> {
+    override fun read(buf: ByteBuffer): List<UniFfiStoragePartition> {
+        val len = buf.getInt()
+        return List<UniFfiStoragePartition>(len) {
+            FfiConverterTypeUniFFIStoragePartition.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UniFfiStoragePartition>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUniFFIStoragePartition.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UniFfiStoragePartition>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUniFFIStoragePartition.write(it, buf)
         }
     }
 }
@@ -29137,6 +29803,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Downloads a remote file from Android device storage to local macOS path.
+         */
+    @Throws(TtZipException::class) fun `uniffiDownloadFile`(`deviceId`: kotlin.String, `remotePath`: kotlin.String, `localPath`: kotlin.String): UniFfiTransferJob {
+            return FfiConverterTypeUniFFITransferJob.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_download_file(
+        FfiConverterString.lower(`deviceId`),FfiConverterString.lower(`remotePath`),FfiConverterString.lower(`localPath`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
          */
     @Throws(UniFfiOfficeException::class) fun `uniffiEvaluateFormula`(`formula`: kotlin.String, `contextCells`: List<UniFfiCell>?): UniFfiCellValue {
@@ -29383,6 +30062,22 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Directly extracts a local archive to remote Android device directory via streaming pipeline.
+         *
+         * Enforces Stream-First Invariant: reads archive chunks and streams them directly into
+         * `DeviceStorageDriver::send_object`, producing 0 bytes intermediate staging in `/tmp`.
+         */
+    @Throws(TtZipException::class) fun `uniffiExtractToDevice`(`archivePath`: kotlin.String, `destinationDeviceId`: kotlin.String, `destinationDir`: kotlin.String): UniFfiTransferJob {
+            return FfiConverterTypeUniFFITransferJob.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_extract_to_device(
+        FfiConverterString.lower(`archivePath`),FfiConverterString.lower(`destinationDeviceId`),FfiConverterString.lower(`destinationDir`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Extracts raw embedded poster or cover art image bytes from in-memory video bytes.
          */
     @Throws(UniFfiVideoException::class) fun `uniffiExtractVideoCover`(`data`: kotlin.ByteArray, `fileName`: kotlin.String?): kotlin.ByteArray {
@@ -29521,6 +30216,32 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Inspects a remote archive on the Android device via zero-download partial reads.
+         */
+    @Throws(TtZipException::class) fun `uniffiInspectRemoteArchive`(`deviceId`: kotlin.String, `archivePath`: kotlin.String): List<UniFfiAndroidVfsNode> {
+            return FfiConverterSequenceTypeUniFFIAndroidVfsNode.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive(
+        FfiConverterString.lower(`deviceId`),FfiConverterString.lower(`archivePath`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Traverses and lists directory entries on the remote Android storage volume.
+         */
+    @Throws(TtZipException::class) fun `uniffiListDeviceDirectory`(`deviceId`: kotlin.String, `path`: kotlin.String): List<UniFfiAndroidVfsNode> {
+            return FfiConverterSequenceTypeUniFFIAndroidVfsNode.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory(
+        FfiConverterString.lower(`deviceId`),FfiConverterString.lower(`path`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Compresses buffer with LZ4 Fast mode (acceleration 1..100).
          */
     @Throws(TtZipException::class) fun `uniffiLz4CompressFast`(`src`: kotlin.ByteArray, `acceleration`: kotlin.Int): kotlin.ByteArray {
@@ -29606,6 +30327,35 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Establishes communication session with the requested Android device.
+         */
+    @Throws(TtZipException::class) fun `uniffiOpenDevice`(`deviceId`: kotlin.String): UniFfiAndroidDevice {
+            return FfiConverterTypeUniFFIAndroidDevice.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_open_device(
+        FfiConverterString.lower(`deviceId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Initiates TLS 1.3 SPAKE2 wireless pairing handshake with an Android device.
+         *
+         * Validates 6-digit numeric PIN, computes PAKE shared secret, exchanges encrypted
+         * peer certificates, and registers an active wireless ADB storage driver upon success.
+         */
+    @Throws(TtZipException::class) fun `uniffiPairWirelessDevice`(`host`: kotlin.String, `port`: kotlin.UShort, `pin`: kotlin.String): UniFfiAndroidDevice {
+            return FfiConverterTypeUniFFIAndroidDevice.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device(
+        FfiConverterString.lower(`host`),FfiConverterUShort.lower(`port`),FfiConverterString.lower(`pin`),_status)
 }
     )
     }
@@ -29806,6 +30556,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Scans connected USB interfaces and detects Android devices matching MTP or ADB descriptors.
+         */
+    @Throws(TtZipException::class) fun `uniffiScanUsbDevices`(): List<UniFfiAndroidDevice> {
+            return FfiConverterSequenceTypeUniFFIAndroidDevice.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices(
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * Searches for full-text occurrences of a query string across all pages of a PDF file on disk.
          */
     @Throws(TtZipException::class) fun `uniffiSearchPdfText`(`filePath`: kotlin.String, `query`: kotlin.String, `maxResults`: kotlin.UInt, `caseSensitive`: kotlin.Boolean): List<UniFfiPdfSearchResult> {
@@ -29871,6 +30634,29 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Starts the event-driven macOS IOKit notification runloop and registers the Swift listener.
+         */
+    @Throws(TtZipException::class) fun `uniffiStartHotplugMonitoring`(`listener`: UniFfiDeviceEventListener)
+        = 
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring(
+        FfiConverterTypeUniFFIDeviceEventListener.lower(`listener`),_status)
+}
+    
+    
+
+        /**
+         * Stops active hardware hotplug monitoring.
+         */ fun `uniffiStopHotplugMonitoring`()
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring(
+        _status)
+}
+    
+    
+
+        /**
          * Instantiates a new thread-safe syntax metadata service.
          */ fun `uniffiSyntaxServiceNew`(): UniFfiSyntaxService {
             return FfiConverterTypeUniFFISyntaxService.lift(
@@ -29890,6 +30676,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(
         FfiConverterByteArray.lower(`data`),FfiConverterString.lower(`encodingName`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Uploads a local file from host macOS to remote Android destination directory.
+         */
+    @Throws(TtZipException::class) fun `uniffiUploadFile`(`deviceId`: kotlin.String, `localPath`: kotlin.String, `remoteDir`: kotlin.String): UniFfiTransferJob {
+            return FfiConverterTypeUniFFITransferJob.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_upload_file(
+        FfiConverterString.lower(`deviceId`),FfiConverterString.lower(`localPath`),FfiConverterString.lower(`remoteDir`),_status)
 }
     )
     }

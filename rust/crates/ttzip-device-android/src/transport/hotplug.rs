@@ -12,6 +12,7 @@
 //! periodic polling loops and ensuring zero steady-state CPU utilization.
 
 use nusb::MaybeFuture;
+use parking_lot::Mutex;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -211,7 +212,7 @@ pub struct HotplugWatcher {
     _poll_interval: Duration,
     is_running: Arc<AtomicBool>,
     #[cfg(target_os = "macos")]
-    run_loop: Arc<std::sync::Mutex<Option<RunLoopHandle>>>,
+    run_loop: Arc<Mutex<Option<RunLoopHandle>>>,
 }
 
 impl Default for HotplugWatcher {
@@ -227,15 +228,28 @@ impl HotplugWatcher {
             _poll_interval: poll_interval,
             is_running: Arc::new(AtomicBool::new(false)),
             #[cfg(target_os = "macos")]
-            run_loop: Arc::new(std::sync::Mutex::new(None)),
+            run_loop: Arc::new(Mutex::new(None)),
         }
     }
 
     /// Spawns the background monitoring pipeline and returns an event receiver.
+    ///
+    /// Employs atomic CAS idempotency protection to prevent duplicate RunLoop thread
+    /// spawning or resource leaks when invoked repeatedly.
     pub fn start(&self) -> mpsc::Receiver<HotplugEvent> {
         let (tx, rx) = mpsc::channel(64);
+
+        // Atomic CAS: ensure exactly one background pipeline is active at any time
+        if self
+            .is_running
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            debug!("HotplugWatcher is already active; returning single-consumer channel");
+            return rx;
+        }
+
         let is_running = self.is_running.clone();
-        is_running.store(true, Ordering::SeqCst);
 
         #[cfg(target_os = "macos")]
         {
@@ -261,7 +275,7 @@ impl HotplugWatcher {
         self.is_running.store(false, Ordering::SeqCst);
         #[cfg(target_os = "macos")]
         {
-            let mut guard = self.run_loop.lock().unwrap();
+            let mut guard = self.run_loop.lock();
             if let Some(handle) = guard.take() {
                 unsafe {
                     iokit::CFRunLoopStop(handle.run_loop);
@@ -276,15 +290,15 @@ impl HotplugWatcher {
         &self,
         tx: mpsc::Sender<HotplugEvent>,
         is_running: Arc<AtomicBool>,
-        run_loop_holder: Arc<std::sync::Mutex<Option<RunLoopHandle>>>,
+        run_loop_holder: Arc<Mutex<Option<RunLoopHandle>>>,
     ) {
-        let (trigger_tx, mut trigger_rx) = mpsc::channel::<()>(16);
+        let (trigger_tx, trigger_rx) = std::sync::mpsc::sync_channel::<()>(16);
         let trigger_tx_arc = Arc::new(trigger_tx);
         let thread_is_running = is_running.clone();
         let thread_run_loop_holder = run_loop_holder.clone();
 
         // Spawn dedicated OS thread for IOKit CFRunLoop event notification
-        std::thread::Builder::new()
+        let iokit_thread_res = std::thread::Builder::new()
             .name("ttzip-iokit-hotplug".to_string())
             .spawn(move || {
                 run_iokit_notification_loop(
@@ -292,68 +306,81 @@ impl HotplugWatcher {
                     thread_is_running,
                     thread_run_loop_holder,
                 );
-            })
-            .expect("Failed to spawn IOKit hotplug thread");
+            });
 
-        // Spawn tokio task for deterministic event snapshot diffing and streaming
-        let task_is_running = is_running.clone();
-        let task_run_loop_holder = run_loop_holder;
+        if let Err(e) = iokit_thread_res {
+            error!("Failed to spawn IOKit hotplug thread: {e}");
+            is_running.store(false, Ordering::SeqCst);
+            return;
+        }
 
-        tokio::spawn(async move {
-            info!("Starting IOKit event-driven USB hotplug monitoring task");
-            let mut scanner = PollingHotplugScanner::new();
+        // Spawn dedicated OS thread for event snapshot diffing and streaming without Tokio runtime dependency
+        let diff_is_running = is_running.clone();
+        let diff_run_loop_holder = run_loop_holder.clone();
 
-            // Initial snapshot enumeration to discover currently connected devices
-            if let Ok(devices_iter) = nusb::list_devices().wait() {
-                let current_devices: Vec<HotplugDeviceInfo> =
-                    devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
-                let events = scanner.scan_diff(current_devices);
-                for event in events {
-                    debug!("Emitting initial USB hotplug event: {:?}", event);
-                    if tx.send(event).await.is_err() {
-                        debug!("Hotplug receiver dropped during initial enumeration; stopping");
-                        stop_task_internal(&task_is_running, &task_run_loop_holder);
-                        return;
+        let diff_thread_res = std::thread::Builder::new()
+            .name("ttzip-hotplug-diff".to_string())
+            .spawn(move || {
+                info!("Starting IOKit event-driven USB hotplug monitoring worker");
+                let mut scanner = PollingHotplugScanner::new();
+
+                // Initial snapshot enumeration to discover currently connected devices
+                if let Ok(devices_iter) = nusb::list_devices().wait() {
+                    let current_devices: Vec<HotplugDeviceInfo> =
+                        devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
+                    let events = scanner.scan_diff(current_devices);
+                    for event in events {
+                        debug!("Emitting initial USB hotplug event: {:?}", event);
+                        if tx.blocking_send(event).is_err() {
+                            debug!("Hotplug receiver dropped during initial enumeration; stopping");
+                            stop_task_internal(&diff_is_running, &diff_run_loop_holder);
+                            return;
+                        }
                     }
                 }
-            }
 
-            // Await physical IOKit Mach port notifications without periodic polling
-            while task_is_running.load(Ordering::Relaxed) {
-                match trigger_rx.recv().await {
-                    Some(()) => {
-                        if !task_is_running.load(Ordering::Relaxed) {
-                            break;
-                        }
+                // Await physical IOKit Mach port notifications without periodic polling
+                while diff_is_running.load(Ordering::Relaxed) {
+                    match trigger_rx.recv() {
+                        Ok(()) => {
+                            if !diff_is_running.load(Ordering::Relaxed) {
+                                break;
+                            }
 
-                        match nusb::list_devices().wait() {
-                            Ok(devices_iter) => {
-                                let current_devices: Vec<HotplugDeviceInfo> =
-                                    devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
-                                let events = scanner.scan_diff(current_devices);
-                                for event in events {
-                                    debug!("Emitting IOKit USB hotplug event: {:?}", event);
-                                    if tx.send(event).await.is_err() {
-                                        debug!("Hotplug receiver dropped; stopping watcher");
-                                        stop_task_internal(&task_is_running, &task_run_loop_holder);
-                                        return;
+                            match nusb::list_devices().wait() {
+                                Ok(devices_iter) => {
+                                    let current_devices: Vec<HotplugDeviceInfo> =
+                                        devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
+                                    let events = scanner.scan_diff(current_devices);
+                                    for event in events {
+                                        debug!("Emitting IOKit USB hotplug event: {:?}", event);
+                                        if tx.blocking_send(event).is_err() {
+                                            debug!("Hotplug receiver dropped; stopping watcher");
+                                            stop_task_internal(&diff_is_running, &diff_run_loop_holder);
+                                            return;
+                                        }
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                error!("Failed to enumerate USB devices on IOKit event: {e}");
+                                Err(e) => {
+                                    error!("Failed to enumerate USB devices on IOKit event: {e}");
+                                }
                             }
                         }
-                    }
-                    None => {
-                        // Trigger channel disconnected; IOKit thread exited
-                        break;
+                        Err(_) => {
+                            // Trigger channel disconnected; IOKit thread exited
+                            break;
+                        }
                     }
                 }
-            }
 
-            info!("IOKit USB hotplug monitoring task terminated");
-        });
+                info!("IOKit USB hotplug monitoring worker terminated");
+                stop_task_internal(&diff_is_running, &diff_run_loop_holder);
+            });
+
+        if let Err(e) = diff_thread_res {
+            error!("Failed to spawn hotplug diff worker thread: {e}");
+            stop_task_internal(&is_running, &run_loop_holder);
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -362,40 +389,42 @@ impl HotplugWatcher {
         tx: mpsc::Sender<HotplugEvent>,
         is_running: Arc<AtomicBool>,
     ) {
-        tokio::spawn(async move {
-            info!("Starting fallback USB hotplug monitoring task");
-            let mut scanner = PollingHotplugScanner::new();
+        let _ = std::thread::Builder::new()
+            .name("ttzip-hotplug-fallback".to_string())
+            .spawn(move || {
+                info!("Starting fallback USB hotplug monitoring worker");
+                let mut scanner = PollingHotplugScanner::new();
 
-            while is_running.load(Ordering::Relaxed) {
-                match nusb::list_devices().wait() {
-                    Ok(devices_iter) => {
-                        let current_devices: Vec<HotplugDeviceInfo> =
-                            devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
-                        let events = scanner.scan_diff(current_devices);
-                        for event in events {
-                            if tx.send(event).await.is_err() {
-                                is_running.store(false, Ordering::SeqCst);
-                                return;
+                while is_running.load(Ordering::Relaxed) {
+                    match nusb::list_devices().wait() {
+                        Ok(devices_iter) => {
+                            let current_devices: Vec<HotplugDeviceInfo> =
+                                devices_iter.map(|d| HotplugDeviceInfo::from_nusb(&d)).collect();
+                            let events = scanner.scan_diff(current_devices);
+                            for event in events {
+                                if tx.blocking_send(event).is_err() {
+                                    is_running.store(false, Ordering::SeqCst);
+                                    return;
+                                }
                             }
                         }
+                        Err(e) => {
+                            error!("Failed to enumerate USB devices during fallback hotplug check: {e}");
+                        }
                     }
-                    Err(e) => {
-                        error!("Failed to enumerate USB devices during fallback hotplug check: {e}");
-                    }
+                    std::thread::sleep(Duration::from_millis(2000));
                 }
-                tokio::time::sleep(Duration::from_millis(2000)).await;
-            }
-        });
+            });
     }
 }
 
 #[cfg(target_os = "macos")]
 fn stop_task_internal(
     is_running: &Arc<AtomicBool>,
-    run_loop_holder: &Arc<std::sync::Mutex<Option<RunLoopHandle>>>,
+    run_loop_holder: &Arc<Mutex<Option<RunLoopHandle>>>,
 ) {
     is_running.store(false, Ordering::SeqCst);
-    let mut guard = run_loop_holder.lock().unwrap();
+    let mut guard = run_loop_holder.lock();
     if let Some(handle) = guard.take() {
         unsafe {
             iokit::CFRunLoopStop(handle.run_loop);
@@ -418,18 +447,18 @@ unsafe extern "C" fn hotplug_notification_callback(
         iokit::IOObjectRelease(service);
     }
 
-    // Notify async channel of physical hardware state transition
+    // Notify channel of physical hardware state transition
     if !refcon.is_null() {
-        let trigger_tx = &*(refcon as *const mpsc::Sender<()>);
+        let trigger_tx = &*(refcon as *const std::sync::mpsc::SyncSender<()>);
         let _ = trigger_tx.try_send(());
     }
 }
 
 #[cfg(target_os = "macos")]
 fn run_iokit_notification_loop(
-    trigger_tx: Arc<mpsc::Sender<()>>,
+    trigger_tx: Arc<std::sync::mpsc::SyncSender<()>>,
     is_running: Arc<AtomicBool>,
-    run_loop_holder: Arc<std::sync::Mutex<Option<RunLoopHandle>>>,
+    run_loop_holder: Arc<Mutex<Option<RunLoopHandle>>>,
 ) {
     unsafe {
         let notify_port = iokit::IONotificationPortCreate(0);
@@ -448,7 +477,7 @@ fn run_iokit_notification_loop(
         );
 
         {
-            let mut guard = run_loop_holder.lock().unwrap();
+            let mut guard = run_loop_holder.lock();
             *guard = Some(RunLoopHandle {
                 run_loop: current_run_loop,
             });
@@ -512,10 +541,10 @@ fn run_iokit_notification_loop(
         iokit::IONotificationPortDestroy(notify_port);
 
         // Reclaim raw refcon
-        drop(Arc::from_raw(raw_refcon as *const mpsc::Sender<()>));
+        drop(Arc::from_raw(raw_refcon as *const std::sync::mpsc::SyncSender<()>));
 
         {
-            let mut guard = run_loop_holder.lock().unwrap();
+            let mut guard = run_loop_holder.lock();
             *guard = None;
         }
         is_running.store(false, Ordering::SeqCst);
