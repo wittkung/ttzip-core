@@ -154,6 +154,10 @@ final class TTZipConcurrencyServiceTests: XCTestCase {
             XCTAssertTrue(handle.isCancelled)
         }
 
+        for _ in 0..<50 {
+            if service.isIdle { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
         XCTAssertTrue(service.isIdle)
     }
 
@@ -177,6 +181,10 @@ final class TTZipConcurrencyServiceTests: XCTestCase {
         _ = try? await task1.value
         _ = try? await task2.value
 
+        for _ in 0..<50 {
+            if service.isIdle { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
         XCTAssertTrue(service.isIdle)
     }
 
