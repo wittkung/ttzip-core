@@ -15,6 +15,7 @@ pub mod data_descriptor;
 pub mod parallel;
 pub mod store_stream;
 pub mod streaming_parallel;
+pub mod streaming_sink;
 pub mod types;
 
 pub use assemble::*;
@@ -22,6 +23,7 @@ pub use data_descriptor::*;
 pub use parallel::*;
 pub use store_stream::*;
 pub use streaming_parallel::*;
+pub use streaming_sink::*;
 pub use types::*;
 
 use crate::types::{TTZipCreateOptions, TTZipStatus};

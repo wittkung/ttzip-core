@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 
 /// C-ABI unified archive creation endpoint.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_create_unified(
     source_paths: *const *const c_char,
     source_count: usize,
@@ -80,6 +81,8 @@ pub unsafe extern "C" fn ttzip_rust_archive_create_unified(
 
 /// C-ABI unified archive extraction endpoint.
 #[no_mangle]
+#[allow(deprecated)]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
     archive_path: *const c_char,
     destination_path: *const c_char,
@@ -90,6 +93,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
 
 /// C-ABI unified archive extraction endpoint v2 with direct bytes count & structured error envelope.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
     archive_path: *const c_char,
     destination_path: *const c_char,
@@ -181,6 +185,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
 
 /// C-ABI unified archive inspection endpoint.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_inspect_unified(
     archive_path: *const c_char,
     password: *const c_char,
@@ -222,6 +227,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_inspect_unified(
 
 /// C-ABI unified archive repair endpoint.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_repair_unified(
     damaged_path: *const c_char,
     repaired_path: *const c_char,
@@ -260,6 +266,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_repair_unified(
 
 /// C-ABI single entry in-memory extraction endpoint (zero disk I/O).
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
     archive_path: *const c_char,
     entry_path: *const c_char,
@@ -313,6 +320,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
 
 /// C-ABI batch selective extraction endpoint (Single-pass O(N) stream scan).
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
     archive_path: *const c_char,
     target_paths: *const *const c_char,
@@ -389,6 +397,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
 
 /// C-ABI stream-discarding archive integrity verification endpoint.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_verify_stream(
     archive_path: *const c_char,
     password: *const c_char,
@@ -439,7 +448,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_verify_stream(
 
 /// C-ABI unified string deallocator for strings allocated by Rust FFI.
 #[no_mangle]
-#[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         drop(std::ffi::CString::from_raw(ptr));
@@ -449,13 +458,14 @@ pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
 /// Returns thread-local diagnostic error message or NULL if previous operation succeeded.
 #[no_mangle]
 #[allow(deprecated)]
-#[deprecated(since = "2.0.0", note = "Raw TLS pointers are unsafe across threads. Use ttzip_rust_get_last_error_info or ttzip_rust_get_last_error_message_owned")]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
     crate::types::get_last_error_message()
 }
 
 /// Clears thread-local diagnostic error message.
 #[no_mangle]
+#[deprecated(note = "Use UniFFI bindings instead")]
 pub extern "C" fn ttzip_rust_clear_last_error() {
     crate::types::clear_last_error();
 }

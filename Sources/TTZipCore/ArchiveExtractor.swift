@@ -320,30 +320,67 @@ public final class ArchiveSelectiveExtractor: Sendable {
     }
     
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
+    /// Memory preview limit strictly defaults to 64MB aligning with microkernel bounds.
     public func extractSingleEntryData(
         archivePath: String,
         entryPath: String,
         password: String? = nil,
-        maxAllowedBytes: Int = 256 * 1024 * 1024
+        maxAllowedBytes: Int = 64 * 1024 * 1024
     ) async throws -> Data? {
         if let cached = VFSLz4CachePool.shared.getCachedEntry(archivePath: archivePath, entryPath: entryPath) {
+            if cached.count > maxAllowedBytes {
+                throw ArchiveError.engineFailure(
+                    code: RustTTZipStatusCode.errOutOfMemory.rawValue,
+                    message: "Cached entry exceeds memory limit of \(maxAllowedBytes) bytes"
+                )
+            }
             return cached
         }
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
+            let matchedEntry = entries.first { item in
+                if item.path == entryPath || item.path.hasSuffix("/" + entryPath) {
+                    return true
+                }
+                if let last = item.path.split(separator: "/").last {
+                    return String(last) == entryPath
+                }
+                return false
+            }
+            if let entry = matchedEntry {
+                if entry.uncompressedSize > UInt64(maxAllowedBytes) {
+                    throw ArchiveError.engineFailure(
+                        code: RustTTZipStatusCode.errOutOfMemory.rawValue,
+                        message: "Entry uncompressed size \(entry.uncompressedSize) exceeds memory limit of \(maxAllowedBytes) bytes"
+                    )
+                }
+            }
+
             if let bytes = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
+                if bytes.count > maxAllowedBytes {
+                    throw ArchiveError.engineFailure(
+                        code: RustTTZipStatusCode.errOutOfMemory.rawValue,
+                        message: "Extracted entry exceeds memory limit of \(maxAllowedBytes) bytes"
+                    )
+                }
                 let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
             }
             // Fallback for subpaths or index probing if path normalization differs
-            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
             guard let idx = entries.firstIndex(where: {
                 $0.path == entryPath || $0.path.hasSuffix("/" + entryPath) || ($0.path.contains("/") ? String($0.path.split(separator: "/").last!) == entryPath : false)
             }) else {
                 return nil
             }
             if let bytes = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
+                if bytes.count > maxAllowedBytes {
+                    throw ArchiveError.engineFailure(
+                        code: RustTTZipStatusCode.errOutOfMemory.rawValue,
+                        message: "Extracted stream exceeds memory limit of \(maxAllowedBytes) bytes"
+                    )
+                }
                 let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data

@@ -26,6 +26,18 @@ struct Atom<'a> {
     payload: &'a [u8],
 }
 
+#[derive(Default)]
+struct MdiaParseState {
+    handler_type: [u8; 4],
+    media_timescale: u32,
+    media_duration: u64,
+    language: Option<String>,
+    sample_entries: Vec<SampleEntry>,
+    total_samples: u64,
+    total_sample_duration: u64,
+    total_track_bytes: u64,
+}
+
 impl<'a> TTZipMp4Demuxer<'a> {
     /// Creates a new `TTZipMp4Demuxer` over an in-memory byte slice.
     #[must_use]
@@ -196,15 +208,7 @@ impl<'a> TTZipMp4Demuxer<'a> {
         let mut track_id = 0u32;
         let mut tkhd_width = 0u32;
         let mut tkhd_height = 0u32;
-        let mut handler_type = [0u8; 4];
-        let mut media_timescale = 0u32;
-        let mut media_duration = 0u64;
-        let mut language = None;
-
-        let mut sample_entries = Vec::new();
-        let mut total_samples = 0u64;
-        let mut total_sample_duration = 0u64;
-        let mut total_track_bytes = 0u64;
+        let mut mdia_state = MdiaParseState::default();
 
         let mut offset = 0;
         while let Some((atom, next_offset)) = Self::next_atom(trak_payload, offset) {
@@ -215,24 +219,14 @@ impl<'a> TTZipMp4Demuxer<'a> {
                     tkhd_height = h;
                 }
             } else if &atom.fourcc == b"mdia" {
-                Self::parse_mdia(
-                    atom.payload,
-                    &mut handler_type,
-                    &mut media_timescale,
-                    &mut media_duration,
-                    &mut language,
-                    &mut sample_entries,
-                    &mut total_samples,
-                    &mut total_sample_duration,
-                    &mut total_track_bytes,
-                );
+                Self::parse_mdia(atom.payload, &mut mdia_state);
             }
             offset = next_offset;
         }
 
-        match &handler_type {
+        match &mdia_state.handler_type {
             b"vide" => {
-                let (codec, entry_w, entry_h) = if let Some(first) = sample_entries.first() {
+                let (codec, entry_w, entry_h) = if let Some(first) = mdia_state.sample_entries.first() {
                     let c = VideoCodec::from_fourcc(&first.fourcc);
                     let (w, h) = Self::parse_visual_sample_entry(&first.payload);
                     (c, w, h)
@@ -243,19 +237,19 @@ impl<'a> TTZipMp4Demuxer<'a> {
                 let width = if tkhd_width > 0 { tkhd_width } else { entry_w };
                 let height = if tkhd_height > 0 { tkhd_height } else { entry_h };
 
-                let fps = if media_timescale > 0 && total_sample_duration > 0 {
-                    (total_samples as f64 * media_timescale as f64)
-                        / (total_sample_duration as f64)
-                } else if media_timescale > 0 && media_duration > 0 && total_samples > 0 {
-                    (total_samples as f64 * media_timescale as f64) / (media_duration as f64)
+                let fps = if mdia_state.media_timescale > 0 && mdia_state.total_sample_duration > 0 {
+                    (mdia_state.total_samples as f64 * mdia_state.media_timescale as f64)
+                        / (mdia_state.total_sample_duration as f64)
+                } else if mdia_state.media_timescale > 0 && mdia_state.media_duration > 0 && mdia_state.total_samples > 0 {
+                    (mdia_state.total_samples as f64 * mdia_state.media_timescale as f64) / (mdia_state.media_duration as f64)
                 } else {
                     0.0
                 };
 
-                let bitrate_kbps = if media_timescale > 0 && media_duration > 0 && total_track_bytes > 0 {
-                    let duration_sec = media_duration as f64 / media_timescale as f64;
+                let bitrate_kbps = if mdia_state.media_timescale > 0 && mdia_state.media_duration > 0 && mdia_state.total_track_bytes > 0 {
+                    let duration_sec = mdia_state.media_duration as f64 / mdia_state.media_timescale as f64;
                     if duration_sec > 0.0 {
-                        Some(((total_track_bytes as f64 * 8.0) / (duration_sec * 1000.0)) as u32)
+                        Some(((mdia_state.total_track_bytes as f64 * 8.0) / (duration_sec * 1000.0)) as u32)
                     } else {
                         None
                     }
@@ -273,7 +267,7 @@ impl<'a> TTZipMp4Demuxer<'a> {
                 ));
             }
             b"soun" => {
-                let (codec, channels, sample_rate) = if let Some(first) = sample_entries.first() {
+                let (codec, channels, sample_rate) = if let Some(first) = mdia_state.sample_entries.first() {
                     let c = AudioCodec::from_mp4_fourcc(&first.fourcc);
                     let (ch, sr) = Self::parse_audio_sample_entry(&first.payload);
                     (c, ch, sr)
@@ -285,12 +279,12 @@ impl<'a> TTZipMp4Demuxer<'a> {
                     track_id,
                     codec,
                     channels,
-                    if sample_rate > 0 { sample_rate } else { media_timescale },
-                    language,
+                    if sample_rate > 0 { sample_rate } else { mdia_state.media_timescale },
+                    mdia_state.language,
                 ));
             }
             b"subt" | b"sbtl" | b"text" | b"clcp" => {
-                let format_str = if let Some(first) = sample_entries.first() {
+                let format_str = if let Some(first) = mdia_state.sample_entries.first() {
                     String::from_utf8_lossy(&first.fourcc).trim().to_string()
                 } else {
                     "text".to_string()
@@ -299,7 +293,7 @@ impl<'a> TTZipMp4Demuxer<'a> {
                 subtitle_tracks.push(SubtitleTrackInfo::new(
                     track_id,
                     format_str,
-                    language,
+                    mdia_state.language,
                     None,
                 ));
             }
@@ -340,40 +334,31 @@ impl<'a> TTZipMp4Demuxer<'a> {
             Some((track_id, 0, 0))
         }
     }
-
-    #[allow(clippy::too_many_arguments)]
     fn parse_mdia(
         mdia_payload: &[u8],
-        handler_type: &mut [u8; 4],
-        media_timescale: &mut u32,
-        media_duration: &mut u64,
-        language: &mut Option<String>,
-        sample_entries: &mut Vec<SampleEntry>,
-        total_samples: &mut u64,
-        total_sample_duration: &mut u64,
-        total_track_bytes: &mut u64,
+        state: &mut MdiaParseState,
     ) {
         let mut offset = 0;
         while let Some((atom, next_offset)) = Self::next_atom(mdia_payload, offset) {
             if &atom.fourcc == b"mdhd" {
                 if let Some((ts, dur, lang)) = Self::parse_mdhd(atom.payload) {
-                    *media_timescale = ts;
-                    *media_duration = dur;
+                    state.media_timescale = ts;
+                    state.media_duration = dur;
                     if let Some(l) = lang {
-                        *language = Some(l);
+                        state.language = Some(l);
                     }
                 }
             } else if &atom.fourcc == b"hdlr" {
                 if atom.payload.len() >= 12 {
-                    handler_type.copy_from_slice(&atom.payload[8..12]);
+                    state.handler_type.copy_from_slice(&atom.payload[8..12]);
                 }
             } else if &atom.fourcc == b"minf" {
                 Self::parse_minf(
                     atom.payload,
-                    sample_entries,
-                    total_samples,
-                    total_sample_duration,
-                    total_track_bytes,
+                    &mut state.sample_entries,
+                    &mut state.total_samples,
+                    &mut state.total_sample_duration,
+                    &mut state.total_track_bytes,
                 );
             }
             offset = next_offset;

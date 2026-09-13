@@ -11,7 +11,6 @@
 //! unified archive streaming, ZIP/7z archive engines, and VFS processing.
 
 #![allow(non_camel_case_types)]
-#![allow(clippy::missing_safety_doc)]
 
 uniffi::setup_scaffolding!();
 

@@ -217,6 +217,7 @@ def main():
         cand_points = cand_matrix.get("points", [])
         base_points = base_matrix.get("points", [])
 
+        regressions = 0
         if cand_points and base_points:
             base_map = {p["display_name"]: p for p in base_points}
             print("\n### 1. 50-Point Full Multi-Codec Matrix Benchmark (Baseline vs Candidate):")
@@ -224,7 +225,6 @@ def main():
             print(f"  {'Idx':>3} | {'Codec & Level':<16} | {'Comp Base':>11} | {'Comp Cand':>11} | {'Comp Δ':>8} | {'Decomp Base':>11} | {'Decomp Cand':>11} | {'Decomp Δ':>8} | {'Gate'}")
             print("  " + "-" * 111)
 
-            regressions = 0
             for idx, c_pt in enumerate(cand_points):
                 name = c_pt["display_name"]
                 b_pt = base_map.get(name, c_pt)
@@ -237,11 +237,11 @@ def main():
                 b_decomp = b_pt.get("decompress_throughput_mbs", c_decomp)
                 decomp_delta = ((c_decomp - b_decomp) / b_decomp * 100.0) if b_decomp > 0 else 0.0
 
-                # Tolerance of -5% for microbench jitter
-                is_ok = comp_delta >= -5.0 and decomp_delta >= -5.0
+                # Strict Zero-Compromise Invariant: zero tolerance for regression
+                is_ok = comp_delta >= 0.0 and decomp_delta >= 0.0
                 if not is_ok:
                     regressions += 1
-                status = "✅ PASS" if is_ok else "⚠️ JITTER"
+                status = "✅ PASS" if is_ok else "❌ FAIL"
 
                 print(
                     f"  {idx+1:>3} | {name:<16} | {b_comp:>9.1f} MB/s | {c_comp:>9.1f} MB/s | {comp_delta:>+7.1f}% | "
@@ -253,7 +253,7 @@ def main():
                 f"  Codec Matrix Summary: {len(cand_points)} Points Evaluated | "
                 f"Peak Comp: {cand_matrix.get('peak_compress_throughput_mbs', 0.0):.1f} MB/s | "
                 f"Peak Decomp: {cand_matrix.get('peak_decompress_throughput_mbs', 0.0):.1f} MB/s | "
-                f"Regressions: {regressions} | Matrix Gate: {'✅ PASS' if regressions <= 4 else '⚠️ PASS'}"
+                f"Regressions: {regressions} | Matrix Gate: {'✅ PASS' if regressions == 0 else '❌ FAIL'}"
             )
             print("=" * 115)
 
@@ -322,8 +322,13 @@ def main():
         print(f"  Delta Δ:       {ql_speedup:+.2f}% ({b_ql_m/c_ql_m:.2f}x speedup)")
 
         print("\n" + "=" * 115)
-        print("✅ [AUDIT VERDICT] ZERO PERFORMANCE REGRESSION DETECTED ACROSS ALL 57 CODEC POINTS & 24 SCENARIOS")
-        print("=" * 115)
+        if regressions > 0:
+            print(f"❌ [AUDIT VERDICT] REGRESSION DETECTED: {regressions} benchmark points regressed. Strict zero-compromise gate failed!")
+            print("=" * 115)
+            sys.exit(1)
+        else:
+            print("✅ [AUDIT VERDICT] ZERO PERFORMANCE REGRESSION DETECTED ACROSS ALL 57 CODEC POINTS & 24 SCENARIOS")
+            print("=" * 115)
 
     finally:
         if BASELINE_WORKTREE.exists():

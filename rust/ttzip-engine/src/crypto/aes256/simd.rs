@@ -12,6 +12,11 @@ use super::Aes256Context;
 #[cfg(target_arch = "aarch64")]
 use core::arch::aarch64::*;
 
+/// Encrypts or decrypts bytes in CTR mode using ARM NEON AES vector instructions.
+///
+/// # Safety
+/// Caller must ensure `src` has at least `len` readable bytes, `dst` has at least `len` writable bytes,
+/// and CPU supports ARMv8 Cryptography Extensions (FEAT_AES).
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "aes")]
 pub unsafe fn aes256_ctr_crypt_neon(
@@ -151,6 +156,11 @@ pub unsafe fn aes256_ctr_crypt_neon(
     }
 }
 
+/// Decrypts bytes in CBC mode using ARM NEON AES vector instructions.
+///
+/// # Safety
+/// Caller must ensure `src` has at least `len` readable bytes, `dst` has at least `len` writable bytes,
+/// and CPU supports ARMv8 Cryptography Extensions (FEAT_AES).
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "aes")]
 pub unsafe fn aes256_cbc_decrypt_neon(
@@ -247,6 +257,11 @@ pub unsafe fn aes256_cbc_decrypt_neon(
     }
 }
 
+/// Encrypts bytes in CBC mode using ARM NEON AES vector instructions.
+///
+/// # Safety
+/// Caller must ensure `src` has at least `len` readable bytes, `dst` has at least `len` writable bytes,
+/// and CPU supports ARMv8 Cryptography Extensions (FEAT_AES).
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "aes")]
 pub unsafe fn aes256_cbc_encrypt_neon(

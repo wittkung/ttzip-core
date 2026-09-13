@@ -167,6 +167,7 @@ fn demonstrate_zstd_level_22() -> Result<(), Box<dyn std::error::Error>> {
         window_log: 27,
         enable_ldm: true,
         enable_checksum: true,
+        ..Default::default()
     };
 
     println!("• Uncompressed Workload: {} bytes ({:.2} KB)", original_len, original_len as f64 / 1024.0);

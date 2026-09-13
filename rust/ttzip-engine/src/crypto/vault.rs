@@ -13,6 +13,7 @@
 use crate::crypto::aes256::Aes256Context;
 use crate::types::TTZipStatus;
 use std::sync::atomic::{compiler_fence, Ordering};
+use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// S-Box for AES block encryption (scalar fallback).
@@ -160,14 +161,10 @@ impl GHash {
     }
 }
 
-/// Constant-time 16-byte slice comparison to prevent timing side-channel leaks with compiler barrier.
+/// Constant-time 16-byte slice comparison to prevent timing side-channel leaks.
 #[inline]
 pub fn constant_time_eq_16(a: &[u8; 16], b: &[u8; 16]) -> bool {
-    let mut diff = 0u8;
-    for i in 0..16 {
-        diff |= a[i] ^ b[i];
-    }
-    std::hint::black_box(diff) == 0
+    a.ct_eq(b).into()
 }
 
 /// Dead-Store Elimination immune memory sanitization with SeqCst compiler fence.

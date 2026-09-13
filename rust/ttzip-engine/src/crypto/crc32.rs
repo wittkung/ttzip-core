@@ -75,6 +75,10 @@ mod arm64 {
         veorq_u8(next, veorq_u8(low, high))
     }
 
+    /// Computes CRC-32 using ARMv8 CRC and PMULL vector instructions.
+    ///
+    /// # Safety
+    /// Caller must ensure `p` points to `len` readable bytes and the CPU supports ARM CRC and PMULL instructions.
     #[target_feature(enable = "crc")]
     pub unsafe fn crc32_arm_pmull_raw(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
         let mut v0: uint8x16_t;

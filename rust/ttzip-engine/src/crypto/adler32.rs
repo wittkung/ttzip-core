@@ -115,6 +115,10 @@ mod arm64 {
         acc
     }
 
+    /// Computes Adler-32 checksum using ARM NEON dot-product vector instructions.
+    ///
+    /// # Safety
+    /// Caller must ensure `p` points to `len` readable bytes and the CPU supports ARM dotprod instructions.
     #[target_feature(enable = "dotprod")]
     pub unsafe fn adler32_neon_dotprod(adler: u32, mut p: *const u8, mut len: usize) -> u32 {
         let mults_a = vld1q_u8(MULTS_ARRAY.as_ptr());

@@ -121,20 +121,20 @@ public class AdvancedExample {
         final int threadCount = 4;
 
         try {
-            // 4. Format 1: 7z Solid Archive with AES-256 Encryption & Custom Threads
+            // 4. Format 1: 7z Solid Archive with Custom Threads
             Path archive7z = workDir.resolve("mission_critical.7z");
-            System.out.println("3. Creating 7z Solid Archive with AES-256 Password (4 Threads)...");
+            System.out.println("3. Creating 7z Solid Archive (4 Threads)...");
             TTZip.compress(
                 sources,
                 archive7z.toString(),
                 TTZip.ArchiveFormat.SEVEN_ZIP,
                 TTZip.CompressionLevel.MAXIMUM,
-                aesPassword,
+                null,
                 threadCount,
                 progress -> {
                     System.out.printf("   [7z]  %3.0f%% | %s\n",
                         progress.fractionCompleted() * 100.0,
-                        progress.currentEntryPath().isEmpty() ? "encrypting & packing" : progress.currentEntryPath()
+                        progress.currentEntryPath().isEmpty() ? "packing" : progress.currentEntryPath()
                     );
                     return true;
                 }
@@ -163,15 +163,15 @@ public class AdvancedExample {
             System.out.printf("   ✓ TAR.ZST Archive Created: %s (Size: %d bytes)\n", archiveTarZst.getFileName(), Files.size(archiveTarZst));
             System.out.println("--------------------------------------------------------------------------------");
 
-            // 6. Format 3: Standard ZIP with Custom Thread Count
-            Path archiveZip = workDir.resolve("distribution.zip");
-            System.out.println("5. Creating ZIP Archive with Custom Thread Allocation...");
+            // 6. Format 3: Standard ZIP with AES-256 Encryption & Custom Thread Count
+            Path archiveZip = workDir.resolve("encrypted_vault.zip");
+            System.out.println("5. Creating ZIP Archive with AES-256 Encryption...");
             TTZip.compress(
                 sources,
                 archiveZip.toString(),
                 TTZip.ArchiveFormat.ZIP,
                 TTZip.CompressionLevel.NORMAL,
-                null,
+                aesPassword,
                 threadCount,
                 progress -> true
             );
@@ -215,20 +215,20 @@ public class AdvancedExample {
             }
             System.out.println("--------------------------------------------------------------------------------");
 
-            // 8. In-Memory Archive Inspection of Encrypted 7z
-            System.out.println("7. Inspecting Encrypted 7z Metadata...");
-            List<TTZip.EntryMetadata> entries7z = TTZip.inspect(archive7z.toString(), aesPassword);
-            for (TTZip.EntryMetadata entry : entries7z) {
+            // 8. In-Memory Archive Inspection of Encrypted ZIP
+            System.out.println("7. Inspecting Encrypted ZIP Metadata...");
+            List<TTZip.EntryMetadata> entriesZip = TTZip.inspect(archiveZip.toString(), aesPassword);
+            for (TTZip.EntryMetadata entry : entriesZip) {
                 System.out.printf("   * %-22s | Uncompressed: %6d B | CRC: 0x%08X | Encrypted: %s\n",
                     entry.path(), entry.uncompressedSize(), entry.crc32(), entry.isEncrypted());
             }
             System.out.println("--------------------------------------------------------------------------------");
 
-            // 9. Extract Encrypted 7z and Verify Integrity
-            Path extractDir = workDir.resolve("extracted_7z");
-            System.out.println("8. Extracting AES-256 Protected 7z Archive...");
+            // 9. Extract Encrypted ZIP and Verify Integrity
+            Path extractDir = workDir.resolve("extracted_zip");
+            System.out.println("8. Extracting AES-256 Protected ZIP Archive...");
             TTZip.extract(
-                archive7z.toString(),
+                archiveZip.toString(),
                 extractDir.toString(),
                 aesPassword,
                 threadCount,

@@ -9,6 +9,11 @@ const path = require('path');
 const fs = require('fs');
 
 function loadNativeBinding() {
+  try {
+    return require('ttzip-node');
+  } catch (_) {
+    // Continue searching local candidates
+  }
   const candidates = [
     path.join(__dirname, 'ttzip.node'),
     path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'libttzip_node.dylib'),
@@ -109,60 +114,37 @@ function decompressInto(compressed, target, format) {
   throw new Error('decompressInto requires native N-API module');
 }
 
-const { execFile } = require('child_process');
-const util = require('util');
-const execFileAsync = util.promisify(execFile);
-
-function findCliBinary() {
-  const candidates = [
-    path.join(__dirname, '..', '..', 'bin', 'ttzip'),
-    path.join(__dirname, '..', '..', 'rust', 'target', 'release', 'ttzip'),
-    path.join(__dirname, '..', '..', 'rust', 'target', 'debug', 'ttzip'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+function requireNativeBinding(featureName) {
+  if (!native) {
+    throw new Error(
+      `TTZip native N-API module (ttzip.node / ttzip-node) is required for ${featureName}. ` +
+      'External CLI subprocess fallback is prohibited under the Zero-Subprocess Invariant.'
+    );
   }
-  return 'ttzip';
 }
 
 async function compress(inputs, destination, options = {}) {
-  if (native && native.compress) {
-    return native.compress(inputs, destination, options);
+  requireNativeBinding('compress');
+  if (typeof native.compress !== 'function') {
+    throw new Error('Native binding does not implement compress');
   }
-  const cli = findCliBinary();
-  const args = ['create', destination, ...inputs];
-  if (options.password) {
-    args.push('--password', options.password);
-  }
-  if (options.level !== undefined) {
-    args.push('--level', String(options.level));
-  }
-  await execFileAsync(cli, args);
+  return native.compress(inputs, destination, options);
 }
 
 async function extract(archivePath, destination, options = {}) {
-  if (native && native.extract) {
-    return native.extract(archivePath, destination, options);
+  requireNativeBinding('extract');
+  if (typeof native.extract !== 'function') {
+    throw new Error('Native binding does not implement extract');
   }
-  const cli = findCliBinary();
-  const args = ['extract', archivePath, '-o', destination];
-  if (options.password) {
-    args.push('--password', options.password);
-  }
-  await execFileAsync(cli, args);
+  return native.extract(archivePath, destination, options);
 }
 
 async function inspect(archivePath, password) {
-  if (native && native.inspect) {
-    return native.inspect(archivePath, password);
+  requireNativeBinding('inspect');
+  if (typeof native.inspect !== 'function') {
+    throw new Error('Native binding does not implement inspect');
   }
-  const cli = findCliBinary();
-  const args = ['list', archivePath];
-  if (password) {
-    args.push('--password', password);
-  }
-  const { stdout } = await execFileAsync(cli, args);
-  return stdout;
+  return native.inspect(archivePath, password);
 }
 
 module.exports = {

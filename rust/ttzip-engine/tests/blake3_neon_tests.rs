@@ -19,7 +19,7 @@ use ttzip_engine::crypto::blake3::constants::{
 };
 use ttzip_engine::crypto::blake3::neon::{
     hash_many_neon, hash_many_parents_neon, hash_many_variable_chunks, hash_parents_neon,
-    hash4_neon,
+    hash4_neon, Blake3Neon4Chunk,
 };
 use ttzip_engine::crypto::blake3::tree::parent_cv;
 use ttzip_engine::crypto::blake3::{compress_in_place, ChunkState};
@@ -241,17 +241,17 @@ fn test_hash4_neon_single_block_bit_exact() {
     let counter = 100u64;
     let flags = CHUNK_START | CHUNK_END;
 
-    hash4_neon(
+    let chunk = Blake3Neon4Chunk {
         inputs,
-        1,
-        &key,
+        blocks: 1,
+        key: &key,
         counter,
-        true,
+        increment_counter: true,
         flags,
-        0,
-        0,
-        &mut neon_out,
-    );
+        flags_start: 0,
+        flags_end: 0,
+    };
+    hash4_neon(chunk, &mut neon_out);
 
     for lane in 0..4 {
         let expected_words = compress_in_place(

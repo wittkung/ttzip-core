@@ -20,6 +20,17 @@ pub struct TTZipAviDemuxer<'a> {
     data: &'a [u8],
 }
 
+#[derive(Default)]
+struct HdrlParseState {
+    duration_ms: u64,
+    global_width: u32,
+    global_height: u32,
+    global_fps: f64,
+    video_tracks: Vec<VideoTrackInfo>,
+    audio_tracks: Vec<AudioTrackInfo>,
+    track_counter: u32,
+}
+
 impl<'a> TTZipAviDemuxer<'a> {
     /// Creates a new `TTZipAviDemuxer` over an in-memory byte slice.
     #[must_use]
@@ -71,14 +82,7 @@ impl<'a> TTZipAviDemuxer<'a> {
         let file_end = riff_payload_len.saturating_add(8).min(self.data.len());
         let riff_slice = &self.data[12..file_end];
 
-        let mut duration_ms = 0u64;
-        let mut global_width = 0u32;
-        let mut global_height = 0u32;
-        let mut global_fps = 0.0f64;
-
-        let mut video_tracks = Vec::new();
-        let mut audio_tracks = Vec::new();
-        let mut track_counter = 0u32;
+        let mut hdrl_state = HdrlParseState::default();
 
         let mut offset = 0;
         while offset < riff_slice.len() {
@@ -93,16 +97,7 @@ impl<'a> TTZipAviDemuxer<'a> {
                 let list_payload = &chunk_payload[4..];
 
                 if list_type == b"hdrl" {
-                    Self::parse_hdrl(
-                        list_payload,
-                        &mut duration_ms,
-                        &mut global_width,
-                        &mut global_height,
-                        &mut global_fps,
-                        &mut video_tracks,
-                        &mut audio_tracks,
-                        &mut track_counter,
-                    )?;
+                    Self::parse_hdrl(list_payload, &mut hdrl_state)?;
                 }
             }
 
@@ -111,39 +106,32 @@ impl<'a> TTZipAviDemuxer<'a> {
         }
 
         // Apply fallback dimensions/fps to video tracks if missing
-        for v in &mut video_tracks {
+        for v in &mut hdrl_state.video_tracks {
             if v.width == 0 {
-                v.width = global_width;
+                v.width = hdrl_state.global_width;
             }
             if v.height == 0 {
-                v.height = global_height;
+                v.height = hdrl_state.global_height;
             }
             if v.fps <= 0.0 {
-                v.fps = global_fps;
+                v.fps = hdrl_state.global_fps;
             }
         }
 
         Ok(VideoMetadata {
             format: VideoFormat::Avi,
-            duration_ms,
-            video_tracks,
-            audio_tracks,
+            duration_ms: hdrl_state.duration_ms,
+            video_tracks: hdrl_state.video_tracks,
+            audio_tracks: hdrl_state.audio_tracks,
             subtitle_tracks: Vec::new(),
             chapters: Vec::new(),
             has_cover: false,
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn parse_hdrl(
         hdrl_payload: &[u8],
-        duration_ms: &mut u64,
-        global_width: &mut u32,
-        global_height: &mut u32,
-        global_fps: &mut f64,
-        video_tracks: &mut Vec<VideoTrackInfo>,
-        audio_tracks: &mut Vec<AudioTrackInfo>,
-        track_counter: &mut u32,
+        state: &mut HdrlParseState,
     ) -> VideoResult<()> {
         let mut offset = 0;
         while offset < hdrl_payload.len() {
@@ -155,22 +143,22 @@ impl<'a> TTZipAviDemuxer<'a> {
 
             if &chunk_id == b"avih" {
                 if let Some((dur, w, h, fps)) = Self::parse_avih(chunk_payload) {
-                    *duration_ms = dur;
-                    *global_width = w;
-                    *global_height = h;
-                    *global_fps = fps;
+                    state.duration_ms = dur;
+                    state.global_width = w;
+                    state.global_height = h;
+                    state.global_fps = fps;
                 }
             } else if &chunk_id == b"LIST" && chunk_payload.len() >= 4 {
                 let list_type = &chunk_payload[0..4];
                 let list_payload = &chunk_payload[4..];
 
                 if list_type == b"strl" {
-                    *track_counter = track_counter.saturating_add(1);
+                    state.track_counter = state.track_counter.saturating_add(1);
                     Self::parse_strl(
                         list_payload,
-                        *track_counter,
-                        video_tracks,
-                        audio_tracks,
+                        state.track_counter,
+                        &mut state.video_tracks,
+                        &mut state.audio_tracks,
                     )?;
                 }
             }

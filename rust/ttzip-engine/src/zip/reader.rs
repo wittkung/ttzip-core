@@ -26,6 +26,10 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
+/// Maximum in-memory single-entry decompression threshold (64 MB).
+/// Entries exceeding 64 MB must use stream-to-disk or stream-to-sink fallback.
+pub const MAX_IN_MEMORY_DECOMPRESS_BYTES: usize = 64 * 1024 * 1024;
+
 /// Threshold for enabling Direct I/O (F_NOCACHE) on large files (1 MB).
 const DIRECT_IO_THRESHOLD: u64 = 1024 * 1024;
 
@@ -113,8 +117,9 @@ impl<'a> ZipArchive<'a> {
         };
 
         let uncomp_size = entry.uncompressed_size as usize;
-        // Defense-in-depth: limit single-entry in-memory extraction to 256MB to prevent zip-bomb OOM attacks
-        if uncomp_size > 256 * 1024 * 1024 {
+        // Defense-in-depth: limit single-entry in-memory extraction to 64MB to prevent zip-bomb OOM attacks.
+        // Entries exceeding 64MB must use stream-to-disk or stream-to-sink fallback with bounded buffer quotas.
+        if uncomp_size > MAX_IN_MEMORY_DECOMPRESS_BYTES {
             return Err(TTZipStatus::ErrOutOfMemory);
         }
         let mut out_buffer = vec![0u8; uncomp_size];
@@ -130,6 +135,12 @@ impl<'a> ZipArchive<'a> {
                 let decomp_size = with_thread_local_decompressor(|dec| {
                     dec.decompress(effective_payload, &mut out_buffer)
                 })?;
+                if decomp_size != uncomp_size {
+                    return Err(TTZipStatus::ErrCorruptHeader);
+                }
+            }
+            93 => {
+                let decomp_size = crate::codecs::zstd::zstd_decompress(effective_payload, &mut out_buffer)?;
                 if decomp_size != uncomp_size {
                     return Err(TTZipStatus::ErrCorruptHeader);
                 }
@@ -329,6 +340,39 @@ impl<'a> ZipArchive<'a> {
             return Ok(());
         }
 
+        let mut file = File::create(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        let fd = file.as_raw_fd();
+
+        let _ = apfs_preallocate(fd, entry.uncompressed_size as i64);
+
+        #[cfg(target_os = "macos")]
+        if entry.uncompressed_size >= DIRECT_IO_THRESHOLD {
+            unsafe {
+                libc::fcntl(fd, libc::F_NOCACHE, 1);
+            }
+        }
+
+        self.extract_entry_to_sink(idx, password, &mut file)?;
+        Ok(())
+    }
+
+    /// Streams decompressed entry bytes directly into `sink` with a bounded 64KB buffer quota,
+    /// enforcing strict memory bounds without in-memory allocation limits.
+    pub fn extract_entry_to_sink<W: Write>(
+        &self,
+        entry_idx: usize,
+        password: Option<&str>,
+        sink: &mut W,
+    ) -> Result<u64, TTZipStatus> {
+        let entry = self
+            .entries
+            .get(entry_idx)
+            .ok_or(TTZipStatus::ErrInvalidOffset)?;
+
+        if entry.is_directory || entry.uncompressed_size == 0 {
+            return Ok(0);
+        }
+
         let lfh_offset = entry.lfh_offset as usize;
         let (payload_offset, _) = parse_local_file_header(self.data, lfh_offset)?;
         let comp_size = entry.compressed_size as usize;
@@ -357,40 +401,50 @@ impl<'a> ZipArchive<'a> {
             raw_payload
         };
 
-        let mut file = File::create(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-        let fd = file.as_raw_fd();
-
-        let _ = apfs_preallocate(fd, entry.uncompressed_size as i64);
-
-        #[cfg(target_os = "macos")]
-        if entry.uncompressed_size >= DIRECT_IO_THRESHOLD {
-            unsafe {
-                libc::fcntl(fd, libc::F_NOCACHE, 1);
-            }
-        }
-
         let mut computed_crc = 0u32;
         let uncomp_size = entry.uncompressed_size;
+        let mut total_written = 0u64;
+
+        // Bounded 64KB buffer quota
+        const BUFFER_QUOTA: usize = 64 * 1024;
+        let mut chunk = [0u8; BUFFER_QUOTA];
 
         match entry.actual_method {
             0 => {
                 if (effective_payload.len() as u64) != uncomp_size {
                     return Err(TTZipStatus::ErrCorruptHeader);
                 }
-                file.write_all(effective_payload).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                computed_crc = crc32_fast(0, effective_payload);
+                for piece in effective_payload.chunks(BUFFER_QUOTA) {
+                    sink.write_all(piece).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    computed_crc = crc32_fast(computed_crc, piece);
+                    total_written += piece.len() as u64;
+                }
             }
             8 => {
                 use std::io::Read;
                 let mut decoder = flate2::read::DeflateDecoder::new(effective_payload);
-                let mut chunk = [0u8; 64 * 1024];
-                let mut total_written = 0u64;
                 loop {
                     let n = decoder.read(&mut chunk).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
                     if n == 0 {
                         break;
                     }
-                    file.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    sink.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    computed_crc = crc32_fast(computed_crc, &chunk[..n]);
+                    total_written += n as u64;
+                }
+                if total_written != uncomp_size {
+                    return Err(TTZipStatus::ErrCorruptHeader);
+                }
+            }
+            93 => {
+                use std::io::Read;
+                let mut decoder = crate::codecs::zstd::stream::ZstdStreamReader::new(effective_payload)?;
+                loop {
+                    let n = decoder.read(&mut chunk).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+                    if n == 0 {
+                        break;
+                    }
+                    sink.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
                     computed_crc = crc32_fast(computed_crc, &chunk[..n]);
                     total_written += n as u64;
                 }
@@ -405,6 +459,68 @@ impl<'a> ZipArchive<'a> {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        Ok(())
+        Ok(total_written)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::TTZipEncryptionMethod;
+    use crate::zip::writer::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
+
+    #[test]
+    fn test_extract_entry_to_sink_streaming() {
+        let payload = b"Streaming extraction test payload with micro-buffer quota".repeat(100);
+        let items = vec![ZipInputItem {
+            rel_path: "stream_test.txt".to_string(),
+            data: payload.clone(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        }];
+        let compressed = compress_items_parallel(
+            items,
+            6,
+            TTZipEncryptionMethod::None,
+            None,
+            1,
+        ).expect("compression failed");
+        let zip_bytes = assemble_zip_archive(&compressed).expect("assembly failed");
+
+        let archive = ZipArchive::open_slice(&zip_bytes).expect("open zip slice");
+        assert_eq!(archive.entries().len(), 1);
+
+        let mut sink = Vec::new();
+        let written = archive.extract_entry_to_sink(0, None, &mut sink).expect("extract to sink");
+        assert_eq!(written, payload.len() as u64);
+        assert_eq!(sink, payload);
+    }
+
+    #[test]
+    fn test_extract_entry_bytes_clamps_at_64mb() {
+        let items = vec![ZipInputItem {
+            rel_path: "mock.txt".to_string(),
+            data: b"small payload".to_vec(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        }];
+        let compressed = compress_items_parallel(
+            items,
+            0,
+            TTZipEncryptionMethod::None,
+            None,
+            1,
+        ).expect("compression failed");
+        let zip_bytes = assemble_zip_archive(&compressed).expect("assembly failed");
+
+        let mut archive = ZipArchive::open_slice(&zip_bytes).expect("open zip slice");
+        // Artificially simulate an entry whose uncompressed size exceeds 64MB
+        archive.entries[0].uncompressed_size = (MAX_IN_MEMORY_DECOMPRESS_BYTES as u64) + 1;
+
+        let res = archive.extract_entry_bytes(0, None);
+        assert_eq!(res, Err(TTZipStatus::ErrOutOfMemory));
+    }
+}
+

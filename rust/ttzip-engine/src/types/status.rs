@@ -160,6 +160,9 @@ impl TTZipError {
 }
 
 /// Helper function to safely populate out_error pointer if non-null.
+///
+/// # Safety
+/// If non-null, `out_error` must be a valid, aligned, writable pointer to `*mut TTZipError`.
 #[inline]
 pub unsafe fn set_out_error(
     out_error: *mut *mut TTZipError,
@@ -224,7 +227,10 @@ impl TTZipErrorInfo {
     }
 }
 
-/// Helper function to safely populate out_error pointer if non-null
+/// Helper function to safely populate out_error pointer if non-null.
+///
+/// # Safety
+/// If non-null, `out_error` must be a valid, aligned, writable pointer to `TTZipErrorInfo`.
 #[inline]
 pub unsafe fn write_error_info(
     out_error: *mut TTZipErrorInfo,

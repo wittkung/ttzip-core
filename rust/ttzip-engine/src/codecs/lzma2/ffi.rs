@@ -47,7 +47,6 @@ pub struct Fl2OutBuffer {
 pub enum Fl2CCtxOpaque {}
 pub enum Fl2DCtxOpaque {}
 
-#[allow(dead_code)]
 extern "C" {
     pub fn FL2_createCCtx() -> *mut Fl2CCtxOpaque;
     pub fn FL2_createCCtxMt(nb_threads: libc::c_uint) -> *mut Fl2CCtxOpaque;
@@ -64,7 +63,6 @@ extern "C" {
     ) -> libc::size_t;
     pub fn FL2_compressBound(src_size: libc::size_t) -> libc::size_t;
     pub fn FL2_isError(code: libc::size_t) -> libc::c_uint;
-    pub fn FL2_getErrorName(code: libc::size_t) -> *const libc::c_char;
 
     pub fn FL2_compressCCtx(
         cctx: *mut Fl2CCtxOpaque,
@@ -100,7 +98,6 @@ extern "C" {
     pub fn FL2_endStream(fcs: *mut Fl2CCtxOpaque, output: *mut Fl2OutBuffer) -> libc::size_t;
     pub fn FL2_setCStreamTimeout(fcs: *mut Fl2CCtxOpaque, timeout: libc::c_uint) -> libc::size_t;
     pub fn FL2_cancelCStream(fcs: *mut Fl2CCtxOpaque);
-    pub fn FL2_waitCStream(fcs: *mut Fl2CCtxOpaque) -> libc::size_t;
 
     pub fn FL2_createDStream() -> *mut Fl2DCtxOpaque;
     pub fn FL2_createDStreamMt(nb_threads: libc::c_uint) -> *mut Fl2DCtxOpaque;
@@ -114,6 +111,4 @@ extern "C" {
     ) -> libc::size_t;
     pub fn FL2_setDStreamTimeout(fds: *mut Fl2DCtxOpaque, timeout: libc::c_uint) -> libc::size_t;
     pub fn FL2_cancelDStream(fds: *mut Fl2DCtxOpaque);
-    pub fn FL2_waitDStream(fds: *mut Fl2DCtxOpaque) -> libc::size_t;
-    pub fn FL2_isTimedOut(code: libc::size_t) -> libc::c_uint;
 }

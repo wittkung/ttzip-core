@@ -19,6 +19,7 @@ pub fn extract_archive_stream(
     progress: Option<Box<dyn ProgressHandler>>,
     token: Option<Arc<CancellationToken>>,
 ) -> Result<CompressionReport, TTZipError> {
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let src = std::path::Path::new(&archive_path);
     let dst = std::path::Path::new(&destination_dir);
     if !src.exists() {
@@ -26,7 +27,7 @@ pub fn extract_archive_stream(
     }
 
     let start = std::time::Instant::now();
-    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
+    let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
     struct ProgressBox {
         handler: Option<Box<dyn ProgressHandler>>,
@@ -115,13 +116,14 @@ pub fn extract_selected_entries(
     progress: Option<Box<dyn ProgressHandler>>,
     token: Option<Arc<CancellationToken>>,
 ) -> Result<u64, TTZipError> {
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let src = std::path::Path::new(&archive_path);
     let dst = std::path::Path::new(&destination_dir);
     if !src.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
     }
 
-    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
+    let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
     struct ProgressBox {
         handler: Option<Box<dyn ProgressHandler>>,
@@ -193,6 +195,7 @@ pub fn extract_single_entry_by_path(
     entry_path: String,
     password: Option<String>,
 ) -> Result<Vec<u8>, TTZipError> {
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let p = std::path::Path::new(&archive_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
@@ -205,6 +208,7 @@ pub fn extract_single_entry_by_path(
     })?;
 
     let clean_target = entry_path.trim_start_matches('/');
+    const DEFAULT_EXTRACTION_BUDGET_BYTES: u64 = 64 * 1024 * 1024; // Strict 64MB limit
 
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
         let arch = crate::sevenz::decoder::SevenZArchive::open_slice(mapped)
@@ -214,13 +218,21 @@ pub fn extract_single_entry_by_path(
             f.rel_path == clean_target || f.rel_path.ends_with(&format!("/{}", clean_target))
         }).ok_or_else(|| TTZipError::FileNotFound { path: entry_path.clone() })?;
 
-        let budget_bytes = 100 * 1024 * 1024;
+        if let Some(loc) = arch.seek_index().entries.get(found_idx) {
+            if loc.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
+                return Err(TTZipError::EngineError {
+                    code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+                });
+            }
+        }
+
+        let budget_bytes = DEFAULT_EXTRACTION_BUDGET_BYTES;
         crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
             mapped,
             arch.info(),
             arch.seek_index(),
             found_idx,
-            password.as_deref(),
+            secure_pwd.as_deref(),
             budget_bytes,
         ).map_err(|status| match status {
             crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
@@ -232,7 +244,14 @@ pub fn extract_single_entry_by_path(
             e.rel_path == clean_target || e.rel_path.ends_with(&format!("/{}", clean_target))
         }).ok_or_else(|| TTZipError::FileNotFound { path: entry_path.clone() })?;
 
-        zip_archive.extract_entry_bytes(found_idx, password.as_deref())
+        let entry = &zip_archive.entries()[found_idx];
+        if entry.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
+            return Err(TTZipError::EngineError {
+                code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+            });
+        }
+
+        zip_archive.extract_entry_bytes(found_idx, secure_pwd.as_deref())
             .map_err(|status| match status {
                 crate::types::TTZipStatus::ErrCorruptHeader => {
                     TTZipError::CorruptHeader { details: "Corrupted entry CRC or payload".to_string(), offset: 0 }

@@ -19,6 +19,7 @@ pub mod md5;
 pub mod password_recovery;
 pub mod recovery;
 pub mod rs_fec;
+pub mod secure_bytes;
 pub mod sevenz_kdf;
 pub mod sha1;
 pub mod sha256;
@@ -48,6 +49,7 @@ pub use recovery::*;
 pub use rs_fec::{
     cauchy, gf8, recovery_record, ReedSolomonEngine, RecoveryRecordInfo,
 };
+pub use secure_bytes::{SecureBytes, ZeroizingCString, ZeroizingString};
 pub use sevenz_kdf::{
     derive_7z_aes_key, password_to_utf16le, AesKdfCache, DerivedKey, MAX_AES_CYCLES_POWER,
     RAW_KEY_CYCLES_POWER,

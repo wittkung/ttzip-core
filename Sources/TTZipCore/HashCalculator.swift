@@ -32,7 +32,7 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
             return String(format: "%08X", crc)
             
         case .sha256:
-            return try computeFileSha256(filePath: filePath)
+            return try Self.computeFileSha256(filePath: filePath)
             
         case .md5:
             return try computeFileHash(path: filePath, algorithm: "md5")
@@ -46,6 +46,12 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
         return try await Task.detached(priority: .userInitiated) {
             try self.computeHashSync(filePath: filePath, type: type)
         }.value
+    }
+    
+    /// Static convenience method for calculating SHA-256 fingerprint of a file via microkernel.
+    @inlinable
+    public static func computeFileSha256(filePath: String) throws -> String {
+        try TTZipCore.computeFileSha256(filePath: filePath)
     }
     
     /// Static convenience method for calculating SHA-256 fingerprint of a file.

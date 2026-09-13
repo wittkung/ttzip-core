@@ -42,6 +42,7 @@ extension ArchiveError {
             return .cancelled
         }
     }
+}
 
 /// Strongly typed status codes exported by Rust `ttzip-engine` FFI ABI.
 public enum RustTTZipStatusCode: Int32, Sendable {
@@ -66,6 +67,7 @@ public enum RustTTZipStatusCode: Int32, Sendable {
     case errPanicCaught = -99
 }
 
+extension ArchiveError {
     /// Maps any generic Swift or UniFFI error to a strongly typed `ArchiveError`.
     public static func from(error: Error) -> ArchiveError {
         if let archiveError = error as? ArchiveError {

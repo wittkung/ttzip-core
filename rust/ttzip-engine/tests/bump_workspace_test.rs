@@ -46,7 +46,7 @@ fn test_bump_workspace_custom_alignment_and_power_of_two() {
 
 #[test]
 fn test_bump_workspace_bottom_alloc_64_byte_alignment() {
-    let ws = BumpWorkspace::new(4096).expect("create workspace");
+    let mut ws = BumpWorkspace::new(4096).expect("create workspace");
 
     let slice = ws
         .alloc_bottom_aligned::<Aligned64Struct>(4, 64)
@@ -66,7 +66,7 @@ fn test_bump_workspace_bottom_alloc_64_byte_alignment() {
 
 #[test]
 fn test_bump_workspace_dual_ended_collision_oom() {
-    let ws = BumpWorkspace::new(1024).expect("create workspace");
+    let mut ws = BumpWorkspace::new(1024).expect("create workspace");
 
     // Allocate 512 bytes bottom
     let _bottom = ws.alloc_bottom::<u8>(512).expect("alloc 512 bottom");
@@ -133,7 +133,7 @@ fn test_bump_workspace_reset_top_retains_static_tables() {
 
 #[test]
 fn test_bump_workspace_zero_sized_allocations() {
-    let ws = BumpWorkspace::new(1024).expect("create workspace");
+    let mut ws = BumpWorkspace::new(1024).expect("create workspace");
     let empty_bottom = ws.alloc_bottom::<u64>(0).expect("empty bottom");
     assert_eq!(empty_bottom.len(), 0);
 

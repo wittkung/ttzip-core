@@ -131,12 +131,15 @@ impl BumpWorkspace {
     ///
     /// The memory is initialized with [`Default::default()`].
     ///
+    /// # Safety Invariants
+    /// Scoped mutably to `&mut self` to guarantee exclusive access to the allocated memory slice
+    /// and prevent aliasing while cursor offsets are updated.
+    ///
     /// # Errors
     /// Returns [`WorkspaceError::OutOfMemory`] if the bottom and top cursors collide.
     /// Returns [`WorkspaceError::InvalidAlignment`] if `align` is not a power of two or < `align_of::<T>()`.
-    #[allow(clippy::mut_from_ref)]
     pub fn alloc_bottom_aligned<T: Default + Clone>(
-        &self,
+        &mut self,
         count: usize,
         align: usize,
     ) -> Result<&mut [T], WorkspaceError> {
@@ -199,15 +202,13 @@ impl BumpWorkspace {
 
     /// Allocates an array slice of type `T` from the bottom-up cursor with natural alignment.
     #[inline]
-    #[allow(clippy::mut_from_ref)]
-    pub fn alloc_bottom<T: Default + Clone>(&self, count: usize) -> Result<&mut [T], WorkspaceError> {
+    pub fn alloc_bottom<T: Default + Clone>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
         self.alloc_bottom_aligned(count, std::mem::align_of::<T>())
     }
 
     /// Allocates a 64-byte aligned scratchpad slice of type `T` from the bottom-up cursor.
     #[inline]
-    #[allow(clippy::mut_from_ref)]
-    pub fn alloc_bottom_64<T: Default + Clone>(&self, count: usize) -> Result<&mut [T], WorkspaceError> {
+    pub fn alloc_bottom_64<T: Default + Clone>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
         let align = std::mem::align_of::<T>().max(CACHE_LINE_ALIGNMENT);
         self.alloc_bottom_aligned(count, align)
     }
@@ -217,8 +218,7 @@ impl BumpWorkspace {
     /// # Errors
     /// Returns [`WorkspaceError::OutOfMemory`] if the top and bottom cursors collide.
     #[inline]
-    #[allow(clippy::mut_from_ref)]
-    pub fn alloc_top(&self, size: usize) -> Result<&mut [u8], WorkspaceError> {
+    pub fn alloc_top(&mut self, size: usize) -> Result<&mut [u8], WorkspaceError> {
         self.alloc_top_aligned(size, 1)
     }
 
@@ -226,8 +226,7 @@ impl BumpWorkspace {
     ///
     /// # Errors
     /// Returns [`WorkspaceError::OutOfMemory`] if the top and bottom cursors collide.
-    #[allow(clippy::mut_from_ref)]
-    pub fn alloc_top_aligned(&self, size: usize, align: usize) -> Result<&mut [u8], WorkspaceError> {
+    pub fn alloc_top_aligned(&mut self, size: usize, align: usize) -> Result<&mut [u8], WorkspaceError> {
         if size == 0 {
             return Ok(&mut []);
         }
@@ -349,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_dual_ended_allocation_and_collision() {
-        let ws = BumpWorkspace::new(1024).expect("create workspace");
+        let mut ws = BumpWorkspace::new(1024).expect("create workspace");
         assert_eq!(ws.total_capacity(), 1024);
         assert_eq!(ws.available_bytes(), 1024);
 
@@ -411,7 +410,7 @@ mod tests {
 
     #[test]
     fn test_alignment_validation() {
-        let ws = BumpWorkspace::new(1024).expect("create workspace");
+        let mut ws = BumpWorkspace::new(1024).expect("create workspace");
         // Non-power of 2 alignment
         let err = ws.alloc_bottom_aligned::<u8>(10, 7).unwrap_err();
         assert!(matches!(err, WorkspaceError::InvalidAlignment { .. }));

@@ -10,18 +10,9 @@
 use super::types::*;
 use crate::types::TTZipStatus;
 
-// MARK: - Constants
-
-#[allow(dead_code)]
-const FSE_MAX_TABLELOG: u32 = 12;
-#[allow(dead_code)]
-const FSE_MAX_SYMBOL_VALUE: u32 = 255;
-#[allow(dead_code)]
-const HUF_MAX_TABLELOG: u32 = 11;
-#[allow(dead_code)]
-const HUF_MAX_SYMBOL_VALUE: u32 = 255;
-#[allow(dead_code)]
-const HUF_WORKSPACE_SIZE_BYTES: usize = 9 * 1024;
+pub const FSE_MAX_TABLELOG: u32 = 14;
+pub const HUF_MAX_TABLELOG: u32 = 12;
+pub const HUF_MAX_SYMBOL_VALUE: u32 = 255;
 
 // MARK: - FSE (Finite State Entropy / tANS)
 
