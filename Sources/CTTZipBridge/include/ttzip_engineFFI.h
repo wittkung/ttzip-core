@@ -258,6 +258,13 @@ typedef void (*UniffiCallbackInterfaceProgressHandlerMethod0)(uint64_t, uint64_t
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0
+typedef void (*UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0)(uint64_t, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
 #ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0
 #define UNIFFI_FFIDEF_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0
 typedef void (*UniffiCallbackInterfaceUniFfiProgressCallbackMethod0)(uint64_t, uint64_t, uint64_t, RustBuffer, int8_t* _Nonnull, 
@@ -271,6 +278,14 @@ typedef struct UniffiVTableCallbackInterfaceProgressHandler {
     UniffiCallbackInterfaceProgressHandlerMethod0 _Nonnull onProgress;
     UniffiCallbackInterfaceFree _Nonnull uniffiFree;
 } UniffiVTableCallbackInterfaceProgressHandler;
+
+#endif
+#ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER
+#define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER
+typedef struct UniffiVTableCallbackInterfaceUniFfiDeviceEventListener {
+    UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0 _Nonnull onDevicesChanged;
+    UniffiCallbackInterfaceFree _Nonnull uniffiFree;
+} UniffiVTableCallbackInterfaceUniFfiDeviceEventListener;
 
 #endif
 #ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK
@@ -1564,6 +1579,11 @@ uint64_t uniffi_ttzip_engine_fn_method_virtualfilestream_size(void*_Nonnull ptr,
 void uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler(UniffiVTableCallbackInterfaceProgressHandler* _Nonnull vtable
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_UNIFFIDEVICEEVENTLISTENER
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_UNIFFIDEVICEEVENTLISTENER
+void uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(UniffiVTableCallbackInterfaceUniFfiDeviceEventListener* _Nonnull vtable
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_UNIFFIPROGRESSCALLBACK
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_INIT_CALLBACK_VTABLE_UNIFFIPROGRESSCALLBACK
 void uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(UniffiVTableCallbackInterfaceUniFfiProgressCallback* _Nonnull vtable
@@ -2153,6 +2173,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_detect_encoding(RustBuffer data, R
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_detect_language(RustBuffer file_path_or_ext, RustBuffer first_line_hint, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_DOWNLOAD_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_DOWNLOAD_FILE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_download_file(RustBuffer device_id, RustBuffer remote_path, RustBuffer local_path, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EVALUATE_FORMULA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EVALUATE_FORMULA
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula(RustBuffer formula, RustBuffer context_cells, RustCallStatus *_Nonnull out_status
@@ -2248,6 +2273,11 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_symbols(RustBuffer code, R
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail(RustBuffer data, uint32_t max_width, uint32_t max_height, RustBuffer filter_type, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_TO_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_TO_DEVICE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_to_device(RustBuffer archive_path, RustBuffer destination_device_id, RustBuffer destination_dir, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_VIDEO_COVER
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_EXTRACT_VIDEO_COVER
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover(RustBuffer data, RustBuffer file_name, RustCallStatus *_Nonnull out_status
@@ -2305,6 +2335,16 @@ void*_Nonnull uniffi_ttzip_engine_fn_func_uniffi_html_service_new(RustCallStatus
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_INSPECT_REMOTE_ARCHIVE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_INSPECT_REMOTE_ARCHIVE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive(RustBuffer device_id, RustBuffer archive_path, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LIST_DEVICE_DIRECTORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LIST_DEVICE_DIRECTORY
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_list_device_directory(RustBuffer device_id, RustBuffer path, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(RustBuffer src, int32_t acceleration, RustCallStatus *_Nonnull out_status
@@ -2338,6 +2378,16 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress(RustBuffer src, Rust
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZVN_DECOMPRESS
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_LZVN_DECOMPRESS
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(RustBuffer src, uint64_t expected_uncompressed_size, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_OPEN_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_OPEN_DEVICE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_open_device(RustBuffer device_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PAIR_WIRELESS_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PAIR_WIRELESS_DEVICE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device(RustBuffer host, uint16_t port, RustBuffer pin, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_PARSE_PLIST_FROM_BYTES
@@ -2415,6 +2465,12 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_sample_viewport(RustBuffer data, R
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_sanitize_html(RustBuffer html_content, RustBuffer policy, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SCAN_USB_DEVICES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SCAN_USB_DEVICES
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SEARCH_PDF_TEXT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SEARCH_PDF_TEXT
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(RustBuffer file_path, RustBuffer query, uint32_t max_results, int8_t case_sensitive, RustCallStatus *_Nonnull out_status
@@ -2440,6 +2496,17 @@ RustBuffer uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_decode(RustBuffer src
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode(RustBuffer src, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_START_HOTPLUG_MONITORING
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_START_HOTPLUG_MONITORING
+void uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring(uint64_t listener, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_STOP_HOTPLUG_MONITORING
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_STOP_HOTPLUG_MONITORING
+void uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SYNTAX_SERVICE_NEW
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_SYNTAX_SERVICE_NEW
 void*_Nonnull uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new(RustCallStatus *_Nonnull out_status
@@ -2449,6 +2516,11 @@ void*_Nonnull uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new(RustCallStat
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_TRANSCODE_TO_UTF8
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_TRANSCODE_TO_UTF8
 RustBuffer uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(RustBuffer data, RustBuffer encoding_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_UPLOAD_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_UPLOAD_FILE
+RustBuffer uniffi_ttzip_engine_fn_func_uniffi_upload_file(RustBuffer device_id, RustBuffer local_path, RustBuffer remote_dir, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_UNIFFI_VAULT_AES_GCM_DECRYPT
@@ -3608,6 +3680,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_detect_language(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_DOWNLOAD_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_DOWNLOAD_FILE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_download_file(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EVALUATE_FORMULA
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EVALUATE_FORMULA
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula(void
@@ -3722,6 +3800,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_TO_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_TO_DEVICE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_VIDEO_COVER
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_EXTRACT_VIDEO_COVER
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover(void
@@ -3788,6 +3872,18 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_html_service_new(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_INSPECT_REMOTE_ARCHIVE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_INSPECT_REMOTE_ARCHIVE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LIST_DEVICE_DIRECTORY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LIST_DEVICE_DIRECTORY
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZ4_COMPRESS_FAST
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(void
@@ -3827,6 +3923,18 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZVN_DECOMPRESS
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_LZVN_DECOMPRESS
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_OPEN_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_OPEN_DEVICE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_open_device(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PAIR_WIRELESS_DEVICE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_PAIR_WIRELESS_DEVICE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device(void
     
 );
 #endif
@@ -3920,6 +4028,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SCAN_USB_DEVICES
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SCAN_USB_DEVICES
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SEARCH_PDF_TEXT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SEARCH_PDF_TEXT
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text(void
@@ -3950,6 +4064,18 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_START_HOTPLUG_MONITORING
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_START_HOTPLUG_MONITORING
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_STOP_HOTPLUG_MONITORING
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_STOP_HOTPLUG_MONITORING
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SYNTAX_SERVICE_NEW
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_SYNTAX_SERVICE_NEW
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new(void
@@ -3959,6 +4085,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_TRANSCODE_TO_UTF8
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_TRANSCODE_TO_UTF8
 uint16_t uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_UPLOAD_FILE
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_UNIFFI_UPLOAD_FILE
+uint16_t uniffi_ttzip_engine_checksum_func_uniffi_upload_file(void
     
 );
 #endif
@@ -5417,6 +5549,12 @@ uint16_t uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty(vo
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_PROGRESSHANDLER_ON_PROGRESS
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_PROGRESSHANDLER_ON_PROGRESS
 uint16_t uniffi_ttzip_engine_checksum_method_progresshandler_on_progress(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIDEVICEEVENTLISTENER_ON_DEVICES_CHANGED
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_METHOD_UNIFFIDEVICEEVENTLISTENER_ON_DEVICES_CHANGED
+uint16_t uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed(void
     
 );
 #endif

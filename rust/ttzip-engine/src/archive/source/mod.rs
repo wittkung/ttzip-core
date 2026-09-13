@@ -12,12 +12,16 @@ pub mod mmap;
 pub mod mmap_advisor;
 pub mod slice_pool;
 pub mod stream;
+#[cfg(feature = "device-android")]
+pub mod device_source;
 
 pub use factory::*;
 pub use mmap::*;
 pub use mmap_advisor::*;
 pub use slice_pool::*;
 pub use stream::*;
+#[cfg(feature = "device-android")]
+pub use device_source::*;
 
 use crate::types::TTZipStatus;
 

@@ -10,7 +10,7 @@ description = "High-throughput native archiving and compression engine for Node.
 crate-type = ["cdylib"]
 
 [dependencies]
-ttzip-engine = { path = "../ttzip-engine", version = "1.0.0" }
+ttzip-engine = { path = "../ttzip-engine", version = "0.1.0" }
 napi = { version = "2.16", default-features = false, features = ["napi4"] }
 napi-derive = "2.16"
 

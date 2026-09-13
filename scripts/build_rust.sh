@@ -290,6 +290,23 @@ if [ -f "${FIRST_DYLIB}" ]; then
         fi
     done
 
+    if [ -z "${UNIFFI_BIN}" ]; then
+        echo "--> [INFO] Building ttzip-bindgen tool..."
+        cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
+        for candidate in \
+            "${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/uniffi-bindgen" \
+            "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
+            "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
+            "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
+            "${RUST_DIR}/target/release/uniffi-bindgen" \
+            "${RUST_DIR}/target/debug/uniffi-bindgen"; do
+            if [ -x "${candidate}" ]; then
+                UNIFFI_BIN="${candidate}"
+                break
+            fi
+        done
+    fi
+
     TMP_UNIFFI_DIR="$(mktemp -d /tmp/ttzip_uniffi.XXXXXX)"
 
     if [ -n "${UNIFFI_BIN}" ]; then
@@ -323,7 +340,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
     else
         (
             cd "${RUST_DIR}"
-            cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+            cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \
@@ -332,14 +349,14 @@ if [ -f "${FIRST_DYLIB}" ]; then
 
             if [ "${SWIFT_ONLY}" = "0" ]; then
                 mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
-                cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
                     --library "${FIRST_DYLIB}" \
                     --language python \
                     --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
                     --metadata-no-deps
 
                 mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-                cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+                cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
                     --library "${FIRST_DYLIB}" \
                     --language kotlin \
                     --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \

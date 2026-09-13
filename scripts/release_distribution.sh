@@ -14,6 +14,20 @@
 
 set -euo pipefail
 
+echo "=============================================================================="
+echo "⚠️  DEPRECATED SCRIPT NOTICE"
+echo "=============================================================================="
+echo "core/scripts/release_distribution.sh is a legacy monolithic release script"
+echo "from before the repository split into ttzip-apple and ttzip-core."
+echo ""
+echo "For macOS Client / DMG / Sparkle release, please run:"
+echo "  cd ../apple && ./scripts/bundle_app.sh && ./scripts/create_dmg_installer.sh"
+echo ""
+echo "For ttzip-core / CLI / SDK release, please run:"
+echo "  cd core && ./scripts/package_local_release.sh"
+echo "=============================================================================="
+exit 1
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WORKSPACE_ROOT}"

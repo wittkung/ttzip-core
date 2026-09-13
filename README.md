@@ -29,6 +29,7 @@
 
 - **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: Deep dive into the Dual-Core UniFFI microkernel, memory safety, APFS CoW rollback, and architectural testing invariants.
 - **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 完整的中文系统架构设计白皮书与工程治理规范。
+- **[Android Device Management & VFS Pipeline Guide](../docs/android_device_management.md)**: Native macOS driver-free MTP 1.1 / ADB SYNC dual-mode communication, Scoped Storage penetration, and Stream-First archive pipeline.
 
 ---
 

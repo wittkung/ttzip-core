@@ -19,7 +19,7 @@ WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WORKSPACE_ROOT}"
 
 # Default parameters
-VERSION="1.0.0"
+VERSION="0.1.0"
 TARGET_ARCH="universal"
 OUTPUT_DIR="${WORKSPACE_ROOT}/dist"
 CHANNEL="direct"
@@ -34,7 +34,7 @@ DMG_SHA256=""
 usage() {
     echo "Usage: ./scripts/package_local_release.sh [OPTIONS]"
     echo "Options:"
-    echo "  --version <ver>      Release version string (default: 1.0.0)"
+    echo "  --version <ver>      Release version string (default: 0.1.0)"
     echo "  --arch <arch>        Target architecture: universal, arm64, x86_64"
     echo "  --channel <channel>  Target channel: direct, mas, steam, community (default: direct)"
     echo "  --output-dir <path>  Output directory for artifacts (default: ./dist)"
@@ -181,8 +181,8 @@ generate_single_formula() {
 
 class ${class_name} < Formula
   desc "High-performance native archive and compression CLI utility for macOS"
-  homepage "https://github.com/wittkung/TTZip"
-  url "https://github.com/wittkung/TTZip/releases/download/v${VERSION}/${TARBALL_NAME}"
+  homepage "https://github.com/wittkung/ttzip-core"
+  url "https://github.com/wittkung/ttzip-core/releases/download/v${VERSION}/${TARBALL_NAME}"
   sha256 "${CLI_SHA256}"
   license :cannot_be_redistributed
 

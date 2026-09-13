@@ -1,0 +1,21 @@
+[package]
+name = "ttzip-device-android"
+version = "0.1.0"
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
+edition = "2021"
+license = "BSD-3-Clause OR Apache-2.0"
+description = "TTZip Android hardware communication and storage driver subsystem"
+
+[dependencies]
+nusb = "0.2.7"
+adb_client = "3.2.3"
+mdns-sd = "0.19.2"
+zeroize = { version = "1.8", features = ["derive"] }
+tokio = { version = "1.43", features = ["sync", "rt", "time", "macros"] }
+thiserror = "2.0"
+tracing = "0.1"
+bytes = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0"

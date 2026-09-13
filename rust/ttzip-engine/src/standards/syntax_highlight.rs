@@ -66,7 +66,11 @@ impl SupportedLanguage {
             Self::Swift => Some(tree_sitter_swift::language()),
             Self::C | Self::Cpp => Some(tree_sitter_c::language()),
             Self::Python => Some(tree_sitter_python::language()),
-            Self::JavaScript => Some(tree_sitter_javascript::language()),
+            Self::JavaScript => {
+                let ptr = unsafe { (tree_sitter_javascript::LANGUAGE.into_raw())() };
+                let lang: tree_sitter::Language = unsafe { std::mem::transmute(ptr) };
+                Some(lang)
+            }
             Self::TypeScript => Some(tree_sitter_typescript::language_typescript()),
             Self::Json => Some(tree_sitter_json::language()),
             Self::Markdown => Some(tree_sitter_md::language()),
