@@ -20,6 +20,8 @@ pub mod codecs;
 pub mod crypto;
 pub mod deflate_dual;
 pub mod demuxer;
+#[cfg(feature = "device-android")]
+pub mod device_android;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
@@ -84,6 +86,8 @@ pub use codecs::*;
 pub use crypto::*;
 pub use deflate_dual::*;
 pub use demuxer::*;
+#[cfg(feature = "device-android")]
+pub use device_android::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;

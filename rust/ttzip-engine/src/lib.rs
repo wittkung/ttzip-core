@@ -35,6 +35,8 @@ pub mod media;
 pub mod memory;
 pub mod office;
 pub mod pdf;
+#[cfg(feature = "device-android")]
+pub mod pipeline;
 pub mod platform;
 pub mod runtime;
 pub mod security;

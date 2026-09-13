@@ -194,7 +194,8 @@ mkdir -p "${SLICE_DIR}/Headers" "${XCFRAMEWORK_DIR}/macos-arm64/Headers"
 
 if [ "${BUILD_NATIVE_ONLY}" = "1" ]; then
     echo "--> [INFO] Fast Path: Building native architecture only (${HOST_ARCH} ${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${EFFECTIVE_TARGET_DIR}/${HOST_TARGET}/${BUILD_MODE}/libttzip_engine.a" ]; then
@@ -223,10 +224,11 @@ else
     done
 
     echo "--> [INFO] Building ttzip-engine for arm64 & x86_64 via unified Cargo Jobserver (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib --bin uniffi-bindgen \
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --lib \
         --target "aarch64-apple-darwin" \
         --target "x86_64-apple-darwin" \
         ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
 
 
     BUILT_ARM64_LIB="${EFFECTIVE_TARGET_DIR}/aarch64-apple-darwin/${BUILD_MODE}/libttzip_engine.a"
@@ -324,7 +326,7 @@ if [ "${FORCE_REBUILD}" = "1" ] \
     else
         (
             cd "${RUST_DIR}"
-            cargo run ${OFFLINE_FLAG} --bin uniffi-bindgen --features full generate \
+            cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
                 --library "${FIRST_DYLIB}" \
                 --language swift \
                 --out-dir "${TMP_UNIFFI_DIR}" \

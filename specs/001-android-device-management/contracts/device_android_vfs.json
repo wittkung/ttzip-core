@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AndroidVfsNodeSchema",
+  "description": "JSON Schema validating Android Virtual File System (VFS) directory entries and node metadata",
+  "type": "object",
+  "required": [
+    "path",
+    "name",
+    "entryType",
+    "sizeBytes",
+    "modifiedTimestamp",
+    "isRestricted"
+  ],
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "entryType": {
+      "type": "string",
+      "enum": [
+        "File",
+        "Directory",
+        "Symlink",
+        "RestrictedDirectory"
+      ]
+    },
+    "sizeBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "modifiedTimestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "objectHandle": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "isRestricted": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

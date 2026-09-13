@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AndroidDeviceApiSchema",
+  "description": "JSON Schema validating Android Device management metadata and device status models",
+  "type": "object",
+  "required": [
+    "deviceId",
+    "displayName",
+    "vendorId",
+    "productId",
+    "serialNumber",
+    "connectionType",
+    "status",
+    "storagePartitions"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "vendorId": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "productId": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "serialNumber": {
+      "type": "string"
+    },
+    "connectionType": {
+      "type": "string",
+      "enum": [
+        "UsbMtp",
+        "UsbAdb",
+        "WirelessAdb"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Connecting",
+        "SeizingInterface",
+        "Connected",
+        "Stalled",
+        "Disconnected",
+        "Error"
+      ]
+    },
+    "storagePartitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "partitionId",
+          "displayName",
+          "totalBytes",
+          "availableBytes",
+          "rootPath",
+          "isRemovable"
+        ],
+        "properties": {
+          "partitionId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rootPath": {
+            "type": "string"
+          },
+          "isRemovable": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

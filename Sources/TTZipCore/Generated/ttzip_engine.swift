@@ -8092,6 +8092,232 @@ public func FfiConverterTypeUniFFIAeadResult_lower(_ value: UniFfiAeadResult) ->
 
 
 /**
+ * UniFFI record representing an attached Android hardware or network device.
+ */
+public struct UniFfiAndroidDevice {
+    public var deviceId: String
+    public var displayName: String
+    public var vendorId: UInt16
+    public var productId: UInt16
+    public var serialNumber: String
+    public var connectionType: UniFfiConnectionType
+    public var status: UniFfiDeviceStatus
+    public var storagePartitions: [UniFfiStoragePartition]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(deviceId: String, displayName: String, vendorId: UInt16, productId: UInt16, serialNumber: String, connectionType: UniFfiConnectionType, status: UniFfiDeviceStatus, storagePartitions: [UniFfiStoragePartition]) {
+        self.deviceId = deviceId
+        self.displayName = displayName
+        self.vendorId = vendorId
+        self.productId = productId
+        self.serialNumber = serialNumber
+        self.connectionType = connectionType
+        self.status = status
+        self.storagePartitions = storagePartitions
+    }
+}
+
+
+
+extension UniFfiAndroidDevice: Equatable, Hashable {
+    public static func ==(lhs: UniFfiAndroidDevice, rhs: UniFfiAndroidDevice) -> Bool {
+        if lhs.deviceId != rhs.deviceId {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.vendorId != rhs.vendorId {
+            return false
+        }
+        if lhs.productId != rhs.productId {
+            return false
+        }
+        if lhs.serialNumber != rhs.serialNumber {
+            return false
+        }
+        if lhs.connectionType != rhs.connectionType {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        if lhs.storagePartitions != rhs.storagePartitions {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(deviceId)
+        hasher.combine(displayName)
+        hasher.combine(vendorId)
+        hasher.combine(productId)
+        hasher.combine(serialNumber)
+        hasher.combine(connectionType)
+        hasher.combine(status)
+        hasher.combine(storagePartitions)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAndroidDevice: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAndroidDevice {
+        return
+            try UniFfiAndroidDevice(
+                deviceId: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                vendorId: FfiConverterUInt16.read(from: &buf), 
+                productId: FfiConverterUInt16.read(from: &buf), 
+                serialNumber: FfiConverterString.read(from: &buf), 
+                connectionType: FfiConverterTypeUniFFIConnectionType.read(from: &buf), 
+                status: FfiConverterTypeUniFFIDeviceStatus.read(from: &buf), 
+                storagePartitions: FfiConverterSequenceTypeUniFFIStoragePartition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiAndroidDevice, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.deviceId, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterUInt16.write(value.vendorId, into: &buf)
+        FfiConverterUInt16.write(value.productId, into: &buf)
+        FfiConverterString.write(value.serialNumber, into: &buf)
+        FfiConverterTypeUniFFIConnectionType.write(value.connectionType, into: &buf)
+        FfiConverterTypeUniFFIDeviceStatus.write(value.status, into: &buf)
+        FfiConverterSequenceTypeUniFFIStoragePartition.write(value.storagePartitions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAndroidDevice_lift(_ buf: RustBuffer) throws -> UniFfiAndroidDevice {
+    return try FfiConverterTypeUniFFIAndroidDevice.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAndroidDevice_lower(_ value: UniFfiAndroidDevice) -> RustBuffer {
+    return FfiConverterTypeUniFFIAndroidDevice.lower(value)
+}
+
+
+/**
+ * UniFFI record representing a remote VFS node in the Android file hierarchy.
+ */
+public struct UniFfiAndroidVfsNode {
+    public var path: String
+    public var name: String
+    public var entryType: UniFfiVfsEntryType
+    public var sizeBytes: UInt64
+    public var modifiedTimestamp: UInt64
+    public var objectHandle: UInt32?
+    public var isRestricted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, name: String, entryType: UniFfiVfsEntryType, sizeBytes: UInt64, modifiedTimestamp: UInt64, objectHandle: UInt32?, isRestricted: Bool) {
+        self.path = path
+        self.name = name
+        self.entryType = entryType
+        self.sizeBytes = sizeBytes
+        self.modifiedTimestamp = modifiedTimestamp
+        self.objectHandle = objectHandle
+        self.isRestricted = isRestricted
+    }
+}
+
+
+
+extension UniFfiAndroidVfsNode: Equatable, Hashable {
+    public static func ==(lhs: UniFfiAndroidVfsNode, rhs: UniFfiAndroidVfsNode) -> Bool {
+        if lhs.path != rhs.path {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.entryType != rhs.entryType {
+            return false
+        }
+        if lhs.sizeBytes != rhs.sizeBytes {
+            return false
+        }
+        if lhs.modifiedTimestamp != rhs.modifiedTimestamp {
+            return false
+        }
+        if lhs.objectHandle != rhs.objectHandle {
+            return false
+        }
+        if lhs.isRestricted != rhs.isRestricted {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(path)
+        hasher.combine(name)
+        hasher.combine(entryType)
+        hasher.combine(sizeBytes)
+        hasher.combine(modifiedTimestamp)
+        hasher.combine(objectHandle)
+        hasher.combine(isRestricted)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIAndroidVfsNode: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiAndroidVfsNode {
+        return
+            try UniFfiAndroidVfsNode(
+                path: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                entryType: FfiConverterTypeUniFFIVfsEntryType.read(from: &buf), 
+                sizeBytes: FfiConverterUInt64.read(from: &buf), 
+                modifiedTimestamp: FfiConverterUInt64.read(from: &buf), 
+                objectHandle: FfiConverterOptionUInt32.read(from: &buf), 
+                isRestricted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiAndroidVfsNode, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterTypeUniFFIVfsEntryType.write(value.entryType, into: &buf)
+        FfiConverterUInt64.write(value.sizeBytes, into: &buf)
+        FfiConverterUInt64.write(value.modifiedTimestamp, into: &buf)
+        FfiConverterOptionUInt32.write(value.objectHandle, into: &buf)
+        FfiConverterBool.write(value.isRestricted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAndroidVfsNode_lift(_ buf: RustBuffer) throws -> UniFfiAndroidVfsNode {
+    return try FfiConverterTypeUniFFIAndroidVfsNode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIAndroidVfsNode_lower(_ value: UniFfiAndroidVfsNode) -> RustBuffer {
+    return FfiConverterTypeUniFFIAndroidVfsNode.lower(value)
+}
+
+
+/**
  * Single release entry in an Appcast update feed.
  */
 public struct UniFfiAppcastItem {
@@ -17857,6 +18083,107 @@ public func FfiConverterTypeUniFFISmartExtractDecision_lower(_ value: UniFfiSmar
 
 
 /**
+ * UniFFI record describing an individual storage volume or SD card partition.
+ */
+public struct UniFfiStoragePartition {
+    public var partitionId: String
+    public var displayName: String
+    public var totalBytes: UInt64
+    public var availableBytes: UInt64
+    public var rootPath: String
+    public var isRemovable: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(partitionId: String, displayName: String, totalBytes: UInt64, availableBytes: UInt64, rootPath: String, isRemovable: Bool) {
+        self.partitionId = partitionId
+        self.displayName = displayName
+        self.totalBytes = totalBytes
+        self.availableBytes = availableBytes
+        self.rootPath = rootPath
+        self.isRemovable = isRemovable
+    }
+}
+
+
+
+extension UniFfiStoragePartition: Equatable, Hashable {
+    public static func ==(lhs: UniFfiStoragePartition, rhs: UniFfiStoragePartition) -> Bool {
+        if lhs.partitionId != rhs.partitionId {
+            return false
+        }
+        if lhs.displayName != rhs.displayName {
+            return false
+        }
+        if lhs.totalBytes != rhs.totalBytes {
+            return false
+        }
+        if lhs.availableBytes != rhs.availableBytes {
+            return false
+        }
+        if lhs.rootPath != rhs.rootPath {
+            return false
+        }
+        if lhs.isRemovable != rhs.isRemovable {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(partitionId)
+        hasher.combine(displayName)
+        hasher.combine(totalBytes)
+        hasher.combine(availableBytes)
+        hasher.combine(rootPath)
+        hasher.combine(isRemovable)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIStoragePartition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiStoragePartition {
+        return
+            try UniFfiStoragePartition(
+                partitionId: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                totalBytes: FfiConverterUInt64.read(from: &buf), 
+                availableBytes: FfiConverterUInt64.read(from: &buf), 
+                rootPath: FfiConverterString.read(from: &buf), 
+                isRemovable: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiStoragePartition, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.partitionId, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterUInt64.write(value.totalBytes, into: &buf)
+        FfiConverterUInt64.write(value.availableBytes, into: &buf)
+        FfiConverterString.write(value.rootPath, into: &buf)
+        FfiConverterBool.write(value.isRemovable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStoragePartition_lift(_ buf: RustBuffer) throws -> UniFfiStoragePartition {
+    return try FfiConverterTypeUniFFIStoragePartition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStoragePartition_lower(_ value: UniFfiStoragePartition) -> RustBuffer {
+    return FfiConverterTypeUniFFIStoragePartition.lower(value)
+}
+
+
+/**
  * 8-bit RGBA color representation for subtitle styling across FFI boundary.
  */
 public struct UniFfiSubtitleColor {
@@ -19555,6 +19882,131 @@ public func FfiConverterTypeUniFFITransactionDiff_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeUniFFITransactionDiff_lower(_ value: UniFfiTransactionDiff) -> RustBuffer {
     return FfiConverterTypeUniFFITransactionDiff.lower(value)
+}
+
+
+/**
+ * UniFFI record representing an ongoing or completed transfer job.
+ */
+public struct UniFfiTransferJob {
+    public var jobId: String
+    public var direction: UniFfiTransferDirection
+    public var sourcePath: String
+    public var destinationPath: String
+    public var totalBytes: UInt64
+    public var transferredBytes: UInt64
+    public var currentSpeedBps: UInt64
+    public var status: UniFfiTransferStatus
+    public var errorMessage: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(jobId: String, direction: UniFfiTransferDirection, sourcePath: String, destinationPath: String, totalBytes: UInt64, transferredBytes: UInt64, currentSpeedBps: UInt64, status: UniFfiTransferStatus, errorMessage: String?) {
+        self.jobId = jobId
+        self.direction = direction
+        self.sourcePath = sourcePath
+        self.destinationPath = destinationPath
+        self.totalBytes = totalBytes
+        self.transferredBytes = transferredBytes
+        self.currentSpeedBps = currentSpeedBps
+        self.status = status
+        self.errorMessage = errorMessage
+    }
+}
+
+
+
+extension UniFfiTransferJob: Equatable, Hashable {
+    public static func ==(lhs: UniFfiTransferJob, rhs: UniFfiTransferJob) -> Bool {
+        if lhs.jobId != rhs.jobId {
+            return false
+        }
+        if lhs.direction != rhs.direction {
+            return false
+        }
+        if lhs.sourcePath != rhs.sourcePath {
+            return false
+        }
+        if lhs.destinationPath != rhs.destinationPath {
+            return false
+        }
+        if lhs.totalBytes != rhs.totalBytes {
+            return false
+        }
+        if lhs.transferredBytes != rhs.transferredBytes {
+            return false
+        }
+        if lhs.currentSpeedBps != rhs.currentSpeedBps {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        if lhs.errorMessage != rhs.errorMessage {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(jobId)
+        hasher.combine(direction)
+        hasher.combine(sourcePath)
+        hasher.combine(destinationPath)
+        hasher.combine(totalBytes)
+        hasher.combine(transferredBytes)
+        hasher.combine(currentSpeedBps)
+        hasher.combine(status)
+        hasher.combine(errorMessage)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITransferJob: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiTransferJob {
+        return
+            try UniFfiTransferJob(
+                jobId: FfiConverterString.read(from: &buf), 
+                direction: FfiConverterTypeUniFFITransferDirection.read(from: &buf), 
+                sourcePath: FfiConverterString.read(from: &buf), 
+                destinationPath: FfiConverterString.read(from: &buf), 
+                totalBytes: FfiConverterUInt64.read(from: &buf), 
+                transferredBytes: FfiConverterUInt64.read(from: &buf), 
+                currentSpeedBps: FfiConverterUInt64.read(from: &buf), 
+                status: FfiConverterTypeUniFFITransferStatus.read(from: &buf), 
+                errorMessage: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiTransferJob, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.jobId, into: &buf)
+        FfiConverterTypeUniFFITransferDirection.write(value.direction, into: &buf)
+        FfiConverterString.write(value.sourcePath, into: &buf)
+        FfiConverterString.write(value.destinationPath, into: &buf)
+        FfiConverterUInt64.write(value.totalBytes, into: &buf)
+        FfiConverterUInt64.write(value.transferredBytes, into: &buf)
+        FfiConverterUInt64.write(value.currentSpeedBps, into: &buf)
+        FfiConverterTypeUniFFITransferStatus.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.errorMessage, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferJob_lift(_ buf: RustBuffer) throws -> UniFfiTransferJob {
+    return try FfiConverterTypeUniFFITransferJob.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferJob_lower(_ value: UniFfiTransferJob) -> RustBuffer {
+    return FfiConverterTypeUniFFITransferJob.lower(value)
 }
 
 
@@ -22925,6 +23377,80 @@ extension UniFfiCompressionCodec: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * UniFFI-exported connection channel type.
+ */
+
+public enum UniFfiConnectionType {
+    
+    case usbMtp
+    case usbAdb
+    case wirelessAdb
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIConnectionType: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiConnectionType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiConnectionType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .usbMtp
+        
+        case 2: return .usbAdb
+        
+        case 3: return .wirelessAdb
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiConnectionType, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .usbMtp:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .usbAdb:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .wirelessAdb:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIConnectionType_lift(_ buf: RustBuffer) throws -> UniFfiConnectionType {
+    return try FfiConverterTypeUniFFIConnectionType.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIConnectionType_lower(_ value: UniFfiConnectionType) -> RustBuffer {
+    return FfiConverterTypeUniFFIConnectionType.lower(value)
+}
+
+
+
+extension UniFfiConnectionType: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Strongly typed corpus types for benchmark dataset selection.
  */
 
@@ -23502,6 +24028,101 @@ public func FfiConverterTypeUniFFIDeltaFormat_lower(_ value: UniFfiDeltaFormat) 
 
 
 extension UniFfiDeltaFormat: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * UniFFI-exported device lifecycle status.
+ */
+
+public enum UniFfiDeviceStatus {
+    
+    case connecting
+    case seizingInterface
+    case connected
+    case stalled
+    case disconnected
+    case error
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDeviceStatus: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDeviceStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDeviceStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .connecting
+        
+        case 2: return .seizingInterface
+        
+        case 3: return .connected
+        
+        case 4: return .stalled
+        
+        case 5: return .disconnected
+        
+        case 6: return .error
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDeviceStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .connecting:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .seizingInterface:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .connected:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .stalled:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .disconnected:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .error:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeviceStatus_lift(_ buf: RustBuffer) throws -> UniFfiDeviceStatus {
+    return try FfiConverterTypeUniFFIDeviceStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDeviceStatus_lower(_ value: UniFfiDeviceStatus) -> RustBuffer {
+    return FfiConverterTypeUniFFIDeviceStatus.lower(value)
+}
+
+
+
+extension UniFfiDeviceStatus: Equatable, Hashable {}
 
 
 
@@ -25162,6 +25783,256 @@ extension UniFfiSystemError: Foundation.LocalizedError {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * UniFFI-exported file transfer pipeline direction.
+ */
+
+public enum UniFfiTransferDirection {
+    
+    case macToAndroid
+    case androidToMac
+    case directPipelineExtract
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITransferDirection: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiTransferDirection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiTransferDirection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .macToAndroid
+        
+        case 2: return .androidToMac
+        
+        case 3: return .directPipelineExtract
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiTransferDirection, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .macToAndroid:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .androidToMac:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .directPipelineExtract:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferDirection_lift(_ buf: RustBuffer) throws -> UniFfiTransferDirection {
+    return try FfiConverterTypeUniFFITransferDirection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferDirection_lower(_ value: UniFfiTransferDirection) -> RustBuffer {
+    return FfiConverterTypeUniFFITransferDirection.lower(value)
+}
+
+
+
+extension UniFfiTransferDirection: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * UniFFI-exported transfer execution status.
+ */
+
+public enum UniFfiTransferStatus {
+    
+    case queued
+    case transferring
+    case paused
+    case cancelling
+    case completed
+    case failed
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFITransferStatus: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiTransferStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiTransferStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .queued
+        
+        case 2: return .transferring
+        
+        case 3: return .paused
+        
+        case 4: return .cancelling
+        
+        case 5: return .completed
+        
+        case 6: return .failed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiTransferStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .queued:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .transferring:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .paused:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .cancelling:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .completed:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferStatus_lift(_ buf: RustBuffer) throws -> UniFfiTransferStatus {
+    return try FfiConverterTypeUniFFITransferStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFITransferStatus_lower(_ value: UniFfiTransferStatus) -> RustBuffer {
+    return FfiConverterTypeUniFFITransferStatus.lower(value)
+}
+
+
+
+extension UniFfiTransferStatus: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * UniFFI-exported VFS entry category.
+ */
+
+public enum UniFfiVfsEntryType {
+    
+    case file
+    case directory
+    case symlink
+    case restrictedDirectory
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIVfsEntryType: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiVfsEntryType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiVfsEntryType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .file
+        
+        case 2: return .directory
+        
+        case 3: return .symlink
+        
+        case 4: return .restrictedDirectory
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiVfsEntryType, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .file:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .directory:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .symlink:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .restrictedDirectory:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVfsEntryType_lift(_ buf: RustBuffer) throws -> UniFfiVfsEntryType {
+    return try FfiConverterTypeUniFFIVfsEntryType.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIVfsEntryType_lower(_ value: UniFfiVfsEntryType) -> RustBuffer {
+    return FfiConverterTypeUniFFIVfsEntryType.lower(value)
+}
+
+
+
+extension UniFfiVfsEntryType: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Video track codec classifications.
  */
 
@@ -25871,6 +26742,109 @@ fileprivate struct FfiConverterCallbackInterfaceProgressHandler {
 #endif
 extension FfiConverterCallbackInterfaceProgressHandler : FfiConverter {
     typealias SwiftType = ProgressHandler
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+
+
+/**
+ * Cross-language callback interface notified upon physical USB hardware change.
+ */
+public protocol UniFfiDeviceEventListener : AnyObject {
+    
+    /**
+     * Invoked whenever a USB device matching MTP/ADB is attached or detached.
+     */
+    func onDevicesChanged() 
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceUniFFIDeviceEventListener {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    nonisolated(unsafe) static var vtable: UniffiVTableCallbackInterfaceUniFfiDeviceEventListener = UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(
+        onDevicesChanged: { (
+            uniffiHandle: UInt64,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceUniFfiDeviceEventListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onDevicesChanged(
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterCallbackInterfaceUniFfiDeviceEventListener.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface UniFFIDeviceEventListener: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitUniFFIDeviceEventListener() {
+    uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(&UniffiCallbackInterfaceUniFFIDeviceEventListener.vtable)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfaceUniFfiDeviceEventListener {
+    nonisolated(unsafe) fileprivate static var handleMap = UniffiHandleMap<UniFfiDeviceEventListener>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfaceUniFfiDeviceEventListener : FfiConverter {
+    typealias SwiftType = UniFfiDeviceEventListener
     typealias FfiType = UInt64
 
 #if swift(>=5.8)
@@ -26885,6 +27859,56 @@ fileprivate struct FfiConverterSequenceTypePathSuggestionItem: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeUniFFIAndroidDevice: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiAndroidDevice]
+
+    public static func write(_ value: [UniFfiAndroidDevice], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIAndroidDevice.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiAndroidDevice] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiAndroidDevice]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIAndroidDevice.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUniFFIAndroidVfsNode: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiAndroidVfsNode]
+
+    public static func write(_ value: [UniFfiAndroidVfsNode], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIAndroidVfsNode.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiAndroidVfsNode] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiAndroidVfsNode]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIAndroidVfsNode.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeUniFFIAppcastItem: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiAppcastItem]
 
@@ -27702,6 +28726,31 @@ fileprivate struct FfiConverterSequenceTypeUniFFISheetRow: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeUniFFISheetRow.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUniFFIStoragePartition: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiStoragePartition]
+
+    public static func write(_ value: [UniFfiStoragePartition], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIStoragePartition.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiStoragePartition] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiStoragePartition]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIStoragePartition.read(from: &buf))
         }
         return seq
     }
@@ -29335,6 +30384,18 @@ public func uniffiDetectLanguage(filePathOrExt: String, firstLineHint: String?) 
 })
 }
 /**
+ * Downloads a remote file from Android device storage to local macOS path.
+ */
+public func uniffiDownloadFile(deviceId: String, remotePath: String, localPath: String)throws  -> UniFfiTransferJob {
+    return try  FfiConverterTypeUniFFITransferJob.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_download_file(
+        FfiConverterString.lower(deviceId),
+        FfiConverterString.lower(remotePath),
+        FfiConverterString.lower(localPath),$0
+    )
+})
+}
+/**
  * Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
  */
 public func uniffiEvaluateFormula(formula: String, contextCells: [UniFfiCell]?)throws  -> UniFfiCellValue {
@@ -29544,6 +30605,21 @@ public func uniffiExtractThumbnail(data: Data, maxWidth: UInt32, maxHeight: UInt
 })
 }
 /**
+ * Directly extracts a local archive to remote Android device directory via streaming pipeline.
+ *
+ * Enforces Stream-First Invariant: reads archive chunks and streams them directly into
+ * `DeviceStorageDriver::send_object`, producing 0 bytes intermediate staging in `/tmp`.
+ */
+public func uniffiExtractToDevice(archivePath: String, destinationDeviceId: String, destinationDir: String)throws  -> UniFfiTransferJob {
+    return try  FfiConverterTypeUniFFITransferJob.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_extract_to_device(
+        FfiConverterString.lower(archivePath),
+        FfiConverterString.lower(destinationDeviceId),
+        FfiConverterString.lower(destinationDir),$0
+    )
+})
+}
+/**
  * Extracts raw embedded poster or cover art image bytes from in-memory video bytes.
  */
 public func uniffiExtractVideoCover(data: Data, fileName: String?)throws  -> Data {
@@ -29666,6 +30742,28 @@ public func uniffiHtmlServiceNew() -> UniFfiHtmlService {
 })
 }
 /**
+ * Inspects a remote archive on the Android device via zero-download partial reads.
+ */
+public func uniffiInspectRemoteArchive(deviceId: String, archivePath: String)throws  -> [UniFfiAndroidVfsNode] {
+    return try  FfiConverterSequenceTypeUniFFIAndroidVfsNode.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive(
+        FfiConverterString.lower(deviceId),
+        FfiConverterString.lower(archivePath),$0
+    )
+})
+}
+/**
+ * Traverses and lists directory entries on the remote Android storage volume.
+ */
+public func uniffiListDeviceDirectory(deviceId: String, path: String)throws  -> [UniFfiAndroidVfsNode] {
+    return try  FfiConverterSequenceTypeUniFFIAndroidVfsNode.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_list_device_directory(
+        FfiConverterString.lower(deviceId),
+        FfiConverterString.lower(path),$0
+    )
+})
+}
+/**
  * Compresses buffer with LZ4 Fast mode (acceleration 1..100).
  */
 public func uniffiLz4CompressFast(src: Data, acceleration: Int32)throws  -> Data {
@@ -29737,6 +30835,31 @@ public func uniffiLzvnDecompress(src: Data, expectedUncompressedSize: UInt64)thr
     uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
         FfiConverterData.lower(src),
         FfiConverterUInt64.lower(expectedUncompressedSize),$0
+    )
+})
+}
+/**
+ * Establishes communication session with the requested Android device.
+ */
+public func uniffiOpenDevice(deviceId: String)throws  -> UniFfiAndroidDevice {
+    return try  FfiConverterTypeUniFFIAndroidDevice.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_open_device(
+        FfiConverterString.lower(deviceId),$0
+    )
+})
+}
+/**
+ * Initiates TLS 1.3 SPAKE2 wireless pairing handshake with an Android device.
+ *
+ * Validates 6-digit numeric PIN, computes PAKE shared secret, exchanges encrypted
+ * peer certificates, and registers an active wireless ADB storage driver upon success.
+ */
+public func uniffiPairWirelessDevice(host: String, port: UInt16, pin: String)throws  -> UniFfiAndroidDevice {
+    return try  FfiConverterTypeUniFFIAndroidDevice.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device(
+        FfiConverterString.lower(host),
+        FfiConverterUInt16.lower(port),
+        FfiConverterString.lower(pin),$0
     )
 })
 }
@@ -29907,6 +31030,15 @@ public func uniffiSanitizeHtml(htmlContent: String, policy: UniFfiHtmlSanitizati
 })
 }
 /**
+ * Scans connected USB interfaces and detects Android devices matching MTP or ADB descriptors.
+ */
+public func uniffiScanUsbDevices()throws  -> [UniFfiAndroidDevice] {
+    return try  FfiConverterSequenceTypeUniFFIAndroidDevice.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices($0
+    )
+})
+}
+/**
  * Searches for full-text occurrences of a query string across all pages of a PDF file on disk.
  */
 public func uniffiSearchPdfText(filePath: String, query: String, maxResults: UInt32, caseSensitive: Bool)throws  -> [UniFfiPdfSearchResult] {
@@ -29960,6 +31092,23 @@ public func uniffiSnappyFrameEncode(src: Data)throws  -> Data {
 })
 }
 /**
+ * Starts the event-driven macOS IOKit notification runloop and registers the Swift listener.
+ */
+public func uniffiStartHotplugMonitoring(listener: UniFfiDeviceEventListener)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring(
+        FfiConverterCallbackInterfaceUniFfiDeviceEventListener.lower(listener),$0
+    )
+}
+}
+/**
+ * Stops active hardware hotplug monitoring.
+ */
+public func uniffiStopHotplugMonitoring() {try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring($0
+    )
+}
+}
+/**
  * Instantiates a new thread-safe syntax metadata service.
  */
 public func uniffiSyntaxServiceNew() -> UniFfiSyntaxService {
@@ -29976,6 +31125,18 @@ public func uniffiTranscodeToUtf8(data: Data, encodingName: String)throws  -> St
     uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8(
         FfiConverterData.lower(data),
         FfiConverterString.lower(encodingName),$0
+    )
+})
+}
+/**
+ * Uploads a local file from host macOS to remote Android destination directory.
+ */
+public func uniffiUploadFile(deviceId: String, localPath: String, remoteDir: String)throws  -> UniFfiTransferJob {
+    return try  FfiConverterTypeUniFFITransferJob.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_upload_file(
+        FfiConverterString.lower(deviceId),
+        FfiConverterString.lower(localPath),
+        FfiConverterString.lower(remoteDir),$0
     )
 })
 }
@@ -30768,6 +31929,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_download_file() != 49260) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30825,6 +31989,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device() != 48815) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover() != 26142) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30858,6 +32025,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_html_service_new() != 57279) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive() != 9315) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30877,6 +32050,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device() != 8415) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes() != 33550) {
@@ -30924,6 +32103,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html() != 8664) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices() != 40150) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -30939,10 +32121,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring() != 36397) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring() != 37312) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new() != 20108) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_upload_file() != 934) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738) {
@@ -31674,11 +32865,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360) {
         return InitializationResult.apiChecksumMismatch
     }
 
     uniffiCallbackInitProgressHandler()
+    uniffiCallbackInitUniFFIDeviceEventListener()
     uniffiCallbackInitUniFFIProgressCallback()
     return InitializationResult.ok
 }()

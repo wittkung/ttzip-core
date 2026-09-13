@@ -21,6 +21,7 @@ let package = Package(
     products: [
         .library(
             name: "TTZipCore",
+            type: .dynamic,
             targets: ["TTZipCore"]
         ),
         .library(
@@ -84,6 +85,14 @@ let package = Package(
             resources: [
                 .copy("Fixtures")
             ],
+            swiftSettings: coreSwiftSettings
+        ),
+        .testTarget(
+            name: "TTZipCoreTests",
+            dependencies: [
+                "TTZipCore"
+            ],
+            path: "Tests/TTZipCoreTests",
             swiftSettings: coreSwiftSettings
         )
     ]

@@ -1,14 +1,16 @@
 [workspace]
 members = [
     "ttzip-engine",
+    "ttzip-bindgen",
     "ttzip-tui",
     "ttzip-python",
     "ttzip-node",
+    "crates/ttzip-device-android",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "1.0.0"
+version = "0.1.0"
 authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause OR Apache-2.0"
 repository = "https://github.com/wittkung/ttzip-core"
@@ -20,9 +22,9 @@ categories = ["compression", "command-line-utilities", "filesystem"]
 
 [profile.release]
 opt-level = 3
-lto = "thin"
-codegen-units = 16
-panic = "unwind"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 strip = true
 
 
