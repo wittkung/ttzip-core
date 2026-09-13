@@ -44,7 +44,7 @@ show_help() {
     echo "Options:"
     echo "  -j, --jobs <N>       Maximum number of concurrent worker processes (default: ${DEFAULT_JOBS})"
     echo "  --bail               Stop immediately on first failed stage"
-    echo "  -s, --stage <name|idx> Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite, office-suite, html-suite, video-suite, system-suite)"
+    echo "  -s, --stage <name|idx> Execute only the specified stage (loc-gate, dag-gate, uniffi-gate, sdk-gate, swift-facade, performance, rust-industrial, sevenz-suite, zip-suite, tar-suite, deflate-defense, libarchive-suite, lz4-suite, lzma2-suite, xz-suite, brotli-suite, snappy-suite, lzfse-suite, bzip2-suite, libdeflate-suite, blake3-suite, ed25519-suite, mmap-suite, uniffi-suite, zlib-ng-suite, zopfli-suite, text-encoding-suite, xml-suite, syntax-suite, image-suite, pdf-suite, audio-suite, ebook-suite, office-suite, html-suite, video-suite, system-suite, out-of-tree-smoke, living-examples)"
     echo "  --release            Pass --release profile to applicable test stages"
     echo "  --json <path>        Export structured JSON report"
     echo "  -h, --help           Show this help message"
@@ -104,7 +104,7 @@ if ! [[ "${MAX_JOBS}" =~ ^[1-9][0-9]*$ ]]; then
     MAX_JOBS="${DEFAULT_JOBS}"
 fi
 
-# Stage Definitions (37 Total)
+# Stage Definitions (39 Total)
 declare -a STAGE_NAMES=(
     "Single-File LOC Defense Gate (<= 800 LOC)"
     "Architecture & Module Dependency DAG Gate"
@@ -143,6 +143,8 @@ declare -a STAGE_NAMES=(
     "Pure-Rust HTML Streaming Rewriter & VFS Router Invariant 6 Gate"
     "Pure-Rust Video Demuxer & Metadata Extraction Invariant 6 Gate"
     "Pure-Rust BinaryDelta Engine & System Security Invariant 6 Gate"
+    "Out-Of-Tree Clean Environment Smoke Testing Gate"
+    "In-Tree Multi-Language Living Examples Anti-Decay Gate"
 )
 
 declare -a STAGE_KEYS=(
@@ -183,6 +185,8 @@ declare -a STAGE_KEYS=(
     "html-suite"
     "video-suite"
     "system-suite"
+    "out-of-tree-smoke"
+    "living-examples"
 )
 
 declare -a STAGE_COMMANDS=(
@@ -223,6 +227,8 @@ declare -a STAGE_COMMANDS=(
     "./scripts/run_html_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_video_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
     "./scripts/run_system_tests.sh --gate$([ "${USE_RELEASE}" = true ] && echo " --release")"
+    "./scripts/run_out_of_tree_smoke.sh"
+    "./scripts/run_living_examples.sh"
 )
 
 TOTAL_STAGES=${#STAGE_NAMES[@]}
@@ -426,6 +432,7 @@ else
             12 13 14 15 16 17 18 19 20
             21 22 23 24
             25 26 27 28 29 30 31 32 33 34 35 36 37
+            38 39
         )
 
         # Prefill Worker Pool up to MAX_JOBS

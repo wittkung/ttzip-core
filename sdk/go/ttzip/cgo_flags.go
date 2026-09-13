@@ -10,10 +10,11 @@
 package ttzip
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/include
+#cgo pkg-config: ttzip
+#cgo CFLAGS: -I${SRCDIR}/include -I/usr/local/include -I/opt/homebrew/include
 
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../../rust/target/release -L${SRCDIR}/lib/darwin -lttzip_engine -larchive -lbz2 -lz -llzma -framework Security
-#cgo linux LDFLAGS: -L${SRCDIR}/../../../rust/target/release -L${SRCDIR}/lib/linux -lttzip_engine -larchive -lbz2 -lz -llzma -lm -lpthread -ldl
-#cgo windows LDFLAGS: -L${SRCDIR}/../../../rust/target/release -L${SRCDIR}/lib/windows -lttzip_engine -larchive -lbz2 -lz -llzma -lws2_32 -luserenv -lbcrypt
+#cgo darwin LDFLAGS: -L/usr/local/lib -L/opt/homebrew/lib -L${SRCDIR}/lib/darwin -lttzip_engine -larchive -lbz2 -lz -llzma -framework Security -framework CoreFoundation -framework IOKit
+#cgo linux LDFLAGS: -L/usr/local/lib -L/opt/homebrew/lib -L${SRCDIR}/lib/linux -lttzip_engine -larchive -lbz2 -lz -llzma -lm -lpthread -ldl
+#cgo windows LDFLAGS: -L/usr/local/lib -L${SRCDIR}/lib/windows -lttzip_engine -larchive -lbz2 -lz -llzma -lws2_32 -luserenv -lbcrypt
 */
 import "C"

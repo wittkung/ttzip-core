@@ -34,8 +34,10 @@ echo -e "Platform: $(uname -m) $(uname -s)"
 echo -e "Date:     $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo -e "${BLUE}----------------------------------------------------------------------${NC}"
 
-# Create isolated sandbox directory outside repository
-SMOKE_TMPDIR=$(mktemp -d "/tmp/ttzip_smoke_XXXXXX")
+# Create isolated sandbox directory outside source tree
+SMOKE_TMPDIR="${REPO_ROOT}/.build/smoke_clean"
+rm -rf "${SMOKE_TMPDIR}"
+mkdir -p "${SMOKE_TMPDIR}"
 trap 'rm -rf "${SMOKE_TMPDIR}"' EXIT
 
 RESULTS_JSON="[]"
@@ -88,6 +90,11 @@ cmake -B "${SMOKE_TMPDIR}/build_cmake" -S "${REPO_ROOT}" \
     -DTTZIP_BUILD_EXAMPLES=OFF -DTTZIP_BUILD_TESTS=OFF >/dev/null 2>&1 || true
 cmake --build "${SMOKE_TMPDIR}/build_cmake" --parallel >/dev/null 2>&1 || true
 cmake --install "${SMOKE_TMPDIR}/build_cmake" >/dev/null 2>&1 || true
+
+if command -v javac >/dev/null 2>&1; then
+    mkdir -p "${REPO_ROOT}/sdk/jvm/bin"
+    javac --enable-preview --release 21 -d "${REPO_ROOT}/sdk/jvm/bin" "${REPO_ROOT}/sdk/jvm/src/main/java/com/ttzip/"*.java >/dev/null 2>&1 || true
+fi
 t1=$(python3 -c 'import time; print(time.perf_counter())')
 stage_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
 echo -e "--> CMake package staged to ${CMAKE_INSTALL_DIR} (${stage_dur}s)"
@@ -108,8 +115,10 @@ if cmake -B "${CPP_SRC_DIR}/build" -S "${CPP_SRC_DIR}" -DCMAKE_PREFIX_PATH="${CM
     build_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
     
     t0_exec=$(python3 -c 'import time; print(time.perf_counter())')
-    output=$("${CPP_SRC_DIR}/build/quickstart_cpp" 2>&1 || true)
+    set +e
+    output=$("${CPP_SRC_DIR}/build/ttzip_cpp_demo" 2>&1)
     code=$?
+    set -e
     t1_exec=$(python3 -c 'import time; print(time.perf_counter())')
     exec_dur=$(python3 -c "print(f'{$t1_exec - $t0_exec:.3f}')")
 
@@ -145,8 +154,10 @@ if cmake -B "${C_SRC_DIR}/build" -S "${C_SRC_DIR}" -DCMAKE_PREFIX_PATH="${CMAKE_
     build_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
     
     t0_exec=$(python3 -c 'import time; print(time.perf_counter())')
-    output=$("${C_SRC_DIR}/build/quickstart_c" 2>&1 || true)
+    set +e
+    output=$("${C_SRC_DIR}/build/ttzip_c_demo" 2>&1)
     code=$?
+    set -e
     t1_exec=$(python3 -c 'import time; print(time.perf_counter())')
     exec_dur=$(python3 -c "print(f'{$t1_exec - $t0_exec:.3f}')")
 
@@ -175,8 +186,10 @@ mkdir -p "${PY_APP_DIR}"
 cp "${REPO_ROOT}/examples/python/quickstart.py" "${PY_APP_DIR}/"
 
 t0=$(python3 -c 'import time; print(time.perf_counter())')
-output=$(cd "${PY_APP_DIR}" && env PYTHONPATH="${REPO_ROOT}/python" python3 quickstart.py 2>&1 || true)
+set +e
+output=$(cd "${PY_APP_DIR}" && env PYTHONPATH="${REPO_ROOT}/sdk/python" python3 quickstart.py 2>&1)
 code=$?
+set -e
 t1=$(python3 -c 'import time; print(time.perf_counter())')
 exec_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
 
@@ -206,9 +219,10 @@ if command -v javac >/dev/null 2>&1 && command -v java >/dev/null 2>&1; then
         build_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
 
         t0_exec=$(python3 -c 'import time; print(time.perf_counter())')
-        # Notice: Clean JVM launch WITHOUT -Dttzip.lib.path
-        output=$(java --enable-preview -cp "${JAVA_APP_DIR}/bin:${REPO_ROOT}/sdk/jvm/bin" Quickstart 2>&1 || true)
+        set +e
+        output=$(java --enable-preview -cp "${JAVA_APP_DIR}/bin:${REPO_ROOT}/sdk/jvm/bin" com.ttzip.examples.Quickstart 2>&1)
         code=$?
+        set -e
         t1_exec=$(python3 -c 'import time; print(time.perf_counter())')
         exec_dur=$(python3 -c "print(f'{$t1_exec - $t0_exec:.3f}')")
 
@@ -241,10 +255,13 @@ if command -v go >/dev/null 2>&1; then
     mkdir -p "${GO_APP_DIR}"
     cp "${REPO_ROOT}/examples/go/quickstart.go" "${GO_APP_DIR}/"
     cp "${REPO_ROOT}/examples/go/go.mod" "${GO_APP_DIR}/"
+    sed -i.bak "s|replace github.com/ttzip/ttzip-go => ../../sdk/go|replace github.com/ttzip/ttzip-go => ${REPO_ROOT}/sdk/go|" "${GO_APP_DIR}/go.mod" && rm -f "${GO_APP_DIR}/go.mod.bak"
 
     t0=$(python3 -c 'import time; print(time.perf_counter())')
-    output=$(cd "${GO_APP_DIR}" && go run quickstart.go 2>&1 || true)
+    set +e
+    output=$(cd "${GO_APP_DIR}" && env PKG_CONFIG_PATH="${CMAKE_INSTALL_DIR}/lib/pkgconfig" go run -a quickstart.go 2>&1)
     code=$?
+    set -e
     t1=$(python3 -c 'import time; print(time.perf_counter())')
     exec_dur=$(python3 -c "print(f'{$t1 - $t0:.3f}')")
 

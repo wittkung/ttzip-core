@@ -51,20 +51,27 @@ final class TTZipCoreIntegrationTests: XCTestCase {
             let archiveURL = sandbox.fileURL(named: filename)
             let destDir = try sandbox.createSubdirectory("extract_\(format.rawValue)")
 
-            // Test ArchiveWriter.createArchive
-            try await writer.createArchive(
+            // Test ArchiveWriter.createArchiveWithReport with strict provenance and no fallback assertions
+            let writeProvenance = try writer.createArchiveWithReport(
                 outputPath: archiveURL.path,
                 format: format,
                 level: .normal,
                 inputPaths: [file1.path, file2.path]
             )
+            let expectedTag: EngineExecutionTag = (format == .sevenZip) ? .rustZeroCopy7zDecoder : .rustStreamingParallelZip
+            TTZipAssertions.assertEngineExecution(writeProvenance, expected: expectedTag)
+            TTZipAssertions.assertNoFallback(writeProvenance)
             XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path), "Archive file should exist: \(filename)")
 
-            // Test ArchiveExtractor.extractArchive
-            try await extractor.extractArchive(
-                archivePath: archiveURL.path,
-                destinationDir: destDir.path
-            )
+            // Test ArchiveExtractor.extractArchive with strict provenance and no fallback assertions
+            let (_, extractProvenance) = try await EngineProvenanceCollector.captureAsync(expectedEngine: expectedTag) {
+                try await extractor.extractArchive(
+                    archivePath: archiveURL.path,
+                    destinationDir: destDir.path
+                )
+            }
+            TTZipAssertions.assertEngineExecution(extractProvenance, expected: expectedTag)
+            TTZipAssertions.assertNoFallback(extractProvenance)
 
             let extractedFile1 = destDir.appendingPathComponent("doc1.txt")
             let extractedFile2 = destDir.appendingPathComponent("data.bin")
@@ -103,24 +110,30 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         TTZipAssertions.assertFileMode(configURL, expectedMode: 0o644)
         TTZipAssertions.assertIsDir(emptyDirURL)
 
-        // 2. Compress via ArchiveWriter into TAR format
+        // 2. Compress via ArchiveWriter into TAR format with strict provenance assertions
         let archiveURL = sandbox.fileURL(named: "posix_test.tar")
         let writer = ArchiveWriter()
-        try await writer.createArchive(
+        let writeProvenance = try writer.createArchiveWithReport(
             outputPath: archiveURL.path,
             format: .tar,
             level: .normal,
             inputPaths: [fixtureRoot.path]
         )
+        TTZipAssertions.assertEngineExecution(writeProvenance, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(writeProvenance)
         XCTAssertTrue(FileManager.default.fileExists(atPath: archiveURL.path))
 
-        // 3. Extract via ArchiveExtractor
+        // 3. Extract via ArchiveExtractor with strict provenance assertions
         let extractDest = try sandbox.createSubdirectory("posix_extracted")
         let extractor = ArchiveExtractor()
-        try await extractor.extractArchive(
-            archivePath: archiveURL.path,
-            destinationDir: extractDest.path
-        )
+        let (_, extractProvenance) = try await EngineProvenanceCollector.captureAsync(expectedEngine: .rustStreamingParallelZip) {
+            try await extractor.extractArchive(
+                archivePath: archiveURL.path,
+                destinationDir: extractDest.path
+            )
+        }
+        TTZipAssertions.assertEngineExecution(extractProvenance, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(extractProvenance)
 
         let extractedExec = extractDest.appendingPathComponent("posix_fixture/script.sh")
         let extractedConfig = extractDest.appendingPathComponent("posix_fixture/config.json")
@@ -150,12 +163,14 @@ final class TTZipCoreIntegrationTests: XCTestCase {
 
         let archiveURL = sandbox.fileURL(named: "tree_test.zip")
         let writer = ArchiveWriter()
-        try await writer.createArchive(
+        let writeProvenance = try writer.createArchiveWithReport(
             outputPath: archiveURL.path,
             format: .zip,
             level: .normal,
             inputPaths: [subDir.path]
         )
+        TTZipAssertions.assertEngineExecution(writeProvenance, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(writeProvenance)
 
         let reader = ArchiveReader()
 
@@ -270,13 +285,15 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         let archiveURL = sandbox.fileURL(named: "encrypted.zip")
         let secretPassword = "pass"
         let writer = ArchiveWriter()
-        try await writer.createArchive(
+        let writeProvenance = try writer.createArchiveWithReport(
             outputPath: archiveURL.path,
             format: .zip,
             level: .fastest,
             inputPaths: [sampleFile.path],
             password: secretPassword
         )
+        TTZipAssertions.assertEngineExecution(writeProvenance, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(writeProvenance)
 
         // 1. Fast in-memory dictionary recovery
         let dictionary = ["wrong1", "wrong2", secretPassword, "wrong3"]
@@ -349,27 +366,41 @@ final class TTZipCoreIntegrationTests: XCTestCase {
         // 1. Test Level 19 (Extreme Opt-Parser)
         let zst19URL = sandbox.fileURL(named: "archive_lvl19.tar.zst")
         let dest19 = try sandbox.createSubdirectory("ext_19")
-        try await writer.createArchive(
+        let prov19 = try writer.createArchiveWithReport(
             outputPath: zst19URL.path,
             format: .tarZst,
             level: ArchiveCompressionLevel(levelInt: 19),
             inputPaths: [srcFile.path]
         )
+        TTZipAssertions.assertEngineExecution(prov19, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(prov19)
         XCTAssertTrue(FileManager.default.fileExists(atPath: zst19URL.path))
-        try await extractor.extractArchive(archivePath: zst19URL.path, destinationDir: dest19.path)
+
+        let (_, extProv19) = try await EngineProvenanceCollector.captureAsync(expectedEngine: .rustStreamingParallelZip) {
+            try await extractor.extractArchive(archivePath: zst19URL.path, destinationDir: dest19.path)
+        }
+        TTZipAssertions.assertEngineExecution(extProv19, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(extProv19)
         XCTAssertEqual(try Data(contentsOf: dest19.appendingPathComponent("repetitive_payload.txt")), repData)
 
         // 2. Test Level 22 (Ultra-Extreme Maximum)
         let zst22URL = sandbox.fileURL(named: "archive_lvl22.tar.zst")
         let dest22 = try sandbox.createSubdirectory("ext_22")
-        try await writer.createArchive(
+        let prov22 = try writer.createArchiveWithReport(
             outputPath: zst22URL.path,
             format: .tarZst,
             level: ArchiveCompressionLevel(levelInt: 22),
             inputPaths: [srcFile.path]
         )
+        TTZipAssertions.assertEngineExecution(prov22, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(prov22)
         XCTAssertTrue(FileManager.default.fileExists(atPath: zst22URL.path))
-        try await extractor.extractArchive(archivePath: zst22URL.path, destinationDir: dest22.path)
+
+        let (_, extProv22) = try await EngineProvenanceCollector.captureAsync(expectedEngine: .rustStreamingParallelZip) {
+            try await extractor.extractArchive(archivePath: zst22URL.path, destinationDir: dest22.path)
+        }
+        TTZipAssertions.assertEngineExecution(extProv22, expected: .rustStreamingParallelZip)
+        TTZipAssertions.assertNoFallback(extProv22)
         XCTAssertEqual(try Data(contentsOf: dest22.appendingPathComponent("repetitive_payload.txt")), repData)
     }
 

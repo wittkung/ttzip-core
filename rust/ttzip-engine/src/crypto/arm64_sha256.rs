@@ -45,6 +45,10 @@ pub mod arm64 {
     use core::arch::aarch64::*;
     use core::arch::asm;
 
+    /// Executes ARMv8 SHA256H hardware instruction.
+    ///
+    /// # Safety
+    /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256hq_u32(mut hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
         asm!(
@@ -57,6 +61,10 @@ pub mod arm64 {
         hash_abcd
     }
 
+    /// Executes ARMv8 SHA256H2 hardware instruction.
+    ///
+    /// # Safety
+    /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256h2q_u32(mut hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
         asm!(
@@ -69,6 +77,10 @@ pub mod arm64 {
         hash_efgh
     }
 
+    /// Executes ARMv8 SHA256SU0 hardware instruction.
+    ///
+    /// # Safety
+    /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256su0q_u32(mut w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
         asm!(
@@ -80,6 +92,10 @@ pub mod arm64 {
         w0_3
     }
 
+    /// Executes ARMv8 SHA256SU1 hardware instruction.
+    ///
+    /// # Safety
+    /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256su1q_u32(mut tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
         asm!(

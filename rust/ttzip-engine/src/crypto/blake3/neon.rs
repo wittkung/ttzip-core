@@ -64,6 +64,9 @@ unsafe fn set4(a: u32, b: u32, c: u32, d: u32) -> uint32x4_t {
 }
 
 /// Rotates each 32-bit lane right by 16 bits using 16-bit lane reversal (`vrev32q_u16`).
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot16_128(x: uint32x4_t) -> uint32x4_t {
@@ -71,6 +74,9 @@ pub unsafe fn rot16_128(x: uint32x4_t) -> uint32x4_t {
 }
 
 /// Rotates each 32-bit lane right by 12 bits using shift-right-and-insert (`vsriq_n_u32`).
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot12_128(x: uint32x4_t) -> uint32x4_t {
@@ -78,6 +84,9 @@ pub unsafe fn rot12_128(x: uint32x4_t) -> uint32x4_t {
 }
 
 /// Rotates each 32-bit lane right by 8 bits using shift-right-and-insert (`vsriq_n_u32`).
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot8_128(x: uint32x4_t) -> uint32x4_t {
@@ -85,6 +94,9 @@ pub unsafe fn rot8_128(x: uint32x4_t) -> uint32x4_t {
 }
 
 /// Rotates each 32-bit lane right by 7 bits using shift-right-and-insert (`vsriq_n_u32`).
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
@@ -92,6 +104,9 @@ pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
 }
 
 /// Executes one round of 4-way parallel BLAKE3 permutation across 16 NEON vector registers.
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions and `r < 7`.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn round_fn4(v: &mut [uint32x4_t; 16], m: &[uint32x4_t; 16], r: usize) {
@@ -215,6 +230,9 @@ pub unsafe fn round_fn4(v: &mut [uint32x4_t; 16], m: &[uint32x4_t; 16], r: usize
 }
 
 /// 2-level 4x4 32-bit butterfly network matrix transposition (`vtrnq_u32` + `vcombine_u32`).
+///
+/// # Safety
+/// Caller must ensure CPU target supports ARM NEON vector instructions.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn transpose_vecs_128(vecs: &mut [uint32x4_t; 4]) {
@@ -273,51 +291,57 @@ unsafe fn load_counters4(counter: u64, increment_counter: bool) -> (uint32x4_t, 
     (out_low, out_high)
 }
 
+/// Configuration and input parameters for 4-way parallel BLAKE3 NEON chunk hashing.
+#[derive(Debug, Clone, Copy)]
+pub struct Blake3Neon4Chunk<'a> {
+    pub inputs: [&'a [u8]; 4],
+    pub blocks: usize,
+    pub key: &'a [u32; 8],
+    pub counter: u64,
+    pub increment_counter: bool,
+    pub flags: u8,
+    pub flags_start: u8,
+    pub flags_end: u8,
+}
+
 /// Concurrently processes 4 input streams of `blocks` 64-byte blocks using ARM NEON SIMD.
 #[cfg(target_arch = "aarch64")]
-#[allow(clippy::too_many_arguments)]
 pub fn hash4_neon(
-    inputs: [&[u8]; 4],
-    blocks: usize,
-    key: &[u32; 8],
-    counter: u64,
-    increment_counter: bool,
-    flags: u8,
-    flags_start: u8,
-    flags_end: u8,
+    chunk: Blake3Neon4Chunk<'_>,
     out: &mut [[u8; 32]; 4],
 ) {
-    for input in &inputs {
+    for input in &chunk.inputs {
         debug_assert!(
-            input.len() >= blocks * BLOCK_LEN,
+            input.len() >= chunk.blocks * BLOCK_LEN,
             "Input slice length must be at least blocks * 64"
         );
     }
 
     unsafe {
         let mut h_vecs = [
-            set1_128(key[0]),
-            set1_128(key[1]),
-            set1_128(key[2]),
-            set1_128(key[3]),
-            set1_128(key[4]),
-            set1_128(key[5]),
-            set1_128(key[6]),
-            set1_128(key[7]),
+            set1_128(chunk.key[0]),
+            set1_128(chunk.key[1]),
+            set1_128(chunk.key[2]),
+            set1_128(chunk.key[3]),
+            set1_128(chunk.key[4]),
+            set1_128(chunk.key[5]),
+            set1_128(chunk.key[6]),
+            set1_128(chunk.key[7]),
         ];
 
-        let (counter_low_vec, counter_high_vec) = load_counters4(counter, increment_counter);
-        let mut block_flags = flags | flags_start;
+        let (counter_low_vec, counter_high_vec) =
+            load_counters4(chunk.counter, chunk.increment_counter);
+        let mut block_flags = chunk.flags | chunk.flags_start;
 
-        for block in 0..blocks {
-            if block + 1 == blocks {
-                block_flags |= flags_end;
+        for block in 0..chunk.blocks {
+            if block + 1 == chunk.blocks {
+                block_flags |= chunk.flags_end;
             }
 
             let block_len_vec = set1_128(BLOCK_LEN as u32);
             let block_flags_vec = set1_128(block_flags as u32);
             let mut msg_vecs = [set1_128(0); 16];
-            transpose_msg_vecs4(inputs, block * BLOCK_LEN, &mut msg_vecs);
+            transpose_msg_vecs4(chunk.inputs, block * BLOCK_LEN, &mut msg_vecs);
 
             let mut v = [
                 h_vecs[0],
@@ -355,7 +379,7 @@ pub fn hash4_neon(
             h_vecs[6] = xor_128(v[6], v[14]);
             h_vecs[7] = xor_128(v[7], v[15]);
 
-            block_flags = flags;
+            block_flags = chunk.flags;
         }
 
         let mut h_low = [h_vecs[0], h_vecs[1], h_vecs[2], h_vecs[3]];
@@ -376,24 +400,18 @@ pub fn hash4_neon(
 
 #[cfg(not(target_arch = "aarch64"))]
 pub fn hash4_neon(
-    inputs: [&[u8]; 4],
-    blocks: usize,
-    key: &[u32; 8],
-    mut counter: u64,
-    increment_counter: bool,
-    flags: u8,
-    flags_start: u8,
-    flags_end: u8,
+    chunk: Blake3Neon4Chunk<'_>,
     out: &mut [[u8; 32]; 4],
 ) {
+    let mut counter = chunk.counter;
     for lane in 0..4 {
-        let mut cv = *key;
-        let mut block_flags = flags | flags_start;
-        for block_idx in 0..blocks {
-            if block_idx + 1 == blocks {
-                block_flags |= flags_end;
+        let mut cv = *chunk.key;
+        let mut block_flags = chunk.flags | chunk.flags_start;
+        for block_idx in 0..chunk.blocks {
+            if block_idx + 1 == chunk.blocks {
+                block_flags |= chunk.flags_end;
             }
-            let block_slice: &[u8; 64] = inputs[lane]
+            let block_slice: &[u8; 64] = chunk.inputs[lane]
                 [block_idx * BLOCK_LEN..(block_idx + 1) * BLOCK_LEN]
                 .try_into()
                 .expect("64-byte block slice");
@@ -404,12 +422,12 @@ pub fn hash4_neon(
                 counter,
                 block_flags,
             );
-            block_flags = flags;
+            block_flags = chunk.flags;
         }
         for i in 0..8 {
             out[lane][i * 4..(i + 1) * 4].copy_from_slice(&cv[i].to_le_bytes());
         }
-        if increment_counter {
+        if chunk.increment_counter {
             counter += 1;
         }
     }
@@ -435,17 +453,17 @@ pub fn hash_parents_neon(
         parents[2].as_slice(),
         parents[3].as_slice(),
     ];
-    hash4_neon(
+    let chunk = Blake3Neon4Chunk {
         inputs,
-        1,
+        blocks: 1,
         key,
-        0,
-        false,
-        flags | PARENT,
-        0,
-        0,
-        out,
-    );
+        counter: 0,
+        increment_counter: false,
+        flags: flags | PARENT,
+        flags_start: 0,
+        flags_end: 0,
+    };
+    hash4_neon(chunk, out);
 }
 
 /// Batch vector compression for an arbitrary number of parent nodes.
@@ -516,17 +534,17 @@ pub fn hash_many_neon(
             inputs[chunk_idx + 3].as_slice(),
         ];
         let mut out4 = [[0u8; 32]; 4];
-        hash4_neon(
-            input_slices,
-            blocks_per_chunk,
+        let chunk = Blake3Neon4Chunk {
+            inputs: input_slices,
+            blocks: blocks_per_chunk,
             key,
-            start_counter,
-            true,
+            counter: start_counter,
+            increment_counter: true,
             flags,
-            CHUNK_START,
-            CHUNK_END,
-            &mut out4,
-        );
+            flags_start: CHUNK_START,
+            flags_end: CHUNK_END,
+        };
+        hash4_neon(chunk, &mut out4);
         out[chunk_idx..chunk_idx + 4].copy_from_slice(&out4);
 
         start_counter += 4;
@@ -571,17 +589,17 @@ pub fn hash_many_variable_chunks(
                 inputs[chunk_idx + 3],
             ];
             let mut out4 = [[0u8; 32]; 4];
-            hash4_neon(
-                input_slices,
-                16,
+            let chunk = Blake3Neon4Chunk {
+                inputs: input_slices,
+                blocks: 16,
                 key,
-                start_counter,
-                true,
+                counter: start_counter,
+                increment_counter: true,
                 flags,
-                CHUNK_START,
-                CHUNK_END,
-                &mut out4,
-            );
+                flags_start: CHUNK_START,
+                flags_end: CHUNK_END,
+            };
+            hash4_neon(chunk, &mut out4);
             out[chunk_idx..chunk_idx + 4].copy_from_slice(&out4);
             start_counter += 4;
             chunk_idx += 4;

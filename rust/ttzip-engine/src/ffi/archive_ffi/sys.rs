@@ -157,7 +157,8 @@ extern "C" {
 
 /// Retrieves the libarchive error message as an `Option<String>`.
 ///
-/// SAFETY: `a` must be a valid pointer to a libarchive struct or null.
+/// # Safety
+/// `a` must be a valid pointer to a libarchive struct or null.
 #[allow(dead_code)]
 pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
     if a.is_null() {
@@ -175,7 +176,8 @@ pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
 
 /// Formats the libarchive error with errno and message into a readable string.
 ///
-/// SAFETY: `a` must be a valid pointer to a libarchive struct or null.
+/// # Safety
+/// `a` must be a valid pointer to a libarchive struct or null.
 #[allow(dead_code)]
 pub unsafe fn format_archive_error(a: *mut c_void) -> String {
     if a.is_null() {

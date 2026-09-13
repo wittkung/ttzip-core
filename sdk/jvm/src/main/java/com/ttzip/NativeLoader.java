@@ -37,7 +37,8 @@ import java.util.Objects;
 public final class NativeLoader {
 
     public static final String VERSION = "1.0.0";
-    public static final String LIBRARY_BASE_NAME = "ttzip_glue";
+    public static final String LIBRARY_BASE_NAME = "ttzip_engine";
+    public static final String LEGACY_LIBRARY_BASE_NAME = "ttzip_glue";
 
     public record Platform(
         String os,
@@ -268,26 +269,29 @@ public final class NativeLoader {
             }
 
             // Tier 5: System Path / java.library.path fallback (System.loadLibrary)
-            diagnostics.add("Tier 5 [system_path]: Attempting System.loadLibrary('" + LIBRARY_BASE_NAME + "')");
-            try {
-                System.loadLibrary(LIBRARY_BASE_NAME);
-                SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
-                if (loaderLookup.find("ttzip_rust_version").isPresent()) {
-                    CACHED_LOOKUP = loaderLookup.or(Linker.nativeLinker().defaultLookup());
-                    LAST_REPORT = new LoadReport(
-                        VERSION,
-                        platform,
-                        "system_path",
-                        "system_library_path:" + LIBRARY_BASE_NAME,
-                        false,
-                        "LOADED",
-                        Collections.unmodifiableList(diagnostics)
-                    );
-                    diagnostics.add("Tier 5 [system_path]: Successfully loaded via System.loadLibrary");
-                    return CACHED_LOOKUP;
+            String[] libNamesToTry = { LIBRARY_BASE_NAME, LEGACY_LIBRARY_BASE_NAME };
+            for (String libName : libNamesToTry) {
+                diagnostics.add("Tier 5 [system_path]: Attempting System.loadLibrary('" + libName + "')");
+                try {
+                    System.loadLibrary(libName);
+                    SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
+                    if (loaderLookup.find("ttzip_rust_version").isPresent()) {
+                        CACHED_LOOKUP = loaderLookup.or(Linker.nativeLinker().defaultLookup());
+                        LAST_REPORT = new LoadReport(
+                            VERSION,
+                            platform,
+                            "system_path",
+                            "system_library_path:" + libName,
+                            false,
+                            "LOADED",
+                            Collections.unmodifiableList(diagnostics)
+                        );
+                        diagnostics.add("Tier 5 [system_path]: Successfully loaded via System.loadLibrary('" + libName + "')");
+                        return CACHED_LOOKUP;
+                    }
+                } catch (Throwable t) {
+                    diagnostics.add("Tier 5 [system_path]: System.loadLibrary('" + libName + "') failed: " + t.getMessage());
                 }
-            } catch (Throwable t) {
-                diagnostics.add("Tier 5 [system_path]: System.loadLibrary failed: " + t.getMessage());
             }
 
             // All tiers failed - build diagnostic report and throw UnsatisfiedLinkError
@@ -394,6 +398,7 @@ public final class NativeLoader {
 
     private static List<Path> getDevCandidatePaths(String libName) {
         List<Path> candidates = new ArrayList<>();
+        String legacyLibName = libName.replace(LIBRARY_BASE_NAME, LEGACY_LIBRARY_BASE_NAME);
         String[] relativeBases = {
             "core/rust/target/release",
             "rust/target/release",
@@ -411,6 +416,9 @@ public final class NativeLoader {
         Path cwd = Path.of("").toAbsolutePath();
         for (String base : relativeBases) {
             candidates.add(cwd.resolve(base).resolve(libName));
+            if (!legacyLibName.equals(libName)) {
+                candidates.add(cwd.resolve(base).resolve(legacyLibName));
+            }
         }
 
         // Also search user.dir if different
@@ -421,6 +429,12 @@ public final class NativeLoader {
                 Path p = uDir.resolve(base).resolve(libName);
                 if (!candidates.contains(p)) {
                     candidates.add(p);
+                }
+                if (!legacyLibName.equals(libName)) {
+                    Path pLegacy = uDir.resolve(base).resolve(legacyLibName);
+                    if (!candidates.contains(pLegacy)) {
+                        candidates.add(pLegacy);
+                    }
                 }
             }
         }

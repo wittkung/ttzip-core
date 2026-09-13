@@ -172,6 +172,7 @@ pub fn inspect_archive_entries(
     archive_path: String,
     password: Option<String>,
 ) -> Result<Vec<UniFFIEntryMetadata>, TTZipError> {
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let p = std::path::Path::new(&archive_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
@@ -230,7 +231,7 @@ pub fn inspect_archive_entries(
 
     let res = crate::archive::unified::inspect::inspect_archive(
         p,
-        password.as_deref(),
+        secure_pwd.as_deref(),
         true,
         Some(inspect_cb),
         &mut collector as *mut EntryCollector as *mut libc::c_void,
@@ -255,7 +256,7 @@ pub fn extract_single_entry_stream(
     entry_index: u64,
     password: Option<String>,
 ) -> Result<Vec<u8>, TTZipError> {
-    extract_single_entry_stream_guarded(archive_path, entry_index, password, 100)
+    extract_single_entry_stream_guarded(archive_path, entry_index, password, 64)
 }
 
 /// Extracts a single entry stream preview with configurable preceding solid budget in MB.
@@ -266,6 +267,7 @@ pub fn extract_single_entry_stream_guarded(
     password: Option<String>,
     max_preceding_budget_mb: u32,
 ) -> Result<Vec<u8>, TTZipError> {
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let p = std::path::Path::new(&archive_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
@@ -277,16 +279,30 @@ pub fn extract_single_entry_stream_guarded(
         message: "Failed to map archive bytes".to_string(),
     })?;
 
+    let budget_bytes = (max_preceding_budget_mb as u64) * 1024 * 1024;
+    let idx = entry_index as usize;
+
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
         let arch = crate::sevenz::decoder::SevenZArchive::open_slice(mapped)
             .map_err(|_| TTZipError::CorruptHeader { details: "Invalid 7z header".to_string(), offset: 0 })?;
-        let budget_bytes = (max_preceding_budget_mb as u64) * 1024 * 1024;
+        if idx >= arch.files().len() {
+            return Err(TTZipError::FileNotFound {
+                path: format!("entry #{}", entry_index),
+            });
+        }
+        if let Some(loc) = arch.seek_index().entries.get(idx) {
+            if loc.uncompressed_size > budget_bytes {
+                return Err(TTZipError::EngineError {
+                    code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+                });
+            }
+        }
         crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
             mapped,
             arch.info(),
             arch.seek_index(),
-            entry_index as usize,
-            password.as_deref(),
+            idx,
+            secure_pwd.as_deref(),
             budget_bytes,
         ).map_err(|status| match status {
             crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
@@ -294,7 +310,18 @@ pub fn extract_single_entry_stream_guarded(
             _ => TTZipError::EngineError { code: status as i32 },
         })
     } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-        zip_archive.extract_entry_bytes(entry_index as usize, password.as_deref())
+        if idx >= zip_archive.entries().len() {
+            return Err(TTZipError::FileNotFound {
+                path: format!("entry #{}", entry_index),
+            });
+        }
+        let entry = &zip_archive.entries()[idx];
+        if entry.uncompressed_size > budget_bytes {
+            return Err(TTZipError::EngineError {
+                code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+            });
+        }
+        zip_archive.extract_entry_bytes(idx, secure_pwd.as_deref())
             .map_err(|status| match status {
                 crate::types::TTZipStatus::ErrCorruptHeader => {
                     TTZipError::CorruptHeader { details: "Corrupted entry CRC or payload".to_string(), offset: 0 }
@@ -324,8 +351,9 @@ pub fn create_archive_stream(
     let out_p = std::path::Path::new(&output_path);
     let paths: Vec<std::path::PathBuf> = source_paths.iter().map(std::path::PathBuf::from).collect();
 
+    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let start = std::time::Instant::now();
-    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
+    let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
     struct ProgressBox {
         handler: Option<Box<dyn ProgressHandler>>,

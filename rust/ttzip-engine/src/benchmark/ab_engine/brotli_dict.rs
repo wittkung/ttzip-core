@@ -229,7 +229,7 @@ impl BrotliDictionary {
 pub struct BrotliDictPolicy {
     /// Minimum compression ratio gain in percent (e.g. 5.0% = 5% smaller output).
     pub min_ratio_gain_pct: f64,
-    /// Maximum allowed throughput regression in percent (Invariant 6: <= 5.0%).
+    /// Maximum allowed throughput regression in percent (Invariant 6: <= 3.0%).
     pub max_allowed_regression_pct: f64,
     /// Maximum dictionary resident memory footprint in bytes.
     pub max_memory_overhead_bytes: usize,
@@ -243,7 +243,7 @@ impl Default for BrotliDictPolicy {
     fn default() -> Self {
         Self {
             min_ratio_gain_pct: 5.0,
-            max_allowed_regression_pct: 5.0,
+            max_allowed_regression_pct: 3.0,
             max_memory_overhead_bytes: 1024 * 1024,
             min_corpus_size_bytes: 32,
             max_corpus_size_bytes: 32 * 1024 * 1024,

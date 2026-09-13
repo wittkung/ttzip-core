@@ -236,7 +236,7 @@ fn test_ab_orchestrator_config_default_and_custom() {
     let custom_cfg = AbOrchestratorConfig {
         warmup_rounds: 1,
         measurement_rounds: 8,
-        max_allowed_regression: 5.0,
+        max_allowed_regression: 3.0,
         p_value_threshold: 0.01,
         hampel_filter: false,
         hampel_k: 2.5,
@@ -256,7 +256,7 @@ fn test_ab_orchestrator_paired_target_interleaved_sampling() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 3,
         measurement_rounds: 8,
-        max_allowed_regression: 5.0,
+        max_allowed_regression: 3.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
@@ -283,7 +283,7 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 3,
         measurement_rounds: 10,
-        max_allowed_regression: 5.0,
+        max_allowed_regression: 3.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
@@ -315,7 +315,7 @@ fn test_ab_orchestrator_baseline_snapshot_roundtrip_and_comparison() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 5,
         measurement_rounds: 15,
-        max_allowed_regression: 25.0,
+        max_allowed_regression: 3.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,
@@ -361,7 +361,7 @@ fn test_multimodal_reporters_render_outputs() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 4,
         measurement_rounds: 8,
-        max_allowed_regression: 5.0,
+        max_allowed_regression: 3.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 3.0,

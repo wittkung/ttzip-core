@@ -167,6 +167,11 @@ check_category_enabled() {
 # Helper to check if toolchain for an SDK is available
 is_toolchain_available() {
     local sdk="$1"
+    case "${sdk}" in
+        java) command -v javac >/dev/null 2>&1 || return 1 ;;
+        dart) command -v dart >/dev/null 2>&1 || return 1 ;;
+        dotnet) command -v dotnet >/dev/null 2>&1 || return 1 ;;
+    esac
     python3 -c "
 import json
 with open('${TOOLCHAINS_JSON}') as f:
@@ -179,6 +184,26 @@ exit(0 if avail else 1)
 
 get_toolchain_reason() {
     local sdk="$1"
+    case "${sdk}" in
+        java)
+            if ! command -v javac >/dev/null 2>&1; then
+                echo "Missing javac (install OpenJDK 21+ via brew install openjdk@21)"
+                return
+            fi
+            ;;
+        dart)
+            if ! command -v dart >/dev/null 2>&1; then
+                echo "Missing dart (install via brew tap dart-lang/dart && brew install dart)"
+                return
+            fi
+            ;;
+        dotnet)
+            if ! command -v dotnet >/dev/null 2>&1; then
+                echo "Missing dotnet SDK (install .NET 8 via https://dot.net)"
+                return
+            fi
+            ;;
+    esac
     python3 -c "
 import json
 with open('${TOOLCHAINS_JSON}') as f:
@@ -333,19 +358,31 @@ if check_category_enabled "unit"; then
     run_sdk_test "cpp" "Modern C++20 RAII Native SDK" "${CPP_CMD}" 9
 
     # 7. Java 22+ Panama FFM SDK
-    run_sdk_test "java" "Java 22+ Panama FFM & JVM Bindings" \
-        "javac -d /tmp/ttzip_jvm_build sdk/jvm/src/main/java/com/ttzip/TTZip.java 2>/dev/null || (test -f sdk/jvm/src/main/java/com/ttzip/TTZip.java && test -f sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt)" \
-        8
+    if command -v javac >/dev/null 2>&1; then
+        run_sdk_test "java" "Java 22+ Panama FFM & JVM Bindings" \
+            "mkdir -p /tmp/ttzip_jvm_build && javac --enable-preview --release 21 -d /tmp/ttzip_jvm_build sdk/jvm/src/main/java/com/ttzip/*.java" \
+            8
+    else
+        run_sdk_test "java" "Java 22+ Panama FFM & JVM Bindings" "" 8
+    fi
 
     # 8. Dart / Flutter SDK
-    run_sdk_test "dart" "Dart / Flutter FFI & Isolate SDK" \
-        "(cd sdk/dart && dart test 2>/dev/null || test -f lib/ttzip.dart)" \
-        6
+    if command -v dart >/dev/null 2>&1; then
+        run_sdk_test "dart" "Dart / Flutter FFI & Isolate SDK" \
+            "(cd sdk/dart && dart test)" \
+            6
+    else
+        run_sdk_test "dart" "Dart / Flutter FFI & Isolate SDK" "" 6
+    fi
 
     # 9. C# .NET 8 SDK
-    run_sdk_test "dotnet" "C# .NET 8 Span & SafeHandle SDK" \
-        "(cd sdk/dotnet && dotnet test 2>/dev/null || test -f TTZip.cs)" \
-        6
+    if command -v dotnet >/dev/null 2>&1; then
+        run_sdk_test "dotnet" "C# .NET 8 Span & SafeHandle SDK" \
+            "(cd sdk/dotnet && dotnet test)" \
+            6
+    else
+        run_sdk_test "dotnet" "C# .NET 8 Span & SafeHandle SDK" "" 6
+    fi
 fi
 
 # Step 5: Export Reports & Print Summary

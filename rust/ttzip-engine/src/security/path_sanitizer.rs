@@ -26,6 +26,40 @@ const WINDOWS_RESERVED_DEVICES: &[&str] = &[
     "CLOCK$",
 ];
 
+/// Errors emitted by zero-allocation path slice validation.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum PathSecurityError {
+    /// Path is empty or consists entirely of whitespace.
+    #[error("Path is empty or consists entirely of whitespace")]
+    EmptyPath,
+
+    /// Null byte injection detected in path slice.
+    #[error("Null-byte injection detected in path slice")]
+    NullByteInjection,
+
+    /// Absolute path detected (leading slash, Windows drive letter, or UNC prefix).
+    #[error("Absolute path prefix, UNC path, or drive letter is prohibited")]
+    AbsolutePath,
+
+    /// Directory traversal or Zip-Slip attack detected.
+    #[error("Directory traversal attack detected ('..')")]
+    DirectoryTraversal,
+
+    /// Windows DOS reserved device name detected in path segment.
+    #[error("Windows reserved device name detected in path segment")]
+    ReservedDeviceName,
+
+    /// NTFS Alternate Data Stream (ADS) syntax detected.
+    #[error("NTFS alternate data stream (ADS) syntax (':') is prohibited")]
+    AlternateDataStream,
+}
+
+impl From<PathSecurityError> for crate::types::TTZipStatus {
+    fn from(_: PathSecurityError) -> Self {
+        Self::ErrSecurityViolation
+    }
+}
+
 /// Result of path security sanitization and canonical normalization.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PathSanitizationResult {
@@ -55,8 +89,8 @@ impl PathSanitizationResult {
 }
 
 /// Checks if a path segment or name matches a Windows DOS reserved device.
-    #[inline]
-    #[must_use]
+#[inline]
+#[must_use]
 pub fn is_windows_reserved_device_name(segment: &str) -> bool {
     if segment.is_empty() {
         return false;
@@ -82,6 +116,176 @@ pub fn is_windows_reserved_device_name(segment: &str) -> bool {
     WINDOWS_RESERVED_DEVICES.contains(&trimmed_upper.as_str())
 }
 
+/// Zero-allocation slice check for Windows DOS reserved device names.
+#[inline]
+#[must_use]
+pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
+    if seg.is_empty() {
+        return false;
+    }
+
+    if seg.len() >= 13 && seg[..13].eq_ignore_ascii_case(b"PHYSICALDRIVE") {
+        return true;
+    }
+
+    // Stem before first dot
+    let stem = match seg.iter().position(|&b| b == b'.') {
+        Some(idx) => &seg[..idx],
+        None => seg,
+    };
+
+    // Trim trailing spaces and dots
+    let mut end = stem.len();
+    while end > 0 && (stem[end - 1] == b' ' || stem[end - 1] == b'.') {
+        end -= 1;
+    }
+    let trimmed = &stem[..end];
+
+    match trimmed.len() {
+        3 => {
+            trimmed.eq_ignore_ascii_case(b"CON")
+                || trimmed.eq_ignore_ascii_case(b"PRN")
+                || trimmed.eq_ignore_ascii_case(b"AUX")
+                || trimmed.eq_ignore_ascii_case(b"NUL")
+        }
+        4 => {
+            let prefix = &trimmed[..3];
+            let digit = trimmed[3];
+            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
+                && digit.is_ascii_digit()
+        }
+        6 => trimmed.eq_ignore_ascii_case(b"CLOCK$"),
+        _ => false,
+    }
+}
+
+/// Zero-allocation slice check for URL-encoded traversal patterns (%2e%2e).
+#[inline]
+fn contains_encoded_traversal_slice(seg: &[u8]) -> bool {
+    if seg.len() < 6 {
+        return false;
+    }
+    for window in seg.windows(6) {
+        if window[0] == b'%'
+            && (window[1] == b'2' && (window[2] == b'e' || window[2] == b'E'))
+            && window[3] == b'%'
+            && (window[4] == b'2' && (window[5] == b'e' || window[5] == b'E'))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Validates an archive path byte slice using zero allocations and zero heap copies.
+///
+/// Ensures strict resistance against Zip-Slip, path traversal, null-byte injection,
+/// whitespace bypasses, absolute paths, drive letters, UNC paths, NTFS ADS streams,
+/// and Windows DOS reserved device names.
+#[inline]
+pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> {
+    // 1. Null-byte injection check
+    if raw.contains(&0) {
+        return Err(PathSecurityError::NullByteInjection);
+    }
+
+    // 2. Zero-copy ASCII whitespace trimming (prevents whitespace bypass)
+    let mut start = 0;
+    while start < raw.len() && matches!(raw[start], b' ' | b'\t' | b'\r' | b'\n') {
+        start += 1;
+    }
+
+    let mut end = raw.len();
+    while end > start && matches!(raw[end - 1], b' ' | b'\t' | b'\r' | b'\n') {
+        end -= 1;
+    }
+
+    let trimmed = &raw[start..end];
+    if trimmed.is_empty() {
+        return Err(PathSecurityError::EmptyPath);
+    }
+
+    // 3. Absolute path, UNC, and drive letter detection
+    if trimmed.starts_with(b"/") || trimmed.starts_with(b"\\") {
+        return Err(PathSecurityError::AbsolutePath);
+    }
+    if trimmed.starts_with(b"//") || trimmed.starts_with(b"\\\\") {
+        return Err(PathSecurityError::AbsolutePath);
+    }
+    if trimmed.len() >= 2 && trimmed[0].is_ascii_alphabetic() && trimmed[1] == b':' {
+        return Err(PathSecurityError::AbsolutePath);
+    }
+
+    // Check Windows namespace prefixes: e.g. \\?\ or \??\
+    if trimmed.starts_with(b"\\\\?\\")
+        || trimmed.starts_with(b"\\\\.\\")
+        || trimmed.starts_with(b"\\??\\")
+        || trimmed.starts_with(b"//?/")
+        || trimmed.starts_with(b"//./")
+    {
+        return Err(PathSecurityError::AbsolutePath);
+    }
+
+    // 4. Zero-allocation segment-by-segment traversal and security validation
+    let mut depth: usize = 0;
+    let mut valid_components_seen = false;
+    let mut i = 0;
+
+    while i < trimmed.len() {
+        // Skip consecutive separators
+        while i < trimmed.len() && (trimmed[i] == b'/' || trimmed[i] == b'\\') {
+            i += 1;
+        }
+        if i >= trimmed.len() {
+            break;
+        }
+
+        // Find end of current segment
+        let seg_start = i;
+        while i < trimmed.len() && trimmed[i] != b'/' && trimmed[i] != b'\\' {
+            i += 1;
+        }
+        let seg = &trimmed[seg_start..i];
+
+        if seg.is_empty() || seg == b"." {
+            continue;
+        }
+
+        // Check directory traversal
+        if seg == b".." {
+            if depth == 0 {
+                return Err(PathSecurityError::DirectoryTraversal);
+            }
+            depth -= 1;
+            continue;
+        }
+
+        // Check for URL-encoded traversal patterns (%2e%2e)
+        if contains_encoded_traversal_slice(seg) {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+
+        // Check for NTFS Alternate Data Stream syntax
+        if seg.contains(&b':') {
+            return Err(PathSecurityError::AlternateDataStream);
+        }
+
+        // Check Windows DOS reserved device names
+        if is_windows_reserved_device_name_slice(seg) {
+            return Err(PathSecurityError::ReservedDeviceName);
+        }
+
+        valid_components_seen = true;
+        depth += 1;
+    }
+
+    if !valid_components_seen || depth == 0 {
+        return Err(PathSecurityError::DirectoryTraversal);
+    }
+
+    Ok(())
+}
+
 /// Normalizes Unicode string to NFC form with zero-allocation fast-paths for ASCII and pre-normalized inputs.
 #[inline]
 #[must_use]
@@ -96,9 +300,10 @@ pub fn normalize_to_nfc(input: &str) -> Cow<'_, str> {
 /// Sanitizes and canonicalizes a relative or absolute filesystem path.
 #[must_use]
 pub fn sanitize_path(raw_path: &str) -> PathSanitizationResult {
-    if raw_path.is_empty() {
+    let trimmed_path = raw_path.trim();
+    if trimmed_path.is_empty() {
         return PathSanitizationResult {
-            original_path: String::new(),
+            original_path: raw_path.to_string(),
             normalized_path: String::new(),
             has_traversal_attack: false,
             is_absolute: false,
@@ -115,32 +320,32 @@ pub fn sanitize_path(raw_path: &str) -> PathSanitizationResult {
         has_traversal_attack = true;
     }
 
-    // 1. Boundary & Protocol prefix detection
+    // 1. Boundary & Protocol prefix detection (evaluated on trimmed path to prevent whitespace bypass)
     let mut is_unc = false;
     let mut is_absolute = false;
 
-    if raw_path.starts_with(r"\\") || raw_path.starts_with("//") {
+    if trimmed_path.starts_with(r"\\") || trimmed_path.starts_with("//") {
         is_unc = true;
         is_absolute = true;
-    } else if raw_path.starts_with('/') || raw_path.starts_with('\\') {
+    } else if trimmed_path.starts_with('/') || trimmed_path.starts_with('\\') {
         is_absolute = true;
     }
 
-    // 2. Windows drive letter check (e.g. C:, D:/, etc.)
-    let bytes = raw_path.as_bytes();
-    let has_drive_letter = bytes.len() >= 2
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':';
+    // 2. Windows drive letter check (e.g. C:, D:/, etc.) on trimmed path
+    let trimmed_bytes = trimmed_path.as_bytes();
+    let has_drive_letter = trimmed_bytes.len() >= 2
+        && trimmed_bytes[0].is_ascii_alphabetic()
+        && trimmed_bytes[1] == b':';
 
     if has_drive_letter {
         is_absolute = true;
     }
 
-    // Global check for PhysicalDrive in raw path
-    let mut contains_reserved = raw_path.to_ascii_uppercase().contains("PHYSICALDRIVE");
+    // Global check for PhysicalDrive in trimmed path
+    let mut contains_reserved = trimmed_path.to_ascii_uppercase().contains("PHYSICALDRIVE");
 
     // 3. Fast Unicode NFC normalization
-    let nfc_path = normalize_to_nfc(raw_path);
+    let nfc_path = normalize_to_nfc(trimmed_path);
 
     // 4. Single-pass slash/backslash segment splitting, ADS stripping, and ZipSlip stack normalization
     let mut clean_segments: Vec<String> = Vec::with_capacity(8);
@@ -262,5 +467,154 @@ impl ExpansionRatioGuard {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_whitespace_bypass_in_sanitize_path() {
+        // Leading space before POSIX absolute path
+        let res_posix = sanitize_path(" /etc/passwd");
+        assert!(res_posix.is_absolute);
+        assert!(!res_posix.is_safe());
+
+        // Tab before POSIX absolute path
+        let res_tab = sanitize_path("\t/bin/sh");
+        assert!(res_tab.is_absolute);
+        assert!(!res_tab.is_safe());
+
+        // Leading space before Windows drive letter
+        let res_win = sanitize_path(" C:/Windows/System32");
+        assert!(res_win.is_absolute);
+        assert!(!res_win.is_safe());
+
+        // Leading space before UNC share
+        let res_unc = sanitize_path(" \\\\nas_server\\share");
+        assert!(res_unc.is_unc);
+        assert!(res_unc.is_absolute);
+        assert!(!res_unc.is_safe());
+
+        // Harmless leading/trailing whitespace around relative path
+        let res_rel = sanitize_path("  my_folder/file.txt  ");
+        assert_eq!(res_rel.normalized_path, "my_folder/file.txt");
+        assert!(!res_rel.is_absolute);
+        assert!(res_rel.is_safe());
+    }
+
+    #[test]
+    fn test_validate_archive_path_slice_safe() {
+        assert_eq!(validate_archive_path_slice(b"foo/bar/test.txt"), Ok(()));
+        assert_eq!(validate_archive_path_slice(b"a/b/c/d/e.bin"), Ok(()));
+        assert_eq!(validate_archive_path_slice(b"release..notes.txt"), Ok(()));
+        assert_eq!(validate_archive_path_slice(b"my folder/data.json"), Ok(()));
+
+        // Pure internal directory traversal that stays within root
+        assert_eq!(validate_archive_path_slice(b"foo/../bar"), Ok(()));
+        assert_eq!(validate_archive_path_slice(b"a/b/../c/../d"), Ok(()));
+    }
+
+    #[test]
+    fn test_validate_archive_path_slice_whitespace_bypass() {
+        assert_eq!(
+            validate_archive_path_slice(b" /etc/passwd"),
+            Err(PathSecurityError::AbsolutePath)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"\t\\Windows\\System32"),
+            Err(PathSecurityError::AbsolutePath)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"   C:/evil.exe"),
+            Err(PathSecurityError::AbsolutePath)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"   //server/share"),
+            Err(PathSecurityError::AbsolutePath)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"   \t  \r\n"),
+            Err(PathSecurityError::EmptyPath)
+        );
+    }
+
+    #[test]
+    fn test_validate_archive_path_slice_traversal_attacks() {
+        // Direct escapes above root
+        assert_eq!(
+            validate_archive_path_slice(b"../escape.txt"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"../../etc/shadow"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+
+        // Internal traversal accompanied by escape attacks
+        assert_eq!(
+            validate_archive_path_slice(b"foo/../../bar"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"../foo/../bar"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"foo/../bar/../../outside"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"foo/.."),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+
+        // Encoded traversal attack
+        assert_eq!(
+            validate_archive_path_slice(b"foo/%2e%2e/bar"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+    }
+
+    #[test]
+    fn test_validate_archive_path_slice_security_violations() {
+        // Null byte injection
+        assert_eq!(
+            validate_archive_path_slice(b"foo\0bar.txt"),
+            Err(PathSecurityError::NullByteInjection)
+        );
+
+        // Windows reserved devices
+        assert_eq!(
+            validate_archive_path_slice(b"CON"),
+            Err(PathSecurityError::ReservedDeviceName)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"docs/PRN.pdf"),
+            Err(PathSecurityError::ReservedDeviceName)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"sub/com1.dat"),
+            Err(PathSecurityError::ReservedDeviceName)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"lpt9"),
+            Err(PathSecurityError::ReservedDeviceName)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"aux..."),
+            Err(PathSecurityError::ReservedDeviceName)
+        );
+
+        // NTFS Alternate Data Streams
+        assert_eq!(
+            validate_archive_path_slice(b"file.txt:hidden"),
+            Err(PathSecurityError::AlternateDataStream)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"folder/sub:stream:$DATA"),
+            Err(PathSecurityError::AlternateDataStream)
+        );
     }
 }

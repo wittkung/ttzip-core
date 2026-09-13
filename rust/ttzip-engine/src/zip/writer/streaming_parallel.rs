@@ -16,24 +16,27 @@
 //! - 16-byte standard and 24-byte Zip64 Data Descriptor tail blocks.
 //! - Cooperative async cancellation token check (<10ms abort latency).
 
+use super::data_descriptor::{build_data_descriptor, compute_zipcrypto_check_byte};
+use super::streaming_sink::*;
 use super::types::{unix_to_dos_time, ZipCreateReport};
-use crate::codecs::deflate::{deflate_compress, deflate_compress_bound};
+use crate::codecs::libdeflate::writer::LibdeflateWriter;
+use crate::codecs::zstd::stream::ZstdStreamWriter;
 use crate::crypto::crc32::crc32_fast;
 use crate::fs::apfs::apfs_preallocate;
-use crate::types::{TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod, TTZipStatus};
-use crate::zip::extra::ZipExtraFields;
-use crate::zip::parser::{
-    MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
+use crate::types::{
+    TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
+    TTZipStatus,
 };
+use crate::zip::extra::ZipExtraFields;
+use crate::zip::parser::MAGIC_LFH;
 use rayon::prelude::*;
 use std::fs::{self, File, OpenOptions};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::unix::fs::{FileExt, MetadataExt};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use super::data_descriptor::{build_data_descriptor, compute_zipcrypto_check_byte};
 
 /// An item planned for compression.
 #[derive(Debug, Clone)]
@@ -46,22 +49,6 @@ struct CompressionPlanItem {
     is_directory: bool,
     is_symlink: bool,
     symlink_target: Option<String>,
-}
-
-/// Compact ~80-byte metadata retained in memory for Central Directory construction.
-#[derive(Debug, Clone)]
-pub struct CentralDirectoryMeta {
-    pub rel_path: String,
-    pub lfh_offset: u64,
-    pub uncompressed_size: u64,
-    pub compressed_size: u64,
-    pub crc32: u32,
-    pub compression_method: u16,
-    pub actual_method: u16,
-    pub is_encrypted: bool,
-    pub mtime_secs: u32,
-    pub mode: u32,
-    pub is_directory: bool,
 }
 
 /// Creates a ZIP archive using the high-throughput multi-core streaming parallel engine.
@@ -126,6 +113,7 @@ pub fn create_zip_streaming_parallel(
     let progress_cb = options.progress_callback;
     let user_data_usize = options.user_data as usize;
     let encryption_mode = options.encryption;
+    let archive_format = options.format;
     let password_str = if !options.password.is_null() {
         unsafe { std::ffi::CStr::from_ptr(options.password) }
             .to_str()
@@ -153,11 +141,23 @@ pub fn create_zip_streaming_parallel(
                     if is_cancelled.load(Ordering::Relaxed) {
                         return Err(TTZipStatus::Cancelled);
                     }
-                    compress_single_item(item, level_num, encryption_mode, password_str)
+                    compress_single_item(
+                        item,
+                        level_num,
+                        archive_format,
+                        encryption_mode,
+                        password_str,
+                    )
                 })
                 .collect()
         } else {
-            vec![compress_single_item(&batch[0], level_num, encryption_mode, password_str)]
+            vec![compress_single_item(
+                &batch[0],
+                level_num,
+                archive_format,
+                encryption_mode,
+                password_str,
+            )]
         };
 
         // Immediately land each compressed item to disk and drop payload vectors
@@ -172,11 +172,9 @@ pub fn create_zip_streaming_parallel(
             current_offset += entry.header_bytes.len() as u64;
 
             // Write payload
-            if !entry.payload_bytes.is_empty() {
-                out_file
-                    .write_all_at(&entry.payload_bytes, current_offset)
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                current_offset += entry.payload_bytes.len() as u64;
+            if !entry.payload.is_empty() {
+                entry.payload.write_to_file_at(&out_file, current_offset)?;
+                current_offset += entry.payload.len();
             }
 
             // Write Data Descriptor if not directory
@@ -302,12 +300,13 @@ struct CompressedEntryResult {
     mode: u32,
     is_directory: bool,
     header_bytes: Vec<u8>,
-    payload_bytes: Vec<u8>,
+    payload: EntryPayload,
 }
 
 fn compress_single_item(
     item: &CompressionPlanItem,
     level: i32,
+    format: TTZipArchiveFormat,
     encryption: TTZipEncryptionMethod,
     password: Option<&str>,
 ) -> Result<CompressedEntryResult, TTZipStatus> {
@@ -316,16 +315,16 @@ fn compress_single_item(
         let name_bytes = item.rel_path.as_bytes();
         let mut header = Vec::with_capacity(30 + name_bytes.len());
         header.extend_from_slice(&MAGIC_LFH.to_le_bytes());
-        header.extend_from_slice(&20u16.to_le_bytes()); // version needed
-        header.extend_from_slice(&0x0800u16.to_le_bytes()); // UTF-8 flag (bit 11)
-        header.extend_from_slice(&0u16.to_le_bytes()); // store
+        header.extend_from_slice(&20u16.to_le_bytes());
+        header.extend_from_slice(&0x0800u16.to_le_bytes());
+        header.extend_from_slice(&0u16.to_le_bytes());
         header.extend_from_slice(&dos_time.to_le_bytes());
         header.extend_from_slice(&dos_date.to_le_bytes());
-        header.extend_from_slice(&0u32.to_le_bytes()); // crc
-        header.extend_from_slice(&0u32.to_le_bytes()); // comp
-        header.extend_from_slice(&0u32.to_le_bytes()); // uncomp
+        header.extend_from_slice(&0u32.to_le_bytes());
+        header.extend_from_slice(&0u32.to_le_bytes());
+        header.extend_from_slice(&0u32.to_le_bytes());
         header.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-        header.extend_from_slice(&0u16.to_le_bytes()); // extra len
+        header.extend_from_slice(&0u16.to_le_bytes());
         header.extend_from_slice(name_bytes);
 
         return Ok(CompressedEntryResult {
@@ -340,45 +339,130 @@ fn compress_single_item(
             mode: item.mode,
             is_directory: true,
             header_bytes: header,
-            payload_bytes: Vec::new(),
+            payload: EntryPayload::Memory(Vec::new()),
         });
     }
 
-    // Direct single-allocation file reading eliminating 3-layer copies (BufReader + chunk + Vec::extend)
-    let (raw_data, uncompressed_size, crc) = if item.is_symlink {
+    let (actual_method, uncompressed_size, crc, payload) = if item.is_symlink {
         let sym_bytes = item.symlink_target.clone().unwrap_or_default().into_bytes();
         let len = sym_bytes.len() as u64;
         let c = crc32_fast(0, &sym_bytes);
-        (sym_bytes, len, c)
+        (0u16, len, c, EntryPayload::Memory(sym_bytes))
     } else {
         let mut file = File::open(&item.abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
         let meta = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
         let file_len = meta.len();
 
-        let mut data = Vec::with_capacity(file_len as usize);
-        file.read_to_end(&mut data)
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        let c = crc32_fast(0, &data);
-        (data, file_len, c)
-    };
+        let use_zstd = format == TTZipArchiveFormat::Zstd;
+        let target_method = if level == 0 || file_len == 0 {
+            0u16
+        } else if use_zstd {
+            93u16
+        } else {
+            8u16
+        };
 
-    let (actual_method, raw_payload) = if level == 0 || raw_data.is_empty() {
-        (0u16, raw_data)
-    } else {
-        let max_bound = deflate_compress_bound(raw_data.len(), level.min(12));
-        let mut comp_buf = vec![0u8; max_bound];
-        match deflate_compress(&raw_data, &mut comp_buf, level.min(12)) {
-            Ok(comp_len) if (comp_len as u64) < uncompressed_size => {
-                comp_buf.truncate(comp_len);
-                (8u16, comp_buf)
+        let mut read_buf = [0u8; STREAM_CHUNK_SIZE];
+        let mut computed_crc = 0u32;
+        let mut total_read = 0u64;
+
+        if target_method == 0 {
+            loop {
+                let n = file.read(&mut read_buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                if n == 0 {
+                    break;
+                }
+                computed_crc = crc32_fast(computed_crc, &read_buf[..n]);
+                total_read += n as u64;
             }
-            _ => (0u16, raw_data),
+            (
+                0u16,
+                total_read,
+                computed_crc,
+                EntryPayload::OriginalFile {
+                    path: item.abs_path.clone(),
+                    len: total_read,
+                },
+            )
+        } else if target_method == 93 {
+            let sink = BoundedSink::new();
+            let mut zstd_writer = ZstdStreamWriter::with_level(sink, level.min(19))?;
+            loop {
+                let n = file.read(&mut read_buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                if n == 0 {
+                    break;
+                }
+                computed_crc = crc32_fast(computed_crc, &read_buf[..n]);
+                total_read += n as u64;
+                zstd_writer
+                    .write_all(&read_buf[..n])
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            }
+            let sink = zstd_writer.finish()?;
+            if sink.total_written < total_read {
+                (93u16, total_read, computed_crc, sink.into_payload())
+            } else {
+                (
+                    0u16,
+                    total_read,
+                    computed_crc,
+                    EntryPayload::OriginalFile {
+                        path: item.abs_path.clone(),
+                        len: total_read,
+                    },
+                )
+            }
+        } else {
+            let sink = BoundedSink::new();
+            let mut def_writer = LibdeflateWriter::new_raw(sink, level.min(12))?;
+            loop {
+                let n = file.read(&mut read_buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                if n == 0 {
+                    break;
+                }
+                computed_crc = crc32_fast(computed_crc, &read_buf[..n]);
+                total_read += n as u64;
+                def_writer
+                    .write_all(&read_buf[..n])
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            }
+            let sink = def_writer
+                .finish()
+                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            if sink.total_written < total_read {
+                (8u16, total_read, computed_crc, sink.into_payload())
+            } else {
+                (
+                    0u16,
+                    total_read,
+                    computed_crc,
+                    EntryPayload::OriginalFile {
+                        path: item.abs_path.clone(),
+                        len: total_read,
+                    },
+                )
+            }
         }
     };
 
     let (comp_method, is_encrypted, final_payload) = match encryption {
         TTZipEncryptionMethod::Aes256 => {
             let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
+            let raw_bytes = match &payload {
+                EntryPayload::Memory(v) => v.clone(),
+                EntryPayload::Spill(spill) => {
+                    if spill.len > MAX_IN_MEMORY_PAYLOAD as u64 {
+                        return Err(TTZipStatus::ErrOutOfMemory);
+                    }
+                    fs::read(&spill.path).map_err(|_| TTZipStatus::ErrOpenFailed)?
+                }
+                EntryPayload::OriginalFile { path, len } => {
+                    if *len > MAX_IN_MEMORY_PAYLOAD as u64 {
+                        return Err(TTZipStatus::ErrOutOfMemory);
+                    }
+                    fs::read(path).map_err(|_| TTZipStatus::ErrOpenFailed)?
+                }
+            };
             let mut salt = [0u8; 16];
             unsafe {
                 libc::arc4random_buf(salt.as_mut_ptr() as *mut libc::c_void, 16);
@@ -387,14 +471,29 @@ fn compress_single_item(
             crate::crypto::sha1::winzip_aes256_encrypt_and_tag(
                 pass,
                 &salt,
-                &raw_payload,
+                &raw_bytes,
                 &mut enc_payload,
             )?;
-            (99u16, true, enc_payload)
+            (99u16, true, EntryPayload::Memory(enc_payload))
         }
         TTZipEncryptionMethod::ZipCrypto => {
             let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
-            let mut enc_payload = Vec::with_capacity(12 + raw_payload.len());
+            let raw_bytes = match &payload {
+                EntryPayload::Memory(v) => v.clone(),
+                EntryPayload::Spill(spill) => {
+                    if spill.len > MAX_IN_MEMORY_PAYLOAD as u64 {
+                        return Err(TTZipStatus::ErrOutOfMemory);
+                    }
+                    fs::read(&spill.path).map_err(|_| TTZipStatus::ErrOpenFailed)?
+                }
+                EntryPayload::OriginalFile { path, len } => {
+                    if *len > MAX_IN_MEMORY_PAYLOAD as u64 {
+                        return Err(TTZipStatus::ErrOutOfMemory);
+                    }
+                    fs::read(path).map_err(|_| TTZipStatus::ErrOpenFailed)?
+                }
+            };
+            let mut enc_payload = Vec::with_capacity(12 + raw_bytes.len());
             let mut header = [0u8; 12];
             unsafe {
                 libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11);
@@ -405,15 +504,15 @@ fn compress_single_item(
                 crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
             keys.encrypt_slice(&mut header);
             enc_payload.extend_from_slice(&header);
-            let mut body = raw_payload.clone();
+            let mut body = raw_bytes;
             keys.encrypt_slice(&mut body);
             enc_payload.extend_from_slice(&body);
-            (actual_method, true, enc_payload)
+            (actual_method, true, EntryPayload::Memory(enc_payload))
         }
-        _ => (actual_method, false, raw_payload),
+        _ => (actual_method, false, payload),
     };
 
-    let compressed_size = final_payload.len() as u64;
+    let compressed_size = final_payload.len();
     let (dos_date, dos_time) = unix_to_dos_time(item.mtime_secs);
     let name_bytes = item.rel_path.as_bytes();
 
@@ -430,8 +529,6 @@ fn compress_single_item(
         extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(actual_method));
     }
 
-    // PKWARE General Purpose Bit Flag: Bit 3 = 1 (Data Descriptor), Bit 11 = 1 (UTF-8)
-    // When Bit 3 is set: CRC-32, Compressed Size, and Uncompressed Size are set to 0 in LFH.
     let flag = if is_encrypted { 0x0809u16 } else { 0x0808u16 };
     let mut header = Vec::with_capacity(30 + name_bytes.len() + extra_fields.len());
     header.extend_from_slice(&MAGIC_LFH.to_le_bytes());
@@ -440,9 +537,9 @@ fn compress_single_item(
     header.extend_from_slice(&comp_method.to_le_bytes());
     header.extend_from_slice(&dos_time.to_le_bytes());
     header.extend_from_slice(&dos_date.to_le_bytes());
-    header.extend_from_slice(&0u32.to_le_bytes()); // zero crc due to Bit 3 Data Descriptor
-    header.extend_from_slice(&0u32.to_le_bytes()); // zero comp_size due to Bit 3 Data Descriptor
-    header.extend_from_slice(&0u32.to_le_bytes()); // zero uncomp_size due to Bit 3 Data Descriptor
+    header.extend_from_slice(&0u32.to_le_bytes());
+    header.extend_from_slice(&0u32.to_le_bytes());
+    header.extend_from_slice(&0u32.to_le_bytes());
     header.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
     header.extend_from_slice(&(extra_fields.len() as u16).to_le_bytes());
     header.extend_from_slice(name_bytes);
@@ -460,7 +557,7 @@ fn compress_single_item(
         mode: item.mode,
         is_directory: false,
         header_bytes: header,
-        payload_bytes: final_payload,
+        payload: final_payload,
     })
 }
 
@@ -521,125 +618,6 @@ fn collect_plan_items_recursive(
         }
     }
     Ok(())
-}
-
-fn build_cdfh_bytes(cd: &CentralDirectoryMeta) -> Vec<u8> {
-    let (dos_date, dos_time) = unix_to_dos_time(cd.mtime_secs);
-    let name_bytes = cd.rel_path.as_bytes();
-
-    let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF
-        || cd.compressed_size >= 0xFFFF_FFFF
-        || cd.lfh_offset >= 0xFFFF_FFFF;
-
-    let mut extra_fields = if is_zip64 {
-        ZipExtraFields::build_zip64_extra(
-            Some(cd.uncompressed_size),
-            Some(cd.compressed_size),
-            Some(cd.lfh_offset),
-        )
-    } else {
-        Vec::new()
-    };
-
-    if cd.is_encrypted && cd.compression_method == 99 {
-        extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
-    }
-
-    let flag = if cd.is_directory {
-        0x0800u16
-    } else if cd.is_encrypted {
-        0x0809u16
-    } else {
-        0x0808u16
-    };
-
-    let mut buf = Vec::with_capacity(46 + name_bytes.len() + extra_fields.len());
-    buf.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
-    buf.extend_from_slice(&0x031Eu16.to_le_bytes()); // version made by (UNIX + spec 3.0)
-    buf.extend_from_slice(&(if is_zip64 || cd.is_encrypted { 45u16 } else { 20u16 }).to_le_bytes());
-    buf.extend_from_slice(&flag.to_le_bytes());
-    buf.extend_from_slice(&cd.compression_method.to_le_bytes());
-    buf.extend_from_slice(&dos_time.to_le_bytes());
-    buf.extend_from_slice(&dos_date.to_le_bytes());
-    buf.extend_from_slice(
-        &(if cd.is_encrypted && cd.compression_method == 99 {
-            0u32
-        } else {
-            cd.crc32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.compressed_size as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.uncompressed_size as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-    buf.extend_from_slice(&(extra_fields.len() as u16).to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes()); // comment len
-    buf.extend_from_slice(&0u16.to_le_bytes()); // disk number start
-    buf.extend_from_slice(&0u16.to_le_bytes()); // internal attrs
-    let external_attr = (cd.mode << 16) | if cd.is_directory { 0x10 } else { 0x20 };
-    buf.extend_from_slice(&external_attr.to_le_bytes());
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.lfh_offset as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(name_bytes);
-    buf.extend_from_slice(&extra_fields);
-    buf
-}
-
-fn build_zip64_eocd(total_entries: u64, cd_size: u64, cd_offset: u64) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(56);
-    buf.extend_from_slice(&MAGIC_ZIP64_EOCD.to_le_bytes());
-    buf.extend_from_slice(&44u64.to_le_bytes()); // size of zip64 eocd record
-    buf.extend_from_slice(&45u16.to_le_bytes()); // version made by
-    buf.extend_from_slice(&45u16.to_le_bytes()); // version needed
-    buf.extend_from_slice(&0u32.to_le_bytes()); // number of this disk
-    buf.extend_from_slice(&0u32.to_le_bytes()); // disk where cd starts
-    buf.extend_from_slice(&total_entries.to_le_bytes()); // total entries on this disk
-    buf.extend_from_slice(&total_entries.to_le_bytes()); // total entries in cd
-    buf.extend_from_slice(&cd_size.to_le_bytes());
-    buf.extend_from_slice(&cd_offset.to_le_bytes());
-    buf
-}
-
-fn build_zip64_locator(zip64_eocd_offset: u64) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(20);
-    buf.extend_from_slice(&MAGIC_ZIP64_LOCATOR.to_le_bytes());
-    buf.extend_from_slice(&0u32.to_le_bytes()); // disk with zip64 eocd
-    buf.extend_from_slice(&zip64_eocd_offset.to_le_bytes());
-    buf.extend_from_slice(&1u32.to_le_bytes()); // total disks
-    buf
-}
-
-fn build_eocd(entries_count: u16, cd_size: u32, cd_offset: u32) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(22);
-    buf.extend_from_slice(&MAGIC_EOCD.to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes()); // disk number
-    buf.extend_from_slice(&0u16.to_le_bytes()); // cd start disk
-    buf.extend_from_slice(&entries_count.to_le_bytes());
-    buf.extend_from_slice(&entries_count.to_le_bytes());
-    buf.extend_from_slice(&cd_size.to_le_bytes());
-    buf.extend_from_slice(&cd_offset.to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes()); // comment len
-    buf
 }
 
 #[cfg(test)]

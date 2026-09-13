@@ -33,7 +33,7 @@ pub use facade::{
 pub use kdf::{derive_key_into, derive_key_xof, new_derive_key, new_keyed};
 pub use neon::{
     hash_many_neon, hash_many_parents_neon, hash_many_variable_chunks, hash_parents_neon,
-    hash4_neon,
+    hash4_neon, Blake3Neon4Chunk,
 };
 pub use output::{Output, OutputReader};
 pub use parallel::{

@@ -45,9 +45,5 @@ opt-level = 3
 
 
 [workspace.lints.rust]
-unsafe_code = "allow"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("gil-refs"))'] }
 
-[workspace.lints.clippy]
-not_unsafe_ptr_arg_deref = "allow"
-needless_range_loop = "allow"

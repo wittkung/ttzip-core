@@ -12,6 +12,7 @@
 //! and HMAC-SHA1-80 truncated 10-byte constant-time authentication.
 
 use aes::cipher::{generic_array::GenericArray, BlockEncrypt, KeyInit};
+use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::sha1::{pbkdf2_sha1, sha1, FastSha1};
@@ -30,14 +31,7 @@ pub const WINZIP_AES_PBKDF2_ROUNDS: u32 = 1000;
 /// Compares two byte slices in constant time to prevent side-channel timing leaks.
 #[inline]
 pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    std::hint::black_box(diff) == 0
+    a.ct_eq(b).into()
 }
 
 /// WinZip AES key strength and encryption level.
@@ -651,3 +645,18 @@ pub fn winzip_aes_decrypt_payload(
     let crc = dec.finalize(&stored_tag, expected_crc)?;
     Ok((plaintext, crc))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constant_time_eq_vectors() {
+        assert!(constant_time_eq(b"hello", b"hello"));
+        assert!(!constant_time_eq(b"hello", b"hellp"));
+        assert!(!constant_time_eq(b"hello", b"hello!"));
+        assert!(!constant_time_eq(b"", b"a"));
+        assert!(constant_time_eq(b"", b""));
+    }
+}
+

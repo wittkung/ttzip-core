@@ -598,6 +598,11 @@ pub fn extract_single_entry_bounded(
         return Err(TTZipStatus::ErrSolidBudgetExceeded);
     }
 
+    // In-memory allocation ceiling: Enforce strict 64MB limit for single-entry in-memory extraction
+    if target_len > 64 * 1024 * 1024 {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+
     let mut current_offset: u64 = 0;
     let mut result_vec = Vec::with_capacity(target_len as usize);
     let folder_idx = loc.folder_index.unwrap_or(0);

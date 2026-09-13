@@ -36,6 +36,10 @@ impl TTZipBufferRef {
         }
     }
 
+    /// Returns a shared byte slice over the buffer memory.
+    ///
+    /// # Safety
+    /// Caller must guarantee `data` is non-null or length is 0, and points to `len` initialized, valid bytes.
     #[inline]
     pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
         if self.data.is_null() || self.len == 0 {
@@ -74,6 +78,10 @@ impl TTZipBufferMut {
         }
     }
 
+    /// Returns a shared byte slice over the buffer memory.
+    ///
+    /// # Safety
+    /// Caller must guarantee `data` is non-null or length is 0, and points to `len` initialized, valid bytes.
     #[inline]
     pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
         if self.data.is_null() || self.len == 0 {
@@ -83,6 +91,10 @@ impl TTZipBufferMut {
         }
     }
 
+    /// Returns a mutable byte slice over the buffer memory.
+    ///
+    /// # Safety
+    /// Caller must guarantee `data` is non-null or length is 0, points to `len` valid writable bytes, and no aliasing exists.
     #[inline]
     pub unsafe fn as_mut_slice<'a>(&mut self) -> &'a mut [u8] {
         if self.data.is_null() || self.len == 0 {

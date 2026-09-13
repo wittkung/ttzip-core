@@ -56,7 +56,7 @@ pub fn verify_archive_integrity(
 
         let files = arch.files();
         total_entries = files.len() as u64;
-        let budget_bytes = 100 * 1024 * 1024;
+        let budget_bytes = 64 * 1024 * 1024;
 
         for (idx, f) in files.iter().enumerate() {
             if let Some(ref t) = token {
@@ -144,7 +144,14 @@ pub fn verify_archive_integrity(
                 }
             }
 
-            match zip_archive.extract_entry_bytes(idx, password.as_deref()) {
+            let extract_res = if e.uncompressed_size > 64 * 1024 * 1024 {
+                let mut sink = std::io::sink();
+                zip_archive.extract_entry_to_sink(idx, password.as_deref(), &mut sink).map(|_| ())
+            } else {
+                zip_archive.extract_entry_bytes(idx, password.as_deref()).map(|_| ())
+            };
+
+            match extract_res {
                 Ok(_) => {
                     verified_entries += 1;
                 }
