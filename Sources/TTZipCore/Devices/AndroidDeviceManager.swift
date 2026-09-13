@@ -136,11 +136,27 @@ public actor AndroidDeviceManager {
         }
     }
 
+    /// Flag tracking whether hardware monitoring is currently active.
+    private var isHardwareMonitoringActive: Bool = false
+
     /// Starts event-driven IOKit hotplug monitoring and performs an initial device scan.
     public func startHardwareMonitoring() {
+        guard !isHardwareMonitoringActive else { return }
+        isHardwareMonitoringActive = true
         let listener = HotplugListenerBridge(manager: self)
-        try? uniffiStartHotplugMonitoring(listener: listener)
+        do {
+            try uniffiStartHotplugMonitoring(listener: listener)
+        } catch {
+            isHardwareMonitoringActive = false
+        }
         refreshUsbDevices()
+    }
+
+    /// Stops event-driven hardware hotplug monitoring.
+    public func stopHardwareMonitoring() {
+        guard isHardwareMonitoringActive else { return }
+        isHardwareMonitoringActive = false
+        uniffiStopHotplugMonitoring()
     }
 
     /// Scans USB bus for attached Android devices and syncs registered devices.

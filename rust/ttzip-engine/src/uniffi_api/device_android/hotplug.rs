@@ -27,36 +27,62 @@ static ACTIVE_HOTPLUG_WATCHER: RwLock<Option<Arc<HotplugWatcher>>> = RwLock::new
 pub fn uniffi_start_hotplug_monitoring(
     listener: Box<dyn UniFFIDeviceEventListener>,
 ) -> Result<(), TTZipError> {
-    let mut guard = ACTIVE_HOTPLUG_WATCHER.write();
-    if guard.is_some() {
-        // Already monitoring
-        return Ok(());
-    }
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut guard = ACTIVE_HOTPLUG_WATCHER.write();
+        if let Some(old_watcher) = guard.take() {
+            old_watcher.stop();
+        }
 
-    let watcher = Arc::new(HotplugWatcher::default());
-    let mut rx = watcher.start_monitoring();
-    *guard = Some(watcher);
+        let watcher = Arc::new(HotplugWatcher::default());
+        let mut rx = watcher.start_monitoring();
+        *guard = Some(watcher.clone());
 
-    // Spawn background task dispatching IOKit notifications to Swift listener
-    std::thread::Builder::new()
-        .name("ttzip-uniffi-hotplug-dispatcher".to_string())
-        .spawn(move || {
-            while let Some(_event) = rx.blocking_recv() {
-                listener.on_devices_changed();
+        // Spawn background task dispatching IOKit notifications to Swift listener
+        let dispatch_res = std::thread::Builder::new()
+            .name("ttzip-uniffi-hotplug-dispatcher".to_string())
+            .spawn(move || {
+                while let Some(_event) = rx.blocking_recv() {
+                    listener.on_devices_changed();
+                }
+            });
+
+        match dispatch_res {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                watcher.stop();
+                *guard = None;
+                Err(TTZipError::IoError {
+                    message: format!("Failed to spawn hotplug dispatch thread: {e}"),
+                })
             }
-        })
-        .map_err(|e| TTZipError::IoError {
-            message: format!("Failed to spawn hotplug dispatch thread: {e}"),
-        })?;
+        }
+    }));
 
-    Ok(())
+    match result {
+        Ok(inner_res) => inner_res,
+        Err(panic_payload) => {
+            let msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unknown panic during hotplug monitoring initialization".to_string()
+            };
+            log::error!("Panic caught in uniffi_start_hotplug_monitoring: {msg}");
+            Err(TTZipError::IoError {
+                message: format!("Internal panic prevented: {msg}"),
+            })
+        }
+    }
 }
 
 /// Stops active hardware hotplug monitoring.
 #[uniffi::export]
 pub fn uniffi_stop_hotplug_monitoring() {
-    let mut guard = ACTIVE_HOTPLUG_WATCHER.write();
-    if let Some(watcher) = guard.take() {
-        watcher.stop();
-    }
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut guard = ACTIVE_HOTPLUG_WATCHER.write();
+        if let Some(watcher) = guard.take() {
+            watcher.stop();
+        }
+    }));
 }

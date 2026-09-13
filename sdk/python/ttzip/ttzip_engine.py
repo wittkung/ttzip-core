@@ -692,6 +692,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language() != 28368:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_download_file() != 49260:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula() != 61901:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_audio_metadata() != 13210:
@@ -730,6 +732,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail() != 54205:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device() != 48815:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover() != 26142:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311:
@@ -752,6 +756,10 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new() != 57279:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive() != 9315:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc() != 53597:
@@ -765,6 +773,10 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress() != 6203:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device() != 8415:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes() != 33550:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -796,6 +808,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html() != 8664:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices() != 40150:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295:
@@ -806,9 +820,15 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode() != 22176:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring() != 36397:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring() != 37312:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new() != 20108:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8() != 54381:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_upload_file() != 934:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt() != 33738:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1296,6 +1316,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
@@ -1407,12 +1429,20 @@ _UNIFFI_FOREIGN_FUTURE_COMPLETE_VOID = ctypes.CFUNCTYPE(None,ctypes.c_uint64,_Un
 _UNIFFI_CALLBACK_INTERFACE_PROGRESS_HANDLER_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64,_UniffiRustBuffer,ctypes.POINTER(ctypes.c_int8),
     ctypes.POINTER(_UniffiRustCallStatus),
 )
+_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
 _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64,_UniffiRustBuffer,ctypes.POINTER(ctypes.c_int8),
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 class _UniffiVTableCallbackInterfaceProgressHandler(ctypes.Structure):
     _fields_ = [
         ("on_progress", _UNIFFI_CALLBACK_INTERFACE_PROGRESS_HANDLER_METHOD0),
+        ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
+    ]
+class _UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(ctypes.Structure):
+    _fields_ = [
+        ("on_devices_changed", _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0),
         ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
     ]
 class _UniffiVTableCallbackInterfaceUniFfiProgressCallback(ctypes.Structure):
@@ -2929,6 +2959,10 @@ _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.argtypes 
     ctypes.POINTER(_UniffiVTableCallbackInterfaceProgressHandler),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_progresshandler.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener.argtypes = (
+    ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiDeviceEventListener),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback.argtypes = (
     ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiProgressCallback),
 )
@@ -3650,6 +3684,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_detect_language.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_detect_language.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_download_file.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_download_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_evaluate_formula.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3764,6 +3805,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_thumbnail.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_to_device.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_to_device.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_cover.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3831,6 +3879,18 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -3871,6 +3931,18 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_open_device.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_open_device.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint16,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_parse_plist_from_bytes.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -3962,6 +4034,10 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sanitize_html.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3990,6 +4066,15 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_frame_encode.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring.argtypes = (
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring.argtypes = (
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_syntax_service_new.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
@@ -4000,6 +4085,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_upload_file.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_upload_file.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_vault_aes_gcm_decrypt.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -4856,6 +4948,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_encoding.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_detect_language.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_download_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_download_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_evaluate_formula.restype = ctypes.c_uint16
@@ -4913,6 +5008,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_symbols.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_thumbnail.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_to_device.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover.restype = ctypes.c_uint16
@@ -4946,6 +5044,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_highlight_code_viewport.rest
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_html_service_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.restype = ctypes.c_uint16
@@ -4967,6 +5071,12 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress.restype = ctyp
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_open_device.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_open_device.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_pair_wireless_device.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_parse_plist_from_bytes.restype = ctypes.c_uint16
@@ -5012,6 +5122,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sample_viewport.restype = ct
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sanitize_html.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.restype = ctypes.c_uint16
@@ -5027,12 +5140,21 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_decode.restype 
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_frame_encode.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_start_hotplug_monitoring.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_stop_hotplug_monitoring.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_syntax_service_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_transcode_to_utf8.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_upload_file.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_upload_file.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_vault_aes_gcm_decrypt.restype = ctypes.c_uint16
@@ -5762,6 +5884,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_virtualfilestream_new_empty.
 _UniffiLib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.restype = ctypes.c_uint16
@@ -12832,6 +12957,163 @@ class _UniffiConverterTypeUniFfiAeadResult(_UniffiConverterRustBuffer):
         _UniffiConverterBytes.write(value.tag, buf)
 
 
+class UniFfiAndroidDevice:
+    """
+    UniFFI record representing an attached Android hardware or network device.
+    """
+
+    device_id: "str"
+    display_name: "str"
+    vendor_id: "int"
+    product_id: "int"
+    serial_number: "str"
+    connection_type: "UniFfiConnectionType"
+    status: "UniFfiDeviceStatus"
+    storage_partitions: "typing.List[UniFfiStoragePartition]"
+    def __init__(self, *, device_id: "str", display_name: "str", vendor_id: "int", product_id: "int", serial_number: "str", connection_type: "UniFfiConnectionType", status: "UniFfiDeviceStatus", storage_partitions: "typing.List[UniFfiStoragePartition]"):
+        self.device_id = device_id
+        self.display_name = display_name
+        self.vendor_id = vendor_id
+        self.product_id = product_id
+        self.serial_number = serial_number
+        self.connection_type = connection_type
+        self.status = status
+        self.storage_partitions = storage_partitions
+
+    def __str__(self):
+        return "UniFfiAndroidDevice(device_id={}, display_name={}, vendor_id={}, product_id={}, serial_number={}, connection_type={}, status={}, storage_partitions={})".format(self.device_id, self.display_name, self.vendor_id, self.product_id, self.serial_number, self.connection_type, self.status, self.storage_partitions)
+
+    def __eq__(self, other):
+        if self.device_id != other.device_id:
+            return False
+        if self.display_name != other.display_name:
+            return False
+        if self.vendor_id != other.vendor_id:
+            return False
+        if self.product_id != other.product_id:
+            return False
+        if self.serial_number != other.serial_number:
+            return False
+        if self.connection_type != other.connection_type:
+            return False
+        if self.status != other.status:
+            return False
+        if self.storage_partitions != other.storage_partitions:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAndroidDevice(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAndroidDevice(
+            device_id=_UniffiConverterString.read(buf),
+            display_name=_UniffiConverterString.read(buf),
+            vendor_id=_UniffiConverterUInt16.read(buf),
+            product_id=_UniffiConverterUInt16.read(buf),
+            serial_number=_UniffiConverterString.read(buf),
+            connection_type=_UniffiConverterTypeUniFfiConnectionType.read(buf),
+            status=_UniffiConverterTypeUniFfiDeviceStatus.read(buf),
+            storage_partitions=_UniffiConverterSequenceTypeUniFfiStoragePartition.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.device_id)
+        _UniffiConverterString.check_lower(value.display_name)
+        _UniffiConverterUInt16.check_lower(value.vendor_id)
+        _UniffiConverterUInt16.check_lower(value.product_id)
+        _UniffiConverterString.check_lower(value.serial_number)
+        _UniffiConverterTypeUniFfiConnectionType.check_lower(value.connection_type)
+        _UniffiConverterTypeUniFfiDeviceStatus.check_lower(value.status)
+        _UniffiConverterSequenceTypeUniFfiStoragePartition.check_lower(value.storage_partitions)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.device_id, buf)
+        _UniffiConverterString.write(value.display_name, buf)
+        _UniffiConverterUInt16.write(value.vendor_id, buf)
+        _UniffiConverterUInt16.write(value.product_id, buf)
+        _UniffiConverterString.write(value.serial_number, buf)
+        _UniffiConverterTypeUniFfiConnectionType.write(value.connection_type, buf)
+        _UniffiConverterTypeUniFfiDeviceStatus.write(value.status, buf)
+        _UniffiConverterSequenceTypeUniFfiStoragePartition.write(value.storage_partitions, buf)
+
+
+class UniFfiAndroidVfsNode:
+    """
+    UniFFI record representing a remote VFS node in the Android file hierarchy.
+    """
+
+    path: "str"
+    name: "str"
+    entry_type: "UniFfiVfsEntryType"
+    size_bytes: "int"
+    modified_timestamp: "int"
+    object_handle: "typing.Optional[int]"
+    is_restricted: "bool"
+    def __init__(self, *, path: "str", name: "str", entry_type: "UniFfiVfsEntryType", size_bytes: "int", modified_timestamp: "int", object_handle: "typing.Optional[int]", is_restricted: "bool"):
+        self.path = path
+        self.name = name
+        self.entry_type = entry_type
+        self.size_bytes = size_bytes
+        self.modified_timestamp = modified_timestamp
+        self.object_handle = object_handle
+        self.is_restricted = is_restricted
+
+    def __str__(self):
+        return "UniFfiAndroidVfsNode(path={}, name={}, entry_type={}, size_bytes={}, modified_timestamp={}, object_handle={}, is_restricted={})".format(self.path, self.name, self.entry_type, self.size_bytes, self.modified_timestamp, self.object_handle, self.is_restricted)
+
+    def __eq__(self, other):
+        if self.path != other.path:
+            return False
+        if self.name != other.name:
+            return False
+        if self.entry_type != other.entry_type:
+            return False
+        if self.size_bytes != other.size_bytes:
+            return False
+        if self.modified_timestamp != other.modified_timestamp:
+            return False
+        if self.object_handle != other.object_handle:
+            return False
+        if self.is_restricted != other.is_restricted:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiAndroidVfsNode(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiAndroidVfsNode(
+            path=_UniffiConverterString.read(buf),
+            name=_UniffiConverterString.read(buf),
+            entry_type=_UniffiConverterTypeUniFfiVfsEntryType.read(buf),
+            size_bytes=_UniffiConverterUInt64.read(buf),
+            modified_timestamp=_UniffiConverterUInt64.read(buf),
+            object_handle=_UniffiConverterOptionalUInt32.read(buf),
+            is_restricted=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.path)
+        _UniffiConverterString.check_lower(value.name)
+        _UniffiConverterTypeUniFfiVfsEntryType.check_lower(value.entry_type)
+        _UniffiConverterUInt64.check_lower(value.size_bytes)
+        _UniffiConverterUInt64.check_lower(value.modified_timestamp)
+        _UniffiConverterOptionalUInt32.check_lower(value.object_handle)
+        _UniffiConverterBool.check_lower(value.is_restricted)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.path, buf)
+        _UniffiConverterString.write(value.name, buf)
+        _UniffiConverterTypeUniFfiVfsEntryType.write(value.entry_type, buf)
+        _UniffiConverterUInt64.write(value.size_bytes, buf)
+        _UniffiConverterUInt64.write(value.modified_timestamp, buf)
+        _UniffiConverterOptionalUInt32.write(value.object_handle, buf)
+        _UniffiConverterBool.write(value.is_restricted, buf)
+
+
 class UniFfiAppcastItem:
     """
     Single release entry in an Appcast update feed.
@@ -19500,6 +19782,74 @@ class _UniffiConverterTypeUniFfiSmartExtractDecision(_UniffiConverterRustBuffer)
         _UniffiConverterString.write(value.destination_folder, buf)
 
 
+class UniFfiStoragePartition:
+    """
+    UniFFI record describing an individual storage volume or SD card partition.
+    """
+
+    partition_id: "str"
+    display_name: "str"
+    total_bytes: "int"
+    available_bytes: "int"
+    root_path: "str"
+    is_removable: "bool"
+    def __init__(self, *, partition_id: "str", display_name: "str", total_bytes: "int", available_bytes: "int", root_path: "str", is_removable: "bool"):
+        self.partition_id = partition_id
+        self.display_name = display_name
+        self.total_bytes = total_bytes
+        self.available_bytes = available_bytes
+        self.root_path = root_path
+        self.is_removable = is_removable
+
+    def __str__(self):
+        return "UniFfiStoragePartition(partition_id={}, display_name={}, total_bytes={}, available_bytes={}, root_path={}, is_removable={})".format(self.partition_id, self.display_name, self.total_bytes, self.available_bytes, self.root_path, self.is_removable)
+
+    def __eq__(self, other):
+        if self.partition_id != other.partition_id:
+            return False
+        if self.display_name != other.display_name:
+            return False
+        if self.total_bytes != other.total_bytes:
+            return False
+        if self.available_bytes != other.available_bytes:
+            return False
+        if self.root_path != other.root_path:
+            return False
+        if self.is_removable != other.is_removable:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiStoragePartition(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiStoragePartition(
+            partition_id=_UniffiConverterString.read(buf),
+            display_name=_UniffiConverterString.read(buf),
+            total_bytes=_UniffiConverterUInt64.read(buf),
+            available_bytes=_UniffiConverterUInt64.read(buf),
+            root_path=_UniffiConverterString.read(buf),
+            is_removable=_UniffiConverterBool.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.partition_id)
+        _UniffiConverterString.check_lower(value.display_name)
+        _UniffiConverterUInt64.check_lower(value.total_bytes)
+        _UniffiConverterUInt64.check_lower(value.available_bytes)
+        _UniffiConverterString.check_lower(value.root_path)
+        _UniffiConverterBool.check_lower(value.is_removable)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.partition_id, buf)
+        _UniffiConverterString.write(value.display_name, buf)
+        _UniffiConverterUInt64.write(value.total_bytes, buf)
+        _UniffiConverterUInt64.write(value.available_bytes, buf)
+        _UniffiConverterString.write(value.root_path, buf)
+        _UniffiConverterBool.write(value.is_removable, buf)
+
+
 class UniFfiSubtitleColor:
     """
     8-bit RGBA color representation for subtitle styling across FFI boundary.
@@ -20696,6 +21046,95 @@ class _UniffiConverterTypeUniFfiTransactionDiff(_UniffiConverterRustBuffer):
         _UniffiConverterString.write(value.old_hash, buf)
         _UniffiConverterString.write(value.new_hash, buf)
         _UniffiConverterUInt64.write(value.bytes_written, buf)
+
+
+class UniFfiTransferJob:
+    """
+    UniFFI record representing an ongoing or completed transfer job.
+    """
+
+    job_id: "str"
+    direction: "UniFfiTransferDirection"
+    source_path: "str"
+    destination_path: "str"
+    total_bytes: "int"
+    transferred_bytes: "int"
+    current_speed_bps: "int"
+    status: "UniFfiTransferStatus"
+    error_message: "typing.Optional[str]"
+    def __init__(self, *, job_id: "str", direction: "UniFfiTransferDirection", source_path: "str", destination_path: "str", total_bytes: "int", transferred_bytes: "int", current_speed_bps: "int", status: "UniFfiTransferStatus", error_message: "typing.Optional[str]"):
+        self.job_id = job_id
+        self.direction = direction
+        self.source_path = source_path
+        self.destination_path = destination_path
+        self.total_bytes = total_bytes
+        self.transferred_bytes = transferred_bytes
+        self.current_speed_bps = current_speed_bps
+        self.status = status
+        self.error_message = error_message
+
+    def __str__(self):
+        return "UniFfiTransferJob(job_id={}, direction={}, source_path={}, destination_path={}, total_bytes={}, transferred_bytes={}, current_speed_bps={}, status={}, error_message={})".format(self.job_id, self.direction, self.source_path, self.destination_path, self.total_bytes, self.transferred_bytes, self.current_speed_bps, self.status, self.error_message)
+
+    def __eq__(self, other):
+        if self.job_id != other.job_id:
+            return False
+        if self.direction != other.direction:
+            return False
+        if self.source_path != other.source_path:
+            return False
+        if self.destination_path != other.destination_path:
+            return False
+        if self.total_bytes != other.total_bytes:
+            return False
+        if self.transferred_bytes != other.transferred_bytes:
+            return False
+        if self.current_speed_bps != other.current_speed_bps:
+            return False
+        if self.status != other.status:
+            return False
+        if self.error_message != other.error_message:
+            return False
+        return True
+
+class _UniffiConverterTypeUniFfiTransferJob(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return UniFfiTransferJob(
+            job_id=_UniffiConverterString.read(buf),
+            direction=_UniffiConverterTypeUniFfiTransferDirection.read(buf),
+            source_path=_UniffiConverterString.read(buf),
+            destination_path=_UniffiConverterString.read(buf),
+            total_bytes=_UniffiConverterUInt64.read(buf),
+            transferred_bytes=_UniffiConverterUInt64.read(buf),
+            current_speed_bps=_UniffiConverterUInt64.read(buf),
+            status=_UniffiConverterTypeUniFfiTransferStatus.read(buf),
+            error_message=_UniffiConverterOptionalString.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.job_id)
+        _UniffiConverterTypeUniFfiTransferDirection.check_lower(value.direction)
+        _UniffiConverterString.check_lower(value.source_path)
+        _UniffiConverterString.check_lower(value.destination_path)
+        _UniffiConverterUInt64.check_lower(value.total_bytes)
+        _UniffiConverterUInt64.check_lower(value.transferred_bytes)
+        _UniffiConverterUInt64.check_lower(value.current_speed_bps)
+        _UniffiConverterTypeUniFfiTransferStatus.check_lower(value.status)
+        _UniffiConverterOptionalString.check_lower(value.error_message)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.job_id, buf)
+        _UniffiConverterTypeUniFfiTransferDirection.write(value.direction, buf)
+        _UniffiConverterString.write(value.source_path, buf)
+        _UniffiConverterString.write(value.destination_path, buf)
+        _UniffiConverterUInt64.write(value.total_bytes, buf)
+        _UniffiConverterUInt64.write(value.transferred_bytes, buf)
+        _UniffiConverterUInt64.write(value.current_speed_bps, buf)
+        _UniffiConverterTypeUniFfiTransferStatus.write(value.status, buf)
+        _UniffiConverterOptionalString.write(value.error_message, buf)
 
 
 class UniFfiVfsMatch:
@@ -23524,6 +23963,56 @@ class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiConnectionType(enum.Enum):
+    """
+    UniFFI-exported connection channel type.
+    """
+
+    USB_MTP = 0
+    
+    USB_ADB = 1
+    
+    WIRELESS_ADB = 2
+    
+
+
+class _UniffiConverterTypeUniFfiConnectionType(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiConnectionType.USB_MTP
+        if variant == 2:
+            return UniFfiConnectionType.USB_ADB
+        if variant == 3:
+            return UniFfiConnectionType.WIRELESS_ADB
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiConnectionType.USB_MTP:
+            return
+        if value == UniFfiConnectionType.USB_ADB:
+            return
+        if value == UniFfiConnectionType.WIRELESS_ADB:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiConnectionType.USB_MTP:
+            buf.write_i32(1)
+        if value == UniFfiConnectionType.USB_ADB:
+            buf.write_i32(2)
+        if value == UniFfiConnectionType.WIRELESS_ADB:
+            buf.write_i32(3)
+
+
+
+
+
+
+
 class UniFfiCorpusType(enum.Enum):
     """
     Strongly typed corpus types for benchmark dataset selection.
@@ -24092,6 +24581,80 @@ class _UniffiConverterTypeUniFfiDeltaFormat(_UniffiConverterRustBuffer):
             buf.write_i32(2)
         if value == UniFfiDeltaFormat.FLATE_COMPRESSED:
             buf.write_i32(3)
+
+
+
+
+
+
+
+class UniFfiDeviceStatus(enum.Enum):
+    """
+    UniFFI-exported device lifecycle status.
+    """
+
+    CONNECTING = 0
+    
+    SEIZING_INTERFACE = 1
+    
+    CONNECTED = 2
+    
+    STALLED = 3
+    
+    DISCONNECTED = 4
+    
+    ERROR = 5
+    
+
+
+class _UniffiConverterTypeUniFfiDeviceStatus(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiDeviceStatus.CONNECTING
+        if variant == 2:
+            return UniFfiDeviceStatus.SEIZING_INTERFACE
+        if variant == 3:
+            return UniFfiDeviceStatus.CONNECTED
+        if variant == 4:
+            return UniFfiDeviceStatus.STALLED
+        if variant == 5:
+            return UniFfiDeviceStatus.DISCONNECTED
+        if variant == 6:
+            return UniFfiDeviceStatus.ERROR
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiDeviceStatus.CONNECTING:
+            return
+        if value == UniFfiDeviceStatus.SEIZING_INTERFACE:
+            return
+        if value == UniFfiDeviceStatus.CONNECTED:
+            return
+        if value == UniFfiDeviceStatus.STALLED:
+            return
+        if value == UniFfiDeviceStatus.DISCONNECTED:
+            return
+        if value == UniFfiDeviceStatus.ERROR:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiDeviceStatus.CONNECTING:
+            buf.write_i32(1)
+        if value == UniFfiDeviceStatus.SEIZING_INTERFACE:
+            buf.write_i32(2)
+        if value == UniFfiDeviceStatus.CONNECTED:
+            buf.write_i32(3)
+        if value == UniFfiDeviceStatus.STALLED:
+            buf.write_i32(4)
+        if value == UniFfiDeviceStatus.DISCONNECTED:
+            buf.write_i32(5)
+        if value == UniFfiDeviceStatus.ERROR:
+            buf.write_i32(6)
 
 
 
@@ -25956,6 +26519,188 @@ class _UniffiConverterTypeUniFfiSystemError(_UniffiConverterRustBuffer):
 
 
 
+class UniFfiTransferDirection(enum.Enum):
+    """
+    UniFFI-exported file transfer pipeline direction.
+    """
+
+    MAC_TO_ANDROID = 0
+    
+    ANDROID_TO_MAC = 1
+    
+    DIRECT_PIPELINE_EXTRACT = 2
+    
+
+
+class _UniffiConverterTypeUniFfiTransferDirection(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiTransferDirection.MAC_TO_ANDROID
+        if variant == 2:
+            return UniFfiTransferDirection.ANDROID_TO_MAC
+        if variant == 3:
+            return UniFfiTransferDirection.DIRECT_PIPELINE_EXTRACT
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiTransferDirection.MAC_TO_ANDROID:
+            return
+        if value == UniFfiTransferDirection.ANDROID_TO_MAC:
+            return
+        if value == UniFfiTransferDirection.DIRECT_PIPELINE_EXTRACT:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiTransferDirection.MAC_TO_ANDROID:
+            buf.write_i32(1)
+        if value == UniFfiTransferDirection.ANDROID_TO_MAC:
+            buf.write_i32(2)
+        if value == UniFfiTransferDirection.DIRECT_PIPELINE_EXTRACT:
+            buf.write_i32(3)
+
+
+
+
+
+
+
+class UniFfiTransferStatus(enum.Enum):
+    """
+    UniFFI-exported transfer execution status.
+    """
+
+    QUEUED = 0
+    
+    TRANSFERRING = 1
+    
+    PAUSED = 2
+    
+    CANCELLING = 3
+    
+    COMPLETED = 4
+    
+    FAILED = 5
+    
+
+
+class _UniffiConverterTypeUniFfiTransferStatus(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiTransferStatus.QUEUED
+        if variant == 2:
+            return UniFfiTransferStatus.TRANSFERRING
+        if variant == 3:
+            return UniFfiTransferStatus.PAUSED
+        if variant == 4:
+            return UniFfiTransferStatus.CANCELLING
+        if variant == 5:
+            return UniFfiTransferStatus.COMPLETED
+        if variant == 6:
+            return UniFfiTransferStatus.FAILED
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiTransferStatus.QUEUED:
+            return
+        if value == UniFfiTransferStatus.TRANSFERRING:
+            return
+        if value == UniFfiTransferStatus.PAUSED:
+            return
+        if value == UniFfiTransferStatus.CANCELLING:
+            return
+        if value == UniFfiTransferStatus.COMPLETED:
+            return
+        if value == UniFfiTransferStatus.FAILED:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiTransferStatus.QUEUED:
+            buf.write_i32(1)
+        if value == UniFfiTransferStatus.TRANSFERRING:
+            buf.write_i32(2)
+        if value == UniFfiTransferStatus.PAUSED:
+            buf.write_i32(3)
+        if value == UniFfiTransferStatus.CANCELLING:
+            buf.write_i32(4)
+        if value == UniFfiTransferStatus.COMPLETED:
+            buf.write_i32(5)
+        if value == UniFfiTransferStatus.FAILED:
+            buf.write_i32(6)
+
+
+
+
+
+
+
+class UniFfiVfsEntryType(enum.Enum):
+    """
+    UniFFI-exported VFS entry category.
+    """
+
+    FILE = 0
+    
+    DIRECTORY = 1
+    
+    SYMLINK = 2
+    
+    RESTRICTED_DIRECTORY = 3
+    
+
+
+class _UniffiConverterTypeUniFfiVfsEntryType(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return UniFfiVfsEntryType.FILE
+        if variant == 2:
+            return UniFfiVfsEntryType.DIRECTORY
+        if variant == 3:
+            return UniFfiVfsEntryType.SYMLINK
+        if variant == 4:
+            return UniFfiVfsEntryType.RESTRICTED_DIRECTORY
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if value == UniFfiVfsEntryType.FILE:
+            return
+        if value == UniFfiVfsEntryType.DIRECTORY:
+            return
+        if value == UniFfiVfsEntryType.SYMLINK:
+            return
+        if value == UniFfiVfsEntryType.RESTRICTED_DIRECTORY:
+            return
+        raise ValueError(value)
+
+    @staticmethod
+    def write(value, buf):
+        if value == UniFfiVfsEntryType.FILE:
+            buf.write_i32(1)
+        if value == UniFfiVfsEntryType.DIRECTORY:
+            buf.write_i32(2)
+        if value == UniFfiVfsEntryType.SYMLINK:
+            buf.write_i32(3)
+        if value == UniFfiVfsEntryType.RESTRICTED_DIRECTORY:
+            buf.write_i32(4)
+
+
+
+
+
+
+
 class UniFfiVideoCodec(enum.Enum):
     """
     Video track codec classifications.
@@ -26689,6 +27434,61 @@ class _UniffiTraitImplProgressHandler:
 
 # The _UniffiConverter which transforms the Callbacks in to Handles to pass to Rust.
 _UniffiConverterTypeProgressHandler = _UniffiCallbackInterfaceFfiConverter()
+
+
+
+class UniFfiDeviceEventListener(typing.Protocol):
+    """
+    Cross-language callback interface notified upon physical USB hardware change.
+    """
+
+    def on_devices_changed(self, ):
+        """
+        Invoked whenever a USB device matching MTP/ADB is attached or detached.
+        """
+
+        raise NotImplementedError
+
+
+# Put all the bits inside a class to keep the top-level namespace clean
+class _UniffiTraitImplUniFFIDeviceEventListener:
+    # For each method, generate a callback function to pass to Rust
+
+    @_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0
+    def on_devices_changed(
+            uniffi_handle,
+            uniffi_out_return,
+            uniffi_call_status_ptr,
+        ):
+        uniffi_obj = _UniffiConverterTypeUniFfiDeviceEventListener._handle_map.get(uniffi_handle)
+        def make_call():
+            args = ()
+            method = uniffi_obj.on_devices_changed
+            return method(*args)
+
+        
+        write_return_value = lambda v: None
+        _uniffi_trait_interface_call(
+                uniffi_call_status_ptr.contents,
+                make_call,
+                write_return_value,
+        )
+
+    @_UNIFFI_CALLBACK_INTERFACE_FREE
+    def _uniffi_free(uniffi_handle):
+        _UniffiConverterTypeUniFfiDeviceEventListener._handle_map.remove(uniffi_handle)
+
+    # Generate the FFI VTable.  This has a field for each callback interface method.
+    _uniffi_vtable = _UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(
+        on_devices_changed,
+        _uniffi_free
+    )
+    # Send Rust a pointer to the VTable.  Note: this means we need to keep the struct alive forever,
+    # or else bad things will happen when Rust tries to access it.
+    _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(ctypes.byref(_uniffi_vtable))
+
+# The _UniffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+_UniffiConverterTypeUniFfiDeviceEventListener = _UniffiCallbackInterfaceFfiConverter()
 
 
 
@@ -27711,6 +28511,56 @@ class _UniffiConverterSequenceTypePathSuggestionItem(_UniffiConverterRustBuffer)
 
 
 
+class _UniffiConverterSequenceTypeUniFfiAndroidDevice(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiAndroidDevice.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiAndroidDevice.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiAndroidDevice.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiAndroidVfsNode(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiAndroidVfsNode.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiAndroidVfsNode.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiAndroidVfsNode.read(buf) for i in range(count)
+        ]
+
+
+
 class _UniffiConverterSequenceTypeUniFfiAppcastItem(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -28532,6 +29382,31 @@ class _UniffiConverterSequenceTypeUniFfiSheetRow(_UniffiConverterRustBuffer):
 
         return [
             _UniffiConverterTypeUniFfiSheetRow.read(buf) for i in range(count)
+        ]
+
+
+
+class _UniffiConverterSequenceTypeUniFfiStoragePartition(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        for item in value:
+            _UniffiConverterTypeUniFfiStoragePartition.check_lower(item)
+
+    @classmethod
+    def write(cls, value, buf):
+        items = len(value)
+        buf.write_i32(items)
+        for item in value:
+            _UniffiConverterTypeUniFfiStoragePartition.write(item, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative sequence length")
+
+        return [
+            _UniffiConverterTypeUniFfiStoragePartition.read(buf) for i in range(count)
         ]
 
 
@@ -30571,6 +31446,23 @@ def uniffi_detect_language(file_path_or_ext: "str",first_line_hint: "typing.Opti
         _UniffiConverterOptionalString.lower(first_line_hint)))
 
 
+def uniffi_download_file(device_id: "str",remote_path: "str",local_path: "str") -> "UniFfiTransferJob":
+    """
+    Downloads a remote file from Android device storage to local macOS path.
+    """
+
+    _UniffiConverterString.check_lower(device_id)
+    
+    _UniffiConverterString.check_lower(remote_path)
+    
+    _UniffiConverterString.check_lower(local_path)
+    
+    return _UniffiConverterTypeUniFfiTransferJob.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_download_file,
+        _UniffiConverterString.lower(device_id),
+        _UniffiConverterString.lower(remote_path),
+        _UniffiConverterString.lower(local_path)))
+
+
 def uniffi_evaluate_formula(formula: "str",context_cells: "typing.Optional[typing.List[UniFfiCell]]") -> "UniFfiCellValue":
     """
     Dynamically evaluates a spreadsheet formula (SUM, AVERAGE, MIN, MAX, COUNT, IF, CONCAT, arithmetic).
@@ -30837,6 +31729,26 @@ def uniffi_extract_thumbnail(data: "bytes",max_width: "int",max_height: "int",fi
         _UniffiConverterOptionalString.lower(filter_type)))
 
 
+def uniffi_extract_to_device(archive_path: "str",destination_device_id: "str",destination_dir: "str") -> "UniFfiTransferJob":
+    """
+    Directly extracts a local archive to remote Android device directory via streaming pipeline.
+
+    Enforces Stream-First Invariant: reads archive chunks and streams them directly into
+    `DeviceStorageDriver::send_object`, producing 0 bytes intermediate staging in `/tmp`.
+    """
+
+    _UniffiConverterString.check_lower(archive_path)
+    
+    _UniffiConverterString.check_lower(destination_device_id)
+    
+    _UniffiConverterString.check_lower(destination_dir)
+    
+    return _UniffiConverterTypeUniFfiTransferJob.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_to_device,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterString.lower(destination_device_id),
+        _UniffiConverterString.lower(destination_dir)))
+
+
 def uniffi_extract_video_cover(data: "bytes",file_name: "typing.Optional[str]") -> "bytes":
     """
     Extracts raw embedded poster or cover art image bytes from in-memory video bytes.
@@ -30994,6 +31906,34 @@ def uniffi_html_service_new() -> "UniFfiHtmlService":
     return _UniffiConverterTypeUniFfiHtmlService.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_html_service_new,))
 
 
+def uniffi_inspect_remote_archive(device_id: "str",archive_path: "str") -> "typing.List[UniFfiAndroidVfsNode]":
+    """
+    Inspects a remote archive on the Android device via zero-download partial reads.
+    """
+
+    _UniffiConverterString.check_lower(device_id)
+    
+    _UniffiConverterString.check_lower(archive_path)
+    
+    return _UniffiConverterSequenceTypeUniFfiAndroidVfsNode.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_inspect_remote_archive,
+        _UniffiConverterString.lower(device_id),
+        _UniffiConverterString.lower(archive_path)))
+
+
+def uniffi_list_device_directory(device_id: "str",path: "str") -> "typing.List[UniFfiAndroidVfsNode]":
+    """
+    Traverses and lists directory entries on the remote Android storage volume.
+    """
+
+    _UniffiConverterString.check_lower(device_id)
+    
+    _UniffiConverterString.check_lower(path)
+    
+    return _UniffiConverterSequenceTypeUniFfiAndroidVfsNode.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory,
+        _UniffiConverterString.lower(device_id),
+        _UniffiConverterString.lower(path)))
+
+
 def uniffi_lz4_compress_fast(src: "bytes",acceleration: "int") -> "bytes":
     """
     Compresses buffer with LZ4 Fast mode (acceleration 1..100).
@@ -31084,6 +32024,37 @@ def uniffi_lzvn_decompress(src: "bytes",expected_uncompressed_size: "int") -> "b
     return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress,
         _UniffiConverterBytes.lower(src),
         _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_open_device(device_id: "str") -> "UniFfiAndroidDevice":
+    """
+    Establishes communication session with the requested Android device.
+    """
+
+    _UniffiConverterString.check_lower(device_id)
+    
+    return _UniffiConverterTypeUniFfiAndroidDevice.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_open_device,
+        _UniffiConverterString.lower(device_id)))
+
+
+def uniffi_pair_wireless_device(host: "str",port: "int",pin: "str") -> "UniFfiAndroidDevice":
+    """
+    Initiates TLS 1.3 SPAKE2 wireless pairing handshake with an Android device.
+
+    Validates 6-digit numeric PIN, computes PAKE shared secret, exchanges encrypted
+    peer certificates, and registers an active wireless ADB storage driver upon success.
+    """
+
+    _UniffiConverterString.check_lower(host)
+    
+    _UniffiConverterUInt16.check_lower(port)
+    
+    _UniffiConverterString.check_lower(pin)
+    
+    return _UniffiConverterTypeUniFfiAndroidDevice.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_pair_wireless_device,
+        _UniffiConverterString.lower(host),
+        _UniffiConverterUInt16.lower(port),
+        _UniffiConverterString.lower(pin)))
 
 
 def uniffi_parse_plist_from_bytes(bytes: "bytes") -> "UniFfiPlistDictionary":
@@ -31299,6 +32270,14 @@ def uniffi_sanitize_html(html_content: "str",policy: "UniFfiHtmlSanitizationPoli
         _UniffiConverterTypeUniFfiHtmlSanitizationPolicy.lower(policy)))
 
 
+def uniffi_scan_usb_devices() -> "typing.List[UniFfiAndroidDevice]":
+    """
+    Scans connected USB interfaces and detects Android devices matching MTP or ADB descriptors.
+    """
+
+    return _UniffiConverterSequenceTypeUniFfiAndroidDevice.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices,))
+
+
 def uniffi_search_pdf_text(file_path: "str",query: "str",max_results: "int",case_sensitive: "bool") -> "typing.List[UniFfiPdfSearchResult]":
     """
     Searches for full-text occurrences of a query string across all pages of a PDF file on disk.
@@ -31363,6 +32342,25 @@ def uniffi_snappy_frame_encode(src: "bytes") -> "bytes":
         _UniffiConverterBytes.lower(src)))
 
 
+def uniffi_start_hotplug_monitoring(listener: "UniFfiDeviceEventListener") -> None:
+    """
+    Starts the event-driven macOS IOKit notification runloop and registers the Swift listener.
+    """
+
+    _UniffiConverterTypeUniFfiDeviceEventListener.check_lower(listener)
+    
+    _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_start_hotplug_monitoring,
+        _UniffiConverterTypeUniFfiDeviceEventListener.lower(listener))
+
+
+def uniffi_stop_hotplug_monitoring() -> None:
+    """
+    Stops active hardware hotplug monitoring.
+    """
+
+    _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_stop_hotplug_monitoring,)
+
+
 def uniffi_syntax_service_new() -> "UniFfiSyntaxService":
     """
     Instantiates a new thread-safe syntax metadata service.
@@ -31383,6 +32381,23 @@ def uniffi_transcode_to_utf8(data: "bytes",encoding_name: "str") -> "str":
     return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_transcode_to_utf8,
         _UniffiConverterBytes.lower(data),
         _UniffiConverterString.lower(encoding_name)))
+
+
+def uniffi_upload_file(device_id: "str",local_path: "str",remote_dir: "str") -> "UniFfiTransferJob":
+    """
+    Uploads a local file from host macOS to remote Android destination directory.
+    """
+
+    _UniffiConverterString.check_lower(device_id)
+    
+    _UniffiConverterString.check_lower(local_path)
+    
+    _UniffiConverterString.check_lower(remote_dir)
+    
+    return _UniffiConverterTypeUniFfiTransferJob.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_upload_file,
+        _UniffiConverterString.lower(device_id),
+        _UniffiConverterString.lower(local_path),
+        _UniffiConverterString.lower(remote_dir)))
 
 
 def uniffi_vault_aes_gcm_decrypt(key: "bytes",iv: "bytes",ciphertext: "bytes",aad: "bytes",tag: "bytes") -> "bytes":
@@ -31979,12 +32994,14 @@ __all__ = [
     "UniFfiAuthStatus",
     "UniFfiCellValue",
     "UniFfiCompressionCodec",
+    "UniFfiConnectionType",
     "UniFfiCorpusType",
     "UniFfiDecisionVerdict",
     "UniFfiDeflateArbitrationStrategy",
     "UniFfiDeflateEngine",
     "UniFfiDeflateLevel",
     "UniFfiDeltaFormat",
+    "UniFfiDeviceStatus",
     "UniFfiEbookError",
     "UniFfiEbookFormat",
     "UniFfiError",
@@ -32000,6 +33017,9 @@ __all__ = [
     "UniFfiSubtitleFormat",
     "UniFfiSyntheticCorpusType",
     "UniFfiSystemError",
+    "UniFfiTransferDirection",
+    "UniFfiTransferStatus",
+    "UniFfiVfsEntryType",
     "UniFfiVideoCodec",
     "UniFfiVideoError",
     "UniFfiVideoFormat",
@@ -32021,6 +33041,8 @@ __all__ = [
     "UniFfiAbBenchmarkReport",
     "UniFfiAbOrchestratorConfig",
     "UniFfiAeadResult",
+    "UniFfiAndroidDevice",
+    "UniFfiAndroidVfsNode",
     "UniFfiAppcastItem",
     "UniFfiAppcastMetadata",
     "UniFfiAudioCoverArt",
@@ -32094,6 +33116,7 @@ __all__ = [
     "UniFfiSheetData",
     "UniFfiSheetRow",
     "UniFfiSmartExtractDecision",
+    "UniFfiStoragePartition",
     "UniFfiSubtitleColor",
     "UniFfiSubtitleDialogue",
     "UniFfiSubtitlePosition",
@@ -32107,6 +33130,7 @@ __all__ = [
     "UniFfiThumbnailResult",
     "UniFfiTokenSpan",
     "UniFfiTransactionDiff",
+    "UniFfiTransferJob",
     "UniFfiVfsMatch",
     "UniFfiVfsNodeSummary",
     "UniFfiVfsPagedResult",
@@ -32240,6 +33264,7 @@ __all__ = [
     "uniffi_deflate_dual_verify_roundtrip",
     "uniffi_detect_encoding",
     "uniffi_detect_language",
+    "uniffi_download_file",
     "uniffi_evaluate_formula",
     "uniffi_extract_audio_metadata",
     "uniffi_extract_docx_document",
@@ -32259,6 +33284,7 @@ __all__ = [
     "uniffi_extract_sheet_names",
     "uniffi_extract_symbols",
     "uniffi_extract_thumbnail",
+    "uniffi_extract_to_device",
     "uniffi_extract_video_cover",
     "uniffi_extract_video_metadata",
     "uniffi_generate_audio_waveform",
@@ -32270,6 +33296,8 @@ __all__ = [
     "uniffi_highlight_code",
     "uniffi_highlight_code_viewport",
     "uniffi_html_service_new",
+    "uniffi_inspect_remote_archive",
+    "uniffi_list_device_directory",
     "uniffi_lz4_compress_fast",
     "uniffi_lz4_compress_hc",
     "uniffi_lz4_decompress",
@@ -32277,6 +33305,8 @@ __all__ = [
     "uniffi_lzfse_decompress",
     "uniffi_lzvn_compress",
     "uniffi_lzvn_decompress",
+    "uniffi_open_device",
+    "uniffi_pair_wireless_device",
     "uniffi_parse_plist_from_bytes",
     "uniffi_parse_plist_xml",
     "uniffi_ppmd_compress",
@@ -32292,13 +33322,17 @@ __all__ = [
     "uniffi_rewrite_html_vfs",
     "uniffi_sample_viewport",
     "uniffi_sanitize_html",
+    "uniffi_scan_usb_devices",
     "uniffi_search_pdf_text",
     "uniffi_snappy_compress",
     "uniffi_snappy_decompress",
     "uniffi_snappy_frame_decode",
     "uniffi_snappy_frame_encode",
+    "uniffi_start_hotplug_monitoring",
+    "uniffi_stop_hotplug_monitoring",
     "uniffi_syntax_service_new",
     "uniffi_transcode_to_utf8",
+    "uniffi_upload_file",
     "uniffi_vault_aes_gcm_decrypt",
     "uniffi_vault_aes_gcm_encrypt",
     "uniffi_vault_chacha20_poly1305_decrypt",
@@ -32359,6 +33393,7 @@ __all__ = [
     "UniFfiZopfliOptimizer",
     "VirtualFileStream",
     "ProgressHandler",
+    "UniFfiDeviceEventListener",
     "UniFfiProgressCallback",
 ]
 
