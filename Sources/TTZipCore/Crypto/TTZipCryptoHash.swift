@@ -6,7 +6,6 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// Supported cryptographic and non-cryptographic checksum/hash algorithms.
 public enum TTZipHashAlgorithm: String, Sendable, CaseIterable {
@@ -52,62 +51,37 @@ public struct TTZipCryptoHash: Sendable {
 
     /// Computes raw binary digest for data buffer.
     public static func rawHash(_ data: Data, algorithm: TTZipHashAlgorithm) -> Data {
-        data.withUnsafeBytes { buf in
-            let ptr = buf.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            let len = data.count
+        switch algorithm {
+        case .crc32:
+            var c = uniffiCrc32(data: data).littleEndian
+            return Data(bytes: &c, count: 4)
 
-            switch algorithm {
-            case .crc32:
-                var c = ttzip_rust_crc32(0, ptr, len).littleEndian
-                return Data(bytes: &c, count: 4)
+        case .adler32:
+            var a = uniffiAdler32(data: data).littleEndian
+            return Data(bytes: &a, count: 4)
 
-            case .adler32:
-                var a = ttzip_rust_adler32(1, ptr, len).littleEndian
-                return Data(bytes: &a, count: 4)
+        case .crc64:
+            var c = uniffiCrc64(data: data, seed: nil).littleEndian
+            return Data(bytes: &c, count: 8)
 
-            case .crc64:
-                var c = ttzip_rust_crc64(0, ptr, len).littleEndian
-                return Data(bytes: &c, count: 8)
+        case .xxh3_64:
+            var h = uniffiXxh364(data: data, seed: nil).littleEndian
+            return Data(bytes: &h, count: 8)
 
-            case .xxh3_64:
-                var h = ttzip_rust_xxh3_64(ptr, len, 0).littleEndian
-                return Data(bytes: &h, count: 8)
+        case .xxh3_128:
+            return uniffiXxh3128(data: data, seed: nil)
 
-            case .xxh3_128:
-                var out = Data(count: 16)
-                out.withUnsafeMutableBytes { outBuf in
-                    _ = ttzip_rust_xxh3_128(ptr, len, 0, outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self))
-                }
-                return out
+        case .blake3:
+            return uniffiBlake3(data: data)
 
-            case .blake3:
-                var out = Data(count: 32)
-                out.withUnsafeMutableBytes { outBuf in
-                    _ = ttzip_rust_blake3(ptr, len, outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self))
-                }
-                return out
+        case .md5:
+            return uniffiMd5(data: data)
 
-            case .md5:
-                var out = Data(count: 16)
-                out.withUnsafeMutableBytes { outBuf in
-                    _ = ttzip_rust_md5(ptr, len, outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self))
-                }
-                return out
+        case .sha1:
+            return uniffiSha1(data: data)
 
-            case .sha1:
-                var out = Data(count: 20)
-                out.withUnsafeMutableBytes { outBuf in
-                    _ = ttzip_rust_sha1(ptr, len, outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self))
-                }
-                return out
-
-            case .sha256:
-                var out = Data(count: 32)
-                out.withUnsafeMutableBytes { outBuf in
-                    _ = ttzip_rust_sha256(ptr, len, outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self))
-                }
-                return out
-            }
+        case .sha256:
+            return uniffiSha256(data: data)
         }
     }
 

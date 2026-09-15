@@ -2463,6 +2463,216 @@ public func FfiConverterTypeUniFFIImageService_lower(_ value: UniFfiImageService
 
 
 /**
+ * Transactional in-place archive mutation session exposed to foreign runtimes.
+ *
+ * Encapsulates atomic append, replace, delete, commit, and cancel operations
+ * with mutex-guarded state safety and deterministic RAII rollback on drop.
+ */
+public protocol UniFfiInPlaceSessionProtocol : AnyObject {
+    
+    /**
+     * Queues an entry append operation from an external file on disk.
+     */
+    func append(entryPath: String, sourceFilePath: String) throws 
+    
+    /**
+     * Cancels all pending mutations and discards any temporary shadow or WAL files.
+     */
+    func cancel() throws 
+    
+    /**
+     * Atomically commits all queued mutations into the original archive file.
+     */
+    func commit() throws 
+    
+    /**
+     * Queues an entry deletion operation.
+     */
+    func delete(entryPath: String) throws 
+    
+    /**
+     * Queues an entry replacement operation with content from an external source file.
+     */
+    func replace(entryPath: String, sourceFilePath: String) throws 
+    
+}
+
+/**
+ * Transactional in-place archive mutation session exposed to foreign runtimes.
+ *
+ * Encapsulates atomic append, replace, delete, commit, and cancel operations
+ * with mutex-guarded state safety and deterministic RAII rollback on drop.
+ */
+open class UniFfiInPlaceSession:
+    UniFfiInPlaceSessionProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_ttzip_engine_fn_clone_uniffiinplacesession(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        _ = try? rustCall { uniffi_ttzip_engine_fn_free_uniffiinplacesession(pointer, $0) }
+    }
+
+    
+    /**
+     * Begins a new transactional in-place mutation session against the specified archive file.
+     */
+public static func begin(archivePath: String, format: ArchiveFormat?)throws  -> UniFfiInPlaceSession {
+    return try  FfiConverterTypeUniFFIInPlaceSession.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin(
+        FfiConverterString.lower(archivePath),
+        FfiConverterOptionTypeArchiveFormat.lower(format),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Queues an entry append operation from an external file on disk.
+     */
+open func append(entryPath: String, sourceFilePath: String)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_method_uniffiinplacesession_append(self.uniffiClonePointer(),
+        FfiConverterString.lower(entryPath),
+        FfiConverterString.lower(sourceFilePath),$0
+    )
+}
+}
+    
+    /**
+     * Cancels all pending mutations and discards any temporary shadow or WAL files.
+     */
+open func cancel()throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+    /**
+     * Atomically commits all queued mutations into the original archive file.
+     */
+open func commit()throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+    /**
+     * Queues an entry deletion operation.
+     */
+open func delete(entryPath: String)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete(self.uniffiClonePointer(),
+        FfiConverterString.lower(entryPath),$0
+    )
+}
+}
+    
+    /**
+     * Queues an entry replacement operation with content from an external source file.
+     */
+open func replace(entryPath: String, sourceFilePath: String)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace(self.uniffiClonePointer(),
+        FfiConverterString.lower(entryPath),
+        FfiConverterString.lower(sourceFilePath),$0
+    )
+}
+}
+    
+
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIInPlaceSession: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = UniFfiInPlaceSession
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiInPlaceSession {
+        return UniFfiInPlaceSession(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: UniFfiInPlaceSession) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiInPlaceSession {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: UniFfiInPlaceSession, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIInPlaceSession_lift(_ pointer: UnsafeMutableRawPointer) throws -> UniFfiInPlaceSession {
+    return try FfiConverterTypeUniFFIInPlaceSession.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIInPlaceSession_lower(_ value: UniFfiInPlaceSession) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeUniFFIInPlaceSession.lower(value)
+}
+
+
+
+
+/**
  * High-performance zero-copy memory-mapped file reader with kernel advice management.
  */
 public protocol UniFfiMmapReaderProtocol : AnyObject {
@@ -23245,6 +23455,7 @@ public enum UniFfiCompressionCodec {
     case snappyFramed
     case bzip2
     case ppmd
+    case fl2
 }
 
 
@@ -23285,6 +23496,8 @@ public struct FfiConverterTypeUniFFICompressionCodec: FfiConverterRustBuffer {
         case 13: return .bzip2
         
         case 14: return .ppmd
+        
+        case 15: return .fl2
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -23348,6 +23561,10 @@ public struct FfiConverterTypeUniFFICompressionCodec: FfiConverterRustBuffer {
         
         case .ppmd:
             writeInt(&buf, Int32(14))
+        
+        
+        case .fl2:
+            writeInt(&buf, Int32(15))
         
         }
     }
@@ -26881,6 +27098,116 @@ extension FfiConverterCallbackInterfaceUniFfiDeviceEventListener : FfiConverter 
 
 
 /**
+ * Host logging callback interface invoked when the microkernel emits a record.
+ */
+public protocol UniFfiLogCallback : AnyObject {
+    
+    func log(level: UInt32, target: String, message: String, file: String, line: UInt32) 
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceUniFFILogCallback {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    nonisolated(unsafe) static var vtable: UniffiVTableCallbackInterfaceUniFfiLogCallback = UniffiVTableCallbackInterfaceUniFfiLogCallback(
+        log: { (
+            uniffiHandle: UInt64,
+            level: UInt32,
+            target: RustBuffer,
+            message: RustBuffer,
+            file: RustBuffer,
+            line: UInt32,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceUniFfiLogCallback.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.log(
+                     level: try FfiConverterUInt32.lift(level),
+                     target: try FfiConverterString.lift(target),
+                     message: try FfiConverterString.lift(message),
+                     file: try FfiConverterString.lift(file),
+                     line: try FfiConverterUInt32.lift(line)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterCallbackInterfaceUniFfiLogCallback.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface UniFFILogCallback: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitUniFFILogCallback() {
+    uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback(&UniffiCallbackInterfaceUniFFILogCallback.vtable)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfaceUniFfiLogCallback {
+    nonisolated(unsafe) fileprivate static var handleMap = UniffiHandleMap<UniFfiLogCallback>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfaceUniFfiLogCallback : FfiConverter {
+    typealias SwiftType = UniFfiLogCallback
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+
+
+/**
  * Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
  */
 public protocol UniFfiProgressCallback : AnyObject {
@@ -27613,6 +27940,30 @@ fileprivate struct FfiConverterOptionTypeVideoMetadataRecord: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeArchiveFormat: FfiConverterRustBuffer {
+    typealias SwiftType = ArchiveFormat?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeArchiveFormat.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeArchiveFormat.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeUniFFISubtitleAlignment: FfiConverterRustBuffer {
     typealias SwiftType = UniFfiSubtitleAlignment?
 
@@ -27653,6 +28004,30 @@ fileprivate struct FfiConverterOptionCallbackInterfaceProgressHandler: FfiConver
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterCallbackInterfaceProgressHandler.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionCallbackInterfaceUniFfiLogCallback: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiLogCallback?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterCallbackInterfaceUniFfiLogCallback.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterCallbackInterfaceUniFfiLogCallback.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -30068,6 +30443,42 @@ public func uniffiAdler32Rolling(initial: UInt32, data: Data) -> UInt32 {
 })
 }
 /**
+ * Decrypts raw 16-byte block aligned ciphertext with AES-256-CBC without padding.
+ */
+public func uniffiAes256CbcRawDecrypt(key: Data, iv: Data, ciphertext: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt(
+        FfiConverterData.lower(key),
+        FfiConverterData.lower(iv),
+        FfiConverterData.lower(ciphertext),$0
+    )
+})
+}
+/**
+ * Encrypts raw 16-byte block aligned plaintext with AES-256-CBC without padding.
+ */
+public func uniffiAes256CbcRawEncrypt(key: Data, iv: Data, plaintext: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt(
+        FfiConverterData.lower(key),
+        FfiConverterData.lower(iv),
+        FfiConverterData.lower(plaintext),$0
+    )
+})
+}
+/**
+ * Encrypts or decrypts data using AES-256-CTR stream cipher (symmetric operation).
+ */
+public func uniffiAes256Ctr(key: Data, counter: UInt64, data: Data)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr(
+        FfiConverterData.lower(key),
+        FfiConverterUInt64.lower(counter),
+        FfiConverterData.lower(data),$0
+    )
+})
+}
+/**
  * Applies a binary delta patch package onto base bytes, reconstructing target bytes in-memory.
  */
 public func uniffiApplyDeltaPatch(baseBytes: Data, patchBytes: Data, expectedTargetHash: String?)throws  -> UniFfiDeltaPatchResult {
@@ -30642,6 +31053,50 @@ public func uniffiExtractVideoMetadata(data: Data, fileName: String?)throws  -> 
 })
 }
 /**
+ * Compresses buffer with Fast LZMA2 (fl2).
+ */
+public func uniffiFl2Compress(src: Data, level: Int32, nbThreads: UInt32?)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_fl2_compress(
+        FfiConverterData.lower(src),
+        FfiConverterInt32.lower(level),
+        FfiConverterOptionUInt32.lower(nbThreads),$0
+    )
+})
+}
+/**
+ * Computes upper bound on compressed bytes for Fast LZMA2.
+ */
+public func uniffiFl2CompressBound(srcLen: UInt64) -> UInt64 {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound(
+        FfiConverterUInt64.lower(srcLen),$0
+    )
+})
+}
+/**
+ * Decompresses Fast LZMA2 (fl2) buffer into memory.
+ */
+public func uniffiFl2Decompress(src: Data, expectedUncompressedSize: UInt64?, nbThreads: UInt32?)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress(
+        FfiConverterData.lower(src),
+        FfiConverterOptionUInt64.lower(expectedUncompressedSize),
+        FfiConverterOptionUInt32.lower(nbThreads),$0
+    )
+})
+}
+/**
+ * Finds uncompressed size from Fast LZMA2 stream if known.
+ */
+public func uniffiFl2FindDecompressedSize(src: Data) -> UInt64? {
+    return try!  FfiConverterOptionUInt64.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size(
+        FfiConverterData.lower(src),$0
+    )
+})
+}
+/**
  * Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
  */
 public func uniffiGenerateAudioWaveform(data: Data, bucketCount: UInt32, fileName: String?)throws  -> UniFfiAudioWaveform {
@@ -30764,6 +31219,19 @@ public func uniffiListDeviceDirectory(deviceId: String, path: String)throws  -> 
 })
 }
 /**
+ * Directly emits a structured log event into the engine router across the UniFFI boundary.
+ */
+public func uniffiLogDirect(level: UInt32, target: String, message: String, file: String, line: UInt32) {try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_log_direct(
+        FfiConverterUInt32.lower(level),
+        FfiConverterString.lower(target),
+        FfiConverterString.lower(message),
+        FfiConverterString.lower(file),
+        FfiConverterUInt32.lower(line),$0
+    )
+}
+}
+/**
  * Compresses buffer with LZ4 Fast mode (acceleration 1..100).
  */
 public func uniffiLz4CompressFast(src: Data, acceleration: Int32)throws  -> Data {
@@ -30835,6 +31303,16 @@ public func uniffiLzvnDecompress(src: Data, expectedUncompressedSize: UInt64)thr
     uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
         FfiConverterData.lower(src),
         FfiConverterUInt64.lower(expectedUncompressedSize),$0
+    )
+})
+}
+/**
+ * Computes 128-bit MD5 hash returning 16-byte digest.
+ */
+public func uniffiMd5(data: Data) -> Data {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_md5(
+        FfiConverterData.lower(data),$0
     )
 })
 }
@@ -31048,6 +31526,36 @@ public func uniffiSearchPdfText(filePath: String, query: String, maxResults: UIn
         FfiConverterString.lower(query),
         FfiConverterUInt32.lower(maxResults),
         FfiConverterBool.lower(caseSensitive),$0
+    )
+})
+}
+/**
+ * Configures or clears the active UniFFI logging sink and adjusts the minimum severity threshold.
+ */
+public func uniffiSetLogger(callback: UniFfiLogCallback?, minLevel: UInt32)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_set_logger(
+        FfiConverterOptionCallbackInterfaceUniFfiLogCallback.lower(callback),
+        FfiConverterUInt32.lower(minLevel),$0
+    )
+}
+}
+/**
+ * Computes 160-bit SHA-1 hash returning 20-byte digest.
+ */
+public func uniffiSha1(data: Data) -> Data {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_sha1(
+        FfiConverterData.lower(data),$0
+    )
+})
+}
+/**
+ * Computes 256-bit hardware-accelerated SHA-256 hash returning 32-byte digest.
+ */
+public func uniffiSha256(data: Data) -> Data {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_func_uniffi_sha256(
+        FfiConverterData.lower(data),$0
     )
 })
 }
@@ -31493,6 +32001,18 @@ public func uniffiZstdGetStandard112kbDict() -> Data {
 })
 }
 /**
+ * Trains a custom Zstandard dictionary from representative sample buffers.
+ */
+public func uniffiZstdTrainDict(samples: [Data], targetDictSize: UInt64, level: Int32)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
+    uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict(
+        FfiConverterSequenceData.lower(samples),
+        FfiConverterUInt64.lower(targetDictSize),
+        FfiConverterInt32.lower(level),$0
+    )
+})
+}
+/**
  * Computes HMAC-SHA256 verifier hash of derived key and salt for master password verification.
  */
 public func vaultComputeVerifier(key: Data, salt: Data) -> String {
@@ -31845,6 +32365,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt() != 30913) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt() != 15932) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr() != 37570) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch() != 11705) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -31998,6 +32527,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress() != 40344) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound() != 45056) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress() != 43312) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size() != 57179) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32031,6 +32572,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_log_direct() != 28019) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32050,6 +32594,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_md5() != 57380) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322) {
@@ -32107,6 +32654,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_set_logger() != 31960) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_sha1() != 34458) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_sha256() != 61158) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295) {
@@ -32224,6 +32780,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict() != 13515) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict() != 10545) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757) {
@@ -32395,6 +32954,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file() != 41256) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append() != 30808) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel() != 49594) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit() != 54291) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete() != 13300) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace() != 17809) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087) {
@@ -32805,6 +33379,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin() != 62760) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -32868,12 +33445,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_method_uniffilogcallback_log() != 15865) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360) {
         return InitializationResult.apiChecksumMismatch
     }
 
     uniffiCallbackInitProgressHandler()
     uniffiCallbackInitUniFFIDeviceEventListener()
+    uniffiCallbackInitUniFFILogCallback()
     uniffiCallbackInitUniFFIProgressCallback()
     return InitializationResult.ok
 }()

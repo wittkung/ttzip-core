@@ -6,49 +6,24 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// High-speed XXH3 SIMD checksum and hash engine facade (64-bit and 128-bit variants).
 public struct TTZipXXH3: Sendable {
 
     /// Computes 64-bit XXH3 hash for an in-memory data buffer with optional seed.
     public static func hash64(_ data: Data, seed: UInt64 = 0) -> UInt64 {
-        data.withUnsafeBytes { buf in
-            guard let ptr = buf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return 0 }
-            return ttzip_rust_xxh3_64(ptr, data.count, seed)
-        }
+        uniffiXxh364(data: data, seed: seed == 0 ? nil : seed)
     }
 
     /// Computes 128-bit XXH3 hash as a tuple of `(high: UInt64, low: UInt64)`.
     public static func hash128(_ data: Data, seed: UInt64 = 0) -> (high: UInt64, low: UInt64) {
-        var raw16 = Data(count: 16)
-        let status = raw16.withUnsafeMutableBytes { outBuf -> Int32 in
-            guard let outPtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return data.withUnsafeBytes { inBuf in
-                guard let inPtr = inBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return ttzip_rust_xxh3_128(inPtr, data.count, seed, outPtr)
-            }
-        }
-
-        guard status == 0 else { return (0, 0) }
-
-        let low = raw16.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
-        let high = raw16.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 8, as: UInt64.self).littleEndian }
-        return (high: high, low: low)
+        let digest = uniffiXxh3128Digest(data: data, seed: seed == 0 ? nil : seed)
+        return (high: digest.high, low: digest.low)
     }
 
     /// Computes 128-bit XXH3 hash returning 16 raw bytes.
     public static func hash128Data(_ data: Data, seed: UInt64 = 0) -> Data {
-        var raw16 = Data(count: 16)
-        let status = raw16.withUnsafeMutableBytes { outBuf -> Int32 in
-            guard let outPtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return data.withUnsafeBytes { inBuf in
-                guard let inPtr = inBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return ttzip_rust_xxh3_128(inPtr, data.count, seed, outPtr)
-            }
-        }
-        guard status == 0 else { return Data(repeating: 0, count: 16) }
-        return raw16
+        uniffiXxh3128(data: data, seed: seed == 0 ? nil : seed)
     }
 
     /// Computes 128-bit XXH3 hash as a 32-character hexadecimal string.

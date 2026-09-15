@@ -7,7 +7,6 @@
 
 import Foundation
 import Observation
-import CTTZipBridge
 
 /// Metadata record for a trained Zstandard dictionary.
 public struct TTZipZstdDictionaryMeta: Sendable, Hashable, Identifiable {
@@ -52,7 +51,7 @@ public final class TTZipZstdDictionaryManager: @unchecked Sendable {
 
     public init() {}
 
-    /// Trains a new Zstandard dictionary from an array of sample data chunks.
+    /// Trains a new Zstandard dictionary from an array of sample data chunks via UniFFI.
     public static func trainDictionary(
         samples: [Data],
         targetDictionarySize: Int = 112_640,
@@ -67,57 +66,11 @@ public final class TTZipZstdDictionaryManager: @unchecked Sendable {
             throw TTZipCodecError.invalidParameter
         }
 
-        var samplePtrs: [UnsafePointer<UInt8>?] = []
-        var sampleLens: [Int] = []
-
-        // Pin sample memory pointers during C-ABI training invocation
-        let pinnedData = nonZeroSamples
-
-        var outDict = Data(count: targetDictionarySize)
-        var outDictLen: Int = 0
-
-        var status: Int32 = 0
-
-        try outDict.withUnsafeMutableBytes { outBuf in
-            guard let outPtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                throw TTZipCodecError.invalidParameter
-            }
-
-            for i in 0..<pinnedData.count {
-                pinnedData[i].withUnsafeBytes { sBuf in
-                    if let ptr = sBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) {
-                        samplePtrs.append(ptr)
-                        sampleLens.append(pinnedData[i].count)
-                    }
-                }
-            }
-
-            status = samplePtrs.withUnsafeBufferPointer { ptrsBuf in
-                sampleLens.withUnsafeBufferPointer { lensBuf in
-                    guard let ptrsPtr = ptrsBuf.baseAddress,
-                          let lensPtr = lensBuf.baseAddress else {
-                        return -1
-                    }
-                    return ttzip_rust_zstd_train_dict(
-                        ptrsPtr,
-                        lensPtr,
-                        samplePtrs.count,
-                        targetDictionarySize,
-                        compressionLevel,
-                        outPtr,
-                        targetDictionarySize,
-                        &outDictLen
-                    )
-                }
-            }
-        }
-
-        guard status == 0 && outDictLen > 0 else {
-            throw TTZipCodecError.compressionFailed(status: status)
-        }
-
-        outDict.count = outDictLen
-        return outDict
+        return try uniffiZstdTrainDict(
+            samples: nonZeroSamples,
+            targetDictSize: UInt64(targetDictionarySize),
+            level: compressionLevel
+        )
     }
 
     /// Registers a pre-trained dictionary into the global manager cache.
@@ -142,7 +95,7 @@ public final class TTZipZstdDictionaryManager: @unchecked Sendable {
         return dictionaries[name]
     }
 
-    /// Compresses small file payload using a specified pre-digested Zstandard dictionary.
+    /// Compresses small file payload using a specified pre-digested Zstandard dictionary via UniFFI.
     public static func compressWithDict(
         _ data: Data,
         dictionary: Data,
@@ -155,45 +108,10 @@ public final class TTZipZstdDictionaryManager: @unchecked Sendable {
             return try TTZipCodec.compress(data, algorithm: .zstd, level: .custom(level))
         }
 
-        let bound = Int(ttzip_rust_zstd_compress_bound(data.count))
-        var destination = Data(count: bound)
-        var outLen: Int = 0
-
-        let status: Int32 = try data.withUnsafeBytes { srcBuf in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                throw TTZipCodecError.invalidParameter
-            }
-            return try dictionary.withUnsafeBytes { dictBuf in
-                guard let dictPtr = dictBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipCodecError.invalidParameter
-                }
-                return try destination.withUnsafeMutableBytes { dstBuf in
-                    guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        throw TTZipCodecError.invalidParameter
-                    }
-                    return ttzip_rust_zstd_dict_compress(
-                        srcPtr,
-                        data.count,
-                        dstPtr,
-                        bound,
-                        dictPtr,
-                        dictionary.count,
-                        level,
-                        &outLen
-                    )
-                }
-            }
-        }
-
-        guard status == 0 else {
-            throw TTZipCodecError.compressionFailed(status: status)
-        }
-
-        destination.count = outLen
-        return destination
+        return try uniffiZstdDictCompress(src: data, dictBytes: dictionary, level: level)
     }
 
-    /// Decompresses small file payload using a specified pre-digested Zstandard dictionary.
+    /// Decompresses small file payload using a specified pre-digested Zstandard dictionary via UniFFI.
     public static func decompressWithDict(
         _ data: Data,
         dictionary: Data,
@@ -206,41 +124,8 @@ public final class TTZipZstdDictionaryManager: @unchecked Sendable {
             return try TTZipCodec.decompress(data, algorithm: .zstd, expectedUncompressedSize: expectedUncompressedSize)
         }
 
-        let capacity = expectedUncompressedSize ?? max(data.count * 8, 65536)
-        var destination = Data(count: capacity)
-        var outLen: Int = 0
-
-        let status: Int32 = try data.withUnsafeBytes { srcBuf in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                throw TTZipCodecError.invalidParameter
-            }
-            return try dictionary.withUnsafeBytes { dictBuf in
-                guard let dictPtr = dictBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipCodecError.invalidParameter
-                }
-                return try destination.withUnsafeMutableBytes { dstBuf in
-                    guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        throw TTZipCodecError.invalidParameter
-                    }
-                    return ttzip_rust_zstd_dict_decompress(
-                        srcPtr,
-                        data.count,
-                        dstPtr,
-                        capacity,
-                        dictPtr,
-                        dictionary.count,
-                        &outLen
-                    )
-                }
-            }
-        }
-
-        guard status == 0 else {
-            throw TTZipCodecError.decompressionFailed(status: status)
-        }
-
-        destination.count = outLen
-        return destination
+        let expSize = expectedUncompressedSize.map { UInt64($0) }
+        return try uniffiZstdDictDecompress(src: data, dictBytes: dictionary, expectedUncompressedSize: expSize)
     }
 
     /// Records metrics for compression acceleration.

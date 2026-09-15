@@ -240,20 +240,6 @@ cat > "${TMP_PLIST}" << 'EOF'
 			<key>SupportedPlatform</key>
 			<string>macos</string>
 		</dict>
-		<dict>
-			<key>HeadersPath</key>
-			<string>Headers</string>
-			<key>LibraryIdentifier</key>
-			<string>macos-arm64</string>
-			<key>LibraryPath</key>
-			<string>libTTZipVendor.a</string>
-			<key>SupportedArchitectures</key>
-			<array>
-				<string>arm64</string>
-			</array>
-			<key>SupportedPlatform</key>
-			<string>macos</string>
-		</dict>
 	</array>
 	<key>CFBundlePackageType</key>
 	<string>XFWK</string>

@@ -660,6 +660,9 @@ internal interface UniffiCallbackInterfaceProgressHandlerMethod0 : com.sun.jna.C
 internal interface UniffiCallbackInterfaceUniFfiDeviceEventListenerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceUniFfiLogCallbackMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`level`: Int,`target`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`file`: RustBuffer.ByValue,`line`: Int,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceUniFfiProgressCallbackMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`processedBytes`: Long,`totalBytes`: Long,`currentEntry`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -691,6 +694,22 @@ internal open class UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceUniFfiDeviceEventListener) {
         `onDevicesChanged` = other.`onDevicesChanged`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
+}
+@Structure.FieldOrder("log", "uniffiFree")
+internal open class UniffiVTableCallbackInterfaceUniFfiLogCallback(
+    @JvmField internal var `log`: UniffiCallbackInterfaceUniFfiLogCallbackMethod0? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `log`: UniffiCallbackInterfaceUniFfiLogCallbackMethod0? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfaceUniFfiLogCallback(`log`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceUniFfiLogCallback) {
+        `log` = other.`log`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -1675,6 +1694,48 @@ internal open class UniffiVTableCallbackInterfaceUniFfiProgressCallback(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1687,6 +1748,7 @@ internal interface UniffiLib : Library {
                 uniffiCheckApiChecksums(lib)
                 uniffiCallbackInterfaceProgressHandler.register(lib)
                 uniffiCallbackInterfaceUniFFIDeviceEventListener.register(lib)
+                uniffiCallbackInterfaceUniFFILogCallback.register(lib)
                 uniffiCallbackInterfaceUniFFIProgressCallback.register(lib)
                 }
         }
@@ -1847,6 +1909,22 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from_file(`ptr`: Pointer,`filePath`: RustBuffer.ByValue,`params`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_clone_uniffiinplacesession(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_free_uniffiinplacesession(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin(`archivePath`: RustBuffer.ByValue,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_ttzip_engine_fn_method_uniffiinplacesession_append(`ptr`: Pointer,`entryPath`: RustBuffer.ByValue,`sourceFilePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete(`ptr`: Pointer,`entryPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace(`ptr`: Pointer,`entryPath`: RustBuffer.ByValue,`sourceFilePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_clone_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_ttzip_engine_fn_free_uniffimmapreader(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -2205,6 +2283,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener(`vtable`: UniffiVTableCallbackInterfaceUniFfiDeviceEventListener,
     ): Unit
+    fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback(`vtable`: UniffiVTableCallbackInterfaceUniFfiLogCallback,
+    ): Unit
     fun uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback(`vtable`: UniffiVTableCallbackInterfaceUniFfiProgressCallback,
     ): Unit
     fun uniffi_ttzip_engine_fn_func_apply_in_place_entry_mutation(`archivePath`: RustBuffer.ByValue,`entryPath`: RustBuffer.ByValue,`newData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2383,6 +2463,12 @@ internal interface UniffiLib : Library {
     ): Int
     fun uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling(`initial`: Int,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    fun uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt(`key`: RustBuffer.ByValue,`iv`: RustBuffer.ByValue,`ciphertext`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt(`key`: RustBuffer.ByValue,`iv`: RustBuffer.ByValue,`plaintext`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr(`key`: RustBuffer.ByValue,`counter`: Long,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch(`baseBytes`: RustBuffer.ByValue,`patchBytes`: RustBuffer.ByValue,`expectedTargetHash`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_blake3(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2485,6 +2571,14 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata(`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_fl2_compress(`src`: RustBuffer.ByValue,`level`: Int,`nbThreads`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound(`srcLen`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    fun uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: RustBuffer.ByValue,`nbThreads`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform(`data`: RustBuffer.ByValue,`bucketCount`: Int,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_generate_synthetic_corpus(`corpusType`: RustBuffer.ByValue,`sizeBytes`: Long,`seed`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -2507,6 +2601,8 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_list_device_directory(`deviceId`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_log_direct(`level`: Int,`target`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`file`: RustBuffer.ByValue,`line`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast(`src`: RustBuffer.ByValue,`acceleration`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_hc(`src`: RustBuffer.ByValue,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -2520,6 +2616,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_lzvn_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(`src`: RustBuffer.ByValue,`expectedUncompressedSize`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_md5(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_open_device(`deviceId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2558,6 +2656,12 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_scan_usb_devices(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(`filePath`: RustBuffer.ByValue,`query`: RustBuffer.ByValue,`maxResults`: Int,`caseSensitive`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_set_logger(`callback`: RustBuffer.ByValue,`minLevel`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_ttzip_engine_fn_func_uniffi_sha1(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_sha256(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_snappy_compress(`src`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2636,6 +2740,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_fn_func_uniffi_zstd_dict_decompress(`src`: RustBuffer.ByValue,`dictBytes`: RustBuffer.ByValue,`expectedUncompressedSize`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict(`samples`: RustBuffer.ByValue,`targetDictSize`: Long,`level`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_ttzip_engine_fn_func_vault_compute_verifier(`key`: RustBuffer.ByValue,`salt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -2937,6 +3043,12 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_blake3(
@@ -3039,6 +3151,14 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus(
@@ -3061,6 +3181,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory(
     ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_log_direct(
+    ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc(
@@ -3074,6 +3196,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_md5(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_open_device(
     ): Short
@@ -3112,6 +3236,12 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_set_logger(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_sha1(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_sha256(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress(
     ): Short
@@ -3190,6 +3320,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict(
     ): Short
     fun uniffi_ttzip_engine_checksum_func_vault_compute_verifier(
     ): Short
@@ -3304,6 +3436,16 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise(
     ): Short
@@ -3577,6 +3719,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new(
     ): Short
+    fun uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin(
+    ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open(
     ): Short
     fun uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new(
@@ -3618,6 +3762,8 @@ internal interface UniffiLib : Library {
     fun uniffi_ttzip_engine_checksum_method_progresshandler_on_progress(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed(
+    ): Short
+    fun uniffi_ttzip_engine_checksum_method_uniffilogcallback_log(
     ): Short
     fun uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress(
     ): Short
@@ -3902,6 +4048,15 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt() != 30913.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt() != 15932.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr() != 37570.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch() != 11705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4055,6 +4210,18 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress() != 40344.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound() != 45056.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress() != 43312.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size() != 57179.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4088,6 +4255,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_log_direct() != 28019.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4107,6 +4277,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_md5() != 57380.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322.toShort()) {
@@ -4164,6 +4337,15 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_set_logger() != 31960.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sha1() != 34458.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_sha256() != 61158.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295.toShort()) {
@@ -4281,6 +4463,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict() != 13515.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict() != 10545.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757.toShort()) {
@@ -4452,6 +4637,21 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file() != 41256.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append() != 30808.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel() != 49594.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit() != 54291.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete() != 13300.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace() != 17809.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087.toShort()) {
@@ -4862,6 +5062,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin() != 62760.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4923,6 +5126,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ttzip_engine_checksum_method_uniffilogcallback_log() != 15865.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360.toShort()) {
@@ -8246,6 +8452,354 @@ public object FfiConverterTypeUniFFIImageService: FfiConverter<UniFfiImageServic
     override fun allocationSize(value: UniFfiImageService) = 8UL
 
     override fun write(value: UniFfiImageService, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Transactional in-place archive mutation session exposed to foreign runtimes.
+ *
+ * Encapsulates atomic append, replace, delete, commit, and cancel operations
+ * with mutex-guarded state safety and deterministic RAII rollback on drop.
+ */
+public interface UniFfiInPlaceSessionInterface {
+    
+    /**
+     * Queues an entry append operation from an external file on disk.
+     */
+    fun `append`(`entryPath`: kotlin.String, `sourceFilePath`: kotlin.String)
+    
+    /**
+     * Cancels all pending mutations and discards any temporary shadow or WAL files.
+     */
+    fun `cancel`()
+    
+    /**
+     * Atomically commits all queued mutations into the original archive file.
+     */
+    fun `commit`()
+    
+    /**
+     * Queues an entry deletion operation.
+     */
+    fun `delete`(`entryPath`: kotlin.String)
+    
+    /**
+     * Queues an entry replacement operation with content from an external source file.
+     */
+    fun `replace`(`entryPath`: kotlin.String, `sourceFilePath`: kotlin.String)
+    
+    companion object
+}
+
+/**
+ * Transactional in-place archive mutation session exposed to foreign runtimes.
+ *
+ * Encapsulates atomic append, replace, delete, commit, and cancel operations
+ * with mutex-guarded state safety and deterministic RAII rollback on drop.
+ */
+open class UniFfiInPlaceSession: Disposable, AutoCloseable, UniFfiInPlaceSessionInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_free_uniffiinplacesession(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_clone_uniffiinplacesession(pointer!!, status)
+        }
+    }
+
+    
+    /**
+     * Queues an entry append operation from an external file on disk.
+     */
+    @Throws(TtZipException::class)override fun `append`(`entryPath`: kotlin.String, `sourceFilePath`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiinplacesession_append(
+        it, FfiConverterString.lower(`entryPath`),FfiConverterString.lower(`sourceFilePath`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Cancels all pending mutations and discards any temporary shadow or WAL files.
+     */
+    @Throws(TtZipException::class)override fun `cancel`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Atomically commits all queued mutations into the original archive file.
+     */
+    @Throws(TtZipException::class)override fun `commit`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Queues an entry deletion operation.
+     */
+    @Throws(TtZipException::class)override fun `delete`(`entryPath`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete(
+        it, FfiConverterString.lower(`entryPath`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Queues an entry replacement operation with content from an external source file.
+     */
+    @Throws(TtZipException::class)override fun `replace`(`entryPath`: kotlin.String, `sourceFilePath`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace(
+        it, FfiConverterString.lower(`entryPath`),FfiConverterString.lower(`sourceFilePath`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+    companion object {
+        
+    /**
+     * Begins a new transactional in-place mutation session against the specified archive file.
+     */
+    @Throws(TtZipException::class) fun `begin`(`archivePath`: kotlin.String, `format`: ArchiveFormat?): UniFfiInPlaceSession {
+            return FfiConverterTypeUniFFIInPlaceSession.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin(
+        FfiConverterString.lower(`archivePath`),FfiConverterOptionalTypeArchiveFormat.lower(`format`),_status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUniFFIInPlaceSession: FfiConverter<UniFfiInPlaceSession, Pointer> {
+
+    override fun lower(value: UniFfiInPlaceSession): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): UniFfiInPlaceSession {
+        return UniFfiInPlaceSession(value)
+    }
+
+    override fun read(buf: ByteBuffer): UniFfiInPlaceSession {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: UniFfiInPlaceSession) = 8UL
+
+    override fun write(value: UniFfiInPlaceSession, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -23115,7 +23669,8 @@ enum class UniFfiCompressionCodec {
     SNAPPY_RAW,
     SNAPPY_FRAMED,
     BZIP2,
-    PPMD;
+    PPMD,
+    FL2;
     companion object
 }
 
@@ -25750,6 +26305,66 @@ public object FfiConverterTypeUniFFIDeviceEventListener: FfiConverterCallbackInt
 
 
 /**
+ * Host logging callback interface invoked when the microkernel emits a record.
+ */
+public interface UniFfiLogCallback {
+    
+    fun `log`(`level`: kotlin.UInt, `target`: kotlin.String, `message`: kotlin.String, `file`: kotlin.String, `line`: kotlin.UInt)
+    
+    companion object
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceUniFFILogCallback {
+    internal object `log`: UniffiCallbackInterfaceUniFfiLogCallbackMethod0 {
+        override fun callback(`uniffiHandle`: Long,`level`: Int,`target`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`file`: RustBuffer.ByValue,`line`: Int,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeUniFFILogCallback.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`log`(
+                    FfiConverterUInt.lift(`level`),
+                    FfiConverterString.lift(`target`),
+                    FfiConverterString.lift(`message`),
+                    FfiConverterString.lift(`file`),
+                    FfiConverterUInt.lift(`line`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeUniFFILogCallback.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceUniFfiLogCallback.UniffiByValue(
+        `log`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback(vtable)
+    }
+}
+
+/**
+ * The ffiConverter which transforms the Callbacks in to handles to pass to Rust.
+ *
+ * @suppress
+ */
+public object FfiConverterTypeUniFFILogCallback: FfiConverterCallbackInterface<UniFfiLogCallback>()
+
+
+
+
+
+/**
  * Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
  */
 public interface UniFfiProgressCallback {
@@ -26644,6 +27259,38 @@ public object FfiConverterOptionalTypeVideoMetadataRecord: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeArchiveFormat: FfiConverterRustBuffer<ArchiveFormat?> {
+    override fun read(buf: ByteBuffer): ArchiveFormat? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeArchiveFormat.read(buf)
+    }
+
+    override fun allocationSize(value: ArchiveFormat?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeArchiveFormat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ArchiveFormat?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeArchiveFormat.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeUniFFISubtitleAlignment: FfiConverterRustBuffer<UniFfiSubtitleAlignment?> {
     override fun read(buf: ByteBuffer): UniFfiSubtitleAlignment? {
         if (buf.get().toInt() == 0) {
@@ -26698,6 +27345,38 @@ public object FfiConverterOptionalTypeProgressHandler: FfiConverterRustBuffer<Pr
         } else {
             buf.put(1)
             FfiConverterTypeProgressHandler.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUniFFILogCallback: FfiConverterRustBuffer<UniFfiLogCallback?> {
+    override fun read(buf: ByteBuffer): UniFfiLogCallback? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUniFFILogCallback.read(buf)
+    }
+
+    override fun allocationSize(value: UniFfiLogCallback?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUniFFILogCallback.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UniFfiLogCallback?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUniFFILogCallback.write(value, buf)
         }
     }
 }
@@ -29448,6 +30127,45 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Decrypts raw 16-byte block aligned ciphertext with AES-256-CBC without padding.
+         */
+    @Throws(TtZipException::class) fun `uniffiAes256CbcRawDecrypt`(`key`: kotlin.ByteArray, `iv`: kotlin.ByteArray, `ciphertext`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt(
+        FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`iv`),FfiConverterByteArray.lower(`ciphertext`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Encrypts raw 16-byte block aligned plaintext with AES-256-CBC without padding.
+         */
+    @Throws(TtZipException::class) fun `uniffiAes256CbcRawEncrypt`(`key`: kotlin.ByteArray, `iv`: kotlin.ByteArray, `plaintext`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt(
+        FfiConverterByteArray.lower(`key`),FfiConverterByteArray.lower(`iv`),FfiConverterByteArray.lower(`plaintext`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Encrypts or decrypts data using AES-256-CTR stream cipher (symmetric operation).
+         */
+    @Throws(TtZipException::class) fun `uniffiAes256Ctr`(`key`: kotlin.ByteArray, `counter`: kotlin.ULong, `data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr(
+        FfiConverterByteArray.lower(`key`),FfiConverterULong.lower(`counter`),FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Applies a binary delta patch package onto base bytes, reconstructing target bytes in-memory.
          */
     @Throws(UniFfiSystemException::class) fun `uniffiApplyDeltaPatch`(`baseBytes`: kotlin.ByteArray, `patchBytes`: kotlin.ByteArray, `expectedTargetHash`: kotlin.String?): UniFfiDeltaPatchResult {
@@ -30104,6 +30822,56 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Compresses buffer with Fast LZMA2 (fl2).
+         */
+    @Throws(TtZipException::class) fun `uniffiFl2Compress`(`src`: kotlin.ByteArray, `level`: kotlin.Int, `nbThreads`: kotlin.UInt?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress(
+        FfiConverterByteArray.lower(`src`),FfiConverterInt.lower(`level`),FfiConverterOptionalUInt.lower(`nbThreads`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes upper bound on compressed bytes for Fast LZMA2.
+         */ fun `uniffiFl2CompressBound`(`srcLen`: kotlin.ULong): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound(
+        FfiConverterULong.lower(`srcLen`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Decompresses Fast LZMA2 (fl2) buffer into memory.
+         */
+    @Throws(TtZipException::class) fun `uniffiFl2Decompress`(`src`: kotlin.ByteArray, `expectedUncompressedSize`: kotlin.ULong?, `nbThreads`: kotlin.UInt?): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress(
+        FfiConverterByteArray.lower(`src`),FfiConverterOptionalULong.lower(`expectedUncompressedSize`),FfiConverterOptionalUInt.lower(`nbThreads`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Finds uncompressed size from Fast LZMA2 stream if known.
+         */ fun `uniffiFl2FindDecompressedSize`(`src`: kotlin.ByteArray): kotlin.ULong? {
+            return FfiConverterOptionalULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size(
+        FfiConverterByteArray.lower(`src`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
          */
     @Throws(UniFfiAudioException::class) fun `uniffiGenerateAudioWaveform`(`data`: kotlin.ByteArray, `bucketCount`: kotlin.UInt, `fileName`: kotlin.String?): UniFfiAudioWaveform {
@@ -30242,6 +31010,17 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     
 
         /**
+         * Directly emits a structured log event into the engine router across the UniFFI boundary.
+         */ fun `uniffiLogDirect`(`level`: kotlin.UInt, `target`: kotlin.String, `message`: kotlin.String, `file`: kotlin.String, `line`: kotlin.UInt)
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_log_direct(
+        FfiConverterUInt.lower(`level`),FfiConverterString.lower(`target`),FfiConverterString.lower(`message`),FfiConverterString.lower(`file`),FfiConverterUInt.lower(`line`),_status)
+}
+    
+    
+
+        /**
          * Compresses buffer with LZ4 Fast mode (acceleration 1..100).
          */
     @Throws(TtZipException::class) fun `uniffiLz4CompressFast`(`src`: kotlin.ByteArray, `acceleration`: kotlin.Int): kotlin.ByteArray {
@@ -30327,6 +31106,18 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress(
         FfiConverterByteArray.lower(`src`),FfiConverterULong.lower(`expectedUncompressedSize`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes 128-bit MD5 hash returning 16-byte digest.
+         */ fun `uniffiMd5`(`data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_md5(
+        FfiConverterByteArray.lower(`data`),_status)
 }
     )
     }
@@ -30576,6 +31367,42 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCallWithError(TtZipException) { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text(
         FfiConverterString.lower(`filePath`),FfiConverterString.lower(`query`),FfiConverterUInt.lower(`maxResults`),FfiConverterBoolean.lower(`caseSensitive`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Configures or clears the active UniFFI logging sink and adjusts the minimum severity threshold.
+         */
+    @Throws(TtZipException::class) fun `uniffiSetLogger`(`callback`: UniFfiLogCallback?, `minLevel`: kotlin.UInt)
+        = 
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_set_logger(
+        FfiConverterOptionalTypeUniFFILogCallback.lower(`callback`),FfiConverterUInt.lower(`minLevel`),_status)
+}
+    
+    
+
+        /**
+         * Computes 160-bit SHA-1 hash returning 20-byte digest.
+         */ fun `uniffiSha1`(`data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_sha1(
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Computes 256-bit hardware-accelerated SHA-256 hash returning 32-byte digest.
+         */ fun `uniffiSha256`(`data`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_sha256(
+        FfiConverterByteArray.lower(`data`),_status)
 }
     )
     }
@@ -31073,6 +31900,19 @@ public object FfiConverterMapStringTypeUniFFISubtitleStyle: FfiConverterRustBuff
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict(
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Trains a custom Zstandard dictionary from representative sample buffers.
+         */
+    @Throws(TtZipException::class) fun `uniffiZstdTrainDict`(`samples`: List<kotlin.ByteArray>, `targetDictSize`: kotlin.ULong, `level`: kotlin.Int): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    uniffiRustCallWithError(TtZipException) { _status ->
+    UniffiLib.INSTANCE.uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict(
+        FfiConverterSequenceByteArray.lower(`samples`),FfiConverterULong.lower(`targetDictSize`),FfiConverterInt.lower(`level`),_status)
 }
     )
     }
