@@ -6,23 +6,13 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// High-performance Swift 6 facade for the BLAKE3 tree-hashing cryptographic engine.
 public struct TTZipBLAKE3: Sendable {
 
     /// Computes 32-byte (256-bit) standard BLAKE3 hash for an in-memory byte buffer.
     public static func hash(_ data: Data) -> Data {
-        var out = Data(count: 32)
-        let status = out.withUnsafeMutableBytes { outBuf -> Int32 in
-            guard let outPtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return data.withUnsafeBytes { inBuf in
-                guard let inPtr = inBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return ttzip_rust_blake3(inPtr, data.count, outPtr)
-            }
-        }
-        guard status == 0 else { return Data(repeating: 0, count: 32) }
-        return out
+        uniffiBlake3(data: data)
     }
 
     /// Computes 32-byte BLAKE3 hash returning a 64-character lowercase hex string.
@@ -36,24 +26,7 @@ public struct TTZipBLAKE3: Sendable {
         guard key.count == 32 else {
             throw TTZipCodecError.invalidParameter
         }
-
-        var out = Data(count: 32)
-        let status = out.withUnsafeMutableBytes { outBuf -> Int32 in
-            guard let outPtr = outBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return key.withUnsafeBytes { keyBuf in
-                guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return data.withUnsafeBytes { dataBuf in
-                    guard let dataPtr = dataBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                    return ttzip_rust_blake3_keyed(keyPtr, dataPtr, data.count, outPtr)
-                }
-            }
-        }
-
-        guard status == 0 else {
-            throw TTZipCodecError.compressionFailed(status: status)
-        }
-
-        return out
+        return try uniffiBlake3Keyed(data: data, key: key)
     }
 
     /// Computes keyed MAC returning a lowercase hex string.

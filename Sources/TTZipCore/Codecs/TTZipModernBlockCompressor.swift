@@ -6,7 +6,6 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// Magic 4-byte header identifying TTZip Framed Parallel Block Archive format (`TTZB`).
 private let TTZIP_BLOCK_MAGIC: UInt32 = 0x54545A42
@@ -48,9 +47,7 @@ public final class TTZipModernBlockCompressor: Sendable {
             for chunk in chunks {
                 let chunkData = data.subdata(in: chunk.range)
                 group.addTask {
-                    let crc = chunkData.withUnsafeBytes { buf in
-                        ttzip_rust_crc32(0, buf.baseAddress?.assumingMemoryBound(to: UInt8.self), chunkData.count)
-                    }
+                    let crc = uniffiCrc32(data: chunkData)
                     let compressed = try TTZipCodec.compress(chunkData, algorithm: algorithm, level: level)
                     return (
                         index: chunk.index,
@@ -165,9 +162,7 @@ public final class TTZipModernBlockCompressor: Sendable {
                     }
 
                     // Verify CRC32
-                    let actualCrc = decomp.withUnsafeBytes { buf in
-                        ttzip_rust_crc32(0, buf.baseAddress?.assumingMemoryBound(to: UInt8.self), decomp.count)
-                    }
+                    let actualCrc = uniffiCrc32(data: decomp)
                     guard actualCrc == descriptor.crc32 else {
                         throw TTZipCodecError.decompressionFailed(status: -6)
                     }

@@ -636,6 +636,12 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling() != 35193:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt() != 30913:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt() != 15932:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr() != 37570:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch() != 11705:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_blake3() != 58283:
@@ -738,6 +744,14 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata() != 47311:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress() != 40344:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound() != 45056:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress() != 43312:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size() != 57179:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform() != 64703:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_generate_synthetic_corpus() != 15437:
@@ -760,6 +774,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory() != 6755:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_log_direct() != 28019:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast() != 12593:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_hc() != 53597:
@@ -773,6 +789,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress() != 6203:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress() != 64675:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_md5() != 57380:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_open_device() != 34322:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -811,6 +829,12 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices() != 40150:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text() != 28777:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_set_logger() != 31960:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_sha1() != 34458:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_sha256() != 61158:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress() != 40295:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -889,6 +913,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress() != 3975:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict() != 13515:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict() != 10545:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier() != 58757:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1003,6 +1029,16 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport() != 22094:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file() != 41256:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append() != 30808:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel() != 49594:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit() != 54291:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete() != 13300:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace() != 17809:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise() != 51087:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1276,6 +1312,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new() != 56922:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin() != 62760:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open() != 24760:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_constructor_uniffiofficeservice_new() != 38241:
@@ -1317,6 +1355,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress() != 61708:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed() != 45810:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_method_uniffilogcallback_log() != 15865:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress() != 26360:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -1432,6 +1472,9 @@ _UNIFFI_CALLBACK_INTERFACE_PROGRESS_HANDLER_METHOD0 = ctypes.CFUNCTYPE(None,ctyp
 _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
+_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_LOG_CALLBACK_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint32,_UniffiRustBuffer,_UniffiRustBuffer,_UniffiRustBuffer,ctypes.c_uint32,ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
 _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_PROGRESS_CALLBACK_METHOD0 = ctypes.CFUNCTYPE(None,ctypes.c_uint64,ctypes.c_uint64,ctypes.c_uint64,_UniffiRustBuffer,ctypes.POINTER(ctypes.c_int8),
     ctypes.POINTER(_UniffiRustCallStatus),
 )
@@ -1443,6 +1486,11 @@ class _UniffiVTableCallbackInterfaceProgressHandler(ctypes.Structure):
 class _UniffiVTableCallbackInterfaceUniFfiDeviceEventListener(ctypes.Structure):
     _fields_ = [
         ("on_devices_changed", _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_DEVICE_EVENT_LISTENER_METHOD0),
+        ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
+    ]
+class _UniffiVTableCallbackInterfaceUniFfiLogCallback(ctypes.Structure):
+    _fields_ = [
+        ("log", _UNIFFI_CALLBACK_INTERFACE_UNI_FFI_LOG_CALLBACK_METHOD0),
         ("uniffi_free", _UNIFFI_CALLBACK_INTERFACE_FREE),
     ]
 class _UniffiVTableCallbackInterfaceUniFfiProgressCallback(ctypes.Structure):
@@ -1903,6 +1951,52 @@ _UniffiLib.uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_method_uniffiimageservice_sample_viewport_from_file.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiinplacesession.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiinplacesession.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiinplacesession.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiinplacesession.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin.restype = ctypes.c_void_p
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_append.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_append.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_clone_uniffimmapreader.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -2963,6 +3057,10 @@ _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener
     ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiDeviceEventListener),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffideviceeventlistener.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback.argtypes = (
+    ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiLogCallback),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffiprogresscallback.argtypes = (
     ctypes.POINTER(_UniffiVTableCallbackInterfaceUniFfiProgressCallback),
 )
@@ -3508,6 +3606,27 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_adler32_rolling.restype = ctypes.c_uint32
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_apply_delta_patch.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -3824,6 +3943,30 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata.argtypes = 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_extract_video_metadata.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_int32,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound.argtypes = (
+    ctypes.c_uint64,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound.restype = ctypes.c_uint64
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_generate_audio_waveform.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint32,
@@ -3891,6 +4034,15 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_list_device_directory.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_log_direct.argtypes = (
+    ctypes.c_uint32,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_log_direct.restype = None
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lz4_compress_fast.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -3931,6 +4083,11 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_md5.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_md5.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_open_device.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -4046,6 +4203,22 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_search_pdf_text.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_set_logger.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_set_logger.restype = None
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha1.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha1.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha256.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha256.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_snappy_compress.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -4293,6 +4466,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict.argty
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.c_uint64,
+    ctypes.c_int32,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_vault_compute_verifier.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -4864,6 +5044,15 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32.restype = ctypes.c_u
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_adler32_rolling.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_decrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_cbc_raw_encrypt.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_aes256_ctr.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_apply_delta_patch.restype = ctypes.c_uint16
@@ -5017,6 +5206,18 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_cover.restype 
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_extract_video_metadata.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_compress_bound.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_fl2_find_decompressed_size.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_generate_audio_waveform.restype = ctypes.c_uint16
@@ -5050,6 +5251,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_inspect_remote_archive.resty
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_list_device_directory.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_log_direct.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_log_direct.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lz4_compress_fast.restype = ctypes.c_uint16
@@ -5071,6 +5275,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_compress.restype = ctyp
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_lzvn_decompress.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_md5.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_md5.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_open_device.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_open_device.restype = ctypes.c_uint16
@@ -5128,6 +5335,15 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_scan_usb_devices.restype = c
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_search_pdf_text.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_set_logger.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_set_logger.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sha1.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sha1.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sha256.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_sha256.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_snappy_compress.restype = ctypes.c_uint16
@@ -5245,6 +5461,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_dict_decompress.restype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_get_standard_112kb_dict.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_uniffi_zstd_train_dict.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_vault_compute_verifier.restype = ctypes.c_uint16
@@ -5416,6 +5635,21 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewpor
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiimageservice_sample_viewport_from_file.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_append.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_cancel.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_commit.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_delete.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiinplacesession_replace.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffimmapreader_advise.restype = ctypes.c_uint16
@@ -5824,6 +6058,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffihtmlservice_new.restyp
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiimageservice_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffiinplacesession_begin.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_constructor_uniffimmapreader_open.restype = ctypes.c_uint16
@@ -5887,6 +6124,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_method_progresshandler_on_progress.resty
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffideviceeventlistener_on_devices_changed.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffilogcallback_log.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_method_uniffilogcallback_log.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_method_uniffiprogresscallback_on_progress.restype = ctypes.c_uint16
@@ -7828,6 +8068,200 @@ class _UniffiConverterTypeUniFfiImageService:
 
     @classmethod
     def write(cls, value: UniFfiImageServiceProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class UniFfiInPlaceSessionProtocol(typing.Protocol):
+    """
+    Transactional in-place archive mutation session exposed to foreign runtimes.
+
+    Encapsulates atomic append, replace, delete, commit, and cancel operations
+    with mutex-guarded state safety and deterministic RAII rollback on drop.
+    """
+
+    def append(self, entry_path: "str",source_file_path: "str"):
+        """
+        Queues an entry append operation from an external file on disk.
+        """
+
+        raise NotImplementedError
+    def cancel(self, ):
+        """
+        Cancels all pending mutations and discards any temporary shadow or WAL files.
+        """
+
+        raise NotImplementedError
+    def commit(self, ):
+        """
+        Atomically commits all queued mutations into the original archive file.
+        """
+
+        raise NotImplementedError
+    def delete(self, entry_path: "str"):
+        """
+        Queues an entry deletion operation.
+        """
+
+        raise NotImplementedError
+    def replace(self, entry_path: "str",source_file_path: "str"):
+        """
+        Queues an entry replacement operation with content from an external source file.
+        """
+
+        raise NotImplementedError
+
+
+class UniFfiInPlaceSession:
+    """
+    Transactional in-place archive mutation session exposed to foreign runtimes.
+
+    Encapsulates atomic append, replace, delete, commit, and cancel operations
+    with mutex-guarded state safety and deterministic RAII rollback on drop.
+    """
+
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_free_uniffiinplacesession, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_clone_uniffiinplacesession, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def begin(cls, archive_path: "str",format: "typing.Optional[ArchiveFormat]"):
+        """
+        Begins a new transactional in-place mutation session against the specified archive file.
+        """
+
+        _UniffiConverterString.check_lower(archive_path)
+        
+        _UniffiConverterOptionalTypeArchiveFormat.check_lower(format)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_constructor_uniffiinplacesession_begin,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterOptionalTypeArchiveFormat.lower(format))
+        return cls._make_instance_(pointer)
+
+
+
+    def append(self, entry_path: "str",source_file_path: "str") -> None:
+        """
+        Queues an entry append operation from an external file on disk.
+        """
+
+        _UniffiConverterString.check_lower(entry_path)
+        
+        _UniffiConverterString.check_lower(source_file_path)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_append,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(entry_path),
+        _UniffiConverterString.lower(source_file_path))
+
+
+
+
+
+
+    def cancel(self, ) -> None:
+        """
+        Cancels all pending mutations and discards any temporary shadow or WAL files.
+        """
+
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_cancel,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def commit(self, ) -> None:
+        """
+        Atomically commits all queued mutations into the original archive file.
+        """
+
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_commit,self._uniffi_clone_pointer(),)
+
+
+
+
+
+
+    def delete(self, entry_path: "str") -> None:
+        """
+        Queues an entry deletion operation.
+        """
+
+        _UniffiConverterString.check_lower(entry_path)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_delete,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(entry_path))
+
+
+
+
+
+
+    def replace(self, entry_path: "str",source_file_path: "str") -> None:
+        """
+        Queues an entry replacement operation with content from an external source file.
+        """
+
+        _UniffiConverterString.check_lower(entry_path)
+        
+        _UniffiConverterString.check_lower(source_file_path)
+        
+        _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_method_uniffiinplacesession_replace,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(entry_path),
+        _UniffiConverterString.lower(source_file_path))
+
+
+
+
+
+
+
+class _UniffiConverterTypeUniFfiInPlaceSession:
+
+    @staticmethod
+    def lift(value: int):
+        return UniFfiInPlaceSession._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UniFfiInPlaceSession):
+        if not isinstance(value, UniFfiInPlaceSession):
+            raise TypeError("Expected UniFfiInPlaceSession instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UniFfiInPlaceSessionProtocol):
+        if not isinstance(value, UniFfiInPlaceSession):
+            raise TypeError("Expected UniFfiInPlaceSession instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UniFfiInPlaceSessionProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -23858,6 +24292,8 @@ class UniFfiCompressionCodec(enum.Enum):
     
     PPMD = 13
     
+    FL2 = 14
+    
 
 
 class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
@@ -23892,6 +24328,8 @@ class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
             return UniFfiCompressionCodec.BZIP2
         if variant == 14:
             return UniFfiCompressionCodec.PPMD
+        if variant == 15:
+            return UniFfiCompressionCodec.FL2
         raise InternalError("Raw enum value doesn't match any cases")
 
     @staticmethod
@@ -23923,6 +24361,8 @@ class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
         if value == UniFfiCompressionCodec.BZIP2:
             return
         if value == UniFfiCompressionCodec.PPMD:
+            return
+        if value == UniFfiCompressionCodec.FL2:
             return
         raise ValueError(value)
 
@@ -23956,6 +24396,8 @@ class _UniffiConverterTypeUniFfiCompressionCodec(_UniffiConverterRustBuffer):
             buf.write_i32(13)
         if value == UniFfiCompressionCodec.PPMD:
             buf.write_i32(14)
+        if value == UniFfiCompressionCodec.FL2:
+            buf.write_i32(15)
 
 
 
@@ -27492,6 +27934,62 @@ _UniffiConverterTypeUniFfiDeviceEventListener = _UniffiCallbackInterfaceFfiConve
 
 
 
+class UniFfiLogCallback(typing.Protocol):
+    """
+    Host logging callback interface invoked when the microkernel emits a record.
+    """
+
+    def log(self, level: "int",target: "str",message: "str",file: "str",line: "int"):
+        raise NotImplementedError
+
+
+# Put all the bits inside a class to keep the top-level namespace clean
+class _UniffiTraitImplUniFFILogCallback:
+    # For each method, generate a callback function to pass to Rust
+
+    @_UNIFFI_CALLBACK_INTERFACE_UNI_FFI_LOG_CALLBACK_METHOD0
+    def log(
+            uniffi_handle,
+            level,
+            target,
+            message,
+            file,
+            line,
+            uniffi_out_return,
+            uniffi_call_status_ptr,
+        ):
+        uniffi_obj = _UniffiConverterTypeUniFfiLogCallback._handle_map.get(uniffi_handle)
+        def make_call():
+            args = (_UniffiConverterUInt32.lift(level), _UniffiConverterString.lift(target), _UniffiConverterString.lift(message), _UniffiConverterString.lift(file), _UniffiConverterUInt32.lift(line), )
+            method = uniffi_obj.log
+            return method(*args)
+
+        
+        write_return_value = lambda v: None
+        _uniffi_trait_interface_call(
+                uniffi_call_status_ptr.contents,
+                make_call,
+                write_return_value,
+        )
+
+    @_UNIFFI_CALLBACK_INTERFACE_FREE
+    def _uniffi_free(uniffi_handle):
+        _UniffiConverterTypeUniFfiLogCallback._handle_map.remove(uniffi_handle)
+
+    # Generate the FFI VTable.  This has a field for each callback interface method.
+    _uniffi_vtable = _UniffiVTableCallbackInterfaceUniFfiLogCallback(
+        log,
+        _uniffi_free
+    )
+    # Send Rust a pointer to the VTable.  Note: this means we need to keep the struct alive forever,
+    # or else bad things will happen when Rust tries to access it.
+    _UniffiLib.uniffi_ttzip_engine_fn_init_callback_vtable_uniffilogcallback(ctypes.byref(_uniffi_vtable))
+
+# The _UniffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+_UniffiConverterTypeUniFfiLogCallback = _UniffiCallbackInterfaceFfiConverter()
+
+
+
 class UniFfiProgressCallback(typing.Protocol):
     """
     Cross-language asynchronous progress callback interface protocol implemented in Swift / Kotlin / Python.
@@ -28253,6 +28751,33 @@ class _UniffiConverterOptionalTypeVideoMetadataRecord(_UniffiConverterRustBuffer
 
 
 
+class _UniffiConverterOptionalTypeArchiveFormat(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeArchiveFormat.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeArchiveFormat.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeArchiveFormat.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
 class _UniffiConverterOptionalTypeUniFfiSubtitleAlignment(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, value):
@@ -28302,6 +28827,33 @@ class _UniffiConverterOptionalTypeProgressHandler(_UniffiConverterRustBuffer):
             return None
         elif flag == 1:
             return _UniffiConverterTypeProgressHandler.read(buf)
+        else:
+            raise InternalError("Unexpected flag byte for optional type")
+
+
+
+class _UniffiConverterOptionalTypeUniFfiLogCallback(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, value):
+        if value is not None:
+            _UniffiConverterTypeUniFfiLogCallback.check_lower(value)
+
+    @classmethod
+    def write(cls, value, buf):
+        if value is None:
+            buf.write_u8(0)
+            return
+
+        buf.write_u8(1)
+        _UniffiConverterTypeUniFfiLogCallback.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        flag = buf.read_u8()
+        if flag == 0:
+            return None
+        elif flag == 1:
+            return _UniffiConverterTypeUniFfiLogCallback.read(buf)
         else:
             raise InternalError("Unexpected flag byte for optional type")
 
@@ -31030,6 +31582,57 @@ def uniffi_adler32_rolling(initial: "int",data: "bytes") -> "int":
         _UniffiConverterBytes.lower(data)))
 
 
+def uniffi_aes256_cbc_raw_decrypt(key: "bytes",iv: "bytes",ciphertext: "bytes") -> "bytes":
+    """
+    Decrypts raw 16-byte block aligned ciphertext with AES-256-CBC without padding.
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(ciphertext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_decrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(ciphertext)))
+
+
+def uniffi_aes256_cbc_raw_encrypt(key: "bytes",iv: "bytes",plaintext: "bytes") -> "bytes":
+    """
+    Encrypts raw 16-byte block aligned plaintext with AES-256-CBC without padding.
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterBytes.check_lower(iv)
+    
+    _UniffiConverterBytes.check_lower(plaintext)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_cbc_raw_encrypt,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterBytes.lower(iv),
+        _UniffiConverterBytes.lower(plaintext)))
+
+
+def uniffi_aes256_ctr(key: "bytes",counter: "int",data: "bytes") -> "bytes":
+    """
+    Encrypts or decrypts data using AES-256-CTR stream cipher (symmetric operation).
+    """
+
+    _UniffiConverterBytes.check_lower(key)
+    
+    _UniffiConverterUInt64.check_lower(counter)
+    
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_aes256_ctr,
+        _UniffiConverterBytes.lower(key),
+        _UniffiConverterUInt64.lower(counter),
+        _UniffiConverterBytes.lower(data)))
+
+
 def uniffi_apply_delta_patch(base_bytes: "bytes",patch_bytes: "bytes",expected_target_hash: "typing.Optional[str]") -> "UniFfiDeltaPatchResult":
     """
     Applies a binary delta patch package onto base bytes, reconstructing target bytes in-memory.
@@ -31777,6 +32380,62 @@ def uniffi_extract_video_metadata(data: "bytes",file_name: "typing.Optional[str]
         _UniffiConverterOptionalString.lower(file_name)))
 
 
+def uniffi_fl2_compress(src: "bytes",level: "int",nb_threads: "typing.Optional[int]") -> "bytes":
+    """
+    Compresses buffer with Fast LZMA2 (fl2).
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    _UniffiConverterOptionalUInt32.check_lower(nb_threads)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterInt32.lower(level),
+        _UniffiConverterOptionalUInt32.lower(nb_threads)))
+
+
+def uniffi_fl2_compress_bound(src_len: "int") -> "int":
+    """
+    Computes upper bound on compressed bytes for Fast LZMA2.
+    """
+
+    _UniffiConverterUInt64.check_lower(src_len)
+    
+    return _UniffiConverterUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_compress_bound,
+        _UniffiConverterUInt64.lower(src_len)))
+
+
+def uniffi_fl2_decompress(src: "bytes",expected_uncompressed_size: "typing.Optional[int]",nb_threads: "typing.Optional[int]") -> "bytes":
+    """
+    Decompresses Fast LZMA2 (fl2) buffer into memory.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    _UniffiConverterOptionalUInt64.check_lower(expected_uncompressed_size)
+    
+    _UniffiConverterOptionalUInt32.check_lower(nb_threads)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_decompress,
+        _UniffiConverterBytes.lower(src),
+        _UniffiConverterOptionalUInt64.lower(expected_uncompressed_size),
+        _UniffiConverterOptionalUInt32.lower(nb_threads)))
+
+
+def uniffi_fl2_find_decompressed_size(src: "bytes") -> "typing.Optional[int]":
+    """
+    Finds uncompressed size from Fast LZMA2 stream if known.
+    """
+
+    _UniffiConverterBytes.check_lower(src)
+    
+    return _UniffiConverterOptionalUInt64.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_fl2_find_decompressed_size,
+        _UniffiConverterBytes.lower(src)))
+
+
 def uniffi_generate_audio_waveform(data: "bytes",bucket_count: "int",file_name: "typing.Optional[str]") -> "UniFfiAudioWaveform":
     """
     Computes normalized acoustic waveform envelope amplitudes from in-memory audio bytes.
@@ -31934,6 +32593,29 @@ def uniffi_list_device_directory(device_id: "str",path: "str") -> "typing.List[U
         _UniffiConverterString.lower(path)))
 
 
+def uniffi_log_direct(level: "int",target: "str",message: "str",file: "str",line: "int") -> None:
+    """
+    Directly emits a structured log event into the engine router across the UniFFI boundary.
+    """
+
+    _UniffiConverterUInt32.check_lower(level)
+    
+    _UniffiConverterString.check_lower(target)
+    
+    _UniffiConverterString.check_lower(message)
+    
+    _UniffiConverterString.check_lower(file)
+    
+    _UniffiConverterUInt32.check_lower(line)
+    
+    _uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_log_direct,
+        _UniffiConverterUInt32.lower(level),
+        _UniffiConverterString.lower(target),
+        _UniffiConverterString.lower(message),
+        _UniffiConverterString.lower(file),
+        _UniffiConverterUInt32.lower(line))
+
+
 def uniffi_lz4_compress_fast(src: "bytes",acceleration: "int") -> "bytes":
     """
     Compresses buffer with LZ4 Fast mode (acceleration 1..100).
@@ -32024,6 +32706,17 @@ def uniffi_lzvn_decompress(src: "bytes",expected_uncompressed_size: "int") -> "b
     return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_lzvn_decompress,
         _UniffiConverterBytes.lower(src),
         _UniffiConverterUInt64.lower(expected_uncompressed_size)))
+
+
+def uniffi_md5(data: "bytes") -> "bytes":
+    """
+    Computes 128-bit MD5 hash returning 16-byte digest.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_md5,
+        _UniffiConverterBytes.lower(data)))
 
 
 def uniffi_open_device(device_id: "str") -> "UniFfiAndroidDevice":
@@ -32296,6 +32989,42 @@ def uniffi_search_pdf_text(file_path: "str",query: "str",max_results: "int",case
         _UniffiConverterString.lower(query),
         _UniffiConverterUInt32.lower(max_results),
         _UniffiConverterBool.lower(case_sensitive)))
+
+
+def uniffi_set_logger(callback: "typing.Optional[UniFfiLogCallback]",min_level: "int") -> None:
+    """
+    Configures or clears the active UniFFI logging sink and adjusts the minimum severity threshold.
+    """
+
+    _UniffiConverterOptionalTypeUniFfiLogCallback.check_lower(callback)
+    
+    _UniffiConverterUInt32.check_lower(min_level)
+    
+    _uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_set_logger,
+        _UniffiConverterOptionalTypeUniFfiLogCallback.lower(callback),
+        _UniffiConverterUInt32.lower(min_level))
+
+
+def uniffi_sha1(data: "bytes") -> "bytes":
+    """
+    Computes 160-bit SHA-1 hash returning 20-byte digest.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha1,
+        _UniffiConverterBytes.lower(data)))
+
+
+def uniffi_sha256(data: "bytes") -> "bytes":
+    """
+    Computes 256-bit hardware-accelerated SHA-256 hash returning 32-byte digest.
+    """
+
+    _UniffiConverterBytes.check_lower(data)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_sha256,
+        _UniffiConverterBytes.lower(data)))
 
 
 def uniffi_snappy_compress(src: "bytes") -> "bytes":
@@ -32884,6 +33613,23 @@ def uniffi_zstd_get_standard_112kb_dict() -> "bytes":
     return _UniffiConverterBytes.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_get_standard_112kb_dict,))
 
 
+def uniffi_zstd_train_dict(samples: "typing.List[bytes]",target_dict_size: "int",level: "int") -> "bytes":
+    """
+    Trains a custom Zstandard dictionary from representative sample buffers.
+    """
+
+    _UniffiConverterSequenceBytes.check_lower(samples)
+    
+    _UniffiConverterUInt64.check_lower(target_dict_size)
+    
+    _UniffiConverterInt32.check_lower(level)
+    
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeTtZipError,_UniffiLib.uniffi_ttzip_engine_fn_func_uniffi_zstd_train_dict,
+        _UniffiConverterSequenceBytes.lower(samples),
+        _UniffiConverterUInt64.lower(target_dict_size),
+        _UniffiConverterInt32.lower(level)))
+
+
 def vault_compute_verifier(key: "bytes",salt: "bytes") -> "str":
     """
     Computes HMAC-SHA256 verifier hash of derived key and salt for master password verification.
@@ -33236,6 +33982,9 @@ __all__ = [
     "uniffi_7z_aes256_encrypt",
     "uniffi_adler32",
     "uniffi_adler32_rolling",
+    "uniffi_aes256_cbc_raw_decrypt",
+    "uniffi_aes256_cbc_raw_encrypt",
+    "uniffi_aes256_ctr",
     "uniffi_apply_delta_patch",
     "uniffi_blake3",
     "uniffi_blake3_keyed",
@@ -33287,6 +34036,10 @@ __all__ = [
     "uniffi_extract_to_device",
     "uniffi_extract_video_cover",
     "uniffi_extract_video_metadata",
+    "uniffi_fl2_compress",
+    "uniffi_fl2_compress_bound",
+    "uniffi_fl2_decompress",
+    "uniffi_fl2_find_decompressed_size",
     "uniffi_generate_audio_waveform",
     "uniffi_generate_synthetic_corpus",
     "uniffi_get_ebook_spine",
@@ -33298,6 +34051,7 @@ __all__ = [
     "uniffi_html_service_new",
     "uniffi_inspect_remote_archive",
     "uniffi_list_device_directory",
+    "uniffi_log_direct",
     "uniffi_lz4_compress_fast",
     "uniffi_lz4_compress_hc",
     "uniffi_lz4_decompress",
@@ -33305,6 +34059,7 @@ __all__ = [
     "uniffi_lzfse_decompress",
     "uniffi_lzvn_compress",
     "uniffi_lzvn_decompress",
+    "uniffi_md5",
     "uniffi_open_device",
     "uniffi_pair_wireless_device",
     "uniffi_parse_plist_from_bytes",
@@ -33324,6 +34079,9 @@ __all__ = [
     "uniffi_sanitize_html",
     "uniffi_scan_usb_devices",
     "uniffi_search_pdf_text",
+    "uniffi_set_logger",
+    "uniffi_sha1",
+    "uniffi_sha256",
     "uniffi_snappy_compress",
     "uniffi_snappy_decompress",
     "uniffi_snappy_frame_decode",
@@ -33363,6 +34121,7 @@ __all__ = [
     "uniffi_zstd_dict_compress",
     "uniffi_zstd_dict_decompress",
     "uniffi_zstd_get_standard_112kb_dict",
+    "uniffi_zstd_train_dict",
     "vault_compute_verifier",
     "vault_decrypt_payload",
     "vault_derive_key",
@@ -33377,6 +34136,7 @@ __all__ = [
     "UniFfiEbookService",
     "UniFfiHtmlService",
     "UniFfiImageService",
+    "UniFfiInPlaceSession",
     "UniFfiMmapReader",
     "UniFfiOfficeService",
     "UniFfiPdfService",
@@ -33394,6 +34154,7 @@ __all__ = [
     "VirtualFileStream",
     "ProgressHandler",
     "UniFfiDeviceEventListener",
+    "UniFfiLogCallback",
     "UniFfiProgressCallback",
 ]
 

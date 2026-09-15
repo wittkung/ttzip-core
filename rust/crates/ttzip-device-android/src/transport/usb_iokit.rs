@@ -17,7 +17,7 @@ use crate::transport::recovery::TransportRecoveryTarget;
 use nusb::transfer::{Buffer, Bulk, In, Out, TransferError};
 use nusb::{Endpoint, Interface, MaybeFuture};
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use log::{debug, error, info, warn};
 
 /// Apple IOKit kernel error code unsigned raw mask (`kIOReturnExclusiveAccess`).
 pub const KIO_RETURN_EXCLUSIVE_ACCESS_RAW: u32 = 0xE000_02C5;

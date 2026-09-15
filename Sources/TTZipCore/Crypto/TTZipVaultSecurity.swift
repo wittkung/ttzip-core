@@ -7,7 +7,6 @@
 
 import Foundation
 import CommonCrypto
-import CTTZipBridge
 
 /// Supported ciphers for vault and archive payload encryption.
 public enum TTZipVaultCipher: UInt8, Sendable, CaseIterable {
@@ -236,79 +235,53 @@ public struct TTZipVaultSecurity: Sendable {
             throw TTZipVaultError.invalidParameter
         }
 
-        guard let keyPtr = key.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-            throw TTZipVaultError.invalidParameter
-        }
+        let keyData = key.toData()
+        let aadData = aad ?? Data()
 
-        var ciphertext = Data(count: plaintext.count)
-        var tag: Data? = cipher.tagLength > 0 ? Data(count: cipher.tagLength) : nil
-
-        let status: Int32 = try plaintext.withUnsafeBytes { srcBuf in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                throw TTZipVaultError.invalidParameter
+        switch cipher {
+        case .aes256Gcm:
+            do {
+                let res = try uniffiVaultAesGcmEncrypt(
+                    key: keyData,
+                    iv: nonce,
+                    plaintext: plaintext,
+                    aad: aadData
+                )
+                return (ciphertext: res.ciphertext, tag: res.tag)
+            } catch {
+                throw TTZipVaultError.encryptionFailed(status: -1)
             }
-            return try nonce.withUnsafeBytes { nonceBuf in
-                guard let noncePtr = nonceBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipVaultError.invalidParameter
-                }
-                return try ciphertext.withUnsafeMutableBytes { dstBuf in
-                    guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        throw TTZipVaultError.invalidParameter
-                    }
 
-                    switch cipher {
-                    case .aes256Gcm:
-                        return try tag!.withUnsafeMutableBytes { tagBuf in
-                            guard let tagPtr = tagBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                                throw TTZipVaultError.invalidParameter
-                            }
-                            if let aadData = aad, !aadData.isEmpty {
-                                return aadData.withUnsafeBytes { aadBuf in
-                                    ttzip_rust_vault_encrypt_key(
-                                        keyPtr, noncePtr, srcPtr, plaintext.count,
-                                        aadBuf.baseAddress?.assumingMemoryBound(to: UInt8.self), aadData.count,
-                                        dstPtr, tagPtr
-                                    )
-                                }
-                            } else {
-                                return ttzip_rust_vault_encrypt_key(keyPtr, noncePtr, srcPtr, plaintext.count, nil, 0, dstPtr, tagPtr)
-                            }
-                        }
+        case .chacha20Poly1305:
+            do {
+                let res = try uniffiVaultChacha20Poly1305Encrypt(
+                    key: keyData,
+                    nonce: nonce,
+                    plaintext: plaintext,
+                    aad: aadData
+                )
+                return (ciphertext: res.ciphertext, tag: res.tag)
+            } catch {
+                throw TTZipVaultError.encryptionFailed(status: -1)
+            }
 
-                    case .chacha20Poly1305:
-                        return try tag!.withUnsafeMutableBytes { tagBuf in
-                            guard let tagPtr = tagBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                                throw TTZipVaultError.invalidParameter
-                            }
-                            if let aadData = aad, !aadData.isEmpty {
-                                return aadData.withUnsafeBytes { aadBuf in
-                                    ttzip_rust_chacha20_poly1305_encrypt(
-                                        keyPtr, noncePtr, srcPtr, plaintext.count,
-                                        aadBuf.baseAddress?.assumingMemoryBound(to: UInt8.self), aadData.count,
-                                        dstPtr, tagPtr
-                                    )
-                                }
-                            } else {
-                                return ttzip_rust_chacha20_poly1305_encrypt(keyPtr, noncePtr, srcPtr, plaintext.count, nil, 0, dstPtr, tagPtr)
-                            }
-                        }
+        case .aes256Ctr:
+            let counter = nonce.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
+            do {
+                let ciphertext = try uniffiAes256Ctr(key: keyData, counter: counter, data: plaintext)
+                return (ciphertext: ciphertext, tag: nil)
+            } catch {
+                throw TTZipVaultError.encryptionFailed(status: -1)
+            }
 
-                    case .aes256Ctr:
-                        let counter = nonce.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
-                        return ttzip_rust_aes256_ctr(keyPtr, counter, srcPtr, plaintext.count, dstPtr)
-
-                    case .aes256Cbc:
-                        return ttzip_rust_aes256_cbc_encrypt(keyPtr, noncePtr, srcPtr, plaintext.count, dstPtr)
-                    }
-                }
+        case .aes256Cbc:
+            do {
+                let ciphertext = try uniffiAes256CbcRawEncrypt(key: keyData, iv: nonce, plaintext: plaintext)
+                return (ciphertext: ciphertext, tag: nil)
+            } catch {
+                throw TTZipVaultError.encryptionFailed(status: -1)
             }
         }
-
-        guard status == 0 else {
-            throw TTZipVaultError.encryptionFailed(status: status)
-        }
-
-        return (ciphertext, tag)
     }
 
     /// Low-level direct zeroized memory decryption.
@@ -324,83 +297,56 @@ public struct TTZipVaultSecurity: Sendable {
             throw TTZipVaultError.invalidParameter
         }
 
-        guard let keyPtr = key.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-            throw TTZipVaultError.invalidParameter
-        }
+        let keyData = key.toData()
+        let aadData = aad ?? Data()
 
-        var plaintext = Data(count: ciphertext.count)
-
-        let status: Int32 = try ciphertext.withUnsafeBytes { srcBuf in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+        switch cipher {
+        case .aes256Gcm:
+            guard let tagData = tag, tagData.count == 16 else {
                 throw TTZipVaultError.invalidParameter
             }
-            return try nonce.withUnsafeBytes { nonceBuf in
-                guard let noncePtr = nonceBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipVaultError.invalidParameter
-                }
-                return try plaintext.withUnsafeMutableBytes { dstBuf in
-                    guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        throw TTZipVaultError.invalidParameter
-                    }
+            do {
+                return try uniffiVaultAesGcmDecrypt(
+                    key: keyData,
+                    iv: nonce,
+                    ciphertext: ciphertext,
+                    aad: aadData,
+                    tag: tagData
+                )
+            } catch {
+                throw TTZipVaultError.authenticationFailed
+            }
 
-                    switch cipher {
-                    case .aes256Gcm:
-                        guard let tagData = tag, tagData.count == 16 else {
-                            throw TTZipVaultError.invalidParameter
-                        }
-                        return try tagData.withUnsafeBytes { tagBuf in
-                            guard let tagPtr = tagBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                                throw TTZipVaultError.invalidParameter
-                            }
-                            if let aadData = aad, !aadData.isEmpty {
-                                return aadData.withUnsafeBytes { aadBuf in
-                                    ttzip_rust_vault_decrypt_key(
-                                        keyPtr, noncePtr, srcPtr, ciphertext.count,
-                                        aadBuf.baseAddress?.assumingMemoryBound(to: UInt8.self), aadData.count,
-                                        tagPtr, dstPtr
-                                    )
-                                }
-                            } else {
-                                return ttzip_rust_vault_decrypt_key(keyPtr, noncePtr, srcPtr, ciphertext.count, nil, 0, tagPtr, dstPtr)
-                            }
-                        }
+        case .chacha20Poly1305:
+            guard let tagData = tag, tagData.count == 16 else {
+                throw TTZipVaultError.invalidParameter
+            }
+            do {
+                return try uniffiVaultChacha20Poly1305Decrypt(
+                    key: keyData,
+                    nonce: nonce,
+                    ciphertext: ciphertext,
+                    aad: aadData,
+                    tag: tagData
+                )
+            } catch {
+                throw TTZipVaultError.authenticationFailed
+            }
 
-                    case .chacha20Poly1305:
-                        guard let tagData = tag, tagData.count == 16 else {
-                            throw TTZipVaultError.invalidParameter
-                        }
-                        return try tagData.withUnsafeBytes { tagBuf in
-                            guard let tagPtr = tagBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                                throw TTZipVaultError.invalidParameter
-                            }
-                            if let aadData = aad, !aadData.isEmpty {
-                                return aadData.withUnsafeBytes { aadBuf in
-                                    ttzip_rust_chacha20_poly1305_decrypt(
-                                        keyPtr, noncePtr, srcPtr, ciphertext.count,
-                                        aadBuf.baseAddress?.assumingMemoryBound(to: UInt8.self), aadData.count,
-                                        tagPtr, dstPtr
-                                    )
-                                }
-                            } else {
-                                return ttzip_rust_chacha20_poly1305_decrypt(keyPtr, noncePtr, srcPtr, ciphertext.count, nil, 0, tagPtr, dstPtr)
-                            }
-                        }
+        case .aes256Ctr:
+            let counter = nonce.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
+            do {
+                return try uniffiAes256Ctr(key: keyData, counter: counter, data: ciphertext)
+            } catch {
+                throw TTZipVaultError.decryptionFailed(status: -1)
+            }
 
-                    case .aes256Ctr:
-                        let counter = nonce.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
-                        return ttzip_rust_aes256_ctr(keyPtr, counter, srcPtr, ciphertext.count, dstPtr)
-
-                    case .aes256Cbc:
-                        return ttzip_rust_aes256_cbc_decrypt(keyPtr, noncePtr, srcPtr, ciphertext.count, dstPtr)
-                    }
-                }
+        case .aes256Cbc:
+            do {
+                return try uniffiAes256CbcRawDecrypt(key: keyData, iv: nonce, ciphertext: ciphertext)
+            } catch {
+                throw TTZipVaultError.decryptionFailed(status: -1)
             }
         }
-
-        guard status == 0 else {
-            throw TTZipVaultError.authenticationFailed
-        }
-
-        return plaintext
     }
 }

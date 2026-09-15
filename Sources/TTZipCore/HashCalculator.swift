@@ -7,7 +7,6 @@
 
 import Foundation
 import Compression
-import CTTZipBridge
 
 /// Supported cryptographic and verification hash algorithms.
 public enum HashType: String, Sendable {
@@ -74,9 +73,10 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func adler32(for data: Data, initial: UInt32 = 1) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return data.withUnsafeBytes { rawBuffer in
-            guard let base = rawBuffer.baseAddress else { return initial }
-            return ttzip_rust_adler32(initial, base.assumingMemoryBound(to: UInt8.self), rawBuffer.count)
+        if initial == 1 {
+            return uniffiAdler32(data: data)
+        } else {
+            return uniffiAdler32Rolling(initial: initial, data: data)
         }
     }
     
@@ -84,16 +84,22 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func adler32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 1) -> UInt32 {
         guard count > 0 else { return initial }
-        return ttzip_rust_adler32(initial, ptr, count)
+        let data = Data(bytes: ptr, count: count)
+        if initial == 1 {
+            return uniffiAdler32(data: data)
+        } else {
+            return uniffiAdler32Rolling(initial: initial, data: data)
+        }
     }
 
     /// Computes 32-bit CRC-32 checksum.
     @inlinable
     public static func crc32(for data: Data, initial: UInt32 = 0) -> UInt32 {
         guard !data.isEmpty else { return initial }
-        return data.withUnsafeBytes { rawBuffer in
-            guard let base = rawBuffer.baseAddress else { return initial }
-            return ttzip_rust_crc32(initial, base.assumingMemoryBound(to: UInt8.self), rawBuffer.count)
+        if initial == 0 {
+            return uniffiCrc32(data: data)
+        } else {
+            return uniffiCrc32Rolling(initial: initial, data: data)
         }
     }
 
@@ -101,7 +107,12 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func crc32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 0) -> UInt32 {
         guard count > 0 else { return initial }
-        return ttzip_rust_crc32(initial, ptr, count)
+        let data = Data(bytes: ptr, count: count)
+        if initial == 0 {
+            return uniffiCrc32(data: data)
+        } else {
+            return uniffiCrc32Rolling(initial: initial, data: data)
+        }
     }
 
     @inlinable
@@ -112,7 +123,7 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func combineCRC32(crc1: UInt32, crc2: UInt32, len2: Int) -> UInt32 {
         guard len2 > 0 else { return crc1 }
-        return combineCrc32(crc1: crc1, crc2: crc2, len2: UInt64(len2))
+        return uniffiCrc32Combine(crc1: crc1, crc2: crc2, len2: UInt64(len2))
     }
 }
 

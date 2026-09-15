@@ -13,7 +13,7 @@ mdns-sd = "0.19.2"
 zeroize = { version = "1.8", features = ["derive"] }
 tokio = { version = "1.43", features = ["sync", "rt", "time", "macros"] }
 thiserror = "2.0"
-tracing = "0.1"
+log = "0.4"
 bytes = "1.10"
 serde = { version = "1.0", features = ["derive"] }
 parking_lot = "0.12"

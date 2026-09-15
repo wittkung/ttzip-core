@@ -7,7 +7,6 @@
 
 import Foundation
 import Compression
-import CTTZipBridge
 
 /// High-performance Swift 6 facade for Apple LZFSE (Lempel-Ziv Finite State Entropy) compression.
 /// Utilizes Apple Silicon hardware-accelerated `libcompression` with dual-engine Rust microkernel fallback.
@@ -15,7 +14,7 @@ public struct TTZipLZFSEEngine: Sendable {
 
     /// Calculates theoretical worst-case bound for LZFSE compressed data buffer.
     public static func compressBound(uncompressedSize: Int) -> Int {
-        Int(ttzip_rust_lzfse_compress_bound(uncompressedSize))
+        Int(uniffiCompressBound(codec: .lzfse, srcLen: UInt64(max(0, uncompressedSize)), level: nil))
     }
 
     /// Compresses in-memory buffer using Apple Silicon native hardware LZFSE engine.
@@ -29,9 +28,9 @@ public struct TTZipLZFSEEngine: Sendable {
 
         // 1. Try Apple Native libcompression
         let nativeWritten = destination.withUnsafeMutableBytes { dstBuf -> Int in
-            guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return 0 }
+            guard let dstPtr = dstBuf.bindMemory(to: UInt8.self).baseAddress else { return 0 }
             return data.withUnsafeBytes { srcBuf -> Int in
-                guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return 0 }
+                guard let srcPtr = srcBuf.bindMemory(to: UInt8.self).baseAddress else { return 0 }
                 return compression_encode_buffer(
                     dstPtr,
                     bound,
@@ -48,22 +47,8 @@ public struct TTZipLZFSEEngine: Sendable {
             return destination
         }
 
-        // 2. Microkernel Fallback
-        var fallbackLen: Int = 0
-        let status = data.withUnsafeBytes { srcBuf -> Int32 in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return destination.withUnsafeMutableBytes { dstBuf -> Int32 in
-                guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return ttzip_rust_lzfse_compress(srcPtr, data.count, dstPtr, bound, &fallbackLen)
-            }
-        }
-
-        guard status == 0 && fallbackLen > 0 else {
-            throw TTZipCodecError.compressionFailed(status: status)
-        }
-
-        destination.count = fallbackLen
-        return destination
+        // 2. Microkernel Fallback via UniFFI
+        return try uniffiLzfseCompress(src: data)
     }
 
     /// Decompresses an LZFSE compressed buffer.
@@ -80,9 +65,9 @@ public struct TTZipLZFSEEngine: Sendable {
         while retry < 4 {
             let currentCap = capacity
             let nativeWritten = destination.withUnsafeMutableBytes { dstBuf -> Int in
-                guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return 0 }
+                guard let dstPtr = dstBuf.bindMemory(to: UInt8.self).baseAddress else { return 0 }
                 return data.withUnsafeBytes { srcBuf -> Int in
-                    guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return 0 }
+                    guard let srcPtr = srcBuf.bindMemory(to: UInt8.self).baseAddress else { return 0 }
                     return compression_decode_buffer(
                         dstPtr,
                         currentCap,
@@ -104,21 +89,7 @@ public struct TTZipLZFSEEngine: Sendable {
             retry += 1
         }
 
-        // 2. Microkernel Fallback
-        var fallbackLen: Int = 0
-        let status = data.withUnsafeBytes { srcBuf -> Int32 in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return destination.withUnsafeMutableBytes { dstBuf -> Int32 in
-                guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-                return ttzip_rust_lzfse_decompress(srcPtr, data.count, dstPtr, capacity, &fallbackLen)
-            }
-        }
-
-        guard status == 0 && fallbackLen > 0 else {
-            throw TTZipCodecError.decompressionFailed(status: status)
-        }
-
-        destination.count = fallbackLen
-        return destination
+        // 2. Microkernel Fallback via UniFFI
+        return try uniffiLzfseDecompress(src: data, expectedUncompressedSize: UInt64(capacity))
     }
 }

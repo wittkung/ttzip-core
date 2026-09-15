@@ -6,7 +6,6 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import Foundation
-import CTTZipBridge
 
 /// Supported single-stream compression codecs across TTZip engine.
 public enum TTZipCodecAlgorithm: String, Sendable, CaseIterable {
@@ -40,6 +39,24 @@ public enum TTZipCodecAlgorithm: String, Sendable, CaseIterable {
         case .lzfse: return "Apple LZFSE"
         case .bzip2: return "Bzip2"
         case .ppmd: return "PPMd (Model H)"
+        }
+    }
+
+    /// Maps algorithm to its corresponding UniFFI compression codec.
+    public func uniffiCodec(level: Int32 = 6) -> UniFfiCompressionCodec {
+        switch self {
+        case .deflate: return .deflateRaw
+        case .zlib: return .zlib
+        case .gzip: return .gzip
+        case .zstd: return .zstd
+        case .brotli: return .brotli
+        case .lzma, .fastLzma2: return .fl2
+        case .lz4: return level >= 9 ? .lz4Hc : .lz4Fast
+        case .snappyBlock: return .snappyRaw
+        case .snappyFramed: return .snappyFramed
+        case .lzfse: return .lzfse
+        case .bzip2: return .bzip2
+        case .ppmd: return .ppmd
         }
     }
 }
@@ -127,7 +144,7 @@ public enum TTZipCodecError: Error, Sendable, LocalizedError {
     }
 }
 
-/// Swift 6 strongly-typed facade for all 13 native compression codecs.
+/// Swift 6 strongly-typed facade for all native compression codecs via UniFFI bridge.
 public struct TTZipCodec: Sendable {
 
     /// Calculates the maximum theoretical compressed output buffer size in bytes for a given input size.
@@ -138,30 +155,15 @@ public struct TTZipCodec: Sendable {
     ) -> Int {
         let rawLvl = level.rawLevel(for: algorithm)
         switch algorithm {
-        case .deflate, .zlib, .gzip:
-            return Int(ttzip_rust_deflate_compress_bound(uncompressedSize, rawLvl))
-        case .zstd:
-            return Int(ttzip_rust_zstd_compress_bound(uncompressedSize))
-        case .brotli:
-            return Int(ttzip_rust_brotli_compress_bound(uncompressedSize))
-        case .lz4:
-            return Int(ttzip_rust_lz4_compress_bound(uncompressedSize))
-        case .snappyBlock:
-            return Int(ttzip_rust_snappy_max_compressed_length(uncompressedSize))
-        case .snappyFramed:
-            return Int(ttzip_rust_snappy_frame_max_encoded_length(uncompressedSize))
-        case .lzfse:
-            return Int(ttzip_rust_lzfse_compress_bound(uncompressedSize))
         case .fastLzma2:
-            return Int(ttzip_rust_fl2_compress_bound(uncompressedSize))
-        case .bzip2:
-            return Int(ttzip_rust_bzip2_compress_bound(uncompressedSize))
-        case .lzma, .ppmd:
-            return max(uncompressedSize + 1024, uncompressedSize * 2)
+            return Int(uniffiFl2CompressBound(srcLen: UInt64(max(0, uncompressedSize))))
+        default:
+            let codec = algorithm.uniffiCodec(level: rawLvl)
+            return Int(uniffiCompressBound(codec: codec, srcLen: UInt64(max(0, uncompressedSize)), level: rawLvl))
         }
     }
 
-    /// Compresses in-memory byte buffer using the specified algorithm and level.
+    /// Compresses in-memory byte buffer using the specified algorithm and level via UniFFI.
     public static func compress(
         _ data: Data,
         algorithm: TTZipCodecAlgorithm,
@@ -172,68 +174,23 @@ public struct TTZipCodec: Sendable {
         }
 
         let rawLvl = level.rawLevel(for: algorithm)
-
-        if algorithm == .ppmd || algorithm == .lzma {
-            return try compressUnifiedBuffer(data: data, algorithm: algorithm, level: rawLvl)
+        switch algorithm {
+        case .fastLzma2:
+            return try uniffiFl2Compress(src: data, level: rawLvl, nbThreads: 1)
+        default:
+            let codec = algorithm.uniffiCodec(level: rawLvl)
+            let opts = UniFfiCompressionOptions(
+                level: rawLvl,
+                acceleration: algorithm == .lz4 ? 1 : nil,
+                windowMb: nil,
+                ppmdOrder: algorithm == .ppmd ? 6 : nil,
+                ppmdMemMb: algorithm == .ppmd ? 16 : nil
+            )
+            return try uniffiCompressBuffer(codec: codec, src: data, options: opts)
         }
-
-        let bound = compressBound(uncompressedSize: data.count, algorithm: algorithm, level: level)
-        var destination = Data(count: bound)
-
-        var written: Int = 0
-
-        let status: Int32 = try data.withUnsafeBytes { srcBuf in
-            guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                throw TTZipCodecError.invalidParameter
-            }
-            return try destination.withUnsafeMutableBytes { dstBuf in
-                guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipCodecError.invalidParameter
-                }
-                var outLen: Int = 0
-
-                let code: Int32
-                switch algorithm {
-                case .deflate:
-                    code = ttzip_rust_deflate_compress(srcPtr, data.count, dstPtr, bound, rawLvl, &outLen)
-                case .zlib:
-                    code = ttzip_rust_zlib_compress(srcPtr, data.count, dstPtr, bound, rawLvl, &outLen)
-                case .gzip:
-                    code = ttzip_rust_gzip_compress(srcPtr, data.count, dstPtr, bound, rawLvl, &outLen)
-                case .zstd:
-                    code = ttzip_rust_zstd_compress(srcPtr, data.count, dstPtr, bound, rawLvl, &outLen)
-                case .brotli:
-                    code = ttzip_rust_brotli_compress(srcPtr, data.count, dstPtr, bound, UInt32(max(0, rawLvl)), 22, &outLen)
-                case .lz4:
-                    code = ttzip_rust_lz4_compress(srcPtr, data.count, dstPtr, bound, &outLen)
-                case .snappyBlock:
-                    code = ttzip_rust_snappy_compress(srcPtr, data.count, dstPtr, bound, &outLen)
-                case .snappyFramed:
-                    code = ttzip_rust_snappy_frame_encode(srcPtr, data.count, dstPtr, bound, &outLen)
-                case .lzfse:
-                    code = ttzip_rust_lzfse_compress(srcPtr, data.count, dstPtr, bound, &outLen)
-                case .fastLzma2:
-                    code = ttzip_rust_fl2_compress(srcPtr, data.count, dstPtr, bound, rawLvl, 1, &outLen)
-                case .bzip2:
-                    code = ttzip_rust_bzip2_compress(srcPtr, data.count, dstPtr, bound, rawLvl, &outLen)
-                case .lzma, .ppmd:
-                    code = 0
-                }
-
-                written = outLen
-                return code
-            }
-        }
-
-        guard status == 0 else {
-            throw TTZipCodecError.compressionFailed(status: status)
-        }
-
-        destination.count = written
-        return destination
     }
 
-    /// Decompresses an in-memory compressed byte buffer.
+    /// Decompresses an in-memory compressed byte buffer via UniFFI.
     public static func decompress(
         _ data: Data,
         algorithm: TTZipCodecAlgorithm,
@@ -243,97 +200,39 @@ public struct TTZipCodec: Sendable {
             return Data()
         }
 
-        if algorithm == .ppmd || algorithm == .lzma {
-            return try decompressUnifiedBuffer(data: data, algorithm: algorithm, expectedUncompressedSize: expectedUncompressedSize)
-        }
-
-        // Determine destination capacity
-        var capacity = expectedUncompressedSize ?? 0
-        if capacity <= 0 {
+        let expSize: UInt64?
+        if let expected = expectedUncompressedSize, expected > 0 {
+            expSize = UInt64(expected)
+        } else {
             switch algorithm {
-            case .zstd:
-                let detected = data.withUnsafeBytes { buf in
-                    ttzip_rust_zstd_get_decompressed_size(buf.baseAddress?.assumingMemoryBound(to: UInt8.self), data.count)
-                }
-                capacity = (detected > 0 && detected < 0x7FFFFFFF) ? Int(detected) : (data.count * 4 + 16384)
-            case .snappyBlock:
-                var uncompLen: Int = 0
-                let st = data.withUnsafeBytes { buf in
-                    ttzip_rust_snappy_uncompressed_length(buf.baseAddress?.assumingMemoryBound(to: UInt8.self), data.count, &uncompLen)
-                }
-                capacity = (st == 0 && uncompLen > 0) ? uncompLen : (data.count * 4 + 16384)
-            case .fastLzma2:
-                let detected = data.withUnsafeBytes { buf in
-                    ttzip_rust_fl2_find_decompressed_size(buf.baseAddress?.assumingMemoryBound(to: UInt8.self), data.count)
-                }
-                capacity = (detected > 0 && detected < 0x7FFFFFFF) ? Int(detected) : (data.count * 4 + 16384)
+            case .fastLzma2, .lzma:
+                expSize = uniffiFl2FindDecompressedSize(src: data)
             default:
-                capacity = max(data.count * 4, 65536)
+                expSize = nil
             }
         }
 
-        var destination = Data(count: capacity)
-        var written: Int = 0
-
-        var currentCapacity = capacity
-        var retryCount = 0
-
-        while retryCount < 4 {
-            let status: Int32 = try data.withUnsafeBytes { srcBuf in
-                guard let srcPtr = srcBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    throw TTZipCodecError.invalidParameter
-                }
-                return try destination.withUnsafeMutableBytes { dstBuf in
-                    guard let dstPtr = dstBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                        throw TTZipCodecError.invalidParameter
+        let codec = algorithm.uniffiCodec()
+        switch algorithm {
+        case .fastLzma2:
+            return try uniffiFl2Decompress(src: data, expectedUncompressedSize: expSize, nbThreads: 1)
+        case .deflate, .zlib, .gzip, .lz4, .lzfse, .ppmd:
+            if let exp = expSize {
+                return try uniffiDecompressBuffer(codec: codec, src: data, expectedUncompressedSize: exp, options: nil)
+            } else {
+                var capacity = UInt64(max(data.count * 4, 65536))
+                for _ in 0..<4 {
+                    do {
+                        return try uniffiDecompressBuffer(codec: codec, src: data, expectedUncompressedSize: capacity, options: nil)
+                    } catch {
+                        capacity *= 4
                     }
-                    var outLen: Int = 0
-
-                    let code: Int32
-                    switch algorithm {
-                    case .deflate:
-                        code = ttzip_rust_deflate_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .zlib:
-                        code = ttzip_rust_zlib_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .gzip:
-                        code = ttzip_rust_gzip_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .zstd:
-                        code = ttzip_rust_zstd_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .brotli:
-                        code = ttzip_rust_brotli_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .lz4:
-                        code = ttzip_rust_lz4_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .snappyBlock:
-                        code = ttzip_rust_snappy_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .snappyFramed:
-                        code = ttzip_rust_snappy_frame_decode(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .lzfse:
-                        code = ttzip_rust_lzfse_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .fastLzma2:
-                        code = ttzip_rust_fl2_decompress(srcPtr, data.count, dstPtr, currentCapacity, 1, &outLen)
-                    case .bzip2:
-                        code = ttzip_rust_bzip2_decompress(srcPtr, data.count, dstPtr, currentCapacity, &outLen)
-                    case .lzma, .ppmd:
-                        code = 0
-                    }
-
-                    written = outLen
-                    return code
                 }
+                throw TTZipCodecError.decompressionFailed(status: -1)
             }
-
-            if status == 0 {
-                destination.count = written
-                return destination
-            }
-
-            // Expand buffer if possibly truncated
-            currentCapacity *= 4
-            destination = Data(count: currentCapacity)
-            retryCount += 1
+        default:
+            return try uniffiDecompressBuffer(codec: codec, src: data, expectedUncompressedSize: expSize, options: nil)
         }
-
-        throw TTZipCodecError.decompressionFailed(status: -1)
     }
 
     /// Asynchronously streams compressed chunks through an `AsyncThrowingStream` pipeline.
@@ -377,41 +276,5 @@ public struct TTZipCodec: Sendable {
                 }
             }
         }
-    }
-
-    // MARK: - Internal Unified Microkernel Bridges
-
-    private static func compressUnifiedBuffer(
-        data: Data,
-        algorithm: TTZipCodecAlgorithm,
-        level: Int32
-    ) throws -> Data {
-        let codec: UniFfiCompressionCodec
-        switch algorithm {
-        case .ppmd: codec = .ppmd
-        default: codec = .deflateRaw
-        }
-        let opts = UniFfiCompressionOptions(
-            level: level,
-            acceleration: nil,
-            windowMb: nil,
-            ppmdOrder: 6,
-            ppmdMemMb: 16
-        )
-        return try uniffiCompressBuffer(codec: codec, src: data, options: opts)
-    }
-
-    private static func decompressUnifiedBuffer(
-        data: Data,
-        algorithm: TTZipCodecAlgorithm,
-        expectedUncompressedSize: Int?
-    ) throws -> Data {
-        let codec: UniFfiCompressionCodec
-        switch algorithm {
-        case .ppmd: codec = .ppmd
-        default: codec = .deflateRaw
-        }
-        let sizeUInt64 = expectedUncompressedSize.map { UInt64($0) }
-        return try uniffiDecompressBuffer(codec: codec, src: data, expectedUncompressedSize: sizeUInt64, options: nil)
     }
 }
