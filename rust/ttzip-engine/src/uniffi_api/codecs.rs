@@ -44,6 +44,7 @@ pub enum UniFFICompressionCodec {
     SnappyFramed,
     Bzip2,
     Ppmd,
+    Fl2,
 }
 
 /// Compression parameters and options container.
@@ -133,6 +134,10 @@ pub fn uniffi_compress_buffer(
             let mem_mb = opts.ppmd_mem_mb.unwrap_or(16);
             uniffi_ppmd_compress(src, order, mem_mb)
         }
+        UniFFICompressionCodec::Fl2 => {
+            let level = opts.level.unwrap_or(3);
+            uniffi_fl2_compress(src, level, None)
+        }
     }
 }
 
@@ -173,23 +178,18 @@ pub fn uniffi_decompress_buffer(
             let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             uniffi_lzvn_decompress(src, exp)
         }
-        UniFFICompressionCodec::Brotli => {
-            uniffi_brotli_decompress(src, expected_uncompressed_size)
-        }
-        UniFFICompressionCodec::SnappyRaw => {
-            uniffi_snappy_decompress(src)
-        }
-        UniFFICompressionCodec::SnappyFramed => {
-            uniffi_snappy_frame_decode(src)
-        }
-        UniFFICompressionCodec::Bzip2 => {
-            uniffi_bzip2_decompress(src, expected_uncompressed_size)
-        }
+        UniFFICompressionCodec::Brotli => uniffi_brotli_decompress(src, expected_uncompressed_size),
+        UniFFICompressionCodec::SnappyRaw => uniffi_snappy_decompress(src),
+        UniFFICompressionCodec::SnappyFramed => uniffi_snappy_frame_decode(src),
+        UniFFICompressionCodec::Bzip2 => uniffi_bzip2_decompress(src, expected_uncompressed_size),
         UniFFICompressionCodec::Ppmd => {
             let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
             let order = opts.ppmd_order.unwrap_or(6);
             let mem_mb = opts.ppmd_mem_mb.unwrap_or(16);
             uniffi_ppmd_decompress(src, exp, order, mem_mb)
+        }
+        UniFFICompressionCodec::Fl2 => {
+            uniffi_fl2_decompress(src, expected_uncompressed_size, None)
         }
     }
 }
@@ -207,21 +207,16 @@ pub fn uniffi_compress_bound(
         UniFFICompressionCodec::DeflateRaw => crate::codecs::deflate::deflate_compress_bound(len, lvl),
         UniFFICompressionCodec::Zlib => crate::codecs::deflate::zlib_compress_bound(len, lvl),
         UniFFICompressionCodec::Gzip => crate::codecs::deflate::gzip_compress_bound(len, lvl),
-        UniFFICompressionCodec::Zstd | UniFFICompressionCodec::ZstdLdm => {
-            crate::codecs::zstd::zstd_compress_bound(len)
-        }
-        UniFFICompressionCodec::Lz4Fast | UniFFICompressionCodec::Lz4Hc => {
-            crate::codecs::lz4::lz4_compress_bound(len)
-        }
+        UniFFICompressionCodec::Zstd | UniFFICompressionCodec::ZstdLdm => crate::codecs::zstd::zstd_compress_bound(len),
+        UniFFICompressionCodec::Lz4Fast | UniFFICompressionCodec::Lz4Hc => crate::codecs::lz4::lz4_compress_bound(len),
         UniFFICompressionCodec::Lzfse => crate::codecs::lzfse::lzfse_compress_bound(len),
         UniFFICompressionCodec::Lzvn => crate::codecs::lzfse::lzvn_compress_bound(len),
         UniFFICompressionCodec::Brotli => crate::codecs::brotli::brotli_compress_bound(len),
         UniFFICompressionCodec::SnappyRaw => crate::codecs::snappy::snappy_compress_bound(len),
-        UniFFICompressionCodec::SnappyFramed => {
-            crate::codecs::snappy::snappy_frame_max_encoded_length(len)
-        }
+        UniFFICompressionCodec::SnappyFramed => crate::codecs::snappy::snappy_frame_max_encoded_length(len),
         UniFFICompressionCodec::Bzip2 => crate::codecs::bzip2::bzip2_compress_bound(len),
         UniFFICompressionCodec::Ppmd => len.saturating_add(4096),
+        UniFFICompressionCodec::Fl2 => crate::codecs::lzma2::fl2_compress_bound(len),
     };
     bound as u64
 }
@@ -405,6 +400,18 @@ pub fn uniffi_zstd_get_standard_112kb_dict() -> Vec<u8> {
     dict.raw_bytes().to_vec()
 }
 
+/// Trains a custom Zstandard dictionary from representative sample buffers.
+#[uniffi::export]
+pub fn uniffi_zstd_train_dict(
+    samples: Vec<Vec<u8>>,
+    target_dict_size: u64,
+    level: i32,
+) -> Result<Vec<u8>, TTZipError> {
+    let sample_refs: Vec<&[u8]> = samples.iter().map(|s| s.as_slice()).collect();
+    crate::codecs::zstd::dict::zstd_train_dictionary(&sample_refs, target_dict_size as usize, level)
+        .map_err(map_status)
+}
+
 // ============================================================================
 // LZ4 Fast & LZ4 HC Codec Exports
 // ============================================================================
@@ -586,6 +593,54 @@ pub fn uniffi_ppmd_decompress(
 }
 
 // ============================================================================
+// Fast LZMA2 (FL2) Codec Exports
+// ============================================================================
+
+/// Compresses buffer with Fast LZMA2 (fl2).
+#[uniffi::export]
+pub fn uniffi_fl2_compress(
+    src: Vec<u8>,
+    level: i32,
+    nb_threads: Option<u32>,
+) -> Result<Vec<u8>, TTZipError> {
+    let threads = nb_threads.unwrap_or(1);
+    let bound = crate::codecs::lzma2::fl2_compress_bound(src.len()).saturating_add(1024);
+    let mut dst = vec![0u8; bound];
+    let written = crate::codecs::lzma2::fl2_compress(&src, &mut dst, level, threads).map_err(map_status)?;
+    dst.truncate(written);
+    Ok(dst)
+}
+
+/// Decompresses Fast LZMA2 (fl2) buffer into memory.
+#[uniffi::export]
+pub fn uniffi_fl2_decompress(
+    src: Vec<u8>,
+    expected_uncompressed_size: Option<u64>,
+    nb_threads: Option<u32>,
+) -> Result<Vec<u8>, TTZipError> {
+    let threads = nb_threads.unwrap_or(1);
+    let target_size = expected_uncompressed_size
+        .or_else(|| crate::codecs::lzma2::fl2_find_decompressed_size(&src))
+        .unwrap_or(256 * 1024 * 1024) as usize;
+    let mut dst = vec![0u8; target_size];
+    let written = crate::codecs::lzma2::fl2_decompress(&src, &mut dst, threads).map_err(map_status)?;
+    dst.truncate(written);
+    Ok(dst)
+}
+
+/// Computes upper bound on compressed bytes for Fast LZMA2.
+#[uniffi::export]
+pub fn uniffi_fl2_compress_bound(src_len: u64) -> u64 {
+    crate::codecs::lzma2::fl2_compress_bound(src_len as usize) as u64
+}
+
+/// Finds uncompressed size from Fast LZMA2 stream if known.
+#[uniffi::export]
+pub fn uniffi_fl2_find_decompressed_size(src: Vec<u8>) -> Option<u64> {
+    crate::codecs::lzma2::fl2_find_decompressed_size(&src)
+}
+
+// ============================================================================
 // Unit Tests
 // ============================================================================
 
@@ -684,7 +739,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unified_buffer_api_all_13_codecs() {
+    fn test_unified_buffer_api_all_codecs() {
         let codecs = [
             UniFFICompressionCodec::DeflateRaw,
             UniFFICompressionCodec::Zlib,
@@ -700,6 +755,7 @@ mod tests {
             UniFFICompressionCodec::SnappyFramed,
             UniFFICompressionCodec::Bzip2,
             UniFFICompressionCodec::Ppmd,
+            UniFFICompressionCodec::Fl2,
         ];
 
         for codec in codecs {
@@ -713,6 +769,29 @@ mod tests {
             let decompressed = uniffi_decompress_buffer(codec, compressed, Some(TEST_PAYLOAD.len() as u64), None)
                 .unwrap_or_else(|e| panic!("Decompress failed for {:?}: {:?}", codec, e));
             assert_eq!(decompressed.as_slice(), TEST_PAYLOAD, "Payload mismatch for {:?}", codec);
+        }
+    }
+
+    #[test]
+    fn test_fl2_and_zstd_train_roundtrip() {
+        let bound = uniffi_fl2_compress_bound(TEST_PAYLOAD.len() as u64);
+        assert!(bound >= TEST_PAYLOAD.len() as u64);
+
+        let fl2_c = uniffi_fl2_compress(TEST_PAYLOAD.to_vec(), 3, None).expect("fl2 compress");
+        assert!(!fl2_c.is_empty());
+
+        let uncomp_sz = uniffi_fl2_find_decompressed_size(fl2_c.clone());
+        let fl2_d = uniffi_fl2_decompress(fl2_c, uncomp_sz, None).expect("fl2 decompress");
+        assert_eq!(fl2_d.as_slice(), TEST_PAYLOAD);
+
+        let samples = vec![
+            TEST_PAYLOAD.to_vec(),
+            b"Sample header alpha beta gamma delta 12345678".to_vec(),
+            b"Sample footer omega sigma theta lambda 87654321".to_vec(),
+        ];
+        let dict = uniffi_zstd_train_dict(samples, 4096, 3);
+        if let Ok(d) = dict {
+            assert!(!d.is_empty() && d.len() <= 4096);
         }
     }
 }

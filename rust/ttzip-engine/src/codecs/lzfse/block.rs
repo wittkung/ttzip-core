@@ -221,16 +221,16 @@ impl LzfseBlockHeader {
             BvxMagic::EndOfStream => Ok(()),
             BvxMagic::CompressedV1 | BvxMagic::CompressedV2 => {
                 if (self.n_literals as usize) > LZFSE_LITERALS_PER_BLOCK {
-                    eprintln!("validate err: n_literals={}", self.n_literals);
+                    log::error!("validate err: n_literals={}", self.n_literals);
                     return Err(TTZipStatus::ErrCorruptHeader);
                 }
                 if (self.n_matches as usize) > LZFSE_MATCHES_PER_BLOCK {
-                    eprintln!("validate err: n_matches={}", self.n_matches);
+                    log::error!("validate err: n_matches={}", self.n_matches);
                     return Err(TTZipStatus::ErrCorruptHeader);
                 }
                 for (i, &state) in self.literal_state.iter().enumerate() {
                     if state as usize >= LZFSE_ENCODE_LITERAL_STATES {
-                        eprintln!("validate err: literal_state[{i}]={state}");
+                        log::error!("validate err: literal_state[{i}]={state}");
                         return Err(TTZipStatus::ErrCorruptHeader);
                     }
                 }
@@ -238,7 +238,7 @@ impl LzfseBlockHeader {
                     || self.m_state as usize >= LZFSE_ENCODE_M_STATES
                     || self.d_state as usize >= LZFSE_ENCODE_D_STATES
                 {
-                    eprintln!(
+                    log::error!(
                         "validate err: l_state={}, m_state={}, d_state={}",
                         self.l_state, self.m_state, self.d_state
                     );
@@ -246,7 +246,7 @@ impl LzfseBlockHeader {
                 }
                 if let Some(tables) = &self.freq_tables {
                     if let Err(e) = tables.validate() {
-                        eprintln!("validate err: tables.validate() returned {e:?}");
+                        log::error!("validate err: tables.validate() returned {e:?}");
                         return Err(e);
                     }
                 }

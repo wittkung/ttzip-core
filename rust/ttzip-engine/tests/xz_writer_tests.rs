@@ -167,7 +167,6 @@ fn test_xz_writer_all_check_types() {
         let mut writer = XzStreamWriter::new(Vec::new(), options).expect("create writer");
         writer.write_all(&payload).expect("write payload");
         let compressed = writer.finish().expect("finish stream");
-        println!("Compressed len: {}, first 32 bytes: {:02x?}", compressed.len(), &compressed[..compressed.len().min(32)]);
 
         let decompressed = xz_decompress(&compressed).expect("decompress stream");
         assert_eq!(decompressed, payload, "Checksum mismatch for {:?}", check_type);

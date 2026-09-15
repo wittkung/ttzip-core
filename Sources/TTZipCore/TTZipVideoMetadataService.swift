@@ -487,7 +487,7 @@ public final class TTZipVideoMetadataService: @unchecked Sendable {
     /// Shared singleton instance.
     public static let shared = TTZipVideoMetadataService()
 
-    private let logger = Logger(subsystem: "com.ttzip.core", category: "VideoMetadataService")
+    private let logger = Logger(subsystem: "com.metastudyline.ttzip", category: "VideoMetadataService")
     private let uniffiService: UniFfiVideoService
     private let metadataCache = NSCache<NSString, CachedMetadataBox>()
     private let coverCache = NSCache<NSString, NSData>()

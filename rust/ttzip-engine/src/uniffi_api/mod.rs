@@ -30,10 +30,12 @@ pub mod epub;
 pub mod error_mapping;
 pub mod extraction;
 pub mod html_meta;
+pub mod in_place;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod image_meta;
 pub mod integrity;
+pub mod logging;
 pub mod media;
 pub mod memory;
 #[cfg(feature = "probe")]
@@ -102,10 +104,12 @@ pub use epub::*;
 pub use error_mapping::*;
 pub use extraction::*;
 pub use html_meta::*;
+pub use in_place::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use image_meta::*;
 pub use integrity::*;
+pub use logging::*;
 pub use media::*;
 pub use memory::*;
 #[cfg(feature = "probe")]
