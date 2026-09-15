@@ -121,6 +121,59 @@ static inline uint32_t ttzip_fast_adler32(const uint8_t *ptr, size_t count) {
     return ttzip_rust_adler32(1, ptr, count);
 }
 
+// Structured Logging & Diagnostics C-ABI
+typedef enum TTZipLogLevel {
+    TTZIP_LOG_LEVEL_DEBUG = 0,
+    TTZIP_LOG_LEVEL_INFO = 1,
+    TTZIP_LOG_LEVEL_WARNING = 2,
+    TTZIP_LOG_LEVEL_ERROR = 3
+} TTZipLogLevel;
+
+typedef enum TTZipStatus {
+    TTZIP_STATUS_OK = 0,
+    TTZIP_STATUS_EOF = 1,
+    TTZIP_STATUS_CANCELLED = 2,
+    TTZIP_STATUS_ERR_INVALID_PARAM = -1,
+    TTZIP_STATUS_ERR_FILE_NOT_FOUND = -2,
+    TTZIP_STATUS_ERR_MMAP_FAILED = -3,
+    TTZIP_STATUS_ERR_CORRUPT_HEADER = -4,
+    TTZIP_STATUS_ERR_INVALID_OFFSET = -5,
+    TTZIP_STATUS_ERR_ARCHIVE_INIT_FAILED = -6,
+    TTZIP_STATUS_ERR_OPEN_FAILED = -7,
+    TTZIP_STATUS_ERR_PATH_TOO_LONG = -8,
+    TTZIP_STATUS_ERR_OUT_OF_MEMORY = -9,
+    TTZIP_STATUS_ERR_INVALID_PASSWORD = -10,
+    TTZIP_STATUS_ERR_EXTRACTION_FAILED = -11,
+    TTZIP_STATUS_ERR_COMPRESSION_FAILED = -12,
+    TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE = -13,
+    TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED = -24,
+    TTZIP_STATUS_ERR_SECURITY_VIOLATION = -30,
+    TTZIP_STATUS_ERR_PANIC_CAUGHT = -99
+} TTZipStatus;
+
+typedef void (*TTZipLogCallback)(
+    TTZipLogLevel level,
+    const char *target_module,
+    const char *message,
+    const char *file,
+    int32_t line,
+    void *user_data
+);
+
+TTZipStatus ttzip_rust_set_logger(
+    TTZipLogCallback callback,
+    TTZipLogLevel min_level,
+    void *user_data
+);
+
+void ttzip_rust_log(
+    TTZipLogLevel level,
+    const char *target,
+    const char *message,
+    const char *file,
+    int32_t line
+);
+
 #ifdef __cplusplus
 }
 #endif

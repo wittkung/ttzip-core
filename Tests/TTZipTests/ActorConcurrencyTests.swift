@@ -141,7 +141,6 @@ final class ActorConcurrencyTests: XCTestCase {
         let archiveZip = sandbox.fileURL(named: "cancellation_extract.zip")
         let extractDir = try sandbox.createSubdirectory("cancellation_extract_dir")
 
-        print("🔍 [ActorConcurrencyTests] Step 1: compressing direct...")
         _ = try await engine.compressDirect(
             inputs: [largeFile.path],
             outputPath: archiveZip.path,

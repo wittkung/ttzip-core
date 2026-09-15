@@ -48,6 +48,40 @@ pub struct UniFFIAeadResult {
     pub tag: Vec<u8>,
 }
 
+#[inline]
+fn take_key_32(mut key: Vec<u8>) -> Result<[u8; 32], TTZipError> {
+    if key.len() != 32 {
+        key.zeroize();
+        compiler_fence(Ordering::SeqCst);
+        return Err(TTZipError::EngineError { code: -1 });
+    }
+    let mut key_arr = [0u8; 32];
+    key_arr.copy_from_slice(&key);
+    key.zeroize();
+    compiler_fence(Ordering::SeqCst);
+    Ok(key_arr)
+}
+
+#[inline]
+fn take_arr_16(val: &[u8]) -> Result<[u8; 16], TTZipError> {
+    if val.len() != 16 {
+        return Err(TTZipError::EngineError { code: -1 });
+    }
+    let mut arr = [0u8; 16];
+    arr.copy_from_slice(val);
+    Ok(arr)
+}
+
+#[inline]
+fn take_arr_12(val: &[u8]) -> Result<[u8; 12], TTZipError> {
+    if val.len() != 12 {
+        return Err(TTZipError::EngineError { code: -1 });
+    }
+    let mut arr = [0u8; 12];
+    arr.copy_from_slice(val);
+    Ok(arr)
+}
+
 // ============================================================================
 // 1. Adler-32 Checksum Exports
 // ============================================================================
@@ -168,18 +202,8 @@ pub fn uniffi_blake3(data: Vec<u8>) -> Vec<u8> {
 
 /// Computes keyed 256-bit BLAKE3 hash with 32-byte secret key (scrubs key upon return).
 #[uniffi::export]
-pub fn uniffi_blake3_keyed(data: Vec<u8>, mut key: Vec<u8>) -> Result<Vec<u8>, TTZipError> {
-    if key.len() != 32 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-    compiler_fence(Ordering::SeqCst);
-
+pub fn uniffi_blake3_keyed(data: Vec<u8>, key: Vec<u8>) -> Result<Vec<u8>, TTZipError> {
+    let mut key_arr = take_key_32(key)?;
     let mut hasher = crate::crypto::blake3::Blake3::new_keyed(&key_arr);
     key_arr.zeroize();
     compiler_fence(Ordering::SeqCst);
@@ -190,7 +214,29 @@ pub fn uniffi_blake3_keyed(data: Vec<u8>, mut key: Vec<u8>) -> Result<Vec<u8>, T
 }
 
 // ============================================================================
-// 6. WinZip AES-256 Encryption & Key Derivation Exports
+// 6. MD5, SHA-1 & SHA-256 Hash Exports
+// ============================================================================
+
+/// Computes 128-bit MD5 hash returning 16-byte digest.
+#[uniffi::export]
+pub fn uniffi_md5(data: Vec<u8>) -> Vec<u8> {
+    crate::crypto::md5::md5(&data).to_vec()
+}
+
+/// Computes 160-bit SHA-1 hash returning 20-byte digest.
+#[uniffi::export]
+pub fn uniffi_sha1(data: Vec<u8>) -> Vec<u8> {
+    crate::crypto::sha1::sha1(&data).to_vec()
+}
+
+/// Computes 256-bit hardware-accelerated SHA-256 hash returning 32-byte digest.
+#[uniffi::export]
+pub fn uniffi_sha256(data: Vec<u8>) -> Vec<u8> {
+    crate::crypto::sha256::HardwareSha256::digest(&data).to_vec()
+}
+
+// ============================================================================
+// 7. WinZip AES-256 Encryption & Key Derivation Exports
 // ============================================================================
 
 /// Derives WinZip AES-256 keys (1000 rounds PBKDF2-HMAC-SHA1).
@@ -293,22 +339,12 @@ pub fn uniffi_7z_aes256_derive_key(
 /// Encrypts plaintext with AES-256-CBC with PKCS#7 block padding.
 #[uniffi::export]
 pub fn uniffi_7z_aes256_encrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     iv: Vec<u8>,
     plaintext: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    if key.len() != 32 || iv.len() != 16 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut iv_arr = [0u8; 16];
-    iv_arr.copy_from_slice(&iv);
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_16(&iv)?;
 
     let pad_len = 16 - (plaintext.len() % 16);
     let mut padded = Vec::with_capacity(plaintext.len() + pad_len);
@@ -329,22 +365,15 @@ pub fn uniffi_7z_aes256_encrypt(
 /// Decrypts AES-256-CBC ciphertext and validates PKCS#7 block padding.
 #[uniffi::export]
 pub fn uniffi_7z_aes256_decrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     iv: Vec<u8>,
     ciphertext: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    if key.len() != 32 || iv.len() != 16 || !ciphertext.len().is_multiple_of(16) || ciphertext.is_empty() {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
+    if !ciphertext.len().is_multiple_of(16) || ciphertext.is_empty() {
         return Err(TTZipError::EngineError { code: -1 });
     }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut iv_arr = [0u8; 16];
-    iv_arr.copy_from_slice(&iv);
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_16(&iv)?;
 
     let mut plain_padded = vec![0u8; ciphertext.len()];
     let res = crate::crypto::aes256::aes256_cbc_decrypt(&key_arr, &iv_arr, &ciphertext, &mut plain_padded);
@@ -375,7 +404,67 @@ pub fn uniffi_7z_aes256_decrypt(
 }
 
 // ============================================================================
-// 8. Traditional ZipCrypto (PKWARE) Exports
+// 9. Raw AES-256 CTR & CBC Cipher Exports (Unpadded Mode)
+// ============================================================================
+
+/// Encrypts or decrypts data using AES-256-CTR stream cipher (symmetric operation).
+#[uniffi::export]
+pub fn uniffi_aes256_ctr(
+    key: Vec<u8>,
+    counter: u64,
+    data: Vec<u8>,
+) -> Result<Vec<u8>, TTZipError> {
+    let mut key_arr = take_key_32(key)?;
+    let mut out = vec![0u8; data.len()];
+    let res = crate::crypto::aes256::aes256_ctr_crypt(&key_arr, counter, &data, &mut out);
+    key_arr.zeroize();
+    compiler_fence(Ordering::SeqCst);
+    res.map_err(|_| TTZipError::EngineError { code: -2 })?;
+    Ok(out)
+}
+
+/// Encrypts raw 16-byte block aligned plaintext with AES-256-CBC without padding.
+#[uniffi::export]
+pub fn uniffi_aes256_cbc_raw_encrypt(
+    key: Vec<u8>,
+    iv: Vec<u8>,
+    plaintext: Vec<u8>,
+) -> Result<Vec<u8>, TTZipError> {
+    if !plaintext.len().is_multiple_of(16) {
+        return Err(TTZipError::EngineError { code: -1 });
+    }
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_16(&iv)?;
+    let mut out = vec![0u8; plaintext.len()];
+    let res = crate::crypto::aes256::aes256_cbc_encrypt(&key_arr, &iv_arr, &plaintext, &mut out);
+    key_arr.zeroize();
+    compiler_fence(Ordering::SeqCst);
+    res.map_err(|_| TTZipError::EngineError { code: -2 })?;
+    Ok(out)
+}
+
+/// Decrypts raw 16-byte block aligned ciphertext with AES-256-CBC without padding.
+#[uniffi::export]
+pub fn uniffi_aes256_cbc_raw_decrypt(
+    key: Vec<u8>,
+    iv: Vec<u8>,
+    ciphertext: Vec<u8>,
+) -> Result<Vec<u8>, TTZipError> {
+    if !ciphertext.len().is_multiple_of(16) {
+        return Err(TTZipError::EngineError { code: -1 });
+    }
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_16(&iv)?;
+    let mut out = vec![0u8; ciphertext.len()];
+    let res = crate::crypto::aes256::aes256_cbc_decrypt(&key_arr, &iv_arr, &ciphertext, &mut out);
+    key_arr.zeroize();
+    compiler_fence(Ordering::SeqCst);
+    res.map_err(|_| TTZipError::EngineError { code: -2 })?;
+    Ok(out)
+}
+
+// ============================================================================
+// 10. Traditional ZipCrypto (PKWARE) Exports
 // ============================================================================
 
 /// Encrypts plaintext buffer in-place using traditional PKZIP 3-key stream cipher.
@@ -399,29 +488,19 @@ pub fn uniffi_zipcrypto_decrypt(mut password: Vec<u8>, ciphertext: Vec<u8>) -> V
 }
 
 // ============================================================================
-// 9. TTZip Vault AES-256-GCM AEAD Exports
+// 11. TTZip Vault AES-256-GCM AEAD Exports
 // ============================================================================
 
 /// Authenticated encryption with AES-256-GCM (NIST SP 800-38D).
 #[uniffi::export]
 pub fn uniffi_vault_aes_gcm_encrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     iv: Vec<u8>,
     plaintext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<UniFFIAeadResult, TTZipError> {
-    if key.len() != 32 || iv.len() != 12 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut iv_arr = [0u8; 12];
-    iv_arr.copy_from_slice(&iv);
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_12(&iv)?;
 
     let mut ciphertext = vec![0u8; plaintext.len()];
     let mut tag = [0u8; 16];
@@ -449,27 +528,15 @@ pub fn uniffi_vault_aes_gcm_encrypt(
 /// Authenticated decryption with AES-256-GCM (NIST SP 800-38D).
 #[uniffi::export]
 pub fn uniffi_vault_aes_gcm_decrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     iv: Vec<u8>,
     ciphertext: Vec<u8>,
     aad: Vec<u8>,
     tag: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    if key.len() != 32 || iv.len() != 12 || tag.len() != 16 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut iv_arr = [0u8; 12];
-    iv_arr.copy_from_slice(&iv);
-
-    let mut tag_arr = [0u8; 16];
-    tag_arr.copy_from_slice(&tag);
+    let mut key_arr = take_key_32(key)?;
+    let iv_arr = take_arr_12(&iv)?;
+    let tag_arr = take_arr_16(&tag)?;
 
     let mut plaintext = vec![0u8; ciphertext.len()];
 
@@ -483,7 +550,6 @@ pub fn uniffi_vault_aes_gcm_decrypt(
     );
 
     key_arr.zeroize();
-    tag_arr.zeroize();
     compiler_fence(Ordering::SeqCst);
 
     res.map_err(|s| match s {
@@ -495,29 +561,19 @@ pub fn uniffi_vault_aes_gcm_decrypt(
 }
 
 // ============================================================================
-// 10. TTZip Vault ChaCha20-Poly1305 AEAD Exports
+// 12. TTZip Vault ChaCha20-Poly1305 AEAD Exports
 // ============================================================================
 
 /// Authenticated encryption with ChaCha20-Poly1305 (RFC 8439).
 #[uniffi::export]
 pub fn uniffi_vault_chacha20_poly1305_encrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     nonce: Vec<u8>,
     plaintext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<UniFFIAeadResult, TTZipError> {
-    if key.len() != 32 || nonce.len() != 12 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut nonce_arr = [0u8; 12];
-    nonce_arr.copy_from_slice(&nonce);
+    let mut key_arr = take_key_32(key)?;
+    let nonce_arr = take_arr_12(&nonce)?;
 
     let mut ciphertext = vec![0u8; plaintext.len()];
     let mut tag = [0u8; 16];
@@ -545,27 +601,15 @@ pub fn uniffi_vault_chacha20_poly1305_encrypt(
 /// Authenticated decryption with ChaCha20-Poly1305 (RFC 8439).
 #[uniffi::export]
 pub fn uniffi_vault_chacha20_poly1305_decrypt(
-    mut key: Vec<u8>,
+    key: Vec<u8>,
     nonce: Vec<u8>,
     ciphertext: Vec<u8>,
     aad: Vec<u8>,
     tag: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    if key.len() != 32 || nonce.len() != 12 || tag.len() != 16 {
-        key.zeroize();
-        compiler_fence(Ordering::SeqCst);
-        return Err(TTZipError::EngineError { code: -1 });
-    }
-
-    let mut key_arr = [0u8; 32];
-    key_arr.copy_from_slice(&key);
-    key.zeroize();
-
-    let mut nonce_arr = [0u8; 12];
-    nonce_arr.copy_from_slice(&nonce);
-
-    let mut tag_arr = [0u8; 16];
-    tag_arr.copy_from_slice(&tag);
+    let mut key_arr = take_key_32(key)?;
+    let nonce_arr = take_arr_12(&nonce)?;
+    let tag_arr = take_arr_16(&tag)?;
 
     let mut plaintext = vec![0u8; ciphertext.len()];
 
@@ -579,7 +623,6 @@ pub fn uniffi_vault_chacha20_poly1305_decrypt(
     );
 
     key_arr.zeroize();
-    tag_arr.zeroize();
     compiler_fence(Ordering::SeqCst);
 
     res.map_err(|s| match s {
@@ -706,5 +749,42 @@ mod tests {
 
         let chacha_plain = uniffi_vault_chacha20_poly1305_decrypt(key, iv, chacha_res.ciphertext.clone(), aad, chacha_res.tag).expect("chacha dec");
         assert_eq!(chacha_plain, plaintext);
+    }
+
+    #[test]
+    fn test_md5_sha1_sha256_exports() {
+        let text = b"TTZip Cryptographic Hash Verification 2026".to_vec();
+        let m = uniffi_md5(text.clone());
+        assert_eq!(m.len(), 16);
+        assert_eq!(m, crate::crypto::md5::md5(&text).to_vec());
+
+        let s1 = uniffi_sha1(text.clone());
+        assert_eq!(s1.len(), 20);
+        assert_eq!(s1, crate::crypto::sha1::sha1(&text).to_vec());
+
+        let s256 = uniffi_sha256(text.clone());
+        assert_eq!(s256.len(), 32);
+        assert_eq!(s256, crate::crypto::sha256::HardwareSha256::digest(&text).to_vec());
+    }
+
+    #[test]
+    fn test_aes256_ctr_and_cbc_raw_roundtrip() {
+        let key = vec![0x42u8; 32];
+        let iv = vec![0x24u8; 16];
+        let plaintext = b"Block Aligned 16Bytes x2 Block!!".to_vec();
+
+        // AES-256-CTR
+        let ctr_enc = uniffi_aes256_ctr(key.clone(), 100, plaintext.clone()).expect("ctr enc");
+        assert_eq!(ctr_enc.len(), plaintext.len());
+        assert_ne!(ctr_enc, plaintext);
+        let ctr_dec = uniffi_aes256_ctr(key.clone(), 100, ctr_enc).expect("ctr dec");
+        assert_eq!(ctr_dec, plaintext);
+
+        // AES-256-CBC Raw
+        let cbc_enc = uniffi_aes256_cbc_raw_encrypt(key.clone(), iv.clone(), plaintext.clone()).expect("cbc enc");
+        assert_eq!(cbc_enc.len(), plaintext.len());
+        assert_ne!(cbc_enc, plaintext);
+        let cbc_dec = uniffi_aes256_cbc_raw_decrypt(key, iv, cbc_enc).expect("cbc dec");
+        assert_eq!(cbc_dec, plaintext);
     }
 }

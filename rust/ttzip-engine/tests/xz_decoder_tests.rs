@@ -142,7 +142,6 @@ fn test_stream_padding_and_concatenated_multi_stream() {
 
     let comp1 = xz_compress(&stream1_payload, &opt1).expect("compress stream 1");
     let comp2 = xz_compress(&stream2_payload, &opt2).expect("compress stream 2");
-    println!("comp1 len={}: {:02x?}", comp1.len(), comp1);
 
     let d1 = xz_decompress(&comp1).expect("decompress stream 1 standalone");
     assert_eq!(d1, stream1_payload);
