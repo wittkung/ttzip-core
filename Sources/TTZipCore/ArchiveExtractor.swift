@@ -338,25 +338,7 @@ public final class ArchiveSelectiveExtractor: Sendable {
         }
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
-            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
-            let matchedEntry = entries.first { item in
-                if item.path == entryPath || item.path.hasSuffix("/" + entryPath) {
-                    return true
-                }
-                if let last = item.path.split(separator: "/").last {
-                    return String(last) == entryPath
-                }
-                return false
-            }
-            if let entry = matchedEntry {
-                if entry.uncompressedSize > UInt64(maxAllowedBytes) {
-                    throw ArchiveError.engineFailure(
-                        code: RustTTZipStatusCode.errOutOfMemory.rawValue,
-                        message: "Entry uncompressed size \(entry.uncompressedSize) exceeds memory limit of \(maxAllowedBytes) bytes"
-                    )
-                }
-            }
-
+            // Fast-path: extract directly by path without parsing entire archive catalog
             if let bytes = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
                 if bytes.count > maxAllowedBytes {
                     throw ArchiveError.engineFailure(
@@ -368,11 +350,20 @@ public final class ArchiveSelectiveExtractor: Sendable {
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
             }
-            // Fallback for subpaths or index probing if path normalization differs
+
+            // Fallback for subpaths or index probing only if direct path lookup fails
+            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
             guard let idx = entries.firstIndex(where: {
                 $0.path == entryPath || $0.path.hasSuffix("/" + entryPath) || ($0.path.contains("/") ? String($0.path.split(separator: "/").last!) == entryPath : false)
             }) else {
                 return nil
+            }
+            let entry = entries[idx]
+            if entry.uncompressedSize > UInt64(maxAllowedBytes) {
+                throw ArchiveError.engineFailure(
+                    code: RustTTZipStatusCode.errOutOfMemory.rawValue,
+                    message: "Entry uncompressed size \(entry.uncompressedSize) exceeds memory limit of \(maxAllowedBytes) bytes"
+                )
             }
             if let bytes = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
                 if bytes.count > maxAllowedBytes {
