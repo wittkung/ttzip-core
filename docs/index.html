@@ -87,7 +87,7 @@
             pointer-events: none;
             overflow: hidden;
             z-index: 0;
-            opacity: 0.22;
+            opacity: 0.52;
             transition: opacity 0.7s ease;
         }
         @media (prefers-color-scheme: dark) {
@@ -98,9 +98,9 @@
         #fluidCanvas {
             width: 100%;
             height: 100%;
-            filter: blur(85px);
-            -webkit-filter: blur(85px);
-            transform: scale(1.35);
+            filter: blur(52px);
+            -webkit-filter: blur(52px);
+            transform: scale(1.20);
             transform-origin: center;
         }
 
@@ -1543,8 +1543,10 @@
                     ctx.clearRect(0, 0, w, h);
 
                     const isDark = isDarkMode();
+                    const bambooColor = isDark ? "#34C759" : "#3D7A50";
+                    const goldColor = isDark ? "#E5C158" : "#C89D2B";
 
-                    // 100% 还原 TTZipFluidBackgroundView.swift 中的 3 颗竹青流体球轨道方程
+                    // 100% 还原 TTZipFluidBackgroundView.swift 中的流体球轨道方程
                     const x1 = w / 2 + Math.cos(phase * 0.65) * (w * 0.3);
                     const y1 = h / 2 + Math.sin(phase * 1.05) * (h * 0.2);
 
@@ -1556,28 +1558,25 @@
 
                     const radius = Math.min(w, h) * 0.6;
 
-                    // TTZipTheme.bambooGreen 单一色调
-                    const baseColor = isDark ? "#34C759" : "#2E8B57";
-
-                    // Orb 1: 100% 不透明度
-                    ctx.globalAlpha = 1.0;
-                    ctx.fillStyle = baseColor;
+                    // Orb 1: 竹青色, 95% 不透明度, 半径 0.52
+                    ctx.globalAlpha = 0.95;
+                    ctx.fillStyle = bambooColor;
                     ctx.beginPath();
-                    ctx.arc(x1, y1, radius * 0.5, 0, Math.PI * 2);
+                    ctx.arc(x1, y1, radius * 0.52, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Orb 2: 80% 不透明度
-                    ctx.globalAlpha = 0.8;
-                    ctx.fillStyle = baseColor;
+                    // Orb 2: 竹青色, 75% 不透明度, 半径 0.46
+                    ctx.globalAlpha = 0.75;
+                    ctx.fillStyle = bambooColor;
                     ctx.beginPath();
-                    ctx.arc(x2, y2, radius * 0.5, 0, Math.PI * 2);
+                    ctx.arc(x2, y2, radius * 0.46, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Orb 3: 60% 不透明度
-                    ctx.globalAlpha = 0.6;
-                    ctx.fillStyle = baseColor;
+                    // Orb 3: 金缮暖金, 68% 不透明度, 半径 0.44 (Kintsugi Gold)
+                    ctx.globalAlpha = 0.68;
+                    ctx.fillStyle = goldColor;
                     ctx.beginPath();
-                    ctx.arc(x3, y3, radius * 0.5, 0, Math.PI * 2);
+                    ctx.arc(x3, y3, radius * 0.44, 0, Math.PI * 2);
                     ctx.fill();
 
                     ctx.globalAlpha = 1.0;
