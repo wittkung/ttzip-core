@@ -26,19 +26,7 @@ public final class RustVfsSession: @unchecked Sendable {
         
         for entry in entries {
             map[entry.path] = entry
-            let mtime = entry.modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
-            uniffiEntries.append(UniFfiEntryMetadata(
-                path: entry.path,
-                uncompressedSize: UInt64(max(0, entry.uncompressedSize)),
-                compressedSize: 0,
-                crc32: 0,
-                mtimeEpochSecs: mtime,
-                mode: entry.isDirectory ? 0o755 : 0o644,
-                isDirectory: entry.isDirectory,
-                isEncrypted: entry.isEncrypted,
-                compressionMethod: "store",
-                detectedEncoding: entry.detectedEncoding
-            ))
+            uniffiEntries.append(UniFfiEntryMetadata(entry: entry))
         }
         
         self.entryMap = map
@@ -68,68 +56,18 @@ public final class RustVfsSession: @unchecked Sendable {
 
 // MARK: - Safe VFS Node Value Type
 
-/// Safe, value-copied snapshot of a VFS directory node across the Rust UniFFI boundary.
-public struct VfsNodeSummary: Sendable, Equatable, Identifiable {
+extension UniFfiVfsNodeSummary: Identifiable, @unchecked Sendable {
     public var id: String { path.isEmpty ? name : path }
-    public let nodeId: UInt32
-    public let name: String
-    public let path: String
-    public let uncompressedSize: UInt64
-    public let compressedSize: UInt64
-    public let crc32: UInt32
-    public let mtimeEpochSecs: Int64
-    public let mode: UInt32
-    public let isDirectory: Bool
-    public let isEncrypted: Bool
-    public let hasChildren: Bool
-
-    public init(
-        nodeId: UInt32 = 0,
-        name: String,
-        path: String = "",
-        uncompressedSize: UInt64,
-        compressedSize: UInt64,
-        crc32: UInt32,
-        mtimeEpochSecs: Int64,
-        mode: UInt32,
-        isDirectory: Bool,
-        isEncrypted: Bool,
-        hasChildren: Bool
-    ) {
-        self.nodeId = nodeId
-        self.name = name
-        self.path = path
-        self.uncompressedSize = uncompressedSize
-        self.compressedSize = compressedSize
-        self.crc32 = crc32
-        self.mtimeEpochSecs = mtimeEpochSecs
-        self.mode = mode
-        self.isDirectory = isDirectory
-        self.isEncrypted = isEncrypted
-        self.hasChildren = hasChildren
-    }
-
-    public init(summary: UniFfiVfsNodeSummary) {
-        self.nodeId = 0
-        self.name = summary.name
-        self.path = summary.path
-        self.uncompressedSize = summary.uncompressedSize
-        self.compressedSize = summary.compressedSize
-        self.crc32 = summary.crc32
-        self.mtimeEpochSecs = summary.mtimeEpochSecs
-        self.mode = summary.mode
-        self.isDirectory = summary.isDirectory
-        self.isEncrypted = summary.isEncrypted
-        self.hasChildren = summary.hasChildren
-    }
+    public var nodeId: UInt32 { 0 }
 }
+
+public typealias VfsNodeSummary = UniFfiVfsNodeSummary
 
 extension RustVfsSession {
     /// Retrieves a windowed slice of child nodes for interactive zero-copy UI directory paging with exact total count.
     public func getChildrenPaged(subpath: String? = nil, offset: Int = 0, limit: Int = 100) -> (nodes: [VfsNodeSummary], total: Int) {
         let paged = uniffiTree.getChildrenPaged(subpath: subpath, offset: UInt32(offset), limit: UInt32(limit))
-        let summaries = paged.nodes.map { VfsNodeSummary(summary: $0) }
-        return (summaries, Int(paged.totalCount))
+        return (paged.nodes, Int(paged.totalCount))
     }
 
     /// Backward-compatible windowed slice retrieval for child nodes.

@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a hierarchical preview tree node for QuickLook and explorer renderers.
 /// Conforms strictly to `contracts/quicklook-preview-payload.json#/definitions/PreviewTreeNode`.
-public struct PreviewTreeNode: Identifiable, Codable, Sendable, Equatable {
+public struct PreviewTreeNode: Identifiable, Codable, Sendable, Equatable, Hashable {
     public let id: String
     public let name: String
     public let relativePath: String
