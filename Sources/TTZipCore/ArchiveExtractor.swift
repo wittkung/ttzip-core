@@ -339,14 +339,13 @@ public final class ArchiveSelectiveExtractor: Sendable {
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             // Fast-path: extract directly by path without parsing entire archive catalog
-            if let bytes = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
-                if bytes.count > maxAllowedBytes {
+            if let data = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
+                if data.count > maxAllowedBytes {
                     throw ArchiveError.engineFailure(
                         code: RustTTZipStatusCode.errOutOfMemory.rawValue,
                         message: "Extracted entry exceeds memory limit of \(maxAllowedBytes) bytes"
                     )
                 }
-                let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
             }
@@ -365,14 +364,13 @@ public final class ArchiveSelectiveExtractor: Sendable {
                     message: "Entry uncompressed size \(entry.uncompressedSize) exceeds memory limit of \(maxAllowedBytes) bytes"
                 )
             }
-            if let bytes = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
-                if bytes.count > maxAllowedBytes {
+            if let data = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
+                if data.count > maxAllowedBytes {
                     throw ArchiveError.engineFailure(
                         code: RustTTZipStatusCode.errOutOfMemory.rawValue,
                         message: "Extracted stream exceeds memory limit of \(maxAllowedBytes) bytes"
                     )
                 }
-                let data = Data(bytes)
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
             }

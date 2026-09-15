@@ -210,26 +210,6 @@ public protocol HashCalculating: Sendable {
     func computeHash(filePath: String, type: HashType) async throws -> String
 }
 
-/// ZIP format hardware-accelerated encryption and decryption engine interface.
-public protocol ZipCryptoEngineProtocol: Sendable {
-    func decryptZipCrypto(payload: Data, password: String) -> Data?
-    func encryptAES256(payload: Data, password: String, actualCompressionMethod: UInt16) -> (payload: Data, compressionMethod: UInt16, extraField: Data)?
-    func decryptAES256(payloadPtr: UnsafePointer<UInt8>, count: Int, password: String) -> Data?
-    func decryptAES256Direct(payloadPtr: UnsafePointer<UInt8>, count: Int, password: String, destinationPtr: UnsafeMutablePointer<UInt8>) -> Bool
-    func decryptAES256(payload: Data, password: String) -> Data?
-}
-
-/// 7z format PBKDF2-SHA256 and AES-256-CBC engine interface.
-public protocol SevenZipCryptoEngineProtocol: Sendable {
-    func deriveKey(password: String, salt: Data, numCyclesPower: Int) -> Data
-    func processParallelAES256(
-        inputData: Data,
-        key: Data,
-        iv: Data,
-        encrypt: Bool,
-        chunkSize: Int
-    ) -> Data?
-}
 
 // MARK: - Progress
 
@@ -368,70 +348,9 @@ public struct BatchProgressInfo: Sendable, Equatable {
     }
 }
 
-/// Archive progress observer protocol.
-public protocol ArchiveProgressObserverProtocol: AnyObject, Sendable {
-    func onProgressUpdated(_ progress: ArchiveProgressInfo)
-    func onBatchProgressUpdated(_ progress: BatchProgressInfo)
-}
-
-extension ArchiveProgressObserverProtocol {
-    public func onProgressUpdated(_ progress: ArchiveProgressInfo) {}
-    public func onBatchProgressUpdated(_ progress: BatchProgressInfo) {}
-}
-
-/// System-wide global archive event type.
-public enum ArchiveEventType: String, Sendable, Equatable, Hashable, CaseIterable {
-    case archiveCompleted
-    case extractionFailed
-    case securityThreatIntercepted
-    case passwordVaultUnlocked
-    case presetChanged
-    case taskStateChanged
-}
-
-/// System-wide global archive event payload data.
-public enum ArchiveEvent: Sendable, Equatable {
-    case archiveCompleted(archivePath: String, operationType: ArchiveOperationType, duration: TimeInterval, totalBytes: Int64)
-    case extractionFailed(archivePath: String, error: String)
-    case securityThreatIntercepted(archivePath: String, threatDescription: String)
-    case passwordVaultUnlocked(archivePath: String, password: String, isVaultUnlocked: Bool)
-    case presetChanged(oldPresetName: String?, newPresetName: String)
-    case taskStateChanged(taskId: UUID, oldState: String, newState: String)
-    
-    public var eventType: ArchiveEventType {
-        switch self {
-        case .archiveCompleted: return .archiveCompleted
-        case .extractionFailed: return .extractionFailed
-        case .securityThreatIntercepted: return .securityThreatIntercepted
-        case .passwordVaultUnlocked: return .passwordVaultUnlocked
-        case .presetChanged: return .presetChanged
-        case .taskStateChanged: return .taskStateChanged
-        }
-    }
-    
-    public var archivePath: String? {
-        switch self {
-        case .archiveCompleted(let path, _, _, _): return path
-        case .extractionFailed(let path, _): return path
-        case .securityThreatIntercepted(let path, _): return path
-        case .passwordVaultUnlocked(let path, _, _): return path
-        case .presetChanged, .taskStateChanged: return nil
-        }
-    }
-}
-
-/// System-wide global archive event observer protocol.
-public protocol ArchiveEventObserverProtocol: AnyObject, Sendable {
-    func onArchiveEvent(_ event: ArchiveEvent)
-}
-
 // MARK: - Factory
 
-//
-//
-
-
-/// Unified factory providing standard writers, extractors, readers, and C-ABI bridge implementors.
+/// Unified factory providing standard writers, extractors, and readers.
 public enum ArchiveEngineFactory {
     
     /// Creates an archive writer.
@@ -457,29 +376,6 @@ public enum ArchiveEngineFactory {
     /// Creates a cryptographic hash calculator instance.
     public static func makeHashCalculator(hardwareTuner: HardwareTunerProtocol? = nil) -> HashCalculating {
         return HashCalculator(hardwareTuner: hardwareTuner ?? AppleSiliconTuner.shared)
-    }
-
-    /// Creates a low-level engine implementor for Bridge Pattern decoupling.
-    public static func makeImplementor(for format: ArchiveCompressionFormat = .zip) -> ArchiveEngineImplementorProtocol {
-        return ArchiveEngineBridge.makeImplementor(for: format)
-    }
-
-    /// Creates a decorated engine implementor.
-    public static func makeDecoratedImplementor(
-        for format: ArchiveCompressionFormat = .zip,
-        password: String? = nil,
-        splitVolumeSizeBytes: Int64? = nil,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        enableChecksum: Bool = false,
-        enableMetrics: Bool = false
-    ) -> ArchiveEngineImplementorProtocol {
-        return makeImplementor(for: format)
-    }
-
-    /// Constructs high-level `ArchiveOperationAbstraction` with an implementor.
-    public static func makeOperationAbstraction(for format: ArchiveCompressionFormat = .zip) -> ArchiveOperationAbstraction {
-        let implementor = makeImplementor(for: format)
-        return ArchiveOperationAbstraction(implementor: implementor)
     }
 }
 

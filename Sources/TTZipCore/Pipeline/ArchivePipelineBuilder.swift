@@ -183,11 +183,6 @@ public struct ArchivePipelineBuilder: Sendable {
         }
     }
     
-    /// Decorator Chain: Constructs fully decoupled execution implementor.
-    public func buildDecoratedImplementor() -> ArchiveEngineImplementorProtocol {
-        let finalFormat = optionsBuilder.format ?? format
-        return ArchiveEngineFactory.makeImplementor(for: finalFormat)
-    }
     
     public func executeCreate() async throws -> ArchiveOperationResult {
         guard let outPath = outputPath, !outPath.isEmpty else {

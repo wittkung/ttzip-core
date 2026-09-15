@@ -371,7 +371,7 @@ public final class ArchiveOperationPipeline: Sendable {
         }
 
         let duration = max(0.001, Date().timeIntervalSince(startTime))
-        let totalOriginalBytes = inputPaths.reduce(Int64(0)) { $0 + calculateDirectorySize(at: $1) }
+        let totalOriginalBytes = inputPaths.reduce(Int64(0)) { $0 + ArchiveComponentTreeBuilder.buildTree(fromDiskPath: $1).sizeBytes }
         let writtenBytes = (try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? Int64) ?? totalOriginalBytes
         let throughput = Double(totalOriginalBytes) / (1024.0 * 1024.0 * duration)
 

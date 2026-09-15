@@ -137,9 +137,6 @@ public protocol TTZipEngineFacading: Sendable {
     func undoLastCommand() async throws -> CommandResult?
     func redoLastCommand() async throws -> CommandResult?
     
-    // MARK: - Bridge Pattern & Decorator Pattern Integration
-    func operationAbstraction(for format: ArchiveCompressionFormat) -> ArchiveOperationAbstraction
-    func decoratedImplementor(for format: ArchiveCompressionFormat, password: String?, splitSize: Int64?, progressHandler: (@Sendable (ArchiveProgress) -> Void)?, enableChecksum: Bool, enableMetrics: Bool) -> ArchiveEngineImplementorProtocol
 }
 
 extension TTZipEngineFacading {
@@ -278,27 +275,6 @@ extension TTZipEngineFacading {
         return try await engine.recoverPassword(archivePath: archivePath, dictionary: dictionary)
     }
 
-    public func operationAbstraction(for format: ArchiveCompressionFormat = .zip) -> ArchiveOperationAbstraction {
-        return ArchiveEngineFactory.makeOperationAbstraction(for: format)
-    }
-
-    public func decoratedImplementor(
-        for format: ArchiveCompressionFormat = .zip,
-        password: String? = nil,
-        splitSize: Int64? = nil,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        enableChecksum: Bool = true,
-        enableMetrics: Bool = true
-    ) -> ArchiveEngineImplementorProtocol {
-        return ArchiveEngineFactory.makeDecoratedImplementor(
-            for: format,
-            password: password,
-            splitVolumeSizeBytes: splitSize,
-            progressHandler: progressHandler,
-            enableChecksum: enableChecksum,
-            enableMetrics: enableMetrics
-        )
-    }
 }
 
 

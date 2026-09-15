@@ -7,49 +7,44 @@
 
 import Foundation
 
-/// Comprehensive structured metadata describing an archive entry or filesystem entity.
-public struct ArchiveEntryMetadata: Identifiable, Sendable, Equatable, Codable {
+// MARK: - UniFFI Entry Metadata Protocol Extensions
+
+/// Extends native UniFFI Entry Metadata with Identifiable, Sendable, and domain properties
+/// eliminating redundant intermediate mirror structs and field-by-field copies.
+extension UniFfiEntryMetadata: Identifiable, @unchecked Sendable {
     public var id: String { path }
-    
-    /// Path of the entry inside the archive hierarchy.
-    public var path: String
-    
-    /// Uncompressed size in bytes.
-    public var uncompressedSize: Int64
-    
-    /// Compressed physical payload size in bytes, if available.
-    public var compressedSize: Int64?
-    
-    /// Entry CRC-32 checksum, if recorded.
-    public var crc32: UInt32?
-    
-    /// Modification timestamp.
-    public var modificationDate: Date?
-    
-    /// POSIX file system permissions / mode bits.
-    public var posixPermissions: UInt32?
-    
-    /// Indicates whether entry is a container directory.
-    public var isDirectory: Bool
-    
-    /// Indicates whether entry is a symbolic link.
-    public var isSymlink: Bool
-    
-    /// Target destination path if entry is a symlink.
-    public var symlinkTarget: String?
-    
-    /// Whether the entry payload or header is encrypted.
-    public var isEncrypted: Bool
-    
-    /// Specific encryption algorithm / cipher name (e.g. "AES-256", "ZipCrypto").
-    public var encryptionMethod: String?
-    
-    /// Detected text encoding for file path / names (default: "UTF-8").
-    public var detectedEncoding: String
-    
-    /// MIME content type inferred from extension or content.
-    public var mimeType: String
-    
+
+    public var modificationDate: Date? {
+        get {
+            mtimeEpochSecs > 0 ? Date(timeIntervalSince1970: TimeInterval(mtimeEpochSecs)) : nil
+        }
+        set {
+            mtimeEpochSecs = newValue.map { Int64($0.timeIntervalSince1970) } ?? 0
+        }
+    }
+
+    public var posixPermissions: UInt32? {
+        get { mode }
+        set { if let v = newValue { mode = v } }
+    }
+
+    public var isSymlink: Bool {
+        (mode & 0o170000) == 0o120000
+    }
+
+    public var symlinkTarget: String? {
+        nil
+    }
+
+    public var encryptionMethod: String? {
+        get { isEncrypted ? compressionMethod : nil }
+        set { if let v = newValue { compressionMethod = v } }
+    }
+
+    public var mimeType: String {
+        ArchiveMimeMapper.mimeType(forExtension: (path as NSString).pathExtension.lowercased())
+    }
+
     public init(
         path: String,
         uncompressedSize: Int64 = 0,
@@ -65,38 +60,40 @@ public struct ArchiveEntryMetadata: Identifiable, Sendable, Equatable, Codable {
         detectedEncoding: String = "UTF-8",
         mimeType: String = "application/octet-stream"
     ) {
-        self.path = path
-        self.uncompressedSize = uncompressedSize
-        self.compressedSize = compressedSize
-        self.crc32 = crc32
-        self.modificationDate = modificationDate
-        self.posixPermissions = posixPermissions
-        self.isDirectory = isDirectory
-        self.isSymlink = isSymlink
-        self.symlinkTarget = symlinkTarget
-        self.isEncrypted = isEncrypted
-        self.encryptionMethod = encryptionMethod
-        self.detectedEncoding = detectedEncoding
-        self.mimeType = mimeType
+        let mtime = modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
+        self.init(
+            path: path,
+            uncompressedSize: UInt64(max(0, uncompressedSize)),
+            compressedSize: UInt64(max(0, compressedSize ?? 0)),
+            crc32: crc32 ?? 0,
+            mtimeEpochSecs: mtime,
+            mode: posixPermissions ?? (isDirectory ? 0o755 : 0o644),
+            isDirectory: isDirectory,
+            isEncrypted: isEncrypted,
+            compressionMethod: encryptionMethod ?? (isEncrypted ? "aes256" : "deflate"),
+            detectedEncoding: detectedEncoding
+        )
     }
-    
-    /// Constructs metadata from a runtime `ArchiveEntry`.
+
+    /// Constructs metadata directly from a runtime `ArchiveEntry`.
     public init(entry: ArchiveEntry) {
-        self.path = entry.path
-        self.uncompressedSize = entry.uncompressedSize
-        self.compressedSize = nil
-        self.crc32 = nil
-        self.modificationDate = entry.modificationDate
-        self.posixPermissions = nil
-        self.isDirectory = entry.isDirectory
-        self.isSymlink = false
-        self.symlinkTarget = nil
-        self.isEncrypted = entry.isEncrypted
-        self.encryptionMethod = entry.encryptionMethod
-        self.detectedEncoding = entry.detectedEncoding
-        self.mimeType = entry.mimeType
+        let mtime = entry.modificationDate.map { Int64($0.timeIntervalSince1970) } ?? 0
+        self.init(
+            path: entry.path,
+            uncompressedSize: UInt64(max(0, entry.uncompressedSize)),
+            compressedSize: 0,
+            crc32: 0,
+            mtimeEpochSecs: mtime,
+            mode: entry.isDirectory ? 0o755 : 0o644,
+            isDirectory: entry.isDirectory,
+            isEncrypted: entry.isEncrypted,
+            compressionMethod: entry.encryptionMethod ?? (entry.isEncrypted ? "aes256" : "deflate"),
+            detectedEncoding: entry.detectedEncoding
+        )
     }
 }
+
+public typealias ArchiveEntryMetadata = UniFfiEntryMetadata
 
 // MARK: - Metadata Pool
 
