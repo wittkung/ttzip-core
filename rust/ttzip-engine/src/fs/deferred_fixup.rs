@@ -259,6 +259,21 @@ impl DepthFirstDirFixup {
         self.items.clear();
     }
 
+    /// Drains all registered items and returns them sorted in strictly descending depth order without cloning.
+    pub fn drain_sorted_descending_depth(&mut self) -> Vec<DirFixupItem> {
+        let mut list: Vec<(usize, usize, DirFixupItem)> = std::mem::take(&mut self.items)
+            .into_values()
+            .map(|item| (item.depth(), item.path.as_os_str().len(), item))
+            .collect();
+        list.sort_by(|(depth_a, len_a, item_a), (depth_b, len_b, item_b)| {
+            depth_b
+                .cmp(depth_a)
+                .then_with(|| len_b.cmp(len_a))
+                .then_with(|| item_b.path.cmp(&item_a.path))
+        });
+        list.into_iter().map(|(_, _, item)| item).collect()
+    }
+
     /// Returns all registered items sorted in strictly descending depth order (deepest child first).
     pub fn sorted_items_descending_depth(&self) -> Vec<DirFixupItem> {
         let mut list: Vec<(usize, usize, &DirFixupItem)> = self
@@ -285,8 +300,7 @@ impl DepthFirstDirFixup {
     /// 4. High-precision nanosecond timestamps (`utimensat`) are applied last, guaranteeing
     ///    that subsequent child operations never overwrite the parent directory's mtime.
     pub fn apply_all(&mut self, preserve_permissions: bool) -> Result<(), TTZipStatus> {
-        let sorted = self.sorted_items_descending_depth();
-        self.items.clear();
+        let sorted = self.drain_sorted_descending_depth();
 
         for item in sorted {
             Self::apply_single_dir_fixup(&item, preserve_permissions)?;

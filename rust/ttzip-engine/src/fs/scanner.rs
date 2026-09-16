@@ -151,10 +151,13 @@ fn scan_dir_recursive_parallel(
     let mut sub_dirs = Vec::with_capacity(16);
 
     for entry in entries.flatten() {
-        let file_name = entry.file_name().to_string_lossy().to_string();
-        if !options.include_hidden && file_name.starts_with('.') {
+        let file_name_os = entry.file_name();
+        let file_name_bytes = file_name_os.as_encoded_bytes();
+        if !options.include_hidden && file_name_bytes.starts_with(b".") {
             continue;
         }
+
+        let file_name = file_name_os.to_string_lossy();
         if options.skip_mac_junk && is_mac_junk_file(&file_name) {
             continue;
         }
@@ -165,10 +168,15 @@ fn scan_dir_recursive_parallel(
             Err(_) => continue,
         };
 
+        let file_name_str = file_name.as_ref();
         let rel_path = if rel_prefix.is_empty() {
-            file_name.clone()
+            file_name_str.to_string()
         } else {
-            format!("{}/{}", rel_prefix, file_name)
+            let mut s = String::with_capacity(rel_prefix.len() + 1 + file_name_str.len());
+            s.push_str(rel_prefix);
+            s.push('/');
+            s.push_str(file_name_str);
+            s
         };
 
         if meta.is_dir() {
