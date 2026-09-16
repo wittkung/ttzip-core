@@ -12,15 +12,15 @@
 
 const PRIME32_1: u32 = 0x9E3779B1;
 const PRIME32_2: u32 = 0x85EBCA77;
-const PRIME64_1: u64 = 0x9E3779B185EBCA87;
+pub(crate) const PRIME64_1: u64 = 0x9E3779B185EBCA87;
 const PRIME64_2: u64 = 0xC2B2AE3D27D4EB4F;
 const PRIME64_3: u64 = 0x165667B19E3779F9;
 const PRIME64_4: u64 = 0x85EBCA77C2B2AE63;
 const PRIME64_5: u64 = 0x27D4EB2F165667C5;
 
-const STRIPE_LEN: usize = 64;
-const ACC_NB: usize = 8;
-const MIDSIZE_MAX: usize = 240;
+pub(crate) const STRIPE_LEN: usize = 64;
+pub(crate) const ACC_NB: usize = 8;
+pub(crate) const MIDSIZE_MAX: usize = 240;
 
 /// Default 192-byte secret for XXH3.
 pub const DEFAULT_SECRET: [u8; 192] = [
@@ -38,7 +38,7 @@ pub const DEFAULT_SECRET: [u8; 192] = [
     0x45, 0xcb, 0x3a, 0x8f, 0x95, 0x16, 0x04, 0x28, 0xaf, 0xd7, 0xfb, 0xca, 0xbb, 0x4b, 0x40, 0x7e,
 ];
 
-const INITIAL_ACC: [u64; ACC_NB] = [
+pub(crate) const INITIAL_ACC: [u64; ACC_NB] = [
     prime32_3_64(),
     PRIME64_1,
     PRIME64_2,
@@ -245,7 +245,7 @@ fn xxh3_len_129to240(input: &[u8], seed: u64, secret: &[u8]) -> u64 {
 // ----------------------------------------------------------------------------
 
 #[inline(always)]
-fn xxh3_accumulate_stripe(acc: &mut [u64; ACC_NB], stripe: &[u8], secret: &[u8]) {
+pub(crate) fn xxh3_accumulate_stripe(acc: &mut [u64; ACC_NB], stripe: &[u8], secret: &[u8]) {
     for i in 0..ACC_NB {
         let data_val = read_u64_le(&stripe[i * 8..(i + 1) * 8]);
         let data_key = data_val ^ read_u64_le(&secret[i * 8..(i + 1) * 8]);
@@ -256,7 +256,7 @@ fn xxh3_accumulate_stripe(acc: &mut [u64; ACC_NB], stripe: &[u8], secret: &[u8])
 }
 
 #[inline(always)]
-fn xxh3_scramble_acc(acc: &mut [u64; ACC_NB], secret: &[u8]) {
+pub(crate) fn xxh3_scramble_acc(acc: &mut [u64; ACC_NB], secret: &[u8]) {
     for i in 0..ACC_NB {
         let key = read_u64_le(&secret[i * 8..(i + 1) * 8]);
         let mut val = acc[i];
@@ -267,7 +267,7 @@ fn xxh3_scramble_acc(acc: &mut [u64; ACC_NB], secret: &[u8]) {
     }
 }
 
-fn xxh3_merge_acc(acc: &[u64; ACC_NB], secret: &[u8], mut start: u64) -> u64 {
+pub(crate) fn xxh3_merge_acc(acc: &[u64; ACC_NB], secret: &[u8], mut start: u64) -> u64 {
     for i in 0..4 {
         let data_key1 = acc[i * 2] ^ read_u64_le(&secret[i * 16..i * 16 + 8]);
         let data_key2 = acc[i * 2 + 1] ^ read_u64_le(&secret[i * 16 + 8..i * 16 + 16]);
@@ -286,7 +286,7 @@ fn xxh3_long(input: &[u8], seed: u64, secret: &[u8]) -> u64 {
     xxh3_long_internal(input, secret, &mut acc)
 }
 
-fn derive_custom_secret(custom: &mut [u8; 192], base: &[u8], seed: u64) {
+pub(crate) fn derive_custom_secret(custom: &mut [u8; 192], base: &[u8], seed: u64) {
     for i in 0..12 {
         let off = i * 16;
         let v1 = read_u64_le(&base[off..off + 8]).wrapping_add(seed);
@@ -528,263 +528,8 @@ pub fn xxh3_128_bytes(input: &[u8]) -> [u8; 16] {
     out
 }
 
-/// Streaming XXH3 64-bit hasher with constant 256-byte stack buffer.
-#[derive(Clone)]
-pub struct Xxh3_64 {
-    seed: u64,
-    total_len: u64,
-    buffered_len: usize,
-    buffer: [u8; 256],
-    acc: [u64; ACC_NB],
-    nb_stripes_in_block: usize,
-    custom_secret: [u8; 192],
-    use_custom_secret: bool,
-}
-
-impl Default for Xxh3_64 {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Xxh3_64 {
-    #[inline]
-    pub fn new() -> Self {
-        Self::with_seed(0)
-    }
-
-    pub fn with_seed(seed: u64) -> Self {
-        let mut custom_secret = [0u8; 192];
-        let use_custom_secret = seed != 0;
-        if use_custom_secret {
-            derive_custom_secret(&mut custom_secret, &DEFAULT_SECRET, seed);
-        }
-        Self {
-            seed,
-            total_len: 0,
-            buffered_len: 0,
-            buffer: [0u8; 256],
-            acc: INITIAL_ACC,
-            nb_stripes_in_block: 0,
-            custom_secret,
-            use_custom_secret,
-        }
-    }
-
-    #[inline(always)]
-    fn consume_stripe_64(&mut self) {
-        let sec = if self.use_custom_secret {
-            &self.custom_secret
-        } else {
-            &DEFAULT_SECRET
-        };
-        let s = self.nb_stripes_in_block;
-        let sec_off = s * 8;
-        xxh3_accumulate_stripe(&mut self.acc, &self.buffer[..STRIPE_LEN], &sec[sec_off..sec_off + STRIPE_LEN]);
-        self.nb_stripes_in_block += 1;
-        if self.nb_stripes_in_block == 16 {
-            xxh3_scramble_acc(&mut self.acc, &sec[sec.len() - STRIPE_LEN..]);
-            self.nb_stripes_in_block = 0;
-        }
-        self.buffer.copy_within(STRIPE_LEN..self.buffered_len, 0);
-        self.buffered_len -= STRIPE_LEN;
-    }
-
-    pub fn update(&mut self, mut data: &[u8]) {
-        self.total_len += data.len() as u64;
-
-        if self.total_len <= MIDSIZE_MAX as u64 {
-            self.buffer[self.buffered_len..self.buffered_len + data.len()].copy_from_slice(data);
-            self.buffered_len += data.len();
-            return;
-        }
-
-        while !data.is_empty() {
-            let space = 256 - self.buffered_len;
-            let take = space.min(data.len());
-            self.buffer[self.buffered_len..self.buffered_len + take].copy_from_slice(&data[..take]);
-            self.buffered_len += take;
-            data = &data[take..];
-
-            while self.buffered_len > 128 {
-                self.consume_stripe_64();
-            }
-        }
-    }
-
-    pub fn finalize(mut self) -> u64 {
-        if self.total_len <= MIDSIZE_MAX as u64 {
-            return xxh3_64_with_seed(&self.buffer[..self.buffered_len], self.seed);
-        }
-
-        let sec = if self.use_custom_secret {
-            &self.custom_secret
-        } else {
-            &DEFAULT_SECRET
-        };
-
-        if self.buffered_len > STRIPE_LEN {
-            let s = self.nb_stripes_in_block;
-            let sec_off = s * 8;
-            xxh3_accumulate_stripe(&mut self.acc, &self.buffer[..STRIPE_LEN], &sec[sec_off..sec_off + STRIPE_LEN]);
-            self.nb_stripes_in_block += 1;
-            if self.nb_stripes_in_block == 16 {
-                xxh3_scramble_acc(&mut self.acc, &sec[sec.len() - STRIPE_LEN..]);
-                self.nb_stripes_in_block = 0;
-            }
-        }
-
-        let last_stripe = &self.buffer[self.buffered_len - STRIPE_LEN..self.buffered_len];
-        xxh3_accumulate_stripe(&mut self.acc, last_stripe, &sec[sec.len() - STRIPE_LEN - 7..sec.len() - 7]);
-        xxh3_merge_acc(&self.acc, &sec[11..], self.total_len.wrapping_mul(PRIME64_1))
-    }
-}
-
-/// Streaming XXH3 128-bit hasher with constant 256-byte stack buffer.
-#[derive(Clone)]
-pub struct Xxh3_128 {
-    seed: u64,
-    total_len: u64,
-    buffered_len: usize,
-    buffer: [u8; 256],
-    acc_low: [u64; ACC_NB],
-    acc_high: [u64; ACC_NB],
-    nb_stripes_in_block: usize,
-    custom_secret_low: [u8; 192],
-    custom_secret_high: [u8; 192],
-    use_custom_secret: bool,
-}
-
-impl Default for Xxh3_128 {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Xxh3_128 {
-    #[inline]
-    pub fn new() -> Self {
-        Self::with_seed(0)
-    }
-
-    pub fn with_seed(seed: u64) -> Self {
-        let mut custom_secret_low = [0u8; 192];
-        let use_custom_secret = seed != 0;
-        if use_custom_secret {
-            derive_custom_secret(&mut custom_secret_low, &DEFAULT_SECRET, seed);
-        }
-        let mut custom_secret_high = [0u8; 192];
-        derive_custom_secret(&mut custom_secret_high, &DEFAULT_SECRET, seed ^ 0xFFFFFFFFFFFFFFFF);
-
-        Self {
-            seed,
-            total_len: 0,
-            buffered_len: 0,
-            buffer: [0u8; 256],
-            acc_low: INITIAL_ACC,
-            acc_high: INITIAL_ACC,
-            nb_stripes_in_block: 0,
-            custom_secret_low,
-            custom_secret_high,
-            use_custom_secret,
-        }
-    }
-
-    #[inline(always)]
-    fn consume_stripe_128(&mut self) {
-        let sec_low = if self.use_custom_secret {
-            &self.custom_secret_low
-        } else {
-            &DEFAULT_SECRET
-        };
-        let sec_high = &self.custom_secret_high;
-
-        let s = self.nb_stripes_in_block;
-        let sec_off = s * 8;
-        let stripe = &self.buffer[..STRIPE_LEN];
-
-        xxh3_accumulate_stripe(&mut self.acc_low, stripe, &sec_low[sec_off..sec_off + STRIPE_LEN]);
-        xxh3_accumulate_stripe(&mut self.acc_high, stripe, &sec_high[sec_off..sec_off + STRIPE_LEN]);
-
-        self.nb_stripes_in_block += 1;
-        if self.nb_stripes_in_block == 16 {
-            xxh3_scramble_acc(&mut self.acc_low, &sec_low[sec_low.len() - STRIPE_LEN..]);
-            xxh3_scramble_acc(&mut self.acc_high, &sec_high[sec_high.len() - STRIPE_LEN..]);
-            self.nb_stripes_in_block = 0;
-        }
-
-        self.buffer.copy_within(STRIPE_LEN..self.buffered_len, 0);
-        self.buffered_len -= STRIPE_LEN;
-    }
-
-    pub fn update(&mut self, mut data: &[u8]) {
-        self.total_len += data.len() as u64;
-
-        if self.total_len <= MIDSIZE_MAX as u64 {
-            self.buffer[self.buffered_len..self.buffered_len + data.len()].copy_from_slice(data);
-            self.buffered_len += data.len();
-            return;
-        }
-
-        while !data.is_empty() {
-            let space = 256 - self.buffered_len;
-            let take = space.min(data.len());
-            self.buffer[self.buffered_len..self.buffered_len + take].copy_from_slice(&data[..take]);
-            self.buffered_len += take;
-            data = &data[take..];
-
-            while self.buffered_len > 128 {
-                self.consume_stripe_128();
-            }
-        }
-    }
-
-    pub fn finalize(mut self) -> (u64, u64) {
-        if self.total_len <= MIDSIZE_MAX as u64 {
-            return xxh3_128_with_seed(&self.buffer[..self.buffered_len], self.seed);
-        }
-
-        let sec_low = if self.use_custom_secret {
-            &self.custom_secret_low
-        } else {
-            &DEFAULT_SECRET
-        };
-        let sec_high = &self.custom_secret_high;
-
-        if self.buffered_len > STRIPE_LEN {
-            let s = self.nb_stripes_in_block;
-            let sec_off = s * 8;
-            let stripe = &self.buffer[..STRIPE_LEN];
-            xxh3_accumulate_stripe(&mut self.acc_low, stripe, &sec_low[sec_off..sec_off + STRIPE_LEN]);
-            xxh3_accumulate_stripe(&mut self.acc_high, stripe, &sec_high[sec_off..sec_off + STRIPE_LEN]);
-            self.nb_stripes_in_block += 1;
-            if self.nb_stripes_in_block == 16 {
-                xxh3_scramble_acc(&mut self.acc_low, &sec_low[sec_low.len() - STRIPE_LEN..]);
-                xxh3_scramble_acc(&mut self.acc_high, &sec_high[sec_high.len() - STRIPE_LEN..]);
-                self.nb_stripes_in_block = 0;
-            }
-        }
-
-        let last_stripe = &self.buffer[self.buffered_len - STRIPE_LEN..self.buffered_len];
-        xxh3_accumulate_stripe(&mut self.acc_low, last_stripe, &sec_low[sec_low.len() - STRIPE_LEN - 7..sec_low.len() - 7]);
-        xxh3_accumulate_stripe(&mut self.acc_high, last_stripe, &sec_high[sec_high.len() - STRIPE_LEN - 7..sec_high.len() - 7]);
-
-        let low = xxh3_merge_acc(&self.acc_low, &sec_low[11..], self.total_len.wrapping_mul(PRIME64_1));
-        let high = xxh3_merge_acc(&self.acc_high, &sec_high[11..], self.total_len.wrapping_mul(PRIME64_1));
-
-        (low, high)
-    }
-
-    pub fn finalize_bytes(self) -> [u8; 16] {
-        let (low, high) = self.finalize();
-        let mut out = [0u8; 16];
-        out[..8].copy_from_slice(&low.to_le_bytes());
-        out[8..].copy_from_slice(&high.to_le_bytes());
-        out
-    }
-}
+mod streaming;
+pub use streaming::{Xxh3_128, Xxh3_64};
 
 #[cfg(test)]
 mod tests {
