@@ -86,14 +86,20 @@ rust_test(
     ),
     deps = all_crate_deps(
         normal_dev = True,
-    ) + [
+    ),
+    link_deps = [
         "//third_party/fast-lzma2:fast-lzma2",
+        "//third_party/lzfse:lzfse",
+        "@libdeflate//:libdeflate",
+        "@lz4//:lz4",
+        "@lz4//:lz4_hc",
+        "@zstd//:zstd",
     ],
     proc_macro_deps = all_crate_deps(
         proc_macro_dev = True,
     ),
     rustc_flags = [
-        "-C", "link-args=-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib -lzstd -llz4 -ldeflate -llzfse -larchive -lbz2 -llzma -liconv -lc++ -lcompression -framework Security",
+        "-C", "link-args=-larchive -lbz2 -llzma -liconv -lc++ -lcompression -framework Security",
     ],
 )
 

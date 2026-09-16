@@ -35,7 +35,7 @@ usage() {
     echo "  --debug          Build in debug mode"
     echo "  --target <TRGT>  Build specific target (e.g. aarch64-apple-darwin)"
     echo "  --swift-only     Generate only Swift UniFFI bindings (skip Python/Kotlin)"
-    echo "  --force, -f      Force full rebuild regardless of incremental fingerprint cache"
+    echo "  --force, -f      Force full rebuild"
     echo "  --offline        Build offline without network access"
     echo "  --help           Show this help message"
     exit 0
@@ -79,10 +79,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if command -v sccache >/dev/null 2>&1; then
-    export RUSTC_WRAPPER="sccache"
-fi
-
 export PATH="$HOME/.cargo/bin:$PATH"
 export MACOSX_DEPLOYMENT_TARGET="14.0"
 
@@ -100,9 +96,6 @@ else
     fi
 fi
 
-TARGETS_KEY="$(echo "${TARGETS[*]}" | tr ' ' '_')"
-FINGERPRINT_FILE="${EFFECTIVE_TARGET_DIR}/.rust_fingerprint_${BUILD_MODE}_swift${SWIFT_ONLY}_${TARGETS_KEY}"
-
 # Helper function to copy only if content differs to preserve file mtime
 copy_if_changed() {
     local src="$1"
@@ -112,51 +105,6 @@ copy_if_changed() {
         cp -f "${src}" "${dst}"
     fi
 }
-
-# ------------------------------------------------------------------------------
-# 1. 计算源码与构建环境 Merkle SHA-256 增量指纹 (Fast Incrementality Gate)
-# ------------------------------------------------------------------------------
-compute_fingerprint() {
-    local git_tree dirty_diff top_vendor_diff rustc_ver script_hash
-    git_tree="$(git -C "${REPO_ROOT}" rev-parse HEAD:rust 2>/dev/null || echo "no-git")"
-    dirty_diff="$( { git -C "${REPO_ROOT}" diff HEAD -- rust vendor 2>/dev/null; git -C "${REPO_ROOT}" ls-files --others --exclude-standard rust vendor 2>/dev/null; } | shasum -a 256 | awk '{print $1}')"
-    top_vendor_diff="$( { git -C "${REPO_ROOT}/.." diff HEAD -- vendor 2>/dev/null; git -C "${REPO_ROOT}/.." ls-files --others --exclude-standard vendor 2>/dev/null; } | shasum -a 256 | awk '{print $1}')"
-    rustc_ver="$(rustc -Vv 2>/dev/null | shasum -a 256 | awk '{print $1}')"
-    script_hash="$(shasum -a 256 "${BASH_SOURCE[0]}" "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" 2>/dev/null | shasum -a 256 | awk '{print $1}')"
-    printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s" \
-        "${git_tree}" "${dirty_diff}" "${top_vendor_diff}" "${rustc_ver}" "${script_hash}" "${BUILD_MODE}" "${SWIFT_ONLY}" "${TARGETS_KEY}" "${OFFLINE_FLAG}" \
-        | shasum -a 256 | awk '{print $1}'
-}
-
-CURRENT_FINGERPRINT="$(compute_fingerprint)"
-
-check_artifacts_exist() {
-    [ -f "${XCFRAMEWORK_DIR}/Info.plist" ] || return 1
-    [ -f "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a" ] || return 1
-    [ -f "${XCFRAMEWORK_MAC_DIR}/Headers/ttzip_engineFFI.h" ] || return 1
-    [ -f "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engine.swift" ] || return 1
-    [ -f "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h" ] || return 1
-    if [ "${SWIFT_ONLY}" = "0" ]; then
-        [ -f "${REPO_ROOT}/sdk/python/ttzip/ttzip_engine.py" ] || return 1
-        [ -f "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip/ttzip_engine.kt" ] || return 1
-    fi
-    return 0
-}
-
-# ------------------------------------------------------------------------------
-# 2. 增量短路守卫判断
-# ------------------------------------------------------------------------------
-if [ "${FORCE_REBUILD}" = "0" ] && [ -f "${FINGERPRINT_FILE}" ]; then
-    SAVED_FINGERPRINT="$(cat "${FINGERPRINT_FILE}" 2>/dev/null || true)"
-    if [ "${SAVED_FINGERPRINT}" = "${CURRENT_FINGERPRINT}" ] && check_artifacts_exist; then
-        echo "======================================================================"
-        echo "⚡ [CACHE] TTZip Rust Engine artifacts up-to-date (fingerprint: ${CURRENT_FINGERPRINT:0:12})"
-        echo "   Target : ${XCFRAMEWORK_MAC_DIR}"
-        echo "   Info   : Skipping rebuild. Use --force to rebuild unconditionally."
-        echo "======================================================================"
-        exit 0
-    fi
-fi
 
 echo "=========================================="
 echo "📦 Building TTZip Rust Engine (${BUILD_MODE})"
@@ -370,11 +318,6 @@ if [ -f "${FIRST_DYLIB}" ]; then
 
     rm -rf "${TMP_UNIFFI_DIR}"
 fi
-
-# ------------------------------------------------------------------------------
-# 6. 落盘成功构建指纹
-# ------------------------------------------------------------------------------
-echo "${CURRENT_FINGERPRINT}" > "${FINGERPRINT_FILE}"
 
 echo "=========================================="
 echo "✅ [SUCCESS] Pure UniFFI engine & universal library generated successfully."

@@ -19,12 +19,6 @@ cc_library(
     aspect_hints = [":cttzipbridge_swift_interop"],
     includes = ["Sources/CTTZipBridge/include"],
     linkopts = [
-        "-L/opt/homebrew/lib",
-        "-Wl,-rpath,/opt/homebrew/lib",
-        "-lzstd",
-        "-llz4",
-        "-ldeflate",
-        "-llzfse",
         "-larchive",
         "-lbz2",
         "-llzma",
@@ -37,6 +31,11 @@ cc_library(
     deps = [
         "//products/ttzip/core/rust/ttzip-engine:ttzip_engine_static",
         "//third_party/fast-lzma2:fast-lzma2",
+        "//third_party/lzfse:lzfse",
+        "@libdeflate//:libdeflate",
+        "@lz4//:lz4",
+        "@lz4//:lz4_hc",
+        "@zstd//:zstd",
     ],
 )
 

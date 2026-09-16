@@ -1,0 +1,43 @@
+[project]
+name = "ttzip-core"
+description = "Cross-platform archiving & compression micro-kernel"
+
+[project.min_tools]
+rustc = "1.80"
+cargo = "1.80"
+
+[env]
+RUST_BACKTRACE = "1"
+
+[[stage]]
+name = "lint-loc"
+description = "Single-file LOC gate (≤800 LOC)"
+run = "./scripts/lint_loc_gate.sh"
+sources = ["rust/**/*.rs", "Sources/**/*.swift"]
+
+[[stage]]
+name = "lint-dag"
+description = "Architecture dependency DAG gate"
+run = "./scripts/lint_dag_gate.sh"
+
+[[stage]]
+name = "rust-check"
+description = "Cargo workspace type check"
+run = "cd rust && cargo check --workspace --all-targets"
+depends_on = ["lint-loc", "lint-dag"]
+sources = ["rust/**/*.rs", "rust/**/Cargo.toml"]
+
+[[stage]]
+name = "rust-test"
+description = "Rust workspace test suite"
+run = "cd rust && cargo test --workspace"
+depends_on = ["rust-check"]
+sources = ["rust/**/*.rs", "rust/**/Cargo.toml"]
+timeout = 300
+
+[[stage]]
+name = "verify-symbols"
+description = "UniFFI Mach-O symbol bijection verification"
+run = "./scripts/verify_uniffi_symbols.sh"
+depends_on = ["rust-test"]
+platforms = ["macos"]

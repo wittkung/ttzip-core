@@ -105,10 +105,6 @@ fi
 export PATH="$HOME/.cargo/bin:$PATH"
 export MACOSX_DEPLOYMENT_TARGET="14.0"
 
-if command -v sccache >/dev/null 2>&1; then
-    export RUSTC_WRAPPER="sccache"
-fi
-
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR}"
 HOST_ARCH="$(uname -m)"

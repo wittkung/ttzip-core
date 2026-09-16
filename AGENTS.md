@@ -1,6 +1,13 @@
 # TTZip Project & Architecture Unified Mandate
 
 > **Core Mandate**: All interactions, reasoning cycles, and tool invocations MUST strictly adhere to the **Pi Framework Philosophy** (Minimalist Core, Surgical Edits, Append-Only Determinism, and High Signal-to-Noise Ratio) with **100% Autonomous Proactive Subagent Dispatching**, while upholding the full **TTZip Systemic Engineering Invariants**.
+>
+> **Monorepo Topology & SSOT Invariant**:
+> 本模块已正式纳入 `metastudyline/source` 单体大仓统一治理体系。
+> 1. **代码真理源**: 大仓 (`metastudyline/source`) 为唯一起草、集成与原子验证真理源；独立 GitHub 仓库 (`ttzip-core`) 为由 `tools/copybara/sync_outbound.sh` 自动单向同步与脱敏的开源分发镜像；
+> 2. **构建与测试真理源**: 在大仓内开发时，唯一测试与构建真理源为 Bazel 8 CAS 缓存（`bazel test //products/ttzip/...`）与统一门禁 `ttaction run`；
+> 3. **开源生态原生契约**: 独立开源小仓完全遵循语言标准第一公民契约（Rust `cargo test --workspace`），严禁手写维护私有碎片化 Shell 脚本；
+> 4. **全仓协同规范**: 必须遵守根目录 `AGENTS.md` 确立的 One-Version Rule 与 Visibility 密封控制，严禁非受控跨模块物理路径引用。
 
 ---
 
@@ -146,7 +153,7 @@ swift run ttzip-bench pipeline
    - **靶向命令铁律**:
      - **库内单元测试**: 必须显式添加 `--lib`（如 `cargo test -p ttzip-engine --lib crypto::blake3`），0.05 秒毫秒级直达；
      - **集成测试文件**: 必须显式添加 `--test <test_binary>`（如 `cargo test -p ttzip-engine --test blake3_facade_tests`），仅启动目标二进制；
-     - **全量门禁回归**: 必须使用 `cargo test --workspace` 或专属测试脚本（如 `./scripts/run_blake3_tests.sh`）。
+     - **全量门禁回归**: 必须使用 `cargo test --workspace`。
 
 ---
 
