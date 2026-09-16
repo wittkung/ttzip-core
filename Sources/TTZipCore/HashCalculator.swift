@@ -84,7 +84,7 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func adler32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 1) -> UInt32 {
         guard count > 0 else { return initial }
-        let data = Data(bytes: ptr, count: count)
+        let data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: ptr), count: count, deallocator: .none)
         if initial == 1 {
             return uniffiAdler32(data: data)
         } else {
@@ -107,7 +107,7 @@ public enum HardwareChecksumAdapter {
     @inlinable
     public static func crc32(ptr: UnsafePointer<UInt8>, count: Int, initial: UInt32 = 0) -> UInt32 {
         guard count > 0 else { return initial }
-        let data = Data(bytes: ptr, count: count)
+        let data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: ptr), count: count, deallocator: .none)
         if initial == 0 {
             return uniffiCrc32(data: data)
         } else {
@@ -172,33 +172,32 @@ public final class AppleLibcompressionAccelerator: @unchecked Sendable {
         return written
     }
     
-    /// Convenience helper compressing Swift `Data` buffers.
+    /// Convenience helper compressing Swift `Data` buffers without zero-filling or double buffering.
     public func compressData(_ data: Data, level: Int = 6) -> Data? {
         guard !data.isEmpty else { return Data() }
         let maxBound = max(data.count + 4096, Int(Double(data.count) * 1.05) + 1024)
-        var dstBuffer = [UInt8](repeating: 0, count: maxBound)
-
-        let written = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
-            guard let base = dstPtr.baseAddress else { return 0 }
-            return CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                self.compress(src: srcPtr, srcSize: count, dst: base, dstCapacity: maxBound, level: level)
-            }
+        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: maxBound, alignment: 1)
+        let written = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
+            self.compress(src: srcPtr, srcSize: count, dst: rawPtr, dstCapacity: maxBound, level: level)
         }
-        guard written > 0 else { return nil }
-        return Data(dstBuffer.prefix(written))
+        guard written > 0 else {
+            rawPtr.deallocate()
+            return nil
+        }
+        return Data(bytesNoCopy: rawPtr, count: written, deallocator: .custom { ptr, _ in ptr.deallocate() })
     }
     
-    /// Convenience helper decompressing Swift `Data` buffers.
+    /// Convenience helper decompressing Swift `Data` buffers without zero-filling or double buffering.
     public func decompressData(_ data: Data, originalSize: Int) -> Data? {
         guard !data.isEmpty else { return Data() }
-        var dstBuffer = [UInt8](repeating: 0, count: originalSize)
-        let actual = dstBuffer.withUnsafeMutableBufferPointer { dstPtr -> Int in
-            guard let base = dstPtr.baseAddress else { return 0 }
-            return CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-                self.decompress(src: srcPtr, srcSize: count, dst: base, dstCapacity: originalSize)
-            }
+        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: originalSize, alignment: 1)
+        let actual = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
+            self.decompress(src: srcPtr, srcSize: count, dst: rawPtr, dstCapacity: originalSize)
         }
-        guard actual == originalSize else { return nil }
-        return Data(dstBuffer)
+        guard actual == originalSize else {
+            rawPtr.deallocate()
+            return nil
+        }
+        return Data(bytesNoCopy: rawPtr, count: actual, deallocator: .custom { ptr, _ in ptr.deallocate() })
     }
 }

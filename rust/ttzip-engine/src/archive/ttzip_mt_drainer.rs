@@ -58,13 +58,16 @@ impl BufferPool {
 
     /// Acquires a pooled buffer with pre-allocated capacity.
     pub fn acquire(self: &Arc<Self>) -> PooledBuffer {
-        let buf = {
+        let mut buf = {
             let mut guard = self.free_buffers.lock();
             guard.pop().unwrap_or_else(|| {
                 self.allocated_count.fetch_add(1, Ordering::Relaxed);
-                vec![0u8; self.chunk_size]
+                Vec::with_capacity(self.chunk_size)
             })
         };
+        if buf.len() < self.chunk_size {
+            buf.resize(self.chunk_size, 0);
+        }
 
         PooledBuffer {
             buffer: buf,
@@ -77,14 +80,14 @@ impl BufferPool {
         let mut guard = self.free_buffers.lock();
         guard.pop().unwrap_or_else(|| {
             self.allocated_count.fetch_add(1, Ordering::Relaxed);
-            vec![0u8; self.chunk_size]
+            Vec::with_capacity(self.chunk_size)
         })
     }
 
     /// Releases a buffer back to the pool.
     pub fn release(&self, mut buf: Vec<u8>) {
         if buf.capacity() >= self.chunk_size {
-            buf.resize(self.chunk_size, 0);
+            buf.clear();
             let mut guard = self.free_buffers.lock();
             if guard.len() < self.max_buffers {
                 guard.push(buf);
@@ -301,6 +304,7 @@ pub struct OrderedDrainer {
     pending_jobs: BTreeMap<u64, CompletedJob>,
     is_finished: bool,
     metrics: PipelineMetrics,
+    pool: Option<Arc<BufferPool>>,
 }
 
 impl Default for OrderedDrainer {
@@ -317,7 +321,14 @@ impl OrderedDrainer {
             pending_jobs: BTreeMap::new(),
             is_finished: false,
             metrics: PipelineMetrics::default(),
+            pool: None,
         }
+    }
+
+    /// Attaches an optional buffer pool to recycle drained output buffers.
+    pub fn with_pool(mut self, pool: Arc<BufferPool>) -> Self {
+        self.pool = Some(pool);
+        self
     }
 
     /// Submits an out-of-order completed job into the reordering queue.
@@ -340,6 +351,10 @@ impl OrderedDrainer {
                     .write_all(&output_data)
                     .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
                 bytes_written += produced_len;
+            }
+
+            if let Some(ref pool) = self.pool {
+                pool.release(output_data);
             }
 
             self.metrics.total_input_bytes =
@@ -422,7 +437,7 @@ impl TTZipMtEngine {
         F: Fn(&[u8]) -> Result<Vec<u8>, TTZipStatus> + Sync + Send,
     {
         self.scheduler.reset_job_counter();
-        let mut drainer = OrderedDrainer::new();
+        let mut drainer = OrderedDrainer::new().with_pool(Arc::clone(&self.buffer_pool));
 
         loop {
             let (jobs, is_eof) =
@@ -432,14 +447,19 @@ impl TTZipMtEngine {
                 break;
             }
 
-            // Parallel execution via Rayon
+            // Parallel execution via Rayon with input buffer recycling
+            let pool_ref = &self.buffer_pool;
+            let worker_ref = &worker;
             let completed_batch = self.scheduler.dispatch_parallel(jobs, |job| {
                 let raw_len = job.input_data.len();
                 let is_last = job.is_last;
                 let job_id = job.job_id;
 
-                let res = worker(&job.input_data);
+                let res = worker_ref(&job.input_data);
                 let processed_len = res.as_ref().map(|v| v.len()).unwrap_or(0);
+
+                // Recycle input data buffer back into pool
+                pool_ref.release(job.input_data);
 
                 CompletedJob {
                     job_id,
@@ -491,3 +511,24 @@ impl TTZipMtEngine {
         })
     }
 }
+
+// MARK: - Thread-Local Worker Buffer
+
+thread_local! {
+    static TLS_WORKER_BUFFER: std::cell::RefCell<Vec<u8>> =
+        std::cell::RefCell::new(Vec::with_capacity(DEFAULT_CHUNK_SIZE));
+}
+
+/// Executes closure using a thread-local reusable scratchpad buffer, eliminating per-chunk allocations.
+#[inline]
+pub fn with_thread_local_buffer<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut Vec<u8>) -> R,
+{
+    TLS_WORKER_BUFFER.with(|cell| {
+        let mut buf = cell.borrow_mut();
+        buf.clear();
+        f(&mut buf)
+    })
+}
+

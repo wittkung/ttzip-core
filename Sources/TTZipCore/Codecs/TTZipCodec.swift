@@ -43,6 +43,7 @@ public enum TTZipCodecAlgorithm: String, Sendable, CaseIterable {
     }
 
     /// Maps algorithm to its corresponding UniFFI compression codec.
+    @inlinable
     public func uniffiCodec(level: Int32 = 6) -> UniFfiCompressionCodec {
         switch self {
         case .deflate: return .deflateRaw
@@ -71,6 +72,7 @@ public enum TTZipCompressionLevel: Sendable, Hashable {
     case custom(Int32)
 
     /// Translates semantic level to algorithm-specific integer level.
+    @inlinable
     public func rawLevel(for algorithm: TTZipCodecAlgorithm) -> Int32 {
         switch self {
         case .store:
@@ -148,6 +150,7 @@ public enum TTZipCodecError: Error, Sendable, LocalizedError {
 public struct TTZipCodec: Sendable {
 
     /// Calculates the maximum theoretical compressed output buffer size in bytes for a given input size.
+    @inlinable
     public static func compressBound(
         uncompressedSize: Int,
         algorithm: TTZipCodecAlgorithm,
@@ -164,6 +167,7 @@ public struct TTZipCodec: Sendable {
     }
 
     /// Compresses in-memory byte buffer using the specified algorithm and level via UniFFI.
+    @inlinable
     public static func compress(
         _ data: Data,
         algorithm: TTZipCodecAlgorithm,
@@ -191,6 +195,7 @@ public struct TTZipCodec: Sendable {
     }
 
     /// Decompresses an in-memory compressed byte buffer via UniFFI.
+    @inlinable
     public static func decompress(
         _ data: Data,
         algorithm: TTZipCodecAlgorithm,

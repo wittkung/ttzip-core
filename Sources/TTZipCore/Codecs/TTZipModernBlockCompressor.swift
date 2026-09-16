@@ -71,29 +71,19 @@ public final class TTZipModernBlockCompressor: Sendable {
         output.reserveCapacity(data.count / 2 + 1024)
 
         // Header: Magic (4B), Version (2B), Algorithm Code (1B), Reserved (1B), Total Chunks (4B), Original Size (8B)
-        var magic = TTZIP_BLOCK_MAGIC.littleEndian
-        var version = UInt16(1).littleEndian
-        var algCode = algorithmCode(for: algorithm)
-        var reserved = UInt8(0)
-        var countField = UInt32(totalChunks).littleEndian
-        var totalSizeField = UInt64(data.count).littleEndian
-
-        output.append(Data(bytes: &magic, count: 4))
-        output.append(Data(bytes: &version, count: 2))
-        output.append(Data(bytes: &algCode, count: 1))
-        output.append(Data(bytes: &reserved, count: 1))
-        output.append(Data(bytes: &countField, count: 4))
-        output.append(Data(bytes: &totalSizeField, count: 8))
+        let algCode = algorithmCode(for: algorithm)
+        output.appendLittleEndian(TTZIP_BLOCK_MAGIC)
+        output.appendLittleEndian(UInt16(1))
+        output.append(algCode)
+        output.append(UInt8(0))
+        output.appendLittleEndian(UInt32(totalChunks))
+        output.appendLittleEndian(UInt64(data.count))
 
         // Write Chunks
         for chunk in compressedChunks {
-            var uSize = chunk.uncompSize.littleEndian
-            var cSize = UInt32(chunk.payload.count).littleEndian
-            var crc = chunk.crc32.littleEndian
-
-            output.append(Data(bytes: &uSize, count: 4))
-            output.append(Data(bytes: &cSize, count: 4))
-            output.append(Data(bytes: &crc, count: 4))
+            output.appendLittleEndian(chunk.uncompSize)
+            output.appendLittleEndian(UInt32(chunk.payload.count))
+            output.appendLittleEndian(chunk.crc32)
             output.append(chunk.payload)
         }
 
@@ -224,6 +214,19 @@ public final class TTZipModernBlockCompressor: Sendable {
         case 12: return .bzip2
         case 13: return .ppmd
         default: return .zstd
+        }
+    }
+}
+
+// MARK: - Zero-Allocation Byte Append Extension
+
+extension Data {
+    /// Appends fixed-width integer value in little-endian order without temporary Data allocations.
+    @inlinable
+    package mutating func appendLittleEndian<T: FixedWidthInteger>(_ value: T) {
+        var leValue = value.littleEndian
+        Swift.withUnsafeBytes(of: &leValue) { buffer in
+            self.append(contentsOf: buffer)
         }
     }
 }

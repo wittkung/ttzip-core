@@ -367,26 +367,26 @@ fn test_master_anti_regression_invariant_6_gate() {
     for i in 0..8 {
         if i % 2 == 0 {
             let (lat1, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&docx_bytes);
                 }
             });
             docx_p1_samples.push(lat1);
             let (lat2, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&docx_bytes);
                 }
             });
             docx_p2_samples.push(lat2);
         } else {
             let (lat2, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&docx_bytes);
                 }
             });
             docx_p2_samples.push(lat2);
             let (lat1, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&docx_bytes);
                 }
             });
@@ -421,26 +421,26 @@ fn test_master_anti_regression_invariant_6_gate() {
     for i in 0..8 {
         if i % 2 == 0 {
             let (lat1, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&xlsx_bytes);
                 }
             });
             xlsx_p1_samples.push(lat1);
             let (lat2, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&xlsx_bytes);
                 }
             });
             xlsx_p2_samples.push(lat2);
         } else {
             let (lat2, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&xlsx_bytes);
                 }
             });
             xlsx_p2_samples.push(lat2);
             let (lat1, _) = measure_workload(|| {
-                for _ in 0..50 {
+                for _ in 0..200 {
                     let _ = parse_office_metadata_from_slice(&xlsx_bytes);
                 }
             });

@@ -9,7 +9,7 @@
 
 use std::io::{self, Read, Write};
 
-use crate::api::stratification::simple::{simple_compress, simple_decompress};
+use crate::api::stratification::simple::{simple_compress, simple_decompress_to_slice};
 use crate::types::{TTZipArchiveFormat, TTZipCompressionLevel, TTZipStatus};
 
 /// Operational state cursor tracking byte progress and stream status.
@@ -149,6 +149,7 @@ pub struct StreamDecompressor<R: Read> {
     cursor: StreamCursor,
     in_buffer: Vec<u8>,
     out_buffer: Vec<u8>,
+    staging_buf: Vec<u8>,
     out_offset: usize,
 }
 
@@ -161,6 +162,7 @@ impl<R: Read> StreamDecompressor<R> {
             cursor: StreamCursor::default(),
             in_buffer: vec![0u8; 64 * 1024],
             out_buffer: Vec::new(),
+            staging_buf: Vec::with_capacity(64 * 1024),
             out_offset: 0,
         }
     }
@@ -177,6 +179,12 @@ impl<R: Read> StreamDecompressor<R> {
     #[must_use]
     pub fn is_finished(&self) -> bool {
         self.cursor.is_finished
+    }
+
+    /// Decompresses the next chunk into destination slice (alias to `read_chunk`).
+    #[inline]
+    pub fn decompress_chunk(&mut self, dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+        self.read_chunk(dst)
     }
 
     /// Reads decompressed bytes into the caller-provided destination slice.
@@ -211,8 +219,43 @@ impl<R: Read> StreamDecompressor<R> {
         }
 
         self.cursor.bytes_in += n as u64;
-        let decompressed = simple_decompress(&self.in_buffer[..n], self.format)?;
-        self.out_buffer = decompressed;
+
+        // In-place decompression buffer reuse: clear and adapt capacity without reallocating
+        self.staging_buf.clear();
+        let estimated_cap = n.saturating_mul(4).max(1024);
+        if self.staging_buf.capacity() < estimated_cap {
+            self.staging_buf.reserve(estimated_cap - self.staging_buf.capacity());
+        }
+        self.staging_buf.resize(self.staging_buf.capacity(), 0);
+
+        let mut success = false;
+        for _ in 0..6 {
+            match simple_decompress_to_slice(
+                &self.in_buffer[..n],
+                &mut self.staging_buf,
+                self.format,
+            ) {
+                Ok(written) => {
+                    self.staging_buf.truncate(written);
+                    success = true;
+                    break;
+                }
+                Err(TTZipStatus::ErrExtractionFailed) | Err(TTZipStatus::ErrInvalidParam) => {
+                    let cur_len = self.staging_buf.len();
+                    let new_len = cur_len.saturating_mul(2).min(1024 * 1024 * 1024);
+                    if new_len == cur_len {
+                        return Err(TTZipStatus::ErrExtractionFailed);
+                    }
+                    self.staging_buf.resize(new_len, 0);
+                }
+                Err(status) => return Err(status),
+            }
+        }
+        if !success {
+            return Err(TTZipStatus::ErrExtractionFailed);
+        }
+
+        std::mem::swap(&mut self.out_buffer, &mut self.staging_buf);
         self.out_offset = 0;
 
         let to_copy = self.out_buffer.len().min(dst.len());

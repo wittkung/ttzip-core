@@ -8,10 +8,7 @@
 //! Libarchive Stream Writing adapter and C-ABI trampolines.
 
 use super::read::{archive_close_callback_trampoline, archive_open_callback_trampoline};
-use super::{
-    ARCHIVE_FATAL, ARCHIVE_OK, DEFAULT_STREAM_BUFFER_SIZE, MAX_STREAM_BUFFER_SIZE,
-    StreamStateSnapshot,
-};
+use super::{ARCHIVE_FATAL, ARCHIVE_OK, StreamStateSnapshot};
 use crate::types::TTZipStatus;
 use std::io::Write;
 use std::panic::catch_unwind;
@@ -20,19 +17,16 @@ use std::pin::Pin;
 /// Internal state for custom stream writing callbacks.
 pub struct StreamWriterState<W> {
     pub writer: W,
-    pub buffer: Vec<u8>,
     pub bytes_written: u64,
     pub has_error: bool,
     pub last_error_msg: Option<String>,
 }
 
 impl<W: Write> StreamWriterState<W> {
-    /// Creates a new `StreamWriterState` with the specified micro-buffer capacity.
-    pub fn new(writer: W, buffer_size: usize) -> Self {
-        let cap = buffer_size.clamp(DEFAULT_STREAM_BUFFER_SIZE, MAX_STREAM_BUFFER_SIZE);
+    /// Creates a new `StreamWriterState`.
+    pub fn new(writer: W, _buffer_size: usize) -> Self {
         Self {
             writer,
-            buffer: Vec::with_capacity(cap),
             bytes_written: 0,
             has_error: false,
             last_error_msg: None,

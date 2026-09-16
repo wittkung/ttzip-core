@@ -463,16 +463,16 @@ impl InPlaceBufferPool {
     pub fn acquire_with_capacity(&self, min_capacity_bytes: usize) -> InPlaceBufferGuard {
         let mut guard = self.inner.buffers.lock().unwrap_or_else(|e| e.into_inner());
 
-        let mut buffer = if let Some(mut buf) = guard.pop() {
-            if buf.len() < min_capacity_bytes {
-                buf.resize(min_capacity_bytes, 0);
+        let target_len = min_capacity_bytes.max(self.inner.slot_capacity_bytes);
+        let buffer = if let Some(mut buf) = guard.pop() {
+            if buf.len() < target_len {
+                buf.resize(target_len, 0);
             }
             buf
         } else {
-            vec![0u8; min_capacity_bytes.max(self.inner.slot_capacity_bytes)]
+            vec![0u8; target_len]
         };
 
-        buffer.fill(0);
         self.inner.active_leases.fetch_add(1, Ordering::Relaxed);
 
         InPlaceBufferGuard {
@@ -561,6 +561,14 @@ impl InPlaceBufferGuard {
     ) -> Result<InPlaceOutputWriter<'_>, InPlaceError> {
         let slice = self.as_mut_slice();
         InPlaceOutputWriter::new(slice, entry_size, safety_margin)
+    }
+
+    /// Clears the underlying buffer without releasing allocated capacity.
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        if let Some(buf) = self.buffer.as_mut() {
+            buf.clear();
+        }
     }
 }
 
@@ -711,8 +719,9 @@ mod tests {
 
         {
             let guard2 = pool.acquire();
-            // Recycled buffer is zero-filled upon acquisition
-            assert_eq!(guard2[0], 0);
+            // Recycled buffer retains memory without full zero-fill cache flush
+            assert_eq!(guard2.len(), 1024);
+            assert_eq!(guard2[0], 42);
             assert_eq!(pool.idle_count(), 0);
             assert_eq!(pool.active_leases(), 1);
         }

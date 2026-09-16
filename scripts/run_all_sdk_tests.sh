@@ -82,14 +82,34 @@ run_suite() {
     TMP_LOG=$(mktemp)
     if [ "${stream_progress}" = "true" ]; then
         local count=0
+        local total_targets=""
+        if [ "${key}" = "rust" ]; then
+            local test_files=$(find rust/ttzip-engine/tests -maxdepth 1 -name "*.rs" 2>/dev/null | wc -l | tr -d ' ')
+            total_targets=$((test_files + 1))
+        fi
+        local total_display="${total_targets:-?}"
+        local current_target=""
+        local regex_result="test result: ([a-zA-Z]+)\. ([0-9]+) passed; ([0-9]+) failed;.*finished in ([0-9.]+[a-zA-Z]*)"
         eval "${cmd}" 2>&1 | tee "${TMP_LOG}" | while IFS= read -r line; do
             if [[ "${line}" =~ Running[[:space:]]+(tests/[^[:space:]]+|unittests[[:space:]]+src/lib\.rs) ]]; then
+                if [ -n "${current_target}" ]; then
+                    printf "    ⚠️  [%3d/%s] %-42s unclosed\n" "${count}" "${total_display}" "${current_target}"
+                fi
+                current_target="${BASH_REMATCH[1]}"
                 count=$((count + 1))
-                local target="${BASH_REMATCH[1]}"
-                printf "\r\033[K    ⚡️ [%3d] %s" "${count}" "${target}"
+            elif [[ -n "${current_target}" && "${line}" =~ ${regex_result} ]]; then
+                local res="${BASH_REMATCH[1]}"
+                local passed_cnt="${BASH_REMATCH[2]}"
+                local failed_cnt="${BASH_REMATCH[3]}"
+                local dur_str="${BASH_REMATCH[4]}"
+                if [ "${res}" = "ok" ] && [ "${failed_cnt}" = "0" ]; then
+                    printf "    ⚡️ [%3d/%s] %-42s ok (%s passed, %s)\n" "${count}" "${total_display}" "${current_target}" "${passed_cnt}" "${dur_str}"
+                else
+                    printf "    ❌ [%3d/%s] %-42s FAILED (%s failed, %s)\n" "${count}" "${total_display}" "${current_target}" "${failed_cnt}" "${dur_str}"
+                fi
+                current_target=""
             fi
         done
-        printf "\r\033[K"
         local exit_code="${PIPESTATUS[0]}"
     else
         eval "${cmd}" > "${TMP_LOG}" 2>&1

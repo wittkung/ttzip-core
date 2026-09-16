@@ -30,6 +30,7 @@ public let TTZIP_KIND_BINARY = TTZipFileKind.binary
 public enum NativeMicrokernelBridge {
     
     /// Sniffs file format magic numbers in constant time using Rust SIMD sniffer.
+    @inlinable
     public static func sniffMagic(data: Data) -> (kind: TTZipFileKind, format: String, mime: String) {
         guard data.count >= 2 else {
             return (.unknown, "UNKNOWN", "application/octet-stream")
@@ -53,11 +54,13 @@ public enum NativeMicrokernelBridge {
     }
     
     /// Fast natural sort on paths backed by pure Rust UniFFI kernel.
+    @inlinable
     public static func naturalSort(_ paths: [String]) -> [String] {
         return naturalSortPaths(items: paths)
     }
 
     /// Natural string comparator backed by pure Rust UniFFI kernel.
+    @inlinable
     public static func naturalCompare(_ a: String, _ b: String) -> ComparisonResult {
         let cmp = TTZipCore.naturalCompare(a: a, b: b)
         if cmp < 0 { return .orderedAscending }
@@ -66,6 +69,7 @@ public enum NativeMicrokernelBridge {
     }
     
     /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from a file path using pure Rust UniFFI kernel.
+    @inlinable
     public static func extractAudioWaveform(path: String, bucketCount: Int = 36) -> [Float] {
         if let result = try? TTZipCore.extractAudioWaveform(path: path, bucketCount: UInt32(bucketCount)), !result.isEmpty {
             return result
@@ -78,6 +82,7 @@ public enum NativeMicrokernelBridge {
     }
     
     /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from memory data using pure Rust UniFFI kernel.
+    @inlinable
     public static func extractAudioWaveformFromMemory(data: Data, bucketCount: Int = 36) -> [Float] {
         if let result = try? TTZipCore.extractAudioWaveformFromMemory(data: data, bucketCount: UInt32(bucketCount)), !result.isEmpty {
             return result
