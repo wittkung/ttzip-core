@@ -430,19 +430,23 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     hpos += 1;
                     let mut name_pos = hpos;
                     let mut name_bytes_left = prop_size.saturating_sub(1);
+                    let mut u16_chars = Vec::new();
 
                     for f in 0..num_files {
-                        let mut u16_chars = Vec::new();
+                        u16_chars.clear();
                         while name_bytes_left >= 2 {
-                            let ch = u16::from_le_bytes(hp[name_pos..name_pos + 2].try_into().unwrap());
+                            let mut ch = u16::from_le_bytes(hp[name_pos..name_pos + 2].try_into().unwrap());
                             name_pos += 2;
                             name_bytes_left -= 2;
                             if ch == 0 {
                                 break;
                             }
+                            if ch == 0x005C {
+                                ch = 0x002F;
+                            }
                             u16_chars.push(ch);
                         }
-                        let utf8_name = String::from_utf16_lossy(&u16_chars).replace('\\', "/");
+                        let utf8_name = String::from_utf16_lossy(&u16_chars);
                         out_info.files[f].rel_path = utf8_name;
                     }
                     hpos = prop_end;

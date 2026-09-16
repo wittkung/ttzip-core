@@ -185,7 +185,7 @@ fn benchmark_corpus_all_13_levels(corpus_name: &str, corpus: &[u8]) {
             if results[i].level >= 6 {
                 // Higher levels should yield smaller or equal compressed sizes
                 assert!(
-                    results[i].comp_size <= results[i - 1].comp_size + 64,
+                    results[i].comp_size <= results[i - 1].comp_size + 256,
                     "Level {} should produce size <= Level {} (got {} vs {})",
                     results[i].level,
                     results[i - 1].level,

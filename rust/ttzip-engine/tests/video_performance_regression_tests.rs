@@ -374,26 +374,34 @@ fn test_video_anti_regression_invariant6_gate() {
     for i in 0..6 {
         if i % 2 == 0 {
             let (lat_b, _) = measure_workload(|| {
-                let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
-                let _ = probe_metadata_buffer(&mkv_data, None, None);
+                for _ in 0..10 {
+                    let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
+                    let _ = probe_metadata_buffer(&mkv_data, None, None);
+                }
             });
             baseline_samples.push(lat_b);
 
             let (lat_c, _) = measure_workload(|| {
-                let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
-                let _ = probe_metadata_buffer(&mkv_data, None, None);
+                for _ in 0..10 {
+                    let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
+                    let _ = probe_metadata_buffer(&mkv_data, None, None);
+                }
             });
             candidate_samples.push(lat_c);
         } else {
             let (lat_c, _) = measure_workload(|| {
-                let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
-                let _ = probe_metadata_buffer(&mkv_data, None, None);
+                for _ in 0..10 {
+                    let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
+                    let _ = probe_metadata_buffer(&mkv_data, None, None);
+                }
             });
             candidate_samples.push(lat_c);
 
             let (lat_b, _) = measure_workload(|| {
-                let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
-                let _ = probe_metadata_buffer(&mkv_data, None, None);
+                for _ in 0..10 {
+                    let _ = demux_media_tracks_from_slice(&mp4_data).unwrap();
+                    let _ = probe_metadata_buffer(&mkv_data, None, None);
+                }
             });
             baseline_samples.push(lat_b);
         }

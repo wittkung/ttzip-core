@@ -131,12 +131,13 @@ async function compress(inputs, destination, options = {}) {
   return native.compress(inputs, destination, options);
 }
 
-async function extract(archivePath, destination, options = {}) {
+async function extract(archivePath, destination, options) {
   requireNativeBinding('extract');
   if (typeof native.extract !== 'function') {
     throw new Error('Native binding does not implement extract');
   }
-  return native.extract(archivePath, destination, options);
+  const opts = options ? { destination, ...options } : null;
+  return native.extract(archivePath, destination, opts);
 }
 
 async function inspect(archivePath, password) {

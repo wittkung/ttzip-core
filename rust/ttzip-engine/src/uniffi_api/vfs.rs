@@ -66,9 +66,8 @@ impl UniFFIVfsTree {
             if clean.is_empty() {
                 &guard.root
             } else {
-                let segments: Vec<&str> = clean.split('/').collect();
                 let mut curr = &guard.root;
-                for seg in segments {
+                for seg in clean.split('/').filter(|s| !s.is_empty()) {
                     if let Some(child) = curr.children.iter().find(|c| c.name == seg && c.is_directory) {
                         curr = child;
                     } else {

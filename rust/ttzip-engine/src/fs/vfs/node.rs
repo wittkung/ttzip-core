@@ -23,48 +23,49 @@ pub struct VfsEntry {
 }
 
 /// A node in the hierarchical VFS tree.
+/// Fields ordered by alignment descending (8B -> 4B -> 1B) to eliminate internal padding holes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VfsNode {
+    pub children: Vec<VfsNode>,
     pub name: String,
     pub path: String,
-    pub is_directory: bool,
     pub uncompressed_size: u64,
     pub compressed_size: u64,
-    pub crc32: u32,
     pub mtime_epoch_secs: i64,
+    pub crc32: u32,
     pub mode: u32,
+    pub is_directory: bool,
     pub is_encrypted: bool,
-    pub children: Vec<VfsNode>,
 }
 
 impl VfsNode {
     pub fn new_dir(name: &str, path: &str) -> Self {
         Self {
+            children: Vec::new(),
             name: name.to_string(),
             path: path.to_string(),
-            is_directory: true,
             uncompressed_size: 0,
             compressed_size: 0,
-            crc32: 0,
             mtime_epoch_secs: 0,
+            crc32: 0,
             mode: 0o755,
+            is_directory: true,
             is_encrypted: false,
-            children: Vec::new(),
         }
     }
 
     pub fn new_file(name: &str, entry: &VfsEntry) -> Self {
         Self {
+            children: Vec::new(),
             name: name.to_string(),
             path: entry.path.clone(),
-            is_directory: entry.is_directory,
             uncompressed_size: entry.uncompressed_size,
             compressed_size: entry.compressed_size,
-            crc32: entry.crc32,
             mtime_epoch_secs: entry.mtime_epoch_secs,
+            crc32: entry.crc32,
             mode: entry.mode,
+            is_directory: entry.is_directory,
             is_encrypted: entry.is_encrypted,
-            children: Vec::new(),
         }
     }
 
@@ -86,23 +87,37 @@ impl VfsNode {
         }
     }
 
-/// Zero-allocation case-insensitive string comparator avoiding String allocation churn.
-#[inline]
-pub fn cmp_case_insensitive(a: &str, b: &str) -> Ordering {
-    let mut it_a = a.chars().flat_map(|c| c.to_lowercase());
-    let mut it_b = b.chars().flat_map(|c| c.to_lowercase());
-    loop {
-        match (it_a.next(), it_b.next()) {
-            (Some(x), Some(y)) => match x.cmp(&y) {
-                Ordering::Equal => continue,
-                ord => return ord,
-            },
-            (None, None) => return Ordering::Equal,
-            (None, Some(_)) => return Ordering::Less,
-            (Some(_), None) => return Ordering::Greater,
+    /// Zero-allocation case-insensitive string comparator avoiding String allocation churn.
+    #[inline]
+    pub fn cmp_case_insensitive(a: &str, b: &str) -> Ordering {
+        if a.is_ascii() && b.is_ascii() {
+            let bytes_a = a.as_bytes();
+            let bytes_b = b.as_bytes();
+            let min_len = bytes_a.len().min(bytes_b.len());
+            for i in 0..min_len {
+                let ca = bytes_a[i].to_ascii_lowercase();
+                let cb = bytes_b[i].to_ascii_lowercase();
+                if ca != cb {
+                    return ca.cmp(&cb);
+                }
+            }
+            return bytes_a.len().cmp(&bytes_b.len());
+        }
+
+        let mut it_a = a.chars().flat_map(|c| c.to_lowercase());
+        let mut it_b = b.chars().flat_map(|c| c.to_lowercase());
+        loop {
+            match (it_a.next(), it_b.next()) {
+                (Some(x), Some(y)) => match x.cmp(&y) {
+                    Ordering::Equal => continue,
+                    ord => return ord,
+                },
+                (None, None) => return Ordering::Equal,
+                (None, Some(_)) => return Ordering::Less,
+                (Some(_), None) => return Ordering::Greater,
+            }
         }
     }
-}
 
     /// Sorts children: directories first, then alphabetical by name.
     pub fn sort_recursive(&mut self) {
@@ -188,5 +203,22 @@ pub fn format_byte_size(bytes: u64) -> String {
     } else {
         let gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
         format!("{:.2} GB", gb)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vfs_node_memory_layout() {
+        assert_eq!(std::mem::size_of::<VfsNode>(), 112);
+    }
+
+    #[test]
+    fn test_cmp_case_insensitive() {
+        assert_eq!(VfsNode::cmp_case_insensitive("abc", "ABC"), Ordering::Equal);
+        assert_eq!(VfsNode::cmp_case_insensitive("abc", "abd"), Ordering::Less);
+        assert_eq!(VfsNode::cmp_case_insensitive("xyz", "ABC"), Ordering::Greater);
     }
 }

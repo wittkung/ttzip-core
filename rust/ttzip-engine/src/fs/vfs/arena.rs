@@ -10,6 +10,39 @@
 use crate::types::{TTZipPackedEntryArray, TTZipVfsNodeSummary};
 use std::collections::HashMap;
 use std::ffi::c_char;
+use std::hash::{BuildHasher, Hasher};
+
+/// Ultra-fast zero-dependency 64-bit FxHash algorithm for VFS lookup tables.
+#[derive(Default)]
+pub struct FxHasher {
+    hash: usize,
+}
+
+impl Hasher for FxHasher {
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.hash as u64
+    }
+
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.hash = (self.hash.rotate_left(5) ^ (byte as usize)).wrapping_mul(0x517cc1b727220a95);
+        }
+    }
+}
+
+/// BuildHasher provider for `FxHasher`.
+#[derive(Clone, Copy, Default)]
+pub struct FxBuildHasher;
+
+impl BuildHasher for FxBuildHasher {
+    type Hasher = FxHasher;
+    #[inline]
+    fn build_hasher(&self) -> Self::Hasher {
+        FxHasher::default()
+    }
+}
 
 pub const VFS_NULL_NODE: u32 = u32::MAX;
 
@@ -91,8 +124,16 @@ impl VfsArena {
     /// Allocates a new node in the SoA arena and returns its node ID.
     pub fn alloc_node(&mut self, params: VfsNodeAllocParams<'_>) -> u32 {
         let id = self.total_nodes as u32;
-        let (name_off, name_len) = self.intern_string(params.name);
-        let (path_off, path_len) = self.intern_string(params.full_path);
+        let name_len = params.name.len() as u32;
+        let (name_off, path_off, path_len) = if !params.full_path.is_empty() && params.full_path.ends_with(params.name) {
+            let (poff, plen) = self.intern_string(params.full_path);
+            let noff = poff + (plen - name_len);
+            (noff, poff, plen)
+        } else {
+            let (noff, _) = self.intern_string(params.name);
+            let (poff, plen) = self.intern_string(params.full_path);
+            (noff, poff, plen)
+        };
 
         self.name_offsets.push(name_off);
         self.name_lens.push(name_len);
@@ -144,8 +185,9 @@ impl VfsArena {
             parent_id: VFS_NULL_NODE,
         });
 
-        let mut dir_map: HashMap<String, u32> = HashMap::with_capacity(count / 4 + 16);
-        dir_map.insert(String::new(), root_id);
+        let mut dir_map: HashMap<&str, u32, FxBuildHasher> =
+            HashMap::with_capacity_and_hasher(count / 4 + 16, FxBuildHasher);
+        dir_map.insert("", root_id);
 
         let raw_utf8 = unsafe {
             std::slice::from_raw_parts(packed.utf8_bytes, packed.total_bytes_len)
@@ -196,7 +238,7 @@ impl VfsArena {
                         parent_id: curr_parent_id,
                     });
                     arena.add_child(curr_parent_id, dir_id);
-                    dir_map.insert(clean_path.to_string(), dir_id);
+                    dir_map.insert(clean_path, dir_id);
                 }
             } else {
                 let file_id = arena.alloc_node(VfsNodeAllocParams {
@@ -357,10 +399,10 @@ impl VfsArena {
     }
 }
 
-fn ensure_directory(
+fn ensure_directory<'a>(
     arena: &mut VfsArena,
-    dir_map: &mut HashMap<String, u32>,
-    parent_path: &str,
+    dir_map: &mut HashMap<&'a str, u32, FxBuildHasher>,
+    parent_path: &'a str,
     mtime: i64,
     root_id: u32,
 ) -> u32 {
@@ -371,23 +413,21 @@ fn ensure_directory(
         return id;
     }
 
-    let mut accumulated = String::new();
+    let path_start = parent_path.as_ptr() as usize;
     let mut p_id = root_id;
     for segment in parent_path.split('/') {
         if segment.is_empty() {
             continue;
         }
-        if !accumulated.is_empty() {
-            accumulated.push('/');
-        }
-        accumulated.push_str(segment);
+        let seg_end = (segment.as_ptr() as usize + segment.len()) - path_start;
+        let prefix = &parent_path[..seg_end];
 
-        if let Some(&existing_id) = dir_map.get(&accumulated) {
+        if let Some(&existing_id) = dir_map.get(prefix) {
             p_id = existing_id;
         } else {
             let new_dir_id = arena.alloc_node(VfsNodeAllocParams {
                 name: segment,
-                full_path: &accumulated,
+                full_path: prefix,
                 uncompressed_size: 0,
                 compressed_size: 0,
                 crc32: 0,
@@ -397,9 +437,57 @@ fn ensure_directory(
                 parent_id: p_id,
             });
             arena.add_child(p_id, new_dir_id);
-            dir_map.insert(accumulated.clone(), new_dir_id);
+            dir_map.insert(prefix, new_dir_id);
             p_id = new_dir_id;
         }
     }
     p_id
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fx_hasher_basic() {
+        let mut hasher1 = FxHasher::default();
+        hasher1.write(b"dir/file.txt");
+        let hash1 = hasher1.finish();
+
+        let mut hasher2 = FxHasher::default();
+        hasher2.write(b"dir/file.bin");
+        let hash2 = hasher2.finish();
+
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_arena_alloc_node_intern_slice() {
+        let mut arena = VfsArena::with_capacity(10);
+        let id = arena.alloc_node(VfsNodeAllocParams {
+            name: "file.txt",
+            full_path: "documents/file.txt",
+            uncompressed_size: 100,
+            compressed_size: 50,
+            crc32: 0x12345678,
+            mtime: 1000,
+            mode: 0o644,
+            flags: 0,
+            parent_id: VFS_NULL_NODE,
+        });
+
+        assert_eq!(id, 0);
+        let name_off = arena.name_offsets[0] as usize;
+        let name_len = arena.name_lens[0] as usize;
+        let path_off = arena.full_path_offsets[0] as usize;
+        let path_len = arena.full_path_lens[0] as usize;
+
+        let name = std::str::from_utf8(&arena.string_arena[name_off..name_off + name_len]).unwrap();
+        let path = std::str::from_utf8(&arena.string_arena[path_off..path_off + path_len]).unwrap();
+
+        assert_eq!(name, "file.txt");
+        assert_eq!(path, "documents/file.txt");
+        // Verify name points directly inside full_path buffer without double interning
+        assert_eq!(name_off, path_off + (path_len - name_len));
+    }
 }

@@ -26,32 +26,30 @@ impl<R: Read> Bzip2Reader<R> {
         inner.read_to_end(&mut raw_compressed)?;
 
         let mut decompressed_buf = Vec::new();
-        if !raw_compressed.is_empty() {
-            if raw_compressed.len() < 4
-                || raw_compressed[0] != b'B'
-                || raw_compressed[1] != b'Z'
-                || raw_compressed[2] != b'h'
-                || !(b'1'..=b'9').contains(&raw_compressed[3])
-            {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid Bzip2 stream header",
-                ));
-            }
+        if raw_compressed.len() < 4
+            || raw_compressed[0] != b'B'
+            || raw_compressed[1] != b'Z'
+            || raw_compressed[2] != b'h'
+            || !(b'1'..=b'9').contains(&raw_compressed[3])
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid Bzip2 stream header",
+            ));
+        }
 
-            let mut reader = BitReader::new(&raw_compressed[4..]);
-            let mut combined_crc = Bzip2CombinedCrc::new();
+        let mut reader = BitReader::new(&raw_compressed[4..]);
+        let mut combined_crc = Bzip2CombinedCrc::new();
 
-            loop {
-                match decode_bzip2_block(&mut reader, &mut decompressed_buf, &mut combined_crc) {
-                    Ok(true) => continue, // More blocks
-                    Ok(false) => break,  // EOS reached
-                    Err(e) => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!("Bzip2 decode error: {:?}", e),
-                        ))
-                    }
+        loop {
+            match decode_bzip2_block(&mut reader, &mut decompressed_buf, &mut combined_crc) {
+                Ok(true) => continue, // More blocks
+                Ok(false) => break,  // EOS reached
+                Err(e) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Bzip2 decode error: {:?}", e),
+                    ))
                 }
             }
         }

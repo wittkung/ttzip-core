@@ -298,7 +298,7 @@ fn detect_encoding_internal(data: &[u8]) -> UniFFIDetectedEncoding {
     let (cow, _, had_errors) = encoding.decode(sample_slice);
 
     UniFFIDetectedEncoding {
-        encoding_name: detected_name,
+        encoding_name: detected_name.to_string(),
         confidence: conf,
         is_lossless: !had_errors,
         sample_preview: cow.into_owned(),
@@ -372,7 +372,10 @@ fn remediate_filename_internal(raw_bytes: &[u8], fallback_encoding: Option<&str>
         Some(fb) if !fb.trim().is_empty() && !fb.eq_ignore_ascii_case("auto") => {
             (fb.to_string(), 1.0)
         }
-        _ => detect_charset_with_confidence(raw_bytes),
+        _ => {
+            let (name, conf) = detect_charset_with_confidence(raw_bytes);
+            (name.to_string(), conf)
+        }
     };
 
     let encoding = lookup_encoding(&encoding_name);
@@ -409,7 +412,10 @@ fn remediate_mojibake_internal(text: &str, source_encoding: Option<&str>) -> Uni
         Some(src) if !src.trim().is_empty() && !src.eq_ignore_ascii_case("auto") => {
             (src.to_string(), 1.0)
         }
-        _ => detect_charset_with_confidence(&raw_bytes),
+        _ => {
+            let (name, conf) = detect_charset_with_confidence(&raw_bytes);
+            (name.to_string(), conf)
+        }
     };
 
     let encoding = lookup_encoding(&encoding_name);

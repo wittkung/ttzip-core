@@ -44,23 +44,15 @@ pub unsafe fn aes256_ctr_crypt_neon(
         let c6 = initial_counter + (i as u64) + 6;
         let c7 = initial_counter + (i as u64) + 7;
 
-        let ctr0: [u64; 2] = [c0, 0];
-        let ctr1: [u64; 2] = [c1, 0];
-        let ctr2: [u64; 2] = [c2, 0];
-        let ctr3: [u64; 2] = [c3, 0];
-        let ctr4: [u64; 2] = [c4, 0];
-        let ctr5: [u64; 2] = [c5, 0];
-        let ctr6: [u64; 2] = [c6, 0];
-        let ctr7: [u64; 2] = [c7, 0];
-
-        let mut b0 = vld1q_u8(ctr0.as_ptr() as *const u8);
-        let mut b1 = vld1q_u8(ctr1.as_ptr() as *const u8);
-        let mut b2 = vld1q_u8(ctr2.as_ptr() as *const u8);
-        let mut b3 = vld1q_u8(ctr3.as_ptr() as *const u8);
-        let mut b4 = vld1q_u8(ctr4.as_ptr() as *const u8);
-        let mut b5 = vld1q_u8(ctr5.as_ptr() as *const u8);
-        let mut b6 = vld1q_u8(ctr6.as_ptr() as *const u8);
-        let mut b7 = vld1q_u8(ctr7.as_ptr() as *const u8);
+        let zero = vdup_n_u64(0);
+        let mut b0 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c0), zero));
+        let mut b1 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c1), zero));
+        let mut b2 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c2), zero));
+        let mut b3 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c3), zero));
+        let mut b4 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c4), zero));
+        let mut b5 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c5), zero));
+        let mut b6 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c6), zero));
+        let mut b7 = vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(c7), zero));
 
         for r in 0..13 {
             b0 = vaesmcq_u8(vaeseq_u8(b0, rk[r]));

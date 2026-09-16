@@ -235,7 +235,7 @@ pub fn adler32_fast(adler: u32, data: &[u8]) -> u32 {
 
     #[cfg(not(target_arch = "aarch64"))]
     {
-        scalar::adler32_scalar(adler, data)
+        adler2::adler32_slice(adler, data)
     }
 }
 

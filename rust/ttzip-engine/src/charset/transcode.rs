@@ -96,12 +96,17 @@ pub fn sanitize_filename(data: &[u8]) -> String {
     if data.is_empty() {
         return String::new();
     }
+    // SIMD ASCII Fast-Path
+    if data.is_ascii() {
+        // SAFETY: Pure ASCII bytes are guaranteed valid UTF-8.
+        return unsafe { String::from_utf8_unchecked(data.to_vec()) };
+    }
     if let Ok(s) = std::str::from_utf8(data) {
         return s.to_string();
     }
     let (detected, conf) = crate::charset::detect_charset_with_confidence(data);
     if conf >= 0.20 && detected != "UTF-8" {
-        if let Ok(transcoded) = transcode_to_utf8(data, &detected) {
+        if let Ok(transcoded) = transcode_to_utf8(data, detected) {
             return transcoded;
         }
     }

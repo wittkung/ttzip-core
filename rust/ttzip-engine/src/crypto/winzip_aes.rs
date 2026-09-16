@@ -294,8 +294,17 @@ impl WinZipAesCtr {
             self.counter = self.counter.wrapping_add(1);
             self.engine.encrypt_block(&mut block);
 
-            for i in 0..16 {
-                data[offset + i] ^= block[i];
+            if let Ok(chunk) = <&mut [u8; 16]>::try_from(&mut data[offset..offset + 16]) {
+                let d0 = u64::from_ne_bytes(chunk[..8].try_into().unwrap());
+                let d1 = u64::from_ne_bytes(chunk[8..].try_into().unwrap());
+                let b0 = u64::from_ne_bytes(block[..8].try_into().unwrap());
+                let b1 = u64::from_ne_bytes(block[8..].try_into().unwrap());
+                chunk[..8].copy_from_slice(&(d0 ^ b0).to_ne_bytes());
+                chunk[8..].copy_from_slice(&(d1 ^ b1).to_ne_bytes());
+            } else {
+                for i in 0..16 {
+                    data[offset + i] ^= block[i];
+                }
             }
             offset += 16;
         }

@@ -222,11 +222,7 @@ pub fn decode_bzip2_block(
     combined_crc: &mut Bzip2CombinedCrc,
 ) -> Result<bool, TTZipStatus> {
     // 1. Read first byte to determine if Block Magic (0x31) or EOS Magic (0x17)
-    let first_byte = match reader.read_bits(8) {
-        Ok(b) => b as u8,
-        Err(TTZipStatus::ErrCorruptHeader) => return Ok(false), // Normal EOF
-        Err(e) => return Err(e),
-    };
+    let first_byte = reader.read_bits(8)? as u8;
 
     if first_byte == BZIP2_EOS_MAGIC[0] {
         // Read remaining 5 bytes of EOS Magic

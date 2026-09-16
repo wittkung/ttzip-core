@@ -40,52 +40,40 @@ pub fn update_keys_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, plain_by
 /// Decrypts a contiguous buffer in-place with loop unrolling.
 #[inline]
 pub fn decrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data: &mut [u8]) {
-    let mut i = 0;
-    let len = data.len();
-
-    // 8x unrolled loop
-    while i + 8 <= len {
-        for offset in 0..8 {
+    let mut chunks = data.chunks_exact_mut(8);
+    for chunk in chunks.by_ref() {
+        for b in chunk.iter_mut() {
             let k = decrypt_byte_key(*key2);
-            let p = data[i + offset] ^ k;
-            data[i + offset] = p;
+            let p = *b ^ k;
+            *b = p;
             update_keys_fast(key0, key1, key2, p);
         }
-        i += 8;
     }
-
-    while i < len {
+    for b in chunks.into_remainder().iter_mut() {
         let k = decrypt_byte_key(*key2);
-        let p = data[i] ^ k;
-        data[i] = p;
+        let p = *b ^ k;
+        *b = p;
         update_keys_fast(key0, key1, key2, p);
-        i += 1;
     }
 }
 
 /// Encrypts a contiguous buffer in-place with loop unrolling.
 #[inline]
 pub fn encrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data: &mut [u8]) {
-    let mut i = 0;
-    let len = data.len();
-
-    // 8x unrolled loop
-    while i + 8 <= len {
-        for offset in 0..8 {
-            let p = data[i + offset];
+    let mut chunks = data.chunks_exact_mut(8);
+    for chunk in chunks.by_ref() {
+        for b in chunk.iter_mut() {
+            let p = *b;
             let k = decrypt_byte_key(*key2);
-            data[i + offset] = p ^ k;
+            *b = p ^ k;
             update_keys_fast(key0, key1, key2, p);
         }
-        i += 8;
     }
-
-    while i < len {
-        let p = data[i];
+    for b in chunks.into_remainder().iter_mut() {
+        let p = *b;
         let k = decrypt_byte_key(*key2);
-        data[i] = p ^ k;
+        *b = p ^ k;
         update_keys_fast(key0, key1, key2, p);
-        i += 1;
     }
 }
 

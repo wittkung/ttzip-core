@@ -208,6 +208,7 @@ impl HardwareSha256 {
     }
 
     /// Computes one-shot SHA-256 digest of input data.
+    #[inline]
     pub fn digest(data: &[u8]) -> [u8; 32] {
         let mut hasher = Self::new();
         hasher.update(data);
@@ -224,6 +225,7 @@ impl HardwareSha256 {
     }
 
     /// Consumes arbitrary-length input slice and updates running SHA-256 digest.
+    #[inline]
     pub fn update(&mut self, mut data: &[u8]) {
         self.total_len += data.len() as u64;
 
@@ -252,6 +254,7 @@ impl HardwareSha256 {
     }
 
     /// Finalizes the SHA-256 digest, returning the 32-byte hash and resetting internal state.
+    #[inline]
     pub fn finalize_reset(&mut self) -> [u8; 32] {
         let bit_len = self.total_len * 8;
         self.buffer[self.buf_len] = 0x80;
@@ -277,6 +280,7 @@ impl HardwareSha256 {
     }
 
     /// Finalizes and consumes the hasher, returning the 32-byte digest.
+    #[inline]
     pub fn finalize(mut self) -> [u8; 32] {
         self.finalize_reset()
     }

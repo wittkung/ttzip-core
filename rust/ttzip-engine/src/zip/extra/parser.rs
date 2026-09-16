@@ -103,7 +103,9 @@ impl ExtraFieldsParser {
 
                 TAG_UNICODE_PATH => {
                     if let Some(upath) = UnicodeFieldExtra::parse(TAG_UNICODE_PATH, payload) {
-                        fields.unicode_path_str = Some(upath.text.clone());
+                        if !is_cdfh {
+                            fields.unicode_path_str = Some(upath.text.clone());
+                        }
                         fields.unicode_path = Some(upath);
                     }
                 }
@@ -130,7 +132,9 @@ impl ExtraFieldsParser {
                 }
 
                 other => {
-                    fields.unknown_fields.push((other, payload.to_vec()));
+                    if !is_cdfh {
+                        fields.unknown_fields.push((other, payload.to_vec()));
+                    }
                 }
             }
 

@@ -143,14 +143,13 @@ impl GHash {
     }
 
     pub fn update(&mut self, mut data: &[u8]) {
-        let mut block = [0u8; 16];
         while data.len() >= 16 {
-            block.copy_from_slice(&data[..16]);
-            self.update_block(&block);
+            let block: &[u8; 16] = data[..16].try_into().unwrap();
+            self.update_block(block);
             data = &data[16..];
         }
         if !data.is_empty() {
-            block.fill(0);
+            let mut block = [0u8; 16];
             block[..data.len()].copy_from_slice(data);
             self.update_block(&block);
         }
@@ -174,8 +173,17 @@ pub fn secure_wipe(ptr: *mut u8, len: usize) {
         return;
     }
     unsafe {
-        for i in 0..len {
-            std::ptr::write_volatile(ptr.add(i), 0);
+        let mut p = ptr;
+        let mut remaining = len;
+        while remaining >= core::mem::size_of::<usize>() {
+            std::ptr::write_volatile(p as *mut usize, 0);
+            p = p.add(core::mem::size_of::<usize>());
+            remaining -= core::mem::size_of::<usize>();
+        }
+        while remaining > 0 {
+            std::ptr::write_volatile(p, 0);
+            p = p.add(1);
+            remaining -= 1;
         }
         compiler_fence(Ordering::SeqCst);
     }

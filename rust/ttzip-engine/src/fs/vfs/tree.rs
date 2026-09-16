@@ -48,45 +48,49 @@ impl VfsTree {
         }
 
         self.total_entries += 1;
-        let segments: Vec<&str> = clean_path.split('/').collect();
+        let path_start = clean_path.as_ptr() as usize;
+        let mut it = clean_path.split('/').filter(|s| !s.is_empty()).peekable();
         let mut curr = &mut self.root;
-        let mut accum_path = String::new();
 
-        for (i, &segment) in segments.iter().enumerate() {
-            let is_last = i == segments.len() - 1;
-            if !accum_path.is_empty() {
-                accum_path.push('/');
-            }
-            accum_path.push_str(segment);
+        while let Some(segment) = it.next() {
+            let is_last = it.peek().is_none();
+            let seg_end = (segment.as_ptr() as usize + segment.len()) - path_start;
+            let accum_path = &clean_path[..seg_end];
 
             if is_last {
-                if let Some(pos) = curr.children.iter().position(|c| c.name == segment) {
-                    let node = &mut curr.children[pos];
-                    node.is_directory = entry.is_directory;
-                    node.uncompressed_size = entry.uncompressed_size;
-                    node.compressed_size = entry.compressed_size;
-                    node.crc32 = entry.crc32;
-                    node.mtime_epoch_secs = entry.mtime_epoch_secs;
-                    node.mode = entry.mode;
-                    node.is_encrypted = entry.is_encrypted;
-                } else {
-                    let node = if entry.is_directory {
-                        VfsNode::new_dir(segment, &accum_path)
-                    } else {
-                        VfsNode::new_file(segment, entry)
-                    };
-                    curr.children.push(node);
+                match curr.children.binary_search_by(|c| c.name.as_str().cmp(segment)) {
+                    Ok(pos) => {
+                        let node = &mut curr.children[pos];
+                        node.is_directory = entry.is_directory;
+                        node.uncompressed_size = entry.uncompressed_size;
+                        node.compressed_size = entry.compressed_size;
+                        node.crc32 = entry.crc32;
+                        node.mtime_epoch_secs = entry.mtime_epoch_secs;
+                        node.mode = entry.mode;
+                        node.is_encrypted = entry.is_encrypted;
+                    }
+                    Err(idx) => {
+                        let node = if entry.is_directory {
+                            VfsNode::new_dir(segment, accum_path)
+                        } else {
+                            VfsNode::new_file(segment, entry)
+                        };
+                        curr.children.insert(idx, node);
+                    }
                 }
             } else {
-                let pos = match curr.children.iter().position(|c| c.name == segment && c.is_directory) {
-                    Some(p) => p,
-                    None => {
-                        let dir = VfsNode::new_dir(segment, &accum_path);
-                        curr.children.push(dir);
-                        curr.children.len() - 1
+                let next_idx = match curr.children.binary_search_by(|c| c.name.as_str().cmp(segment)) {
+                    Ok(pos) => {
+                        curr.children[pos].is_directory = true;
+                        pos
+                    }
+                    Err(idx) => {
+                        let dir = VfsNode::new_dir(segment, accum_path);
+                        curr.children.insert(idx, dir);
+                        idx
                     }
                 };
-                curr = &mut curr.children[pos];
+                curr = &mut curr.children[next_idx];
             }
         }
     }

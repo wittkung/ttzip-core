@@ -111,6 +111,40 @@ impl Blake3Hasher {
     /// Buffers input in 1024-byte chunks, advancing the chunk counter and lazily
     /// merging subtree chaining values into the internal reduction stack.
     pub fn update(&mut self, mut input: &[u8]) -> &mut Self {
+        #[cfg(target_arch = "aarch64")]
+        if self.chunk_state.is_empty() && input.len() > BLAKE3_CHUNK_LEN {
+            let available_chunks = (input.len() - 1) / BLAKE3_CHUNK_LEN;
+            let num_vector_chunks = (available_chunks / 4) * 4;
+            if num_vector_chunks > 0 {
+                let mut chunk_ptrs: [&[u8; 1024]; 16] = [&[0u8; 1024]; 16];
+                let mut cvs = [[0u8; 32]; 16];
+                let mut processed = 0;
+                while processed < num_vector_chunks {
+                    let batch = (num_vector_chunks - processed).min(16);
+                    for i in 0..batch {
+                        let offset = (processed + i) * BLAKE3_CHUNK_LEN;
+                        chunk_ptrs[i] = input[offset..offset + BLAKE3_CHUNK_LEN].try_into().unwrap();
+                    }
+                    super::neon::hash_many_neon(
+                        &chunk_ptrs[..batch],
+                        &self.key,
+                        self.total_chunks,
+                        self.flags,
+                        &mut cvs[..batch],
+                    );
+                    for i in 0..batch {
+                        let chunk_counter = self.total_chunks;
+                        self.total_chunks += 1;
+                        self.tree_stack.merge_cv_stack(chunk_counter, &self.key, self.flags);
+                        self.tree_stack.push(cvs[i]);
+                    }
+                    processed += batch;
+                }
+                self.chunk_state.reset(self.key, self.total_chunks);
+                input = &input[num_vector_chunks * BLAKE3_CHUNK_LEN..];
+            }
+        }
+
         while !input.is_empty() {
             if self.chunk_state.len() == BLAKE3_CHUNK_LEN {
                 let chunk_cv = self.chunk_state.output().chaining_value();

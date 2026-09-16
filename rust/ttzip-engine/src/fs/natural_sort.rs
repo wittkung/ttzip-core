@@ -82,6 +82,17 @@ pub fn natural_cmp(a: &str, b: &str) -> Ordering {
                 other => return other,
             }
         } else {
+            if ca.is_ascii() && cb.is_ascii() {
+                let la = (ca as u8).to_ascii_lowercase();
+                let lb = (cb as u8).to_ascii_lowercase();
+                if la != lb {
+                    return la.cmp(&lb);
+                }
+                chars_a.next();
+                chars_b.next();
+                continue;
+            }
+
             let mut it_a = ca.to_lowercase();
             let mut it_b = cb.to_lowercase();
             let mut diff = Ordering::Equal;
