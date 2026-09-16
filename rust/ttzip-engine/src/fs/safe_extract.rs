@@ -64,42 +64,41 @@ pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Resu
         }
     }
 
-    let normalized_slashes = raw_entry_path.replace('\\', "/");
-    let input_path = Path::new(&normalized_slashes);
-    let mut normalized_components = Vec::new();
-
-    for comp in input_path.components() {
-        match comp {
-            Component::Normal(c) => {
-                let s = c.to_string_lossy();
-                // Reject internal ".." and multi-dot obfuscation (e.g. "...", "....")
-                // Redundant check for internal ".." or multi-dot sequences
-                if s.contains("..") || s.chars().all(|c| c == '.') {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-                normalized_components.push(s.to_string());
-            }
-            Component::CurDir => {
-                // Ignore current directory '.'
-            }
-            Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
-                // Reject absolute root paths and parent traversals
-                return Err(TTZipStatus::ErrSecurityViolation);
-            }
-        }
-    }
-
-    if normalized_components.is_empty() {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
     let mut target = dest_dir.to_path_buf();
-    for seg in normalized_components {
-        target.push(seg);
+    let mut has_normal_components = false;
+
+    macro_rules! process_components {
+        ($path:expr) => {
+            for comp in $path.components() {
+                match comp {
+                    Component::Normal(c) => {
+                        let s = match c.to_str() {
+                            Some(s) => s,
+                            None => return Err(TTZipStatus::ErrSecurityViolation),
+                        };
+                        if s.contains("..") || s.chars().all(|c| c == '.') {
+                            return Err(TTZipStatus::ErrSecurityViolation);
+                        }
+                        target.push(s);
+                        has_normal_components = true;
+                    }
+                    Component::CurDir => {}
+                    Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
+                        return Err(TTZipStatus::ErrSecurityViolation);
+                    }
+                }
+            }
+        };
     }
 
-    // Ensure normalized path starts with destination directory prefix
-    if !target.starts_with(dest_dir) {
+    if raw_entry_path.contains('\\') {
+        let normalized_slashes = raw_entry_path.replace('\\', "/");
+        process_components!(Path::new(&normalized_slashes));
+    } else {
+        process_components!(Path::new(raw_entry_path));
+    }
+
+    if !has_normal_components || !target.starts_with(dest_dir) {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
@@ -261,10 +260,16 @@ impl SafeExtractEngine {
         }
 
         // 2. Sort directories Bottom-Up (descending depth, deepest child first)
-        dirs.sort_by(|a, b| b.depth().cmp(&a.depth()).then_with(|| b.path.cmp(&a.path)));
+        let mut decorated_dirs: Vec<(usize, DeferredEntryMetadata)> = dirs
+            .into_iter()
+            .map(|d| (d.depth(), d))
+            .collect();
+        decorated_dirs.sort_by(|(depth_a, dir_a), (depth_b, dir_b)| {
+            depth_b.cmp(depth_a).then_with(|| dir_b.path.cmp(&dir_a.path))
+        });
 
         // 3. Apply directory metadata in bottom-up sequence
-        for dir in dirs {
+        for (_, dir) in decorated_dirs {
             Self::apply_single_entry_metadata(&dir, preserve_permissions)?;
         }
 

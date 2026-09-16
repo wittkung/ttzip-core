@@ -11,7 +11,6 @@
 //! block alignment, physical extent coalescing, and trailing hole finalization via `ftruncate`.
 
 use crate::archive::unified::entry::sparse::{coalesce_sparse_extents, SparseExtent};
-use crate::fs::apfs::APPLE_SILICON_PAGE_SIZE;
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -56,16 +55,19 @@ impl SparseFileWriter {
         Ok(Self::from_file(file))
     }
 
+    /// Default sparse allocation block size (128KB, 8x Apple Silicon 16KB pages).
+    pub const DEFAULT_BLOCK_SIZE: usize = 128 * 1024;
+
     /// Wraps an existing open `File` handle into a `SparseFileWriter`.
     pub fn from_file(file: File) -> Self {
         Self {
             file,
-            block_size: APPLE_SILICON_PAGE_SIZE,
+            block_size: Self::DEFAULT_BLOCK_SIZE,
             current_offset: 0,
             max_offset: 0,
             target_size: None,
             extents: Vec::new(),
-            buffer: Vec::with_capacity(APPLE_SILICON_PAGE_SIZE),
+            buffer: Vec::with_capacity(Self::DEFAULT_BLOCK_SIZE),
             hole_pending: false,
         }
     }
@@ -140,40 +142,47 @@ impl SparseFileWriter {
         Ok(())
     }
 
-    /// Appends a non-zero extent to the internal tracking list.
-    fn record_extent(&mut self, extent: SparseExtent) {
+    /// Appends a non-zero extent to the tracking list.
+    fn record_extent_internal(extents: &mut Vec<SparseExtent>, extent: SparseExtent) {
         if extent.is_empty() {
             return;
         }
-        if let Some(last) = self.extents.last_mut() {
+        if let Some(last) = extents.last_mut() {
             if let Some(merged) = last.coalesce_with(&extent) {
                 *last = merged;
                 return;
             }
         }
-        self.extents.push(extent);
+        extents.push(extent);
     }
 
     /// Processes a single block: punches holes if all zero, or writes non-zero data to disk.
-    fn process_block(&mut self, block: &[u8]) -> std::io::Result<()> {
+    fn process_block_internal(
+        file: &mut File,
+        hole_pending: &mut bool,
+        current_offset: &mut u64,
+        max_offset: &mut u64,
+        extents: &mut Vec<SparseExtent>,
+        block: &[u8],
+    ) -> std::io::Result<()> {
         if block.is_empty() {
             return Ok(());
         }
 
         if is_zero_block(block) {
-            self.hole_pending = true;
-            self.current_offset = self.current_offset.saturating_add(block.len() as u64);
-            self.max_offset = self.max_offset.max(self.current_offset);
+            *hole_pending = true;
+            *current_offset = current_offset.saturating_add(block.len() as u64);
+            *max_offset = (*max_offset).max(*current_offset);
         } else {
-            if self.hole_pending {
-                self.file.seek(SeekFrom::Start(self.current_offset))?;
-                self.hole_pending = false;
+            if *hole_pending {
+                file.seek(SeekFrom::Start(*current_offset))?;
+                *hole_pending = false;
             }
-            let extent = SparseExtent::new(self.current_offset, block.len() as u64);
-            self.record_extent(extent);
-            self.file.write_all(block)?;
-            self.current_offset = self.current_offset.saturating_add(block.len() as u64);
-            self.max_offset = self.max_offset.max(self.current_offset);
+            let extent = SparseExtent::new(*current_offset, block.len() as u64);
+            Self::record_extent_internal(extents, extent);
+            file.write_all(block)?;
+            *current_offset = current_offset.saturating_add(block.len() as u64);
+            *max_offset = (*max_offset).max(*current_offset);
         }
 
         Ok(())
@@ -201,15 +210,29 @@ impl Write for SparseFileWriter {
             buf = &buf[take_len..];
 
             if self.buffer.len() == self.block_size {
-                let full_block = std::mem::take(&mut self.buffer);
-                self.process_block(&full_block)?;
+                Self::process_block_internal(
+                    &mut self.file,
+                    &mut self.hole_pending,
+                    &mut self.current_offset,
+                    &mut self.max_offset,
+                    &mut self.extents,
+                    &self.buffer,
+                )?;
+                self.buffer.clear();
             }
         }
 
         // 2. Process complete blocks directly
         while buf.len() >= self.block_size {
             let (block, rest) = buf.split_at(self.block_size);
-            self.process_block(block)?;
+            Self::process_block_internal(
+                &mut self.file,
+                &mut self.hole_pending,
+                &mut self.current_offset,
+                &mut self.max_offset,
+                &mut self.extents,
+                block,
+            )?;
             buf = rest;
         }
 
@@ -223,8 +246,15 @@ impl Write for SparseFileWriter {
 
     fn flush(&mut self) -> std::io::Result<()> {
         if !self.buffer.is_empty() {
-            let remaining = std::mem::take(&mut self.buffer);
-            self.process_block(&remaining)?;
+            Self::process_block_internal(
+                &mut self.file,
+                &mut self.hole_pending,
+                &mut self.current_offset,
+                &mut self.max_offset,
+                &mut self.extents,
+                &self.buffer,
+            )?;
+            self.buffer.clear();
         }
         self.file.flush()?;
         Ok(())
