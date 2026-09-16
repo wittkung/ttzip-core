@@ -77,7 +77,7 @@ fn test_vault_ffi_c_abi_roundtrip_and_wipe() {
             cipher.as_mut_ptr(),
             tag.as_mut_ptr(),
         );
-        assert_eq!(status, TTZipStatus::Ok);
+        assert_eq!(status, 0);
 
         let mut decrypted = vec![0u8; cipher.len()];
         let status_dec = ttzip_rust_vault_decrypt_key(
@@ -90,7 +90,7 @@ fn test_vault_ffi_c_abi_roundtrip_and_wipe() {
             tag.as_ptr(),
             decrypted.as_mut_ptr(),
         );
-        assert_eq!(status_dec, TTZipStatus::Ok);
+        assert_eq!(status_dec, 0);
         assert_eq!(&decrypted[..], &secret[..]);
 
         // Wipe memory

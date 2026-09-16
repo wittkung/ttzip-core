@@ -402,7 +402,7 @@ mod tests {
         let mut min_elapsed = std::time::Duration::from_secs(100);
         let mut key1 = [0u8; 32];
 
-        for _ in 0..3 {
+        for _ in 0..8 {
             SevenZKeyCache::global().clear();
             let start = Instant::now();
             let key = sha256_7z_kdf(password, &salt, num_cycles_power);
@@ -410,6 +410,9 @@ mod tests {
             if dur < min_elapsed {
                 min_elapsed = dur;
                 key1 = key;
+            }
+            if min_elapsed.as_millis() <= 20 {
+                break;
             }
         }
 
