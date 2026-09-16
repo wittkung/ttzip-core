@@ -32,16 +32,16 @@ pub struct ZipEntry {
     pub rel_path: String,
     pub uncompressed_size: u64,
     pub compressed_size: u64,
-    pub crc32: u32,
-    pub compression_method: u16,
-    pub actual_method: u16,
-    pub aes_strength: u8,
     pub lfh_offset: u64,
     pub mtime_epoch_secs: i64,
+    pub crc32: u32,
     pub mode: u32,
+    pub compression_method: u16,
+    pub actual_method: u16,
+    pub flag: u16,
+    pub aes_strength: u8,
     pub is_directory: bool,
     pub is_encrypted: bool,
-    pub flag: u16,
 }
 
 fn read_u16_le(slice: &[u8], offset: usize) -> u16 {
@@ -203,8 +203,9 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
     let fn_bytes = &mapped[fn_start..fn_start + fn_len];
     let is_utf8 = (flag & 0x0800) != 0;
     let mut filename = crate::zip::cp437::decode_zip_filename(fn_bytes, is_utf8);
-    filename = filename.replace('\\', "/");
-
+    if filename.contains('\\') {
+        filename = filename.replace('\\', "/");
+    }
 
     let extra_start = fn_start + fn_len;
     let extra_bytes = &mapped[extra_start..extra_start + extra_len];
@@ -219,7 +220,11 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
 
     if let Some(upath) = &extra.unicode_path {
         if upath.is_valid_for(fn_bytes) {
-            filename = upath.text.replace('\\', "/");
+            if upath.text.contains('\\') {
+                filename = upath.text.replace('\\', "/");
+            } else {
+                filename = upath.text.clone();
+            }
         }
     }
 
@@ -262,16 +267,16 @@ pub fn parse_cdfh_entry(mapped: &[u8], curr_pos: usize) -> Result<(ZipEntry, usi
         rel_path: filename,
         uncompressed_size,
         compressed_size,
-        crc32,
-        compression_method: method,
-        actual_method,
-        aes_strength,
         lfh_offset,
         mtime_epoch_secs: mtime_epoch,
+        crc32,
         mode,
+        compression_method: method,
+        actual_method,
+        flag,
+        aes_strength,
         is_directory,
         is_encrypted,
-        flag,
     };
 
     Ok((entry, curr_pos + rec_len))

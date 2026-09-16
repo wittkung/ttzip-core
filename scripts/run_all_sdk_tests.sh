@@ -63,6 +63,7 @@ run_suite() {
     local name="$2"
     local cmd="$3"
     local check_tool="$4"
+    local stream_progress="${5:-false}"
 
     SDK_KEYS+=("${key}")
 
@@ -79,8 +80,21 @@ run_suite() {
     local t0=$(get_time_ms)
     set +e
     TMP_LOG=$(mktemp)
-    eval "${cmd}" > "${TMP_LOG}" 2>&1
-    local exit_code=$?
+    if [ "${stream_progress}" = "true" ]; then
+        local count=0
+        eval "${cmd}" 2>&1 | tee "${TMP_LOG}" | while IFS= read -r line; do
+            if [[ "${line}" =~ Running[[:space:]]+(tests/[^[:space:]]+|unittests[[:space:]]+src/lib\.rs) ]]; then
+                count=$((count + 1))
+                local target="${BASH_REMATCH[1]}"
+                printf "\r\033[K    ⚡️ [%3d] %s" "${count}" "${target}"
+            fi
+        done
+        printf "\r\033[K"
+        local exit_code="${PIPESTATUS[0]}"
+    else
+        eval "${cmd}" > "${TMP_LOG}" 2>&1
+        local exit_code=$?
+    fi
     set -e
     local t1=$(get_time_ms)
     local dur=$((t1 - t0))
@@ -101,7 +115,7 @@ run_suite() {
 
 # 1. Rust SDK
 echo ">>> [1/9] Testing Pure Rust & C-ABI Crate Suites..."
-run_suite "rust" "Rust Microkernel & C-ABI" "cargo test -p ttzip-engine --manifest-path rust/ttzip-engine/Cargo.toml" "cargo"
+run_suite "rust" "Rust Microkernel & C-ABI" "cargo test -p ttzip-engine --manifest-path rust/ttzip-engine/Cargo.toml" "cargo" "true"
 
 # 2. Swift 6 SDK
 echo ">>> [2/9] Testing Swift 6 Core SDK..."
@@ -118,12 +132,12 @@ run_suite "node" "Node.js & TypeScript SDK" "node sdk/node/test.js" "node"
 # 5. C11 Native SDK
 echo ">>> [5/9] Testing C11 Native SDK..."
 LIB_VENDOR="Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
-C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
+C_CMD="clang -std=c11 -I sdk/include sdk/c/test_c_sdk.c ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -framework CoreFoundation -framework IOKit -o sdk/c/test_c_sdk && ./sdk/c/test_c_sdk"
 run_suite "c" "C11 Native SDK" "${C_CMD}" "clang"
 
 # 6. Modern C++20 SDK
 echo ">>> [6/9] Testing Modern C++20 SDK..."
-CPP_CMD="clang++ -std=c++20 -I sdk/include sdk/cpp/test_cpp_sdk.cpp ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -o sdk/cpp/test_cpp_sdk && ./sdk/cpp/test_cpp_sdk"
+CPP_CMD="clang++ -std=c++20 -I sdk/include sdk/cpp/test_cpp_sdk.cpp ${LIB_VENDOR} -larchive -lbz2 -lz -llzma -framework Security -framework CoreFoundation -framework IOKit -o sdk/cpp/test_cpp_sdk && ./sdk/cpp/test_cpp_sdk"
 run_suite "cpp" "Modern C++20 SDK" "${CPP_CMD}" "clang++"
 
 # 7. Java 22+ & Kotlin Coroutines SDK
@@ -141,7 +155,7 @@ fi
 
 # 8. Go SDK (io/fs.FS)
 echo ">>> [8/9] Testing Go SDK (io/fs.FS & context)..."
-run_suite "go" "Go SDK (io/fs.FS & context)" "(cd sdk/go && go test ./...)" "go"
+run_suite "go" "Go SDK (io/fs.FS & context)" "cd sdk/go && PKG_CONFIG_PATH=\"${REPO_ROOT}\" go test ./..." "go"
 
 # 9. Dart & C# Binding Verification
 echo ">>> [9/9] Testing Dart / Flutter & C# .NET SDK Assets..."

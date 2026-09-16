@@ -23,7 +23,31 @@ pub struct VfsSearchResult {
     pub match_indices: Vec<usize>,
 }
 
-/// Evaluates fuzzy string matching score and byte match indices with zero heap allocations.
+#[inline]
+fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
+    if s.is_ascii() && prefix.is_ascii() {
+        let s_bytes = s.as_bytes();
+        let p_bytes = prefix.as_bytes();
+        if s_bytes.len() < p_bytes.len() {
+            return false;
+        }
+        return s_bytes[..p_bytes.len()].eq_ignore_ascii_case(p_bytes);
+    }
+
+    let mut s_chars = s.chars().flat_map(|c| c.to_lowercase());
+    let mut p_chars = prefix.chars().flat_map(|c| c.to_lowercase());
+    loop {
+        match p_chars.next() {
+            Some(pc) => match s_chars.next() {
+                Some(sc) if sc == pc => continue,
+                _ => return false,
+            },
+            None => return true,
+        }
+    }
+}
+
+/// Evaluates fuzzy string matching score and byte match indices with zero heap allocations on mismatch.
 pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
     let pat = pattern.trim();
     if pat.is_empty() {
@@ -36,14 +60,29 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
         None => return Some((0, Vec::new())),
     };
 
-    let mut indices = Vec::with_capacity(pat.len());
+    // Small stack buffer to defer heap allocation until a match is confirmed
+    let mut stack_indices = [0usize; 64];
+    let mut matched_count = 0usize;
+    let mut heap_indices: Option<Vec<usize>> = None;
+
     let mut score = 0i64;
     let mut prev_matched_idx: Option<usize> = None;
     let mut prev_c = '\0';
 
     for (t_idx, tc) in target.char_indices() {
         if tc.eq_ignore_ascii_case(&current_pat_char) {
-            indices.push(t_idx);
+            if matched_count < 64 && heap_indices.is_none() {
+                stack_indices[matched_count] = t_idx;
+                matched_count += 1;
+            } else {
+                let v = heap_indices.get_or_insert_with(|| {
+                    let mut v = Vec::with_capacity(pat.len());
+                    v.extend_from_slice(&stack_indices[..matched_count]);
+                    v
+                });
+                v.push(t_idx);
+            }
+
             let mut char_score = 10i64;
             if tc == current_pat_char {
                 char_score += 5; // Exact case match
@@ -68,21 +107,6 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
             score += char_score;
             prev_matched_idx = Some(t_idx);
 
-#[inline]
-fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
-    let mut s_chars = s.chars().flat_map(|c| c.to_lowercase());
-    let mut p_chars = prefix.chars().flat_map(|c| c.to_lowercase());
-    loop {
-        match p_chars.next() {
-            Some(pc) => match s_chars.next() {
-                Some(sc) if sc == pc => continue,
-                _ => return false,
-            },
-            None => return true,
-        }
-    }
-}
-
             match pat_chars.next() {
                 Some(next_c) => current_pat_char = next_c,
                 None => {
@@ -92,6 +116,10 @@ fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
                     } else if starts_with_ignore_case(target, pat) {
                         score += 200;
                     }
+                    let indices = match heap_indices {
+                        Some(v) => v,
+                        None => stack_indices[..matched_count].to_vec(),
+                    };
                     return Some((score, indices));
                 }
             }
@@ -307,3 +335,24 @@ pub fn search_vfs_tree_zero_alloc(
     matched_count
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fuzzy_match_hit_and_miss() {
+        let (score, indices) = fuzzy_match("archive_writer.rs", "arch").unwrap();
+        assert!(score > 0);
+        assert_eq!(indices, vec![0, 1, 2, 3]);
+
+        assert!(fuzzy_match("archive_writer.rs", "nomatchxyz").is_none());
+        assert!(fuzzy_match("short", "verylongpatternthatdoesnotmatchanything").is_none());
+    }
+
+    #[test]
+    fn test_starts_with_ignore_case() {
+        assert!(starts_with_ignore_case("Document.PDF", "doc"));
+        assert!(starts_with_ignore_case("Document.PDF", "DOCUMENT"));
+        assert!(!starts_with_ignore_case("Doc", "Document"));
+    }
+}

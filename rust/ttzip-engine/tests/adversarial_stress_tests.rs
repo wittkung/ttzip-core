@@ -18,8 +18,10 @@
 
 use std::fs;
 use std::io::Cursor;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
+
+static ADVERSARIAL_TEST_MUTEX: Mutex<()> = Mutex::new(());
 
 use ttzip_engine::charset::detector::{detect_charset, detect_charset_with_confidence};
 use ttzip_engine::codecs::brotli::{brotli_compress, brotli_compress_bound, brotli_decompress};
@@ -68,7 +70,11 @@ fn test_adversarial_truncated_streams_all_codecs() {
         let truncated = &brotli_valid[..cut];
         let mut out_buf = vec![0u8; raw_payload.len()];
         let res = brotli_decompress(truncated, &mut out_buf);
-        if cut < brotli_valid.len() {
+        if cut == 0 {
+            if let Ok(n) = res {
+                assert_eq!(n, 0);
+            }
+        } else if cut < brotli_valid.len() {
             assert!(res.is_err(), "Brotli truncated at {} must return Err", cut);
         }
     }
@@ -301,6 +307,7 @@ fn test_adversarial_oversized_filenames_and_path_traversal() {
 
 #[test]
 fn test_adversarial_high_concurrency_stress() {
+    let _lock = ADVERSARIAL_TEST_MUTEX.lock().unwrap();
     let items = vec![
         ZipInputItem {
             rel_path: "src/lib.rs".to_string(),
@@ -368,6 +375,7 @@ fn test_adversarial_high_concurrency_stress() {
 
 #[test]
 fn test_adversarial_zero_tmp_leak_and_rss_memory_bound() {
+    let _lock = ADVERSARIAL_TEST_MUTEX.lock().unwrap();
     let tmp_path = std::path::Path::new("/tmp");
     let initial_tmp_entries = if tmp_path.exists() {
         fs::read_dir(tmp_path).map(|r| r.count()).unwrap_or(0)

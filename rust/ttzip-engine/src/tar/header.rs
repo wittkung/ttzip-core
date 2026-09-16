@@ -518,7 +518,14 @@ impl TarHeader {
         let (unsigned_sum, _) = self.compute_checksum();
         let chk_bytes = &mut self.bytes[OFFSET_CHKSUM..OFFSET_CHKSUM + LEN_CHKSUM];
         // Standard TAR: 6 octal digits + '\0' + ' '
-        let formatted = format!("{:06o}\0 ", unsigned_sum);
-        chk_bytes.copy_from_slice(formatted.as_bytes());
+        let mut buf = [b'0'; LEN_CHKSUM];
+        let mut val = unsigned_sum;
+        for i in (0..6).rev() {
+            buf[i] = b'0' + ((val & 0o7) as u8);
+            val >>= 3;
+        }
+        buf[6] = b'\0';
+        buf[7] = b' ';
+        chk_bytes.copy_from_slice(&buf);
     }
 }

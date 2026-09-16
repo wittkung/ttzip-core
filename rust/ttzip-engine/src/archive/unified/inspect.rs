@@ -62,7 +62,7 @@ pub fn inspect_archive(
                             let mut detected_c_str: Option<CString> = None;
                             if detect_encoding {
                                 let path_bytes = file.rel_path.as_bytes();
-                                if path_bytes.iter().any(|&b| b >= 0x80) {
+                                if !path_bytes.is_ascii() {
                                     if let Some(charset) = crate::codecs::chardet::detect_charset(path_bytes) {
                                         detected_c_str = CString::new(charset.as_str()).ok();
                                     }
@@ -150,7 +150,7 @@ unsafe fn inspect_from_handle(
 
         let mut detected_c_str: Option<CString> = None;
         if detect_encoding {
-            let has_non_ascii = path_bytes.iter().any(|&b| b >= 0x80);
+            let has_non_ascii = !path_bytes.is_ascii();
             if has_non_ascii {
                 if let Some(charset) = crate::codecs::chardet::detect_charset(path_bytes) {
                     detected_c_str = CString::new(charset.as_str()).ok();

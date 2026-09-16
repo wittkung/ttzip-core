@@ -76,13 +76,32 @@ pub fn parent_cv(
 ///
 /// Holds up to 55 chaining values on the stack with zero heap allocation,
 /// enabling incremental and parallel tree reduction for streams up to 2^64 bytes.
-#[derive(Clone, Debug, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TreeStack {
     /// 55-element fixed-size inline array holding chaining values.
     pub stack: [[u8; 32]; STACK_CAPACITY],
     /// Current number of valid chaining values in the stack.
     pub len: usize,
 }
+
+impl Zeroize for TreeStack {
+    #[inline]
+    fn zeroize(&mut self) {
+        for entry in &mut self.stack[..self.len] {
+            entry.zeroize();
+        }
+        self.len = 0;
+    }
+}
+
+impl Drop for TreeStack {
+    #[inline]
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+impl ZeroizeOnDrop for TreeStack {}
 
 impl Default for TreeStack {
     #[inline]

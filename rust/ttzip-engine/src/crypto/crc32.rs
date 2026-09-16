@@ -77,10 +77,65 @@ mod arm64 {
 
     /// Computes CRC-32 using ARMv8 CRC and PMULL vector instructions.
     ///
+    #[inline]
+    #[target_feature(enable = "crc")]
+    unsafe fn align_step_16(mut crc: u32, mut p: *const u8, mut len: usize) -> (u32, *const u8, usize) {
+        let align = ((p as usize).wrapping_neg()) & 15;
+        if align != 0 && len >= align {
+            if align & 1 != 0 {
+                crc = __crc32b(crc, *p);
+                p = p.add(1);
+            }
+            if align & 2 != 0 {
+                crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                p = p.add(2);
+            }
+            if align & 4 != 0 {
+                crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                p = p.add(4);
+            }
+            if align & 8 != 0 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                p = p.add(8);
+            }
+            len -= align;
+        }
+        (crc, p, len)
+    }
+
+    #[inline]
+    #[target_feature(enable = "crc")]
+    unsafe fn align_step_8(mut crc: u32, mut p: *const u8, mut len: usize) -> (u32, *const u8, usize) {
+        let align = ((p as usize).wrapping_neg()) & 7;
+        if align != 0 && len >= align {
+            if align & 1 != 0 {
+                crc = __crc32b(crc, *p);
+                p = p.add(1);
+            }
+            if align & 2 != 0 {
+                crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                p = p.add(2);
+            }
+            if align & 4 != 0 {
+                crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                p = p.add(4);
+            }
+            len -= align;
+        }
+        (crc, p, len)
+    }
+
+    /// Computes CRC-32 using ARM PMULL vector folding.
+    ///
     /// # Safety
     /// Caller must ensure `p` points to `len` readable bytes and the CPU supports ARM CRC and PMULL instructions.
     #[target_feature(enable = "crc")]
     pub unsafe fn crc32_arm_pmull_raw(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
+        let (aligned_crc, aligned_p, aligned_len) = align_step_16(crc, p, len);
+        crc = aligned_crc;
+        p = aligned_p;
+        len = aligned_len;
+
         let mut v0: uint8x16_t;
         let mut v1: uint8x16_t;
         let mut v2: uint8x16_t;
@@ -145,27 +200,6 @@ mod arm64 {
             let mult_6 = load_multipliers(&MULTS[1]);
             let mult_3 = load_multipliers(&MULTS[2]);
             let mult_1 = load_multipliers(&MULTS[3]);
-
-            let align = ((p as usize).wrapping_neg()) & 15;
-            if align != 0 {
-                if align & 1 != 0 {
-                    crc = __crc32b(crc, *p);
-                    p = p.add(1);
-                }
-                if align & 2 != 0 {
-                    crc = __crc32h(crc, (p as *const u16).read_unaligned());
-                    p = p.add(2);
-                }
-                if align & 4 != 0 {
-                    crc = __crc32w(crc, (p as *const u32).read_unaligned());
-                    p = p.add(4);
-                }
-                if align & 8 != 0 {
-                    crc = __crc32d(crc, (p as *const u64).read_unaligned());
-                    p = p.add(8);
-                }
-                len -= align;
-            }
 
             let mut vp = p as *const uint8x16_t;
             v0 = veorq_u8(*vp, u32_to_bytevec(crc));
@@ -296,6 +330,11 @@ mod arm64 {
     #[inline]
     #[target_feature(enable = "crc")]
     pub(crate) unsafe fn crc32_arm64_direct_hw(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
+        let (aligned_crc, aligned_p, aligned_len) = align_step_8(crc, p, len);
+        crc = aligned_crc;
+        p = aligned_p;
+        len = aligned_len;
+
         while len >= 64 {
             crc = __crc32d(crc, (p as *const u64).read_unaligned());
             crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
@@ -466,7 +505,9 @@ pub fn crc32_fast(crc: u32, data: &[u8]) -> u32 {
 
     #[cfg(not(target_arch = "aarch64"))]
     {
-        scalar::crc32_slice8(crc, data)
+        let mut hasher = crc32fast::Hasher::new_with_initial(crc);
+        hasher.update(data);
+        hasher.finalize()
     }
 }
 

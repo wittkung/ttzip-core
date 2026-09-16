@@ -42,6 +42,7 @@ const fn avalanche(mut h32: u32) -> u32 {
 /// Computes the XXH32 32-bit hash of `data` using the specified `seed`.
 ///
 /// Fully deterministic, zero heap allocation, and pure safe Rust.
+#[inline]
 pub fn xxh32(data: &[u8], seed: u32) -> u32 {
     let len = data.len();
     let mut h32: u32;
@@ -167,6 +168,7 @@ impl Xxh32Hasher {
     }
 
     /// Computes and returns the 32-bit xxHash value from current state.
+    #[inline]
     pub fn digest(&self) -> u32 {
         let mut h32: u32;
 
@@ -207,6 +209,7 @@ impl Xxh32Hasher {
     }
 
     /// Feeds input bytes incrementally into the streaming hasher.
+    #[inline]
     pub fn update(&mut self, input: &[u8]) {
         <Self as Hasher>::write(self, input);
     }
@@ -218,6 +221,7 @@ impl Hasher for Xxh32Hasher {
         self.digest() as u64
     }
 
+    #[inline]
     fn write(&mut self, mut input: &[u8]) {
         self.total_len = self.total_len.saturating_add(input.len() as u64);
 

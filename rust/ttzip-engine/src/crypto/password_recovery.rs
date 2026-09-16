@@ -96,13 +96,25 @@ pub fn verify_7z_aes_candidate(
     if probe_cipher.len() < 16 {
         return false;
     }
-    let mut decrypted = vec![0u8; (probe_cipher.len() / 16) * 16];
+    let block_len = (probe_cipher.len() / 16) * 16;
     let iv = [0u8; 16];
-    if aes256_cbc_decrypt(&key, &iv, &probe_cipher[..decrypted.len()], &mut decrypted).is_ok() {
-        let cmp_len = expected_magic.len().min(decrypted.len());
-        decrypted[..cmp_len] == expected_magic[..cmp_len]
+    if block_len <= 64 {
+        let mut stack_buf = [0u8; 64];
+        let decrypted = &mut stack_buf[..block_len];
+        if aes256_cbc_decrypt(&key, &iv, &probe_cipher[..block_len], decrypted).is_ok() {
+            let cmp_len = expected_magic.len().min(block_len);
+            decrypted[..cmp_len] == expected_magic[..cmp_len]
+        } else {
+            false
+        }
     } else {
-        false
+        let mut decrypted = vec![0u8; block_len];
+        if aes256_cbc_decrypt(&key, &iv, &probe_cipher[..block_len], &mut decrypted).is_ok() {
+            let cmp_len = expected_magic.len().min(block_len);
+            decrypted[..cmp_len] == expected_magic[..cmp_len]
+        } else {
+            false
+        }
     }
 }
 

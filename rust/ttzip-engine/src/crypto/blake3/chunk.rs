@@ -118,11 +118,10 @@ impl ChunkState {
         // leaving at least 1 byte so that the chunk's trailing block is captured in `block`.
         while remaining.len() > BLOCK_LEN {
             let block_flags = self.flags | self.start_flag();
-            let mut block_buf = [0u8; BLOCK_LEN];
-            block_buf.copy_from_slice(&remaining[..BLOCK_LEN]);
+            let block_ref: &[u8; BLOCK_LEN] = remaining[..BLOCK_LEN].try_into().unwrap();
             compress_in_place_mut(
                 &mut self.chaining_value,
-                &block_buf,
+                block_ref,
                 BLOCK_LEN as u8,
                 self.chunk_counter,
                 block_flags,

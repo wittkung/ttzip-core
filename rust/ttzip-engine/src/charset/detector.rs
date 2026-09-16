@@ -23,24 +23,24 @@ struct CandidateScore {
 }
 
 /// Detects character set encoding for given raw byte sequence with confidence score [0.0..1.0].
-pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
+pub fn detect_charset_with_confidence(data: &[u8]) -> (&'static str, f32) {
     if data.is_empty() {
-        return ("ASCII".to_string(), 1.0);
+        return ("ASCII", 1.0);
     }
 
     // 1. SIMD ASCII Fast-Path: If pure 7-bit ASCII, return ASCII immediately.
     if data.is_ascii() {
-        return ("ASCII".to_string(), 1.0);
+        return ("ASCII", 1.0);
     }
 
     // Check for explicit UTF-8 BOM
     if data.starts_with(b"\xEF\xBB\xBF") {
-        return ("UTF-8".to_string(), 1.0);
+        return ("UTF-8", 1.0);
     }
 
     let is_valid_utf8 = std::str::from_utf8(data).is_ok();
     if is_valid_utf8 {
-        return ("UTF-8".to_string(), 1.0);
+        return ("UTF-8", 1.0);
     }
 
     // 2. CSM State Machine Pruning & 2-Byte Bigram Statistical Evaluation (Fast SIMD/Array Pass)
@@ -131,7 +131,7 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
     let mut sorted_cjk = cjk_scores;
     sorted_cjk.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     if sorted_cjk[0].1 > 0.15 && (sorted_cjk[0].1 > sorted_cjk[1].1 * 1.12 || sorted_cjk[1].1 == 0.0) {
-        return (sorted_cjk[0].0.canonical_name().to_string(), (sorted_cjk[0].1 * 0.95).min(1.0));
+        return (sorted_cjk[0].0.canonical_name(), (sorted_cjk[0].1 * 0.95).min(1.0));
     }
 
     // 3. Chardetng oracle prediction fallback
@@ -194,15 +194,15 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (String, f32) {
 
     if let Some(best) = best_candidate {
         if best.final_confidence > 0.20 {
-            return (best.kind.canonical_name().to_string(), best.final_confidence);
+            return (best.kind.canonical_name(), best.final_confidence);
         }
     }
 
     // Fallbacks
     if is_chardet_win1252 || csm_win.is_valid() {
-        ("windows-1252".to_string(), 0.5)
+        ("windows-1252", 0.5)
     } else {
-        ("UTF-8".to_string(), 0.1)
+        ("UTF-8", 0.1)
     }
 }
 
@@ -212,5 +212,5 @@ pub fn detect_charset(data: &[u8]) -> Option<String> {
         return Some("ASCII".to_string());
     }
     let (charset, _conf) = detect_charset_with_confidence(data);
-    Some(charset)
+    Some(charset.to_string())
 }

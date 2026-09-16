@@ -96,6 +96,11 @@ pub fn is_windows_reserved_device_name(segment: &str) -> bool {
         return false;
     }
 
+    // Windows disallows filenames/directories consisting purely of dots (>= 3 dots)
+    if segment.len() >= 3 && segment.bytes().all(|b| b == b'.') {
+        return true;
+    }
+
     let upper = segment.to_ascii_uppercase();
     if upper.starts_with("PHYSICALDRIVE") {
         return true;
@@ -122,6 +127,11 @@ pub fn is_windows_reserved_device_name(segment: &str) -> bool {
 pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
     if seg.is_empty() {
         return false;
+    }
+
+    // Windows disallows filenames/directories consisting purely of dots (>= 3 dots)
+    if seg.len() >= 3 && seg.iter().all(|&b| b == b'.') {
+        return true;
     }
 
     if seg.len() >= 13 && seg[..13].eq_ignore_ascii_case(b"PHYSICALDRIVE") {
