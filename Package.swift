@@ -7,6 +7,35 @@
 // TTZip: High-performance native archiving and compression engine.
 
 import PackageDescription
+import Foundation
+
+let ttlogDependencyResolution: (dependency: Package.Dependency, packageName: String) = {
+    // Tier 1: Explicit environment variable override
+    if let envPath = ProcessInfo.processInfo.environment["TTLOG_PATH"],
+       FileManager.default.fileExists(atPath: "\(envPath)/Package.swift") {
+        return (.package(path: envPath), "TTLog")
+    }
+
+    // Tier 2: Standard peer workspace probe (e.g. ../../../infra/ttlog or ../../infra/ttlog)
+    if ProcessInfo.processInfo.environment["TTZIP_USE_REMOTE_TTLOG"] != "1" {
+        let candidates = ["../../../infra/ttlog", "../../infra/ttlog"]
+        for relPath in candidates {
+            let manifestURL = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .appendingPathComponent("\(relPath)/Package.swift")
+                .standardized
+            if FileManager.default.fileExists(atPath: manifestURL.path) {
+                return (.package(path: relPath), "TTLog")
+            }
+        }
+    }
+
+    // Tier 3: Remote GitHub repository fallback for external machines and CI
+    return (.package(url: "https://github.com/wittkung/ttlog.git", branch: "main"), "TTLog")
+}()
+
+let ttlogPackage = ttlogDependencyResolution.dependency
+let ttlogPackageName = ttlogDependencyResolution.packageName
 
 let coreSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("StrictConcurrency")
@@ -33,7 +62,9 @@ let package = Package(
             targets: ["TTZipBench"]
         )
     ],
-    dependencies: [],
+    dependencies: [
+        ttlogPackage
+    ],
     targets: [
         .binaryTarget(
             name: "TTZipVendor",
@@ -61,7 +92,8 @@ let package = Package(
             name: "TTZipCore",
             dependencies: [
                 "CTTZipBridge",
-                "TTZipVendor"
+                "TTZipVendor",
+                .product(name: "TTLogKit", package: ttlogPackageName)
             ],
             path: "Sources/TTZipCore",
             swiftSettings: coreSwiftSettings
