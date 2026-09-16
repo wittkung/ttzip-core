@@ -17,6 +17,7 @@ use std::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[repr(align(64))]
 struct Cell<T> {
     sequence: AtomicUsize,
     value: UnsafeCell<MaybeUninit<T>>,
@@ -65,7 +66,7 @@ impl<T> MpmcRingBuffer<T> {
     pub fn push(&self, item: T) -> Result<(), T> {
         let mut pos = self.enqueue_pos.load(Ordering::Relaxed);
         loop {
-            let cell = &self.buffer[pos & self.mask];
+            let cell = unsafe { self.buffer.get_unchecked(pos & self.mask) };
             let seq = cell.sequence.load(Ordering::Acquire);
             let diff = (seq as isize).wrapping_sub(pos as isize);
 
@@ -100,7 +101,7 @@ impl<T> MpmcRingBuffer<T> {
     pub fn pop(&self) -> Option<T> {
         let mut pos = self.dequeue_pos.load(Ordering::Relaxed);
         loop {
-            let cell = &self.buffer[pos & self.mask];
+            let cell = unsafe { self.buffer.get_unchecked(pos & self.mask) };
             let seq = cell.sequence.load(Ordering::Acquire);
             let diff = (seq as isize).wrapping_sub((pos.wrapping_add(1)) as isize);
 

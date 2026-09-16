@@ -137,7 +137,7 @@ impl<T> SpscProducer<T> {
         }
 
         unsafe {
-            let slot = self.inner.buffer[head & self.inner.mask].get();
+            let slot = self.inner.buffer.get_unchecked(head & self.inner.mask).get();
             (*slot).write(item);
         }
         self.inner.head.store(head.wrapping_add(1), Ordering::Release);
@@ -167,7 +167,7 @@ impl<T> SpscConsumer<T> {
         }
 
         let item = unsafe {
-            let slot = self.inner.buffer[tail & self.inner.mask].get();
+            let slot = self.inner.buffer.get_unchecked(tail & self.inner.mask).get();
             (*slot).assume_init_read()
         };
         self.inner.tail.store(tail.wrapping_add(1), Ordering::Release);

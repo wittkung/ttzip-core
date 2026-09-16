@@ -87,7 +87,10 @@ impl BufferPool {
     /// Releases a buffer back to the pool.
     pub fn release(&self, mut buf: Vec<u8>) {
         if buf.capacity() >= self.chunk_size {
-            buf.clear();
+            // Retain initialized capacity and length to eliminate resize zeroing on reuse
+            unsafe {
+                buf.set_len(self.chunk_size);
+            }
             let mut guard = self.free_buffers.lock();
             if guard.len() < self.max_buffers {
                 guard.push(buf);
@@ -164,15 +167,20 @@ impl PooledBuffer {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         &mut self.buffer
     }
+
+    /// Truncates the buffer to the specified length.
+    #[inline]
+    pub fn truncate(&mut self, len: usize) {
+        self.buffer.truncate(len);
+    }
 }
 
 // MARK: - Pipeline Data Structures
 
 /// Discrete multi-threaded processing unit.
-#[derive(Debug)]
 pub struct Job {
     pub job_id: u64,
-    pub input_data: Vec<u8>,
+    pub input_data: PooledBuffer,
     pub is_last: bool,
     pub original_size: usize,
 }
@@ -224,8 +232,7 @@ impl JobScheduler {
         let mut is_eof = false;
 
         while jobs.len() < max_batch_size {
-            let mut buf = pool.acquire_raw();
-            buf.resize(self.chunk_size, 0);
+            let mut buf = pool.acquire();
 
             let mut total_read = 0;
             while total_read < self.chunk_size {
@@ -249,7 +256,7 @@ impl JobScheduler {
                     let job_id = self.job_counter.fetch_add(1, Ordering::Relaxed);
                     jobs.push(Job {
                         job_id,
-                        input_data: Vec::new(),
+                        input_data: PooledBuffer::standalone(Vec::new()),
                         is_last: true,
                         original_size: 0,
                     });
@@ -447,8 +454,7 @@ impl TTZipMtEngine {
                 break;
             }
 
-            // Parallel execution via Rayon with input buffer recycling
-            let pool_ref = &self.buffer_pool;
+            // Parallel execution via Rayon with RAII input buffer recycling upon job drop
             let worker_ref = &worker;
             let completed_batch = self.scheduler.dispatch_parallel(jobs, |job| {
                 let raw_len = job.input_data.len();
@@ -457,9 +463,6 @@ impl TTZipMtEngine {
 
                 let res = worker_ref(&job.input_data);
                 let processed_len = res.as_ref().map(|v| v.len()).unwrap_or(0);
-
-                // Recycle input data buffer back into pool
-                pool_ref.release(job.input_data);
 
                 CompletedJob {
                     job_id,

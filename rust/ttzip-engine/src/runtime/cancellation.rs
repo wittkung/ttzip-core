@@ -8,8 +8,11 @@
 //! Atomic cancellation tokens and cross-thread notification channels.
 
 use crate::types::TTZipStatus;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+
+const CANCELLED_BIT: u8 = 0x80;
+const REASON_MASK: u8 = 0x0F;
 
 /// Cancellation reason conforming to `contracts/ttzip_progress_log_event.json`.
 #[repr(u8)]
@@ -32,7 +35,7 @@ impl CancellationReason {
     }
 
     pub fn from_u8(val: u8) -> Self {
-        match val {
+        match val & REASON_MASK {
             1 => CancellationReason::Timeout,
             2 => CancellationReason::ResourceExhaustion,
             3 => CancellationReason::FatalError,
@@ -41,11 +44,10 @@ impl CancellationReason {
     }
 }
 
-/// Thread-safe atomic cancellation token.
+/// Thread-safe atomic cancellation token backed by a single `Arc<AtomicU8>`.
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
-    cancelled: Arc<AtomicBool>,
-    reason: Arc<AtomicU8>,
+    state: Arc<AtomicU8>,
 }
 
 impl Default for CancellationToken {
@@ -58,34 +60,34 @@ impl CancellationToken {
     /// Creates a new uncancelled token.
     pub fn new() -> Self {
         Self {
-            cancelled: Arc::new(AtomicBool::new(false)),
-            reason: Arc::new(AtomicU8::new(0)),
+            state: Arc::new(AtomicU8::new(0)),
         }
     }
 
     /// Signals cancellation with the specified reason.
     pub fn cancel(&self, reason: CancellationReason) {
-        self.reason.store(reason as u8, Ordering::Release);
-        self.cancelled.store(true, Ordering::Release);
+        let val = CANCELLED_BIT | (reason as u8 & REASON_MASK);
+        self.state.store(val, Ordering::Release);
     }
 
     /// Returns true if cancellation has been signalled.
-    #[inline]
+    #[inline(always)]
     pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::Acquire)
+        self.state.load(Ordering::Acquire) & CANCELLED_BIT != 0
     }
 
     /// Returns the cancellation reason if cancelled.
     pub fn cancellation_reason(&self) -> Option<CancellationReason> {
-        if self.is_cancelled() {
-            Some(CancellationReason::from_u8(self.reason.load(Ordering::Acquire)))
+        let val = self.state.load(Ordering::Acquire);
+        if val & CANCELLED_BIT != 0 {
+            Some(CancellationReason::from_u8(val))
         } else {
             None
         }
     }
 
     /// Helper that returns `Err(TTZipStatus::Cancelled)` if cancelled, or `Ok(())` otherwise.
-    #[inline]
+    #[inline(always)]
     pub fn check(&self) -> Result<(), TTZipStatus> {
         if self.is_cancelled() {
             Err(TTZipStatus::Cancelled)
