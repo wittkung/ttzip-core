@@ -18,7 +18,7 @@ public struct TTZipBLAKE3: Sendable {
     /// Computes 32-byte BLAKE3 hash returning a 64-character lowercase hex string.
     public static func hashHex(_ data: Data) -> String {
         let digest = hash(data)
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return digest.fastHexEncodedString()
     }
 
     /// Computes 32-byte keyed MAC using a 32-byte cryptographic key.
@@ -32,7 +32,7 @@ public struct TTZipBLAKE3: Sendable {
     /// Computes keyed MAC returning a lowercase hex string.
     public static func keyedHashHex(_ data: Data, key: Data) throws -> String {
         let digest = try keyedHash(data, key: key)
-        return digest.map { String(format: "%02x", $0) }.joined()
+        return digest.fastHexEncodedString()
     }
 
     /// Incremental streaming BLAKE3 hasher.
@@ -66,7 +66,7 @@ public struct TTZipBLAKE3: Sendable {
         /// Finalizes and outputs lowercase hex string.
         public func finalizeHex() throws -> String {
             let digest = try finalize()
-            return digest.map { String(format: "%02x", $0) }.joined()
+            return digest.fastHexEncodedString()
         }
 
         /// Resets hasher state.

@@ -96,23 +96,46 @@ public struct TTZipCryptoHash: Sendable {
             let val = digest.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
             return String(format: "%016llx", val)
         default:
-            return digest.map { String(format: "%02x", $0) }.joined()
+            return digest.fastHexEncodedString()
         }
     }
 
-    /// Computes hash digest for a local file at given URL with buffered streaming.
+    /// Computes hash digest for a local file at given URL with zero-copy chunked streaming.
     public static func hashFile(at url: URL, algorithm: TTZipHashAlgorithm) throws -> String {
-        let fileHandle = try FileHandle(forReadingFrom: url)
-        defer { try? fileHandle.close() }
+        switch algorithm {
+        case .crc32:
+            let crc = try computeFileCrc32(filePath: url.path)
+            return String(format: "%08X", crc)
 
-        let bufferSize = 1024 * 1024 // 1MB buffer
-        var accumulatorData = Data()
+        case .sha256:
+            return try computeFileSha256(filePath: url.path)
 
-        while let chunk = try fileHandle.read(upToCount: bufferSize), !chunk.isEmpty {
-            accumulatorData.append(chunk)
+        case .sha1:
+            return try computeFileHash(path: url.path, algorithm: "sha1")
+
+        case .md5:
+            return try computeFileHash(path: url.path, algorithm: "md5")
+
+        case .adler32:
+            let fileHandle = try FileHandle(forReadingFrom: url)
+            defer { try? fileHandle.close() }
+            let bufferSize = 64 * 1024
+            var adler: UInt32 = 1
+            while let chunk = try fileHandle.read(upToCount: bufferSize), !chunk.isEmpty {
+                adler = uniffiAdler32Rolling(initial: adler, data: chunk)
+            }
+            return String(format: "%08X", adler)
+
+        case .crc64, .xxh3_64, .xxh3_128, .blake3:
+            let fileHandle = try FileHandle(forReadingFrom: url)
+            defer { try? fileHandle.close() }
+            let bufferSize = 128 * 1024
+            var accumulatorData = Data()
+            while let chunk = try fileHandle.read(upToCount: bufferSize), !chunk.isEmpty {
+                accumulatorData.append(chunk)
+            }
+            return hash(accumulatorData, algorithm: algorithm)
         }
-
-        return hash(accumulatorData, algorithm: algorithm)
     }
 
     /// Asynchronously consumes an `AsyncThrowingStream` and returns computed hash string.
@@ -120,11 +143,63 @@ public struct TTZipCryptoHash: Sendable {
         source: AsyncThrowingStream<Data, Error>,
         algorithm: TTZipHashAlgorithm
     ) async throws -> String {
-        var completeData = Data()
-        for try await chunk in source {
-            if Task.isCancelled { break }
-            completeData.append(chunk)
+        switch algorithm {
+        case .crc32:
+            var crc: UInt32 = 0
+            for try await chunk in source {
+                if Task.isCancelled { break }
+                crc = uniffiCrc32Rolling(initial: crc, data: chunk)
+            }
+            return String(format: "%08X", crc)
+
+        case .adler32:
+            var adler: UInt32 = 1
+            for try await chunk in source {
+                if Task.isCancelled { break }
+                adler = uniffiAdler32Rolling(initial: adler, data: chunk)
+            }
+            return String(format: "%08X", adler)
+
+        default:
+            var completeData = Data()
+            for try await chunk in source {
+                if Task.isCancelled { break }
+                completeData.append(chunk)
+            }
+            return hash(completeData, algorithm: algorithm)
         }
-        return hash(completeData, algorithm: algorithm)
+    }
+}
+
+// MARK: - Fast 256-Element Hex Lookup Table Extension
+
+/// Static 256-entry lookup table mapping every byte 0...255 to its two-character lowercase hexadecimal ASCII representation.
+@usableFromInline
+package let hexLUT: [(UInt8, UInt8)] = {
+    let digits = Array("0123456789abcdef".utf8)
+    var lut = [(UInt8, UInt8)]()
+    lut.reserveCapacity(256)
+    for i in 0..<256 {
+        lut.append((digits[i >> 4], digits[i & 0x0F]))
+    }
+    return lut
+}()
+
+extension Data {
+    /// Fast lowercase hex-encoded string conversion using 256-entry precomputed lookup table (zero intermediate String allocations).
+    @inlinable
+    package func fastHexEncodedString() -> String {
+        let byteCount = self.count
+        guard byteCount > 0 else { return "" }
+        return String(unsafeUninitializedCapacity: byteCount * 2) { buffer in
+            var outIdx = 0
+            for byte in self {
+                let pair = hexLUT[Int(byte)]
+                buffer[outIdx] = pair.0
+                buffer[outIdx + 1] = pair.1
+                outIdx += 2
+            }
+            return byteCount * 2
+        }
     }
 }

@@ -138,7 +138,7 @@ impl BumpWorkspace {
     /// # Errors
     /// Returns [`WorkspaceError::OutOfMemory`] if the bottom and top cursors collide.
     /// Returns [`WorkspaceError::InvalidAlignment`] if `align` is not a power of two or < `align_of::<T>()`.
-    pub fn alloc_bottom_aligned<T: Default + Clone>(
+    pub fn alloc_bottom_aligned<T: Default + Clone + 'static>(
         &mut self,
         count: usize,
         align: usize,
@@ -191,8 +191,26 @@ impl BumpWorkspace {
 
         let target_slice = unsafe {
             let slice_ptr = aligned_ptr as *mut T;
-            for i in 0..count {
-                std::ptr::write(slice_ptr.add(i), T::default());
+            let type_id = std::any::TypeId::of::<T>();
+            if type_id == std::any::TypeId::of::<u8>()
+                || type_id == std::any::TypeId::of::<u16>()
+                || type_id == std::any::TypeId::of::<u32>()
+                || type_id == std::any::TypeId::of::<u64>()
+                || type_id == std::any::TypeId::of::<usize>()
+                || type_id == std::any::TypeId::of::<i8>()
+                || type_id == std::any::TypeId::of::<i16>()
+                || type_id == std::any::TypeId::of::<i32>()
+                || type_id == std::any::TypeId::of::<i64>()
+                || type_id == std::any::TypeId::of::<isize>()
+                || type_id == std::any::TypeId::of::<bool>()
+                || type_id == std::any::TypeId::of::<f32>()
+                || type_id == std::any::TypeId::of::<f64>()
+            {
+                std::ptr::write_bytes(slice_ptr as *mut u8, 0, total_bytes);
+            } else {
+                for i in 0..count {
+                    std::ptr::write(slice_ptr.add(i), T::default());
+                }
             }
             std::slice::from_raw_parts_mut(slice_ptr, count)
         };
@@ -202,15 +220,21 @@ impl BumpWorkspace {
 
     /// Allocates an array slice of type `T` from the bottom-up cursor with natural alignment.
     #[inline]
-    pub fn alloc_bottom<T: Default + Clone>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
+    pub fn alloc_bottom<T: Default + Clone + 'static>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
         self.alloc_bottom_aligned(count, std::mem::align_of::<T>())
     }
 
     /// Allocates a 64-byte aligned scratchpad slice of type `T` from the bottom-up cursor.
     #[inline]
-    pub fn alloc_bottom_64<T: Default + Clone>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
+    pub fn alloc_bottom_64<T: Default + Clone + 'static>(&mut self, count: usize) -> Result<&mut [T], WorkspaceError> {
         let align = std::mem::align_of::<T>().max(CACHE_LINE_ALIGNMENT);
         self.alloc_bottom_aligned(count, align)
+    }
+
+    /// Allocates a zero-initialized byte slice from the bottom-up cursor.
+    #[inline]
+    pub fn alloc_bottom_bytes(&mut self, count: usize) -> Result<&mut [u8], WorkspaceError> {
+        self.alloc_bottom::<u8>(count)
     }
 
     /// Allocates a transient byte buffer from the top-down cursor.

@@ -62,13 +62,13 @@ impl fmt::Display for DecompressionError {
             Self::BitstreamUnderflow => write!(f, "Bitstream accumulator underflow"),
             Self::CorruptedEntropyTable => write!(f, "Corrupted entropy decoding state/table"),
             Self::InvalidSequenceOffset { offset, current_pos } => {
-                write!(f, "Invalid match offset {} at pos {}", offset, current_pos)
+                write!(f, "Invalid match offset {offset} at pos {current_pos}")
             }
             Self::OutputBufferTooSmall { required, available } => {
-                write!(f, "Output buffer too small: required {}, available {}", required, available)
+                write!(f, "Output buffer too small: required {required}, available {available}")
             }
             Self::ChecksumMismatch { expected, calculated } => {
-                write!(f, "Checksum mismatch: expected 0x{:08X}, got 0x{:08X}", expected, calculated)
+                write!(f, "Checksum mismatch: expected 0x{expected:08X}, got 0x{calculated:08X}")
             }
             Self::UnexpectedEndOfStream => write!(f, "Unexpected end of compressed input stream"),
             Self::InvalidLiteralLength(l) => write!(f, "Invalid literal run length: {}", l),
@@ -120,9 +120,28 @@ impl<'a> BitstreamReader<'a> {
         reader
     }
 
-    /// Refills forward 64-bit accumulator with up to 7 bytes.
+    /// Refills forward 64-bit accumulator with fast 64/32-bit word loads.
     #[inline]
     pub fn refill_forward(&mut self) {
+        if self.bits_in_acc == 0 && self.cursor + 8 <= self.slice.len() {
+            let chunk = unsafe {
+                core::ptr::read_unaligned(self.slice.as_ptr().add(self.cursor) as *const u64)
+            };
+            self.accumulator = u64::from_le(chunk);
+            self.bits_in_acc = 64;
+            self.cursor += 8;
+            return;
+        }
+
+        if self.bits_in_acc <= 32 && self.cursor + 4 <= self.slice.len() {
+            let chunk = unsafe {
+                core::ptr::read_unaligned(self.slice.as_ptr().add(self.cursor) as *const u32)
+            };
+            self.accumulator |= (u32::from_le(chunk) as u64) << self.bits_in_acc;
+            self.bits_in_acc += 32;
+            self.cursor += 4;
+        }
+
         while self.bits_in_acc <= BIT_RELOAD_THRESHOLD && self.cursor < self.slice.len() {
             let byte = self.slice[self.cursor] as u64;
             self.accumulator |= byte << self.bits_in_acc;
@@ -358,9 +377,28 @@ impl SequenceExecutor {
                 });
             }
             let start_pos = *out_cursor - match_off;
-            for i in 0..match_len {
-                out_buf[*out_cursor + i] = out_buf[start_pos + i];
+            let out_ptr = out_buf.as_mut_ptr();
+            let mut copied = 0;
+
+            // Fast path: non-overlapping 64-bit unaligned word copies
+            if match_off >= 8 {
+                while copied + 8 <= match_len {
+                    unsafe {
+                        let word = core::ptr::read_unaligned(out_ptr.add(start_pos + copied) as *const u64);
+                        core::ptr::write_unaligned(out_ptr.add(*out_cursor + copied) as *mut u64, word);
+                    }
+                    copied += 8;
+                }
             }
+
+            // Scalar tail: eliminates bounds checks via verified pointers
+            while copied < match_len {
+                unsafe {
+                    *out_ptr.add(*out_cursor + copied) = *out_ptr.add(start_pos + copied);
+                }
+                copied += 1;
+            }
+
             *out_cursor += match_len;
         }
         Ok(())
@@ -422,8 +460,8 @@ impl BlockHeader {
         let flags = slice[0];
         let block_type = BlockType::from_u8(flags & 0x03)?;
         let is_last_block = (flags & 0x80) != 0;
-        let uncompressed_size = u32::from_le_bytes([slice[1], slice[2], slice[3], slice[4]]);
-        let compressed_size = u32::from_le_bytes([slice[5], slice[6], slice[7], slice[8]]);
+        let uncompressed_size = u32::from_le_bytes(slice[1..5].try_into().unwrap());
+        let compressed_size = u32::from_le_bytes(slice[5..9].try_into().unwrap());
 
         if (uncompressed_size as usize) > MAX_BLOCK_SIZE_128KB {
             return Err(DecompressionError::BlockSizeExceeded(uncompressed_size as usize));
@@ -483,17 +521,15 @@ impl FrameHeader {
         let mut dictionary_id = None;
         if has_dict {
             if slice.len() < offset + 4 { return Err(DecompressionError::UnexpectedEndOfStream); }
-            dictionary_id = Some(u32::from_le_bytes([slice[offset], slice[offset + 1], slice[offset + 2], slice[offset + 3]]));
+            dictionary_id = Some(u32::from_le_bytes(slice[offset..offset + 4].try_into().map_err(|_| DecompressionError::UnexpectedEndOfStream)?));
             offset += 4;
         }
 
         let mut expected_uncompressed_size = None;
         if has_content_size {
             if slice.len() < offset + 8 { return Err(DecompressionError::UnexpectedEndOfStream); }
-            expected_uncompressed_size = Some(u64::from_le_bytes([
-                slice[offset], slice[offset + 1], slice[offset + 2], slice[offset + 3],
-                slice[offset + 4], slice[offset + 5], slice[offset + 6], slice[offset + 7],
-            ]));
+            let bytes = slice[offset..offset + 8].try_into().map_err(|_| DecompressionError::UnexpectedEndOfStream)?;
+            expected_uncompressed_size = Some(u64::from_le_bytes(bytes));
             offset += 8;
         }
 
@@ -542,6 +578,17 @@ impl FiveLayerStateMachine {
     #[inline]
     pub fn new() -> Self { Self }
 
+    #[inline]
+    fn verify_checksum(crc_slice: &[u8], decoded: &[u8]) -> Result<(), DecompressionError> {
+        let expected = u32::from_le_bytes(crc_slice.try_into().map_err(|_| DecompressionError::UnexpectedEndOfStream)?);
+        let calculated = crc32fast::hash(decoded);
+        if expected != calculated {
+            Err(DecompressionError::ChecksumMismatch { expected, calculated })
+        } else {
+            Ok(())
+        }
+    }
+
     /// Decompresses an entire TTZip frame from `src` into `dst` slice.
     #[inline]
     pub fn decompress_frame(&self, src: &[u8], dst: &mut [u8]) -> Result<usize, DecompressionError> {
@@ -552,11 +599,7 @@ impl FiveLayerStateMachine {
             if src_cursor >= src.len() { break; }
 
             if header.has_checksum && src.len() - src_cursor == 4 {
-                let expected_crc = u32::from_le_bytes([src[src_cursor], src[src_cursor + 1], src[src_cursor + 2], src[src_cursor + 3]]);
-                let actual_crc = crc32fast::hash(&dst[..dst_cursor]);
-                if expected_crc != actual_crc {
-                    return Err(DecompressionError::ChecksumMismatch { expected: expected_crc, calculated: actual_crc });
-                }
+                Self::verify_checksum(&src[src_cursor..src_cursor + 4], &dst[..dst_cursor])?;
                 break;
             }
 
@@ -597,11 +640,7 @@ impl FiveLayerStateMachine {
 
             if block_hdr.is_last_block {
                 if header.has_checksum && src_cursor + 4 <= src.len() {
-                    let expected_crc = u32::from_le_bytes([src[src_cursor], src[src_cursor + 1], src[src_cursor + 2], src[src_cursor + 3]]);
-                    let actual_crc = crc32fast::hash(&dst[..dst_cursor]);
-                    if expected_crc != actual_crc {
-                        return Err(DecompressionError::ChecksumMismatch { expected: expected_crc, calculated: actual_crc });
-                    }
+                    Self::verify_checksum(&src[src_cursor..src_cursor + 4], &dst[..dst_cursor])?;
                 }
                 break;
             }
@@ -619,8 +658,8 @@ impl FiveLayerStateMachine {
     /// Decompresses an LZ77 + Entropy block.
     fn decompress_lz77_block(&self, block_data: &[u8], dst: &mut [u8], dst_cursor: &mut usize) -> Result<(), DecompressionError> {
         if block_data.len() < 4 { return Err(DecompressionError::UnexpectedEndOfStream); }
-        let num_sequences = u16::from_le_bytes([block_data[0], block_data[1]]) as usize;
-        let lit_size = u16::from_le_bytes([block_data[2], block_data[3]]) as usize;
+        let num_sequences = u16::from_le_bytes(block_data[0..2].try_into().unwrap()) as usize;
+        let lit_size = u16::from_le_bytes(block_data[2..4].try_into().unwrap()) as usize;
 
         let seq_header_len = 4;
         let seq_bytes_len = num_sequences * 6;
@@ -655,121 +694,6 @@ impl FiveLayerStateMachine {
 // Companion Pure Functional Frame Encoder for Testing & Roundtrip
 // ============================================================================
 
-/// Pure functional companion encoder creating 5-layer TTZ1 frames.
-pub struct FiveLayerFrameEncoder;
+pub mod encoder;
+pub use encoder::FiveLayerFrameEncoder;
 
-impl FiveLayerFrameEncoder {
-    /// Encodes a raw byte slice into a 5-layer TTZ1 frame.
-    pub fn encode_frame(raw_data: &[u8], use_checksum: bool) -> Vec<u8> {
-        let mut out = Vec::with_capacity(raw_data.len() + 64);
-        let header = FrameHeader {
-            version: 1,
-            has_checksum: use_checksum,
-            dictionary_id: None,
-            expected_uncompressed_size: Some(raw_data.len() as u64),
-        };
-        let mut hdr_buf = [0u8; 32];
-        let hdr_len = header.write_to_slice(&mut hdr_buf).unwrap();
-        out.extend_from_slice(&hdr_buf[..hdr_len]);
-
-        if raw_data.is_empty() {
-            let blk = BlockHeader { block_type: BlockType::RawUncompressed, is_last_block: true, uncompressed_size: 0, compressed_size: 0 };
-            let mut blk_buf = [0u8; 9];
-            blk.write_to_slice(&mut blk_buf).unwrap();
-            out.extend_from_slice(&blk_buf);
-        } else {
-            let chunks: Vec<&[u8]> = raw_data.chunks(MAX_BLOCK_SIZE_128KB).collect();
-            for (idx, chunk) in chunks.iter().enumerate() {
-                let is_last = idx == chunks.len() - 1;
-                if chunk.len() > 16 && chunk.iter().all(|&b| b == chunk[0]) {
-                    let blk = BlockHeader { block_type: BlockType::RleRepeatedByte, is_last_block: is_last, uncompressed_size: chunk.len() as u32, compressed_size: 1 };
-                    let mut blk_buf = [0u8; 9];
-                    blk.write_to_slice(&mut blk_buf).unwrap();
-                    out.extend_from_slice(&blk_buf);
-                    out.push(chunk[0]);
-                } else if chunk.len() > 32 {
-                    let (seqs, lits) = Self::simple_lz77_compress(chunk);
-                    let payload_len = 4 + seqs.len() * 6 + lits.len();
-                    if payload_len < chunk.len() {
-                        let blk = BlockHeader { block_type: BlockType::CompressedLz77Entropy, is_last_block: is_last, uncompressed_size: chunk.len() as u32, compressed_size: payload_len as u32 };
-                        let mut blk_buf = [0u8; 9];
-                        blk.write_to_slice(&mut blk_buf).unwrap();
-                        out.extend_from_slice(&blk_buf);
-                        out.extend_from_slice(&(seqs.len() as u16).to_le_bytes());
-                        out.extend_from_slice(&(lits.len() as u16).to_le_bytes());
-                        for s in &seqs {
-                            out.extend_from_slice(&(s.literal_length as u16).to_le_bytes());
-                            out.extend_from_slice(&(s.match_offset as u16).to_le_bytes());
-                            out.extend_from_slice(&(s.match_length as u16).to_le_bytes());
-                        }
-                        out.extend_from_slice(&lits);
-                    } else {
-                        let blk = BlockHeader { block_type: BlockType::RawUncompressed, is_last_block: is_last, uncompressed_size: chunk.len() as u32, compressed_size: chunk.len() as u32 };
-                        let mut blk_buf = [0u8; 9];
-                        blk.write_to_slice(&mut blk_buf).unwrap();
-                        out.extend_from_slice(&blk_buf);
-                        out.extend_from_slice(chunk);
-                    }
-                } else {
-                    let blk = BlockHeader { block_type: BlockType::RawUncompressed, is_last_block: is_last, uncompressed_size: chunk.len() as u32, compressed_size: chunk.len() as u32 };
-                    let mut blk_buf = [0u8; 9];
-                    blk.write_to_slice(&mut blk_buf).unwrap();
-                    out.extend_from_slice(&blk_buf);
-                    out.extend_from_slice(chunk);
-                }
-            }
-        }
-
-        if use_checksum {
-            let crc = crc32fast::hash(raw_data);
-            out.extend_from_slice(&crc.to_le_bytes());
-        }
-        out
-    }
-
-    fn simple_lz77_compress(input: &[u8]) -> (Vec<Lz77Sequence>, Vec<u8>) {
-        let mut sequences = Vec::new();
-        let mut literals = Vec::new();
-        let mut pos = 0;
-        let mut lit_start = 0;
-
-        while pos < input.len() {
-            let mut best_len = 0;
-            let mut best_off = 0;
-            let max_lookback = pos.min(32768);
-            let window_start = pos - max_lookback;
-
-            if pos + 4 <= input.len() {
-                for candidate in (window_start..pos).rev() {
-                    let mut match_len = 0;
-                    while pos + match_len < input.len()
-                        && input[candidate + match_len] == input[pos + match_len]
-                        && match_len < 255
-                    {
-                        match_len += 1;
-                    }
-                    if match_len > best_len {
-                        best_len = match_len;
-                        best_off = pos - candidate;
-                        if match_len >= 32 { break; }
-                    }
-                }
-            }
-
-            if best_len >= 4 {
-                let lit_len = pos - lit_start;
-                literals.extend_from_slice(&input[lit_start..pos]);
-                sequences.push(Lz77Sequence::new(lit_len as u32, best_off as u32, best_len as u32));
-                pos += best_len;
-                lit_start = pos;
-            } else {
-                pos += 1;
-            }
-        }
-
-        if lit_start < input.len() {
-            literals.extend_from_slice(&input[lit_start..input.len()]);
-        }
-        (sequences, literals)
-    }
-}
