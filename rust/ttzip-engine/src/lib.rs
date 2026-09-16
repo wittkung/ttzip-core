@@ -20,12 +20,13 @@ pub mod archive;
 pub mod audio;
 pub mod benchmark;
 pub use benchmark as bench;
+pub mod c_api;
 pub mod charset;
 pub mod checksum;
 pub mod codecs;
 pub mod crypto;
 pub mod ebook;
-pub mod ffi;
+pub use c_api as ffi;
 pub mod fs;
 pub mod html;
 pub mod i18n;
@@ -77,6 +78,7 @@ pub use audio::{
     AudioStreamInfo, AudioWaveform, AudioWaveformSampler, DecodedAudioPacket, TTZipAudioDecoder,
 };
 pub use benchmark::*;
+pub use c_api::*;
 pub use charset::*;
 pub use codecs::*;
 pub use crypto::*;

@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -30,6 +31,8 @@ def main():
 
     # ── 1. Compile all test targets in one shot ──────────────────────────
     t0 = time.time()
+    print("    🔨 Compiling test targets concurrently via Cargo...", flush=True)
+    err_file = tempfile.TemporaryFile()
     proc = subprocess.Popen(
         [
             "cargo", "test", "-p", "ttzip-engine",
@@ -37,7 +40,7 @@ def main():
             "--no-run", "--message-format=json",
         ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=err_file,
         text=True,
     )
 
@@ -67,7 +70,8 @@ def main():
 
     proc.wait()
     if proc.returncode != 0:
-        err = proc.stderr.read()
+        err_file.seek(0)
+        err = err_file.read().decode("utf-8", errors="replace")
         print(f"Compilation failed with exit code {proc.returncode}:\n{err}", file=sys.stderr)
         sys.exit(1)
 
@@ -81,6 +85,7 @@ def main():
         "silesia_regression",
         "sevenz_crypto_kdf",
         "benchmark",
+        "perf_test",
     )
 
     run_targets = []
@@ -120,15 +125,19 @@ def main():
     failed = []
 
     test_env = os.environ.copy()
-    test_env["RAYON_NUM_THREADS"] = "2"
+    test_env["RUST_TEST_THREADS"] = "2"
+    test_env["RAYON_NUM_THREADS"] = "1"
 
     def run_target(target_info):
         display_name, exe, extra_args = target_info
         start = time.time()
+        cur_env = test_env.copy()
+        if "unittests" in display_name:
+            cur_env["RUST_TEST_THREADS"] = "6"
         res = subprocess.run(
             [exe] + extra_args,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, env=test_env,
+            text=True, env=cur_env,
         )
         dur = time.time() - start
         return display_name, exe, res.returncode, res.stdout, dur
