@@ -27,9 +27,17 @@ from .models import (
 from .zipfile import ZipFile, SevenZipFile, open_archive
 
 try:
+    from . import ttzip_engine as uniffi_engine
+    _HAS_UNIFFI = True
+except ImportError:
+    uniffi_engine = None
+    _HAS_UNIFFI = False
+
+try:
     from . import _ttzip
     _HAS_NATIVE = True
 except ImportError:
+    _ttzip = None
     _HAS_NATIVE = False
 
 __version__ = "1.0.0"
@@ -45,24 +53,35 @@ def compress(
 ) -> None:
     """
     Compresses source files or directories into a target archive (ZIP, 7z, TAR, GZ, ZSTD).
-    Releases the Python GIL during heavy compression.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
-
     if isinstance(sources, (str, Path)):
         src_list = [str(sources)]
     else:
         src_list = [str(s) for s in sources]
 
-    _ttzip.compress(
-        src_list,
-        str(destination),
-        format,
-        level,
-        password,
-        threads,
-    )
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        uniffi_engine.create_archive_stream(
+            source_paths=src_list,
+            destination_archive_path=str(destination),
+            password=password,
+            progress=None,
+            token=None,
+        )
+        return
+
+    if _HAS_NATIVE and _ttzip is not None:
+        _ttzip.compress(
+            src_list,
+            str(destination),
+            format,
+            level,
+            password,
+            threads,
+        )
+        return
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def extract(
@@ -73,17 +92,28 @@ def extract(
 ) -> None:
     """
     Extracts an archive safely with built-in Zip Slip protection.
-    Releases the Python GIL during extraction.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        uniffi_engine.extract_archive_stream(
+            archive_path=str(archive),
+            destination_dir=str(destination),
+            password=password,
+            progress=None,
+            token=None,
+        )
+        return
 
-    _ttzip.extract(
-        str(archive),
-        str(destination),
-        password,
-        threads,
-    )
+    if _HAS_NATIVE and _ttzip is not None:
+        _ttzip.extract(
+            str(archive),
+            str(destination),
+            password,
+            threads,
+        )
+        return
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def inspect(
@@ -92,11 +122,50 @@ def inspect(
 ) -> List[EntryMetadata]:
     """
     Inspects archive entry metadata without extracting to disk.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        entries = uniffi_engine.inspect_archive_entries(str(archive), password)
+        return [
+            EntryMetadata(
+                path=e.path,
+                uncompressed_size=e.uncompressed_size,
+                compressed_size=e.compressed_size,
+                crc32=e.crc32,
+                is_directory=e.is_directory,
+                is_encrypted=e.is_encrypted,
+                last_modified=e.last_modified,
+            )
+            for e in entries
+        ]
 
-    return _ttzip.inspect(str(archive), password)
+    if _HAS_NATIVE and _ttzip is not None:
+        return _ttzip.inspect(str(archive), password)
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
+
+
+_CODEC_MAP = {
+    "deflate": "DEFLATE_RAW",
+    "raw": "DEFLATE_RAW",
+    "deflate_raw": "DEFLATE_RAW",
+    "zlib": "ZLIB",
+    "gzip": "GZIP",
+    "gz": "GZIP",
+    "zstd": "ZSTD",
+    "zst": "ZSTD",
+    "lz4": "LZ4_FAST",
+    "lz4_fast": "LZ4_FAST",
+    "lz4_hc": "LZ4_HC",
+    "lzfse": "LZFSE",
+    "lzvn": "LZVN",
+    "brotli": "BROTLI",
+    "snappy": "SNAPPY",
+    "bzip2": "BZIP2",
+    "bz2": "BZIP2",
+    "xz": "XZ",
+    "fl2": "FL2",
+}
 
 
 def decompress_buffer(
@@ -104,15 +173,25 @@ def decompress_buffer(
     format: str = "deflate",
 ) -> bytes:
     """
-    Decompresses an in-memory buffer (deflate, zstd, lz4, snappy, lzfse).
+    Decompresses an in-memory buffer (deflate, zstd, lz4, snappy, lzfse, etc.).
     Supports PyBuffer zero-copy protocol and releases the Python GIL.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
-
     if isinstance(data, memoryview):
         data = data.tobytes()
-    return _ttzip.decompress_buffer(data, format)
+    elif isinstance(data, bytearray):
+        data = bytes(data)
+
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        codec_name = _CODEC_MAP.get(format.lower())
+        if codec_name and hasattr(uniffi_engine.UniFfiCompressionCodec, codec_name):
+            codec = getattr(uniffi_engine.UniFfiCompressionCodec, codec_name)
+            return bytes(uniffi_engine.uniffi_decompress_buffer(codec, data, None, None))
+
+    if _HAS_NATIVE and _ttzip is not None:
+        return _ttzip.decompress_buffer(data, format)
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def compress_buffer(
@@ -123,13 +202,30 @@ def compress_buffer(
     """
     Compresses an in-memory buffer.
     Supports PyBuffer zero-copy protocol and releases the Python GIL.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
-
     if isinstance(data, memoryview):
         data = data.tobytes()
-    return _ttzip.compress_buffer(data, format, level)
+    elif isinstance(data, bytearray):
+        data = bytes(data)
+
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        codec_name = _CODEC_MAP.get(format.lower())
+        if codec_name and hasattr(uniffi_engine.UniFfiCompressionCodec, codec_name):
+            codec = getattr(uniffi_engine.UniFfiCompressionCodec, codec_name)
+            opts = uniffi_engine.UniFfiCompressionOptions(
+                level=level,
+                acceleration=None,
+                window_mb=None,
+                ppmd_order=None,
+                ppmd_mem_mb=None,
+            )
+            return bytes(uniffi_engine.uniffi_compress_buffer(codec, data, opts))
+
+    if _HAS_NATIVE and _ttzip is not None:
+        return _ttzip.compress_buffer(data, format, level)
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def decompress_into(
@@ -152,25 +248,42 @@ def decompress_into(
 def crc32(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int:
     """
     Computes SIMD-accelerated CRC-32 (>40 GB/s on Apple Silicon / AVX-512).
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
-
     if isinstance(data, memoryview):
         data = data.tobytes()
-    return _ttzip.crc32(data, seed)
+    elif isinstance(data, bytearray):
+        data = bytes(data)
+
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        if seed == 0:
+            return uniffi_engine.uniffi_crc32(data)
+        else:
+            return uniffi_engine.uniffi_crc32_rolling(seed, data)
+
+    if _HAS_NATIVE and _ttzip is not None:
+        return _ttzip.crc32(data, seed)
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def crc64(data: Union[bytes, bytearray, memoryview, Any], seed: int = 0) -> int:
     """
     Computes SIMD-accelerated CRC-64.
+    Prefers Mozilla UniFFI bindings when available, with native C-extension fallback.
     """
-    if not _HAS_NATIVE:
-        raise RuntimeError("TTZip native C-extension (_ttzip) is not compiled or available.")
-
     if isinstance(data, memoryview):
         data = data.tobytes()
-    return _ttzip.crc64(data, seed)
+    elif isinstance(data, bytearray):
+        data = bytes(data)
+
+    if _HAS_UNIFFI and uniffi_engine is not None:
+        return uniffi_engine.uniffi_crc64(data, seed if seed != 0 else None)
+
+    if _HAS_NATIVE and _ttzip is not None:
+        return _ttzip.crc64(data, seed)
+
+    raise RuntimeError("Neither TTZip UniFFI engine nor native C-extension (_ttzip) is available.")
 
 
 def version() -> str:
