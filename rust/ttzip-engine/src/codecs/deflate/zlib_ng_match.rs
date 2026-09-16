@@ -147,17 +147,14 @@ pub fn match_length_fast(slice_a: &[u8], slice_b: &[u8], max_len: usize) -> usiz
     let limit = min(max_len, min(slice_a.len(), slice_b.len()));
     let mut len = 0;
 
+    let ptr_a = slice_a.as_ptr();
+    let ptr_b = slice_b.as_ptr();
+
     // Fast path: 8-byte chunk comparison via 64-bit little-endian loads
     while len + 8 <= limit {
-        // Safe unaligned 8-byte load
-        let mut buf_a = [0u8; 8];
-        let mut buf_b = [0u8; 8];
-        buf_a.copy_from_slice(&slice_a[len..len + 8]);
-        buf_b.copy_from_slice(&slice_b[len..len + 8]);
-
-        let val_a = u64::from_le_bytes(buf_a);
-        let val_b = u64::from_le_bytes(buf_b);
-        let diff = val_a ^ val_b;
+        let val_a = unsafe { core::ptr::read_unaligned(ptr_a.add(len) as *const u64) };
+        let val_b = unsafe { core::ptr::read_unaligned(ptr_b.add(len) as *const u64) };
+        let diff = (val_a ^ val_b).to_le();
 
         if diff != 0 {
             let matched_bytes = (diff.trailing_zeros() >> 3) as usize;

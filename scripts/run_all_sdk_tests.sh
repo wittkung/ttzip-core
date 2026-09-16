@@ -80,14 +80,12 @@ run_suite() {
     local t0=$(get_time_ms)
     set +e
     TMP_LOG=$(mktemp)
-    if [ "${stream_progress}" = "true" ]; then
+    if [ "${key}" = "rust" ]; then
+        eval "${cmd}" 2>&1 | tee "${TMP_LOG}"
+        local exit_code="${PIPESTATUS[0]}"
+    elif [ "${stream_progress}" = "true" ]; then
         local count=0
-        local total_targets=""
-        if [ "${key}" = "rust" ]; then
-            local test_files=$(find rust/ttzip-engine/tests -maxdepth 1 -name "*.rs" 2>/dev/null | wc -l | tr -d ' ')
-            total_targets=$((test_files + 1))
-        fi
-        local total_display="${total_targets:-?}"
+        local total_display="?"
         local current_target=""
         local regex_result="test result: ([a-zA-Z]+)\. ([0-9]+) passed; ([0-9]+) failed;.*finished in ([0-9.]+[a-zA-Z]*)"
         eval "${cmd}" 2>&1 | tee "${TMP_LOG}" | while IFS= read -r line; do
@@ -135,7 +133,7 @@ run_suite() {
 
 # 1. Rust SDK
 echo ">>> [1/9] Testing Pure Rust & C-ABI Crate Suites..."
-run_suite "rust" "Rust Microkernel & C-ABI" "cargo test -p ttzip-engine --manifest-path rust/ttzip-engine/Cargo.toml" "cargo" "true"
+run_suite "rust" "Rust Microkernel & C-ABI" "python3 scripts/run_parallel_rust_tests.py" "python3"
 
 # 2. Swift 6 SDK
 echo ">>> [2/9] Testing Swift 6 Core SDK..."
