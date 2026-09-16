@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
+#
+# Copyright (c) 2026 MetastudyLine Inc. <contact@metastudyline.com>
+# All rights reserved.
+#
+# TTZip: High-performance native archiving and compression engine.
+
+load("@crates//:defs.bzl", "aliases", "all_crate_deps")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_static_library", "rust_test")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "ttzip_engine",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "ttzip_engine",
+    crate_features = [
+        "default",
+        "full",
+        "archive",
+        "probe",
+        "syntax",
+        "media-player",
+        "device-android",
+    ],
+    compile_data = [
+        "Cargo.toml",
+        "src/codecs/brotli/data/rfc7932_dictionary.bin",
+    ],
+    edition = "2021",
+    aliases = aliases(),
+    deps = all_crate_deps(normal = True) + [
+        "//products/ttzip/core/rust/crates/ttzip-device-android:ttzip_device_android",
+    ],
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    rustc_flags = [
+        "-C", "opt-level=3",
+    ],
+)
+
+rust_static_library(
+    name = "ttzip_engine_static",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "ttzip_engine",
+    crate_features = [
+        "default",
+        "full",
+        "archive",
+        "probe",
+        "syntax",
+        "media-player",
+        "device-android",
+    ],
+    compile_data = [
+        "Cargo.toml",
+        "src/codecs/brotli/data/rfc7932_dictionary.bin",
+    ],
+    edition = "2021",
+    aliases = aliases(),
+    deps = all_crate_deps(normal = True) + [
+        "//products/ttzip/core/rust/crates/ttzip-device-android:ttzip_device_android",
+    ],
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    rustc_flags = [
+        "-C", "opt-level=3",
+    ],
+)
+
+rust_test(
+    name = "ttzip_engine_test",
+    crate = ":ttzip_engine",
+    crate_features = [
+        "default",
+        "full",
+        "archive",
+        "probe",
+        "syntax",
+        "media-player",
+        "device-android",
+    ],
+    aliases = aliases(
+        normal_dev = True,
+        proc_macro_dev = True,
+    ),
+    deps = all_crate_deps(
+        normal_dev = True,
+    ) + [
+        "//third_party/fast-lzma2:fast-lzma2",
+    ],
+    proc_macro_deps = all_crate_deps(
+        proc_macro_dev = True,
+    ),
+    rustc_flags = [
+        "-C", "link-args=-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib -lzstd -llz4 -ldeflate -llzfse -larchive -lbz2 -llzma -liconv -lc++ -lcompression -framework Security",
+    ],
+)
+
+

@@ -26,9 +26,7 @@ use ttzip_engine::codecs::zstd::{
     zstd_compress, zstd_compress_bound, zstd_decompress, zstd_decompress_stream_pipe,
     zstd_get_decompressed_size,
 };
-use ttzip_engine::archive::unified::{create_archive, extract_archive, inspect_archive};
-use ttzip_engine::crypto::crc32::crc32_fast;
-use ttzip_engine::crypto::crc64::crc64 as crc64_calc;
+use ttzip_engine::ffi::*;
 use ttzip_engine::platform::CpuCapabilities;
 use ttzip_engine::types::*;
 
@@ -179,8 +177,15 @@ fn compress(
     };
 
     let (status, msg) = py.allow_threads(move || {
-        let source_path_bufs: Vec<std::path::PathBuf> = sources.iter().map(std::path::PathBuf::from).collect();
-        let dest_path = std::path::Path::new(&destination);
+        let c_sources: Vec<CString> = sources
+            .iter()
+            .map(|s| CString::new(s.as_str()).unwrap_or_default())
+            .collect();
+        let c_source_ptrs: Vec<*const libc::c_char> = c_sources.iter().map(|s| s.as_ptr()).collect();
+        let c_dest = match CString::new(destination.as_str()) {
+            Ok(c) => c,
+            Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid destination: {}", e)),
+        };
         let c_pwd = password.as_deref().map(|p| CString::new(p).unwrap_or_default());
 
         let options = TTZipCreateOptions {
@@ -200,9 +205,13 @@ fn compress(
             user_data: std::ptr::null_mut(),
         };
 
-        let res = match create_archive(&source_path_bufs, dest_path, &options, 0) {
-            Ok(()) => TTZipStatus::Ok,
-            Err(e) => e,
+        let res = unsafe {
+            ttzip_rust_create_archive(
+                c_source_ptrs.as_ptr(),
+                c_source_ptrs.len(),
+                c_dest.as_ptr(),
+                &options,
+            )
         };
 
         let err_msg = if res != TTZipStatus::Ok {
@@ -232,8 +241,10 @@ fn extract(
     threads: u32,
 ) -> PyResult<()> {
     let (status, msg) = py.allow_threads(move || {
-        let archive_path = std::path::Path::new(&archive);
-        let dest_path = std::path::Path::new(&destination);
+        let c_archive = match CString::new(archive.as_str()) {
+            Ok(c) => c,
+            Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid archive path: {}", e)),
+        };
         let c_dest = match CString::new(destination.as_str()) {
             Ok(c) => c,
             Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid destination path: {}", e)),
@@ -253,9 +264,8 @@ fn extract(
             user_data: std::ptr::null_mut(),
         };
 
-        let res = match extract_archive(archive_path, dest_path, &options) {
-            Ok(()) => TTZipStatus::Ok,
-            Err(e) => e,
+        let res = unsafe {
+            ttzip_rust_extract_archive(c_archive.as_ptr(), c_dest.as_ptr(), &options)
         };
 
         let err_msg = if res != TTZipStatus::Ok {
@@ -279,7 +289,11 @@ fn extract(
 #[pyo3(signature = (archive, password=None))]
 fn inspect(py: Python<'_>, archive: String, password: Option<String>) -> PyResult<Vec<PyEntryMetadata>> {
     let (status, msg, entries) = py.allow_threads(move || {
-        let archive_path = std::path::Path::new(&archive);
+        let c_archive = match CString::new(archive.as_str()) {
+            Ok(c) => c,
+            Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid archive path: {}", e), Vec::new()),
+        };
+        let c_pwd = password.as_deref().map(|p| CString::new(p).unwrap_or_default());
         let collected: Mutex<Vec<PyEntryMetadata>> = Mutex::new(Vec::new());
 
         extern "C" fn inspect_callback(entry: *const TTZipEntryMetadata, user_data: *mut libc::c_void) -> bool {
@@ -310,15 +324,14 @@ fn inspect(py: Python<'_>, archive: String, password: Option<String>) -> PyResul
             true
         }
 
-        let res = match inspect_archive(
-            archive_path,
-            password.as_deref(),
-            true,
-            Some(inspect_callback),
-            &collected as *const _ as *mut libc::c_void,
-        ) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(e) => e,
+        let res = unsafe {
+            ttzip_rust_inspect_archive(
+                c_archive.as_ptr(),
+                c_pwd.as_ref().map_or(std::ptr::null(), |p| p.as_ptr()),
+                true,
+                Some(inspect_callback),
+                &collected as *const _ as *mut libc::c_void,
+            )
         };
 
         let err_msg = if res != TTZipStatus::Ok {
@@ -548,7 +561,7 @@ fn decompress_into(py: Python<'_>, data: &Bound<'_, PyAny>, dst_buffer: &Bound<'
 #[pyo3(signature = (data, seed=0))]
 fn crc32(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u32) -> PyResult<u32> {
     let bytes = extract_input_bytes(py, data)?;
-    Ok(crc32_fast(seed, bytes))
+    Ok(unsafe { ttzip_rust_crc32(seed, bytes.as_ptr(), bytes.len()) })
 }
 
 /// Hardware SIMD accelerated CRC64.
@@ -556,7 +569,7 @@ fn crc32(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u32) -> PyResult<u32> {
 #[pyo3(signature = (data, seed=0))]
 fn crc64(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u64) -> PyResult<u64> {
     let bytes = extract_input_bytes(py, data)?;
-    Ok(crc64_calc(bytes, seed))
+    Ok(unsafe { ttzip_rust_crc64(seed, bytes.as_ptr(), bytes.len()) })
 }
 
 /// Return engine version string.

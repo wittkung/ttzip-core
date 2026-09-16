@@ -9,7 +9,6 @@
 
 pub mod builder;
 pub mod five_layer_state_machine;
-pub mod guards;
 pub mod in_place_edit;
 pub mod mac_metadata;
 pub mod nested_vfs;
@@ -17,7 +16,6 @@ pub mod repair;
 pub mod source;
 pub mod split;
 pub mod stream_adapter;
-pub mod sys;
 pub mod tar;
 pub mod ttzip_mt_drainer;
 pub mod unified;
@@ -26,7 +24,6 @@ pub mod zero_vtable_dispatch;
 
 pub use builder::*;
 pub use five_layer_state_machine::*;
-pub use guards::*;
 pub use in_place_edit::*;
 pub use mac_metadata::*;
 pub use nested_vfs::*;

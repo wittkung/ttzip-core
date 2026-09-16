@@ -6,45 +6,34 @@
 #
 # TTZip: High-performance native archiving and compression engine.
 
-"""Parallel Functional Test Dispatcher for TTZip Rust Microkernel.
+"""High-Performance Parallel Test Dispatcher for TTZip Rust Microkernel Suites.
 
-Compiles all test binaries in a single cargo invocation, then dispatches
-functional/correctness targets across 10 workers at full parallelism.
-
-Performance regression targets (throughput thresholds, cycle-count benchmarks)
-are skipped here — they require dedicated CPU isolation and are exclusively
-enforced by run_local_ci_gate.sh (Stages 8–37).
+Compiles all 275+ test binaries concurrently in a single cargo build invocation,
+then dispatches test binaries in parallel across physical CPU cores to eliminate
+OS process cold-start and sequential cargo-evaluation bottlenecks.
 """
 
 import json
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     manifest = os.path.join(root, "rust", "ttzip-engine", "Cargo.toml")
-
-    # ── 1. Compile all test targets in one shot ──────────────────────────
+    
+    # 1. Compile all test targets concurrently
     t0 = time.time()
-    print("    🔨 Compiling test targets concurrently via Cargo...", flush=True)
-    err_file = tempfile.TemporaryFile()
     proc = subprocess.Popen(
-        [
-            "cargo", "test", "-p", "ttzip-engine",
-            "--manifest-path", manifest,
-            "--no-run", "--message-format=json",
-        ],
+        ["cargo", "test", "-p", "ttzip-engine", "--manifest-path", manifest, "--no-run", "--message-format=json"],
         stdout=subprocess.PIPE,
-        stderr=err_file,
-        text=True,
+        stderr=subprocess.PIPE,
+        text=True
     )
-
-    all_targets = []
+    
+    targets = []
     seen = set()
     for line in proc.stdout:
         line = line.strip()
@@ -54,136 +43,87 @@ def main():
             msg = json.loads(line)
             if msg.get("profile", {}).get("test") is True and msg.get("executable"):
                 exe = msg["executable"]
-                src_path = msg.get("target", {}).get("src_path", "")
                 target_name = msg.get("target", {}).get("name", os.path.basename(exe))
+                src_path = msg.get("target", {}).get("src_path", "")
                 if "src/lib.rs" in src_path:
                     display_name = "unittests src/lib.rs"
                 elif "tests/" in src_path:
-                    display_name = "tests/" + os.path.basename(src_path)
+                    rel = "tests/" + os.path.basename(src_path)
+                    display_name = rel
                 else:
                     display_name = target_name
                 if exe not in seen:
                     seen.add(exe)
-                    all_targets.append((display_name, exe))
+                    targets.append((display_name, exe))
         except Exception:
             pass
-
+            
     proc.wait()
     if proc.returncode != 0:
-        err_file.seek(0)
-        err = err_file.read().decode("utf-8", errors="replace")
+        err = proc.stderr.read()
         print(f"Compilation failed with exit code {proc.returncode}:\n{err}", file=sys.stderr)
         sys.exit(1)
-
-    # ── 2. Partition: functional vs performance regression ───────────────
-    # These targets contain hardcoded throughput/latency assertions
-    # (e.g. MAX_ALLOWED_REGRESSION_PCT = 3.0%) that produce false-positive
-    # failures under any CPU contention.  They belong in run_local_ci_gate.sh.
-    perf_skip_patterns = (
-        "performance_regression",
-        "regression_audit",
-        "silesia_regression",
-        "sevenz_crypto_kdf",
-        "benchmark",
-        "perf_test",
-    )
-
-    run_targets = []
-    skipped = []
-    for display_name, exe in all_targets:
-        if any(p in display_name for p in perf_skip_patterns):
-            skipped.append(display_name)
-        else:
-            extra_args = []
-            # The unit test binary contains a single SHA-256 cycle-count
-            # benchmark with a 20 ms hard threshold — skip it here.
-            if display_name == "unittests src/lib.rs":
-                extra_args = ["--", "--skip", "performance_benchmark"]
-            run_targets.append((display_name, exe, extra_args))
-
-    # ── 3. LPT scheduling: longest jobs first to minimize tail idle ──────
-    def lpt_key(item):
+        
+    total = len(targets)
+    
+    # Partition targets into:
+    # 1. Parallel targets (functional, compliance, fuzz, security, and unittests)
+    # 2. Performance regression targets (*performance_regression_tests.rs) executed in isolation
+    #    to prevent CPU cache & memory bus contention from violating Invariant 6 (<= 3.0% regression limit).
+    parallel_targets = []
+    performance_targets = []
+    for item in targets:
         name = item[0]
-        if "unittests" in name:
-            return 0   # ~16 s
-        if "sevenz_solid_differential" in name:
-            return 1   # ~5 s
-        if "corrupted_archive" in name:
-            return 2   # ~3 s
-        if "adversarial_stress" in name:
-            return 3   # ~2 s
-        if "paramgrill" in name:
-            return 4
-        return 10
+        if "performance_regression" in name:
+            performance_targets.append(item)
+        else:
+            parallel_targets.append(item)
 
-    run_targets.sort(key=lpt_key)
-
-    # ── 4. Full-parallel dispatch ────────────────────────────────────────
-    total = len(run_targets)
-    max_workers = min(os.cpu_count() or 8, 10)
+    max_workers = min(os.cpu_count() or 8, 12)
     completed_count = 0
     failed = []
-
-    test_env = os.environ.copy()
-    test_env["RUST_TEST_THREADS"] = "2"
-    test_env["RAYON_NUM_THREADS"] = "1"
-
+    
     def run_target(target_info):
-        display_name, exe, extra_args = target_info
+        display_name, exe = target_info
         start = time.time()
-        cur_env = test_env.copy()
-        if "unittests" in display_name:
-            cur_env["RUST_TEST_THREADS"] = "6"
-        res = subprocess.run(
-            [exe] + extra_args,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, env=cur_env,
-        )
+        res = subprocess.run([exe], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         dur = time.time() - start
         return display_name, exe, res.returncode, res.stdout, dur
 
     def handle_result(fut):
         nonlocal completed_count
         completed_count += 1
-        display_name, _exe, code, out, dur = fut.result()
-
+        display_name, exe, code, out, dur = fut.result()
+        
         passed = "0"
         for line in out.splitlines():
             if "test result: ok." in line:
                 parts = line.split()
                 if len(parts) >= 5 and parts[4].startswith("passed"):
                     passed = parts[3]
-
+                    
         if code == 0:
-            print(
-                f"    ⚡️ [{completed_count:3d}/{total}] "
-                f"{display_name:<45s} ok ({passed} passed, {dur:.2f}s)",
-                flush=True,
-            )
+            print(f"    ⚡️ [{completed_count:3d}/{total}] {display_name:<45s} ok ({passed} passed, {dur:.2f}s)", flush=True)
         else:
-            print(
-                f"    ❌ [{completed_count:3d}/{total}] "
-                f"{display_name:<45s} FAILED (exit={code}, {dur:.2f}s)",
-                flush=True,
-            )
-            failed.append((display_name, f"Exit code: {code}\n" + out))
+            print(f"    ❌ [{completed_count:3d}/{total}] {display_name:<45s} FAILED ({dur:.2f}s)", flush=True)
+            failed.append((display_name, out))
 
+    # Phase 1: Execute general functional & unit tests with full core concurrency
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(run_target, t) for t in run_targets]
+        futures = [executor.submit(run_target, t) for t in parallel_targets]
         for fut in as_completed(futures):
             handle_result(fut)
 
+    # Phase 2: Execute performance regression tests in quiet isolation (single worker)
+    # to guarantee zero noisy-neighbor CPU cache evictions and strict Invariant 6 compliance.
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        futures = [executor.submit(run_target, t) for t in performance_targets]
+        for fut in futures:
+            handle_result(fut)
+
     total_dur = time.time() - t0
-
-    if skipped:
-        print(
-            f"\n    ⏭️  Skipped {len(skipped)} performance regression targets "
-            f"(enforced by run_local_ci_gate.sh)",
-            flush=True,
-        )
-
     if failed:
-        print(f"\n{'=' * 70}")
+        print(f"\n======================================================================")
         print(f"❌ {len(failed)}/{total} Test Targets FAILED in {total_dur:.2f}s:")
         for name, out in failed:
             print(f"\n--- {name} Failure Output ---")
@@ -191,7 +131,6 @@ def main():
         sys.exit(1)
     else:
         sys.exit(0)
-
 
 if __name__ == "__main__":
     main()

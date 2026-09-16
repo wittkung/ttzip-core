@@ -239,32 +239,28 @@ fn test_c_abi_ffi_bridge_exports() {
 
     let mut lzfse_out = vec![0u8; lzfse_bound];
     let mut lzfse_written = 0usize;
-    let st = unsafe {
-        ttzip_rust_lzfse_compress_raw(
-            data.as_ptr(),
-            data.len(),
-            lzfse_out.as_mut_ptr(),
-            lzfse_out.len(),
-            &mut lzfse_written,
-        )
-    };
+    let st = ttzip_rust_lzfse_compress_raw(
+        data.as_ptr(),
+        data.len(),
+        lzfse_out.as_mut_ptr(),
+        lzfse_out.len(),
+        &mut lzfse_written,
+    );
     assert_eq!(st, TTZipStatus::Ok);
     assert!(lzfse_written > 0);
 
-    assert!(unsafe { ttzip_rust_lzfse_validate(lzfse_out.as_ptr(), lzfse_written) });
+    assert!(ttzip_rust_lzfse_validate(lzfse_out.as_ptr(), lzfse_written));
 
     let mut lzfse_decomp = vec![0u8; data.len()];
     let mut lzfse_decomp_len = 0usize;
-    let st_dec = unsafe {
-        ttzip_rust_lzfse_decompress_raw(
-            lzfse_out.as_ptr(),
-            lzfse_written,
-            lzfse_decomp.as_mut_ptr(),
-            lzfse_decomp.len(),
-            data.len(),
-            &mut lzfse_decomp_len,
-        )
-    };
+    let st_dec = ttzip_rust_lzfse_decompress_raw(
+        lzfse_out.as_ptr(),
+        lzfse_written,
+        lzfse_decomp.as_mut_ptr(),
+        lzfse_decomp.len(),
+        data.len(),
+        &mut lzfse_decomp_len,
+    );
     assert_eq!(st_dec, TTZipStatus::Ok);
     assert_eq!(lzfse_decomp_len, data.len());
     assert_eq!(&lzfse_decomp[..], &data[..]);
@@ -272,29 +268,25 @@ fn test_c_abi_ffi_bridge_exports() {
     // 2. LZFSE Stream C-ABI
     let mut stream_out = vec![0u8; lzfse_bound + 1024];
     let mut stream_written = 0usize;
-    let st_stream = unsafe {
-        ttzip_rust_lzfse_compress_stream(
-            data.as_ptr(),
-            data.len(),
-            stream_out.as_mut_ptr(),
-            stream_out.len(),
-            &mut stream_written,
-        )
-    };
+    let st_stream = ttzip_rust_lzfse_compress_stream(
+        data.as_ptr(),
+        data.len(),
+        stream_out.as_mut_ptr(),
+        stream_out.len(),
+        &mut stream_written,
+    );
     assert_eq!(st_stream, TTZipStatus::Ok);
     assert!(stream_written > 0);
 
     let mut stream_decomp = vec![0u8; data.len() + 128];
     let mut stream_decomp_len = 0usize;
-    let st_stream_dec = unsafe {
-        ttzip_rust_lzfse_decompress_stream(
-            stream_out.as_ptr(),
-            stream_written,
-            stream_decomp.as_mut_ptr(),
-            stream_decomp.len(),
-            &mut stream_decomp_len,
-        )
-    };
+    let st_stream_dec = ttzip_rust_lzfse_decompress_stream(
+        stream_out.as_ptr(),
+        stream_written,
+        stream_decomp.as_mut_ptr(),
+        stream_decomp.len(),
+        &mut stream_decomp_len,
+    );
     assert_eq!(st_stream_dec, TTZipStatus::Ok);
     assert_eq!(stream_decomp_len, data.len());
     assert_eq!(&stream_decomp[..stream_decomp_len], &data[..]);
@@ -303,45 +295,39 @@ fn test_c_abi_ffi_bridge_exports() {
     let lzvn_bound = ttzip_rust_lzvn_compress_bound(data.len());
     let mut lzvn_out = vec![0u8; lzvn_bound];
     let mut lzvn_written = 0usize;
-    let st_lzvn = unsafe {
-        ttzip_rust_lzvn_compress_raw(
-            data.as_ptr(),
-            data.len(),
-            lzvn_out.as_mut_ptr(),
-            lzvn_out.len(),
-            &mut lzvn_written,
-        )
-    };
+    let st_lzvn = ttzip_rust_lzvn_compress_raw(
+        data.as_ptr(),
+        data.len(),
+        lzvn_out.as_mut_ptr(),
+        lzvn_out.len(),
+        &mut lzvn_written,
+    );
     assert_eq!(st_lzvn, TTZipStatus::Ok);
     assert!(lzvn_written > 0);
 
-    assert!(unsafe { ttzip_rust_lzvn_validate(lzvn_out.as_ptr(), lzvn_written) });
+    assert!(ttzip_rust_lzvn_validate(lzvn_out.as_ptr(), lzvn_written));
 
     let mut lzvn_decomp = vec![0u8; data.len()];
     let mut lzvn_decomp_len = 0usize;
-    let st_lzvn_dec = unsafe {
-        ttzip_rust_lzvn_decompress_raw(
-            lzvn_out.as_ptr(),
-            lzvn_written,
-            lzvn_decomp.as_mut_ptr(),
-            lzvn_decomp.len(),
-            data.len(),
-            &mut lzvn_decomp_len,
-        )
-    };
+    let st_lzvn_dec = ttzip_rust_lzvn_decompress_raw(
+        lzvn_out.as_ptr(),
+        lzvn_written,
+        lzvn_decomp.as_mut_ptr(),
+        lzvn_decomp.len(),
+        data.len(),
+        &mut lzvn_decomp_len,
+    );
     assert_eq!(st_lzvn_dec, TTZipStatus::Ok);
     assert_eq!(lzvn_decomp_len, data.len());
     assert_eq!(&lzvn_decomp[..], &data[..]);
 
     // 4. Null pointer safety check
-    let null_res = unsafe {
-        ttzip_rust_lzfse_compress_raw(
-            data.as_ptr(),
-            data.len(),
-            lzfse_out.as_mut_ptr(),
-            lzfse_out.len(),
-            std::ptr::null_mut(),
-        )
-    };
+    let null_res = ttzip_rust_lzfse_compress_raw(
+        data.as_ptr(),
+        data.len(),
+        lzfse_out.as_mut_ptr(),
+        lzfse_out.len(),
+        std::ptr::null_mut(),
+    );
     assert_eq!(null_res, TTZipStatus::ErrInvalidParam);
 }

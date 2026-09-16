@@ -14,7 +14,9 @@
 //! - Password Vault NIST SP 800-38D AES-256-GCM, zeroize compiler fences, and tamper defense.
 //! - Hierarchical VFS tree aggregation, ASCII/Unicode rendering, and fuzzy search scoring.
 
-use std::ffi::CString;
+#![allow(deprecated)]
+
+use std::ffi::{CStr, CString};
 
 use std::fs;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -31,7 +33,7 @@ use ttzip_engine::fs::vfs::{fuzzy_match, VfsEntry, VfsTree};
 use ttzip_engine::runtime::ring_buffer::{MpmcRingBuffer, SpscRingBuffer};
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZArchive};
 use ttzip_engine::types::{
-    TTZipArchiveFormat, TTZipEncryptionMethod, TTZipStatus,
+    TTZipArchiveFormat, TTZipEncryptionMethod, TTZipEntryMetadata, TTZipStatus,
 };
 use ttzip_engine::zip::{
     assemble_zip_archive, compress_items_parallel, ZipArchive, ZipInputItem,
@@ -302,7 +304,7 @@ fn test_password_vault_zeroize_memory_barrier() {
             ffi_cipher.as_mut_ptr(),
             ffi_tag.as_mut_ptr(),
         );
-        assert_eq!(st_enc, 0);
+        assert_eq!(st_enc, TTZipStatus::Ok);
 
         let mut ffi_dec = vec![0u8; ffi_cipher.len()];
         let st_dec = ttzip_rust_vault_decrypt_key(
@@ -315,7 +317,7 @@ fn test_password_vault_zeroize_memory_barrier() {
             ffi_tag.as_ptr(),
             ffi_dec.as_mut_ptr(),
         );
-        assert_eq!(st_dec, 0);
+        assert_eq!(st_dec, TTZipStatus::Ok);
         assert_eq!(&ffi_dec[..], plaintext);
 
         ttzip_rust_vault_wipe(ffi_dec.as_mut_ptr(), ffi_dec.len());
@@ -391,4 +393,83 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
     let doc_results = tree.fuzzy_search("guide");
     assert!(!doc_results.is_empty());
     assert_eq!(doc_results[0].name, "ArchitectureGuide.md");
+
+    // 4. FFI C-ABI VFS Tree and Search
+    let mut raw_entries = Vec::new();
+    let c_p1 = CString::new("TTZipCore/src/archive/writer.rs").unwrap();
+    let c_p2 = CString::new("TTZipCore/docs/ArchitectureGuide.md").unwrap();
+
+    raw_entries.push(TTZipEntryMetadata {
+        struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        path: c_p1.as_ptr(),
+        uncompressed_size: 12500,
+        compressed_size: 4200,
+        crc32: 0x11223344,
+        mtime_epoch_secs: 1700000000,
+        mode: 0o644,
+        is_directory: false,
+        is_encrypted: false,
+        compression_method: 8,
+        detected_encoding: std::ptr::null(),
+    });
+    raw_entries.push(TTZipEntryMetadata {
+        struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        path: c_p2.as_ptr(),
+        uncompressed_size: 8900,
+        compressed_size: 3100,
+        crc32: 0x99AABBCC,
+        mtime_epoch_secs: 1700000000,
+        mode: 0o644,
+        is_directory: false,
+        is_encrypted: false,
+        compression_method: 8,
+        detected_encoding: std::ptr::null(),
+    });
+
+    let c_root = CString::new("TTZipCore").unwrap();
+    unsafe {
+        let handle = ttzip_rust_vfs_tree_build(raw_entries.as_ptr(), raw_entries.len(), c_root.as_ptr());
+        assert!(!handle.is_null());
+
+        let mut total_files = 0u64;
+        let mut total_dirs = 0u64;
+        let mut total_size = 0u64;
+        ttzip_rust_vfs_tree_get_stats(handle, &mut total_files, &mut total_dirs, &mut total_size);
+        assert_eq!(total_files, 2);
+        assert_eq!(total_size, 21400);
+
+        let mut rendered_ptr: *mut libc::c_char = std::ptr::null_mut();
+        let st_rend = ttzip_rust_vfs_tree_render(handle, &mut rendered_ptr);
+        assert_eq!(st_rend, TTZipStatus::Ok);
+        assert!(!rendered_ptr.is_null());
+        let rend_str = CStr::from_ptr(rendered_ptr).to_str().unwrap();
+        assert!(rend_str.contains("writer.rs"));
+        ttzip_rust_vfs_free_string(rendered_ptr);
+
+        let search_query = CString::new("arch").unwrap();
+        let mut found_count = 0usize;
+        unsafe extern "C" fn search_cb(
+            result: *const TTZipVfsSearchResultRaw,
+            user_data: *mut libc::c_void,
+        ) -> bool {
+            if !result.is_null() {
+                let cnt = &mut *(user_data as *mut usize);
+                *cnt += 1;
+            }
+            true
+        }
+
+        let st_search = ttzip_rust_vfs_fuzzy_search(
+            handle,
+            search_query.as_ptr(),
+            Some(search_cb),
+            &mut found_count as *mut usize as *mut libc::c_void,
+        );
+        assert_eq!(st_search, TTZipStatus::Ok);
+        assert!(found_count >= 1);
+
+        ttzip_rust_vfs_tree_free(handle);
+    }
 }

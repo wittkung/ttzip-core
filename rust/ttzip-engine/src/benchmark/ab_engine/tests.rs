@@ -281,14 +281,15 @@ fn test_ab_orchestrator_paired_target_interleaved_sampling() {
 fn test_ab_orchestrator_run_ab_benchmark_suite() {
     let orchestrator = AbEngineOrchestrator::new();
     let config = AbOrchestratorConfig {
-        warmup_rounds: 3,
-        measurement_rounds: 10,
+        warmup_rounds: 5,
+        measurement_rounds: 20,
         max_allowed_regression: 3.0,
         p_value_threshold: 0.05,
         hampel_filter: true,
-        hampel_k: 3.0,
+        hampel_k: 2.5,
         target_rse_pct: 2.0,
     };
+
 
     let report = orchestrator
         .run_ab_benchmark(

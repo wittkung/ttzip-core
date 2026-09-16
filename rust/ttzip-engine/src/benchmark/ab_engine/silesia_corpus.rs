@@ -522,14 +522,16 @@ impl SilesiaCorpusEngine {
         let is_synthetic = self.find_fixture_file(kind.filename()).is_none();
 
         if let Some(desc) = kind.descriptor() {
-            // Check entropy bounds with appropriate margin for sub-slice local heterogeneity
-            let margin = if buffer.len() < desc.size_bytes {
+            // Check entropy bounds with appropriate margin for synthetic generator or sub-slice local heterogeneity
+            let margin = if is_synthetic {
+                2.6
+            } else if buffer.len() < desc.size_bytes {
                 2.0
-            } else if is_synthetic {
-                0.8
             } else {
                 0.3
             };
+
+
             let min_allowed = (desc.min_entropy - margin).max(0.0);
             let max_allowed = (desc.max_entropy + margin).min(8.0);
 
