@@ -32,15 +32,15 @@
 # ------------------------------------------------------------------------------
 # 2. Binary File Protections (Prevent CRLF/LF mangling & binary corruption)
 # ------------------------------------------------------------------------------
-*.a binary
-*.dylib binary
+*.a filter=lfs diff=lfs merge=lfs -text
+*.dylib filter=lfs diff=lfs merge=lfs -text
 *.so binary
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.icns binary
 *.ico binary
-*.xcframework binary
+*.xcframework/** filter=lfs diff=lfs merge=lfs -text
 *.car binary
 *.zip binary
 *.7z binary
