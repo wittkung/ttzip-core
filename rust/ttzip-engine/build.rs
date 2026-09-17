@@ -8,15 +8,31 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
+    let mut current = Some(start_dir);
+    while let Some(dir) = current {
+        let tp = dir.join("third_party");
+        if tp.is_dir() {
+            return tp;
+        }
+        let v = dir.join("vendor");
+        if v.is_dir() {
+            return v;
+        }
+        current = dir.parent();
+    }
+    start_dir.join("vendor")
+}
+
 fn compile_native_codecs(repo_root: &Path) {
-    let top_vendor = repo_root
-        .parent()
-        .map(|p| p.join("vendor"))
-        .filter(|p| p.exists())
-        .unwrap_or_else(|| repo_root.join("vendor"));
+    let top_vendor = find_third_party_or_vendor(repo_root);
 
     let fast_lzma2_dir = top_vendor.join("fast-lzma2");
-    let lzfse_dir = top_vendor.join("lzfse/src");
+    let lzfse_dir = if top_vendor.join("lzfse/src").exists() {
+        top_vendor.join("lzfse/src")
+    } else {
+        top_vendor.join("lzfse")
+    };
     let libdeflate_dir = top_vendor.join("libdeflate");
     let lz4_dir = top_vendor.join("lz4/lib");
     let zstd_dir = top_vendor.join("zstd/lib");
