@@ -226,7 +226,7 @@ record_sdk_result() {
     local skipped="$8"
 
     local rec_json="${TMP_RUN_DIR}/rec_${sdk}.json"
-    python3 "${REPO_ROOT}/tests/matrix/test_report_aggregator.py" \
+    python3 "${REPO_ROOT}/Tests/matrix/test_report_aggregator.py" \
         --record-sdk \
         --sdk "${sdk}" \
         --status "${status}" \
@@ -315,13 +315,13 @@ run_sdk_test() {
 # Step 2: Canonical Corpus Fixtures (if category enabled)
 if check_category_enabled "canonical"; then
     echo -e "\n${BOLD}${MAGENTA}--- Generating Canonical Test Corpus Datasets ---${RESET}"
-    python3 "${REPO_ROOT}/tests/fixtures/generate_canonical_corpus.py" --clean
+    python3 "${REPO_ROOT}/Tests/fixtures/generate_canonical_corpus.py" --clean
 fi
 
 # Step 3: Security & Malicious Fixtures (if category enabled)
 if check_category_enabled "security"; then
     echo -e "\n${BOLD}${MAGENTA}--- Generating & Verifying Malicious Security Fixtures ---${RESET}"
-    python3 "${REPO_ROOT}/tests/security/fixtures/generate_malicious_fixtures.py" --clean
+    python3 "${REPO_ROOT}/Tests/security/fixtures/generate_malicious_fixtures.py" --clean
 fi
 
 # Step 4: Unit Test Matrix Execution
@@ -406,7 +406,7 @@ export_and_exit() {
     fi
     mkdir -p "$(dirname "${final_json_path}")" 2>/dev/null || true
 
-    python3 "${REPO_ROOT}/tests/matrix/test_report_aggregator.py" \
+    python3 "${REPO_ROOT}/Tests/matrix/test_report_aggregator.py" \
         --toolchains-json "${TOOLCHAINS_JSON}" \
         "${agg_args[@]}" \
         --json-out "${final_json_path}" \
@@ -417,7 +417,7 @@ export_and_exit() {
     fi
 
     if [[ -n "${JUNIT_OUTPUT}" ]]; then
-        python3 "${REPO_ROOT}/tests/matrix/test_report_aggregator.py" \
+        python3 "${REPO_ROOT}/Tests/matrix/test_report_aggregator.py" \
             --input "${final_json_path}" \
             --junit-out "${JUNIT_OUTPUT}" >/dev/null 2>&1 || true
         echo -e "📊 JUnit XML Test Reports:   ${BOLD}${JUNIT_OUTPUT}${RESET}"

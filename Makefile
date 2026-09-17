@@ -47,16 +47,22 @@ python-build:
 	@./scripts/build_python.sh
 
 test:
+	@echo "=== Running Swift 6 Tests ==="
+	@swift test
+	@echo "=== Running Rust Tests ==="
+	@cargo test --workspace --manifest-path rust/Cargo.toml
+
+test-swift:
 	@swift test
 
 test-all-sdk:
 	@./scripts/run_all_sdk_tests.sh
 
 test-interop:
-	@python3 tests/interop/test_interop_matrix.py
+	@python3 Tests/interop/test_interop_matrix.py
 
 test-security:
-	@PYTHONPATH=tests/security:sdk/python python3 -m unittest discover -s tests/security
+	@PYTHONPATH=Tests/security:sdk/python python3 -m unittest discover -s Tests/security
 
 test-bench:
 	@./scripts/run_sdk_benchmarks.sh

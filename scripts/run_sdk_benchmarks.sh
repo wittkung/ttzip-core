@@ -16,7 +16,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 OUT_MD="${REPO_ROOT}/BENCHMARK_MATRIX.md"
-CORPUS_DIR="${REPO_ROOT}/tests/TTZipTests/Fixtures/Silesia"
+CORPUS_DIR="${REPO_ROOT}/Tests/TTZipTests/Fixtures/Silesia"
 ITERATIONS=2
 
 while [[ $# -gt 0 ]]; do
@@ -57,7 +57,7 @@ echo "======================================================================"
 
 # Ensure all SDK test CLIs are built
 echo "--> [1/2] Verifying and building headless SDK test runners..."
-python3 tests/security/sdk_drivers.py >/dev/null 2>&1 || true
+python3 Tests/security/sdk_drivers.py >/dev/null 2>&1 || true
 
 # Run benchmarks
 echo "--> [2/2] Running Silesia benchmark suite (${ITERATIONS} iterations)..."
