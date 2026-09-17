@@ -28,8 +28,10 @@ pub use alignment::{
     MIN_ALIGNMENT_EXTRA_FIELD_LEN, TAG_DATA_STREAM_ALIGNMENT,
 };
 pub use blocks::{
-    to_and_from_le, FixedSizeBlock, Pod, Zip32CDEBlock, Zip64CDEBlock, Zip64CDELocatorBlock,
-    Zip64DataDescriptorBlock, ZipCentralEntryBlock, ZipDataDescriptorBlock, ZipLocalEntryBlock,
+    to_and_from_le, FixedSizeBlock, Pod, Zip32CDEBlock, Zip64CDEBlock, Zip64CDEBlockOptions,
+    Zip64CDELocatorBlock, Zip64DataDescriptorBlock, ZipBlockOptions, ZipCentralEntryBlock,
+    ZipCentralEntryBlockOptions, ZipDataDescriptorBlock, ZipLocalEntryBlock,
+    ZipLocalEntryBlockOptions,
 };
 pub use cp437::{decode_cp437, decode_zip_filename};
 pub use datetime::{
