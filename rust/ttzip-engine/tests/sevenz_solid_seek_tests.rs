@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive unit and integration test suite for 7-Zip Solid Stream
 //! O(1) Indexing, 4MB Micro-Buffer Sliding Discard, and Early-Exit Circuit Breaker.

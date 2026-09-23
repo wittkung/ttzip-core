@@ -1,38 +1,7 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
-
-public enum ArchiveError: Error, LocalizedError, Equatable {
-    case fileNotFound
-    case readFailed(code: Int32)
-    case invalidFormat
-    case passwordRequired
-    case passwordRequiredDetailed(archivePath: String, tier: ArchiveEncryptionTier)
-    case wrongPassword(archivePath: String)
-    case unsupportedEncryptionMethod(archivePath: String, method: String)
-    case corruptedData(archivePath: String, entryPath: String)
-    case cancelled
-    case invalidState
-    case engineFailure(code: Int32, message: String)
-    
-    public var errorDescription: String? {
-        localizedDescription()
-    }
-
-    public var isPasswordRelated: Bool {
-        switch self {
-        case .passwordRequired, .passwordRequiredDetailed, .wrongPassword:
-            return true
-        default:
-            return false
-        }
-    }
-}
 
 /// High-performance stream-based archive reader (100% Pure Mozilla UniFFI Engine).
 public final class ArchiveReader: ArchiveReading, Sendable {
@@ -77,13 +46,10 @@ public final class ArchiveReader: ArchiveReading, Sendable {
         try Task.checkCancellation()
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
-            let lower = archivePath.lowercased()
             let targetInspectPath = archivePath
             
-            let performInspect: (String?) -> [ArchiveEntry]? = { pwd in
-                guard let items = try? inspectArchiveEntries(archivePath: targetInspectPath, password: pwd), !items.isEmpty else {
-                    return nil
-                }
+            let performInspect: (String?) throws -> [ArchiveEntry] = { pwd in
+                let items = try inspectArchiveEntries(archivePath: targetInspectPath, password: pwd)
                 var entries: [ArchiveEntry] = []
                 entries.reserveCapacity(items.count)
                 for meta in items {
@@ -94,7 +60,7 @@ public final class ArchiveReader: ArchiveReading, Sendable {
                     let mtimeDate = meta.mtimeEpochSecs > 0 ? Date(timeIntervalSince1970: TimeInterval(meta.mtimeEpochSecs)) : nil
                     let entry = ArchiveEntry(
                         path: sanitizedPath,
-                        uncompressedSize: Int64(meta.uncompressedSize),
+                        uncompressedSize: meta.uncompressedSize.clampedToInt64,
                         isDirectory: meta.isDirectory,
                         detectedEncoding: meta.detectedEncoding ?? "UTF-8",
                         modificationDate: mtimeDate,
@@ -108,25 +74,36 @@ public final class ArchiveReader: ArchiveReading, Sendable {
                 return entries
             }
             
-            if let entries = performInspect(password) {
-                return entries
-            }
-            
-            let candidates = candidatePasswords ?? PasswordVaultManager.shared.candidatePasswordsForAutoUnlock()
-            if (password == nil || password?.isEmpty == true) && !candidates.isEmpty {
-                for cand in candidates {
-                    if let candEntries = performInspect(cand) {
-                        return candEntries
+            if let explicitPassword = password, !explicitPassword.isEmpty {
+                do {
+                    return try performInspect(explicitPassword)
+                } catch let uniffiError as TtZipError {
+                    if case .InvalidPassword = uniffiError {
+                        throw ArchiveError.wrongPassword(archivePath: targetInspectPath)
                     }
+                    throw ArchiveError.from(uniffiError: uniffiError)
+                } catch {
+                    throw ArchiveError.from(error: error)
                 }
             }
             
-            // Password required error
-            if (lower.contains(".7z") || lower.contains(".zip") || lower.contains(".rar")) && (password == nil || password?.isEmpty == true) {
-                throw ArchiveError.passwordRequired
+            do {
+                return try performInspect(nil)
+            } catch let initialError {
+                let mappedError = ArchiveError.from(error: initialError)
+                guard mappedError.isPasswordRelated || (initialError as? TtZipError) == .InvalidPassword else {
+                    throw mappedError
+                }
+                
+                let candidates = candidatePasswords ?? PasswordVaultManager.shared.candidatePasswordsForAutoUnlock()
+                for cand in candidates where !cand.isEmpty {
+                    if let entries = try? performInspect(cand) {
+                        return entries
+                    }
+                }
+                
+                throw mappedError
             }
-            
-            throw ArchiveError.readFailed(code: -1)
         }
     }
     
@@ -142,26 +119,39 @@ public final class ArchiveReader: ArchiveReading, Sendable {
 
     /// Fast zero-decompression probe of archive encryption tier.
     public func probeEncryption(archivePath: String) async throws -> ArchiveEncryptionTier {
-        let entries = try? await inspect(archivePath: archivePath, password: nil, candidatePasswords: nil)
-        guard let entries = entries else { return .headerAndData }
-        if entries.isEmpty { return .none }
-        if entries.contains(where: { $0.isEncrypted }) {
-            return .dataOnly
+        do {
+            let entries = try await inspect(archivePath: archivePath, password: nil, candidatePasswords: nil)
+            if entries.isEmpty { return .none }
+            if entries.contains(where: { $0.isEncrypted }) {
+                return .dataOnly
+            }
+            return .none
+        } catch let error as ArchiveError {
+            if error.isPasswordRelated {
+                return .headerAndData
+            }
+            throw error
         }
-        return .none
     }
     
     /// Asynchronously renders ASCII/Unicode hierarchical tree directly using the Safe Rust VFS engine.
     public func renderTree(archivePath: String, password: String? = nil) async throws -> String {
+        let rendered = RustVfsBridge.renderTree(archivePath: archivePath, password: password)
+        if !rendered.isEmpty {
+            return rendered
+        }
         let entries = try await inspect(archivePath: archivePath, password: password, candidatePasswords: nil)
         let rootName = (archivePath as NSString).lastPathComponent
-        return RustVfsBridge.renderTree(from: entries, rootName: rootName)
+        return RustVfsBridge.renderTree(from: entries, identifier: archivePath, rootName: rootName)
     }
 
     /// Performs fuzzy search on the archive contents using Safe Rust VFS engine.
     public func fuzzySearch(archivePath: String, query: String, password: String? = nil) async throws -> [ArchiveEntry] {
+        if let session = RustVfsBridge.session(forArchivePath: archivePath, password: password) {
+            return session.fuzzySearch(query: query)
+        }
         let entries = try await inspect(archivePath: archivePath, password: password, candidatePasswords: nil)
-        return RustVfsBridge.fuzzySearch(in: entries, query: query)
+        return RustVfsBridge.fuzzySearch(in: entries, identifier: archivePath, query: query)
     }
 }
 
@@ -199,7 +189,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
             throw ArchiveError.fileNotFound
         }
 
-        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { (token: CancellationToken) in
             final class ProgressRelay: ProgressHandler, @unchecked Sendable {
                 let handler: (@Sendable (Double, String) -> Void)?
                 init(handler: (@Sendable (Double, String) -> Void)?) {
@@ -214,7 +204,7 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
 
             let relay = progressHandler.map { ProgressRelay(handler: $0) }
             do {
-                let uniffiReport = try verifyArchiveIntegrity(archivePath: archivePath, password: password, progress: relay, token: nil)
+                let uniffiReport = try verifyArchiveIntegrity(archivePath: archivePath, password: password, progress: relay, token: token)
                 let corrupted = uniffiReport.corruptedEntries.map { c in
                     CorruptedEntryDetail(
                         entryPath: c.path,
@@ -239,24 +229,10 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
                 relay?.handler?(1.0, "")
                 return report
             } catch {
-                return ArchiveIntegrityReport(
-                    archivePath: archivePath,
-                    totalEntriesCount: 1,
-                    verifiedEntriesCount: 0,
-                    corruptedEntriesCount: 1,
-                    overallStatus: .corrupted,
-                    verificationDurationSeconds: 0.01,
-                    averageThroughputMBs: 0.0,
-                    corruptedEntries: [
-                        CorruptedEntryDetail(
-                            entryPath: archivePath,
-                            errorType: .headerDamaged,
-                            expectedChecksum: "",
-                            actualChecksum: "",
-                            diagnosticMessage: error.localizedDescription
-                        )
-                    ]
-                )
+                if token.isCancelled() || Task.isCancelled {
+                    throw ArchiveError.cancelled
+                }
+                throw ArchiveError.from(error: error)
             }
         }
     }
@@ -391,3 +367,43 @@ public final class ArchiveRepairEngine: Sendable {
         return nil
     }
 }
+
+// MARK: - ArchiveEngineFactory Implementations
+
+extension ArchiveEngineFactory {
+    /// Creates an archive writer.
+    public static func makeWriter(for format: ArchiveCompressionFormat? = nil) -> ArchiveWriting {
+        return ArchiveWriter()
+    }
+
+    /// Creates an archive extractor.
+    public static func makeExtractor(for format: ArchiveCompressionFormat? = nil) -> ArchiveExtracting {
+        return ArchiveExtractor()
+    }
+
+    /// Creates an archive reader.
+    public static func makeReader(for format: ArchiveCompressionFormat? = nil) -> ArchiveReading {
+        return ArchiveReader()
+    }
+
+    /// Creates an integrity checker engine instance.
+    public static func makeIntegrityChecker() -> ArchiveIntegrityChecking {
+        return ArchiveIntegrityChecker()
+    }
+
+    /// Creates a cryptographic hash calculator instance.
+    public static func makeHashCalculator(hardwareTuner: HardwareTunerProtocol? = nil) -> HashCalculating {
+        return HashCalculator(hardwareTuner: hardwareTuner ?? AppleSiliconTuner.shared)
+    }
+}
+
+// MARK: - Safe Integer Conversions
+
+extension UInt64 {
+    /// Safely clamps a UInt64 value to the valid range of Int64 without runtime trap or overflow.
+    @inlinable
+    public var clampedToInt64: Int64 {
+        self > UInt64(Int64.max) ? Int64.max : Int64(self)
+    }
+}
+

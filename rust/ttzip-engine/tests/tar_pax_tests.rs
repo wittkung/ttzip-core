@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive test suite for POSIX.1-2001 PAX extended header parsing, formatting,
 //! self-consistent variable-length encoding, nanosecond timestamps, and GHSA-3cv2-h65g-fgmm security isolation.

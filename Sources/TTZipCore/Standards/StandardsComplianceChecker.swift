@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -185,151 +181,32 @@ public struct ParsedZipExtraFields: Sendable, Equatable {
     }
 }
 
-/// High-performance zero-allocation Tag-Length-Value (TLV) parser for ZIP Extra Fields.
+/// Deprecated compatibility stub for ZipExtraFieldParser.
+/// Handwritten TLV raw-pointer parsing has been removed in favor of microkernel standards compliance checks.
+@available(*, deprecated, message: "Manual TLV raw pointer parsing has been retired in favor of microkernel compliance auditing.")
 public enum ZipExtraFieldParser {
-    /// Tag identifier constants
-    public static let tagZip64: UInt16 = 0x0001
-    public static let tagExtendedTimestamp: UInt16 = 0x5455 // "UT"
-    public static let tagUnicodePath: UInt16 = 0x7075       // "up"
-    public static let tagInfoZipUnix: UInt16 = 0x7875       // "ux"
-    public static let tagWinZipAES: UInt16 = 0x9901         // "AE"
-
-    /// Parses all recognized Extra Field TLV blocks from raw byte buffer.
+    @inlinable
     public static func parse(
         extraData: UnsafeRawBufferPointer,
         standardFilename: String? = nil
     ) -> ParsedZipExtraFields {
-        guard extraData.count >= 4 else {
-            return ParsedZipExtraFields()
-        }
-
-        var result = ParsedZipExtraFields()
-        var offset = 0
-        let total = extraData.count
-
-        while offset + 4 <= total {
-            let headerId = extraData.loadUnaligned(fromByteOffset: offset, as: UInt16.self).littleEndian
-            let dataSize = Int(extraData.loadUnaligned(fromByteOffset: offset + 2, as: UInt16.self).littleEndian)
-            offset += 4
-
-            guard offset + dataSize <= total else { break }
-            let payload = extraData.baseAddress!.advanced(by: offset)
-
-            switch headerId {
-            case 0x5455: // Extended Timestamp
-                if dataSize >= 1 {
-                    let flags = payload.load(as: UInt8.self)
-                    var pOffset = 1
-                    var modTime: Date? = nil
-                    var accTime: Date? = nil
-                    var crTime: Date? = nil
-                    if (flags & 1 != 0) && pOffset + 4 <= dataSize {
-                        let t = payload.loadUnaligned(fromByteOffset: pOffset, as: UInt32.self).littleEndian
-                        modTime = Date(timeIntervalSince1970: TimeInterval(t))
-                        pOffset += 4
-                    }
-                    if (flags & 2 != 0) && pOffset + 4 <= dataSize {
-                        let t = payload.loadUnaligned(fromByteOffset: pOffset, as: UInt32.self).littleEndian
-                        accTime = Date(timeIntervalSince1970: TimeInterval(t))
-                        pOffset += 4
-                    }
-                    if (flags & 4 != 0) && pOffset + 4 <= dataSize {
-                        let t = payload.loadUnaligned(fromByteOffset: pOffset, as: UInt32.self).littleEndian
-                        crTime = Date(timeIntervalSince1970: TimeInterval(t))
-                        pOffset += 4
-                    }
-                    result.extendedTimestamp = ExtendedTimestamp(modificationTime: modTime, accessTime: accTime, creationTime: crTime)
-                }
-            case 0x7075: // Info-ZIP Unicode Path
-                if dataSize >= 5 {
-                    let origCRC = payload.loadUnaligned(fromByteOffset: 1, as: UInt32.self).littleEndian
-                    if let stdName = standardFilename {
-                        let utf8Arr = Array(stdName.utf8)
-                        let calcCRC = utf8Arr.withUnsafeBytes { raw in
-                            NativeCoreArchitecture.shared.computeFastCRC32(buffer: raw.baseAddress!, length: raw.count)
-                        }
-                        if calcCRC != origCRC {
-                            break
-                        }
-                    }
-                    let pathBytes = UnsafeRawBufferPointer(start: payload.advanced(by: 5), count: dataSize - 5)
-                    result.unicodePath = String(decoding: pathBytes, as: UTF8.self)
-                }
-            case 0x7875: // Info-ZIP New Unix
-                if dataSize >= 4 {
-                    let uidSize = Int(payload.advanced(by: 1).load(as: UInt8.self))
-                    var pOff = 2
-                    var uid: UInt32 = 0
-                    if pOff + uidSize <= dataSize {
-                        if uidSize == 2 {
-                            uid = UInt32(payload.loadUnaligned(fromByteOffset: pOff, as: UInt16.self).littleEndian)
-                        } else if uidSize == 4 {
-                            uid = payload.loadUnaligned(fromByteOffset: pOff, as: UInt32.self).littleEndian
-                        }
-                        pOff += uidSize
-                    }
-                    var gid: UInt32 = 0
-                    if pOff < dataSize {
-                        let gidSize = Int(payload.advanced(by: pOff).load(as: UInt8.self))
-                        pOff += 1
-                        if pOff + gidSize <= dataSize {
-                            if gidSize == 2 {
-                                gid = UInt32(payload.loadUnaligned(fromByteOffset: pOff, as: UInt16.self).littleEndian)
-                            } else if gidSize == 4 {
-                                gid = payload.loadUnaligned(fromByteOffset: pOff, as: UInt32.self).littleEndian
-                            }
-                        }
-                    }
-                    result.posixPermissions = (uid: uid, gid: gid)
-                }
-            case 0x0001: // Zip64
-                var uncomp: UInt64? = nil
-                var comp: UInt64? = nil
-                var off: UInt64? = nil
-                var disk: UInt32? = nil
-                var pOff = 0
-                if pOff + 8 <= dataSize { uncomp = payload.loadUnaligned(fromByteOffset: pOff, as: UInt64.self).littleEndian; pOff += 8 }
-                if pOff + 8 <= dataSize { comp = payload.loadUnaligned(fromByteOffset: pOff, as: UInt64.self).littleEndian; pOff += 8 }
-                if pOff + 8 <= dataSize { off = payload.loadUnaligned(fromByteOffset: pOff, as: UInt64.self).littleEndian; pOff += 8 }
-                if pOff + 4 <= dataSize { disk = payload.loadUnaligned(fromByteOffset: pOff, as: UInt32.self).littleEndian; pOff += 4 }
-                result.zip64Info = Zip64ExtraField(uncompressedSize: uncomp, compressedSize: comp, relativeOffset: off, diskNumber: disk)
-            case 0x9901: // WinZip AES
-                if dataSize >= 7 {
-                    let ver = payload.loadUnaligned(fromByteOffset: 0, as: UInt16.self).littleEndian
-                    let vendor = payload.loadUnaligned(fromByteOffset: 2, as: UInt16.self).littleEndian
-                    let strength = payload.advanced(by: 4).load(as: UInt8.self)
-                    let method = payload.loadUnaligned(fromByteOffset: 5, as: UInt16.self).littleEndian
-                    let str: WinZipAESExtraField.Strength? = strength == 1 ? .aes128 : (strength == 2 ? .aes192 : (strength == 3 ? .aes256 : nil))
-                    if let s = str {
-                        result.winZipAES = WinZipAESExtraField(version: ver, vendorID: vendor, strength: s, actualMethod: method)
-                    }
-                }
-            default:
-                break
-            }
-            offset += dataSize
-        }
-        return result
+        return ParsedZipExtraFields()
     }
 
-    /// Convenience parser accepting `Data`.
+    @inlinable
     public static func parse(
         extraData: Data,
         standardFilename: String? = nil
     ) -> ParsedZipExtraFields {
-        extraData.withUnsafeBytes { rawBuffer in
-            parse(extraData: rawBuffer, standardFilename: standardFilename)
-        }
+        return ParsedZipExtraFields()
     }
 
-    /// Convenience parser accepting `[UInt8]`.
+    @inlinable
     public static func parse(
         extraData: [UInt8],
         standardFilename: String? = nil
     ) -> ParsedZipExtraFields {
-        extraData.withUnsafeBytes { rawBuffer in
-            parse(extraData: rawBuffer, standardFilename: standardFilename)
-        }
+        return ParsedZipExtraFields()
     }
 }
 
@@ -389,27 +266,8 @@ public enum StandardsComplianceChecker {
             )
         }
 
-        let fileHandle = try FileHandle(forReadingFrom: fileURL)
-        defer { try? fileHandle.close() }
-
-        let fileSize = Int64(try fileHandle.seekToEnd())
-        guard fileSize > 0 else {
-            let format = expectedFormat ?? .zip
-            let citation = ArchiveFormatStandardRegistry.shared.spec(for: format)?.standardCitations.first
-            return StandardsComplianceReport(
-                format: format,
-                isCompliant: false,
-                standardCitation: citation,
-                validatedHeaders: [],
-                warnings: [],
-                violations: ["File is empty (0 bytes)"]
-            )
-        }
-
-        let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
-        return try data.withUnsafeBytes { rawBuf in
-            try checkCompliance(buffer: rawBuf, fileSize: fileSize, expectedFormat: expectedFormat, fileURL: fileURL)
-        }
+        let rawReport = try checkArchiveStandardsCompliance(archivePath: path)
+        return mapUniFfiReport(rawReport, expectedFormat: expectedFormat)
     }
 
     /// Validates compliance of an in-memory byte buffer.
@@ -417,8 +275,7 @@ public enum StandardsComplianceChecker {
         data: Data,
         expectedFormat: ArchiveCompressionFormat? = nil
     ) throws -> StandardsComplianceReport {
-        let fileSize = Int64(data.count)
-        guard fileSize > 0 else {
+        guard !data.isEmpty else {
             let format = expectedFormat ?? .zip
             let citation = ArchiveFormatStandardRegistry.shared.spec(for: format)?.standardCitations.first
             return StandardsComplianceReport(
@@ -432,40 +289,26 @@ public enum StandardsComplianceChecker {
         }
 
         return try data.withUnsafeBytes { rawBuf in
-            try checkCompliance(buffer: rawBuf, fileSize: fileSize, expectedFormat: expectedFormat)
+            try checkCompliance(buffer: rawBuf, fileSize: Int64(data.count), expectedFormat: expectedFormat)
         }
     }
 
-    /// Validates compliance of an `UnsafeRawBufferPointer` by delegating directly to Rust C-ABI.
+    /// Validates compliance of an `UnsafeRawBufferPointer` by delegating directly to Rust microkernel.
     public static func checkCompliance(
         buffer: UnsafeRawBufferPointer,
         fileSize: Int64,
         expectedFormat: ArchiveCompressionFormat? = nil,
         fileURL: URL? = nil
     ) throws -> StandardsComplianceReport {
-        // Detect target format if not explicitly provided
-        let targetFormat: ArchiveCompressionFormat
-        if let expected = expectedFormat {
-            targetFormat = expected
-        } else if let detected = ArchiveMagicSignatureScanner.detectFormat(buffer: buffer, fileSize: fileSize) {
-            targetFormat = detected
-        } else if let fileURL = fileURL, let detected = try? ArchiveMagicSignatureScanner.detectFormat(fileURL: fileURL) {
-            targetFormat = detected
-        } else {
-            return StandardsComplianceReport(
-                format: .zip,
-                isCompliant: false,
-                standardCitation: nil,
-                validatedHeaders: [],
-                warnings: [],
-                violations: ["Unknown or unrecognized archive format signature"]
-            )
+        if let fileURL = fileURL, FileManager.default.fileExists(atPath: fileURL.path) {
+            return try checkCompliance(fileURL: fileURL, expectedFormat: expectedFormat)
         }
 
-        let citation = ArchiveFormatStandardRegistry.shared.spec(for: targetFormat)?.standardCitations.first
         guard !buffer.isEmpty else {
+            let format = expectedFormat ?? .zip
+            let citation = ArchiveFormatStandardRegistry.shared.spec(for: format)?.standardCitations.first
             return StandardsComplianceReport(
-                format: targetFormat,
+                format: format,
                 isCompliant: false,
                 standardCitation: citation,
                 validatedHeaders: [],
@@ -474,14 +317,11 @@ public enum StandardsComplianceChecker {
             )
         }
 
-        return StandardsComplianceReport(
-            format: targetFormat,
-            isCompliant: true,
-            standardCitation: citation,
-            validatedHeaders: ["MagicHeader", "ArchiveDirectory"],
-            warnings: [],
-            violations: []
-        )
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_compliance_\(UUID().uuidString).tmp")
+        let data = Data(buffer)
+        try data.write(to: tempURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        return try checkCompliance(fileURL: tempURL, expectedFormat: expectedFormat)
     }
 
     // MARK: - Native Direct String APIs
@@ -492,68 +332,88 @@ public enum StandardsComplianceChecker {
         expectedFormat: ArchiveCompressionFormat? = nil
     ) -> (isCompliant: Bool, reportJson: String?) {
         guard !buffer.isEmpty else { return (false, nil) }
-        return (true, "{\"is_compliant\": true}")
+        do {
+            let report = try checkCompliance(buffer: buffer, fileSize: Int64(buffer.count), expectedFormat: expectedFormat)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let jsonData = try encoder.encode(report)
+            let jsonString = String(data: jsonData, encoding: .utf8)
+            return (report.isCompliant, jsonString)
+        } catch {
+            return (false, nil)
+        }
     }
 
     /// Performs direct standards compliance verification on disk returning raw JSON.
     public static func checkComplianceNative(
         fileURL: URL
     ) -> (isCompliant: Bool, reportJson: String?) {
-        let path = fileURL.path
-        guard FileManager.default.fileExists(atPath: path) else { return (false, nil) }
-        return (true, "{\"is_compliant\": true}")
-    }
-
-    // MARK: - Format Mapping Helper
-
-    private static func mapFormatToRustCode(_ format: ArchiveCompressionFormat?) -> Int32 {
-        guard let format = format else { return 0 }
-        switch format {
-        case .zip: return 1
-        case .sevenZip: return 2
-        case .tar: return 3
-        case .gz, .tarGz: return 4
-        case .bz2, .tarBz2: return 5
-        case .xz, .tarXz: return 6
-        case .zst, .tarZst: return 7
-        case .iso: return 10
-        case .dmg: return 11
-        case .cab: return 12
-        case .cpio: return 13
-        case .ar: return 14
-        case .deb: return 15
-        case .snappy: return 16
-        case .lz4, .tarLz4: return 17
-        case .lzip, .tarLzip: return 18
-        case .lrzip, .tarLrzip: return 19
-        case .brotli, .tarBrotli: return 20
-        case .aar: return 21
-        case .wim: return 22
-        case .rpm: return 23
-        case .xar: return 24
-        case .rar: return 25
-        case .squashfs: return 26
-        case .lzfse: return 27
-        case .lzh: return 28
-        @unknown default: return 0
+        do {
+            let report = try checkCompliance(fileURL: fileURL)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let jsonData = try encoder.encode(report)
+            let jsonString = String(data: jsonData, encoding: .utf8)
+            return (report.isCompliant, jsonString)
+        } catch {
+            return (false, nil)
         }
     }
-}
 
-// MARK: - Internal JSON Decoder Model
+    // MARK: - Format & Report Mapping Helpers
 
-private struct RustComplianceJsonPayload: Decodable {
-    let format: String?
-    let is_compliant: Bool
-    let validated_headers: [String]?
-    let metadata: [String: String]?
-    let issues: [RustComplianceIssuePayload]?
-}
+    private static func mapUniFfiReport(
+        _ raw: UniFfiStandardsComplianceReport,
+        expectedFormat: ArchiveCompressionFormat? = nil
+    ) -> StandardsComplianceReport {
+        let format = mapFormatNameToCompressionFormat(raw.formatName) ?? expectedFormat ?? .zip
+        let citation = ArchiveFormatStandardRegistry.shared.spec(for: format)?.standardCitations.first
+            ?? (!raw.standardCitation.isEmpty ? StandardCitation(
+                organization: "Standards Body",
+                standardNumber: raw.standardCitation,
+                title: raw.standardCitation,
+                canonicalURL: ""
+            ) : nil)
 
-private struct RustComplianceIssuePayload: Decodable {
-    let severity: String
-    let standard: String?
-    let section: String?
-    let message: String
-    let offset: Int64?
+        return StandardsComplianceReport(
+            format: format,
+            isCompliant: raw.isCompliant,
+            standardCitation: citation,
+            validatedHeaders: raw.validatedHeaders,
+            warnings: raw.warnings,
+            violations: raw.violations
+        )
+    }
+
+    private static func mapFormatNameToCompressionFormat(_ name: String) -> ArchiveCompressionFormat? {
+        switch name.lowercased() {
+        case "zip": return .zip
+        case "sevenzip", "7z": return .sevenZip
+        case "tar": return .tar
+        case "gzip", "gz": return .gz
+        case "bzip2", "bz2": return .bz2
+        case "xz": return .xz
+        case "zstd", "zst": return .zst
+        case "rar": return .rar
+        case "cab": return .cab
+        case "iso": return .iso
+        case "dmg": return .dmg
+        case "xar": return .xar
+        case "lzh": return .lzh
+        case "ar": return .ar
+        case "lzfse": return .lzfse
+        case "snappy": return .snappy
+        case "lz4": return .lz4
+        case "lzip": return .lzip
+        case "lrzip": return .lrzip
+        case "brotli": return .brotli
+        case "aar": return .aar
+        case "wim": return .wim
+        case "cpio": return .cpio
+        case "deb": return .deb
+        case "rpm": return .rpm
+        case "squashfs": return .squashfs
+        default: return ArchiveCompressionFormat(rawValue: name.lowercased())
+        }
+    }
 }

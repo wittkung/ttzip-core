@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -42,7 +38,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
         filterOptions: ArchiveFilterOptions = ArchiveFilterOptions(),
         advancedOptions: ArchiveAdvancedOptions? = nil,
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        engineFacade: TTZipEngineFacading = TTZipEngineFacade.shared
+        engineFacade: TTZipEngineFacading
     ) {
         self.commandId = commandId
         self.inputs = inputs
@@ -150,6 +146,12 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
         
         let sortedArtifacts = Array(artifactsSet)
         saveExecutionState(artifacts: sortedArtifacts, backupMap: backupDict)
+        
+        // Physical cleanup of .noindex marker to avoid breaking Spotlight indexing
+        let noIndexFilePath = (outputDir as NSString).appendingPathComponent(".noindex")
+        if fm.fileExists(atPath: noIndexFilePath) {
+            try? fm.removeItem(atPath: noIndexFilePath)
+        }
         
         return CommandResult(
             commandId: commandId,

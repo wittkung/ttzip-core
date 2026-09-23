@@ -1,11 +1,8 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
+import CryptoKit
 
 /// Supported cryptographic and non-cryptographic checksum/hash algorithms.
 public enum TTZipHashAlgorithm: String, Sendable, CaseIterable {
@@ -95,47 +92,23 @@ public struct TTZipCryptoHash: Sendable {
         case .crc64, .xxh3_64:
             let val = digest.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian }
             return String(format: "%016llx", val)
+        case .xxh3_128:
+            let (low, high) = digest.withUnsafeBytes { raw in
+                (
+                    raw.loadUnaligned(fromByteOffset: 0, as: UInt64.self).littleEndian,
+                    raw.loadUnaligned(fromByteOffset: 8, as: UInt64.self).littleEndian
+                )
+            }
+            return String(format: "%016llx%016llx", high, low)
         default:
             return digest.fastHexEncodedString()
         }
     }
 
     /// Computes hash digest for a local file at given URL with zero-copy chunked streaming.
+    /// Delegates to the Rust microkernel's 64KB fixed-buffer streaming implementation (O(1) memory complexity).
     public static func hashFile(at url: URL, algorithm: TTZipHashAlgorithm) throws -> String {
-        switch algorithm {
-        case .crc32:
-            let crc = try computeFileCrc32(filePath: url.path)
-            return String(format: "%08X", crc)
-
-        case .sha256:
-            return try computeFileSha256(filePath: url.path)
-
-        case .sha1:
-            return try computeFileHash(path: url.path, algorithm: "sha1")
-
-        case .md5:
-            return try computeFileHash(path: url.path, algorithm: "md5")
-
-        case .adler32:
-            let fileHandle = try FileHandle(forReadingFrom: url)
-            defer { try? fileHandle.close() }
-            let bufferSize = 64 * 1024
-            var adler: UInt32 = 1
-            while let chunk = try fileHandle.read(upToCount: bufferSize), !chunk.isEmpty {
-                adler = uniffiAdler32Rolling(initial: adler, data: chunk)
-            }
-            return String(format: "%08X", adler)
-
-        case .crc64, .xxh3_64, .xxh3_128, .blake3:
-            let fileHandle = try FileHandle(forReadingFrom: url)
-            defer { try? fileHandle.close() }
-            let bufferSize = 128 * 1024
-            var accumulatorData = Data()
-            while let chunk = try fileHandle.read(upToCount: bufferSize), !chunk.isEmpty {
-                accumulatorData.append(chunk)
-            }
-            return hash(accumulatorData, algorithm: algorithm)
-        }
+        try computeFileStreamHash(filePath: url.path, algorithm: algorithm.rawValue)
     }
 
     /// Asynchronously consumes an `AsyncThrowingStream` and returns computed hash string.
@@ -143,30 +116,91 @@ public struct TTZipCryptoHash: Sendable {
         source: AsyncThrowingStream<Data, Error>,
         algorithm: TTZipHashAlgorithm
     ) async throws -> String {
+        try Task.checkCancellation()
         switch algorithm {
         case .crc32:
             var crc: UInt32 = 0
             for try await chunk in source {
-                if Task.isCancelled { break }
+                try Task.checkCancellation()
                 crc = uniffiCrc32Rolling(initial: crc, data: chunk)
             }
+            try Task.checkCancellation()
             return String(format: "%08X", crc)
 
         case .adler32:
             var adler: UInt32 = 1
             for try await chunk in source {
-                if Task.isCancelled { break }
+                try Task.checkCancellation()
                 adler = uniffiAdler32Rolling(initial: adler, data: chunk)
             }
+            try Task.checkCancellation()
             return String(format: "%08X", adler)
 
-        default:
-            var completeData = Data()
+        case .crc64:
+            var crc: UInt64 = 0
             for try await chunk in source {
-                if Task.isCancelled { break }
-                completeData.append(chunk)
+                try Task.checkCancellation()
+                crc = uniffiCrc64(data: chunk, seed: crc)
             }
-            return hash(completeData, algorithm: algorithm)
+            try Task.checkCancellation()
+            return String(format: "%016llx", crc)
+
+        case .xxh3_64:
+            let accumulator = TTZipXXH3.Accumulator()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                accumulator.update(chunk)
+            }
+            try Task.checkCancellation()
+            return String(format: "%016llx", accumulator.digest64())
+
+        case .xxh3_128:
+            let accumulator = TTZipXXH3.Accumulator()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                accumulator.update(chunk)
+            }
+            try Task.checkCancellation()
+            return accumulator.digest128Hex()
+
+        case .blake3:
+            let hasher = TTZipBLAKE3.Hasher()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                hasher.update(chunk)
+            }
+            try Task.checkCancellation()
+            return try hasher.finalizeHex()
+
+        case .sha256:
+            var hasher = SHA256()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                hasher.update(data: chunk)
+            }
+            try Task.checkCancellation()
+            let digest = hasher.finalize()
+            return Data(digest).fastHexEncodedString()
+
+        case .sha1:
+            var hasher = Insecure.SHA1()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                hasher.update(data: chunk)
+            }
+            try Task.checkCancellation()
+            let digest = hasher.finalize()
+            return Data(digest).fastHexEncodedString()
+
+        case .md5:
+            var hasher = Insecure.MD5()
+            for try await chunk in source {
+                try Task.checkCancellation()
+                hasher.update(data: chunk)
+            }
+            try Task.checkCancellation()
+            let digest = hasher.finalize()
+            return Data(digest).fastHexEncodedString()
         }
     }
 }

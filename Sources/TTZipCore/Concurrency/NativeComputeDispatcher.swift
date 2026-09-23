@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import os
@@ -53,12 +49,13 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     ) async throws -> T {
         try Task.checkCancellation()
 
+        let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
         let isCancelledFlag = OSAllocatedUnfairLock(initialState: false)
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 computeQueue.async(qos: qos.dispatchQoS) {
-                    if Task.isCancelled || cancellationHandle?.isCancelled == true || isCancelledFlag.withLock({ $0 }) {
+                    if Task.isCancelled || effectiveHandle.isCancelled || isCancelledFlag.withLock({ $0 }) {
                         continuation.resume(throwing: CancellationError())
                         return
                     }
@@ -72,7 +69,19 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
             }
         } onCancel: {
             isCancelledFlag.withLock { $0 = true }
-            cancellationHandle?.cancel()
+            effectiveHandle.cancel()
+        }
+    }
+
+    /// Dispatches intensive C/Rust compute workload with direct UniFFI CancellationToken cancellation token.
+    public func dispatchCompute<T: Sendable>(
+        qos: ExecutionQoSProfile = .userInitiated,
+        cancellationHandle: TaskExecutionHandle? = nil,
+        _ work: @escaping @Sendable (_ token: CancellationToken) throws -> T
+    ) async throws -> T {
+        let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
+        return try await dispatchCompute(qos: qos, cancellationHandle: effectiveHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+            try work(effectiveHandle.uniffiToken)
         }
     }
 
@@ -82,7 +91,7 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         cancellationHandle: TaskExecutionHandle? = nil,
         _ work: @escaping @Sendable () throws -> T
     ) async throws -> T {
-        try await dispatchCompute(qos: qos, cancellationHandle: cancellationHandle) { _ in
+        try await dispatchCompute(qos: qos, cancellationHandle: cancellationHandle) { (_: OSAllocatedUnfairLock<Bool>) in
             try work()
         }
     }

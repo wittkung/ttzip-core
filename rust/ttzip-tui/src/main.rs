@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! TTZip Standalone Native CLI & Interactive TUI Application Entry Point.
 
@@ -12,9 +8,9 @@ use std::io::IsTerminal;
 use ttzip_tui::cli::{
     execute_bench, execute_cat, execute_check, execute_comment, execute_completions,
     execute_convert, execute_create, execute_delete, execute_diff, execute_doctor, execute_extract,
-    execute_hash, execute_info, execute_join, execute_list, execute_lock, execute_recover,
-    execute_repair, execute_split, execute_tree, execute_update, run_interactive_tui, Cli,
-    CliExtractParams, Commands,
+    execute_hash, execute_info, execute_join, execute_list, execute_lock, execute_mcp,
+    execute_recover, execute_repair, execute_split, execute_tree, execute_update,
+    run_interactive_tui, Cli, CliExtractParams, Commands,
 };
 
 fn main() {
@@ -135,6 +131,7 @@ fn main() {
         }) => execute_update(&archive, &sources, level, json).map_err(|e| e.into()),
         Some(Commands::Doctor { json }) => execute_doctor(json).map_err(|e| e.into()),
         Some(Commands::Completions { shell }) => execute_completions(&shell).map_err(|e| e.into()),
+        Some(Commands::Mcp) => execute_mcp().map_err(|e| e.into()),
         Some(Commands::Recover {
             archive,
             dictionary,

@@ -1,0 +1,289 @@
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
+
+//! Zero-copy memory-mapped TAR Archive Reader and safe extraction engine.
+//!
+//! Provides zero-copy payload slicing, Rayon/multi-core parallel disk extraction,
+//! ZipSlip-immune path validation, APFS extent preallocation, and two-stage bottom-up metadata restoration.
+
+use super::scanner::{TarEntry, TarSeekScanner};
+use crate::fs::apfs::apfs_preallocate;
+use crate::fs::safe_extract::{open_extracted_file_strictly_nofollow, sanitize_and_validate_path, SafeExtractEngine};
+use crate::types::{TTZipExtractOptions, TTZipStatus};
+use rayon::prelude::*;
+use std::ffi::CString;
+use std::fs;
+use std::io::Write;
+use std::os::unix::io::AsRawFd;
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
+
+/// Extraction report summarizing processed entries and byte counts.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TarExtractReport {
+    pub processed_entries_count: usize,
+    pub total_uncompressed_bytes: u64,
+    pub duration_ms: u64,
+}
+
+/// Zero-copy memory-mapped TAR Archive parser and extractor.
+pub struct TarArchive<'a> {
+    data: &'a [u8],
+    entries: Vec<TarEntry<'a>>,
+}
+
+impl<'a> TarArchive<'a> {
+    /// Opens and indexes all entries in a TAR archive from an in-memory slice.
+    pub fn open_slice(data: &'a [u8]) -> Result<Self, TTZipStatus> {
+        let mut scanner = TarSeekScanner::new(data);
+        let entries = scanner.scan_all()?;
+        Ok(Self { data, entries })
+    }
+
+    /// Returns reference to all parsed TAR entry descriptors.
+    #[inline]
+    pub fn entries(&self) -> &[TarEntry<'a>] {
+        &self.entries
+    }
+
+    /// Returns the number of entries in the archive.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Returns true if the archive contains zero entries.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Extracts payload data for an entry zero-copy as a subslice of the underlying archive.
+    pub fn extract_entry_bytes(&self, entry_idx: usize) -> Result<&'a [u8], TTZipStatus> {
+        let entry = self
+            .entries
+            .get(entry_idx)
+            .ok_or(TTZipStatus::ErrInvalidOffset)?;
+
+        if entry.is_directory || entry.size == 0 {
+            return Ok(&[]);
+        }
+
+        let start = entry.data_offset;
+        let end = start + (entry.size as usize);
+
+        if end > self.data.len() {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+
+        Ok(&self.data[start..end])
+    }
+
+    /// Extracts all archive entries to `dest_dir` with security validation and hardware acceleration.
+    pub fn extract_all(
+        &self,
+        dest_dir: &Path,
+        options: &TTZipExtractOptions,
+    ) -> Result<TarExtractReport, TTZipStatus> {
+        let start_time = std::time::Instant::now();
+        fs::create_dir_all(dest_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+        let mut engine = SafeExtractEngine::for_root(dest_dir);
+        let mut total_uncomp_bytes = 0u64;
+
+        // Stage 1: Register all entries with SafeExtractEngine & create directories
+        for entry in &self.entries {
+            total_uncomp_bytes += entry.size;
+            let trimmed = entry.path.trim_matches('/');
+            let is_root_dir = trimmed.is_empty() || trimmed == ".";
+            let safe_path = if is_root_dir {
+                dest_dir.to_path_buf()
+            } else {
+                sanitize_and_validate_path(dest_dir, &entry.path)?
+            };
+
+            engine.register_entry_typed(
+                safe_path.clone(),
+                entry.mode,
+                entry.mtime_epoch_secs,
+                entry.mtime_nanos,
+                entry.is_directory,
+                entry.is_symlink,
+            );
+
+            if entry.is_directory && !is_root_dir {
+                fs::create_dir_all(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+            }
+        }
+
+        if options.dry_run {
+            return Ok(TarExtractReport {
+                processed_entries_count: self.entries.len(),
+                total_uncompressed_bytes: total_uncomp_bytes,
+                duration_ms: start_time.elapsed().as_millis() as u64,
+            });
+        }
+
+        // Collect non-directory file indices
+        let file_indices: Vec<usize> = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| !e.is_directory && !e.path.trim_matches('/').is_empty() && e.path.trim_matches('/') != ".")
+            .map(|(i, _)| i)
+            .collect();
+
+        let thread_budget = (options.thread_budget as usize).clamp(1, 64);
+        let processed_bytes = Arc::new(AtomicU64::new(0));
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+
+        if thread_budget <= 1 || file_indices.len() <= 4 {
+            // Single-threaded path
+            for &idx in &file_indices {
+                let entry = &self.entries[idx];
+                let safe_path = sanitize_and_validate_path(dest_dir, &entry.path)?;
+
+                if entry.is_symlink {
+                    if let Some(target) = &entry.link_target {
+                        validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
+                    }
+                } else if entry.is_hardlink {
+                    if let Some(target) = &entry.link_target {
+                        let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
+                        if let Some(parent) = safe_path.parent() {
+                            let _ = fs::create_dir_all(parent);
+                        }
+                        if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
+                            let _ = fs::remove_file(&safe_path);
+                        }
+                        let _ = fs::hard_link(&target_safe, &safe_path);
+                    }
+                } else {
+                    if let Some(parent) = safe_path.parent() {
+                        let _ = fs::create_dir_all(parent);
+                    }
+
+                    let payload = self.extract_entry_bytes(idx)?;
+                    let mut file = open_extracted_file_strictly_nofollow(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    if entry.size > 0 {
+                        let _ = apfs_preallocate(file.as_raw_fd(), entry.size as i64);
+                        file.write_all(payload).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                    }
+                }
+
+                let current_done = processed_bytes.fetch_add(entry.size, Ordering::Relaxed) + entry.size;
+                if let Some(cb) = options.progress_callback {
+                    let c_path = CString::new(entry.path.as_ref()).unwrap_or_default();
+                    let should_continue = unsafe {
+                        cb(current_done, total_uncomp_bytes, c_path.as_ptr(), options.user_data)
+                    };
+                    if !should_continue {
+                        return Err(TTZipStatus::Cancelled);
+                    }
+                }
+            }
+        } else {
+            // Rayon multi-core parallel extraction
+            let pool = crate::platform::cpu::EngineThreadPool::global();
+
+            let par_res = pool.install(|| {
+                file_indices.par_iter().try_for_each(|&idx| -> Result<(), TTZipStatus> {
+                    if cancel_flag.load(Ordering::Relaxed) {
+                        return Err(TTZipStatus::Cancelled);
+                    }
+
+                    let entry = &self.entries[idx];
+                    let safe_path = sanitize_and_validate_path(dest_dir, &entry.path)?;
+
+                    if entry.is_symlink {
+                        if let Some(target) = &entry.link_target {
+                            validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
+                        }
+                    } else if entry.is_hardlink {
+                        if let Some(target) = &entry.link_target {
+                            let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
+                            if let Some(parent) = safe_path.parent() {
+                                let _ = fs::create_dir_all(parent);
+                            }
+                            if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
+                                let _ = fs::remove_file(&safe_path);
+                            }
+                            let _ = fs::hard_link(&target_safe, &safe_path);
+                        }
+                    } else {
+                        if let Some(parent) = safe_path.parent() {
+                            let _ = fs::create_dir_all(parent);
+                        }
+
+                        let payload = self.extract_entry_bytes(idx)?;
+                        let mut file = open_extracted_file_strictly_nofollow(&safe_path)
+                            .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                        if entry.size > 0 {
+                            let _ = apfs_preallocate(file.as_raw_fd(), entry.size as i64);
+                            file.write_all(payload)
+                                .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+                        }
+                    }
+
+                    processed_bytes.fetch_add(entry.size, Ordering::Relaxed);
+                    Ok(())
+                })
+            });
+
+            par_res?;
+        }
+
+        // Stage 2: Apply deferred metadata bottom-up
+        if options.preserve_permissions {
+            engine.apply_all()?;
+        }
+
+        Ok(TarExtractReport {
+            processed_entries_count: self.entries.len(),
+            total_uncompressed_bytes: total_uncomp_bytes,
+            duration_ms: start_time.elapsed().as_millis() as u64,
+        })
+    }
+}
+
+/// Validates symlink target invariants to prevent sandbox escapes (Zip-Slip via symlink)
+/// and safely extracts the symbolic link to the sanitized destination path.
+fn validate_and_extract_symlink(
+    dest_dir: &Path,
+    safe_path: &Path,
+    target: &str,
+) -> Result<(), TTZipStatus> {
+    // 1. Reject absolute symlink targets
+    if target.starts_with('/') || target.starts_with('\\') {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // 2. Validate that relative symlink target does not escape destination root sandbox
+    let parent_dir = safe_path.parent().unwrap_or(dest_dir);
+    let resolved_target = parent_dir.join(target);
+    match resolved_target.strip_prefix(dest_dir) {
+        Ok(rel_to_dest) => {
+            let rel_str = rel_to_dest.to_string_lossy();
+            if !rel_str.is_empty() && sanitize_and_validate_path(dest_dir, &rel_str).is_err() {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+        }
+        Err(_) => {
+            // Target points outside dest_dir
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+    }
+
+    // 3. Verify that no intermediate path segment is a symlink
+    crate::fs::safe_extract::validate_no_intermediate_symlinks(dest_dir, safe_path)?;
+
+    // 4. Safely ensure parent directory exists and atomically link
+    if let Some(parent) = safe_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if safe_path.exists() || fs::symlink_metadata(safe_path).is_ok() {
+        let _ = fs::remove_file(safe_path);
+    }
+    std::os::unix::fs::symlink(target, safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)
+}

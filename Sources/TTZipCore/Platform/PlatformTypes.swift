@@ -1,11 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
+import os
+import CTTZipBridge
 
 /// Cross-platform path sanitization and normalization analysis outcome.
 public struct PlatformPathNormalizationResult: Sendable, Equatable {
@@ -74,25 +72,142 @@ public struct PlatformFileAttributes: Sendable, Equatable {
     }
 }
 
-/// Virtual memory mapping descriptor.
-public struct PlatformMmapResult: @unchecked Sendable {
-    public let pointer: UnsafeRawPointer
-    public let size: Int
-    private let rawDescriptor: Int32
-    
-    public init(pointer: UnsafeRawPointer, size: Int, rawDescriptor: Int32) {
-        self.pointer = pointer
-        self.size = size
-        self.rawDescriptor = rawDescriptor
+/// Virtual memory mapping descriptor with managed lifecycle ensuring strictly single unmap/close
+/// and zero-copy scoped borrowing with Use-After-Free immunization.
+public final class PlatformMmapResult: @unchecked Sendable {
+    private struct State: Sendable {
+        let rawAddress: UInt
+        let size: Int
+        var rawDescriptor: Int32
+        var isUnmapped: Bool = false
+        var activeBorrowers: Int = 0
+        var pendingMunmap: Bool = false
     }
-    
-    public func unmap() {
-        if size > 0 {
-            let mutPtr = UnsafeMutableRawPointer(mutating: pointer)
-            munmap(mutPtr, size)
+
+    private let stateLock: OSAllocatedUnfairLock<State>
+
+    public init(pointer: UnsafeRawPointer, size: Int, rawDescriptor: Int32) {
+        self.stateLock = OSAllocatedUnfairLock(initialState: State(
+            rawAddress: UInt(bitPattern: pointer),
+            size: size,
+            rawDescriptor: rawDescriptor,
+            isUnmapped: false,
+            activeBorrowers: 0,
+            pendingMunmap: false
+        ))
+    }
+
+    deinit {
+        unmap()
+    }
+
+    /// Backwards-compatible raw pointer accessor with lifecycle assertions.
+    ///
+    /// - Note: Prefer `withUnsafeBytes(_:)` for scoped borrow safety against concurrent unmapping.
+    public var pointer: UnsafeRawPointer {
+        let address: UInt = stateLock.withLock { state in
+            precondition(!state.isUnmapped && !state.pendingMunmap, "Attempted to access pointer of an unmapped PlatformMmapResult (Use-After-Free detected)")
+            return state.rawAddress
         }
-        if rawDescriptor >= 0 {
-            close(rawDescriptor)
+        guard let ptr = UnsafeRawPointer(bitPattern: address) else {
+            fatalError("PlatformMmapResult holds null address")
+        }
+        return ptr
+    }
+
+    /// Size of the memory-mapped virtual region in bytes.
+    public var size: Int {
+        stateLock.withLock { $0.size }
+    }
+
+    /// True if this mapping has been explicitly unmapped or marked for deallocation.
+    public var isUnmapped: Bool {
+        stateLock.withLock { $0.isUnmapped || $0.pendingMunmap }
+    }
+
+    /// Increments the active borrower count and returns the raw base pointer.
+    /// Guarantees the underlying memory region will not be unmapped while the borrow is active.
+    /// Callers MUST balance this with a corresponding `releaseBorrow()` call.
+    public func retainBorrow() throws -> UnsafeRawPointer {
+        let address: UInt = try stateLock.withLock { state in
+            guard !state.isUnmapped && !state.pendingMunmap else {
+                throw POSIXError(.EBADF)
+            }
+            state.activeBorrowers += 1
+            return state.rawAddress
+        }
+        guard let ptr = UnsafeRawPointer(bitPattern: address) else {
+            throw POSIXError(.EINVAL)
+        }
+        return ptr
+    }
+
+    /// Decrements the active borrower count. If unmapping was deferred pending this borrow,
+    /// performs the physical `munmap` and closes the file descriptor once borrower count drops to zero.
+    public func releaseBorrow() {
+        let cleanup: (UInt, Int, Int32)? = stateLock.withLock { state in
+            state.activeBorrowers -= 1
+            if state.pendingMunmap && state.activeBorrowers == 0 {
+                let addr = state.rawAddress
+                let s = state.size
+                let fd = state.rawDescriptor
+                state.rawDescriptor = -1
+                return (addr, s, fd)
+            }
+            return nil
+        }
+        if let (addr, s, fd) = cleanup {
+            if s > 0, let p = UnsafeMutableRawPointer(bitPattern: addr) {
+                munmap(p, s)
+            }
+            if fd >= 0 {
+                close(fd)
+            }
+        }
+    }
+
+    /// Executes a scoped closure providing direct, zero-copy borrowed access to the mapped byte buffer.
+    /// Guarantees that the underlying virtual memory mapping cannot be freed or unmapped while `body` is executing.
+    ///
+    /// - Parameter body: A closure taking an `UnsafeRawBufferPointer` to the memory-mapped bytes.
+    /// - Returns: The value returned by `body`.
+    /// - Throws: `POSIXError(.EBADF)` if the mapping is already unmapped, or any error thrown by `body`.
+    public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+        let ptr = try retainBorrow()
+        let sz = self.size
+        defer {
+            releaseBorrow()
+        }
+        let buffer = UnsafeRawBufferPointer(start: ptr, count: sz)
+        return try body(buffer)
+    }
+
+    /// Explicitly unmaps the virtual memory region and closes the underlying file descriptor.
+    /// If there are active borrowers currently executing inside `withUnsafeBytes`, physical
+    /// unmapping is deferred until the last active borrower returns to prevent Use-After-Free crashes.
+    public func unmap() {
+        let immediateCleanup: (UInt, Int, Int32)? = stateLock.withLock { state in
+            guard !state.isUnmapped else { return nil }
+            state.isUnmapped = true
+            if state.activeBorrowers > 0 {
+                state.pendingMunmap = true
+                return nil
+            } else {
+                let addr = state.rawAddress
+                let s = state.size
+                let fd = state.rawDescriptor
+                state.rawDescriptor = -1
+                return (addr, s, fd)
+            }
+        }
+
+        if let (addr, s, fd) = immediateCleanup {
+            if s > 0, let p = UnsafeMutableRawPointer(bitPattern: addr) {
+                munmap(p, s)
+            }
+            if fd >= 0 {
+                close(fd)
+            }
         }
     }
 }
@@ -204,7 +319,7 @@ public enum PlatformOperatingSystem: String, Sendable, Codable, CaseIterable {
 /// - Win32 extended-length path formatting (`\\?\` and `\\?\UNC\`)
 public enum PlatformPathSanitizer: Sendable {
     
-    /// Executes cross-platform security sanitization and canonical normalization.
+    /// Executes cross-platform security sanitization and canonical normalization via Rust microkernel.
     ///
     /// - Parameter path: Input relative or absolute path.
     /// - Returns: Normalized path result containing canonical path, boundary flags, and reserved name markers.
@@ -222,28 +337,51 @@ public enum PlatformPathSanitizer: Sendable {
                 hasTraversalAttack: false
             )
         }
-        
-        let hasTraversal = path.contains("../") || path.contains("..\\") || path.hasPrefix("..")
-        let isAbs = path.hasPrefix("/") || path.hasPrefix("\\") || (path.count >= 2 && path[path.index(after: path.startIndex)] == ":")
-        let isUNC = path.hasPrefix("\\\\")
-        
-        let cleaned = (path as NSString).standardizingPath
-        let win32 = isAbs ? "\\\\?\\" + path : path
-        
-        let reservedNames = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"]
-        let upperLast = (path as NSString).lastPathComponent.uppercased()
-        let isReserved = reservedNames.contains(upperLast) || reservedNames.contains((upperLast as NSString).deletingPathExtension)
-        
+
+        var rawResult = TTZipPathSanitizationResult()
+        let status = path.withCString { cPath in
+            ttzip_rust_sanitize_path(cPath, &rawResult)
+        }
+
+        guard status == 0 else {
+            #if SWIFT_PACKAGE
+            let fallbackPosix = TTZipCore.sanitizePosixPath(rawInput: path, baseDirectory: nil)
+            #else
+            let fallbackPosix = TTZipCoreBindings.sanitizePosixPath(rawInput: path, baseDirectory: nil)
+            #endif
+            return PlatformPathNormalizationResult(
+                originalPath: path,
+                normalizedPath: fallbackPosix,
+                isAbsolute: path.hasPrefix("/") || path.hasPrefix("\\"),
+                isUNCPath: path.hasPrefix("\\\\"),
+                isLongPath: path.utf16.count > 260,
+                containsWindowsReservedDeviceName: false,
+                strippedAlternateDataStream: nil,
+                win32FormattedPath: path,
+                hasTraversalAttack: true
+            )
+        }
+
+        let normalized = withUnsafeBytes(of: rawResult.normalized_path) { rawPtr in
+            rawPtr.baseAddress.map { String(cString: $0.assumingMemoryBound(to: CChar.self)) } ?? ""
+        }
+        let win32 = withUnsafeBytes(of: rawResult.win32_formatted_path) { rawPtr in
+            rawPtr.baseAddress.map { String(cString: $0.assumingMemoryBound(to: CChar.self)) } ?? ""
+        }
+        let strippedAds: String? = rawResult.has_stripped_ads ? withUnsafeBytes(of: rawResult.stripped_ads) { rawPtr in
+            rawPtr.baseAddress.map { String(cString: $0.assumingMemoryBound(to: CChar.self)) }
+        } : nil
+
         return PlatformPathNormalizationResult(
             originalPath: path,
-            normalizedPath: cleaned,
-            isAbsolute: isAbs,
-            isUNCPath: isUNC,
-            isLongPath: path.count > 260,
-            containsWindowsReservedDeviceName: isReserved,
-            strippedAlternateDataStream: nil,
+            normalizedPath: normalized,
+            isAbsolute: rawResult.is_absolute,
+            isUNCPath: rawResult.is_unc,
+            isLongPath: rawResult.is_long_path,
+            containsWindowsReservedDeviceName: rawResult.is_windows_reserved,
+            strippedAlternateDataStream: strippedAds,
             win32FormattedPath: win32,
-            hasTraversalAttack: hasTraversal
+            hasTraversalAttack: rawResult.has_traversal_attack
         )
     }
 }

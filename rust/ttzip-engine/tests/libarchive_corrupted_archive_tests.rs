@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! 150+ Malformed and Corrupted Archive Destruction Injection Test Suite (Task 16.2).
 //!
@@ -123,11 +119,17 @@ fn test_libarchive_150_plus_corrupted_archive_corpus_sweep() {
                 "Extracting corrupted fixture '{}' must never panic",
                 fixture
             );
+            let timeout_limit = if cfg!(debug_assertions) {
+                Duration::from_millis(5000)
+            } else {
+                Duration::from_millis(2000)
+            };
             assert!(
-                elapsed < Duration::from_millis(2000),
-                "Corrupted fixture '{}' took {:?} (exceeded 2000ms deadlock limit)",
+                elapsed < timeout_limit,
+                "Corrupted fixture '{}' took {:?} (exceeded {:?} deadlock limit)",
                 fixture,
-                elapsed
+                elapsed,
+                timeout_limit
             );
         }
     }

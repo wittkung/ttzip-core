@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Tier 1 E2E Test Suite: Feature Coverage for Features 1 through 4.
 //!
@@ -16,10 +12,6 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use tempfile::tempdir;
 
-use flate2::write::ZlibEncoder;
-use flate2::Compression;
-use lopdf::dictionary;
-
 use ttzip_engine::archive::split::{
     detect_volume_chain, SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme,
 };
@@ -30,83 +22,13 @@ use ttzip_engine::codecs::{
 };
 use ttzip_engine::crypto::aes256::{aes256_cbc_decrypt, aes256_cbc_encrypt};
 use ttzip_engine::crypto::crc32::crc32_fast;
-use ttzip_engine::pdf::{PdfMetadataExtractor, TTZipPdfParser};
-use ttzip_engine::security::ebook_defense::ManifestItemCountGuard;
-use ttzip_engine::security::html_defense::{
-    HtmlDefenseOptions, HtmlSecurityPipeline, TagNestingDepthGuard,
-};
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZReader};
-use ttzip_engine::xml::OfficeXmlExtractor;
 use ttzip_engine::zip::writer::ZipInputItem;
 
 // ============================================================================
 // Synthetic Fixture Generators
 // ============================================================================
 
-fn create_valid_test_pdf(title: &str, content: &str) -> Vec<u8> {
-    let mut doc = lopdf::Document::new();
-    let font_id = doc.add_object(dictionary! {
-        "Type" => "Font",
-        "Subtype" => "Type1",
-        "BaseFont" => "Helvetica",
-    });
-
-    let resources_id = doc.add_object(dictionary! {
-        "Font" => lopdf::Object::Reference(font_id),
-    });
-
-    let stream_text = format!(
-        "BT /F1 12 Tf 72 712 Td ({}) Tj ET",
-        content.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)")
-    );
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(stream_text.as_bytes()).unwrap();
-    let compressed = encoder.finish().unwrap();
-
-    let content_id = doc.add_object(lopdf::Object::Stream(lopdf::Stream::new(
-        dictionary! {
-            "Filter" => "FlateDecode",
-            "Length" => compressed.len() as i64,
-        },
-        compressed,
-    )));
-
-    let page_id = doc.add_object(dictionary! {
-        "Type" => "Page",
-        "MediaBox" => vec![0.into(), 0.into(), 612.into(), 792.into()],
-        "Contents" => lopdf::Object::Reference(content_id),
-        "Resources" => lopdf::Object::Reference(resources_id),
-    });
-
-    let pages_id = doc.add_object(dictionary! {
-        "Type" => "Pages",
-        "Kids" => vec![lopdf::Object::Reference(page_id)],
-        "Count" => 1,
-    });
-
-    if let Ok(page_obj) = doc.get_object_mut(page_id) {
-        if let Ok(dict) = page_obj.as_dict_mut() {
-            dict.set("Parent", lopdf::Object::Reference(pages_id));
-        }
-    }
-
-    let catalog_id = doc.add_object(dictionary! {
-        "Type" => "Catalog",
-        "Pages" => lopdf::Object::Reference(pages_id),
-    });
-
-    let info_id = doc.add_object(dictionary! {
-        "Title" => lopdf::Object::String(title.as_bytes().to_vec(), lopdf::StringFormat::Literal),
-        "Author" => lopdf::Object::String(b"TTZip Test Suite".to_vec(), lopdf::StringFormat::Literal),
-    });
-
-    doc.trailer.set("Root", lopdf::Object::Reference(catalog_id));
-    doc.trailer.set("Info", lopdf::Object::Reference(info_id));
-
-    let mut out = Vec::new();
-    doc.save_to(&mut out).unwrap();
-    out
-}
 
 fn create_test_zip(files: &[(&str, &[u8])]) -> Vec<u8> {
     let mut zip_data = Vec::new();
@@ -175,109 +97,6 @@ fn create_test_zip(files: &[(&str, &[u8])]) -> Vec<u8> {
 // Feature 1: Multi-Modal Native Preview (6 Tests)
 // ============================================================================
 
-#[test]
-fn test_e2e_t1_f1_pdf_page_and_outline_streaming() {
-    let pdf_bytes = create_valid_test_pdf("TTZip Architecture Guide", "Hello TTZip Microkernel");
-    let parser = TTZipPdfParser::open_from_bytes(&pdf_bytes).expect("PDF parse failed");
-    assert_eq!(parser.page_count(), 1);
-    let meta = PdfMetadataExtractor::extract_metadata(&parser).expect("Meta failed");
-    assert_eq!(meta.title.as_deref(), Some("TTZip Architecture Guide"));
-    assert_eq!(meta.author.as_deref(), Some("TTZip Test Suite"));
-}
-
-#[test]
-fn test_e2e_t1_f1_epub2_and_epub3_spine_navigation() {
-    let epb2_opf = r#"<?xml version="1.0" encoding="utf-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>TTZip Modern Systems Book</dc:title>
-    <dc:language>en</dc:language>
-  </metadata>
-  <manifest>
-    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
-    <item id="c1" href="chap1.xhtml" media-type="application/xhtml+xml"/>
-    <item id="c2" href="chap2.xhtml" media-type="application/xhtml+xml"/>
-  </manifest>
-  <spine toc="ncx">
-    <itemref idref="c1"/>
-    <itemref idref="c2"/>
-  </spine>
-</package>"#;
-
-    let mut guard = ManifestItemCountGuard::new();
-    let items = guard
-        .parse_opf_stream(Cursor::new(epb2_opf.as_bytes()), epb2_opf.len() as u64)
-        .expect("Valid EPUB 2 OPF parsing failed");
-
-    assert_eq!(items.len(), 3);
-    assert_eq!(items.get("c1").unwrap().href, "chap1.xhtml");
-    assert_eq!(items.get("c2").unwrap().href, "chap2.xhtml");
-}
-
-#[test]
-fn test_e2e_t1_f1_docx_wordprocessing_headings_extraction() {
-    let docx_xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    <w:p>
-      <w:pPr><w:pStyle w:val="Heading1"/></w:pPr>
-      <w:r><w:t>Chapter 1: Microkernel Activation</w:t></w:r>
-    </w:p>
-    <w:p>
-      <w:r><w:t>Body paragraph content with fast pure-Rust parsing.</w:t></w:r>
-    </w:p>
-  </w:body>
-</w:document>"#;
-
-    let outline = OfficeXmlExtractor::parse_docx_document(docx_xml.as_bytes()).expect("DOCX extraction failed");
-    assert_eq!(outline.headings.len(), 1);
-    assert_eq!(outline.headings[0].text, "Chapter 1: Microkernel Activation");
-    assert_eq!(outline.headings[0].level, 1);
-}
-
-#[test]
-fn test_e2e_t1_f1_xlsx_shared_strings_and_formula_cells() {
-    let sst_xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
-  <si><t>Revenue 2026</t></si>
-  <si><t>Q1 Expansion</t></si>
-</sst>"#;
-
-    let strings = OfficeXmlExtractor::parse_xlsx_shared_strings(sst_xml.as_bytes(), None).expect("SST failed");
-    assert_eq!(strings.len(), 2);
-    assert_eq!(strings[0], "Revenue 2026");
-    assert_eq!(strings[1], "Q1 Expansion");
-
-    let wb_xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <sheets>
-    <sheet name="Finance" sheetId="1" r:id="rId1" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>
-  </sheets>
-</workbook>"#;
-
-    let wb_meta = OfficeXmlExtractor::parse_xlsx_workbook(wb_xml.as_bytes()).expect("XLSX meta failed");
-    assert_eq!(wb_meta.sheets.len(), 1);
-    assert_eq!(wb_meta.sheets[0].name, "Finance");
-}
-
-#[test]
-fn test_e2e_t1_f1_pptx_shape_tree_slide_titles() {
-    let slide_xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
-       xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <p:cSld>
-    <p:spTree>
-      <p:sp>
-        <p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
-        <p:txBody><a:p><a:r><a:t>TTZip 2026 Keynote Presentation</a:t></a:r></a:p></p:txBody>
-      </p:sp>
-    </p:spTree>
-  </p:cSld>
-</p:sld>"#;
-
-    let outline = OfficeXmlExtractor::parse_pptx_slide(slide_xml.as_bytes(), 1).expect("PPTX failed");
-    assert_eq!(outline.title.as_deref(), Some("TTZip 2026 Keynote Presentation"));
-}
 
 #[test]
 fn test_e2e_t1_f1_audio_metadata_and_pcm_demux() {
@@ -299,84 +118,6 @@ fn test_e2e_t1_f1_audio_metadata_and_pcm_demux() {
     assert_eq!(&wav_header[0..4], b"RIFF");
     assert_eq!(&wav_header[8..12], b"WAVE");
     assert_eq!(wav_header.len(), 44);
-}
-
-// ============================================================================
-// Feature 2: In-Archive HTML VFS Streaming & Resource Rewriting (5 Tests)
-// ============================================================================
-
-#[test]
-fn test_e2e_t1_f2_html_relative_resource_vfs_rewrite() {
-    let pipeline = HtmlSecurityPipeline::new(HtmlDefenseOptions {
-        vfs_prefix: "ttzip-vfs://session_abc/".to_string(),
-        ..HtmlDefenseOptions::default()
-    });
-
-    let raw = r#"<html><head><link rel="stylesheet" href="assets/style.css"></head><body><img src="./img/hero.png"></body></html>"#;
-    let res = pipeline.sanitize_html(raw).expect("HTML sanitize failed");
-    let out = res.sanitized_html.as_str().unwrap();
-
-    assert!(out.contains("ttzip-vfs://session_abc/assets/style.css"));
-    assert!(out.contains("ttzip-vfs://session_abc/img/hero.png"));
-}
-
-#[test]
-fn test_e2e_t1_f2_html_csp_injection_and_sandbox() {
-    let pipeline = HtmlSecurityPipeline::new(HtmlDefenseOptions {
-        vfs_prefix: "ttzip-vfs://safe_root/".to_string(),
-        inject_csp: true,
-        ..HtmlDefenseOptions::default()
-    });
-
-    let raw = r#"<html><head></head><body><h1>Safe Site</h1><script>alert(1);</script></body></html>"#;
-    let res = pipeline.sanitize_html(raw).expect("HTML sanitize failed");
-    let out = res.sanitized_html.as_str().unwrap();
-
-    assert!(out.contains("Content-Security-Policy"));
-    assert!(!out.contains("alert(1)"));
-}
-
-#[test]
-fn test_e2e_t1_f2_html_inline_style_url_rewriting() {
-    let pipeline = HtmlSecurityPipeline::new(HtmlDefenseOptions {
-        vfs_prefix: "ttzip-vfs://archive_uuid/".to_string(),
-        ..HtmlDefenseOptions::default()
-    });
-
-    let raw = r#"<html><head><link rel="stylesheet" href="theme.css"></head><body><video poster="media/cover.jpg" src="media/intro.mp4"></video><div class="card">Content</div></body></html>"#;
-    let res = pipeline.sanitize_html(raw).expect("HTML sanitize failed");
-    let out = res.sanitized_html.as_str().unwrap();
-
-    assert!(out.contains("ttzip-vfs://archive_uuid/theme.css"));
-    assert!(out.contains("ttzip-vfs://archive_uuid/media/cover.jpg"));
-    assert!(out.contains("ttzip-vfs://archive_uuid/media/intro.mp4"));
-}
-
-#[test]
-fn test_e2e_t1_f2_html_void_tags_and_attribute_normalization() {
-    let void_tags = ["br", "hr", "img", "input", "link", "meta"];
-    for tag in void_tags {
-        assert!(TagNestingDepthGuard::is_void_tag(tag));
-    }
-
-    let mut guard = TagNestingDepthGuard::new(64, 256);
-    guard.on_element_start("img", false).unwrap();
-    assert_eq!(guard.current_depth(), 0);
-}
-
-#[test]
-fn test_e2e_t1_f2_html_unclosed_tag_recovery_and_tree_balancing() {
-    let mut guard = TagNestingDepthGuard::new(64, 256);
-    guard.on_element_start("div", false).unwrap();
-    guard.on_element_start("p", false).unwrap();
-    guard.on_element_start("span", false).unwrap();
-    assert_eq!(guard.current_depth(), 3);
-
-    guard.on_element_end("div").unwrap();
-    assert_eq!(guard.current_depth(), 0);
-
-    let report = guard.finalize().unwrap();
-    assert_eq!(report.unclosed_tags_count, 2);
 }
 
 // ============================================================================

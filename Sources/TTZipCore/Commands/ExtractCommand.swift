@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -39,7 +35,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
         password: String? = nil,
         autoVaultUnlock: Bool = true,
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        engineFacade: TTZipEngineFacading = TTZipEngineFacade.shared
+        engineFacade: TTZipEngineFacading
     ) {
         self.commandId = commandId
         self.archivePath = archivePath
@@ -120,6 +116,36 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
         }
         
         saveExecutionState(created: sortedCreated, preExisted: dirExistedBefore, backupDir: backupDirectory)
+        
+        // Physical cleanup of .noindex marker to avoid breaking Spotlight indexing
+        let noIndexFilePath = (destinationDir as NSString).appendingPathComponent(".noindex")
+        if fm.fileExists(atPath: noIndexFilePath) {
+            try? fm.removeItem(atPath: noIndexFilePath)
+        }
+        
+        // Physical cleanup of redundant temporary backups to prevent disk leakage
+        if let backupDir = backupDirectory, fm.fileExists(atPath: backupDir) {
+            var anyOverwritten = false
+            for p in preExistingPaths {
+                let rel = String(p.dropFirst(destinationDir.count).trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+                let targetBackup = (backupDir as NSString).appendingPathComponent(rel)
+                if fm.fileExists(atPath: targetBackup) {
+                    if let origAttrs = try? fm.attributesOfItem(atPath: targetBackup),
+                       let currAttrs = try? fm.attributesOfItem(atPath: p) {
+                        if origAttrs[.modificationDate] as? Date != currAttrs[.modificationDate] as? Date ||
+                           origAttrs[.size] as? Int64 != currAttrs[.size] as? Int64 {
+                            anyOverwritten = true
+                        } else {
+                            try? fm.removeItem(atPath: targetBackup)
+                        }
+                    }
+                }
+            }
+            if !anyOverwritten {
+                try? fm.removeItem(atPath: backupDir)
+                backupDirectory = nil
+            }
+        }
         
         let endTime = CFAbsoluteTimeGetCurrent()
         let duration = endTime - startTime
@@ -264,7 +290,7 @@ public final class RepairCommand: ArchiveCommandProtocol, @unchecked Sendable {
         description: String? = nil,
         damagedPath: String,
         outputPath: String,
-        engineFacade: TTZipEngineFacading = TTZipEngineFacade.shared
+        engineFacade: TTZipEngineFacading
     ) {
         self.commandId = commandId
         self.damagedPath = damagedPath

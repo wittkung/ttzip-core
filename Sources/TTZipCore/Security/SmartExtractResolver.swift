@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -139,6 +135,43 @@ public struct SecurityReport: Sendable, Equatable {
     }
 }
 
+/// Canonical microkernel-aligned decompression bomb, expansion ratio, and quota limits.
+///
+/// Directly reflects Rust microkernel invariants from `ExtractionQuotaGuard` and `DecompressionBombGuard`:
+/// - RFC 1951 Deflate single-stream theoretical maximum expansion ceiling: 1032:1 (258 uncompressed match bytes from 2-bit code).
+/// - Default production expansion ratio threshold triggering warning: 100:1.
+/// - Minimum uncompressed byte threshold before ratio validation activates: 1 MiB (1,048,576 bytes).
+/// - Maximum individual entry uncompressed output budget: 10 GiB (10,737,418,240 bytes).
+public struct MicrokernelDecompressionLimits: Sendable, Equatable {
+    /// RFC 1951 theoretical maximum expansion ratio ceiling (1032:1) for Deflate streams.
+    public static let maxTheoreticalDeflateRatio: Double = 1032.0
+    /// Default production expansion ratio threshold triggering warning (100:1).
+    public static let defaultSuspiciousRatio: Double = 100.0
+    /// Minimum uncompressed byte threshold before ratio validation activates (1 MiB = 1,048,576 bytes).
+    public static let defaultActivationThresholdBytes: Int64 = 1024 * 1024
+    /// Maximum individual entry uncompressed output budget (10 GiB) aligned with ExtractionQuotaGuard.
+    public static let defaultMaxEntrySizeBytes: Int64 = 10 * 1024 * 1024 * 1024
+
+    /// Validates whether an entry's compression ratio or size breaches microkernel safety standards.
+    @inlinable
+    public static func isDecompressionBomb(
+        uncompressedSize: Int64,
+        compressedSize: Int64,
+        thresholdBytes: Int64 = defaultActivationThresholdBytes,
+        maxRatio: Double = defaultSuspiciousRatio,
+        maxEntrySize: Int64 = defaultMaxEntrySizeBytes
+    ) -> Bool {
+        if uncompressedSize > maxEntrySize {
+            return true
+        }
+        guard uncompressedSize > thresholdBytes, compressedSize > 0 else {
+            return false
+        }
+        let ratio = Double(uncompressedSize) / Double(compressedSize)
+        return ratio > maxRatio
+    }
+}
+
 /// In-memory threat and vulnerability scanning engine (Zip Slip, dangerous extensions, and traversal checks).
 public final class SecurityScanner: @unchecked Sendable {
     public static let shared = SecurityScanner()
@@ -259,9 +292,11 @@ public final class SecurityScanner: @unchecked Sendable {
                 continue
             }
             
-            if let compressedSize = leaf.compressedSizeBytes, compressedSize > 0 {
-                let ratio = Double(leaf.sizeBytes) / Double(compressedSize)
-                if ratio > 100.0 && leaf.sizeBytes > 1_000_000 {
+            if let compressedSize = leaf.compressedSizeBytes {
+                if MicrokernelDecompressionLimits.isDecompressionBomb(
+                    uncompressedSize: leaf.sizeBytes,
+                    compressedSize: compressedSize
+                ) {
                     if !suspicious.contains(path) {
                         suspicious.append(path)
                     }

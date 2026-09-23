@@ -1,13 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Format standards compliance and 16-format magic sniffing subsystem.
 
-pub mod anchors;
+pub use ttzip_archive::standards::anchors;
 pub mod checkers;
 pub mod demuxer;
 #[cfg(feature = "probe")]
@@ -19,8 +15,8 @@ pub mod image_pipeline;
 #[cfg(feature = "probe")]
 pub mod metadata_probe;
 pub mod report;
-pub mod signatures;
-pub mod sniffer;
+pub use ttzip_archive::standards::signatures;
+pub use ttzip_archive::standards::sniffer;
 pub mod subtitles;
 pub mod syntax_highlight;
 

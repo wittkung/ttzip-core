@@ -1,7 +1,0 @@
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/snappy.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/edit_cache.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/rebuild_cache.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/list_install_components.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/install.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/install/local.dir
-/Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/snappy/fix-darwin-universal-binary/build_universal/CMakeFiles/install/strip.dir

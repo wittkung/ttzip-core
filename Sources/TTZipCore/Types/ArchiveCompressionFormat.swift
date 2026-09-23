@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -306,64 +302,106 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         }
     }
     
-    /// Whether format supports password encryption.
-    public var supportsPasswordEncryption: Bool {
+    /// Maps to the canonical UniFFI Rust format enum.
+    public var uniffiFormat: TtZipArchiveFormat {
         switch self {
-        case .sevenZip, .zip, .wim, .dmg, .aar, .rar:
-            return true
-        default:
-            return false
+        case .sevenZip: return .sevenZip
+        case .zip: return .zip
+        case .tar: return .tar
+        case .tarGz: return .tarGz
+        case .tarBz2: return .tarBz2
+        case .tarXz: return .tarXz
+        case .tarZst: return .tarZstd
+        case .tarLz4: return .tarLz4
+        case .tarBrotli: return .tarBrotli
+        case .tarLzip: return .tarLzip
+        case .tarLrzip: return .tarLrzip
+        case .iso: return .iso
+        case .cab: return .cab
+        case .wim: return .wim
+        case .dmg: return .dmg
+        case .aar: return .aar
+        case .cpio: return .cpio
+        case .ar: return .ar
+        case .deb: return .deb
+        case .rpm: return .rpm
+        case .xar: return .xar
+        case .rar: return .rar
+        case .squashfs: return .squashfs
+        case .lzfse: return .lzfse
+        case .lzh: return .lzh
+        case .zst: return .zstd
+        case .gz: return .gzip
+        case .bz2: return .bzip2
+        case .xz: return .xz
+        case .lzip: return .lzip
+        case .lz4: return .lz4
+        case .brotli: return .brotli
+        case .snappy: return .snappy
+        case .lrzip: return .lrzip
         }
     }
     
-    /// Whether format supports split volume multi-part archives.
+    /// Format capabilities queried directly from the Rust microkernel SSOT.
+    public var capabilities: UniFfiFormatCapabilities {
+        getFormatCapabilities(format: uniffiFormat)
+    }
+    
+    /// Whether format supports password encryption (delegated to Rust microkernel).
+    public var supportsPasswordEncryption: Bool {
+        capabilities.supportsPassword
+    }
+    
+    /// Whether format supports split volume multi-part archives (delegated to Rust microkernel).
     public var supportsSplitVolume: Bool {
-        switch self {
-        case .sevenZip, .zip, .wim, .rar:
-            return true
-        default:
-            return false
-        }
+        capabilities.supportsSplitVolume
+    }
+    
+    /// Whether format supports solid mode archiving blocks across multiple files (delegated to Rust microkernel).
+    public var supportsSolidMode: Bool {
+        capabilities.supportsSolidMode
     }
     
     /// Supported compression levels for format.
     public var supportedLevels: [ArchiveCompressionLevel] {
-        switch self {
-        case .tar, .dmg, .iso, .aar, .cpio, .ar, .rar, .squashfs, .lzh:
+        let maxLvl = maxCompressionLevel
+        if maxLvl == 0 {
             return [.store]
-        case .zip:
+        } else if self == .zip {
             return [.store, .level1, .level6, .level9, .level12]
-        case .sevenZip, .zst, .tarZst, .gz, .tarGz, .bz2, .tarBz2, .xz, .tarXz,
-             .lzip, .tarLzip, .lz4, .tarLz4, .brotli, .tarBrotli, .lrzip, .tarLrzip,
-             .snappy, .wim, .cab, .deb, .rpm, .xar, .lzfse:
+        } else {
             return [.store, .level1, .level6, .level9]
         }
     }
     
-    /// Minimum valid compression level integer.
-    public var minCompressionLevel: Int { 0 }
+    /// Minimum valid compression level integer (delegated to Rust microkernel).
+    public var minCompressionLevel: Int {
+        Int(capabilities.minLevel)
+    }
 
-    /// Maximum valid compression level integer.
+    /// Maximum valid compression level integer (delegated to Rust microkernel).
     public var maxCompressionLevel: Int {
-        switch self {
-        case .tar, .dmg, .iso, .aar, .cpio, .ar, .rar, .squashfs, .lzh:
-            return 0
-        case .zip:
-            return 12
-        case .zst, .tarZst:
-            return 22
-        case .brotli, .tarBrotli:
-            return 11
-        case .sevenZip, .gz, .tarGz, .bz2, .tarBz2, .xz, .tarXz,
-             .lzip, .tarLzip, .lz4, .tarLz4, .lrzip, .tarLrzip,
-             .snappy, .wim, .cab, .deb, .rpm, .xar, .lzfse:
-            return 9
-        }
+        Int(capabilities.maxLevel)
+    }
+
+    /// Default recommended compression level integer (delegated to Rust microkernel).
+    public var defaultCompressionLevel: Int {
+        Int(capabilities.defaultLevel)
     }
 
     /// Valid compression level integer range for format.
     public var validCompressionLevelRange: ClosedRange<Int> {
         minCompressionLevel...maxCompressionLevel
+    }
+    
+    /// Validates archive configuration parameters against the Rust microkernel capability matrix.
+    public func validateConfiguration(level: Int, hasPassword: Bool, isSplit: Bool) throws {
+        try validateArchiveParams(
+            format: uniffiFormat,
+            level: Int32(level),
+            hasPassword: hasPassword,
+            isSplit: isSplit
+        )
     }
     
     /// List of all 17 primary non-proprietary writable creation formats.

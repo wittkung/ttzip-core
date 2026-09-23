@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
-# All rights reserved.
-#
-# Canonical Test Corpus Generator for TTZip Multi-Language SDK Test Matrix.
-# Produces 4 standard benchmark & round-trip datasets:
-#   1. ASCII text corpus (varying sizes, code, logs, structured text)
-#   2. Nested multi-level directory tree (deep nesting, branches, empty dirs)
-#   3. Multibyte CJK / Emoji / Diacritic filenames (UTF-8 consistency)
-#   4. Sparse 1GB test file (zero-hole large file with deterministic markers)
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 import argparse
 import hashlib

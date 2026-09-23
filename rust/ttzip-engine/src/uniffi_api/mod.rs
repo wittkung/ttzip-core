@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Proc-Macro Export Layer.
 //!
@@ -20,8 +16,6 @@ pub mod codecs;
 pub mod crypto;
 pub mod deflate_dual;
 pub mod demuxer;
-#[cfg(feature = "device-android")]
-pub mod device_android;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
@@ -30,21 +24,23 @@ pub mod epub;
 pub mod error_mapping;
 pub mod extraction;
 pub mod html_meta;
+pub mod hasher_stream;
 pub mod in_place;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod image_meta;
 pub mod integrity;
 pub mod logging;
-pub mod media;
 pub mod memory;
 #[cfg(feature = "probe")]
 pub mod metadata;
 pub mod mmap_stream;
 pub mod pdf_meta;
 pub mod plugin_auth;
+pub mod preset;
 pub mod office_meta;
 pub mod smart_extract;
+pub mod standards;
 pub mod subtitles;
 pub mod syntax;
 pub mod syntax_meta;
@@ -88,8 +84,6 @@ pub use codecs::*;
 pub use crypto::*;
 pub use deflate_dual::*;
 pub use demuxer::*;
-#[cfg(feature = "device-android")]
-pub use device_android::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;
@@ -104,20 +98,22 @@ pub use epub::*;
 pub use error_mapping::*;
 pub use extraction::*;
 pub use html_meta::*;
+pub use hasher_stream::*;
 pub use in_place::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use image_meta::*;
 pub use integrity::*;
 pub use logging::*;
-pub use media::*;
 pub use memory::*;
 #[cfg(feature = "probe")]
 pub use metadata::*;
 pub use mmap_stream::*;
 pub use pdf_meta::*;
 pub use plugin_auth::*;
+pub use preset::*;
 pub use smart_extract::*;
+pub use standards::*;
 pub use subtitles::*;
 pub use syntax::*;
 pub use syntax_meta::*;

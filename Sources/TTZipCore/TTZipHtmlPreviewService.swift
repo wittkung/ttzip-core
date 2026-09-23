@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -199,14 +195,17 @@ public protocol TTZipVfsResourceProvider: Sendable {
 /// High-performance WebKit custom URL scheme handler intercepting `ttzip-vfs://` protocol requests.
 ///
 /// Features:
+/// - Isolated to `@MainActor` to ensure all WKURLSchemeTask lifecycle mutations run on the main thread.
+/// - Atomic task cancellation and stopped-state tracking to eliminate WebKit internal assertion crashes.
 /// - Zero-extraction direct streaming from archive memory buffers.
 /// - Full HTTP 206 Partial Content Range support for large images, audio, and video seek operations.
-/// - Non-blocking async resource resolution with task cancellation safeguards.
-public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler, @unchecked Sendable {
+@MainActor
+public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler {
     public nonisolated static let scheme = "ttzip-vfs"
 
     private let provider: TTZipVfsResourceProvider
-    private let activeTasksLock = OSAllocatedUnfairLock(initialState: [ObjectIdentifier: Task<Void, Never>]())
+    private var activeTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
+    private var stoppedTasks = Set<ObjectIdentifier>()
 
     public init(provider: TTZipVfsResourceProvider) {
         self.provider = provider
@@ -225,99 +224,104 @@ public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler, @uncheck
         let rangeHeader = urlSchemeTask.request.value(forHTTPHeaderField: "Range")
         let parsedRange = parseRangeHeader(rangeHeader)
 
-        let executionTask = Task { [provider] in
-            do {
-                if let (data, fullSize, mimeType) = try await provider.loadResourceRange(uri: requestUri, byteRange: parsedRange) {
-                    guard !Task.isCancelled else { return }
+        let executionTask = Task { @MainActor [weak self, provider] in
+            let fetchResult = await Task.detached(priority: .userInitiated) { () -> Result<(HTTPURLResponse, Data), Error> in
+                do {
+                    if let (data, fullSize, mimeType) = try await provider.loadResourceRange(uri: requestUri, byteRange: parsedRange) {
+                        let isPartial = parsedRange != nil
+                        let statusCode = isPartial ? 206 : 200
 
-                    let isPartial = parsedRange != nil
-                    let statusCode = isPartial ? 206 : 200
+                        var headers: [String: String] = [
+                            "Content-Type": mimeType,
+                            "Content-Length": "\(data.count)",
+                            "Accept-Ranges": "bytes",
+                            "Access-Control-Allow-Origin": "*",
+                            "Cache-Control": "max-age=3600, immutable"
+                        ]
 
-                    var headers: [String: String] = [
-                        "Content-Type": mimeType,
-                        "Content-Length": "\(data.count)",
-                        "Accept-Ranges": "bytes",
-                        "Access-Control-Allow-Origin": "*",
-                        "Cache-Control": "max-age=3600, immutable"
-                    ]
+                        if let range = parsedRange {
+                            let rangeEnd = min(Int64(range.upperBound), fullSize - 1)
+                            headers["Content-Range"] = "bytes \(range.lowerBound)-\(rangeEnd)/\(fullSize)"
+                        }
 
-                    if let range = parsedRange {
-                        let rangeEnd = min(Int64(range.upperBound), fullSize - 1)
-                        headers["Content-Range"] = "bytes \(range.lowerBound)-\(rangeEnd)/\(fullSize)"
-                    }
+                        guard let response = HTTPURLResponse(
+                            url: url,
+                            statusCode: statusCode,
+                            httpVersion: "HTTP/1.1",
+                            headerFields: headers
+                        ) else {
+                            return .failure(URLError(.cannotParseResponse))
+                        }
 
-                    guard let response = HTTPURLResponse(
-                        url: url,
-                        statusCode: statusCode,
-                        httpVersion: "HTTP/1.1",
-                        headerFields: headers
-                    ) else {
-                        urlSchemeTask.didFailWithError(URLError(.cannotParseResponse))
-                        return
-                    }
+                        return .success((response, data))
+                    } else if let (data, mimeType) = try await provider.loadResource(uri: requestUri) {
+                        let headers: [String: String] = [
+                            "Content-Type": mimeType,
+                            "Content-Length": "\(data.count)",
+                            "Accept-Ranges": "bytes",
+                            "Access-Control-Allow-Origin": "*",
+                            "Cache-Control": "max-age=3600, immutable"
+                        ]
 
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(data)
-                    urlSchemeTask.didFinish()
-                } else if let (data, mimeType) = try await provider.loadResource(uri: requestUri) {
-                    guard !Task.isCancelled else { return }
+                        guard let response = HTTPURLResponse(
+                            url: url,
+                            statusCode: 200,
+                            httpVersion: "HTTP/1.1",
+                            headerFields: headers
+                        ) else {
+                            return .failure(URLError(.cannotParseResponse))
+                        }
 
-                    let headers: [String: String] = [
-                        "Content-Type": mimeType,
-                        "Content-Length": "\(data.count)",
-                        "Accept-Ranges": "bytes",
-                        "Access-Control-Allow-Origin": "*",
-                        "Cache-Control": "max-age=3600, immutable"
-                    ]
-
-                    guard let response = HTTPURLResponse(
-                        url: url,
-                        statusCode: 200,
-                        httpVersion: "HTTP/1.1",
-                        headerFields: headers
-                    ) else {
-                        urlSchemeTask.didFailWithError(URLError(.cannotParseResponse))
-                        return
-                    }
-
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(data)
-                    urlSchemeTask.didFinish()
-                } else {
-                    guard !Task.isCancelled else { return }
-                    if let notFoundResponse = HTTPURLResponse(
-                        url: url,
-                        statusCode: 404,
-                        httpVersion: "HTTP/1.1",
-                        headerFields: ["Content-Type": "text/plain; charset=utf-8"]
-                    ) {
-                        urlSchemeTask.didReceive(notFoundResponse)
-                        urlSchemeTask.didReceive(Data("404 VFS Resource Not Found".utf8))
-                        urlSchemeTask.didFinish()
+                        return .success((response, data))
                     } else {
-                        urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+                        if let notFoundResponse = HTTPURLResponse(
+                            url: url,
+                            statusCode: 404,
+                            httpVersion: "HTTP/1.1",
+                            headerFields: ["Content-Type": "text/plain; charset=utf-8"]
+                        ) {
+                            return .success((notFoundResponse, Data("404 VFS Resource Not Found".utf8)))
+                        } else {
+                            return .failure(URLError(.fileDoesNotExist))
+                        }
                     }
+                } catch {
+                    return .failure(error)
                 }
-            } catch {
-                guard !Task.isCancelled else { return }
+            }.value
+
+            guard let self else { return }
+
+            guard !self.stoppedTasks.contains(taskId), self.activeTasks[taskId] != nil else {
+                self.stoppedTasks.remove(taskId)
+                return
+            }
+            self.activeTasks.removeValue(forKey: taskId)
+
+            switch fetchResult {
+            case .success(let (response, data)):
+                urlSchemeTask.didReceive(response)
+                urlSchemeTask.didReceive(data)
+                urlSchemeTask.didFinish()
+            case .failure(let error):
                 urlSchemeTask.didFailWithError(error)
             }
-
-            activeTasksLock.withLock { _ = $0.removeValue(forKey: taskId) }
         }
 
-        activeTasksLock.withLock { $0[taskId] = executionTask }
+        activeTasks[taskId] = executionTask
     }
 
     public func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
         let taskId = ObjectIdentifier(urlSchemeTask)
-        let runningTask = activeTasksLock.withLock { $0.removeValue(forKey: taskId) }
-        runningTask?.cancel()
+        stoppedTasks.insert(taskId)
+        if let runningTask = activeTasks.removeValue(forKey: taskId) {
+            runningTask.cancel()
+        }
     }
 
     // MARK: - Internal HTTP Range Parser
 
-    private func parseRangeHeader(_ header: String?) -> ClosedRange<Int>? {
+    private nonisolated func parseRangeHeader(_ header: String?) -> ClosedRange<Int>? {
         guard let header = header, header.hasPrefix("bytes=") else { return nil }
         let spec = header.dropFirst(6).trimmingCharacters(in: .whitespaces)
         let parts = spec.split(separator: "-", omittingEmptySubsequences: false)

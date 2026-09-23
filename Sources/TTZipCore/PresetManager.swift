@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -49,6 +45,15 @@ public struct CompressionPreset: Identifiable, Codable, Equatable, Sendable {
         let targetLang = language ?? TTZipLocalizationManager.shared.currentLanguage
         return ByteSizeFormatter.format(bytes: bytes, style: .binaryIEC, language: targetLang)
     }
+
+    /// Validates this preset against the Rust microkernel capability matrix.
+    public func validate() throws {
+        try format.validateConfiguration(
+            level: level.rawValue,
+            hasPassword: defaultPassword != nil && !(defaultPassword?.isEmpty ?? true),
+            isSplit: (splitVolumeSizeBytes ?? 0) > 0
+        )
+    }
 }
 
 // MARK: - PrototypeCopyable Prototype Pattern Extension
@@ -75,7 +80,9 @@ extension CompressionPreset: PrototypeCopyable {
 
 // MARK: - Preset Manager
 
-/// Persistence and management coordinator for compression presets.
+/// Persistence and UI presentation coordinator for compression presets.
+///
+/// Delegates all core capability verification and preset tuning to the Rust microkernel.
 public final class PresetManager: @unchecked Sendable {
     public static let shared = PresetManager()
     
@@ -167,6 +174,17 @@ public final class PresetManager: @unchecked Sendable {
             saveToStorageLocked()
         }
     }
+
+    /// Validates preset configuration using the Rust microkernel capability matrix.
+    public func validatePreset(_ preset: CompressionPreset) throws {
+        try preset.validate()
+    }
+
+    /// Resolves recommended compression level from Rust microkernel for a preset name.
+    public func recommendedLevel(for presetName: String, format: ArchiveCompressionFormat) -> ArchiveCompressionLevel {
+        let levelInt = getRecommendedPresetLevel(preset: presetName, format: format.uniffiFormat)
+        return ArchiveCompressionLevel(rawValue: Int(levelInt)) ?? .normal
+    }
     
     private func saveToStorageLocked() {
         if let encoded = try? JSONEncoder().encode(cachedPresets) {
@@ -210,3 +228,4 @@ public final class PresetManager: @unchecked Sendable {
         ]
     }
 }
+

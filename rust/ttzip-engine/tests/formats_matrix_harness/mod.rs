@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Shared test harness infrastructure for 20+ container format matrix verification.
 
@@ -222,6 +218,7 @@ where
     .map_err(|e| format!("CString conversion error: {}", e))?;
 
     unsafe {
+        libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
         let a = archive_write_new();
         if a.is_null() {
             return Err("archive_write_new returned null".to_string());
@@ -316,6 +313,7 @@ pub fn read_archive_buffer(archive_bytes: &[u8]) -> Result<Vec<ExtractedEntry>, 
     let mut extracted = Vec::new();
 
     unsafe {
+        libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
         let a = archive_read_new();
         if a.is_null() {
             return Err("archive_read_new returned null".to_string());

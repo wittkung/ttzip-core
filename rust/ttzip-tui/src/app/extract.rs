@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Background asynchronous extraction task execution.
 
@@ -54,16 +50,67 @@ impl AppState {
             let mut processed_bytes = 0u64;
             let mut total_bytes = 0u64;
 
-            // Calculate total size
-            if is_zip {
-                if let Ok(archive) = ZipArchive::open_slice(&raw_data) {
-                    for path in &selected_paths {
-                        if let Some(e) = archive.entries().iter().find(|e| e.rel_path == *path) {
-                            total_bytes += e.uncompressed_size;
-                        }
+            // Open archive once outside the loop and build path -> index lookup map
+            let zip_archive = if is_zip {
+                match ZipArchive::open_slice(&raw_data) {
+                    Ok(a) => Some(a),
+                    Err(e) => {
+                        let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                            "Failed to open ZIP archive: {:?}",
+                            e
+                        ))));
+                        return;
                     }
                 }
-            } else if let Ok(archive) = SevenZArchive::open_slice(&raw_data) {
+            } else {
+                None
+            };
+
+            let sevenz_archive = if !is_zip {
+                match SevenZArchive::open_slice(&raw_data) {
+                    Ok(a) => Some(a),
+                    Err(e) => {
+                        let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                            "Failed to open 7z archive: {:?}",
+                            e
+                        ))));
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
+
+            let zip_index_map: std::collections::HashMap<&str, usize> = if let Some(ref archive) = zip_archive {
+                archive
+                    .entries()
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, e)| (e.rel_path.as_str(), idx))
+                    .collect()
+            } else {
+                std::collections::HashMap::new()
+            };
+
+            let sevenz_index_map: std::collections::HashMap<&str, usize> = if let Some(ref archive) = sevenz_archive {
+                archive
+                    .files()
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, f)| (f.rel_path.as_str(), idx))
+                    .collect()
+            } else {
+                std::collections::HashMap::new()
+            };
+
+            // Calculate total size using O(1) index map
+            if let Some(ref archive) = zip_archive {
+                for path in &selected_paths {
+                    if let Some(&idx) = zip_index_map.get(path.as_str()) {
+                        total_bytes += archive.entries()[idx].uncompressed_size;
+                    }
+                }
+            } else if let Some(ref archive) = sevenz_archive {
                 let info = archive.info();
                 for path in &selected_paths {
                     let mut stream_idx = 0usize;
@@ -95,35 +142,78 @@ impl AppState {
                 };
 
                 if let Some(parent) = target_path.parent() {
-                    let _ = fs::create_dir_all(parent);
+                    if let Err(e) = fs::create_dir_all(parent) {
+                        let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                            "Failed to create target directory {}: {}",
+                            parent.display(),
+                            e
+                        ))));
+                        return;
+                    }
                 }
 
-                let mut uncomp_size = 0u64;
-
-                let file_data = if is_zip {
-                    if let Ok(archive) = ZipArchive::open_slice(&raw_data) {
-                        if let Some(idx) = archive.entries().iter().position(|e| e.rel_path == *rel_path) {
-                            uncomp_size = archive.entries()[idx].uncompressed_size;
-                            archive.extract_entry_bytes(idx, password.as_deref()).unwrap_or_default()
-                        } else {
-                            Vec::new()
+                let (file_data, uncomp_size) = if is_zip {
+                    let archive = zip_archive.as_ref().unwrap();
+                    let idx = match zip_index_map.get(rel_path.as_str()) {
+                        Some(&i) => i,
+                        None => {
+                            let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                                "Entry '{}' not found in archive index",
+                                rel_path
+                            ))));
+                            return;
                         }
-                    } else {
-                        Vec::new()
-                    }
-                } else if let Ok(archive) = SevenZArchive::open_slice(&raw_data) {
-                    if let Some(idx) = archive.files().iter().position(|f| f.rel_path == *rel_path) {
-                        let bytes = archive.extract_entry_bytes(idx, password.as_deref()).unwrap_or_default();
-                        uncomp_size = bytes.len() as u64;
-                        bytes
-                    } else {
-                        Vec::new()
-                    }
+                    };
+                    let expected_size = archive.entries()[idx].uncompressed_size;
+                    let bytes = match archive.extract_entry_bytes(idx, password.as_deref()) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                                "Extraction failed for entry '{}': {:?}",
+                                rel_path, e
+                            ))));
+                            return;
+                        }
+                    };
+                    (bytes, expected_size)
+                } else if let Some(ref archive) = sevenz_archive {
+                    let idx = match sevenz_index_map.get(rel_path.as_str()) {
+                        Some(&i) => i,
+                        None => {
+                            let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                                "Entry '{}' not found in archive index",
+                                rel_path
+                            ))));
+                            return;
+                        }
+                    };
+                    let bytes = match archive.extract_entry_bytes(idx, password.as_deref()) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                                "Extraction failed for entry '{}': {:?}",
+                                rel_path, e
+                            ))));
+                            return;
+                        }
+                    };
+                    let sz = bytes.len() as u64;
+                    (bytes, sz)
                 } else {
-                    Vec::new()
+                    let _ = event_sender.send(AppEvent::TaskCompleted(Err(
+                        "Unsupported archive container format".to_string(),
+                    )));
+                    return;
                 };
 
-                let _ = fs::write(&target_path, &file_data);
+                if let Err(e) = fs::write(&target_path, &file_data) {
+                    let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
+                        "Failed to write extracted file {}: {}",
+                        target_path.display(),
+                        e
+                    ))));
+                    return;
+                }
                 processed_bytes += uncomp_size;
 
                 let elapsed = start.elapsed().as_secs_f64();

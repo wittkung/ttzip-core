@@ -5,14 +5,17 @@ members = [
     "ttzip-tui",
     "ttzip-python",
     "ttzip-node",
-    "crates/ttzip-device-android",
+    "crates/ttzip-types",
+    "crates/ttzip-crypto",
+    "crates/ttzip-codecs",
+    "crates/ttzip-archive",
 ]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 authors = ["Witt Kung <witt.w.kung@gmail.com>"]
-license = "BSD-3-Clause OR Apache-2.0"
+license = "Proprietary"
 repository = "https://github.com/wittkung/ttzip-core"
 homepage = "https://github.com/wittkung/ttzip-core"
 documentation = "https://github.com/wittkung/ttzip-core"

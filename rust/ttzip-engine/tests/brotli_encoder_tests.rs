@@ -1,16 +1,12 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive integration tests for TTZip Google Brotli tiered streaming encoder (Q0..=Q11).
 
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 use ttzip_engine::codecs::brotli::{
     brotli_decompress_to_vec, BrotliEncoderMode, BrotliEncoderParams, BrotliError, BrotliQuality,
-    BrotliStreamWriter,
+    BrotliStreamDecoder, BrotliStreamWriter,
 };
 
 /// Simple deterministic pseudo-random byte generator for testing without external crates.
@@ -26,9 +22,9 @@ fn generate_prng_bytes(len: usize, seed: u64) -> Vec<u8> {
     out
 }
 
-/// Helper function to decompress a Brotli stream using `brotli::Decompressor`.
+/// Helper function to decompress a Brotli stream using `BrotliStreamDecoder`.
 fn decompress_brotli_stream(compressed: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-    let mut reader = brotli::Decompressor::new(compressed, 65536);
+    let mut reader = BrotliStreamDecoder::new(Cursor::new(compressed));
     let mut decompressed = Vec::new();
     reader.read_to_end(&mut decompressed)?;
     Ok(decompressed)

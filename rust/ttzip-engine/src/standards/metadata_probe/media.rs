@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Audio and video container parsing and media stream sniffing engine.
 
@@ -187,7 +183,8 @@ pub fn probe_ebml(data: &[u8]) -> Option<UnifiedMetadataProbe> {
     let (fmt_name, mime_type) = if is_webm { ("WebM Media", "video/webm") } else { ("Matroska Video (MKV)", "video/x-matroska") };
     let (mut vw, mut vh, mut dur) = (1920u32, 1080u32, 0.0f64);
 
-    for i in 0..data.len().saturating_sub(6) {
+    let scan_limit = data.len().min(16 * 1024 * 1024).saturating_sub(6);
+    for i in 0..scan_limit {
         if data[i] == 0xB0 && data[i + 1] == 0x82 {
             vw = u16::from_be_bytes([data[i + 2], data[i + 3]]) as u32;
         } else if data[i] == 0xBA && data[i + 1] == 0x82 {

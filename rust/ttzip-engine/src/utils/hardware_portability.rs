@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Cross-platform hardware acceleration, portability primitives, and unaligned memory I/O.
 //!
@@ -224,24 +220,19 @@ pub unsafe fn write_unaligned_le64_unchecked(ptr: *mut u8, value: u64) {
 // SecureZeroize Memory Wiping (Immune to Dead-Store Elimination)
 // =============================================================================
 
-/// Securely wipes memory buffer contents with zero bytes using volatile writes and memory barriers.
+/// Securely wipes memory buffer contents using native word writes via `zeroize::Zeroize` and compiler fences.
 pub fn secure_zero_memory(buf: &mut [u8]) {
-    for byte in buf.iter_mut() {
-        unsafe {
-            std::ptr::write_volatile(byte, 0);
-        }
-    }
+    buf.zeroize();
     compiler_fence(Ordering::SeqCst);
 }
 
-/// Securely wipes any memory structure using volatile operations.
+/// Securely wipes any memory structure using native word writes via `zeroize::Zeroize` and compiler fences.
 pub fn secure_zero_struct<T: ?Sized>(val: &mut T) {
     let size = std::mem::size_of_val(val);
     let ptr = val as *mut T as *mut u8;
-    for i in 0..size {
-        unsafe {
-            std::ptr::write_volatile(ptr.add(i), 0);
-        }
+    unsafe {
+        let slice = std::slice::from_raw_parts_mut(ptr, size);
+        slice.zeroize();
     }
     compiler_fence(Ordering::SeqCst);
 }

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Tier 2 E2E Test Suite: Boundary & Corner Cases for Features 5 through 8.
 //!
@@ -16,9 +12,6 @@
 use ttzip_engine::codecs::chardet::detect_charset;
 use ttzip_engine::crypto::ed25519::SigningKey;
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZReader};
-use ttzip_engine::syntax::{
-    LanguageRegistry, SupportedLanguage, SyntaxHighlighter, TTZipSyntaxParser,
-};
 use ttzip_engine::system::delta::engine::TTZipDeltaEngine;
 use ttzip_engine::zip::writer::ZipInputItem;
 
@@ -128,72 +121,6 @@ fn test_e2e_t2_f5_out_of_bounds_entry_index_rejection() {
     assert!(err.is_err());
 }
 
-// ============================================================================
-// Feature 6 Boundaries: Tree-sitter Viewport Syntax (5 Tests)
-// ============================================================================
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t2_f6_treesitter_empty_source_and_whitespace_only() {
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let empty_tree = parser.parse_full("").unwrap();
-    assert_eq!(empty_tree.root_node().kind(), "source_file");
-
-    let ws_tree = parser.parse_full("   \n\t   \n  ").unwrap();
-    assert_eq!(ws_tree.root_node().kind(), "source_file");
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t2_f6_treesitter_extreme_ast_nesting_depth() {
-    let mut code = String::from("fn deep() {\n");
-    for _ in 0..40 {
-        code.push_str("    if true {\n");
-    }
-    code.push_str("        let x = 1;\n");
-    for _ in 0..40 {
-        code.push_str("    }\n");
-    }
-    code.push_str("}\n");
-
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let tree = parser.parse_full(&code).unwrap();
-    assert!(!tree.root_node().has_error());
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t2_f6_treesitter_giant_single_line_source_fuse() {
-    let mut giant_line = String::from("let arr = [");
-    for i in 0..1000 {
-        giant_line.push_str(&format!("{}, ", i));
-    }
-    giant_line.push_str("];");
-
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::JavaScript).unwrap();
-    let tree = parser.parse_full(&giant_line).unwrap();
-    assert!(!tree.root_node().has_error());
-
-    let mut highlighter = SyntaxHighlighter::new();
-    let tokens = highlighter.highlight(tree, &giant_line, SupportedLanguage::JavaScript).unwrap();
-    assert!(!tokens.is_empty());
-}
-
-#[test]
-fn test_e2e_t2_f6_treesitter_unsupported_language_graceful_fallback() {
-    assert_eq!(LanguageRegistry::from_extension("xyz_unknown_format"), None);
-    assert_eq!(LanguageRegistry::from_extension("bin"), None);
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t2_f6_treesitter_malformed_syntax_error_recovery() {
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let broken = "fn invalid( { let = ; struct }";
-    let tree = parser.parse_full(broken).unwrap();
-    // Tree-sitter GLR error-recovery creates a tree even with errors
-    assert!(tree.root_node().has_error());
-}
 
 // ============================================================================
 // Feature 7 Boundaries: Smart Charset Mojibake (5 Tests)

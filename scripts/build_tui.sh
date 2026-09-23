@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# ==============================================================================
-# scripts/build_tui.sh
-# 自动化构建 TTZip TUI & CLI 独立 Universal Mach-O 单可执行文件 (bin/ttzip)
-# ==============================================================================
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 

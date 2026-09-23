@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -21,7 +17,7 @@ public enum TTZipEbookFormat: String, Sendable, Codable, CaseIterable, Equatable
     case azw3
     case pdf
 
-    internal init(from uniffi: UniFfiEbookFormat) {
+    public init(from uniffi: UniFfiEbookFormat) {
         switch uniffi {
         case .unknown: self = .unknown
         case .epub: self = .epub
@@ -92,7 +88,7 @@ public struct TTZipEbookMetadata: Sendable, Equatable, Hashable, Identifiable {
         self.extraMetadata = extraMetadata
     }
 
-    internal init(from uniffi: UniFfiEbookMetadata, sourceId: String) {
+    public init(from uniffi: UniFfiEbookMetadata, sourceId: String) {
         self.id = sourceId
         self.title = uniffi.title
         self.authors = uniffi.authors
@@ -145,7 +141,7 @@ public struct TTZipEbookTocNode: Sendable, Equatable, Hashable, Identifiable {
         self.children = children
     }
 
-    internal init(from uniffi: UniFfiEbookTocNode) {
+    public init(from uniffi: UniFfiEbookTocNode) {
         self.id = uniffi.id.isEmpty ? UUID().uuidString : uniffi.id
         self.title = uniffi.title
         self.href = uniffi.href
@@ -178,7 +174,7 @@ public struct TTZipEbookSpineItem: Sendable, Equatable, Hashable, Identifiable {
         self.isLinear = isLinear
     }
 
-    internal init(from uniffi: UniFfiEbookSpineItem) {
+    public init(from uniffi: UniFfiEbookSpineItem) {
         self.id = uniffi.id
         self.href = uniffi.href
         self.mediaType = uniffi.mediaType
@@ -218,7 +214,7 @@ public struct TTZipEbookChapter: Sendable, Equatable, Hashable, Identifiable {
         self.wordCount = wordCount > 0 ? wordCount : contentString.split(whereSeparator: \.isWhitespace).count
     }
 
-    internal init(from uniffi: UniFfiEbookChapter) {
+    public init(from uniffi: UniFfiEbookChapter) {
         self.id = uniffi.id
         self.title = uniffi.title
         self.href = uniffi.href
@@ -249,7 +245,7 @@ public struct TTZipEbookResource: Sendable, Equatable, Hashable, Identifiable {
         self.sizeBytes = Int64(data.count)
     }
 
-    internal init(from uniffi: UniFfiEbookResource) {
+    public init(from uniffi: UniFfiEbookResource) {
         self.href = uniffi.href
         self.mediaType = uniffi.mediaType
         self.data = uniffi.data

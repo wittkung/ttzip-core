@@ -1,14 +1,29 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Archive Extraction and In-Place Mutation Scaffolding.
 
 use std::sync::Arc;
-use super::types::{CancellationToken, CompressionReport, InPlaceMutationAction, ProgressHandler, TTZipError};
+use super::types::{
+    CancellationToken, CompressionReport, InPlaceMutationAction, ProgressHandler, TTZipError,
+    UniFFIExtractArchiveConfig,
+};
+
+/// Resolves effective thread budget adaptively based on hardware topology and QoS.
+#[inline]
+#[must_use]
+pub fn resolve_adaptive_extraction_threads(requested: u32) -> u32 {
+    if requested > 0 {
+        requested.clamp(1, 64)
+    } else {
+        let caps = crate::platform::cpu::CpuCapabilities::get();
+        if caps.p_cores > 0 {
+            caps.p_cores.clamp(1, 64)
+        } else {
+            crate::types::resolve_thread_budget(0) as u32
+        }
+    }
+}
 
 /// Extracts full archive with progress reporting.
 #[uniffi::export]
@@ -29,11 +44,27 @@ pub fn extract_archive_stream(
     let start = std::time::Instant::now();
     let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
-    struct ProgressBox {
+    struct ProgressContext {
         handler: Option<Box<dyn ProgressHandler>>,
         token: Option<Arc<CancellationToken>>,
     }
-    let mut pbox = ProgressBox { handler: progress, token };
+    let progress_ctx = Arc::new(ProgressContext {
+        handler: progress,
+        token,
+    });
+    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+
+    struct ContextGuard(*mut libc::c_void);
+    impl Drop for ContextGuard {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    drop(Arc::from_raw(self.0 as *const ProgressContext));
+                }
+            }
+        }
+    }
+    let _guard = ContextGuard(raw_ctx);
 
     unsafe extern "C" fn progress_cb(
         processed: u64,
@@ -44,45 +75,56 @@ pub fn extract_archive_stream(
         if user_data.is_null() {
             return true;
         }
-        let p = &*(user_data as *const ProgressBox);
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
+        let unwind_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let p = &*(user_data as *const ProgressContext);
+            if let Some(ref t) = p.token {
+                if t.is_cancelled() {
+                    return false;
+                }
             }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            return h.on_progress(processed, total, name);
-        }
-        true
+            if let Some(ref h) = p.handler {
+                let name = if !entry_name.is_null() {
+                    Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                } else {
+                    None
+                };
+                return h.on_progress(processed, total, name);
+            }
+            true
+        }));
+
+        unwind_res.unwrap_or(false)
     }
 
+    let effective_thread_budget = resolve_adaptive_extraction_threads(0);
     let options = crate::types::TTZipExtractOptions {
         struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
         abi_version: crate::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-        thread_budget: 0,
+        thread_budget: effective_thread_budget,
         overwrite_existing: true,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: Some(progress_cb),
-        user_data: &mut pbox as *mut ProgressBox as *mut libc::c_void,
+        user_data: raw_ctx,
     };
 
     let bytes = crate::archive::unified::extract::extract_archive_with_metrics(src, dst, &options)
-        .map_err(|s| {
-            if s == crate::types::TTZipStatus::Cancelled {
-                TTZipError::Cancelled
-            } else if s == crate::types::TTZipStatus::ErrInvalidPassword {
-                TTZipError::InvalidPassword
-            } else {
-                TTZipError::EngineError { code: s as i32 }
-            }
+        .map_err(|s| match s {
+            crate::types::TTZipStatus::Cancelled => TTZipError::Cancelled,
+            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+                details: "Extraction memory allocation limit exceeded".to_string(),
+            },
+            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+                reason: "Decompression ratio threshold exceeded or overlapping entry detected".to_string(),
+            },
+            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
+                details: "Corrupted archive header or checksum mismatch".to_string(),
+                offset: 0,
+            },
+            _ => TTZipError::EngineError { code: s as i32 },
         })?;
 
     let elapsed = start.elapsed();
@@ -125,11 +167,27 @@ pub fn extract_selected_entries(
 
     let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
-    struct ProgressBox {
+    struct ProgressContextSelected {
         handler: Option<Box<dyn ProgressHandler>>,
         token: Option<Arc<CancellationToken>>,
     }
-    let mut pbox = ProgressBox { handler: progress, token };
+    let progress_ctx = Arc::new(ProgressContextSelected {
+        handler: progress,
+        token,
+    });
+    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+
+    struct ContextGuardSelected(*mut libc::c_void);
+    impl Drop for ContextGuardSelected {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    drop(Arc::from_raw(self.0 as *const ProgressContextSelected));
+                }
+            }
+        }
+    }
+    let _guard = ContextGuardSelected(raw_ctx);
 
     unsafe extern "C" fn progress_cb(
         processed: u64,
@@ -140,34 +198,39 @@ pub fn extract_selected_entries(
         if user_data.is_null() {
             return true;
         }
-        let p = &*(user_data as *const ProgressBox);
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
+        let unwind_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let p = &*(user_data as *const ProgressContextSelected);
+            if let Some(ref t) = p.token {
+                if t.is_cancelled() {
+                    return false;
+                }
             }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            return h.on_progress(processed, total, name);
-        }
-        true
+            if let Some(ref h) = p.handler {
+                let name = if !entry_name.is_null() {
+                    Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                } else {
+                    None
+                };
+                return h.on_progress(processed, total, name);
+            }
+            true
+        }));
+
+        unwind_res.unwrap_or(false)
     }
 
+    let effective_thread_budget = resolve_adaptive_extraction_threads(0);
     let options = crate::types::TTZipExtractOptions {
         struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
         abi_version: crate::types::TTZIP_ABI_VERSION_2,
         destination_path: std::ptr::null(),
         password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-        thread_budget: 0,
+        thread_budget: effective_thread_budget,
         overwrite_existing: true,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: Some(progress_cb),
-        user_data: &mut pbox as *mut ProgressBox as *mut libc::c_void,
+        user_data: raw_ctx,
     };
 
     crate::archive::unified::extract_single::extract_selected_entries(
@@ -177,14 +240,141 @@ pub fn extract_selected_entries(
         &options,
     )
     .map(|count| count as u64)
-    .map_err(|s| {
-        if s == crate::types::TTZipStatus::Cancelled {
-            TTZipError::Cancelled
-        } else if s == crate::types::TTZipStatus::ErrInvalidPassword {
-            TTZipError::InvalidPassword
-        } else {
-            TTZipError::EngineError { code: s as i32 }
+    .map_err(|s| match s {
+        crate::types::TTZipStatus::Cancelled => TTZipError::Cancelled,
+        crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+        crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+            details: "Extraction memory allocation limit exceeded".to_string(),
+        },
+        crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+            reason: "Decompression ratio threshold exceeded or overlapping entry detected".to_string(),
+        },
+        crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
+            details: "Corrupted archive header or checksum mismatch".to_string(),
+            offset: 0,
+        },
+        _ => TTZipError::EngineError { code: s as i32 },
+    })
+}
+
+/// Extracts full archive with explicit configuration (including thread budget) and progress reporting.
+#[uniffi::export]
+pub fn extract_archive_stream_advanced(
+    config: UniFFIExtractArchiveConfig,
+    progress: Option<Box<dyn ProgressHandler>>,
+    token: Option<Arc<CancellationToken>>,
+) -> Result<CompressionReport, TTZipError> {
+    let secure_pwd = config.password.map(crate::crypto::ZeroizingString::new);
+    let src = std::path::Path::new(&config.archive_path);
+    let dst = std::path::Path::new(&config.destination_dir);
+    if !src.exists() {
+        return Err(TTZipError::FileNotFound { path: config.archive_path });
+    }
+
+    let start = std::time::Instant::now();
+    let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
+
+    struct ProgressContextAdvanced {
+        handler: Option<Box<dyn ProgressHandler>>,
+        token: Option<Arc<CancellationToken>>,
+    }
+    let progress_ctx = Arc::new(ProgressContextAdvanced {
+        handler: progress,
+        token,
+    });
+    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+
+    struct ContextGuardAdvanced(*mut libc::c_void);
+    impl Drop for ContextGuardAdvanced {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    drop(Arc::from_raw(self.0 as *const ProgressContextAdvanced));
+                }
+            }
         }
+    }
+    let _guard = ContextGuardAdvanced(raw_ctx);
+
+    unsafe extern "C" fn progress_cb(
+        processed: u64,
+        total: u64,
+        entry_name: *const libc::c_char,
+        user_data: *mut libc::c_void,
+    ) -> bool {
+        if user_data.is_null() {
+            return true;
+        }
+        let unwind_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let p = &*(user_data as *const ProgressContextAdvanced);
+            if let Some(ref t) = p.token {
+                if t.is_cancelled() {
+                    return false;
+                }
+            }
+            if let Some(ref h) = p.handler {
+                let name = if !entry_name.is_null() {
+                    Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                } else {
+                    None
+                };
+                return h.on_progress(processed, total, name);
+            }
+            true
+        }));
+
+        unwind_res.unwrap_or(false)
+    }
+
+    let effective_thread_budget = resolve_adaptive_extraction_threads(config.thread_budget);
+    let options = crate::types::TTZipExtractOptions {
+        struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_2,
+        destination_path: std::ptr::null(),
+        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
+        thread_budget: effective_thread_budget,
+        overwrite_existing: config.overwrite_existing,
+        preserve_permissions: config.preserve_permissions,
+        dry_run: false,
+        progress_callback: Some(progress_cb),
+        user_data: raw_ctx,
+    };
+
+    let bytes = crate::archive::unified::extract::extract_archive_with_metrics(src, dst, &options)
+        .map_err(|s| match s {
+            crate::types::TTZipStatus::Cancelled => TTZipError::Cancelled,
+            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+                details: "Extraction memory allocation limit exceeded".to_string(),
+            },
+            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+                reason: "Decompression ratio threshold exceeded or overlapping entry detected".to_string(),
+            },
+            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
+                details: "Corrupted archive header or checksum mismatch".to_string(),
+                offset: 0,
+            },
+            _ => TTZipError::EngineError { code: s as i32 },
+        })?;
+
+    let elapsed = start.elapsed();
+    let elapsed_nanos = elapsed.as_nanos() as u64;
+    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
+    let throughput_mbs = (bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
+    let comp_bytes = std::fs::metadata(src).map(|m| m.len()).unwrap_or(bytes);
+    let space_savings_pct = if bytes > 0 && comp_bytes <= bytes {
+        ((bytes - comp_bytes) as f64 / bytes as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(CompressionReport {
+        uncompressed_bytes: bytes,
+        compressed_bytes: comp_bytes,
+        elapsed_nanos,
+        throughput_mbs,
+        space_savings_pct,
+        engine_provenance: "Mozilla UniFFI Native Core Pipeline".to_string(),
     })
 }
 
@@ -220,8 +410,11 @@ pub fn extract_single_entry_by_path(
 
         if let Some(loc) = arch.seek_index().entries.get(found_idx) {
             if loc.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
-                return Err(TTZipError::EngineError {
-                    code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+                return Err(TTZipError::OutOfMemory {
+                    details: format!(
+                        "Entry uncompressed size ({} bytes) exceeds safety budget ({} bytes)",
+                        loc.uncompressed_size, DEFAULT_EXTRACTION_BUDGET_BYTES
+                    ),
                 });
             }
         }
@@ -236,7 +429,19 @@ pub fn extract_single_entry_by_path(
             budget_bytes,
         ).map_err(|status| match status {
             crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrSolidBudgetExceeded => TTZipError::EngineError { code: -24 },
+            crate::types::TTZipStatus::ErrSolidBudgetExceeded => TTZipError::DecompressionBombDetected {
+                reason: "7z solid decompression budget exceeded".to_string(),
+            },
+            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+                details: "Memory allocation failed during 7z decompression".to_string(),
+            },
+            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
+                details: "Corrupted 7z payload or CRC mismatch".to_string(),
+                offset: 0,
+            },
+            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+                reason: "Security policy boundary violation".to_string(),
+            },
             _ => TTZipError::EngineError { code: status as i32 },
         })
     } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
@@ -246,8 +451,11 @@ pub fn extract_single_entry_by_path(
 
         let entry = &zip_archive.entries()[found_idx];
         if entry.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
-            return Err(TTZipError::EngineError {
-                code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
+            return Err(TTZipError::OutOfMemory {
+                details: format!(
+                    "Entry uncompressed size ({} bytes) exceeds safety budget ({} bytes)",
+                    entry.uncompressed_size, DEFAULT_EXTRACTION_BUDGET_BYTES
+                ),
             });
         }
 
@@ -257,6 +465,12 @@ pub fn extract_single_entry_by_path(
                     TTZipError::CorruptHeader { details: "Corrupted entry CRC or payload".to_string(), offset: 0 }
                 }
                 crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+                crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+                    details: "Memory allocation failed during ZIP decompression".to_string(),
+                },
+                crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+                    reason: "Decompression ratio or overlap violation detected".to_string(),
+                },
                 _ => TTZipError::EngineError { code: status as i32 },
             })
     } else {

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! UUDecode parser and corrupted archive fixture loader for libarchive test assets.
 
@@ -83,12 +79,22 @@ pub fn uudecode(input: &[u8]) -> Option<Vec<u8>> {
 /// Locates the vendor libarchive test asset directory.
 pub fn find_vendor_libarchive_dir() -> Option<PathBuf> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let candidates = [
+    let mut candidates = vec![
         manifest_dir.join("../../../vendor/libarchive/libarchive/test"),
         manifest_dir.join("../../vendor/libarchive/libarchive/test"),
         manifest_dir.join("../vendor/libarchive/libarchive/test"),
         manifest_dir.join("vendor/libarchive/libarchive/test"),
+        manifest_dir.join("../../../../../../products/ttzip/vendor/libarchive/libarchive/test"),
+        manifest_dir.join("../../../../../../products/ttzip/core/upstream/libarchive/pr-3388-7z-aes/libarchive/test"),
     ];
+
+    if let Ok(home) = std::env::var("HOME") {
+        let h = PathBuf::from(home);
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3388-7z-aes/libarchive/test"));
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3391-crc32/libarchive/test"));
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3393-preallocate/libarchive/test"));
+        candidates.push(h.join("Documents/dev/products/ttzip/vendor/libarchive/libarchive/test"));
+    }
 
     for candidate in &candidates {
         if candidate.exists() {

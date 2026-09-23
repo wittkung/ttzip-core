@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# Dynamic Toolchain Runtime Detector for TTZip Multi-Language SDK Test Matrix.
-# Probes installed compilers, build tools, SDK runtimes, and system topology.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 

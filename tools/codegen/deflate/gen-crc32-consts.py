@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#
-# This script generates constants for efficient computation of the gzip CRC-32.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 import sys
 

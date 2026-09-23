@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-#
-# This script generates the deflate_offset_slot[] array, which maps
-# 'offset - 1 => offset_slot' for offset <= 256.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 DEFLATE_OFFSET_SLOT_BASE = [
 	1    , 2    , 3    , 4     , 5     , 7     , 9     , 13    ,

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import CommonCrypto
@@ -84,23 +80,22 @@ public struct TTZipVaultSecurity: Sendable {
         }
 
         let secureKey = SecureBytes(capacity: 32)
-        guard let keyPtr = secureKey.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-            throw TTZipVaultError.keyDerivationFailed
-        }
-
-        let status = salt.withUnsafeBytes { saltBuf -> Int32 in
-            guard let saltPtr = saltBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
-            return CCKeyDerivationPBKDF(
-                CCPBKDFAlgorithm(kCCPBKDF2),
-                password,
-                password.utf8.count,
-                saltPtr,
-                salt.count,
-                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                rounds,
-                keyPtr,
-                32
-            )
+        let status = secureKey.withUnsafeMutableBytes { keyBuf -> Int32 in
+            guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
+            return salt.withUnsafeBytes { saltBuf -> Int32 in
+                guard let saltPtr = saltBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
+                return CCKeyDerivationPBKDF(
+                    CCPBKDFAlgorithm(kCCPBKDF2),
+                    password,
+                    password.utf8.count,
+                    saltPtr,
+                    salt.count,
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                    rounds,
+                    keyPtr,
+                    32
+                )
+            }
         }
 
         guard status == kCCSuccess else {

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive LZ4 frametest cascade, multi-frame streaming, and memory guard test suite.
 //!
@@ -53,6 +49,47 @@ pub enum LZ4FErrorCode {
     MaxCode = 24,
 }
 
+impl LZ4FErrorCode {
+    /// Maps a raw `LZ4F` function return code to the corresponding enum variant.
+    ///
+    /// Upstream `LZ4F_getErrorCode` in `lz4frame.c` translates error codes by computing
+    /// `-(ptrdiff_t)functionResult`. Because `LZ4F_getErrorCode` is a static-linking-only
+    /// symbol (`LZ4FLIB_STATIC_API`) that is not exported by dynamic libraries like
+    /// `liblz4.dylib`, this safe helper provides identical semantics in Rust.
+    pub fn from_function_result(ret: usize) -> Self {
+        if unsafe { LZ4F_isError(ret) } == 0 {
+            return Self::NoError;
+        }
+        match -(ret as isize) {
+            1 => Self::Generic,
+            2 => Self::MaxBlockSizeInvalid,
+            3 => Self::BlockModeInvalid,
+            4 => Self::ParameterInvalid,
+            5 => Self::CompressionLevelInvalid,
+            6 => Self::HeaderVersionWrong,
+            7 => Self::BlockChecksumInvalid,
+            8 => Self::ReservedFlagSet,
+            9 => Self::AllocationFailed,
+            10 => Self::SrcSizeTooLarge,
+            11 => Self::DstMaxSizeTooSmall,
+            12 => Self::FrameHeaderIncomplete,
+            13 => Self::FrameTypeUnknown,
+            14 => Self::FrameSizeWrong,
+            15 => Self::SrcPtrWrong,
+            16 => Self::DecompressionFailed,
+            17 => Self::HeaderChecksumInvalid,
+            18 => Self::ContentChecksumInvalid,
+            19 => Self::FrameDecodingAlreadyStarted,
+            20 => Self::CompressionStateUninitialized,
+            21 => Self::ParameterNull,
+            22 => Self::IoWrite,
+            23 => Self::IoRead,
+            24 => Self::MaxCode,
+            _ => Self::Generic,
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct LZ4FFrameInfo {
@@ -97,7 +134,6 @@ enum LZ4FDecompressCtxOpaque {}
 extern "C" {
     fn LZ4F_isError(code: usize) -> libc::c_uint;
     fn LZ4F_getErrorName(code: usize) -> *const libc::c_char;
-    fn LZ4F_getErrorCode(code: usize) -> LZ4FErrorCode;
 
     fn LZ4F_createCompressionContext(
         cctx_ptr: *mut *mut LZ4FCompressCtxOpaque,
@@ -207,7 +243,7 @@ impl SafeDecompressCtx {
             )
         };
         if unsafe { LZ4F_isError(ret) } != 0 {
-            let err_code = unsafe { LZ4F_getErrorCode(ret) };
+            let err_code = LZ4FErrorCode::from_function_result(ret);
             let err_name = unsafe {
                 CStr::from_ptr(LZ4F_getErrorName(ret))
                     .to_string_lossy()

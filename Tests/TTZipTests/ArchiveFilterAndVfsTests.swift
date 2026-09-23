@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 import Foundation
@@ -95,6 +91,67 @@ final class ArchiveFilterAndVfsTests: XCTestCase {
         XCTAssertEqual(stats?.totalFiles, 3)
         XCTAssertEqual(stats?.totalSize, 4096 + 2048 + 1024)
     }
+
+    func testDirectArchiveVfsTreeHandleAndPagination() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Create sample folder structure
+        let subDir = tempDir.appendingPathComponent("assets")
+        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+        let file1 = tempDir.appendingPathComponent("README.md")
+        let file2 = subDir.appendingPathComponent("logo.png")
+        try "Hello VFS".data(using: .utf8)?.write(to: file1)
+        try "PNG_BYTES".data(using: .utf8)?.write(to: file2)
+
+        let archiveUrl = tempDir.appendingPathComponent("test.zip")
+        let writer = ArchiveWriter()
+        try writer.createArchiveSync(
+            outputPath: archiveUrl.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: [file1.path, file2.path]
+        )
+
+        // 1. Direct loadArchiveVfsTree from Rust
+        let tree = try loadArchiveVfsTree(archivePath: archiveUrl.path, password: nil)
+        XCTAssertGreaterThan(tree.totalEntries(), 0)
+
+        // 2. Direct session caching via RustVfsBridge
+        let session = RustVfsBridge.session(forArchivePath: archiveUrl.path)
+        XCTAssertNotNil(session)
+        XCTAssertEqual(session?.archivePath, archiveUrl.path)
+
+        // 3. Direct paged queries from archive path
+        let pagedRoot = RustVfsBridge.getChildrenPaged(archivePath: archiveUrl.path, subpath: nil, offset: 0, limit: 10)
+        XCTAssertGreaterThan(pagedRoot.total, 0)
+        XCTAssertFalse(pagedRoot.nodes.isEmpty)
+
+        // 4. ArchiveTreeNode root nodes backed by UniFFIVfsTree
+        let rootNodes = ArchiveTreeNode.buildRootNodes(from: tree, limit: 10)
+        XCTAssertFalse(rootNodes.isEmpty)
+        for node in rootNodes {
+            XCTAssertNotNil(node.vfsTree)
+            if node.isDirectory {
+                let (children, count) = node.getChildrenPaged(offset: 0, limit: 10)
+                XCTAssertGreaterThan(count, 0)
+                XCTAssertFalse(children.isEmpty)
+            }
+        }
+
+        // 5. Zero-allocation fuzzy search on UniFFIVfsTree
+        let searchResults = ArchiveTreeNode.search(in: tree, query: "logo", maxResults: 10)
+        XCTAssertEqual(searchResults.count, 1)
+        XCTAssertTrue(searchResults.first?.name.contains("logo") == true)
+
+        // 6. Direct tree rendering from archive path
+        let rendered = RustVfsBridge.renderTree(archivePath: archiveUrl.path)
+        XCTAssertFalse(rendered.isEmpty)
+
+        // 7. Session removal and cleanup
+        RustVfsBridge.removeSession(for: archiveUrl.path)
+    }
     
     // MARK: - 3. System Metadata Cleaning & PaxHeader Invariant Tests
     
@@ -132,5 +189,69 @@ final class ArchiveFilterAndVfsTests: XCTestCase {
         XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "Sources/PaxHeaderHelper.swift"))
         XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "Docs/DS_Store.txt"))
         XCTAssertFalse(ArchiveFilterOptions.isSystemMetadata(path: "images/photo.png"))
+    }
+
+    // MARK: - 4. P1-A Model & Bridge Verification Tests
+
+    func testArchiveLeafFileValueSemanticsAndSendable() {
+        let leaf1 = ArchiveLeafFile(name: "test.txt", path: "docs/test.txt", sizeBytes: 1024)
+        var leaf2 = leaf1
+        XCTAssertEqual(leaf1, leaf2)
+        XCTAssertEqual(leaf1.sizeBytes, 1024)
+        XCTAssertFalse(leaf1.isDirectory)
+        XCTAssertEqual(leaf1.getChildren().count, 0)
+
+        // Struct value copy mutation does not affect original
+        leaf2 = ArchiveLeafFile(name: "test2.txt", path: "docs/test2.txt", sizeBytes: 2048)
+        XCTAssertNotEqual(leaf1, leaf2)
+        XCTAssertEqual(leaf1.sizeBytes, 1024)
+        XCTAssertEqual(leaf2.sizeBytes, 2048)
+    }
+
+    func testVfsSessionManagerContentFingerprintingAndIsolation() {
+        VfsSessionManager.shared.clearCache()
+
+        let catalogA = [
+            ArchiveEntry(path: "a.txt", uncompressedSize: 100, isDirectory: false),
+            ArchiveEntry(path: "b.txt", uncompressedSize: 200, isDirectory: false)
+        ]
+        let catalogB = [
+            ArchiveEntry(path: "x.txt", uncompressedSize: 500, isDirectory: false),
+            ArchiveEntry(path: "y.txt", uncompressedSize: 600, isDirectory: false)
+        ]
+
+        let fpA = VfsSessionManager.computeFingerprint(for: catalogA)
+        let fpB = VfsSessionManager.computeFingerprint(for: catalogB)
+        XCTAssertNotEqual(fpA, fpB, "Fingerprints for different catalogs must never collide")
+
+        let sessionA = VfsSessionManager.shared.session(for: catalogA)
+        let sessionA2 = VfsSessionManager.shared.session(for: catalogA)
+        XCTAssertTrue(sessionA === sessionA2, "Repeated calls with identical catalogs must return cached session")
+
+        let sessionB = VfsSessionManager.shared.session(for: catalogB)
+        XCTAssertFalse(sessionA === sessionB, "Distinct catalogs must yield distinct sessions")
+
+        // Explicit identifier isolation
+        let sessionPathA = VfsSessionManager.shared.session(for: catalogA, identifier: "/path/archive1.zip")
+        let sessionPathB = VfsSessionManager.shared.session(for: catalogA, identifier: "/path/archive2.zip")
+        XCTAssertFalse(sessionPathA === sessionPathB, "Distinct physical paths must yield isolated sessions")
+
+        VfsSessionManager.shared.clearCache()
+        let sessionAfterClear = VfsSessionManager.shared.session(for: catalogA)
+        XCTAssertFalse(sessionA === sessionAfterClear, "Cache clear must purge existing sessions")
+    }
+
+    func testArchiveReaderErrorHandling() async {
+        let reader = ArchiveReader()
+
+        // Non-existent path must throw ArchiveError.fileNotFound
+        do {
+            _ = try await reader.inspect(archivePath: "/nonexistent/path/never_exists.zip", password: nil)
+            XCTFail("Must throw fileNotFound for nonexistent file")
+        } catch let error as ArchiveError {
+            XCTAssertEqual(error, .fileNotFound)
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
     }
 }

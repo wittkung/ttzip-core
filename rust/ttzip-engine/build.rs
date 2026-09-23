@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -24,6 +20,8 @@ fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
     start_dir.join("vendor")
 }
 
+/// Compiles in-tree native C codecs (fast-lzma2, lzfse) for standalone Cargo builds.
+/// In Bazel, build.rs is short-circuited by BAZEL_BUILD and Bzlmod handles all codecs hermetically.
 fn compile_native_codecs(repo_root: &Path) {
     let top_vendor = find_third_party_or_vendor(repo_root);
 
@@ -36,7 +34,6 @@ fn compile_native_codecs(repo_root: &Path) {
     let libdeflate_dir = top_vendor.join("libdeflate");
     let lz4_dir = top_vendor.join("lz4/lib");
     let zstd_dir = top_vendor.join("zstd/lib");
-    let zopfli_dir = top_vendor.join("zopfli/src/zopfli");
 
     let mut build = cc::Build::new();
     build.opt_level(3);
@@ -186,35 +183,20 @@ fn compile_native_codecs(repo_root: &Path) {
         build.define("ZSTD_MULTITHREAD", None);
     }
 
-    // 6. zopfli
-    if zopfli_dir.exists() {
-        let zopfli_sources = [
-            "blocksplitter.c",
-            "cache.c",
-            "deflate.c",
-            "gzip_container.c",
-            "hash.c",
-            "katajainen.c",
-            "lz77.c",
-            "squeeze.c",
-            "tree.c",
-            "util.c",
-            "zlib_container.c",
-            "zopfli_lib.c",
-        ];
-        for src in zopfli_sources {
-            let path = zopfli_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
-        build.include(&zopfli_dir);
-    }
-
     build.compile("ttzip_native_codecs");
 }
 
 fn main() {
+    // In Bazel 8 (Bzlmod) hermetic builds, C codecs and native archives are managed
+    // strictly via Bzlmod cc_library targets (@libdeflate, @lz4, @zstd, //third_party/*).
+    if env::var("BAZEL_BUILD").is_ok()
+        || env::var("CARGO_BAZEL").is_ok()
+        || env::var("BUILD_WORKSPACE_DIRECTORY").is_ok()
+    {
+        println!("cargo:rerun-if-changed=build.rs");
+        return;
+    }
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let repo_root = manifest_dir
         .parent()
@@ -241,8 +223,18 @@ fn main() {
     // System libraries & frameworks required on macOS
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
+        if Path::new("/opt/homebrew/lib").exists() {
+            println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
+        }
+        if Path::new("/usr/local/lib").exists() {
+            println!("cargo:rustc-link-search=native=/usr/local/lib");
+        }
+        println!("cargo:rustc-link-lib=deflate");
+        println!("cargo:rustc-link-lib=zstd");
+        println!("cargo:rustc-link-lib=lz4");
         println!("cargo:rustc-link-lib=archive");
         println!("cargo:rustc-link-lib=bz2");
+        println!("cargo:rustc-link-lib=lzma");
         println!("cargo:rustc-link-lib=iconv");
         println!("cargo:rustc-link-lib=xml2");
         println!("cargo:rustc-link-lib=expat");

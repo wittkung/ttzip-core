@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -174,6 +170,10 @@ extension ArchiveError {
         case .engineFailure(let code, let message):
             let template = manager.string(for: L10n.Errors.engineFailure, language: targetLang)
             return String(format: template, locale: locale, code, message)
+        case .openFailed:
+            return manager.string(for: L10n.Errors.readError, language: targetLang)
+        case .corruptHeader:
+            return manager.string(for: L10n.Errors.corruptedHeader, language: targetLang)
         }
     }
 }

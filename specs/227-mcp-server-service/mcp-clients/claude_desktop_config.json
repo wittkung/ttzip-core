@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ttzip": {
+      "command": "ttzip",
+      "args": ["mcp"],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

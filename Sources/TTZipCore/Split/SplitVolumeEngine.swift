@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -32,19 +28,20 @@ public final class SplitVolumeEngine: Sendable {
     }
 
     /// Slices a file into multi-volume parts of `splitSizeBytes` with zero heap memory overhead.
+    @discardableResult
     public func sliceArchive(
         archivePath: String,
         splitSizeBytes: Int64,
         namingPattern: VolumeNamingPattern = .numberedExtension,
         cleanOnFailure: Bool = true
-    ) throws {
+    ) throws -> [String] {
         guard splitSizeBytes > 0 else { throw ArchiveError.readFailed(code: -1) }
         guard FileManager.default.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
         }
         
         do {
-            _ = try sliceArchiveFile(
+            return try sliceArchiveFile(
                 sourcePath: archivePath,
                 splitSizeBytes: UInt64(splitSizeBytes),
                 namingPattern: namingPattern.rawValue
@@ -187,12 +184,42 @@ public final class NativeParallelEncryptedSplitEngine: Sendable {
         
         progressHandler?(1.0)
         
-        let fm = FileManager.default
-        let allFiles = (try? fm.contentsOfDirectory(atPath: outputDir)) ?? []
-        let generatedVolumes = allFiles.filter { file in
-            file.hasPrefix(baseName) && (file.contains(".7z.") || file.contains(".z") || file.contains(".00") || file.hasSuffix(".7z") || file.hasSuffix(".zip"))
-        }.sorted().map { (outputDir as NSString).appendingPathComponent($0) }
+        // 1. Direct resolution via microkernel split volume chain discovery
+        let potentialSeed: String = {
+            switch format {
+            case .sevenZip:
+                return "\(primaryOutputPath).001"
+            case .zip:
+                let stem = (primaryOutputPath as NSString).deletingPathExtension
+                let z01 = "\(stem).z01"
+                return FileManager.default.fileExists(atPath: z01) ? z01 : primaryOutputPath
+            }
+        }()
         
-        return generatedVolumes.isEmpty ? [primaryOutputPath] : generatedVolumes
+        if FileManager.default.fileExists(atPath: potentialSeed) {
+            if let chain = try? detectSplitVolumeChain(seedPath: potentialSeed), !chain.isEmpty {
+                return chain
+            }
+            return [potentialSeed]
+        }
+        
+        // 2. Direct post-slicing via microkernel sliceArchiveFile if monolithic output was emitted
+        if FileManager.default.fileExists(atPath: primaryOutputPath) {
+            let namingPattern: VolumeNamingPattern = (format == .sevenZip) ? .numberedExtension : .pkzipSpanned
+            let sliced = try sliceArchiveFile(
+                sourcePath: primaryOutputPath,
+                splitSizeBytes: UInt64(splitVolumeSizeBytes),
+                namingPattern: namingPattern.rawValue
+            )
+            if !sliced.isEmpty {
+                if !sliced.contains(primaryOutputPath) {
+                    try? FileManager.default.removeItem(atPath: primaryOutputPath)
+                }
+                return sliced
+            }
+            return [primaryOutputPath]
+        }
+        
+        return [primaryOutputPath]
     }
 }

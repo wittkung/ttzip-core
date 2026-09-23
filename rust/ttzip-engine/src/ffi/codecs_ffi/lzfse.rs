@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Pure Safe Rust Apple LZFSE and LZVN C-ABI FFI exports.
 
@@ -206,15 +202,16 @@ pub extern "C" fn ttzip_rust_lzfse_decompress_stream(
 
 #[no_mangle]
 pub extern "C" fn ttzip_rust_lzfse_compress_bound(src_len: size_t) -> size_t {
-    lzfse_compress_bound(src_len)
+    catch_unwind(|| lzfse_compress_bound(src_len)).unwrap_or(0)
 }
 
 #[no_mangle]
 pub extern "C" fn ttzip_rust_lzfse_validate(src: *const u8, src_len: size_t) -> bool {
-    match unsafe { safe_slice(src, src_len) } {
+    catch_unwind(|| match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => lzfse_validate(slice),
         Err(_) => false,
-    }
+    })
+    .unwrap_or(false)
 }
 
 // MARK: - Apple LZVN Compression & Decompression C-ABI
@@ -334,13 +331,14 @@ pub extern "C" fn ttzip_rust_lzvn_decompress_raw(
 
 #[no_mangle]
 pub extern "C" fn ttzip_rust_lzvn_compress_bound(src_len: size_t) -> size_t {
-    lzvn_compress_bound(src_len)
+    catch_unwind(|| lzvn_compress_bound(src_len)).unwrap_or(0)
 }
 
 #[no_mangle]
 pub extern "C" fn ttzip_rust_lzvn_validate(src: *const u8, src_len: size_t) -> bool {
-    match unsafe { safe_slice(src, src_len) } {
+    catch_unwind(|| match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => lzvn_validate(slice),
         Err(_) => false,
-    }
+    })
+    .unwrap_or(false)
 }

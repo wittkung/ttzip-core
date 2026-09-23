@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
+
+/// Canonical typealias mapping UniFFI generated PascalCase to MetastudyLine naming standards.
+public typealias UniFFIXxh3Hasher = UniFfiXxh3Hasher
 
 /// High-speed XXH3 SIMD checksum and hash engine facade (64-bit and 128-bit variants).
 public struct TTZipXXH3: Sendable {
@@ -32,49 +31,109 @@ public struct TTZipXXH3: Sendable {
         return String(format: "%016llx%016llx", high, low)
     }
 
-    /// Streaming accumulator for incremental multi-chunk XXH3 calculation.
-    public final class Accumulator: @unchecked Sendable {
-        private let lock = NSLock()
-        private var buffer = Data()
-        private let seed: UInt64
+    /// Decodes a 32-character little-endian hex string into (high: UInt64, low: UInt64) components.
+    internal static func parse128Hex(_ hex: String) -> (high: UInt64, low: UInt64) {
+        let utf8 = hex.utf8
+        guard utf8.count == 32 else { return (0, 0) }
 
-        public init(seed: UInt64 = 0) {
-            self.seed = seed
+        @inline(__always)
+        func nibble(_ c: UInt8) -> UInt64 {
+            switch c {
+            case 48...57: return UInt64(c - 48)
+            case 97...102: return UInt64(c - 97 + 10)
+            case 65...70: return UInt64(c - 65 + 10)
+            default: return 0
+            }
         }
 
-        /// Feeds an incremental chunk of data into the running accumulator.
+        var low: UInt64 = 0
+        var high: UInt64 = 0
+        var idx = utf8.startIndex
+        for i in 0..<8 {
+            let b = (nibble(utf8[idx]) << 4) | nibble(utf8[utf8.index(after: idx)])
+            low |= (b << (i * 8))
+            idx = utf8.index(idx, offsetBy: 2)
+        }
+        for i in 0..<8 {
+            let b = (nibble(utf8[idx]) << 4) | nibble(utf8[utf8.index(after: idx)])
+            high |= (b << (i * 8))
+            idx = utf8.index(idx, offsetBy: 2)
+        }
+        return (high: high, low: low)
+    }
+
+    /// Streaming accumulator for incremental multi-chunk XXH3 calculation backed by Rust microkernel.
+    public final class Accumulator: @unchecked Sendable {
+        private let lock = NSLock()
+        private var hasher: UniFFIXxh3Hasher
+
+        /// Seed value used for XXH3 calculation.
+        public let seed: UInt64
+
+        private var accumulatedData: Data?
+
+        /// Creates a new streaming XXH3 accumulator instance with optional seed.
+        public init(seed: UInt64 = 0) {
+            self.seed = seed
+            self.hasher = UniFFIXxh3Hasher()
+            self.accumulatedData = seed == 0 ? nil : Data()
+        }
+
+        /// Feeds an incremental chunk of data into the running accumulator across FFI.
         public func update(_ chunk: Data) {
+            guard !chunk.isEmpty else { return }
             lock.lock()
             defer { lock.unlock() }
-            buffer.append(chunk)
+            if seed != 0 {
+                accumulatedData?.append(chunk)
+            }
+            hasher.update(data: chunk)
         }
 
         /// Finalizes and returns 64-bit XXH3 digest.
         public func digest64() -> UInt64 {
             lock.lock()
             defer { lock.unlock() }
-            return TTZipXXH3.hash64(buffer, seed: seed)
+            if seed != 0, let data = accumulatedData {
+                return TTZipXXH3.hash64(data, seed: seed)
+            }
+            return hasher.digest64()
         }
 
-        /// Finalizes and returns 128-bit XXH3 digest.
+        /// Finalizes and returns 128-bit XXH3 digest as a `(high: UInt64, low: UInt64)` tuple.
         public func digest128() -> (high: UInt64, low: UInt64) {
             lock.lock()
             defer { lock.unlock() }
-            return TTZipXXH3.hash128(buffer, seed: seed)
+            if seed != 0, let data = accumulatedData {
+                return TTZipXXH3.hash128(data, seed: seed)
+            }
+            return internalDigest128()
         }
 
-        /// Finalizes and returns 128-bit hex string.
+        /// Finalizes and returns 128-bit lowercase hex string.
         public func digest128Hex() -> String {
             lock.lock()
             defer { lock.unlock() }
-            return TTZipXXH3.hash128Hex(buffer, seed: seed)
+            if seed != 0, let data = accumulatedData {
+                return TTZipXXH3.hash128Hex(data, seed: seed)
+            }
+            let (high, low) = internalDigest128()
+            return String(format: "%016llx%016llx", high, low)
         }
 
-        /// Resets accumulator state for new calculation cycle.
+        /// Resets accumulator state for a new calculation cycle.
         public func reset() {
             lock.lock()
             defer { lock.unlock() }
-            buffer.removeAll(keepingCapacity: true)
+            hasher = UniFFIXxh3Hasher()
+            accumulatedData = seed == 0 ? nil : Data()
+        }
+
+        @inline(__always)
+        private func internalDigest128() -> (high: UInt64, low: UInt64) {
+            let hex = hasher.digest128Hex()
+            return TTZipXXH3.parse128Hex(hex)
         }
     }
 }
+

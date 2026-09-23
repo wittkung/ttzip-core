@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import os
@@ -47,14 +43,22 @@ public final class TTLogger: @unchecked Sendable {
     }
 
     private init() {
+        #if SWIFT_PACKAGE
         _ = TTZipCore.enableMicrokernelLoggingBridge(minLevel: TTLogEngine.shared.level)
+        #else
+        _ = TTZipCoreTypes.enableMicrokernelLoggingBridge(minLevel: TTLogEngine.shared.level)
+        #endif
     }
 
     /// Bridges microkernel logs into the shared logger engine.
     @discardableResult
     public func enableMicrokernelLoggingBridge(minLevel: TTLogLevel? = nil) -> Bool {
         let targetLevel = minLevel ?? self.level
+        #if SWIFT_PACKAGE
         return TTZipCore.enableMicrokernelLoggingBridge(minLevel: targetLevel)
+        #else
+        return TTZipCoreTypes.enableMicrokernelLoggingBridge(minLevel: targetLevel)
+        #endif
     }
 
     /// Logs an entry to the shared log engine.

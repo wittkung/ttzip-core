@@ -1,0 +1,48 @@
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
+
+//! RAII Safe Cleanup Guards for Libarchive pointers.
+
+use super::sys::*;
+use libc::c_void;
+
+pub struct ArchiveReadGuard(pub *mut c_void);
+
+impl Drop for ArchiveReadGuard {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe {
+                archive_read_close(self.0);
+                archive_read_free(self.0);
+            }
+            self.0 = std::ptr::null_mut();
+        }
+    }
+}
+
+pub struct ArchiveWriteGuard(pub *mut c_void);
+
+impl Drop for ArchiveWriteGuard {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe {
+                archive_write_close(self.0);
+                archive_write_free(self.0);
+            }
+            self.0 = std::ptr::null_mut();
+        }
+    }
+}
+
+pub struct ArchiveEntryGuard(pub *mut c_void);
+
+impl Drop for ArchiveEntryGuard {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe {
+                archive_entry_free(self.0);
+            }
+            self.0 = std::ptr::null_mut();
+        }
+    }
+}

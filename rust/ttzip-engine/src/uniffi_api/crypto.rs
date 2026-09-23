@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI 0.28 Cross-Language Safe Export Layer for Cryptographic Primitives and Hashes.
 //!
@@ -24,7 +20,7 @@
 
 use super::types::TTZipError;
 use std::sync::atomic::{compiler_fence, Ordering};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 /// Structure representing a 128-bit XXH3 hash digest.
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -49,15 +45,14 @@ pub struct UniFFIAeadResult {
 }
 
 #[inline]
-fn take_key_32(mut key: Vec<u8>) -> Result<[u8; 32], TTZipError> {
+fn take_key_32(key: Vec<u8>) -> Result<[u8; 32], TTZipError> {
+    let key = Zeroizing::new(key);
     if key.len() != 32 {
-        key.zeroize();
         compiler_fence(Ordering::SeqCst);
         return Err(TTZipError::EngineError { code: -1 });
     }
     let mut key_arr = [0u8; 32];
     key_arr.copy_from_slice(&key);
-    key.zeroize();
     compiler_fence(Ordering::SeqCst);
     Ok(key_arr)
 }
@@ -203,7 +198,8 @@ pub fn uniffi_blake3(data: Vec<u8>) -> Vec<u8> {
 /// Computes keyed 256-bit BLAKE3 hash with 32-byte secret key (scrubs key upon return).
 #[uniffi::export]
 pub fn uniffi_blake3_keyed(data: Vec<u8>, key: Vec<u8>) -> Result<Vec<u8>, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let mut hasher = crate::crypto::blake3::Blake3::new_keyed(&key_arr);
     key_arr.zeroize();
     compiler_fence(Ordering::SeqCst);
@@ -245,6 +241,8 @@ pub fn uniffi_winzip_aes256_derive_keys(
     password: String,
     salt: Vec<u8>,
 ) -> Result<UniFFIWinZipKeys, TTZipError> {
+    let password = Zeroizing::new(password);
+    let salt = Zeroizing::new(salt);
     if salt.len() != 16 {
         return Err(TTZipError::EngineError { code: -1 });
     }
@@ -253,6 +251,8 @@ pub fn uniffi_winzip_aes256_derive_keys(
 
     let keys = crate::crypto::sha1::winzip_aes256_derive_keys(&password, &salt_arr)
         .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+    salt_arr.zeroize();
+    compiler_fence(Ordering::SeqCst);
 
     Ok(UniFFIWinZipKeys {
         enc_key: keys.enc_key.to_vec(),
@@ -269,6 +269,9 @@ pub fn uniffi_winzip_aes256_encrypt(
     salt: Vec<u8>,
     plaintext: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
+    let password = Zeroizing::new(password);
+    let salt = Zeroizing::new(salt);
+    let plaintext = Zeroizing::new(plaintext);
     if salt.len() != 16 {
         return Err(TTZipError::EngineError { code: -1 });
     }
@@ -276,13 +279,16 @@ pub fn uniffi_winzip_aes256_encrypt(
     salt_arr.copy_from_slice(&salt);
 
     let mut out_payload = Vec::new();
-    crate::crypto::sha1::winzip_aes256_encrypt_and_tag(
+    let res = crate::crypto::sha1::winzip_aes256_encrypt_and_tag(
         &password,
         &salt_arr,
         &plaintext,
         &mut out_payload,
-    )
-    .map_err(|s| TTZipError::EngineError { code: s as i32 })?;
+    );
+    salt_arr.zeroize();
+    compiler_fence(Ordering::SeqCst);
+
+    res.map_err(|s| TTZipError::EngineError { code: s as i32 })?;
 
     Ok(out_payload)
 }
@@ -293,6 +299,7 @@ pub fn uniffi_winzip_aes256_decrypt(
     password: String,
     enc_payload: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
+    let password = Zeroizing::new(password);
     if enc_payload.len() < 28 {
         return Err(TTZipError::CorruptHeader {
             details: "WinZip AES payload too short".to_string(),
@@ -332,7 +339,10 @@ pub fn uniffi_7z_aes256_derive_key(
     salt: Vec<u8>,
     num_cycles_power: u32,
 ) -> Vec<u8> {
+    let password = Zeroizing::new(password);
+    let salt = Zeroizing::new(salt);
     let key = crate::crypto::arm64_sha256::derive_7z_key_arm64(&password, &salt, num_cycles_power);
+    compiler_fence(Ordering::SeqCst);
     key.to_vec()
 }
 
@@ -343,11 +353,14 @@ pub fn uniffi_7z_aes256_encrypt(
     iv: Vec<u8>,
     plaintext: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let plaintext = Zeroizing::new(plaintext);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_16(&iv)?;
 
     let pad_len = 16 - (plaintext.len() % 16);
-    let mut padded = Vec::with_capacity(plaintext.len() + pad_len);
+    let mut padded = Zeroizing::new(Vec::with_capacity(plaintext.len() + pad_len));
     padded.extend_from_slice(&plaintext);
     padded.resize(plaintext.len() + pad_len, pad_len as u8);
 
@@ -355,7 +368,6 @@ pub fn uniffi_7z_aes256_encrypt(
     let res = crate::crypto::aes256::aes256_cbc_encrypt(&key_arr, &iv_arr, &padded, &mut cipher);
 
     key_arr.zeroize();
-    padded.zeroize();
     compiler_fence(Ordering::SeqCst);
 
     res.map_err(|_| TTZipError::EngineError { code: -2 })?;
@@ -372,35 +384,34 @@ pub fn uniffi_7z_aes256_decrypt(
     if !ciphertext.len().is_multiple_of(16) || ciphertext.is_empty() {
         return Err(TTZipError::EngineError { code: -1 });
     }
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_16(&iv)?;
 
-    let mut plain_padded = vec![0u8; ciphertext.len()];
+    let mut plain_padded = Zeroizing::new(vec![0u8; ciphertext.len()]);
     let res = crate::crypto::aes256::aes256_cbc_decrypt(&key_arr, &iv_arr, &ciphertext, &mut plain_padded);
 
     key_arr.zeroize();
     compiler_fence(Ordering::SeqCst);
 
     if res.is_err() {
-        plain_padded.zeroize();
         return Err(TTZipError::EngineError { code: -2 });
     }
 
     let pad_byte = plain_padded[plain_padded.len() - 1];
     let pad_len = pad_byte as usize;
     if pad_len == 0 || pad_len > 16 || pad_len > plain_padded.len() {
-        plain_padded.zeroize();
         return Err(TTZipError::InvalidPassword);
     }
     for &b in &plain_padded[plain_padded.len() - pad_len..] {
         if b != pad_byte {
-            plain_padded.zeroize();
             return Err(TTZipError::InvalidPassword);
         }
     }
 
-    plain_padded.truncate(plain_padded.len() - pad_len);
-    Ok(plain_padded)
+    let unpadded_len = plain_padded.len() - pad_len;
+    Ok(plain_padded[..unpadded_len].to_vec())
 }
 
 // ============================================================================
@@ -414,7 +425,8 @@ pub fn uniffi_aes256_ctr(
     counter: u64,
     data: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let mut out = vec![0u8; data.len()];
     let res = crate::crypto::aes256::aes256_ctr_crypt(&key_arr, counter, &data, &mut out);
     key_arr.zeroize();
@@ -433,7 +445,10 @@ pub fn uniffi_aes256_cbc_raw_encrypt(
     if !plaintext.len().is_multiple_of(16) {
         return Err(TTZipError::EngineError { code: -1 });
     }
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let plaintext = Zeroizing::new(plaintext);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_16(&iv)?;
     let mut out = vec![0u8; plaintext.len()];
     let res = crate::crypto::aes256::aes256_cbc_encrypt(&key_arr, &iv_arr, &plaintext, &mut out);
@@ -453,7 +468,9 @@ pub fn uniffi_aes256_cbc_raw_decrypt(
     if !ciphertext.len().is_multiple_of(16) {
         return Err(TTZipError::EngineError { code: -1 });
     }
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_16(&iv)?;
     let mut out = vec![0u8; ciphertext.len()];
     let res = crate::crypto::aes256::aes256_cbc_decrypt(&key_arr, &iv_arr, &ciphertext, &mut out);
@@ -469,20 +486,20 @@ pub fn uniffi_aes256_cbc_raw_decrypt(
 
 /// Encrypts plaintext buffer in-place using traditional PKZIP 3-key stream cipher.
 #[uniffi::export]
-pub fn uniffi_zipcrypto_encrypt(mut password: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
+pub fn uniffi_zipcrypto_encrypt(password: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8> {
+    let password = Zeroizing::new(password);
     let mut out = plaintext;
     crate::crypto::zipcrypto::zipcrypto_encrypt_slice(&password, &mut out);
-    password.zeroize();
     compiler_fence(Ordering::SeqCst);
     out
 }
 
 /// Decrypts ciphertext buffer in-place using traditional PKZIP 3-key stream cipher.
 #[uniffi::export]
-pub fn uniffi_zipcrypto_decrypt(mut password: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8> {
+pub fn uniffi_zipcrypto_decrypt(password: Vec<u8>, ciphertext: Vec<u8>) -> Vec<u8> {
+    let password = Zeroizing::new(password);
     let mut out = ciphertext;
     crate::crypto::zipcrypto::zipcrypto_decrypt_slice(&password, &mut out);
-    password.zeroize();
     compiler_fence(Ordering::SeqCst);
     out
 }
@@ -499,7 +516,10 @@ pub fn uniffi_vault_aes_gcm_encrypt(
     plaintext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<UniFFIAeadResult, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let plaintext = Zeroizing::new(plaintext);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_12(&iv)?;
 
     let mut ciphertext = vec![0u8; plaintext.len()];
@@ -534,7 +554,10 @@ pub fn uniffi_vault_aes_gcm_decrypt(
     aad: Vec<u8>,
     tag: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let iv = Zeroizing::new(iv);
+    let tag = Zeroizing::new(tag);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let iv_arr = take_arr_12(&iv)?;
     let tag_arr = take_arr_16(&tag)?;
 
@@ -572,7 +595,10 @@ pub fn uniffi_vault_chacha20_poly1305_encrypt(
     plaintext: Vec<u8>,
     aad: Vec<u8>,
 ) -> Result<UniFFIAeadResult, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let nonce = Zeroizing::new(nonce);
+    let plaintext = Zeroizing::new(plaintext);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let nonce_arr = take_arr_12(&nonce)?;
 
     let mut ciphertext = vec![0u8; plaintext.len()];
@@ -607,7 +633,10 @@ pub fn uniffi_vault_chacha20_poly1305_decrypt(
     aad: Vec<u8>,
     tag: Vec<u8>,
 ) -> Result<Vec<u8>, TTZipError> {
-    let mut key_arr = take_key_32(key)?;
+    let key = Zeroizing::new(key);
+    let nonce = Zeroizing::new(nonce);
+    let tag = Zeroizing::new(tag);
+    let mut key_arr = take_key_32(key.to_vec())?;
     let nonce_arr = take_arr_12(&nonce)?;
     let tag_arr = take_arr_16(&tag)?;
 

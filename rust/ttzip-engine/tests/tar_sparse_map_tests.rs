@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive unit and integration test suite for GNU Sparse (0.0, 0.1, 1.0)
 //! and PAX Sparse 0.1 map parsers, hole calculators, and security defense barriers.

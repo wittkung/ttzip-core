@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Archive Integrity Verification, Checksum, and Split Volume Scaffolding.
 
@@ -217,22 +213,70 @@ pub fn verify_archive_integrity(
     })
 }
 
-/// Computes hash or checksum of a file in zero-copy chunked streaming fashion.
+/// Computes hash or checksum of a file in zero-copy chunked streaming fashion across all supported algorithms.
 ///
-/// Supported algorithms: "crc32", "sha256", "sha1", "md5".
+/// Supported algorithms (case-insensitive):
+/// - "blake3": 256-bit BLAKE3 tree hash (lowercase 64-character hex)
+/// - "xxh3_64" / "xxh3-64": 64-bit XXH3 hash (lowercase 16-character hex)
+/// - "xxh3_128" / "xxh3-128": 128-bit XXH3 hash (lowercase 32-character hex)
+/// - "crc64": 64-bit CRC (ECMA-182) checksum (lowercase 16-character hex)
+/// - "crc32": 32-bit CRC (IEEE 802.3) checksum (uppercase 8-character hex)
+/// - "adler32": 32-bit Adler-32 checksum (uppercase 8-character hex)
+/// - "sha256" / "sha-256": 256-bit SHA-256 digest (lowercase 64-character hex)
+/// - "sha1" / "sha-1": 160-bit SHA-1 digest (lowercase 40-character hex)
+/// - "md5": 128-bit MD5 digest (lowercase 32-character hex)
 #[uniffi::export]
-pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZipError> {
+pub fn compute_file_stream_hash(file_path: String, algorithm: String) -> Result<String, TTZipError> {
     use std::io::Read;
-    let p = std::path::Path::new(&path);
+    let p = std::path::Path::new(&file_path);
     if !p.exists() {
-        return Err(TTZipError::FileNotFound { path });
+        return Err(TTZipError::FileNotFound { path: file_path });
     }
 
     let mut file = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut buf = [0u8; 64 * 1024];
+    let mut buf = [0u8; 65536];
 
     let algo_norm = algorithm.trim().to_ascii_lowercase().replace(['-', '_'], "");
     match algo_norm.as_str() {
+        "blake3" => {
+            let mut hasher = crate::crypto::blake3::Hasher::new();
+            loop {
+                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                if n == 0 { break; }
+                hasher.update(&buf[..n]);
+            }
+            let hash = hasher.finalize();
+            Ok(crate::uniffi_api::hasher_stream::bytes_to_hex(&hash))
+        }
+        "xxh364" => {
+            let mut hasher = crate::crypto::xxh3::Xxh3_64::new();
+            loop {
+                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                if n == 0 { break; }
+                hasher.update(&buf[..n]);
+            }
+            let digest = hasher.finalize();
+            Ok(format!("{:016x}", digest))
+        }
+        "xxh3128" => {
+            let mut hasher = crate::crypto::xxh3::Xxh3_128::new();
+            loop {
+                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                if n == 0 { break; }
+                hasher.update(&buf[..n]);
+            }
+            let (low, high) = hasher.finalize();
+            Ok(format!("{:016x}{:016x}", high, low))
+        }
+        "crc64" => {
+            let mut crc = 0u64;
+            loop {
+                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                if n == 0 { break; }
+                crc = crate::crypto::crc64::crc64(&buf[..n], crc);
+            }
+            Ok(format!("{:016x}", crc))
+        }
         "crc32" => {
             let mut crc = 0u32;
             loop {
@@ -241,6 +285,15 @@ pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZi
                 crc = crate::crypto::crc32::crc32_fast(crc, &buf[..n]);
             }
             Ok(format!("{:08X}", crc))
+        }
+        "adler32" => {
+            let mut adler = 1u32;
+            loop {
+                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+                if n == 0 { break; }
+                adler = crate::crypto::adler32::adler32_fast(adler, &buf[..n]);
+            }
+            Ok(format!("{:08X}", adler))
         }
         "sha256" => {
             let mut hasher = crate::crypto::sha256::FastSha256::new();
@@ -274,6 +327,12 @@ pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZi
         }
         _ => Err(TTZipError::EngineError { code: -1 }),
     }
+}
+
+/// Computes hash or checksum of a file in zero-copy chunked streaming fashion.
+#[uniffi::export]
+pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZipError> {
+    compute_file_stream_hash(path, algorithm)
 }
 
 /// Computes SHA-256 hex digest of a file in zero-copy streaming fashion.
@@ -424,4 +483,67 @@ pub fn slice_archive_file(
 
     let generated = writer.close().map_err(|e| TTZipError::IoError { message: e.to_string() })?;
     Ok(generated.into_iter().filter_map(|p| p.to_str().map(|s| s.to_string())).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_compute_file_stream_hash_all_algorithms() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let test_file = temp_dir.path().join("hash_input.bin");
+        {
+            let mut f = std::fs::File::create(&test_file).expect("create test file");
+            f.write_all(b"123456789").expect("write bytes");
+        }
+        let file_path = test_file.to_str().unwrap().to_string();
+
+        // 1. CRC32 (Standard vector 0xCBF43926)
+        let crc32 = compute_file_stream_hash(file_path.clone(), "crc32".to_string()).unwrap();
+        assert_eq!(crc32, "CBF43926");
+
+        // 2. Adler32 (Standard vector 0x091E01DE)
+        let adler32 = compute_file_stream_hash(file_path.clone(), "Adler32".to_string()).unwrap();
+        assert_eq!(adler32, "091E01DE");
+
+        // 3. CRC64 (Standard vector 0xb86883e6fa710a9f)
+        let crc64 = compute_file_stream_hash(file_path.clone(), "CRC64".to_string()).unwrap();
+        assert_eq!(crc64, "b86883e6fa710a9f");
+
+        // 4. SHA-256
+        let sha256 = compute_file_stream_hash(file_path.clone(), "sha-256".to_string()).unwrap();
+        assert_eq!(sha256, "15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225");
+
+        // 5. SHA-1
+        let sha1 = compute_file_stream_hash(file_path.clone(), "sha1".to_string()).unwrap();
+        assert_eq!(sha1, "f7c3bc1d808e04732adf679965ccc34ca7ae3441");
+
+        // 6. MD5
+        let md5 = compute_file_stream_hash(file_path.clone(), "MD5".to_string()).unwrap();
+        assert_eq!(md5, "25f9e794323b453885f5181f1b624d0b");
+
+        // 7. BLAKE3
+        let blake3 = compute_file_stream_hash(file_path.clone(), "BLAKE3".to_string()).unwrap();
+        let expected_blake3 = crate::crypto::blake3::blake3(b"123456789");
+        assert_eq!(blake3, crate::uniffi_api::hasher_stream::bytes_to_hex(&expected_blake3));
+
+        // 8. XXH3-64
+        let xxh3_64 = compute_file_stream_hash(file_path.clone(), "xxh3_64".to_string()).unwrap();
+        let expected_xxh3_64 = format!("{:016x}", crate::crypto::xxh3::xxh3_64(b"123456789"));
+        assert_eq!(xxh3_64, expected_xxh3_64);
+
+        // 9. XXH3-128
+        let xxh3_128 = compute_file_stream_hash(file_path.clone(), "xxh3-128".to_string()).unwrap();
+        let (low, high) = crate::crypto::xxh3::xxh3_128(b"123456789");
+        let expected_xxh3_128 = format!("{:016x}{:016x}", high, low);
+        assert_eq!(xxh3_128, expected_xxh3_128);
+
+        // Unsupported algorithm
+        assert!(compute_file_stream_hash(file_path, "nonexistent".to_string()).is_err());
+
+        // Missing file
+        assert!(compute_file_stream_hash("/path/that/does/not/exist".to_string(), "sha256".to_string()).is_err());
+    }
 }

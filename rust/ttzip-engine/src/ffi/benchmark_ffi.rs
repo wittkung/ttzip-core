@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! C-ABI FFI exports for hardware MIPS benchmarking, 50-point Matrix Gate, and Pareto visualization.
 
@@ -290,9 +286,11 @@ pub extern "C" fn ttzip_rust_bench_generate_html_dashboard(corpus_type: i32) -> 
 #[no_mangle]
 #[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_bench_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        drop(std::ffi::CString::from_raw(ptr));
-    }
+    let _ = std::panic::catch_unwind(|| {
+        if !ptr.is_null() {
+            drop(std::ffi::CString::from_raw(ptr));
+        }
+    });
 }
 
 #[cfg(test)]

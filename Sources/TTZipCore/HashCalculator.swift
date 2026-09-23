@@ -1,28 +1,12 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Compression
 
-/// Supported cryptographic and verification hash algorithms.
-public enum HashType: String, Sendable {
-    case crc32 = "CRC32"
-    case sha256 = "SHA-256"
-    case md5 = "MD5"
-    case sha1 = "SHA-1"
-}
-
 /// Multi-core parallel chunked hash and checksum calculator.
 public final class HashCalculator: HashCalculating, @unchecked Sendable {
-    internal let hardwareTuner: HardwareTunerProtocol
-
-    public init(hardwareTuner: HardwareTunerProtocol = AppleSiliconTuner.shared) {
-        self.hardwareTuner = hardwareTuner
-    }
+    public init(hardwareTuner: HardwareTunerProtocol? = nil) {}
     
     public func computeHashSync(filePath: String, type: HashType) throws -> String {
         switch type {
@@ -50,7 +34,11 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
     /// Static convenience method for calculating SHA-256 fingerprint of a file via microkernel.
     @inlinable
     public static func computeFileSha256(filePath: String) throws -> String {
+        #if SWIFT_PACKAGE
         try TTZipCore.computeFileSha256(filePath: filePath)
+        #else
+        try TTZipCoreBindings.computeFileSha256(filePath: filePath)
+        #endif
     }
     
     /// Static convenience method for calculating SHA-256 fingerprint of a file.
@@ -140,13 +128,14 @@ public final class AppleLibcompressionAccelerator: @unchecked Sendable {
         src: UnsafeRawPointer,
         srcSize: Int,
         dst: UnsafeMutableRawPointer,
-        dstCapacity: Int,
-        level: Int = 6
+        dstCapacity: Int
     ) -> Int {
+        let dstPtr = dst.bindMemory(to: UInt8.self, capacity: dstCapacity)
+        let srcPtr = src.bindMemory(to: UInt8.self, capacity: srcSize)
         let written = compression_encode_buffer(
-            dst.assumingMemoryBound(to: UInt8.self),
+            dstPtr,
             dstCapacity,
-            src.assumingMemoryBound(to: UInt8.self),
+            srcPtr,
             srcSize,
             nil,
             COMPRESSION_ZLIB
@@ -161,10 +150,12 @@ public final class AppleLibcompressionAccelerator: @unchecked Sendable {
         dst: UnsafeMutableRawPointer,
         dstCapacity: Int
     ) -> Int {
+        let dstPtr = dst.bindMemory(to: UInt8.self, capacity: dstCapacity)
+        let srcPtr = src.bindMemory(to: UInt8.self, capacity: srcSize)
         let written = compression_decode_buffer(
-            dst.assumingMemoryBound(to: UInt8.self),
+            dstPtr,
             dstCapacity,
-            src.assumingMemoryBound(to: UInt8.self),
+            srcPtr,
             srcSize,
             nil,
             COMPRESSION_ZLIB
@@ -176,21 +167,21 @@ public final class AppleLibcompressionAccelerator: @unchecked Sendable {
     public func compressData(_ data: Data, level: Int = 6) -> Data? {
         guard !data.isEmpty else { return Data() }
         let maxBound = max(data.count + 4096, Int(Double(data.count) * 1.05) + 1024)
-        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: maxBound, alignment: 1)
+        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: maxBound, alignment: 64)
+        defer { rawPtr.deallocate() }
         let written = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
-            self.compress(src: srcPtr, srcSize: count, dst: rawPtr, dstCapacity: maxBound, level: level)
+            self.compress(src: srcPtr, srcSize: count, dst: rawPtr, dstCapacity: maxBound)
         }
         guard written > 0 else {
-            rawPtr.deallocate()
             return nil
         }
-        return Data(bytesNoCopy: rawPtr, count: written, deallocator: .custom { ptr, _ in ptr.deallocate() })
+        return Data(bytes: rawPtr, count: written)
     }
     
     /// Convenience helper decompressing Swift `Data` buffers without zero-filling or double buffering.
     public func decompressData(_ data: Data, originalSize: Int) -> Data? {
         guard !data.isEmpty else { return Data() }
-        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: originalSize, alignment: 1)
+        let rawPtr = UnsafeMutableRawPointer.allocate(byteCount: originalSize, alignment: 64)
         let actual = CUnsafeBufferAdapter.withBufferPointer(data) { srcPtr, count in
             self.decompress(src: srcPtr, srcSize: count, dst: rawPtr, dstCapacity: originalSize)
         }

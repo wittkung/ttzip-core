@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive unit tests for Bzip2 48-bit Pi magic block container encoding and decoding.
 
@@ -20,7 +16,7 @@ fn test_block_encode_decode_roundtrip() {
     encode_bzip2_block(payload, &mut writer, &mut enc_combined_crc).unwrap();
     writer.flush_to_byte_boundary();
 
-    let mut reader = BitReader::new(&writer.buf);
+    let mut reader = BitReader::new(&writer.buf[..]);
     let mut decoded = Vec::new();
     let mut dec_combined_crc = Bzip2CombinedCrc::new();
 

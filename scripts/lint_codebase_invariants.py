@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 """
 TTZip Codebase Invariant Linter (AST & Token Analysis)
@@ -18,7 +14,22 @@ import json
 from pathlib import Path
 
 def get_project_root():
-    return Path(__file__).resolve().parent.parent
+    if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
+        cand = Path(os.environ["BUILD_WORKSPACE_DIRECTORY"]) / "products/ttzip/core"
+        if cand.exists():
+            return cand.resolve()
+    if "TEST_SRCDIR" in os.environ and "TEST_WORKSPACE" in os.environ:
+        cand = Path(os.environ["TEST_SRCDIR"]) / os.environ["TEST_WORKSPACE"] / "products/ttzip/core"
+        if cand.exists():
+            return cand.resolve()
+    script_root = Path(__file__).resolve().parent.parent
+    if (script_root / "Sources").exists():
+        return script_root
+    cwd_cand = Path.cwd()
+    if (cwd_cand / "products/ttzip/core/Sources").exists():
+        return (cwd_cand / "products/ttzip/core").resolve()
+    return script_root
+
 
 def scan_file_lines(file_path):
     try:

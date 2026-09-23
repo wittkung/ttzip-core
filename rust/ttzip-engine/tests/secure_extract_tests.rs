@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive integration tests for SecurePathExtractor sandbox isolation,
 //! Zip-Slip traversal defense, intermediate symlink escape interception,
@@ -13,6 +9,8 @@ use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+mod common;
+use common::SafeTempDir;
 use tempfile::tempdir;
 use ttzip_engine::security::{DeferredSecureEntry, SecurePathExtractor, SecurityFlags};
 use ttzip_engine::types::TTZipStatus;
@@ -228,7 +226,7 @@ fn test_toctou_atomic_unlink_and_file_creation() {
 
 #[test]
 fn test_two_stage_bottom_up_permission_and_timestamp_restoration() {
-    let tmp = tempdir().expect("Failed to create tempdir");
+    let tmp = SafeTempDir::new().expect("Failed to create safe tempdir");
     let sandbox = tmp.path();
 
     let mut extractor = SecurePathExtractor::new(sandbox, SecurityFlags::DEFAULT)

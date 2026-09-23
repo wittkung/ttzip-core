@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! TTZip Pure Safe Rust High-Performance Archiving & Microkernel Engine.
 //!
@@ -16,65 +12,46 @@ uniffi::setup_scaffolding!();
 
 pub mod analytics;
 pub mod api;
-pub mod archive;
+pub use ttzip_archive::archive;
 pub mod audio;
 pub mod benchmark;
 pub use benchmark as bench;
-pub mod charset;
+pub use ttzip_archive::charset;
 pub mod checksum;
-pub mod codecs;
-pub mod crypto;
+pub use ttzip_codecs as codecs;
+pub use ttzip_crypto as crypto;
 pub mod ebook;
 pub mod ffi;
-pub mod fs;
-pub mod html;
+pub use ttzip_archive::fs;
 pub mod i18n;
-pub mod image;
-pub mod media;
 pub mod memory;
 pub mod office;
-pub mod pdf;
-#[cfg(feature = "device-android")]
-pub mod pipeline;
 pub mod platform;
 pub mod runtime;
 pub mod security;
-pub mod sevenz;
+pub use ttzip_archive::sevenz;
 pub mod standards;
-pub mod syntax;
 pub mod system;
-pub mod tar;
+pub use ttzip_archive::tar;
 pub mod testing;
-pub mod text;
-pub mod types;
+pub use ttzip_types as types;
 pub mod uniffi_api;
 pub mod utils;
-pub mod vfs;
-pub mod xml;
-pub mod xz;
-pub mod zip;
+pub use ttzip_archive::vfs;
+pub use ttzip_archive::xz;
+pub use ttzip_archive::zip;
+pub use ttzip_archive::to_and_from_le;
 
 pub use analytics::*;
 pub use api::*;
+pub use audio::*;
 pub use checksum::{Adler32Hasher, Crc32Hasher};
 pub use utils::*;
-pub use xml::{
-    extract_single_element_text, AdaptiveBufferPool, ApplePlistParser, DocxOutline,
-    DocxOutlineItem, EpubManifestItem, EpubMetadataExtractor, EpubPackage, EpubPackageMetadata,
-    EpubSpineItem, EpubToc, EpubTocNode, InfoPlistMeta, OfficeAppProperties,
-    OfficeCoreProperties, OfficeXmlExtractor, PlistValue, PptxSlideOutline, TTZipXmlParser,
-    XlsxSheetInfo, XlsxWorkbookMeta, XmlError,
-};
 pub use archive::{
     compute_volume_path, detect_volume_chain, drill_down_nested_archive, find_next_pk_signature,
     open_virtual_file_stream, repair_damaged_tar, repair_damaged_zip, ArchiveBuilder,
     ArchiveEntryInfo, ArchiveReader, ExtractBuilder, SplitVolumeWriter, VirtualFileStream,
     VirtualMultiVolumeReader, VolumeNamingScheme, VolumeSegment,
-};
-pub use audio::{
-    default_waveform, extract_waveform_from_bytes, extract_waveform_from_file, AudioCoverArt,
-    AudioError, AudioMetadata, AudioMetadataExtractor, AudioPcmConverter, AudioPictureType,
-    AudioStreamInfo, AudioWaveform, AudioWaveformSampler, DecodedAudioPacket, TTZipAudioDecoder,
 };
 pub use benchmark::*;
 pub use charset::*;
@@ -85,20 +62,9 @@ pub use ebook::{
     EbookNavigationExtractor, EbookResource, EbookResourceExtractor, EbookResult, EbookTocNode,
     MobiExthRecord, MobiHeaderInfo, PalmDocHeader, SpineItem, TTZipEbookParser,
 };
-pub use html::*;
 pub use i18n::*;
-pub use image::{
-    ColorSpacePipeline, DecodedImageFrame, ExifThumbnailExtractor, ImageBitDepth, ImageColorSpace,
-    ImageError, ImageFormat, TTZipImageDecoder, ViewportFilter, ViewportRect, ViewportSampler,
-};
-pub use media::*;
 pub use memory::*;
 pub use office::*;
-pub use pdf::{
-    PdfDestination, PdfError, PdfFlatOutlineItem, PdfHighlightSpan, PdfMetadata,
-    PdfMetadataExtractor, PdfOutlineExtractor, PdfOutlineNode, PdfPageInfo, PdfPageText,
-    PdfSearchResult, PdfTextExtractor, PdfTextSearchOptions, TTZipPdfParser, XmpMetadata,
-};
 pub use platform::*;
 pub use runtime::*;
 pub use fs::*;
@@ -108,30 +74,19 @@ pub use sevenz::{
     SevenZHeaderInfo,
 };
 pub use standards::*;
-pub use syntax::*;
 pub use system::{
     BsDiffControl, BsDiffPatch, DeltaCommand, DeltaError, DeltaFormat, DeltaPatchHeader,
     DeltaPatchResult, DeltaResult, TTZipBsDiff, TTZipBsPatch, TTZipDeltaArchive, TTZipDeltaEngine,
     DELTA_TREE_HASH_SEED,
 };
-pub use text::{
-    clean_control_characters, decode_to_utf8, decode_to_utf8_lossless, decode_to_utf8_lossy,
-    detect_encoding, detect_encoding_with_confidence, encode_from_utf8, encode_from_utf8_lossless,
-    lookup_encoding_by_name, normalize_and_sanitize_path, normalize_nfc, normalize_nfd,
-    normalize_nfkc, normalize_nfkd, remediate_filename_bytes, remediate_text, sanitize_text_path,
-    CandidateEncoding, ConfidenceLevel, DetectionResult, GarbledTextRemediator, PathSanitizeError,
-    RemediationConfidence, RemediationResult, TTZipEncodingDetector, TTZipTextTranscoder,
-    TextTranscodeError, TranscodeOptions, TranscodeStats, UnicodeNormalizer,
-    DEFAULT_TRANSCODE_BUFFER_SIZE,
-};
-pub use types::*;
+pub use ttzip_types::*;
 pub use uniffi_api::{
-    archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*, media::*,
+    archive::*, audio::*, disk_scanner::*, extraction::*, integrity::*,
     ttzip_i18n_format_bytes, ttzip_i18n_format_throughput, ttzip_i18n_get_string,
     ttzip_i18n_localize_error, vault::*, vfs::*, zopfli_opt::*,
 };
 pub use tar::{
-    alignment::*, checksum::*, codec::*, gnu::*, header::*, pax::*, sparse::*, types::*,
+    alignment::*, checksum::*, codec::*, gnu::*, header::*, pax::*, sparse::*,
     xattr::*,
 };
 pub use xz::{

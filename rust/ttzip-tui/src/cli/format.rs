@@ -1,17 +1,14 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Archive container format detection, unified entry info, byte size formatting,
 //! Snappy/Brotli codec parsing, and transparent multi-volume chain detection.
 
 use std::fs;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use ttzip_engine::archive::source::mmap::MmapSource;
 use ttzip_engine::archive::source::StorageMedium;
 use ttzip_engine::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};
@@ -22,10 +19,54 @@ use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::zip::ZipArchive;
 
+/// Segmented seek view over a multi-volume archive chain without reading all volumes into heap.
+pub struct VirtualMultiVolumeSeekView {
+    reader: Mutex<VirtualMultiVolumeReader>,
+    total_size: u64,
+    preview: Vec<u8>,
+}
+
+impl VirtualMultiVolumeSeekView {
+    /// Creates a segmented view over the multi-volume reader.
+    pub fn new(mut reader: VirtualMultiVolumeReader) -> std::io::Result<Self> {
+        let total_size = reader.total_size();
+        let preview_len = (total_size.min(65536)) as usize;
+        let mut preview = vec![0u8; preview_len];
+        let n = reader.read(&mut preview)?;
+        preview.truncate(n);
+        let _ = reader.seek(SeekFrom::Start(0));
+
+        Ok(Self {
+            reader: Mutex::new(reader),
+            total_size,
+            preview,
+        })
+    }
+
+    #[inline]
+    pub fn total_size(&self) -> u64 {
+        self.total_size
+    }
+
+    #[inline]
+    pub fn preview(&self) -> &[u8] {
+        &self.preview
+    }
+
+    /// Obtains a new reader handle positioned at virtual offset 0.
+    pub fn open_reader(&self) -> std::io::Result<VirtualMultiVolumeReader> {
+        let guard = self.reader.lock().map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::Other, "VirtualMultiVolumeReader mutex poisoned")
+        })?;
+        VirtualMultiVolumeReader::from_volumes(guard.volume_paths())
+    }
+}
+
 /// Memory-mapped or allocated buffer backing archive data with zero-copy slice access.
 pub enum ArchiveBuffer {
     Mmap(MmapSource),
     Heap(Vec<u8>),
+    Virtual(VirtualMultiVolumeSeekView),
 }
 
 impl Deref for ArchiveBuffer {
@@ -35,6 +76,7 @@ impl Deref for ArchiveBuffer {
         match self {
             ArchiveBuffer::Mmap(m) => m.as_slice().unwrap_or(&[]),
             ArchiveBuffer::Heap(v) => v.as_slice(),
+            ArchiveBuffer::Virtual(v) => v.preview(),
         }
     }
 }
@@ -82,6 +124,10 @@ impl ContainerFormat {
             ContainerFormat::Unknown => "UNKNOWN",
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        self.name()
+    }
 }
 
 /// Automatically detects multi-volume chain segments from any seed volume path.
@@ -93,13 +139,11 @@ pub fn detect_volume_chain(path: &Path) -> std::io::Result<Vec<PathBuf>> {
 pub fn read_archive_data_auto(path: &Path) -> Result<(Vec<PathBuf>, ArchiveBuffer), String> {
     let chain = detect_volume_chain(path).unwrap_or_else(|_| vec![path.to_path_buf()]);
     if chain.len() > 1 {
-        let mut reader = VirtualMultiVolumeReader::from_volumes(chain.clone())
+        let reader = VirtualMultiVolumeReader::from_volumes(chain.clone())
             .map_err(|e| format!("Failed to open multi-volume chain: {}", e))?;
-        let mut data = Vec::with_capacity(reader.total_size() as usize);
-        reader
-            .read_to_end(&mut data)
-            .map_err(|e| format!("Failed to read multi-volume stream: {}", e))?;
-        Ok((chain, ArchiveBuffer::Heap(data)))
+        let view = VirtualMultiVolumeSeekView::new(reader)
+            .map_err(|e| format!("Failed to create multi-volume seek view: {}", e))?;
+        Ok((chain, ArchiveBuffer::Virtual(view)))
     } else {
         match MmapSource::open(path, StorageMedium::LocalFastApfs) {
             Ok(mmap) => Ok((chain, ArchiveBuffer::Mmap(mmap))),
@@ -207,12 +251,135 @@ fn extract_tar_entries(tar: &TarArchive) -> Vec<ArchiveEntryInfo> {
         .collect()
 }
 
+/// Parses ZIP Central Directory entries from a multi-volume chain via segmented Seek without heap exhaustion.
+fn parse_multi_volume_zip_entries(chain: &[PathBuf]) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let mut reader = VirtualMultiVolumeReader::from_volumes(chain.to_vec())
+        .map_err(|e| format!("Failed to open multi-volume chain: {}", e))?;
+    let total_size = reader.total_size();
+    if total_size < 22 {
+        return Ok(Vec::new());
+    }
+
+    let search_len = (total_size.min(65557)) as usize;
+    let search_start = total_size - search_len as u64;
+    reader
+        .seek(SeekFrom::Start(search_start))
+        .map_err(|e| format!("Seek failed: {}", e))?;
+    let mut tail = vec![0u8; search_len];
+    reader
+        .read_exact(&mut tail)
+        .map_err(|e| format!("Read tail failed: {}", e))?;
+
+    // Search backwards for EOCD signature (0x06054B50)
+    let mut eocd_offset = None;
+    for pos in (0..=search_len.saturating_sub(22)).rev() {
+        if tail[pos..pos + 4] == [0x50, 0x4B, 0x05, 0x06] {
+            let comment_len = u16::from_le_bytes([tail[pos + 20], tail[pos + 21]]) as usize;
+            if pos + 22 + comment_len == search_len {
+                eocd_offset = Some(pos);
+                break;
+            }
+        }
+    }
+
+    let eocd_pos = match eocd_offset {
+        Some(p) => p,
+        None => {
+            tail.windows(4)
+                .rposition(|w| w == [0x50, 0x4B, 0x05, 0x06])
+                .ok_or_else(|| "Failed to find ZIP EOCD record in multi-volume chain".to_string())?
+        }
+    };
+
+    let total_entries = u16::from_le_bytes([tail[eocd_pos + 10], tail[eocd_pos + 11]]) as usize;
+    let cd_size = u32::from_le_bytes([
+        tail[eocd_pos + 12],
+        tail[eocd_pos + 13],
+        tail[eocd_pos + 14],
+        tail[eocd_pos + 15],
+    ]) as usize;
+    let cd_offset = u32::from_le_bytes([
+        tail[eocd_pos + 16],
+        tail[eocd_pos + 17],
+        tail[eocd_pos + 18],
+        tail[eocd_pos + 19],
+    ]) as u64;
+
+    reader
+        .seek(SeekFrom::Start(cd_offset))
+        .map_err(|e| format!("Seek to central directory failed: {}", e))?;
+    let mut cd_bytes = vec![0u8; cd_size];
+    reader
+        .read_exact(&mut cd_bytes)
+        .map_err(|e| format!("Read central directory failed: {}", e))?;
+
+    let mut entries = Vec::with_capacity(total_entries.min(65536));
+    let mut cursor = 0;
+    while cursor + 46 <= cd_bytes.len() {
+        if cd_bytes[cursor..cursor + 4] != [0x50, 0x4B, 0x01, 0x02] {
+            break;
+        }
+
+        let flag = u16::from_le_bytes([cd_bytes[cursor + 8], cd_bytes[cursor + 9]]);
+        let crc32 = u32::from_le_bytes([
+            cd_bytes[cursor + 16],
+            cd_bytes[cursor + 17],
+            cd_bytes[cursor + 18],
+            cd_bytes[cursor + 19],
+        ]);
+        let comp_size = u32::from_le_bytes([
+            cd_bytes[cursor + 20],
+            cd_bytes[cursor + 21],
+            cd_bytes[cursor + 22],
+            cd_bytes[cursor + 23],
+        ]) as u64;
+        let uncomp_size = u32::from_le_bytes([
+            cd_bytes[cursor + 24],
+            cd_bytes[cursor + 25],
+            cd_bytes[cursor + 26],
+            cd_bytes[cursor + 27],
+        ]) as u64;
+        let fn_len = u16::from_le_bytes([cd_bytes[cursor + 28], cd_bytes[cursor + 29]]) as usize;
+        let extra_len = u16::from_le_bytes([cd_bytes[cursor + 30], cd_bytes[cursor + 31]]) as usize;
+        let comment_len = u16::from_le_bytes([cd_bytes[cursor + 32], cd_bytes[cursor + 33]]) as usize;
+
+        let name_start = cursor + 46;
+        let name_end = (name_start + fn_len).min(cd_bytes.len());
+        let rel_path = String::from_utf8_lossy(&cd_bytes[name_start..name_end]).to_string();
+        let name = Path::new(&rel_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| rel_path.clone());
+        let is_directory = rel_path.ends_with('/');
+        let is_encrypted = (flag & 1) != 0;
+
+        entries.push(ArchiveEntryInfo {
+            name,
+            relative_path: rel_path,
+            is_directory,
+            uncompressed_size: uncomp_size,
+            compressed_size: comp_size,
+            crc32,
+            is_encrypted,
+        });
+
+        cursor += 46 + fn_len + extra_len + comment_len;
+    }
+
+    Ok(entries)
+}
+
 /// Parses archive metadata and returns unified entry records.
 pub fn parse_archive_entries(
     path: &Path,
     data: &[u8],
 ) -> Result<(ContainerFormat, Vec<ArchiveEntryInfo>), String> {
     let format = detect_archive_format(path, data);
+    let chain = detect_volume_chain(path).unwrap_or_default();
+    if chain.len() > 1 && format == ContainerFormat::Zip {
+        return parse_multi_volume_zip_entries(&chain).map(|entries| (format, entries));
+    }
+
     match format {
         ContainerFormat::Zip => {
             let archive =

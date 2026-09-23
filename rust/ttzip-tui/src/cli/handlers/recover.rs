@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Subcommand execution handler: recover (multi-core dictionary attack with real-time speed).
 
@@ -13,7 +9,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 use ttzip_engine::crypto::recovery::{
-    recover_7z_aes_rayon, recover_winzip_aes_rayon, recover_zipcrypto_rayon,
+    recover_7z_aes_rayon, recover_dictionary_rayon, recover_zipcrypto_rayon, RecoveryTarget,
 };
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::zip::parser::parse_local_file_header;
@@ -82,15 +78,30 @@ pub fn execute_recover(
             let raw_payload = &data[payload_offset..payload_offset + comp_size];
 
             if enc_entry.aes_strength > 0 || enc_entry.compression_method == 99 {
-                if raw_payload.len() < 18 {
+                let salt_len = match enc_entry.aes_strength {
+                    1 => 8,
+                    2 => 12,
+                    _ => 16,
+                };
+                if raw_payload.len() < salt_len + 2 {
                     return Err("Insufficient WinZip AES payload length".to_string());
                 }
-                let salt: [u8; 16] = raw_payload[0..16].try_into().unwrap();
-                let stored_pvv: [u8; 2] = raw_payload[16..18].try_into().unwrap();
+                let salt = raw_payload[0..salt_len].to_vec();
+                let stored_pvv: [u8; 2] = raw_payload[salt_len..salt_len + 2].try_into().unwrap();
+                let target = RecoveryTarget::WinZipAes {
+                    salt,
+                    stored_pvv,
+                };
+
+                let cipher_name = match enc_entry.aes_strength {
+                    1 => "AES-128",
+                    2 => "AES-192",
+                    _ => "AES-256",
+                };
 
                 for chunk in words.chunks(chunk_size) {
                     let found = pool.install(|| {
-                        recover_winzip_aes_rayon(chunk, &salt, &stored_pvv)
+                        recover_dictionary_rayon(chunk, &target, None, None)
                     });
                     tested_count += chunk.len();
 
@@ -100,8 +111,8 @@ pub fn execute_recover(
                     if !json {
                         let pct = (tested_count as f64 / total_words as f64) * 100.0;
                         print!(
-                            "\r[Recovering WinZip AES-256] {:.1}% ({}/{} keys) - Speed: {:.0} keys/s",
-                            pct, tested_count, total_words, speed
+                            "\r[Recovering WinZip {}] {:.1}% ({}/{} keys) - Speed: {:.0} keys/s",
+                            cipher_name, pct, tested_count, total_words, speed
                         );
                         let _ = std::io::Write::flush(&mut std::io::stdout());
                     }

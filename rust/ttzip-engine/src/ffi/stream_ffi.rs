@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! C-ABI FFI exports for stream adapters.
 
@@ -67,6 +63,32 @@ pub unsafe extern "C" fn ttzip_rust_stream_reader_read(
             Ok((ptr, len)) => {
                 *out_ptr = ptr;
                 *out_len = len;
+                0
+            }
+            Err(_) => -1,
+        }
+    });
+    result.unwrap_or(-1)
+}
+
+/// Reads the next chunk from the stream reader directly into a caller-allocated buffer.
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_stream_reader_read_buffer(
+    handle: *mut TTZipStreamReaderHandle,
+    out_buf: *mut u8,
+    capacity: usize,
+    out_len: *mut usize,
+) -> i32 {
+    let result = catch_unwind(|| {
+        if handle.is_null() || out_buf.is_null() || out_len.is_null() || capacity == 0 {
+            return -1;
+        }
+
+        let handle_ref = &mut *handle;
+        let slice = std::slice::from_raw_parts_mut(out_buf, capacity);
+        match handle_ref.state.read_into_buffer(slice) {
+            Ok(n) => {
+                *out_len = n;
                 0
             }
             Err(_) => -1,

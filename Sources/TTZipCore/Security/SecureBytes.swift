@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -20,12 +16,6 @@ public final class SecureBytes: @unchecked Sendable {
     public let count: Int
     private var isScrubbed = false
     private let lock = NSLock()
-
-    public var baseAddress: UnsafeMutableRawPointer? {
-        lock.lock()
-        defer { lock.unlock() }
-        return isScrubbed ? nil : rawPointer
-    }
 
     /// Allocates a new locked secure buffer of the specified byte count and initializes with data.
     public init(data: Data) {
@@ -125,6 +115,16 @@ public final class SecureBytes: @unchecked Sendable {
         isScrubbed = true
     }
 
+    #if DEBUG
+    /// Internal accessor strictly for unit test verification of wiped pointer state.
+    /// External callers must use `withUnsafeBytes` / `withUnsafeMutableBytes`.
+    internal var baseAddress: UnsafeMutableRawPointer? {
+        lock.lock()
+        defer { lock.unlock() }
+        return isScrubbed ? nil : rawPointer
+    }
+    #endif
+
     /// Executes closure with read-only pointer to the secure memory buffer.
     @inline(__always)
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
@@ -163,12 +163,26 @@ public final class SecureBytes: @unchecked Sendable {
 
     /// Constant-time comparison between two SecureBytes instances.
     public func constantTimeEquals(_ other: SecureBytes) -> Bool {
-        guard self.count == other.count else { return false }
-        return self.withUnsafeBytes { aBuf in
-            other.withUnsafeBytes { bBuf in
-                guard let a = aBuf.baseAddress, let b = bBuf.baseAddress else { return false }
-                return timingsafe_bcmp(a, b, self.count) == 0
-            }
+        if self === other {
+            return true
         }
+        guard self.count == other.count else { return false }
+
+        let selfID = ObjectIdentifier(self)
+        let otherID = ObjectIdentifier(other)
+        let (first, second) = selfID < otherID ? (self, other) : (other, self)
+
+        first.lock.lock()
+        defer { first.lock.unlock() }
+        second.lock.lock()
+        defer { second.lock.unlock() }
+
+        guard !self.isScrubbed, !other.isScrubbed else {
+            return false
+        }
+        if self.count == 0 {
+            return true
+        }
+        return timingsafe_bcmp(self.rawPointer, other.rawPointer, self.count) == 0
     }
 }

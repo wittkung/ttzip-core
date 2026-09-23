@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 #if canImport(CoreGraphics)
@@ -188,7 +184,7 @@ public struct TTZipImageMetadata: Sendable, Equatable, Hashable, Identifiable {
         self.byteSize = byteSize
     }
 
-    internal init(from uniffi: UniFfiImageInfo, sourceId: String = UUID().uuidString) {
+    public init(from uniffi: UniFfiImageInfo, sourceId: String = UUID().uuidString) {
         self.id = sourceId
         self.width = Int(uniffi.width)
         self.height = Int(uniffi.height)
@@ -268,7 +264,7 @@ public struct TTZipRenderedFrame: Sendable, Equatable {
         self.durationMs = durationMs
     }
 
-    internal init(from uniffi: UniFfiImageFrame) {
+    public init(from uniffi: UniFfiImageFrame) {
         self.width = Int(uniffi.width)
         self.height = Int(uniffi.height)
         self.stride = Int(uniffi.stride)
@@ -318,7 +314,7 @@ public struct TTZipThumbnail: Sendable, Equatable {
         self.durationMs = durationMs
     }
 
-    internal init(from uniffi: UniFfiThumbnailResult) {
+    public init(from uniffi: UniFfiThumbnailResult) {
         self.width = Int(uniffi.width)
         self.height = Int(uniffi.height)
         self.stride = Int(uniffi.stride)
@@ -397,7 +393,7 @@ public struct TTZipViewportTile: Sendable, Equatable {
         self.lodLevel = lodLevel
     }
 
-    internal init(from uniffi: UniFfiViewportTile) {
+    public init(from uniffi: UniFfiViewportTile) {
         self.tileX = Int(uniffi.tileX)
         self.tileY = Int(uniffi.tileY)
         self.tileWidth = Int(uniffi.tileWidth)

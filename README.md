@@ -216,6 +216,47 @@ ttzip-cli repair damaged.zip -o repaired.zip
 | `explore` | `tui`, `browse` | `ttzip-cli explore <archive>` | Launch interactive full-screen TUI archive browser |
 | `repair` | `recover` | `ttzip-cli repair <damaged> -o <fixed>` | Reconstruct broken central directories and recover entries |
 | `bench` | `b`, `benchmark` | `ttzip-cli bench` | Run hardware vector and codec throughput benchmarks |
+| `mcp` | - | `ttzip-cli mcp` | Launch Model Context Protocol (MCP) server over standard I/O |
+
+---
+
+## 🤖 Model Context Protocol (MCP) Server for AI Agents
+
+`ttzip-cli` provides a built-in native **Model Context Protocol (MCP)** server running over standard input/output (`stdio`), allowing AI coding agents (Claude Desktop, Cursor, Antigravity, VS Code Copilot) to inspect, stream, extract, and create archives safely without writing ad-hoc shell or Python scripts.
+
+### Agent Tool Capabilities (8 Native Tools)
+
+1. **`ttzip_list`**: Paginated metadata table of contents with glob filtering (`include`/`exclude`).
+2. **`ttzip_extract`**: Sandboxed decompression with path traversal / Zip Slip interception and structured error codes.
+3. **`ttzip_create`**: Multi-format archive creation (ZIP, 7z, TAR, Brotli, Snappy) with Pareto compression levels.
+4. **`ttzip_inspect`**: Deep header diagnostics, encryption detection, compression ratio, and volume counts.
+5. **`ttzip_cat`**: **Zero-disk direct in-memory extraction** of single entries directly into context.
+6. **`ttzip_verify`**: Header and CRC32 integrity verification without writing to disk.
+7. **`ttzip_convert`**: In-process transcode between archive containers.
+8. **`ttzip_repair`**: Non-destructive salvage and central directory reconstruction for damaged archives.
+
+### Claude Desktop & Agent Configuration
+
+Add the following to your `claude_desktop_config.json` or IDE MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "ttzip": {
+      "command": "ttzip",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Virtual Resources & Interactive Manuals
+
+- `ttzip://manuals/overview`: Architecture, formats, and tool guidelines.
+- `ttzip://manuals/format-matrix`: Pareto tradeoffs and benchmark throughputs.
+- `ttzip://manuals/safe-extraction`: Anti-Tar-Bomb and defensive extraction policies.
+- `ttzip://manuals/troubleshooting`: Diagnostics for encrypted headers, split spans, and charsets.
+- `archive://{path}`: Virtual file hierarchy table with sizes, CRCs, and encryption indicators.
 
 ---
 

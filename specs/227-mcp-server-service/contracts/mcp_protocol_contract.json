@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZipMcpProtocolContract",
+  "description": "Model Context Protocol JSON-RPC 2.0 interaction specification for TTZip MCP Server",
+  "type": "object",
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "const": "2024-11-05"
+    },
+    "transport": {
+      "type": "string",
+      "const": "stdio"
+    },
+    "supported_methods": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "initialize",
+          "notifications/initialized",
+          "ping",
+          "tools/list",
+          "tools/call",
+          "resources/list",
+          "resources/read",
+          "prompts/list",
+          "prompts/get"
+        ]
+      }
+    },
+    "error_codes": {
+      "type": "object",
+      "properties": {
+        "PARSE_ERROR": { "type": "integer", "const": -32700 },
+        "INVALID_REQUEST": { "type": "integer", "const": -32600 },
+        "METHOD_NOT_FOUND": { "type": "integer", "const": -32601 },
+        "INVALID_PARAMS": { "type": "integer", "const": -32602 },
+        "INTERNAL_ERROR": { "type": "integer", "const": -32603 }
+      }
+    },
+    "resources": {
+      "static_uris": [
+        "ttzip://manuals/overview",
+        "ttzip://manuals/format-matrix",
+        "ttzip://manuals/safe-extraction",
+        "ttzip://manuals/troubleshooting"
+      ],
+      "dynamic_uri_patterns": [
+        "archive://{path}"
+      ]
+    },
+    "prompts": [
+      {
+        "name": "ttzip_plan_extraction",
+        "description": "Guides agent in formulating safe extraction strategy avoiding tar-bombs and path collisions",
+        "arguments": [
+          { "name": "archive_path", "required": true },
+          { "name": "target_directory", "required": false }
+        ]
+      },
+      {
+        "name": "ttzip_plan_compression",
+        "description": "Recommends optimal archive format and compression level based on workload attributes",
+        "arguments": [
+          { "name": "source_paths", "required": true },
+          { "name": "priority", "description": "speed | ratio | compatibility", "required": false }
+        ]
+      }
+    ]
+  }
+}

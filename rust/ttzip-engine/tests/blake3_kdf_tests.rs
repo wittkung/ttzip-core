@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive integration and conformance tests for BLAKE3 Keyed Hash (MAC)
 //! and Key Derivation Function (KDF) implementations.
@@ -223,7 +219,7 @@ struct TestVectorsFile {
 
 #[test]
 fn test_official_test_vectors_keyed_hash_and_derive_key_100_percent_bit_exact() {
-    let json_str = include_str!("../../../../vendor/BLAKE3/test_vectors/test_vectors.json");
+    let json_str = include_str!("fixtures/test_vectors.json");
     let test_file: TestVectorsFile =
         serde_json::from_str(json_str).expect("Valid test_vectors.json format");
 

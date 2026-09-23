@@ -19,8 +19,8 @@ TTZip 采用**三大完全独立的 Git 仓库**解耦分发架构。开发与�
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
 │                                 TTZip 三仓独立实体拓扑架构                                  │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1. ttzip-apple (GitHub: wittkung/ttzip-apple, 许可证: GPL-3.0-or-later)                    │
-│    • 实体: 完全独立的 macOS 原生桌面客户端 Git 仓库                                          │
+│ 1. ttzip-apple (GitHub: wittkung/ttzip-apple, 开源导出镜像)                                │
+│    • 实体: 独立开源分发 macOS 客户端镜像（由 tools/copybara/sync_outbound.sh 自动导出注入 GPL）    │
 │    • 核心职责:                                                                           │
 │      - macOS 原生应用 (Sources/TTZipApp)                                                 │
 │      - 🌟 默认内置通用插件 SDK (Sources/TTZipPluginKit, 包含 13 个工件)                      │
@@ -34,7 +34,7 @@ TTZip 采用**三大完全独立的 Git 仓库**解耦分发架构。开发与�
 │      - 依赖解析双模机制: 本地存在 `../core` 时自动优先使用本地微内核；独立克隆时自动通过 Git URL  │
 │        `https://github.com/wittkung/ttzip-core.git` 拉取，严禁硬编码外部机器私有路径！         │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. ttzip-core (GitHub: git@github.com:wittkung/ttzip-core.git, 许可证: BSD-3 / Apache-2.0)│
+│ 2. ttzip-core (GitHub: git@github.com:wittkung/ttzip-core.git, 开源导出镜像)               │
 │    • 实体: 完全独立的跨平台归档与压缩微内核 Git 仓库                                          │
 │    • 核心职责:                                                                           │
 │      - 纯跨平台 Rust 微内核 (rust/ttzip-engine, 覆盖 16 种格式全矩阵)                         │
@@ -157,31 +157,24 @@ swift run ttzip-bench pipeline
 
 ---
 
-## Ⅳ. 统一 SPDX 版权与注释标准 (Strict Invariants)
+## Ⅳ. 统一专有单体大仓版权与注释标准 (Google Piper Model Invariants)
 
-所有源文件顶部必须严格包含对应的标准 SPDX 版权声明，严禁混杂错误声明：
+本 Monorepo 遵循 Google Piper 模型：**整个单体大仓为专有商业软件（Proprietary and Confidential）**，主干源码严禁私自声明开源许可证。开源小仓镜像的协议（如 GPL 或 Apache/BSD）统一由 `tools/copybara/sync_outbound.sh` 导出时动态注入。
 
-### 1. `apple/` 目录源码（macOS 桌面端与插件 SDK）
+全仓所有新增与既有源码文件统一遵循标准专有版权声明：
+
+### 1. Swift / Rust / C / C++ 源码头部
 ```swift
-// SPDX-License-Identifier: GPL-3.0-or-later
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 ```
 
-### 2. `core/` 目录源码（跨平台微内核与核心库）
-```swift
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+### 2. Python / Shell / Bazel / Starlark 源码头部
+```python
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 ```
 
-- **作者署名**: `Witt Kung <witt.w.kung@gmail.com>`
 - **英文注释标准**: 源码内部所有注释、Docstrings、常量与错误说明统一采用专业英语书写。
 
 ---

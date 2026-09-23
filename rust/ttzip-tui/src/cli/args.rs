@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! CLI Argument Parsing & JSON Contract DTO definitions.
 
@@ -443,6 +439,10 @@ pub enum Commands {
         #[arg(value_name = "SHELL")]
         shell: String,
     },
+
+    /// Run Model Context Protocol (MCP) server over standard input/output (stdio)
+    #[command(name = "mcp")]
+    Mcp,
 }
 
 /// JSON Contract representation matching `contracts/tui_vfs_tree_contract.json`.

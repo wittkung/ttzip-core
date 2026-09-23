@@ -1,35 +1,31 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
-/// Silesia ( SPM Bundle.module )
+/// Silesia Corpus Loader (SPM Bundle.module and Bazel Runfiles support).
 public enum SilesiaFixtureLoader {
     
     /// Fixtures/Silesia URL
     public static func corpusDirectoryURL() throws -> URL {
         #if SWIFT_PACKAGE
         if let bundleURL = Bundle.module.url(forResource: "Silesia", withExtension: nil, subdirectory: "Fixtures") {
-            return bundleURL
+            return bundleURL.resolvingSymlinksInPath()
         }
         if let bundleURL = Bundle.module.url(forResource: "silesia_manifest", withExtension: "json", subdirectory: "Fixtures/Silesia") {
-            return bundleURL.deletingLastPathComponent()
+            return bundleURL.deletingLastPathComponent().resolvingSymlinksInPath()
         }
         #endif
         
         if let envPath = ProcessInfo.processInfo.environment["TTZIP_SILESIA_PATH"], !envPath.isEmpty {
-            let envURL = URL(fileURLWithPath: envPath)
+            let envURL = URL(fileURLWithPath: envPath).resolvingSymlinksInPath()
             if FileManager.default.fileExists(atPath: envURL.path) {
                 return envURL
             }
         }
         
         let sourceFile = URL(fileURLWithPath: #filePath)
-        let fallbackURL = sourceFile.deletingLastPathComponent().appendingPathComponent("Fixtures/Silesia")
+        let fallbackURL = sourceFile.deletingLastPathComponent().appendingPathComponent("Fixtures/Silesia").resolvingSymlinksInPath()
         if FileManager.default.fileExists(atPath: fallbackURL.path) {
             return fallbackURL
         }
@@ -41,10 +37,10 @@ public enum SilesiaFixtureLoader {
         )
     }
     
-    /// Silesia URL
+    /// Silesia file URL
     public static func fileURL(named filename: String) throws -> URL {
         let dir = try corpusDirectoryURL()
-        let file = dir.appendingPathComponent(filename)
+        let file = dir.appendingPathComponent(filename).resolvingSymlinksInPath()
         guard FileManager.default.fileExists(atPath: file.path) else {
             throw NSError(
                 domain: "SilesiaFixtureLoader",

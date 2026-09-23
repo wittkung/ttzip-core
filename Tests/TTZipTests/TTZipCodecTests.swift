@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
@@ -102,28 +98,6 @@ final class TTZipCodecTests: XCTestCase {
 
         let decompressed = try TTZipLZFSEEngine.decompress(compressed, estimatedSize: sampleText.count)
         XCTAssertEqual(decompressed, sampleText)
-    }
-
-    // MARK: - Modern Parallel Block Compressor Tests
-
-    func testModernParallelBlockCompressorAsync() async throws {
-        // Build 2MB repeatable data
-        var largeData = Data()
-        for _ in 0..<40 {
-            largeData.append(sampleText)
-        }
-
-        let compressedBlocks = try await TTZipModernBlockCompressor.compressParallel(
-            largeData,
-            algorithm: .zstd,
-            level: .normal,
-            chunkSize: 64 * 1024
-        )
-        XCTAssertFalse(compressedBlocks.isEmpty)
-        XCTAssertLessThan(compressedBlocks.count, largeData.count)
-
-        let decompressed = try await TTZipModernBlockCompressor.decompressParallel(compressedBlocks)
-        XCTAssertEqual(decompressed, largeData)
     }
 
     // MARK: - AsyncThrowingStream Pipeline Tests

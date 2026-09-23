@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Tier 5 Adversarial Stress Testing & Empirical Hardening Suite.
 //!
@@ -17,7 +13,6 @@
 //! 7. Zero Disk Leak in `/tmp` & Darwin Mach RSS Memory Cap ($\Delta RSS \le 64\text{MB}$)
 
 use std::fs;
-use std::io::Cursor;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -27,19 +22,12 @@ use ttzip_engine::charset::detector::{detect_charset, detect_charset_with_confid
 use ttzip_engine::codecs::brotli::{brotli_compress, brotli_compress_bound, brotli_decompress};
 use ttzip_engine::codecs::bzip2::{bzip2_compress_to_vec, bzip2_decompress_to_vec};
 use ttzip_engine::codecs::lz4::{lz4_compress_to_vec, lz4_decompress_custom_to_vec};
-use ttzip_engine::pdf::TTZipPdfParser;
-use ttzip_engine::security::ebook_defense::ManifestItemCountGuard;
-use ttzip_engine::security::html_defense::{AttributeQuotaGuard, TagNestingDepthGuard};
-use ttzip_engine::security::office_defense::{col_str_to_index, SheetDimensionsGuard};
 use ttzip_engine::security::path_sanitizer::{
     is_windows_reserved_device_name, normalize_to_nfc, sanitize_path,
 };
-use ttzip_engine::security::pdf_defense::StreamExpansionQuotaGuard;
 use ttzip_engine::sevenz::{
     create_7z_solid_archive_bytes, get_current_rss_bytes, SevenZReader,
 };
-use ttzip_engine::syntax::{SupportedLanguage, TTZipSyntaxParser};
-use ttzip_engine::xml::OfficeXmlExtractor;
 use ttzip_engine::zip::writer::ZipInputItem;
 
 // ============================================================================
@@ -148,57 +136,6 @@ fn test_adversarial_corrupted_7z_solid_blocks_and_jump_tables() {
     assert!(reader.extract_entry_bytes_stream(usize::MAX, None).is_err());
 }
 
-// ============================================================================
-// 3. Malformed Multi-Modal & Rich Media Inputs (PDF, EPUB, DOCX, XLSX, HTML)
-// ============================================================================
-
-#[test]
-fn test_adversarial_malformed_epub_pdf_office_and_html() {
-    // 3.1 PDF: Corrupted Catalog & Cyclic References
-    let malformed_pdf = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n\
-                          2 0 obj\n<< /Type /Pages /Kids [1 0 R] /Count 1 >>\nendobj\n\
-                          xref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n\
-                          trailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n118\n%%EOF";
-    let pdf_res = TTZipPdfParser::open_from_bytes(malformed_pdf);
-    if let Ok(parser) = pdf_res {
-        let _ = parser.get_page_id(1);
-    }
-
-    // 3.2 PDF: Stream Expansion Bomb Quota
-    let quota_guard = StreamExpansionQuotaGuard::with_limits(512, 5.0, 2048);
-    assert!(quota_guard.validate_metadata(100, Some(400)).is_ok());
-    assert!(quota_guard.validate_metadata(100, Some(10000)).is_err());
-
-    // 3.3 EPUB: Empty / Corrupted Manifest & Infinite Entity Expansion Protection
-    let mut manifest_guard = ManifestItemCountGuard::new();
-    let malformed_opf = b"<?xml version=\"1.0\"?><package><manifest><item id=\"1\" href=\"../secret.txt\"/></manifest></package>";
-    let manifest_res = manifest_guard.parse_opf_stream(Cursor::new(malformed_opf), malformed_opf.len() as u64);
-    assert!(manifest_res.is_ok());
-
-    // 3.4 Office XML: Extreme Coordinates & Broken Structures
-    let sheet_guard = SheetDimensionsGuard::default();
-    assert!(sheet_guard.validate_coordinates(16384, 1048576).is_ok());
-    assert!(sheet_guard.validate_coordinates(16385, 1).is_err());
-    assert!(sheet_guard.validate_coordinates(1, 1048577).is_err());
-    assert_eq!(col_str_to_index("INVALID_COL_NAME"), None);
-
-    let malformed_docx = b"<w:document><w:body><w:p><w:r><w:t>Unclosed tag body";
-    let docx_res = OfficeXmlExtractor::parse_docx_document(malformed_docx);
-    assert!(docx_res.is_err() || docx_res.unwrap().headings.is_empty());
-
-    // 3.5 HTML VFS: Extreme Tag Nesting & Oversized Attributes
-    let mut depth_guard = TagNestingDepthGuard::new(32, 10);
-    for _ in 0..100 {
-        let _ = depth_guard.on_element_start("div", false);
-    }
-    assert!(depth_guard.current_depth() >= 32);
-
-    let attr_guard = AttributeQuotaGuard::new(64, 1024, 4096, 4096);
-    let mut attr_report = ttzip_engine::security::html_defense::AttributeQuotaReport::default();
-    let giant_attr = vec![("href", "A".repeat(2048))];
-    let attr_res = attr_guard.validate_element_attributes(&giant_attr, &mut attr_report);
-    assert!(attr_res.is_err());
-}
 
 // ============================================================================
 // 4. Broken UTF-8 Sequences & Mojibake Remediation Stress Fuzzing
@@ -348,12 +285,6 @@ fn test_adversarial_high_concurrency_stress() {
                 let entry_idx = (thread_id + iter) % 3;
                 let extracted = reader.extract_entry_bytes_stream(entry_idx, None).expect("concurrent extract");
                 assert!(!extracted.is_empty());
-
-                // 2. Concurrent Tree-sitter parsing
-                let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).expect("with language");
-                let code = format!("fn thread_worker_{}_{}() -> u64 {{ {} }}", thread_id, iter, thread_id * 10);
-                let tree = parser.parse_full(&code).expect("concurrent syntax parse");
-                assert_eq!(tree.root_node().kind(), "source_file");
 
                 // 3. Concurrent Charset detection
                 let cjk_sample = b"\xD6\xD0\xCE\xC4\xB2\xE2\xCA\xD4";

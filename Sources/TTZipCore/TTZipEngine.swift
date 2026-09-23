@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -336,6 +332,9 @@ public struct TTZipArchive: Sendable, Identifiable {
     /// Spawns a high-performance persistent Rust VFS session for instant search and pagination.
     public func openVfsSession(password: String? = nil) async throws -> RustVfsSession? {
         let effectivePassword = password ?? defaultPassword
+        if let session = RustVfsBridge.session(forArchivePath: path, password: effectivePassword) {
+            return session
+        }
         let entriesList = try await self.entries(password: effectivePassword)
         return RustVfsSession(entries: entriesList, rootName: (path as NSString).lastPathComponent)
     }
