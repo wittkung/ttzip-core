@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Subcommand execution handler: repair.
 
@@ -13,13 +9,33 @@ use std::path::Path;
 use std::time::Instant;
 use ttzip_engine::archive::repair::{repair_damaged_tar, repair_damaged_zip};
 
-/// Executes headless `repair` subcommand for self-healing corrupt archives.
+/// Executes headless `repair` subcommand for self-healing corrupt archives (prints report to stdout).
 pub fn execute_repair(
     damaged_archive: &Path,
     output: &Path,
     format_opt: Option<&str>,
     json: bool,
 ) -> Result<(), String> {
+    let _ = execute_repair_internal(damaged_archive, output, format_opt, json, false)?;
+    Ok(())
+}
+
+/// Executes headless `repair` subcommand silently with zero stdout writes (returns salvaged file count).
+pub fn execute_repair_silent(
+    damaged_archive: &Path,
+    output: &Path,
+    format_opt: Option<&str>,
+) -> Result<usize, String> {
+    execute_repair_internal(damaged_archive, output, format_opt, false, true)
+}
+
+fn execute_repair_internal(
+    damaged_archive: &Path,
+    output: &Path,
+    format_opt: Option<&str>,
+    json: bool,
+    silent: bool,
+) -> Result<usize, String> {
     if !damaged_archive.exists() {
         return Err(format!(
             "Damaged archive file not found: {}",
@@ -72,6 +88,10 @@ pub fn execute_repair(
 
     let elapsed = start_time.elapsed();
 
+    if silent {
+        return Ok(salvaged_count);
+    }
+
     if json {
         let dto = RepairResultDto {
             damaged_archive: damaged_archive.to_string_lossy().to_string(),
@@ -83,7 +103,7 @@ pub fn execute_repair(
         let json_str = serde_json::to_string_pretty(&dto)
             .map_err(|e| format!("Failed to serialize repair JSON: {}", e))?;
         println!("{}", json_str);
-        return Ok(());
+        return Ok(salvaged_count);
     }
 
     println!("{:=<80}", "");
@@ -97,5 +117,5 @@ pub fn execute_repair(
     println!("Status:          SUCCESS (Healthy structure restored)");
     println!("{:=<80}", "");
 
-    Ok(())
+    Ok(salvaged_count)
 }

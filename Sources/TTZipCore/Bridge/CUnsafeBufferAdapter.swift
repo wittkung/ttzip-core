@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -21,19 +17,23 @@ public enum CUnsafeBufferAdapter {
         }
     }
 
+    private static let emptySentinel: UInt8 = 0
+
     /// Safely provides raw byte pointer and count representation of Swift `Data`.
     @inline(__always)
     public static func withBufferPointer<R>(_ data: Data, _ body: (UnsafeRawPointer, Int) throws -> R) rethrows -> R {
         if data.isEmpty {
-            var dummy: UInt8 = 0
-            return try body(&dummy, 0)
+            return try withUnsafePointer(to: emptySentinel) { sentinelPtr in
+                try body(sentinelPtr, 0)
+            }
         }
         return try data.withUnsafeBytes { rawBuffer in
             if let baseAddress = rawBuffer.baseAddress {
                 return try body(baseAddress, data.count)
             } else {
-                var dummy: UInt8 = 0
-                return try body(&dummy, 0)
+                return try withUnsafePointer(to: emptySentinel) { sentinelPtr in
+                    try body(sentinelPtr, 0)
+                }
             }
         }
     }

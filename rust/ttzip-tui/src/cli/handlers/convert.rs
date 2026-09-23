@@ -1,23 +1,39 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Subcommand execution handler: convert.
 
-use crate::cli::handlers::create::execute_create;
+use crate::cli::handlers::create::execute_create_silent;
 use crate::cli::handlers::extract::{execute_extract, CliExtractParams};
 use std::path::Path;
 use std::time::Instant;
 
-/// Executes headless `convert` subcommand.
+/// Executes headless `convert` subcommand (prints status to stdout).
 pub fn execute_convert(
     source_archive: &Path,
     destination_archive: &Path,
     format: Option<&str>,
     level: u8,
+) -> Result<(), String> {
+    execute_convert_internal(source_archive, destination_archive, format, level, false)
+}
+
+/// Executes headless `convert` subcommand silently with zero stdout writes.
+pub fn execute_convert_silent(
+    source_archive: &Path,
+    destination_archive: &Path,
+    format: Option<&str>,
+    level: u8,
+) -> Result<(), String> {
+    execute_convert_internal(source_archive, destination_archive, format, level, true)
+}
+
+fn execute_convert_internal(
+    source_archive: &Path,
+    destination_archive: &Path,
+    format: Option<&str>,
+    level: u8,
+    silent: bool,
 ) -> Result<(), String> {
     if !source_archive.exists() {
         return Err(format!("Source archive not found: {}", source_archive.display()));
@@ -29,7 +45,9 @@ pub fn execute_convert(
     std::fs::create_dir_all(&staging_path)
         .map_err(|e| format!("Failed to create staging directory for conversion: {}", e))?;
 
-    println!("-> Extracting source archive {}...", source_archive.display());
+    if !silent {
+        println!("-> Extracting source archive {}...", source_archive.display());
+    }
     let extract_res = execute_extract(CliExtractParams {
         archive_path: source_archive,
         output_dir: Some(&staging_path),
@@ -45,9 +63,19 @@ pub fn execute_convert(
         return Err(e);
     }
 
-    println!("-> Recompressing into destination {} (level: {})...", destination_archive.display(), level);
-    let sources = vec![staging_path.clone()];
-    let create_res = execute_create(
+    if !silent {
+        println!("-> Recompressing into destination {} (level: {})...", destination_archive.display(), level);
+    }
+    let mut sources = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&staging_path) {
+        for entry in entries.flatten() {
+            sources.push(entry.path());
+        }
+    }
+    if sources.is_empty() {
+        sources.push(staging_path.clone());
+    }
+    let create_res = execute_create_silent(
         destination_archive,
         &sources,
         format,
@@ -60,7 +88,9 @@ pub fn execute_convert(
     create_res?;
 
     let elapsed = start.elapsed().as_millis();
-    println!("✅ Converted {} -> {} successfully ({}ms).", source_archive.display(), destination_archive.display(), elapsed);
+    if !silent {
+        println!("✅ Converted {} -> {} successfully ({}ms).", source_archive.display(), destination_archive.display(), elapsed);
+    }
 
     Ok(())
 }

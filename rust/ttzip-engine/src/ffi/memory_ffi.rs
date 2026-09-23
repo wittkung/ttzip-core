@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Canonical C-ABI 2.0 Memory Management and Universal Deallocator.
 
@@ -31,7 +27,7 @@ pub unsafe extern "C" fn ttzip_free(ptr: *mut c_void, kind: TTZipMemoryKind) {
             libc::free(ptr);
         }
         TTZipMemoryKind::Aligned => {
-            libc::free(ptr);
+            drop(Box::from_raw(ptr as *mut crate::fs::apfs::AlignedBuffer));
         }
         TTZipMemoryKind::Error => {
             drop(Box::from_raw(ptr as *mut TTZipError));

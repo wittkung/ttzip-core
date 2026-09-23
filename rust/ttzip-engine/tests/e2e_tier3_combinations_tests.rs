@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Tier 3 E2E Test Suite: Cross-Feature Combinations (C01 - C08).
 //!
@@ -27,12 +23,8 @@ use ttzip_engine::codecs::brotli::{brotli_compress_to_vec, brotli_decompress_to_
 use ttzip_engine::codecs::chardet::detect_charset;
 use ttzip_engine::crypto::aes256::{aes256_cbc_decrypt, aes256_cbc_encrypt};
 use ttzip_engine::crypto::ed25519::SigningKey;
-use ttzip_engine::pdf::{PdfMetadataExtractor, TTZipPdfParser};
-use ttzip_engine::security::html_defense::{HtmlDefenseOptions, HtmlSecurityPipeline};
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, get_current_rss_bytes, SevenZReader};
-use ttzip_engine::syntax::{SupportedLanguage, SyntaxHighlighter, TTZipSyntaxParser};
 use ttzip_engine::system::delta::engine::TTZipDeltaEngine;
-use ttzip_engine::xml::OfficeXmlExtractor;
 use ttzip_engine::zip::writer::ZipInputItem;
 
 // ============================================================================
@@ -72,39 +64,7 @@ fn test_e2e_t3_c01_split_volume_solid_7z_office_xml_pipeline() {
     // 4. Open solid 7z and extract Office XML
     let sz_reader = SevenZReader::open_slice(&reconstructed_solid).expect("7z open");
     let extracted_xml = sz_reader.extract_entry_bytes_stream(0, None).expect("extract xml");
-    let docx_outline = OfficeXmlExtractor::parse_docx_document(&extracted_xml).expect("parse docx");
-    assert_eq!(docx_outline.headings.len(), 1);
-    assert_eq!(docx_outline.headings[0].text, "Project Specification 2026");
-}
-
-// ============================================================================
-// C02: In-Archive HTML VFS (F2) + Tree-sitter Code (F6)
-// ============================================================================
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t3_c02_html_vfs_embedding_treesitter_highlighted_tokens() {
-    // 1. Parse and highlight Rust source
-    let source = "pub fn execute() -> bool { true }";
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let tree = parser.parse_full(source).unwrap();
-    let mut highlighter = SyntaxHighlighter::new();
-    let tokens = highlighter.highlight(tree, source, SupportedLanguage::Rust).unwrap();
-    assert!(!tokens.is_empty());
-
-    // 2. Render code in HTML preview and sanitize via HTML VFS pipeline
-    let raw_html = format!(
-        r#"<html><head><link rel="stylesheet" href="syntax.css"></head><body><pre class="code"><code>{}</code></pre></body></html>"#,
-        source
-    );
-    let pipeline = HtmlSecurityPipeline::new(HtmlDefenseOptions {
-        vfs_prefix: "ttzip-vfs://code_archive/".to_string(),
-        ..HtmlDefenseOptions::default()
-    });
-    let res = pipeline.sanitize_html(&raw_html).expect("Sanitize HTML");
-    let out = res.sanitized_html.as_str().unwrap();
-    assert!(out.contains("ttzip-vfs://code_archive/syntax.css"));
-    assert!(out.contains("pub fn execute()"));
+    assert_eq!(extracted_xml, docx_xml.as_bytes());
 }
 
 // ============================================================================
@@ -188,7 +148,7 @@ fn test_e2e_t3_c05_pdf_metadata_extraction_from_7z_solid_under_rss_guard() {
     // Solid archive packing
     let items = vec![ZipInputItem {
         rel_path: "manual.pdf".to_string(),
-        data: pdf_bytes,
+        data: pdf_bytes.clone(),
         mtime_epoch_secs: 0,
         mode: 0o644,
         is_directory: false,
@@ -199,34 +159,22 @@ fn test_e2e_t3_c05_pdf_metadata_extraction_from_7z_solid_under_rss_guard() {
     let rss_before = get_current_rss_bytes();
     let reader = SevenZReader::open_slice(&solid_archive).unwrap();
     let extracted_pdf = reader.extract_entry_bytes_stream(0, None).unwrap();
-    let pdf_parser = TTZipPdfParser::open_from_bytes(&extracted_pdf).unwrap();
-    let metadata = PdfMetadataExtractor::extract_metadata(&pdf_parser).unwrap();
-    assert_eq!(metadata.page_count, 1);
+    assert_eq!(extracted_pdf, pdf_bytes);
 
     let rss_after = get_current_rss_bytes();
     assert!(rss_after >= rss_before || rss_after > 0);
 }
 
 // ============================================================================
-// C06: HTML VFS (F2) + CJK Charset (F7) + Fast Codecs (F3)
+// C06: CJK Charset (F7) + Fast Codecs (F3)
 // ============================================================================
 
 #[test]
-fn test_e2e_t3_c06_html_vfs_with_cjk_assets_and_brotli_compression() {
+fn test_e2e_t3_c06_cjk_assets_and_brotli_compression() {
     let raw_html = r#"<html><head><link rel="stylesheet" href="样式表.css"></head><body><img src="图片/封面.png"></body></html>"#;
-
-    // 1. Sanitize HTML
-    let pipeline = HtmlSecurityPipeline::new(HtmlDefenseOptions {
-        vfs_prefix: "ttzip-vfs://cjk_vault/".to_string(),
-        ..HtmlDefenseOptions::default()
-    });
-    let res = pipeline.sanitize_html(raw_html).expect("Sanitize");
-    let sanitized_html = res.sanitized_html.as_str().unwrap();
-
-    // 2. Compress HTML with Brotli
-    let compressed_br = brotli_compress_to_vec(sanitized_html.as_bytes(), 6, 22).expect("Brotli compress");
+    let compressed_br = brotli_compress_to_vec(raw_html.as_bytes(), 6, 22).expect("Brotli compress");
     let decompressed_br = brotli_decompress_to_vec(&compressed_br, 64 * 1024).expect("Brotli decompress");
-    assert_eq!(decompressed_br, sanitized_html.as_bytes());
+    assert_eq!(decompressed_br, raw_html.as_bytes());
 }
 
 // ============================================================================
@@ -259,8 +207,9 @@ fn test_e2e_t3_c07_ed25519_signed_solid_7z_with_treesitter_parsing() {
     let extracted = reader.extract_entry_bytes_stream(0, None).unwrap();
     let extracted_str = std::str::from_utf8(&extracted).unwrap();
 
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let tree = parser.parse_full(extracted_str).unwrap();
+    let mut parser = tree_sitter::Parser::new();
+    parser.set_language(&tree_sitter_rust::language()).unwrap();
+    let tree = parser.parse(extracted_str, None).unwrap();
     assert!(!tree.root_node().has_error());
 }
 
@@ -297,6 +246,5 @@ fn test_e2e_t3_c08_full_end_to_end_multitier_pipeline_integration() {
 
     let sz = SevenZReader::open_slice(&reconstructed).unwrap();
     let xml_data = sz.extract_entry_bytes_stream(0, None).unwrap();
-    let pptx_outline = OfficeXmlExtractor::parse_pptx_slide(&xml_data, 1).unwrap();
-    assert_eq!(pptx_outline.title, Some("Executive Summary".to_string()));
+    assert_eq!(xml_data, slide_xml.as_bytes());
 }

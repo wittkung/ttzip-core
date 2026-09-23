@@ -22,6 +22,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "ab_perf_suite"
 harness = false
 
+[[bench]]
+name = "bench_aarch64_cores"
+harness = false
+
 [dependencies]
 libc = "0.2"
 zeroize = { version = "1.8", features = ["zeroize_derive", "alloc"] }
@@ -72,11 +76,14 @@ tree-sitter-html = { version = "0.20", optional = true }
 tree-sitter-css = { version = "0.21", optional = true }
 tree-sitter-md = { version = "0.2", optional = true }
 tree-sitter-swift = { version = "0.5", optional = true }
-ttzip-device-android = { path = "../crates/ttzip-device-android", optional = true }
+ttzip-types = { path = "../crates/ttzip-types" }
+ttzip-crypto = { path = "../crates/ttzip-crypto" }
+ttzip-codecs = { path = "../crates/ttzip-codecs" }
+ttzip-archive = { path = "../crates/ttzip-archive" }
+
 
 [features]
 default = ["full"]
-device-android = ["dep:ttzip-device-android"]
 archive = []
 probe = []
 syntax = [
@@ -92,8 +99,7 @@ syntax = [
     "dep:tree-sitter-md",
     "dep:tree-sitter-swift",
 ]
-media-player = []
-full = ["archive", "probe", "syntax", "media-player", "device-android"]
+full = ["archive", "probe", "syntax"]
 
 [dev-dependencies]
 hex = "0.4"
@@ -106,8 +112,10 @@ flate2 = "1.0"
 tar = "0.4"
 jpeg-encoder = "0.5"
 zeroize = { version = "1.8", features = ["zeroize_derive", "alloc"] }
+tree-sitter = "0.22"
+tree-sitter-rust = "0.21"
+snap = "1.1"
 
 
 [build-dependencies]
 cc = "1.0"
-uniffi = { version = "0.28", features = ["build"] }

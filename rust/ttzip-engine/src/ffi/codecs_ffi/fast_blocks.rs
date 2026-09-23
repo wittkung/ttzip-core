@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Fast blocks (LZ4, Snappy, LZFSE) C-ABI FFI exports.
 
@@ -81,5 +77,5 @@ pub extern "C" fn ttzip_rust_lz4_decompress(
 
 #[no_mangle]
 pub extern "C" fn ttzip_rust_lz4_compress_bound(src_len: size_t) -> size_t {
-    lz4_compress_bound(src_len)
+    catch_unwind(|| lz4_compress_bound(src_len)).unwrap_or(0)
 }

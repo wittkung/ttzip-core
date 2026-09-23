@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive compliance test suite verifying 25+ official XZ scenarios against the
 //! Tukaani XZ specification and reference test files.
@@ -36,12 +32,19 @@ fn compute_sha256(data: &[u8]) -> String {
 /// Locate official test directory with fallback search paths.
 fn get_official_test_dir() -> PathBuf {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let candidates = [
+    let mut candidates = vec![
         manifest_dir.join("../../upstream/xz/pr1-arm64-bcj/tests/files"),
         manifest_dir.join("../../upstream/xz/pr2-arm64-crc64/tests/files"),
         manifest_dir.join("../../upstream/xz/pr3-arm64-neon-memcmplen/tests/files"),
         manifest_dir.join("vendor/xz/tests/files"),
     ];
+
+    if let Ok(home) = std::env::var("HOME") {
+        let h = PathBuf::from(home);
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/xz/pr1-arm64-bcj/tests/files"));
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/xz/pr2-arm64-crc64/tests/files"));
+        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/xz/pr3-arm64-neon-memcmplen/tests/files"));
+    }
 
     for candidate in &candidates {
         if candidate.is_dir() {

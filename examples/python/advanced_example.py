@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# ==============================================================================
-# core/examples/python/advanced_example.py
-# Advanced Python SDK Recipe: 16 Formats, Zstandard Level 22, AES-256 Encryption,
-# Reed-Solomon Recovery Records, In-Memory Codecs, and ZipFile Drop-In Compatibility.
-# ==============================================================================
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 import os
 import sys

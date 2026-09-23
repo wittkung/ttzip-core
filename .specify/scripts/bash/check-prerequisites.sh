@@ -1,30 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# Consolidated prerequisite checking script
-#
-# This script provides unified prerequisite checking for Spec-Driven Development workflow.
-# It replaces the functionality previously spread across multiple scripts.
-#
-# Usage: ./check-prerequisites.sh [OPTIONS]
-#
-# OPTIONS:
-#   --json              Output in JSON format
-#   --require-tasks     Require tasks.md to exist (for implementation phase)
-#   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
-#   --paths-only        Only output path variables (no validation)
-#   --template NAME     Include composed template content in JSON output
-#   --help, -h          Show help message
-#
-# OUTPUTS:
-#   JSON mode: {"FEATURE_DIR":"...", "AVAILABLE_DOCS":["..."]}
-#   Text mode: FEATURE_DIR:... \n AVAILABLE_DOCS: \n ✓/✗ file.md
-#   Paths only: REPO_ROOT: ... \n BRANCH: ... \n FEATURE_DIR: ... etc.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -e
 

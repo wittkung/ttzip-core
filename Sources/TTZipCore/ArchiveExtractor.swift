@@ -1,22 +1,16 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
 /// High-performance unified stream-based archive extraction engine (100% Pure Mozilla UniFFI Engine).
 public final class ArchiveExtractor: ArchiveExtracting, Sendable {
-    internal let hardwareTuner: HardwareTunerProtocol
     public let targetFormat: ArchiveCompressionFormat?
 
     public init(
-        hardwareTuner: HardwareTunerProtocol = AppleSiliconTuner.shared,
+        hardwareTuner: HardwareTunerProtocol? = nil,
         targetFormat: ArchiveCompressionFormat? = nil
     ) {
-        self.hardwareTuner = hardwareTuner
         self.targetFormat = targetFormat
     }
 
@@ -37,14 +31,14 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             throw ArchiveError.fileNotFound
         }
 
-        let dirExistedBefore = fileManager.fileExists(atPath: destinationDir)
-        if !dirExistedBefore {
+        if !fileManager.fileExists(atPath: destinationDir) {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
 
-        let preExistingSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
-        Self.preventSpotlightIndexing(at: destinationDir)
-        defer { Self.cleanupQuarantineAttributes(at: destinationDir) }
+        let spotlightCreated = Self.preventSpotlightIndexing(at: destinationDir)
+        defer {
+            Self.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
+        }
 
         var lastExtractionError: Error?
         do {
@@ -55,7 +49,8 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 progressHandler: progressHandler,
                 token: token
             )
-            return Int64(extractedBytes)
+            Self.propagateQuarantine(from: archivePath, to: destinationDir)
+            return extractedBytes.clampedToInt64
         } catch {
             lastExtractionError = error
         }
@@ -70,29 +65,11 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                         progressHandler: progressHandler,
                         token: token
                     )
-                    return Int64(extractedBytes)
+                    Self.propagateQuarantine(from: archivePath, to: destinationDir)
+                    return extractedBytes.clampedToInt64
                 } catch {
                     lastExtractionError = error
                 }
-            }
-        }
-
-        // Safe differential rollback: strictly delete only newly generated files from this operation, never touching existing files.
-        let currentSubpaths = Set(fileManager.subpaths(atPath: destinationDir) ?? [])
-        let newlyCreated = currentSubpaths.subtracting(preExistingSubpaths)
-        let sortedToClean = newlyCreated.sorted {
-            $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count
-        }
-
-        for relPath in sortedToClean {
-            let fullPath = (destinationDir as NSString).appendingPathComponent(relPath)
-            try? fileManager.removeItem(atPath: fullPath)
-        }
-
-        if !dirExistedBefore {
-            let remaining = (try? fileManager.contentsOfDirectory(atPath: destinationDir)) ?? []
-            if remaining.isEmpty || remaining == [".noindex"] {
-                try? fileManager.removeItem(atPath: destinationDir)
             }
         }
 
@@ -125,14 +102,15 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
 
-        Self.preventSpotlightIndexing(at: destinationDir)
+
         let capturedToken = token
         let capturedOptions = options
         let capturedAdvanced = advancedOptions
         let capturedProgress = progressHandler
         let capturedPassword = password
 
-        let bytes = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+        let explicitHandle = token.map { TaskExecutionHandle(token: $0) }
+        let bytes = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated, cancellationHandle: explicitHandle) { (dispatchToken: CancellationToken) in
             try self.extractSync(
                 archivePath: archivePath,
                 destinationDir: destinationDir,
@@ -140,11 +118,10 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 password: capturedPassword,
                 advancedOptions: capturedAdvanced,
                 progressHandler: capturedProgress,
-                token: capturedToken
+                token: capturedToken ?? dispatchToken
             )
         }
 
-        Self.cleanupQuarantineAttributes(at: destinationDir)
         return bytes
     }
 
@@ -171,17 +148,40 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         )
     }
 
-    /// Synchronously extracts a single file from the archive without processing other entries.
+    /// Extracts a single file matching the ArchiveExtracting protocol requirement.
     public func extractSingleFile(
         archivePath: String,
         entryPath: String,
         destinationDir: String,
-        password: String? = nil
+        password: String?
     ) async throws {
-        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+        try await extractSingleFile(
+            archivePath: archivePath,
+            entryPath: entryPath,
+            destinationDir: destinationDir,
+            password: password,
+            token: nil
+        )
+    }
+
+    /// Asynchronously extracts a single file from the archive without processing other entries.
+    public func extractSingleFile(
+        archivePath: String,
+        entryPath: String,
+        destinationDir: String,
+        password: String?,
+        token: CancellationToken?
+    ) async throws {
+        let explicitHandle = token.map { TaskExecutionHandle(token: $0) }
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated, cancellationHandle: explicitHandle) { (dispatchToken: CancellationToken) in
             let fileManager = FileManager.default
             if !fileManager.fileExists(atPath: destinationDir) {
                 try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
+            }
+
+            let spotlightCreated = Self.preventSpotlightIndexing(at: destinationDir)
+            defer {
+                Self.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
             }
 
             _ = try extractSelectedEntries(
@@ -190,11 +190,10 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                 destinationDir: destinationDir,
                 password: password,
                 progress: nil,
-                token: nil
+                token: token ?? dispatchToken
             )
+            Self.propagateQuarantine(from: archivePath, to: destinationDir)
         }
-
-        Self.cleanupQuarantineAttributes(at: destinationDir)
     }
 
     /// Joins multi-volume split archive files into a continuous output file via UniFFI (protocol conformance).
@@ -218,20 +217,75 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
 
     // MARK: - Helpers
 
-    internal static func cleanupQuarantineAttributes(at dirPath: String) {
-        dirPath.withCString { pathPtr in
-            let sz = getxattr(pathPtr, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
-            if sz > 0 {
-                removexattr(pathPtr, "com.apple.quarantine", XATTR_NOFOLLOW)
+    /// Propagates com.apple.quarantine extended attribute from the parent archive to destinationDir and all extracted files.
+    internal static func propagateQuarantine(from sourceArchive: String, to destinationDir: String) {
+        let qValue: [CChar]? = sourceArchive.withCString { srcPtr in
+            let sz = getxattr(srcPtr, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
+            guard sz > 0 else { return nil }
+            var buffer = [CChar](repeating: 0, count: sz)
+            let readSz = getxattr(srcPtr, "com.apple.quarantine", &buffer, sz, 0, XATTR_NOFOLLOW)
+            guard readSz > 0 else { return nil }
+            return buffer
+        }
+        guard let quarantine = qValue, !quarantine.isEmpty else { return }
+
+        // Apply to destinationDir itself
+        destinationDir.withCString { dstPtr in
+            var st = stat()
+            if lstat(dstPtr, &st) == 0 && (st.st_mode & S_IFMT) == S_IFLNK {
+                return
+            }
+            _ = setxattr(dstPtr, "com.apple.quarantine", quarantine, quarantine.count, 0, XATTR_NOFOLLOW)
+        }
+
+        // Apply recursively to all extracted items, actively skipping symbolic links
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(atPath: destinationDir) else { return }
+        while let relativePath = enumerator.nextObject() as? String {
+            // Actively skip symbolic links to avoid propagating quarantine to external targets
+            if let fileType = enumerator.fileAttributes?[.type] as? FileAttributeType, fileType == .typeSymbolicLink {
+                continue
+            }
+            let fullPath = (destinationDir as NSString).appendingPathComponent(relativePath)
+            fullPath.withCString { itemPtr in
+                var st = stat()
+                if lstat(itemPtr, &st) == 0 && (st.st_mode & S_IFMT) == S_IFLNK {
+                    return
+                }
+                _ = setxattr(itemPtr, "com.apple.quarantine", quarantine, quarantine.count, 0, XATTR_NOFOLLOW)
             }
         }
     }
 
-    private static func preventSpotlightIndexing(at dirPath: String) {
+    private static let spotlightToken = "TTZIP_SPOTLIGHT_PREVENTION_TOKEN_V1".data(using: .utf8)!
+
+    @discardableResult
+    internal static func preventSpotlightIndexing(at dirPath: String) -> Bool {
         let noIndexFilePath = (dirPath as NSString).appendingPathComponent(".noindex")
-        if !FileManager.default.fileExists(atPath: noIndexFilePath) {
-            FileManager.default.createFile(atPath: noIndexFilePath, contents: nil)
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: noIndexFilePath) else { return false }
+        return fm.createFile(atPath: noIndexFilePath, contents: spotlightToken)
+    }
+
+    internal static func removeSpotlightPrevention(at dirPath: String, wasCreated: Bool = true) {
+        guard wasCreated else { return }
+        let noIndexFilePath = (dirPath as NSString).appendingPathComponent(".noindex")
+        let fm = FileManager.default
+
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: noIndexFilePath, isDirectory: &isDir), !isDir.boolValue else {
+            return
         }
+
+        guard let attributes = try? fm.attributesOfItem(atPath: noIndexFilePath),
+              let size = attributes[.size] as? UInt64,
+              size == UInt64(spotlightToken.count),
+              let content = try? Data(contentsOf: URL(fileURLWithPath: noIndexFilePath)),
+              content == spotlightToken else {
+            return
+        }
+
+        try? fm.removeItem(atPath: noIndexFilePath)
     }
 }
 
@@ -251,8 +305,8 @@ private final class ExtractProgressRelay: ProgressHandler, @unchecked Sendable {
         let throughput = (Double(processedBytes) / (1024 * 1024)) / duration
         handler?(ArchiveProgress(
             state: .processing,
-            bytesProcessed: Int64(processedBytes),
-            totalBytes: Int64(totalBytes),
+            bytesProcessed: processedBytes.clampedToInt64,
+            totalBytes: totalBytes.clampedToInt64,
             currentFileName: currentEntry ?? "",
             throughputMBs: throughput
         ))
@@ -278,7 +332,6 @@ extension ArchiveExtractor {
             progress: relay,
             token: token
         )
-        Self.cleanupQuarantineAttributes(at: destinationDir)
         return report.uncompressedBytes
     }
 }
@@ -296,7 +349,8 @@ public final class ArchiveSelectiveExtractor: Sendable {
         archivePath: String,
         targetEntryPaths: Set<String>,
         destinationDir: String,
-        password: String? = nil
+        password: String? = nil,
+        token: CancellationToken? = nil
     ) async throws -> Int {
         guard !targetEntryPaths.isEmpty else { return 0 }
         
@@ -306,14 +360,15 @@ public final class ArchiveSelectiveExtractor: Sendable {
         }
         
         let targetsArray = Array(targetEntryPaths)
-        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+        let explicitHandle = token.map { TaskExecutionHandle(token: $0) }
+        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated, cancellationHandle: explicitHandle) { (dispatchToken: CancellationToken) in
             let count = try extractSelectedEntries(
                 archivePath: archivePath,
                 targetEntries: targetsArray,
                 destinationDir: destinationDir,
                 password: password,
                 progress: nil,
-                token: nil
+                token: token ?? dispatchToken
             )
             return Int(count)
         }

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -351,33 +347,7 @@ public struct BatchProgressInfo: Sendable, Equatable {
 // MARK: - Factory
 
 /// Unified factory providing standard writers, extractors, and readers.
-public enum ArchiveEngineFactory {
-    
-    /// Creates an archive writer.
-    public static func makeWriter(for format: ArchiveCompressionFormat? = nil) -> ArchiveWriting {
-        return ArchiveWriter()
-    }
-    
-    /// Creates an archive extractor.
-    public static func makeExtractor(for format: ArchiveCompressionFormat? = nil) -> ArchiveExtracting {
-        return ArchiveExtractor()
-    }
-    
-    /// Creates an archive reader.
-    public static func makeReader(for format: ArchiveCompressionFormat? = nil) -> ArchiveReading {
-        return ArchiveReader()
-    }
-
-    /// Creates an integrity checker engine instance.
-    public static func makeIntegrityChecker() -> ArchiveIntegrityChecking {
-        return ArchiveIntegrityChecker()
-    }
-
-    /// Creates a cryptographic hash calculator instance.
-    public static func makeHashCalculator(hardwareTuner: HardwareTunerProtocol? = nil) -> HashCalculating {
-        return HashCalculator(hardwareTuner: hardwareTuner ?? AppleSiliconTuner.shared)
-    }
-}
+public enum ArchiveEngineFactory {}
 
 // MARK: - Conformances
 
@@ -391,11 +361,7 @@ extension ArchiveReading {
     public func inspect(archivePath: String, password: String?) async throws -> [ArchiveEntry] {
         return try await inspect(archivePath: archivePath, password: password, candidatePasswords: nil)
     }
-    
-    public func inspectTree(archivePath: String, password: String? = nil, candidatePasswords: [String]? = nil) async throws -> ArchiveCompositeDirectory {
-        let entries = try await inspect(archivePath: archivePath, password: password, candidatePasswords: candidatePasswords)
-        return ArchiveComponentTreeBuilder.buildTree(from: entries)
-    }
+
     
     public func probeEncryption(archivePath: String) async throws -> ArchiveEncryptionTier {
         do {

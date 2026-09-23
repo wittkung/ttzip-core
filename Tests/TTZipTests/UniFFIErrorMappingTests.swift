@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 import Foundation
@@ -56,6 +52,36 @@ final class UniFFIErrorMappingTests: XCTestCase {
         // 6. Cancelled
         let errCancelled = TtZipError.Cancelled
         XCTAssertEqual(errCancelled.toArchiveError(), ArchiveError.cancelled)
+
+        // 7. OutOfMemory
+        let errOom = TtZipError.OutOfMemory(details: "Allocation failed")
+        let mappedOom = errOom.toArchiveError()
+        if case let .engineFailure(code, message) = mappedOom {
+            XCTAssertEqual(code, -501)
+            XCTAssertTrue(message.contains("Allocation failed"))
+        } else {
+            XCTFail("OutOfMemory must map to ArchiveError.engineFailure(code: -501)")
+        }
+
+        // 8. DecompressionBombDetected
+        let errBomb = TtZipError.DecompressionBombDetected(reason: "Ratio too high")
+        let mappedBomb = errBomb.toArchiveError()
+        if case let .engineFailure(code, message) = mappedBomb {
+            XCTAssertEqual(code, -403)
+            XCTAssertTrue(message.contains("Ratio too high"))
+        } else {
+            XCTFail("DecompressionBombDetected must map to ArchiveError.engineFailure(code: -403)")
+        }
+
+        // 9. ChecksumMismatch
+        let errCrc = TtZipError.ChecksumMismatch(expected: 0x12345678, actual: 0x87654321)
+        let mappedCrc = errCrc.toArchiveError()
+        if case let .corruptedData(archivePath, entryPath) = mappedCrc {
+            XCTAssertEqual(archivePath, "checksum")
+            XCTAssertTrue(entryPath.contains("0x12345678"))
+        } else {
+            XCTFail("ChecksumMismatch must map to ArchiveError.corruptedData")
+        }
     }
 
     // MARK: - 2. Rust EngineError Status Code Mappings
@@ -63,12 +89,13 @@ final class UniFFIErrorMappingTests: XCTestCase {
     func testEngineErrorCodeMappings() {
         // Specific known code overrides
         XCTAssertEqual(TtZipError.EngineError(code: -2).toArchiveError(), ArchiveError.fileNotFound)
-        XCTAssertEqual(TtZipError.EngineError(code: -7).toArchiveError(), ArchiveError.passwordRequired)
+        XCTAssertEqual(TtZipError.EngineError(code: -4).toArchiveError(), ArchiveError.corruptHeader)
+        XCTAssertEqual(TtZipError.EngineError(code: -7).toArchiveError(), ArchiveError.openFailed)
+        XCTAssertEqual(TtZipError.EngineError(code: -10).toArchiveError(), ArchiveError.passwordRequired)
         XCTAssertEqual(TtZipError.EngineError(code: -21).toArchiveError(), ArchiveError.invalidFormat)
         XCTAssertEqual(TtZipError.EngineError(code: -23).toArchiveError(), ArchiveError.cancelled)
 
         // General status codes
-        XCTAssertEqual(TtZipError.EngineError(code: -10).toArchiveError(), ArchiveError.readFailed(code: -10))
         XCTAssertEqual(TtZipError.EngineError(code: -100).toArchiveError(), ArchiveError.readFailed(code: -100))
     }
 

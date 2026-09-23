@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# Malicious & Security Test Fixtures Generator for TTZip SDK Testing Matrix.
-# Produces:
-#   1. Zip Slip directory traversal archives (relative ../, absolute /, windows ..\)
-#   2. High compression ratio Zip Bomb archives & descriptors (1000:1+ expansion)
-#   3. Truncated & corrupted headers across ZIP, TAR, GZIP, and ZSTD formats
-#   4. Structured contract-compliant JSON scenario manifest.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 import argparse
 import hashlib

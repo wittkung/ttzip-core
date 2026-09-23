@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Concurrent Directory Scanner & POSIX Path Normalization Layer.
 
@@ -109,14 +105,21 @@ pub fn extract_parent_and_prefix(
     }
 
     let raw_unescaped = unescape_url_and_shell(trimmed);
-    if raw_unescaped == "~" {
+    let home = get_default_home();
+    if raw_unescaped == "~" || raw_unescaped == "~/" {
         return UniFFIParentAndPrefix {
-            parent_directory: get_default_home(),
+            parent_directory: home,
             prefix: String::new(),
         };
     }
 
     let unescaped = expand_tilde(&raw_unescaped);
+    if unescaped == home || unescaped == format!("{}/", home) {
+        return UniFFIParentAndPrefix {
+            parent_directory: home,
+            prefix: String::new(),
+        };
+    }
     let full_path = if unescaped.starts_with('/') {
         unescaped.clone()
     } else {
@@ -260,6 +263,22 @@ fn unescape_shell_backslashes(path: &str) -> String {
 }
 
 fn get_default_home() -> String {
+    if let Ok(home) = std::env::var("HOME") {
+        if !home.is_empty() && home != "/" && home != "/Users" && home != "/home" {
+            return home;
+        }
+    }
+    #[cfg(unix)]
+    unsafe {
+        let pw = libc::getpwuid(libc::getuid());
+        if !pw.is_null() && !(*pw).pw_dir.is_null() {
+            if let Ok(s) = std::ffi::CStr::from_ptr((*pw).pw_dir).to_str() {
+                if !s.is_empty() {
+                    return s.to_string();
+                }
+            }
+        }
+    }
     std::env::var("HOME").unwrap_or_else(|_| {
         if cfg!(target_os = "macos") { "/Users".into() } else { "/home".into() }
     })

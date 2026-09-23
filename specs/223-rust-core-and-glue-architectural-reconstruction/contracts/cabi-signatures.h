@@ -1,11 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
-
-// C-ABI Interoperability Header Contract (Reconstructed).
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 #ifndef TTZIP_RUST_GLUE_RECONSTRUCTED_H
 #define TTZIP_RUST_GLUE_RECONSTRUCTED_H

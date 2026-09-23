@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Cross-Language Lossless Error Mapping Subsystem.
 //!
@@ -136,6 +132,14 @@ impl From<ApiTTZipError> for UniFFIError {
             ApiTTZipError::IoError { message } => Self::IoError { message },
             ApiTTZipError::Cancelled => Self::IoError {
                 message: "Operation was cancelled by caller".to_string(),
+            },
+            ApiTTZipError::OutOfMemory { details } => Self::OutOfMemory { message: details },
+            ApiTTZipError::DecompressionBombDetected { reason } => Self::PermissionDenied {
+                path: format!("Decompression bomb: {reason}"),
+            },
+            ApiTTZipError::ChecksumMismatch { expected, actual } => Self::CorruptArchive {
+                message: format!("Checksum mismatch: expected {expected:#x}, got {actual:#x}"),
+                offset: 0,
             },
         }
     }

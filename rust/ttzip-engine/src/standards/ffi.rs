@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Safe C-ABI exports for format sniffing and standards compliance checking.
 
@@ -196,9 +192,11 @@ pub unsafe extern "C" fn ttzip_rust_check_compliance_file(
 /// Frees a JSON report allocated by compliance checking functions.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_free_compliance_report(report_ptr: *mut c_char) {
-    if !report_ptr.is_null() {
-        let _ = CString::from_raw(report_ptr);
-    }
+    let _ = std::panic::catch_unwind(|| {
+        if !report_ptr.is_null() {
+            let _ = CString::from_raw(report_ptr);
+        }
+    });
 }
 
 #[cfg(test)]

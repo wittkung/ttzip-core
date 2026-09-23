@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Dead-Store Elimination immune memory sanitization, RAII SecureBuffer, and aligned allocations.
 
@@ -119,7 +115,9 @@ impl Drop for SecureBuffer {
 /// C-ABI: Erases sensitive memory (passwords, crypto keys, cipher contexts).
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_secure_zeroize(ptr: *mut u8, len: usize) {
-    secure_zeroize(ptr, len);
+    let _ = catch_unwind(|| {
+        secure_zeroize(ptr, len);
+    });
 }
 
 /// C-ABI: Allocates page-aligned heap buffer.

@@ -1,19 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# ==============================================================================
-# scripts/lint_dag_gate.sh
-# Static Include / Module Dependency DAG Architecture Gate
-# Enforces strict unidirectional architecture invariants across TTZip microkernel:
-#   1. Pure Rust microkernel (rust/ttzip-engine) has ZERO dependencies on Apple UI frameworks.
-#   2. Codec compression modules and decompression modules are strictly orthogonal.
-#   3. Microkernel does not import or couple to high-level Swift application layers.
-# ==============================================================================
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 
@@ -91,7 +78,7 @@ fi
 # ------------------------------------------------------------------------------
 echo "--> [2/3] Verifying strict orthogonality between compression and decompression modules..."
 
-CODECS_DIR="${ENGINE_SRC_DIR}/codecs"
+CODECS_DIR="${WORKSPACE_ROOT}/rust/crates/ttzip-codecs/src"
 
 if [ -d "${CODECS_DIR}" ]; then
     # 2a. Deflate compressor vs decompressor

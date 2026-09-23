@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive Bidirectional Differential Test Suite & 5-Dimension Oracle (Task 16.10).
 //!
@@ -53,6 +49,13 @@ fn is_tool_available(path: &str) -> bool {
     p.exists() && p.is_file()
 }
 
+/// Creates a system Command configured with UTF-8 environment variables.
+fn system_command<S: AsRef<std::ffi::OsStr>>(program: S) -> Command {
+    let mut cmd = Command::new(program);
+    cmd.env("LC_ALL", "en_US.UTF-8").env("LANG", "en_US.UTF-8");
+    cmd
+}
+
 /// Helper RAII test sandbox for isolated bidirectional differential tests.
 struct TestSandbox {
     _temp_dir: TempDir,
@@ -64,6 +67,9 @@ struct TestSandbox {
 
 impl TestSandbox {
     fn new(prefix: &str) -> Self {
+        unsafe {
+            libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
+        }
         let temp_dir = tempfile::Builder::new()
             .prefix(prefix)
             .tempdir()
@@ -226,7 +232,7 @@ fn test_direction1_bsdtar_to_ttzip_differential() {
     let tar_archive = sandbox.root.join("system_created.tar");
 
     // 1. Pack with system bsdtar (/usr/bin/tar -cf <tar_archive> .)
-    let tar_status = Command::new(SYSTEM_TAR_PATH)
+    let tar_status = system_command(SYSTEM_TAR_PATH)
         .arg("-cf")
         .arg(&tar_archive)
         .arg(".")
@@ -267,7 +273,7 @@ fn test_direction1_bsdcpio_to_ttzip_differential() {
     let cpio_archive = sandbox.root.join("system_created.cpio");
 
     // 1. Pack with system bsdcpio (/usr/bin/cpio -o -H newc)
-    let find_output = Command::new("find")
+    let find_output = system_command("find")
         .arg(".")
         .current_dir(&sandbox.source_dir)
         .output()
@@ -275,7 +281,7 @@ fn test_direction1_bsdcpio_to_ttzip_differential() {
     assert!(find_output.status.success(), "find command failed");
 
     let cpio_file = File::create(&cpio_archive).expect("failed creating cpio destination file");
-    let mut cpio_child = Command::new(SYSTEM_CPIO_PATH)
+    let mut cpio_child = system_command(SYSTEM_CPIO_PATH)
         .arg("-o")
         .arg("-H")
         .arg("newc")
@@ -323,7 +329,7 @@ fn test_direction1_zip_to_ttzip_secure_extract_differential() {
     let zip_archive = sandbox.root.join("system_created.zip");
 
     // 1. Pack with system /usr/bin/zip -y -r -q <zip_archive> .
-    let zip_status = Command::new(SYSTEM_ZIP_PATH)
+    let zip_status = system_command(SYSTEM_ZIP_PATH)
         .arg("-y")
         .arg("-r")
         .arg("-q")
@@ -385,7 +391,7 @@ fn test_direction2_ttzip_tar_to_bsdtar_differential() {
     assert!(ttzip_tar_path.exists());
 
     // 2. System bsdtar extracts (/usr/bin/tar -xf <ttzip_tar_path> -C <system_out_dir>)
-    let untar_output = Command::new(SYSTEM_TAR_PATH)
+    let untar_output = system_command(SYSTEM_TAR_PATH)
         .arg("-xf")
         .arg(&ttzip_tar_path)
         .arg("-C")
@@ -436,7 +442,7 @@ fn test_direction2_ttzip_cpio_to_bsdcpio_differential() {
 
     // 2. System bsdcpio extracts (/usr/bin/cpio -idmv < ttzip_cpio_path)
     let cpio_file = File::open(&ttzip_cpio_path).expect("failed opening generated cpio archive");
-    let uncpio_child = Command::new(SYSTEM_CPIO_PATH)
+    let uncpio_child = system_command(SYSTEM_CPIO_PATH)
         .arg("-idmv")
         .current_dir(&sandbox.system_out_dir)
         .stdin(cpio_file)
@@ -483,7 +489,7 @@ fn test_direction2_ttzip_zip_to_bsdunzip_differential() {
     assert!(ttzip_zip_path.exists());
 
     // 2. System unzip -t integrity verification
-    let test_output = Command::new(SYSTEM_UNZIP_PATH)
+    let test_output = system_command(SYSTEM_UNZIP_PATH)
         .arg("-t")
         .arg(&ttzip_zip_path)
         .output()
@@ -501,7 +507,7 @@ fn test_direction2_ttzip_zip_to_bsdunzip_differential() {
     );
 
     // 3. System unzip extraction (/usr/bin/unzip -q -o <archive> -d <out_dir>)
-    let unzip_output = Command::new(SYSTEM_UNZIP_PATH)
+    let unzip_output = system_command(SYSTEM_UNZIP_PATH)
         .arg("-q")
         .arg("-o")
         .arg(&ttzip_zip_path)
@@ -571,7 +577,7 @@ fn test_bidirectional_symlink_hardlink_permission_fidelity() {
         .expect("Stage 1 TTZip create_archive failed");
 
     // System unpacks Stage 1
-    let s1_status = Command::new(SYSTEM_TAR_PATH)
+    let s1_status = system_command(SYSTEM_TAR_PATH)
         .arg("-xf")
         .arg(&tar_p1)
         .arg("-C")
@@ -582,7 +588,7 @@ fn test_bidirectional_symlink_hardlink_permission_fidelity() {
 
     // 3. System repacks Stage 1 output
     let tar_p2 = sandbox.root.join("stage2_system.tar");
-    let s2_status = Command::new(SYSTEM_TAR_PATH)
+    let s2_status = system_command(SYSTEM_TAR_PATH)
         .arg("-cf")
         .arg(&tar_p2)
         .arg(".")

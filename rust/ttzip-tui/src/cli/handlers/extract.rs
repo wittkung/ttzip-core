@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Subcommand execution handler: extract.
 
@@ -16,6 +12,7 @@ use std::time::Instant;
 use ttzip_engine::archive::tar::TarArchive;
 use ttzip_engine::codecs::brotli::brotli_decompress_to_vec;
 use ttzip_engine::codecs::snappy::snappy_frame_decode_to_vec;
+use ttzip_engine::fs::safe_extract::sanitize_and_validate_path;
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::types::TTZipExtractOptions;
 use ttzip_engine::zip::ZipArchive;
@@ -119,7 +116,8 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
                 let mut total_bytes = 0;
                 for (idx, entry) in archive.entries().iter().enumerate() {
                     if pattern_matches(&entry.rel_path, include, exclude) {
-                        let out_path = dest_dir.join(&entry.rel_path);
+                        let out_path = sanitize_and_validate_path(dest_dir, &entry.rel_path)
+                            .map_err(|e| format!("Security validation blocked path traversal for {}: {:?}", entry.rel_path, e))?;
                         if entry.is_directory {
                             if !dry_run {
                                 fs::create_dir_all(&out_path).ok();
@@ -156,7 +154,8 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
                 let mut total_bytes = 0;
                 for (idx, file) in archive.info().files.iter().enumerate() {
                     if pattern_matches(&file.rel_path, include, exclude) {
-                        let out_path = dest_dir.join(&file.rel_path);
+                        let out_path = sanitize_and_validate_path(dest_dir, &file.rel_path)
+                            .map_err(|e| format!("Security validation blocked path traversal for {}: {:?}", file.rel_path, e))?;
                         if file.is_directory {
                             if !dry_run {
                                 fs::create_dir_all(&out_path).ok();
@@ -194,7 +193,8 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
                 let mut total_bytes = 0;
                 for (idx, entry) in archive.entries().iter().enumerate() {
                     if pattern_matches(&entry.path, include, exclude) {
-                        let out_path = dest_dir.join(&*entry.path);
+                        let out_path = sanitize_and_validate_path(dest_dir, &entry.path)
+                            .map_err(|e| format!("Security validation blocked path traversal for {}: {:?}", entry.path, e))?;
                         if entry.is_directory {
                             if !dry_run {
                                 fs::create_dir_all(&out_path).ok();
@@ -235,7 +235,8 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
                     .strip_suffix(".sz")
                     .or_else(|| filename.strip_suffix(".snappy"))
                     .unwrap_or(filename);
-                let out_file_path = dest_dir.join(inner_name);
+                let out_file_path = sanitize_and_validate_path(dest_dir, inner_name)
+                    .map_err(|e| format!("Security validation blocked path traversal for {}: {:?}", inner_name, e))?;
                 let mut out_file = File::create(&out_file_path)
                     .map_err(|e| format!("Failed to write decompressed Snappy file: {}", e))?;
                 out_file
@@ -262,7 +263,8 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
                     .and_then(|s| s.to_str())
                     .unwrap_or("decompressed.bin");
                 let inner_name = filename.strip_suffix(".br").unwrap_or(filename);
-                let out_file_path = dest_dir.join(inner_name);
+                let out_file_path = sanitize_and_validate_path(dest_dir, inner_name)
+                    .map_err(|e| format!("Security validation blocked path traversal for {}: {:?}", inner_name, e))?;
                 let mut out_file = File::create(&out_file_path)
                     .map_err(|e| format!("Failed to write decompressed Brotli file: {}", e))?;
                 out_file
@@ -280,13 +282,15 @@ pub fn execute_extract(params: CliExtractParams<'_>) -> Result<(), String> {
     };
 
     let elapsed = start_time.elapsed();
-    println!(
-        "Extracted {} entries ({}) to {} in {:.2?}",
-        entries_count,
-        format_bytes(total_uncompressed_bytes),
-        dest_dir.display(),
-        elapsed
-    );
+    if params.verbose {
+        println!(
+            "Extracted {} entries ({}) to {} in {:.2?}",
+            entries_count,
+            format_bytes(total_uncompressed_bytes),
+            dest_dir.display(),
+            elapsed
+        );
+    }
 
     Ok(())
 }

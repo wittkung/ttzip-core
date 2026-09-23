@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 import Foundation
@@ -12,18 +8,60 @@ import Foundation
 final class CLICommandE2ETests: XCTestCase {
     private var tempDirectory: URL!
 
-    private var ttzipBinaryURL: URL {
+    private var candidateBinaryURLs: [URL] {
+        var candidates: [URL] = []
+        let env = ProcessInfo.processInfo.environment
+        let fileManager = FileManager.default
+
+        // 1. Explicit environment variable override
+        if let envBin = env["TTZIP_BIN_PATH"] {
+            candidates.append(URL(fileURLWithPath: envBin))
+        }
+
+        // 2. Bazel TEST_SRCDIR probe
+        if let testSrcDir = env["TEST_SRCDIR"] {
+            let base = URL(fileURLWithPath: testSrcDir)
+            candidates.append(base.appendingPathComponent("_main/products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+            candidates.append(base.appendingPathComponent("products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+            candidates.append(base.appendingPathComponent("_main/products/ttzip/core/bin/ttzip"))
+            candidates.append(base.appendingPathComponent("products/ttzip/core/bin/ttzip"))
+        }
+
+        // 3. Bazel RUNFILES_DIR probe
+        if let runfilesDir = env["RUNFILES_DIR"] {
+            let base = URL(fileURLWithPath: runfilesDir)
+            candidates.append(base.appendingPathComponent("_main/products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+            candidates.append(base.appendingPathComponent("products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+            candidates.append(base.appendingPathComponent("_main/products/ttzip/core/bin/ttzip"))
+            candidates.append(base.appendingPathComponent("products/ttzip/core/bin/ttzip"))
+        }
+
+        // 4. Current working directory probe
+        let cwd = URL(fileURLWithPath: fileManager.currentDirectoryPath)
+        candidates.append(cwd.appendingPathComponent("products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+        candidates.append(cwd.appendingPathComponent("bazel-bin/products/ttzip/core/rust/ttzip-tui/ttzip_cli"))
+        candidates.append(cwd.appendingPathComponent("products/ttzip/core/bin/ttzip"))
+        candidates.append(cwd.appendingPathComponent("core/bin/ttzip"))
+        candidates.append(cwd.appendingPathComponent("bin/ttzip"))
+
+        // 5. Relative to current source file (#filePath)
         let currentFile = URL(fileURLWithPath: #filePath)
         let coreDir = currentFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let binPath = coreDir.appendingPathComponent("bin/ttzip")
-        if FileManager.default.isExecutableFile(atPath: binPath.path) {
-            return binPath
+        candidates.append(coreDir.appendingPathComponent("rust/ttzip-tui/target/debug/ttzip_cli"))
+        candidates.append(coreDir.appendingPathComponent("rust/ttzip-tui/target/release/ttzip_cli"))
+        candidates.append(coreDir.appendingPathComponent("bin/ttzip"))
+
+        return candidates
+    }
+
+    private var ttzipBinaryURL: URL? {
+        let fileManager = FileManager.default
+        for candidate in candidateBinaryURLs {
+            if fileManager.isExecutableFile(atPath: candidate.path) {
+                return candidate
+            }
         }
-        if let envBin = ProcessInfo.processInfo.environment["TTZIP_BIN_PATH"],
-           FileManager.default.isExecutableFile(atPath: envBin) {
-            return URL(fileURLWithPath: envBin)
-        }
-        return binPath
+        return nil
     }
 
     override func setUp() async throws {
@@ -42,13 +80,11 @@ final class CLICommandE2ETests: XCTestCase {
 
     @discardableResult
     private func runCLI(arguments: [String]) throws -> (exitCode: Int32, stdout: String, stderr: String) {
-        let binaryURL = ttzipBinaryURL
-        guard FileManager.default.fileExists(atPath: binaryURL.path) else {
-            throw NSError(
-                domain: "CLICommandE2ETests",
-                code: 404,
-                userInfo: [NSLocalizedDescriptionKey: "Binary not found at \(binaryURL.path)"]
-            )
+        guard let binaryURL = ttzipBinaryURL else {
+            let searched = candidateBinaryURLs.map(\.path).joined(separator: "\n  - ")
+            XCTFail("ttzip CLI binary not found in test environment. Inspected candidate paths:\n  - \(searched)\nEnsure //products/ttzip/core/rust/ttzip-tui:ttzip_cli is declared in BUILD.bazel data.")
+            struct BinaryNotFoundError: Error {}
+            throw BinaryNotFoundError()
         }
 
         let process = Process()

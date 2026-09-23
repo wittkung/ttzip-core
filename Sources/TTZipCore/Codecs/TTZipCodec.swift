@@ -1,150 +1,7 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
-
-/// Supported single-stream compression codecs across TTZip engine.
-public enum TTZipCodecAlgorithm: String, Sendable, CaseIterable {
-    case deflate
-    case zlib
-    case gzip
-    case zstd
-    case brotli
-    case lzma
-    case fastLzma2
-    case lz4
-    case snappyBlock
-    case snappyFramed
-    case lzfse
-    case bzip2
-    case ppmd
-
-    /// Formal human-readable display name for the codec.
-    public var displayName: String {
-        switch self {
-        case .deflate: return "DEFLATE"
-        case .zlib: return "Zlib"
-        case .gzip: return "Gzip"
-        case .zstd: return "Zstandard (Zstd)"
-        case .brotli: return "Brotli"
-        case .lzma: return "LZMA"
-        case .fastLzma2: return "Fast-LZMA2"
-        case .lz4: return "LZ4"
-        case .snappyBlock: return "Snappy (Raw Block)"
-        case .snappyFramed: return "Snappy (Framed)"
-        case .lzfse: return "Apple LZFSE"
-        case .bzip2: return "Bzip2"
-        case .ppmd: return "PPMd (Model H)"
-        }
-    }
-
-    /// Maps algorithm to its corresponding UniFFI compression codec.
-    @inlinable
-    public func uniffiCodec(level: Int32 = 6) -> UniFfiCompressionCodec {
-        switch self {
-        case .deflate: return .deflateRaw
-        case .zlib: return .zlib
-        case .gzip: return .gzip
-        case .zstd: return .zstd
-        case .brotli: return .brotli
-        case .lzma, .fastLzma2: return .fl2
-        case .lz4: return level >= 9 ? .lz4Hc : .lz4Fast
-        case .snappyBlock: return .snappyRaw
-        case .snappyFramed: return .snappyFramed
-        case .lzfse: return .lzfse
-        case .bzip2: return .bzip2
-        case .ppmd: return .ppmd
-        }
-    }
-}
-
-/// Compression effort level specification.
-public enum TTZipCompressionLevel: Sendable, Hashable {
-    case store
-    case fastest
-    case normal
-    case maximum
-    case ultra
-    case custom(Int32)
-
-    /// Translates semantic level to algorithm-specific integer level.
-    @inlinable
-    public func rawLevel(for algorithm: TTZipCodecAlgorithm) -> Int32 {
-        switch self {
-        case .store:
-            return 0
-        case .fastest:
-            switch algorithm {
-            case .zstd: return 1
-            case .brotli: return 1
-            case .bzip2: return 1
-            case .fastLzma2: return 1
-            case .lzma: return 1
-            default: return 1
-            }
-        case .normal:
-            switch algorithm {
-            case .zstd: return 3
-            case .brotli: return 6
-            case .bzip2: return 6
-            case .fastLzma2: return 3
-            case .lzma: return 5
-            default: return 6
-            }
-        case .maximum:
-            switch algorithm {
-            case .zstd: return 9
-            case .brotli: return 9
-            case .bzip2: return 9
-            case .fastLzma2: return 6
-            case .lzma: return 7
-            default: return 9
-            }
-        case .ultra:
-            switch algorithm {
-            case .zstd: return 19
-            case .brotli: return 11
-            case .bzip2: return 9
-            case .fastLzma2: return 9
-            case .lzma: return 9
-            default: return 12
-            }
-        case .custom(let val):
-            return val
-        }
-    }
-}
-
-/// Errors thrown by the unified codec engine.
-public enum TTZipCodecError: Error, Sendable, LocalizedError {
-    case invalidParameter
-    case compressionFailed(status: Int32)
-    case decompressionFailed(status: Int32)
-    case bufferTooSmall
-    case unsupportedCodec(TTZipCodecAlgorithm)
-    case memoryAllocationFailed
-
-    public var errorDescription: String? {
-        switch self {
-        case .invalidParameter:
-            return "Invalid parameter provided to TTZip codec operation."
-        case .compressionFailed(let status):
-            return "Compression failed with status code \(status)."
-        case .decompressionFailed(let status):
-            return "Decompression failed with status code \(status)."
-        case .bufferTooSmall:
-            return "Destination buffer is too small for codec output."
-        case .unsupportedCodec(let alg):
-            return "Codec '\(alg.displayName)' is not supported for the requested operation."
-        case .memoryAllocationFailed:
-            return "Failed to allocate memory buffer for codec operation."
-        }
-    }
-}
 
 /// Swift 6 strongly-typed facade for all native compression codecs via UniFFI bridge.
 public struct TTZipCodec: Sendable {
@@ -247,17 +104,22 @@ public struct TTZipCodec: Sendable {
         level: TTZipCompressionLevel = .normal
     ) -> AsyncThrowingStream<Data, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            let task = Task {
                 do {
                     for try await chunk in source {
-                        if Task.isCancelled { break }
+                        try Task.checkCancellation()
                         let compressedChunk = try compress(chunk, algorithm: algorithm, level: level)
+                        try Task.checkCancellation()
                         continuation.yield(compressedChunk)
                     }
+                    try Task.checkCancellation()
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
                 }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
             }
         }
     }
@@ -268,18 +130,171 @@ public struct TTZipCodec: Sendable {
         algorithm: TTZipCodecAlgorithm
     ) -> AsyncThrowingStream<Data, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            let task = Task {
                 do {
                     for try await chunk in source {
-                        if Task.isCancelled { break }
+                        try Task.checkCancellation()
                         let decompressedChunk = try decompress(chunk, algorithm: algorithm)
+                        try Task.checkCancellation()
                         continuation.yield(decompressedChunk)
                     }
+                    try Task.checkCancellation()
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
         }
     }
+
+    /// Creates a pull-based, demand-driven asynchronous sequence that compresses chunks on demand.
+    public static func demandCompress<Upstream: AsyncSequence & Sendable>(
+        source: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        level: TTZipCompressionLevel = .normal
+    ) -> TTZipDemandCompressSequence<Upstream> where Upstream.Element == Data {
+        TTZipDemandCompressSequence(upstream: source, algorithm: algorithm, level: level)
+    }
+
+    /// Creates a pull-based, demand-driven asynchronous sequence that decompresses chunks on demand.
+    public static func demandDecompress<Upstream: AsyncSequence & Sendable>(
+        source: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        expectedUncompressedSize: Int? = nil
+    ) -> TTZipDemandDecompressSequence<Upstream> where Upstream.Element == Data {
+        TTZipDemandDecompressSequence(upstream: source, algorithm: algorithm, expectedUncompressedSize: expectedUncompressedSize)
+    }
 }
+
+// MARK: - Demand-Driven Pull-Based Async Sequences
+
+/// Pull-based, demand-driven asynchronous sequence that compresses data chunks on demand.
+/// Provides zero-buffering backpressure by executing compression only when the consumer calls `next()`.
+public struct TTZipDemandCompressSequence<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element == Data {
+    public typealias Element = Data
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private var upstreamIterator: Upstream.AsyncIterator
+        private let algorithm: TTZipCodecAlgorithm
+        private let level: TTZipCompressionLevel
+
+        @usableFromInline
+        init(upstreamIterator: Upstream.AsyncIterator, algorithm: TTZipCodecAlgorithm, level: TTZipCompressionLevel) {
+            self.upstreamIterator = upstreamIterator
+            self.algorithm = algorithm
+            self.level = level
+        }
+
+        public mutating func next() async throws -> Data? {
+            try Task.checkCancellation()
+            guard let chunk = try await upstreamIterator.next() else {
+                return nil
+            }
+            try Task.checkCancellation()
+            return try TTZipCodec.compress(chunk, algorithm: algorithm, level: level)
+        }
+    }
+
+    private let upstream: Upstream
+    private let algorithm: TTZipCodecAlgorithm
+    private let level: TTZipCompressionLevel
+
+    public init(
+        upstream: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        level: TTZipCompressionLevel = .normal
+    ) {
+        self.upstream = upstream
+        self.algorithm = algorithm
+        self.level = level
+    }
+
+    public init(
+        source: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        level: TTZipCompressionLevel = .normal
+    ) {
+        self.init(upstream: source, algorithm: algorithm, level: level)
+    }
+
+    public func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(
+            upstreamIterator: upstream.makeAsyncIterator(),
+            algorithm: algorithm,
+            level: level
+        )
+    }
+}
+
+/// Pull-based, demand-driven asynchronous sequence that decompresses data chunks on demand.
+/// Provides zero-buffering backpressure by executing decompression only when the consumer calls `next()`.
+public struct TTZipDemandDecompressSequence<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element == Data {
+    public typealias Element = Data
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private var upstreamIterator: Upstream.AsyncIterator
+        private let algorithm: TTZipCodecAlgorithm
+        private let expectedUncompressedSize: Int?
+
+        @usableFromInline
+        init(
+            upstreamIterator: Upstream.AsyncIterator,
+            algorithm: TTZipCodecAlgorithm,
+            expectedUncompressedSize: Int?
+        ) {
+            self.upstreamIterator = upstreamIterator
+            self.algorithm = algorithm
+            self.expectedUncompressedSize = expectedUncompressedSize
+        }
+
+        public mutating func next() async throws -> Data? {
+            try Task.checkCancellation()
+            guard let chunk = try await upstreamIterator.next() else {
+                return nil
+            }
+            try Task.checkCancellation()
+            return try TTZipCodec.decompress(
+                chunk,
+                algorithm: algorithm,
+                expectedUncompressedSize: expectedUncompressedSize
+            )
+        }
+    }
+
+    private let upstream: Upstream
+    private let algorithm: TTZipCodecAlgorithm
+    private let expectedUncompressedSize: Int?
+
+    public init(
+        upstream: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        expectedUncompressedSize: Int? = nil
+    ) {
+        self.upstream = upstream
+        self.algorithm = algorithm
+        self.expectedUncompressedSize = expectedUncompressedSize
+    }
+
+    public init(
+        source: Upstream,
+        algorithm: TTZipCodecAlgorithm,
+        expectedUncompressedSize: Int? = nil
+    ) {
+        self.init(upstream: source, algorithm: algorithm, expectedUncompressedSize: expectedUncompressedSize)
+    }
+
+    public func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(
+            upstreamIterator: upstream.makeAsyncIterator(),
+            algorithm: algorithm,
+            expectedUncompressedSize: expectedUncompressedSize
+        )
+    }
+}
+
+public typealias TTZipDemandCompressStream = TTZipDemandCompressSequence<AsyncThrowingStream<Data, Error>>
+public typealias TTZipDemandDecompressStream = TTZipDemandDecompressSequence<AsyncThrowingStream<Data, Error>>
+

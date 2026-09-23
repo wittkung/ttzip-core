@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Libarchive Operator Matrix Single-Byte Streaming & Network Pipe Cataclysm Torture Suite (Task 16.11).
 //!
@@ -26,6 +22,8 @@ use flate2::Compression;
 
 use ttzip_engine::archive::unified::entry::timestamp::TTZipTimestamp;
 use ttzip_engine::archive::unified::filter_pipeline::{FilterKind, FilterPipeline};
+mod common;
+use common::SafeTempDir;
 use ttzip_engine::archive::unified::format_sniffer::formats::ArchiveFormat;
 use ttzip_engine::archive::unified::format_sniffer::{FormatBidderRegistry, FormatSniffer};
 use ttzip_engine::archive::unified::SlidingLookaheadReader as UnifiedSlidingReader;
@@ -585,7 +583,7 @@ fn test_secure_path_extractor_micro_chunk_streaming() {
 
 #[test]
 fn test_depth_first_dir_fixup_deep_hierarchy_streaming_torture() {
-    let temp_dir = tempfile::tempdir().expect("create tempdir");
+    let temp_dir = SafeTempDir::new().expect("create safe tempdir");
     let base_root = temp_dir.path().join("fixup_tree");
     fs::create_dir_all(&base_root).expect("create base directory");
 

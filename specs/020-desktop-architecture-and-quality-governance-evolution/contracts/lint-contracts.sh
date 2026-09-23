@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# TTZip Contract Linter & Interface Validator
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Runtime synchronization, lock-free ring buffer, and worker pool FFI exports.
 
@@ -54,6 +50,7 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
         TTZipStatus::ErrSolidBudgetExceeded => c"Solid Budget Exceeded".as_ptr(),
         TTZipStatus::ErrSecurityViolation => c"Security Violation".as_ptr(),
         TTZipStatus::ErrUnsupportedFeature => c"Unsupported Feature".as_ptr(),
+        TTZipStatus::ErrBufferTooSmall => c"Buffer Too Small".as_ptr(),
         TTZipStatus::ErrPanicCaught => c"Panic Caught".as_ptr(),
     }
 

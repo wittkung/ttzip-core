@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive unit tests for Bzip2 canonical Huffman code length generation and decoding.
 
@@ -64,7 +60,7 @@ fn test_huffman_encode_decode_roundtrip() {
     writer.flush_to_byte_boundary();
 
     // Decode with BitReader
-    let mut reader = BitReader::new(&writer.buf);
+    let mut reader = BitReader::new(&writer.buf[..]);
     let mut decoded = Vec::new();
     for _ in 0..symbols.len() {
         let sym = huffman_decode_symbol(&mut reader, &limit, &base, &perm, min_len).unwrap();

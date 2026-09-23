@@ -1,16 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
-
-// Swift 6 Actor-based Concurrency Living Example demonstrating:
-// - TTZipEngine Swift 6 Actor thread-safe coordination
-// - AsyncStream<ArchiveProgress> real-time telemetry
-// - AES-256 Encryption & Password Vault Protection
-// - Archive Extraction & Integrity Verification
-// - Direct & Streaming Operations
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import TTZipCore

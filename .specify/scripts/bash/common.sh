@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
-# Common functions and variables for all scripts
-
-# Find repository root by searching upward for .specify directory
-# This is the primary marker for spec-kit projects
 find_specify_root() {
     local dir="${1:-$(pwd)}"
     # Normalize to absolute path to prevent infinite loop with relative paths

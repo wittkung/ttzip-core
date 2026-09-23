@@ -1,0 +1,427 @@
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
+
+//! Hardware NEON-accelerated ZIP/TAR damaged stream TOC reconstruction and corrupt archive self-healing engine.
+
+use crate::types::TTZipStatus;
+use crate::zip::writer::{assemble_zip_archive, ZipCompressedItem};
+use std::fs::{self, File};
+use std::io::{Read, Write};
+use std::path::Path;
+
+/// Finds next ZIP Local File Header signature (`PK\x03\x04`).
+pub fn find_next_pk_signature(data: &[u8], start: usize) -> Option<usize> {
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        find_next_pk_neon(data, start)
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        find_next_pk_scalar(data, start)
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn find_next_pk_neon(data: &[u8], start: usize) -> Option<usize> {
+    use core::arch::aarch64::*;
+    let target = vdupq_n_u8(b'P');
+    let mut i = start;
+    let len = data.len();
+
+    while i + 16 <= len {
+        let chunk = vld1q_u8(data.as_ptr().add(i));
+        let cmp = vceqq_u8(chunk, target);
+        let max_val = vmaxvq_u8(cmp);
+        if max_val != 0 {
+            for j in 0..16 {
+                let idx = i + j;
+                if idx + 4 <= len
+                    && data[idx] == b'P'
+                    && data[idx + 1] == b'K'
+                    && data[idx + 2] == 0x03
+                    && data[idx + 3] == 0x04
+                {
+                    return Some(idx);
+                }
+            }
+        }
+        i += 16;
+    }
+
+    find_next_pk_scalar(data, i)
+}
+
+#[inline]
+fn find_next_pk_scalar(data: &[u8], mut i: usize) -> Option<usize> {
+    let len = data.len();
+    while i + 4 <= len {
+        if data[i] == b'P' && data[i + 1] == b'K' && data[i + 2] == 0x03 && data[i + 3] == 0x04 {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// Scans damaged ZIP stream and reconstructs a healthy ZIP archive at `repaired_path`.
+pub fn repair_damaged_zip(damaged_path: &Path, repaired_path: &Path) -> Result<usize, TTZipStatus> {
+    let file_data = fs::read(damaged_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let total_len = file_data.len();
+    let mut offset = 0;
+    let mut salvaged_items = Vec::new();
+
+    while let Some(pk_pos) = find_next_pk_signature(&file_data, offset) {
+        if pk_pos + 30 > total_len {
+            break;
+        }
+
+        let flags = u16::from_le_bytes([file_data[pk_pos + 6], file_data[pk_pos + 7]]);
+        let method = u16::from_le_bytes([file_data[pk_pos + 8], file_data[pk_pos + 9]]);
+        let _mtime_dos = u16::from_le_bytes([file_data[pk_pos + 10], file_data[pk_pos + 11]]);
+        let mdate_dos = u16::from_le_bytes([file_data[pk_pos + 12], file_data[pk_pos + 13]]);
+        let mut crc32 = u32::from_le_bytes([
+            file_data[pk_pos + 14],
+            file_data[pk_pos + 15],
+            file_data[pk_pos + 16],
+            file_data[pk_pos + 17],
+        ]);
+        let mut comp_size = u32::from_le_bytes([
+            file_data[pk_pos + 18],
+            file_data[pk_pos + 19],
+            file_data[pk_pos + 20],
+            file_data[pk_pos + 21],
+        ]) as usize;
+        let mut uncomp_size = u32::from_le_bytes([
+            file_data[pk_pos + 22],
+            file_data[pk_pos + 23],
+            file_data[pk_pos + 24],
+            file_data[pk_pos + 25],
+        ]) as u64;
+        let fn_len = u16::from_le_bytes([file_data[pk_pos + 26], file_data[pk_pos + 27]]) as usize;
+        let extra_len = u16::from_le_bytes([file_data[pk_pos + 28], file_data[pk_pos + 29]]) as usize;
+
+        let header_len = 30 + fn_len + extra_len;
+        if fn_len == 0 || pk_pos + header_len > total_len {
+            offset = pk_pos + 4;
+            continue;
+        }
+
+        let fn_bytes = &file_data[pk_pos + 30..pk_pos + 30 + fn_len];
+        let name_str = String::from_utf8_lossy(fn_bytes).to_string();
+        let clean_name = name_str.trim_matches('\0').to_string();
+
+        if clean_name.is_empty() {
+            offset = pk_pos + 4;
+            continue;
+        }
+
+        let is_dir = clean_name.ends_with('/');
+        let payload_start = pk_pos + header_len;
+        let max_payload_len = total_len.saturating_sub(payload_start);
+
+        let mut next_offset = pk_pos + header_len + comp_size;
+        let has_bit3 = (flags & 0x0008) != 0;
+
+        if !is_dir && (has_bit3 || comp_size == 0) {
+            // General Purpose Bit 3 is set (or comp_size == 0 in streaming mode).
+            // Strictly forbid using comp_size = 0 and scanning PK inside compressed ciphertext!
+            let mut resolved = false;
+
+            // Strategy 1: Data Descriptor signature search (0x08074B50 / PK\x07\x08)
+            let mut p = payload_start;
+            let dd_limit = total_len.saturating_sub(16);
+            while p <= dd_limit {
+                if file_data[p] == 0x50
+                    && file_data[p + 1] == 0x4B
+                    && file_data[p + 2] == 0x07
+                    && file_data[p + 3] == 0x08
+                {
+                    let cand_len = p - payload_start;
+                    // Check standard 32-bit descriptor (16 bytes: magic + crc + comp + uncomp)
+                    let dd_crc = u32::from_le_bytes([
+                        file_data[p + 4],
+                        file_data[p + 5],
+                        file_data[p + 6],
+                        file_data[p + 7],
+                    ]);
+                    let dd_comp = u32::from_le_bytes([
+                        file_data[p + 8],
+                        file_data[p + 9],
+                        file_data[p + 10],
+                        file_data[p + 11],
+                    ]) as usize;
+                    let dd_uncomp = u32::from_le_bytes([
+                        file_data[p + 12],
+                        file_data[p + 13],
+                        file_data[p + 14],
+                        file_data[p + 15],
+                    ]) as u64;
+
+                    if dd_comp == cand_len {
+                        comp_size = cand_len;
+                        crc32 = dd_crc;
+                        uncomp_size = dd_uncomp;
+                        next_offset = p + 16;
+                        resolved = true;
+                        break;
+                    }
+
+                    // Check Zip64 descriptor (24 bytes: magic + crc + 8-byte comp + 8-byte uncomp)
+                    if p + 24 <= total_len {
+                        let dd_comp64 = u64::from_le_bytes([
+                            file_data[p + 8],
+                            file_data[p + 9],
+                            file_data[p + 10],
+                            file_data[p + 11],
+                            file_data[p + 12],
+                            file_data[p + 13],
+                            file_data[p + 14],
+                            file_data[p + 15],
+                        ]) as usize;
+                        let dd_uncomp64 = u64::from_le_bytes([
+                            file_data[p + 16],
+                            file_data[p + 17],
+                            file_data[p + 18],
+                            file_data[p + 19],
+                            file_data[p + 20],
+                            file_data[p + 21],
+                            file_data[p + 22],
+                            file_data[p + 23],
+                        ]);
+                        if dd_comp64 == cand_len {
+                            comp_size = cand_len;
+                            crc32 = dd_crc;
+                            uncomp_size = dd_uncomp64;
+                            next_offset = p + 24;
+                            resolved = true;
+                            break;
+                        }
+                    }
+                }
+                p += 1;
+            }
+
+            // Strategy 2: Streaming Deflate probe if method is Deflate (8) and DD was not matched
+            if !resolved && method == 8 {
+                let mut decompressor = flate2::Decompress::new(false);
+                let mut sink = [0u8; 16384];
+                let mut in_pos = payload_start;
+                let mut total_out = 0u64;
+                let mut calc_crc = crc32fast::Hasher::new();
+                let mut stream_ended = false;
+
+                while in_pos < total_len {
+                    let before_in = decompressor.total_in();
+                    let before_out = decompressor.total_out();
+                    let chunk_end = total_len.min(in_pos + 8192);
+                    let chunk = &file_data[in_pos..chunk_end];
+
+                    let status = match decompressor.decompress(chunk, &mut sink, flate2::FlushDecompress::None) {
+                        Ok(s) => s,
+                        Err(_) => break,
+                    };
+
+                    let consumed_in = (decompressor.total_in() - before_in) as usize;
+                    let produced_out = (decompressor.total_out() - before_out) as usize;
+                    in_pos += consumed_in;
+                    total_out += produced_out as u64;
+                    calc_crc.update(&sink[..produced_out]);
+
+                    if status == flate2::Status::StreamEnd {
+                        stream_ended = true;
+                        break;
+                    }
+                    if consumed_in == 0 && produced_out == 0 {
+                        break;
+                    }
+                }
+
+                if stream_ended {
+                    let consumed = decompressor.total_in() as usize;
+                    comp_size = consumed;
+                    uncomp_size = total_out;
+                    crc32 = calc_crc.finalize();
+                    let payload_end = payload_start + comp_size;
+
+                    // Skip trailing data descriptor if present
+                    if payload_end + 16 <= total_len
+                        && file_data[payload_end..payload_end + 4] == [0x50, 0x4B, 0x07, 0x08]
+                    {
+                        next_offset = payload_end + 16;
+                    } else if payload_end + 12 <= total_len {
+                        let cand_comp = u32::from_le_bytes([
+                            file_data[payload_end + 4],
+                            file_data[payload_end + 5],
+                            file_data[payload_end + 6],
+                            file_data[payload_end + 7],
+                        ]) as usize;
+                        if cand_comp == comp_size {
+                            next_offset = payload_end + 12;
+                        } else {
+                            next_offset = payload_end;
+                        }
+                    } else {
+                        next_offset = payload_end;
+                    }
+                    resolved = true;
+                }
+            }
+
+            // Strategy 3: Fallback safe forward scan to prevent entering compressed payload
+            if !resolved {
+                if let Some(next_pk) = find_next_pk_signature(&file_data, payload_start + 4) {
+                    comp_size = next_pk - payload_start;
+                    next_offset = next_pk;
+                } else {
+                    comp_size = max_payload_len;
+                    next_offset = total_len;
+                }
+            }
+        }
+
+        let actual_comp_len = comp_size.min(max_payload_len);
+        let payload = file_data[payload_start..payload_start + actual_comp_len].to_vec();
+
+        let mut epoch_secs = 1700000000u32;
+        let yr = ((mdate_dos >> 9) & 0x7F) as u32 + 1980;
+        let mo = ((mdate_dos >> 5) & 0x0F) as u32;
+        let dy = (mdate_dos & 0x1F) as u32;
+        if yr >= 1980 && (1..=12).contains(&mo) && (1..=31).contains(&dy) {
+            epoch_secs = (yr - 1970) * 31536000 + mo * 2592000 + dy * 86400;
+        }
+
+        salvaged_items.push(ZipCompressedItem {
+            rel_path: clean_name,
+            uncompressed_size: if uncomp_size > 0 {
+                uncomp_size
+            } else {
+                payload.len() as u64
+            },
+            compressed_size: payload.len() as u64,
+            crc32,
+            compression_method: method,
+            actual_method: method,
+            aes_strength: 0,
+            payload,
+            mtime_epoch_secs: epoch_secs,
+            mode: if is_dir { 0o755 } else { 0o644 },
+            is_directory: is_dir,
+            is_encrypted: false,
+        });
+
+        offset = next_offset.max(pk_pos + 4);
+    }
+
+    if salvaged_items.is_empty() {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+
+    let count = salvaged_items.len();
+    let rebuilt_bytes = assemble_zip_archive(&salvaged_items)?;
+    fs::write(repaired_path, &rebuilt_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    Ok(count)
+}
+
+/// Scans damaged TAR stream and reconstructs a healthy TAR archive at `repaired_path`.
+pub fn repair_damaged_tar(damaged_path: &Path, repaired_path: &Path) -> Result<usize, TTZipStatus> {
+    let mut file = File::open(damaged_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+    let mut out_file = File::create(repaired_path).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    let mut offset = 0;
+    let total_len = buffer.len();
+    let mut salvaged_count = 0;
+
+    while offset + 512 <= total_len {
+        let block = &buffer[offset..offset + 512];
+        if block.iter().all(|&b| b == 0) {
+            offset += 512;
+            continue;
+        }
+
+        let block_arr: &[u8; 512] = match block.try_into() {
+            Ok(b) => b,
+            Err(_) => {
+                offset += 512;
+                continue;
+            }
+        };
+
+        if crate::archive::tar::header::verify_tar_checksum(block_arr) {
+            // Valid header block found
+            let file_size = crate::archive::tar::header::parse_octal(&block[124..136]).unwrap_or(0) as usize;
+
+            let payload_blocks = file_size.div_ceil(512);
+            let available_payload = total_len.saturating_sub(offset + 512);
+            let write_payload_len = file_size.min(available_payload);
+
+            out_file.write_all(block).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            if write_payload_len > 0 {
+                let payload = &buffer[offset + 512..offset + 512 + write_payload_len];
+                out_file.write_all(payload).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                let pad = (512 - (write_payload_len % 512)) % 512;
+                if pad > 0 {
+                    out_file.write_all(&vec![0u8; pad]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                }
+            }
+
+            salvaged_count += 1;
+            offset += 512 + (payload_blocks * 512);
+        } else {
+            offset += 512;
+        }
+    }
+
+    // Write double-512-byte zero End-of-Archive trailer
+    out_file.write_all(&[0u8; 1024]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    out_file.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+    if salvaged_count == 0 {
+        Err(TTZipStatus::ErrCorruptHeader)
+    } else {
+        Ok(salvaged_count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_repair_damaged_zip_corrupt_tail() {
+        let temp_dir_obj = tempfile::Builder::new()
+            .prefix("ttzip_test_repair_zip_")
+            .tempdir()
+            .expect("tempdir");
+        let temp_dir = temp_dir_obj.path();
+
+        let good_item = ZipCompressedItem {
+            rel_path: "document.txt".to_string(),
+            uncompressed_size: 13,
+            compressed_size: 13,
+            crc32: 0x12345678,
+            compression_method: 0,
+            actual_method: 0,
+            aes_strength: 0,
+            payload: b"Hello World!!".to_vec(),
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+            is_encrypted: false,
+        };
+
+        let zip_bytes = assemble_zip_archive(&[good_item]).expect("assemble");
+        // Truncate archive right after the payload to destroy the Central Directory & EOCD
+        let truncated = zip_bytes[..30 + 12 + 13].to_vec();
+
+        let damaged_file = temp_dir.join("damaged.zip");
+        let repaired_file = temp_dir.join("repaired.zip");
+        fs::write(&damaged_file, &truncated).expect("write damaged");
+
+        let count = repair_damaged_zip(&damaged_file, &repaired_file).expect("repair");
+        assert_eq!(count, 1);
+        assert!(repaired_file.exists());
+    }
+}

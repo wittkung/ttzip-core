@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 use std::fs::File;
 use std::io::Read;
@@ -164,13 +160,8 @@ mod tests {
 
     #[test]
     fn test_inspect_staging_file_mutation_lifecycle() {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!("ttzip_test_tx_{}", nanos));
-        std::fs::create_dir_all(&temp_dir).unwrap();
-        let test_file = temp_dir.join("payload.txt");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let test_file = temp_dir.path().join("payload.txt");
 
         // Write initial content
         {
@@ -203,22 +194,15 @@ mod tests {
         assert_eq!(diff3.bytes_written, 42);
 
         // Test non-existent file -> FileNotFound error
-        let missing = temp_dir.join("missing.txt");
+        let missing = temp_dir.path().join("missing.txt");
         let res = inspect_staging_file_mutation(missing.to_str().unwrap().to_string(), String::new());
         assert!(matches!(res, Err(TTZipError::FileNotFound { .. })));
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
     #[test]
     fn test_uniffi_wal_mutation_lifecycle_and_rollback() {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!("ttzip_test_uniffi_wal_{}", nanos));
-        std::fs::create_dir_all(&temp_dir).unwrap();
-        let archive_path = temp_dir.join("test.zip");
+        let temp_dir = tempfile::tempdir().unwrap();
+        let archive_path = temp_dir.path().join("test.zip");
 
         // Create initial ZIP archive
         let items = vec![
@@ -278,7 +262,5 @@ mod tests {
 
         let status_rb = inspect_wal_mutation_status(arch_str.clone()).expect("inspect post rollback");
         assert!(status_rb.is_none());
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

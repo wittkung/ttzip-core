@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Subcommand execution handler: check / test.
 
@@ -25,6 +21,50 @@ pub fn execute_check(
     deep: bool,
     json: bool,
 ) -> Result<(), String> {
+    let dto = check_archive_integrity(archive_path, password, deep)?;
+
+    if json {
+        let json_str = serde_json::to_string_pretty(&dto)
+            .map_err(|e| format!("Failed to serialize check JSON: {}", e))?;
+        println!("{}", json_str);
+        if !dto.is_valid {
+            return Err("Archive check failed with errors".to_string());
+        }
+        return Ok(());
+    }
+
+    let mode_str = if deep { " (Deep Payload CRC32 Verified)" } else { "" };
+
+    if dto.is_valid {
+        println!(
+            "✅ [PASS] Archive {} (Format: {}, Entries: {}){} is healthy and fully compliant ({}ms).",
+            archive_path.display(),
+            dto.format,
+            dto.total_entries,
+            mode_str,
+            dto.elapsed_ms
+        );
+        Ok(())
+    } else {
+        eprintln!(
+            "❌ [FAIL] Archive {} verification failed ({} corrupted entries, {}ms):",
+            archive_path.display(),
+            dto.corrupted_entries,
+            dto.elapsed_ms
+        );
+        for err in &dto.errors {
+            eprintln!("  - {}", err);
+        }
+        Err("Archive verification failed".to_string())
+    }
+}
+
+/// Inspects archive and performs full integrity verification (with deep payload CRC32 checks).
+pub fn check_archive_integrity(
+    archive_path: &Path,
+    password: Option<&str>,
+    deep: bool,
+) -> Result<CheckResultDto, String> {
     if !archive_path.exists() {
         return Err(format!("Archive file not found: {}", archive_path.display()));
     }
@@ -98,7 +138,7 @@ pub fn execute_check(
                                                     is_valid = false;
                                                     corrupted_count += 1;
                                                     errors.push(format!(
-                                                        "CRC32 mismatch in 7z entry '{}': expected 0x{:08X}, got 0x{:08X}",
+                                                        "CRC32 mismatch in entry '{}': expected 0x{:08X}, got 0x{:08X}",
                                                         file.rel_path, expected_crc, actual_crc
                                                     ));
                                                 }
@@ -108,7 +148,7 @@ pub fn execute_check(
                                             is_valid = false;
                                             corrupted_count += 1;
                                             errors.push(format!(
-                                                "7z decompression failed for entry '{}': {:?}",
+                                                "Decompression failed for entry '{}': {:?}",
                                                 file.rel_path, e
                                             ));
                                         }
@@ -117,7 +157,7 @@ pub fn execute_check(
                             } else {
                                 is_valid = false;
                                 corrupted_count += 1;
-                                errors.push("Failed to decode 7z header/solid streams".to_string());
+                                errors.push("Failed to parse 7z headers for deep verification".to_string());
                             }
                         }
                         ContainerFormat::Tar => {
@@ -126,27 +166,30 @@ pub fn execute_check(
                                     if entry.is_directory {
                                         continue;
                                     }
-                                    if tar.extract_entry_bytes(idx).is_err() {
+                                    if let Err(e) = tar.extract_entry_bytes(idx) {
                                         is_valid = false;
                                         corrupted_count += 1;
-                                        errors.push(format!("TAR entry '{}' payload truncated or corrupt", entry.path));
+                                        errors.push(format!(
+                                            "TAR stream read error in entry '{}': {:?}",
+                                            entry.path, e
+                                        ));
                                     }
                                 }
                             } else {
                                 is_valid = false;
                                 corrupted_count += 1;
-                                errors.push("Failed to parse TAR blocks".to_string());
+                                errors.push("Failed to parse TAR header table".to_string());
                             }
                         }
                         ContainerFormat::Snappy => {
-                            if snappy_frame_decode_to_vec(&data, 1024 * 1024 * 512).is_err() {
+                            if let Err(e) = snappy_frame_decode_to_vec(&data, 1024 * 1024 * 512) {
                                 is_valid = false;
                                 corrupted_count += 1;
-                                errors.push("Snappy framed stream checksum error".to_string());
+                                errors.push(format!("Snappy frame decompression error: {:?}", e));
                             }
                         }
                         ContainerFormat::Brotli | ContainerFormat::TarBrotli => {
-                            if brotli_decompress_to_vec(&data, 1024 * 1024 * 512).is_err() {
+                            if let Err(_e) = brotli_decompress_to_vec(&data, 1024 * 1024 * 512) {
                                 is_valid = false;
                                 corrupted_count += 1;
                                 errors.push("Brotli stream decompression error".to_string());
@@ -177,48 +220,13 @@ pub fn execute_check(
 
     let elapsed = start.elapsed().as_millis() as u64;
 
-    if json {
-        let dto = CheckResultDto {
-            archive: archive_path.to_string_lossy().to_string(),
-            format,
-            is_valid,
-            total_entries,
-            corrupted_entries: corrupted_count,
-            errors,
-            elapsed_ms: elapsed,
-        };
-
-        let json_str = serde_json::to_string_pretty(&dto)
-            .map_err(|e| format!("Failed to serialize check JSON: {}", e))?;
-        println!("{}", json_str);
-        if !is_valid {
-            return Err("Archive check failed with errors".to_string());
-        }
-        return Ok(());
-    }
-
-    let mode_str = if deep { " (Deep Payload CRC32 Verified)" } else { "" };
-
-    if is_valid {
-        println!(
-            "✅ [PASS] Archive {} (Format: {}, Entries: {}){} is healthy and fully compliant ({}ms).",
-            archive_path.display(),
-            format,
-            total_entries,
-            mode_str,
-            elapsed
-        );
-        Ok(())
-    } else {
-        eprintln!(
-            "❌ [FAIL] Archive {} verification failed ({} corrupted entries, {}ms):",
-            archive_path.display(),
-            corrupted_count,
-            elapsed
-        );
-        for err in &errors {
-            eprintln!("  - {}", err);
-        }
-        Err("Archive verification failed".to_string())
-    }
+    Ok(CheckResultDto {
+        archive: archive_path.to_string_lossy().to_string(),
+        format,
+        is_valid,
+        total_entries,
+        corrupted_entries: corrupted_count,
+        errors,
+        elapsed_ms: elapsed,
+    })
 }

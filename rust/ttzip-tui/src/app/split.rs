@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Asynchronous multi-volume archive split pipeline runner.
 
@@ -81,6 +77,7 @@ impl AppState {
 
             let mut buffer = vec![0u8; 256 * 1024];
             let mut processed_bytes = 0u64;
+            let mut last_progress_time = Instant::now();
 
             loop {
                 if token.is_cancelled() {
@@ -104,32 +101,37 @@ impl AppState {
 
                 processed_bytes += read_bytes as u64;
 
-                let elapsed = start.elapsed().as_secs_f64();
-                let speed_mb = if elapsed > 0.0 {
-                    (processed_bytes as f64 / (1024.0 * 1024.0)) / elapsed
-                } else {
-                    0.0
-                };
+                let is_complete = total_bytes > 0 && processed_bytes >= total_bytes;
+                if last_progress_time.elapsed().as_millis() >= 100 || is_complete {
+                    last_progress_time = Instant::now();
 
-                let eta = if speed_mb > 0.0 && total_bytes > processed_bytes {
-                    ((total_bytes - processed_bytes) as f64 / (1024.0 * 1024.0)) / speed_mb
-                } else {
-                    0.0
-                };
+                    let elapsed = start.elapsed().as_secs_f64();
+                    let speed_mb = if elapsed > 0.0 {
+                        (processed_bytes as f64 / (1024.0 * 1024.0)) / elapsed
+                    } else {
+                        0.0
+                    };
 
-                let snap = ProgressSnapshot {
-                    task_title: format!("Splitting Archive into {} chunks", format_bytes(chunk_size)),
-                    current_entry_name: format!("Writing segment offset {}", format_bytes(processed_bytes)),
-                    processed_bytes,
-                    total_bytes,
-                    processed_entries: 1,
-                    total_entries: 1,
-                    instant_throughput_mb_per_sec: speed_mb,
-                    elapsed_seconds: elapsed,
-                    eta_seconds: eta,
-                };
+                    let eta = if speed_mb > 0.0 && total_bytes > processed_bytes {
+                        ((total_bytes - processed_bytes) as f64 / (1024.0 * 1024.0)) / speed_mb
+                    } else {
+                        0.0
+                    };
 
-                let _ = event_sender.send(AppEvent::Progress(snap));
+                    let snap = ProgressSnapshot {
+                        task_title: format!("Splitting Archive into {} chunks", format_bytes(chunk_size)),
+                        current_entry_name: format!("Writing segment offset {}", format_bytes(processed_bytes)),
+                        processed_bytes,
+                        total_bytes,
+                        processed_entries: 1,
+                        total_entries: 1,
+                        instant_throughput_mb_per_sec: speed_mb,
+                        elapsed_seconds: elapsed,
+                        eta_seconds: eta,
+                    };
+
+                    let _ = event_sender.send(AppEvent::Progress(snap));
+                }
             }
 
             match writer.close() {

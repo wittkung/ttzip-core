@@ -1,18 +1,12 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Archive inspection C-ABI FFI entry implementation.
 
-use super::guards::ArchiveReadGuard;
-use super::sys::*;
 use crate::ffi::helpers::safe_cstr;
-use crate::types::{TTZipEntryMetadata, TTZipInspectCallback, TTZipStatus};
-use libc::{c_char, c_void, mode_t};
-use std::ffi::{CStr, CString};
+use crate::types::{TTZipInspectCallback, TTZipStatus};
+use libc::{c_char, c_void};
+use std::ffi::CStr;
 use std::panic::catch_unwind;
 use std::path::Path;
 
@@ -29,106 +23,31 @@ pub unsafe extern "C" fn ttzip_rust_inspect_archive(
     user_data: *mut c_void,
 ) -> TTZipStatus {
     let result = catch_unwind(|| {
-        let cb = match callback {
-            Some(f) => f,
-            None => return TTZipStatus::ErrInvalidParam,
-        };
-
         let path_str = match unsafe { safe_cstr(archive_path) } {
             Ok(s) => s,
             Err(st) => return st,
         };
+        let pwd_str = if password.is_null() {
+            None
+        } else {
+            match unsafe { CStr::from_ptr(password) }.to_str() {
+                Ok(s) if !s.is_empty() => Some(s),
+                _ => None,
+            }
+        };
 
-        if !Path::new(path_str).exists() {
-            return TTZipStatus::ErrFileNotFound;
+        match crate::archive::unified::inspect::inspect_archive_c_compat(
+            Path::new(path_str),
+            pwd_str,
+            detect_encoding,
+            callback,
+            user_data,
+        ) {
+            Ok(_) => TTZipStatus::Ok,
+            Err(st) => st,
         }
-
-        let a = archive_read_new();
-        if a.is_null() {
-            return TTZipStatus::ErrOutOfMemory;
-        }
-        let guard = ArchiveReadGuard(a);
-
-        archive_read_support_format_all(a);
-        archive_read_support_filter_all(a);
-
-        if !password.is_null() {
-            if let Ok(p_str) = CStr::from_ptr(password).to_str() {
-                if !p_str.is_empty() {
-                    archive_read_add_passphrase(a, password);
-                }
-            }
-        }
-
-        let open_rc = archive_read_open_filename(a, archive_path, 65536);
-        if open_rc != 0 {
-            return TTZipStatus::ErrOpenFailed;
-        }
-
-        let mut entry: *mut c_void = std::ptr::null_mut();
-
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if entry.is_null() {
-                break;
-            }
-            let raw_path = archive_entry_pathname(entry);
-            if raw_path.is_null() {
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            let path_bytes = CStr::from_ptr(raw_path).to_bytes();
-            if path_bytes.is_empty() {
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            let mut detected_c_str: Option<CString> = None;
-            if detect_encoding {
-                let has_non_ascii = path_bytes.iter().any(|&b| b >= 0x80);
-                if has_non_ascii {
-                    if let Some(charset) = crate::codecs::chardet::detect_charset(path_bytes) {
-                        detected_c_str = CString::new(charset.as_str()).ok();
-                    }
-                }
-            }
-
-            let uncompressed_size = archive_entry_size(entry).max(0) as u64;
-            let mode = archive_entry_mode(entry) as u32;
-            let filetype = archive_entry_filetype(entry);
-            let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-                || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-                || path_bytes.ends_with(b"/");
-            let mtime = archive_entry_mtime(entry) as i64;
-            let is_data_enc = archive_entry_is_data_encrypted(entry) != 0;
-            let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
-
-            let meta = TTZipEntryMetadata {
-                struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                path: raw_path,
-                uncompressed_size,
-                compressed_size: 0,
-                crc32: 0,
-                mtime_epoch_secs: mtime,
-                mode,
-                is_directory: is_dir,
-                is_encrypted: is_data_enc || is_meta_enc,
-                compression_method: 0,
-                detected_encoding: detected_c_str.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
-            };
-
-            let should_continue = cb(&meta, user_data);
-            archive_read_data_skip(a);
-
-            if !should_continue {
-                break;
-            }
-        }
-
-        drop(guard);
-        TTZipStatus::Ok
     });
 
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
+

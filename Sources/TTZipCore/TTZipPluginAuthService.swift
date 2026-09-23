@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -268,12 +264,12 @@ public final class TTZipPluginAuthService: @unchecked Sendable {
         )
     }
 
-    /// Verifies raw data bytes against a detached Ed25519 signature and public key.
-    public func verifyRawData(
+    /// Synchronously verifies raw data bytes against a detached Ed25519 signature and public key.
+    public func verifyRaw(
         data: Data,
         signatureBase64: String,
         publicKeyBase64: String
-    ) async -> PluginAuthStatus {
+    ) -> PluginAuthStatus {
         let rustStatus = verifier.verifySignatureBase64(
             data: data,
             signatureBase64: signatureBase64,
@@ -282,6 +278,19 @@ public final class TTZipPluginAuthService: @unchecked Sendable {
         let status = PluginAuthStatus(from: rustStatus)
         recordVerificationMetrics(isSuccess: status.isSuccess)
         return status
+    }
+
+    /// Verifies raw data bytes against a detached Ed25519 signature and public key.
+    public func verifyRawData(
+        data: Data,
+        signatureBase64: String,
+        publicKeyBase64: String
+    ) async -> PluginAuthStatus {
+        return verifyRaw(
+            data: data,
+            signatureBase64: signatureBase64,
+            publicKeyBase64: publicKeyBase64
+        )
     }
 
     /// Verifies a `PluginCertificate` against configured root anchors and validity timestamps.

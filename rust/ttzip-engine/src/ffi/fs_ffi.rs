@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! C-ABI FFI exports for filesystem security, APFS optimizations, and VFS hierarchical tree & search.
 
@@ -294,6 +290,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
     offset: usize,
     limit: usize,
     out_nodes: *mut crate::types::TTZipVfsNodeSummary,
+    out_capacity: usize,
     out_count: *mut usize,
     out_total_in_dir: *mut usize,
 ) -> TTZipStatus {
@@ -309,6 +306,10 @@ pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
 
         let (summaries, total) = arena.get_children_slice(dir_node_id, offset, limit);
         let count = summaries.len();
+
+        if count > out_capacity {
+            return TTZipStatus::ErrBufferTooSmall;
+        }
 
         unsafe {
             std::ptr::copy_nonoverlapping(summaries.as_ptr(), out_nodes, count);

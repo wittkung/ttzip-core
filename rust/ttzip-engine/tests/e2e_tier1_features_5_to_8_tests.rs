@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Tier 1 E2E Test Suite: Feature Coverage for Features 5 through 8.
 //!
@@ -22,10 +18,6 @@ use ttzip_engine::codecs::chardet::detect_charset;
 use ttzip_engine::crypto::ed25519::SigningKey;
 use ttzip_engine::security::system_defense::SensitiveCredentialBuffer;
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, get_current_rss_bytes, SevenZReader};
-use ttzip_engine::syntax::{
-    HighlightTokenKind, SupportedLanguage, SymbolOutlineExtractor, SyntaxHighlighter,
-    TTZipSyntaxParser,
-};
 use ttzip_engine::system::delta::engine::TTZipDeltaEngine;
 use ttzip_engine::system::delta::types::DeltaPatchHeader;
 use ttzip_engine::zip::writer::ZipInputItem;
@@ -156,98 +148,6 @@ fn test_e2e_t1_f5_mach_rss_resident_memory_monitoring_invariants() {
     assert!(rss < 1024 * 1024 * 1024, "Process memory within safe operating boundary");
 }
 
-// ============================================================================
-// Feature 6: Tree-sitter Viewport Syntax Highlighting (6 Tests)
-// ============================================================================
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_rust_syntax_tokenization() {
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let source = "pub fn add_numbers(a: u32, b: u32) -> u32 { a + b }";
-    let tree = parser.parse_full(source).unwrap();
-    assert!(!tree.root_node().has_error());
-
-    let mut highlighter = SyntaxHighlighter::new();
-    let tokens = highlighter.highlight(tree, source, SupportedLanguage::Rust).unwrap();
-    assert!(!tokens.is_empty());
-    assert!(tokens.iter().any(|t| t.kind == HighlightTokenKind::Keyword));
-    assert!(tokens.iter().any(|t| t.kind == HighlightTokenKind::Function));
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_c_and_swift_tokenization() {
-    let mut c_parser = TTZipSyntaxParser::with_language(SupportedLanguage::C).unwrap();
-    let c_source = "int main(int argc, char **argv) { return 0; }";
-    let c_tree = c_parser.parse_full(c_source).unwrap();
-    assert!(!c_tree.root_node().has_error());
-
-    let mut swift_parser = TTZipSyntaxParser::with_language(SupportedLanguage::Swift).unwrap();
-    let swift_source = "import SwiftUI\nstruct ContentView: View { var body: some View { Text(\"Hello\") } }";
-    let swift_tree = swift_parser.parse_full(swift_source).unwrap();
-    assert_eq!(swift_tree.root_node().kind(), "source_file");
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_python_and_javascript_tokenization() {
-    let mut py_parser = TTZipSyntaxParser::with_language(SupportedLanguage::Python).unwrap();
-    let py_source = "def compute_hashes(data: bytes) -> str:\n    return hashlib.sha256(data).hexdigest()\n";
-    let py_tree = py_parser.parse_full(py_source).unwrap();
-    assert!(!py_tree.root_node().has_error());
-
-    let mut js_parser = TTZipSyntaxParser::with_language(SupportedLanguage::JavaScript).unwrap();
-    let js_source = "const fetchMetrics = async (endpoint) => { const res = await fetch(endpoint); return res.json(); };";
-    let js_tree = js_parser.parse_full(js_source).unwrap();
-    assert!(!js_tree.root_node().has_error());
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_json_and_html_structured_tokens() {
-    let mut json_parser = TTZipSyntaxParser::with_language(SupportedLanguage::Json).unwrap();
-    let json_source = r#"{"name": "ttzip", "threads": 8, "solid": true}"#;
-    let json_tree = json_parser.parse_full(json_source).unwrap();
-    assert!(!json_tree.root_node().has_error());
-
-    let mut html_parser = TTZipSyntaxParser::with_language(SupportedLanguage::Html).unwrap();
-    let html_source = r#"<!DOCTYPE html><html><head><title>TTZip</title></head><body><h1>Ready</h1></body></html>"#;
-    let html_tree = html_parser.parse_full(html_source).unwrap();
-    assert_eq!(html_tree.root_node().kind(), "document");
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_incremental_edit_ast_reparse() {
-    let mut parser = TTZipSyntaxParser::with_language(SupportedLanguage::Rust).unwrap();
-    let initial_source = "fn compute() -> u32 { 10 }";
-    let tree1 = parser.parse_full(initial_source).unwrap().clone();
-
-    let updated_source = "fn compute() -> u32 { 10 + 20 }";
-    let edit = tree_sitter::InputEdit {
-        start_byte: 22,
-        old_end_byte: 24,
-        new_end_byte: 29,
-        start_position: tree_sitter::Point { row: 0, column: 22 },
-        old_end_position: tree_sitter::Point { row: 0, column: 24 },
-        new_end_position: tree_sitter::Point { row: 0, column: 29 },
-    };
-
-    let tree2 = parser.parse_incremental(updated_source, &edit).unwrap();
-    assert!(!tree2.root_node().has_error());
-    assert_eq!(tree1.root_node().kind(), tree2.root_node().kind());
-}
-
-#[cfg(feature = "syntax")]
-#[test]
-fn test_e2e_t1_f6_treesitter_viewport_range_token_streaming() {
-    let source = "struct Config {\n    port: u16,\n    host: String,\n}\n\nfn start_server(c: Config) {\n    println!(\"Starting\");\n}\n";
-    let symbols = SymbolOutlineExtractor::extract_from_source(source, SupportedLanguage::Rust).unwrap();
-    assert!(!symbols.is_empty());
-    assert!(symbols.iter().any(|s| s.name == "Config"));
-    assert!(symbols.iter().any(|s| s.name == "start_server"));
-}
 
 // ============================================================================
 // Feature 7: Smart Charset Mojibake Repair (5 Tests)

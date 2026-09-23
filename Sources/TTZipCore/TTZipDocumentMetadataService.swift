@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -198,7 +194,7 @@ public struct TTZipDocumentOutline: Sendable, Equatable, Hashable {
         self.summaryPreview = summaryPreview
     }
 
-    internal init(from uniffi: UniFfiOfficeOutline, kind: TTZipDocumentKind) {
+    public init(from uniffi: UniFfiOfficeOutline, kind: TTZipDocumentKind) {
         self.kind = kind
         self.documentType = uniffi.documentType
         self.headings = uniffi.headings
@@ -243,7 +239,7 @@ public struct TTZipEpubPublication: Sendable, Equatable, Hashable {
         self.rights = rights
     }
 
-    internal init(from uniffi: UniFfiEpubMetadata) {
+    public init(from uniffi: UniFfiEpubMetadata) {
         self.title = uniffi.title
         self.authors = uniffi.authors
         self.publisher = uniffi.publisher
@@ -287,7 +283,7 @@ public struct TTZipPlistMetadata: Sendable, Equatable, Hashable {
         self.rawXML = rawXML
     }
 
-    internal init(from uniffi: UniFfiPlistDictionary) {
+    public init(from uniffi: UniFfiPlistDictionary) {
         self.bundleIdentifier = uniffi.bundleIdentifier
         self.bundleName = uniffi.bundleName
         self.bundleVersion = uniffi.bundleVersion

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
@@ -73,12 +69,16 @@ final class TTZipMmapStreamServiceTests: XCTestCase {
         let readAllData = try service.readAll()
         XCTAssertEqual(readAllData, testData)
 
-        // Read slice
+        // Read slice (UniFFI record overload)
         let slice = try service.readSlice(offset: 6, length: 16)
         XCTAssertEqual(slice.offset, 6)
         XCTAssertEqual(slice.length, 16)
         let sliceString = String(data: slice.data, encoding: .utf8)
         XCTAssertEqual(sliceString, "High-Performance")
+
+        // Read slice (signed offset Data overload)
+        let sliceData = try service.readSlice(at: 6, length: 16)
+        XCTAssertEqual(String(data: sliceData, encoding: .utf8), "High-Performance")
 
         // Read bytes
         let bytesData = try service.readBytes(offset: 0, length: 5)
@@ -89,7 +89,28 @@ final class TTZipMmapStreamServiceTests: XCTestCase {
         XCTAssertGreaterThan(service.totalBytesStreamed, 0)
     }
 
-    // MARK: - Zero-Copy Borrowing
+    // MARK: - Scoped Zero-Copy Borrowing
+
+    func testWithSliceScopedClosure() throws {
+        let fileURL = tempDir.appendingPathComponent("scoped_borrow.bin")
+        let testString = "ScopedMemoryBorrowingValidation12345"
+        let testData = Data(testString.utf8)
+        try testData.write(to: fileURL)
+
+        let service = try TTZipMmapStreamService(path: fileURL.path)
+
+        let extracted: String = try service.withSlice(at: 6, length: 15) { rawBuffer in
+            XCTAssertEqual(rawBuffer.count, 15)
+            let data = Data(bytes: rawBuffer.baseAddress!, count: rawBuffer.count)
+            return String(data: data, encoding: .utf8) ?? ""
+        }
+        XCTAssertEqual(extracted, "MemoryBorrowing")
+
+        // Out of bounds / invalid parameters throw
+        XCTAssertThrowsError(try service.withSlice(at: -1, length: 5) { _ in })
+        XCTAssertThrowsError(try service.withSlice(at: 0, length: -1) { _ in })
+        XCTAssertThrowsError(try service.withSlice(at: 1000, length: 5) { _ in })
+    }
 
     func testWithUnsafeSliceZeroCopyBorrowing() throws {
         let fileURL = tempDir.appendingPathComponent("borrow.bin")
@@ -116,6 +137,47 @@ final class TTZipMmapStreamServiceTests: XCTestCase {
             expectedSum += UInt64(buffer[i])
         }
         XCTAssertEqual(computedSum, expectedSum)
+    }
+
+    func testReadZeroCopyData() throws {
+        let fileURL = tempDir.appendingPathComponent("zerocopy.bin")
+        let content = "ZeroCopyMemoryMappingTestPayload1234567890"
+        let data = content.data(using: .utf8)!
+        try data.write(to: fileURL)
+
+        let service = try TTZipMmapStreamService(path: fileURL.path)
+        let sliceData = try service.readZeroCopy(offset: 8, length: 13)
+        XCTAssertEqual(sliceData.count, 13)
+        let str = String(data: sliceData, encoding: .utf8)
+        XCTAssertEqual(str, "MemoryMapping")
+
+        // Out of bounds offset
+        XCTAssertThrowsError(try service.readZeroCopy(offset: 1000, length: 10))
+    }
+
+    // MARK: - Post-Deinit Data Lifetime Safety (Dangling Pointer / SIGBUS Prevention)
+
+    func testEscapingDataSafeAfterServiceDeallocation() throws {
+        let fileURL = tempDir.appendingPathComponent("dealloc_safety.bin")
+        let payloadString = "DanglingPointerPreventionAndKernelMmapSafetyVerification"
+        let testData = Data(payloadString.utf8)
+        try testData.write(to: fileURL)
+
+        var escapedSlice: TTZipMmapSlice? = nil
+        var escapedData: Data? = nil
+
+        try {
+            let localService = try TTZipMmapStreamService(path: fileURL.path)
+            escapedSlice = try localService.readSlice(offset: 0, length: UInt64(testData.count))
+            escapedData = try localService.readSlice(at: 15, length: 10)
+            // localService goes out of scope and is deallocated here
+        }()
+
+        // Accessing escaped data after deinit must NOT crash with SIGBUS or EXC_BAD_ACCESS
+        XCTAssertNotNil(escapedSlice)
+        XCTAssertEqual(escapedSlice?.data, testData)
+        XCTAssertNotNil(escapedData)
+        XCTAssertEqual(String(data: escapedData!, encoding: .utf8), "Prevention")
     }
 
     // MARK: - Async Streaming APIs
@@ -145,6 +207,13 @@ final class TTZipMmapStreamServiceTests: XCTestCase {
             reassembledFromData.append(dataChunk)
         }
         XCTAssertEqual(reassembledFromData, payload)
+
+        // Test streamChunks (AsyncThrowingStream)
+        var reassembledFromStreamChunks = Data()
+        for try await chunk in service.streamChunks(chunkSize: 4096) {
+            reassembledFromStreamChunks.append(chunk.data)
+        }
+        XCTAssertEqual(reassembledFromStreamChunks, payload)
     }
 
     // MARK: - Kernel Advice Controls
@@ -239,5 +308,34 @@ final class TTZipMmapStreamServiceTests: XCTestCase {
         }
 
         XCTAssertGreaterThanOrEqual(service.totalSlicesRead, 10)
+    }
+
+    func testMmapResultCacheReuseAcrossSlices() throws {
+        let fileURL = tempDir.appendingPathComponent("cache_reuse.bin")
+        let pattern = "ReusableMmapBufferValidationAcrossMultipleSlices1234567890"
+        let testString = String(repeating: pattern, count: 10) // 580 bytes
+        let testData = Data(testString.utf8)
+        try testData.write(to: fileURL)
+
+        let reader = try UniFfiMmapReader.open(path: fileURL.path)
+        let slice1 = try reader.dataNoCopy(offset: 0, length: 64)
+        let slice2 = try reader.dataNoCopy(offset: 64, length: 64)
+
+        XCTAssertEqual(slice1.count, 64)
+        XCTAssertEqual(slice2.count, 64)
+
+        // Verify physical VMA reuse: both slices are derived from the same base address
+        slice1.withUnsafeBytes { b1 in
+            slice2.withUnsafeBytes { b2 in
+                XCTAssertEqual(b1.baseAddress?.advanced(by: 64), b2.baseAddress)
+            }
+        }
+
+        // Verify withZeroCopyBytes borrows from the exact same memory page
+        try reader.withZeroCopyBytes(offset: 128, length: 64) { b3 in
+            slice1.withUnsafeBytes { b1 in
+                XCTAssertEqual(b1.baseAddress?.advanced(by: 128), b3.baseAddress)
+            }
+        }
     }
 }

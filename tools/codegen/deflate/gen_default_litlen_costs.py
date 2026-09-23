@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-#
-# This script computes the default litlen symbol costs for the near-optimal
-# parser.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 from math import log2
 

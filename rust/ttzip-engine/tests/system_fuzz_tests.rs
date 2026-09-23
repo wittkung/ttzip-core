@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive System Corruption Injection, Chaos Mutation, and Fuzzing Test Suite.
 //!
@@ -43,7 +39,7 @@ use ttzip_engine::system::delta::bsdiff::BsDiffControl;
 use ttzip_engine::system::delta::bspatch::TTZipBsPatch;
 use ttzip_engine::system::delta::engine::TTZipDeltaEngine;
 use ttzip_engine::system::delta::types::DeltaError;
-use ttzip_engine::xml::TTZipXmlParser;
+use quick_xml::Reader as XmlReader;
 
 /// Deterministic linear congruential generator for reproducible fuzzing vectors.
 #[derive(Clone, Debug)]
@@ -124,7 +120,7 @@ fn test_target_02_malformed_appcast_xml_and_xxe_bombs() {
         <channel><title>Exploit</title></channel>
     </rss>"#;
 
-    let mut parser = TTZipXmlParser::from_slice(xxe_payload.as_bytes());
+    let mut parser = XmlReader::from_reader(std::io::Cursor::new(xxe_payload.as_bytes()));
     let mut buf = Vec::new();
     let mut event_count = 0usize;
     while let Ok(event) = parser.read_event_into(&mut buf) {
@@ -148,7 +144,7 @@ fn test_target_02_malformed_appcast_xml_and_xxe_bombs() {
     ]>
     <item>&lol3;</item>"#;
 
-    let mut bomb_parser = TTZipXmlParser::from_slice(entity_bomb.as_bytes());
+    let mut bomb_parser = XmlReader::from_reader(std::io::Cursor::new(entity_bomb.as_bytes()));
     let mut bomb_buf = Vec::new();
     let mut bomb_count = 0usize;
     while let Ok(event) = bomb_parser.read_event_into(&mut bomb_buf) {
@@ -312,14 +308,14 @@ fn test_target_07_version_downgrade_and_anti_replay_attack() {
 #[test]
 fn test_target_08_zero_byte_and_truncated_appcast_response() {
     let empty_feed = b"";
-    let mut parser = TTZipXmlParser::from_slice(empty_feed);
+    let mut parser = XmlReader::from_reader(std::io::Cursor::new(empty_feed));
     let mut buf = Vec::new();
     let res = parser.read_event_into(&mut buf);
     assert!(res.is_ok());
     assert!(matches!(res.unwrap(), quick_xml::events::Event::Eof));
 
     let header_only = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-    let mut parser2 = TTZipXmlParser::from_slice(header_only);
+    let mut parser2 = XmlReader::from_reader(std::io::Cursor::new(header_only));
     let mut buf2 = Vec::new();
     let mut count = 0;
     while let Ok(event) = parser2.read_event_into(&mut buf2) {

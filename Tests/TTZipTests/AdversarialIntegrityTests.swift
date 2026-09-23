@@ -1,12 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
+@testable import TTZipCoreArchive
 
 final class AdversarialIntegrityTests: XCTestCase {
     private var tempDir: URL!
@@ -214,5 +211,44 @@ final class AdversarialIntegrityTests: XCTestCase {
         data.append(contentsOf: [0x00, 0x00]) // Comment len
 
         return data
+    }
+
+    /// Verifies that propagateQuarantine actively skips symbolic links, preventing quarantine attributes
+    /// from escaping extraction directory and tainting external host files.
+    func testPropagateQuarantineSkipsSymbolicLinks() throws {
+        let archivePath = tempDir.appendingPathComponent("quarantine_source.zip").path
+        try "fake_zip_bytes".write(toFile: archivePath, atomically: true, encoding: .utf8)
+
+        let qValue = "0083;65432100;Safari;ABCDEF-1234".utf8CString
+        let setRes = qValue.withUnsafeBufferPointer { ptr in
+            setxattr(archivePath, "com.apple.quarantine", ptr.baseAddress!, ptr.count, 0, XATTR_NOFOLLOW)
+        }
+        guard setRes == 0 else {
+            return
+        }
+
+        let extractDir = tempDir.appendingPathComponent("extracted").path
+        let externalDir = tempDir.appendingPathComponent("external_host").path
+        try FileManager.default.createDirectory(atPath: extractDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(atPath: externalDir, withIntermediateDirectories: true)
+
+        let regularFile = (extractDir as NSString).appendingPathComponent("file.txt")
+        try "regular_content".write(toFile: regularFile, atomically: true, encoding: .utf8)
+
+        let externalFile = (externalDir as NSString).appendingPathComponent("host_secret.txt")
+        try "secret_content".write(toFile: externalFile, atomically: true, encoding: .utf8)
+
+        let symlinkPath = (extractDir as NSString).appendingPathComponent("link_to_external")
+        try FileManager.default.createSymbolicLink(atPath: symlinkPath, withDestinationPath: externalFile)
+
+        ArchiveExtractor.propagateQuarantine(from: archivePath, to: extractDir)
+
+        // 1. Regular file receives quarantine attribute
+        let regSz = getxattr(regularFile, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
+        XCTAssertGreaterThan(regSz, 0, "Regular file should receive quarantine attribute")
+
+        // 2. External host file pointed by symlink MUST NOT receive quarantine attribute
+        let extSz = getxattr(externalFile, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
+        XCTAssertEqual(extSz, -1, "External target file must not be tainted by quarantine propagation")
     }
 }

@@ -1,15 +1,11 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Archive Creation, Inspection, and Format Detection Scaffolding.
 
 use std::sync::Arc;
 use rayon::prelude::*;
-use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, SniffMetadata, TTZipError, UniFFIEntryMetadata};
+use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, SniffMetadata, TTZipArchiveFormat, TTZipError, UniFFIEntryMetadata};
 
 /// Detects archive format from file using the full 16-format magic and SFX sniffer.
 #[uniffi::export]
@@ -38,62 +34,14 @@ pub fn detect_archive_format(path: String) -> Result<ArchiveFormat, TTZipError> 
                 _ => ArchiveFormat::Tar,
             }
         }
-        crate::standards::signatures::DetectedFormat::Gzip => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarGz) {
-                ArchiveFormat::TarGz
-            } else {
-                ArchiveFormat::Gzip
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Bzip2 => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBz2) {
-                ArchiveFormat::TarBz2
-            } else {
-                ArchiveFormat::Bzip2
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Xz => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarXz) {
-                ArchiveFormat::TarXz
-            } else {
-                ArchiveFormat::Xz
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Zstd => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarZstd) {
-                ArchiveFormat::TarZstd
-            } else {
-                ArchiveFormat::Zstd
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Lz4 => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLz4) {
-                ArchiveFormat::TarLz4
-            } else {
-                ArchiveFormat::Lz4
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Brotli => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBrotli) {
-                ArchiveFormat::TarBrotli
-            } else {
-                ArchiveFormat::Brotli
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Lzip => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLzip) {
-                ArchiveFormat::TarLzip
-            } else {
-                ArchiveFormat::Lzip
-            }
-        }
-        crate::standards::signatures::DetectedFormat::Lrzip => {
-            if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLrzip) {
-                ArchiveFormat::TarLrzip
-            } else {
-                ArchiveFormat::Lrzip
-            }
-        }
+        crate::standards::signatures::DetectedFormat::Gzip => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarGz) { ArchiveFormat::TarGz } else { ArchiveFormat::Gzip },
+        crate::standards::signatures::DetectedFormat::Bzip2 => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBz2) { ArchiveFormat::TarBz2 } else { ArchiveFormat::Bzip2 },
+        crate::standards::signatures::DetectedFormat::Xz => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarXz) { ArchiveFormat::TarXz } else { ArchiveFormat::Xz },
+        crate::standards::signatures::DetectedFormat::Zstd => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarZstd) { ArchiveFormat::TarZstd } else { ArchiveFormat::Zstd },
+        crate::standards::signatures::DetectedFormat::Lz4 => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLz4) { ArchiveFormat::TarLz4 } else { ArchiveFormat::Lz4 },
+        crate::standards::signatures::DetectedFormat::Brotli => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarBrotli) { ArchiveFormat::TarBrotli } else { ArchiveFormat::Brotli },
+        crate::standards::signatures::DetectedFormat::Lzip => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLzip) { ArchiveFormat::TarLzip } else { ArchiveFormat::Lzip },
+        crate::standards::signatures::DetectedFormat::Lrzip => if sniff.compound_format == Some(crate::standards::signatures::CompoundFormat::TarLrzip) { ArchiveFormat::TarLrzip } else { ArchiveFormat::Lrzip },
         crate::standards::signatures::DetectedFormat::Dmg => ArchiveFormat::Dmg,
         crate::standards::signatures::DetectedFormat::Lzfse => ArchiveFormat::Lzfse,
         crate::standards::signatures::DetectedFormat::Snappy => ArchiveFormat::Snappy,
@@ -178,67 +126,41 @@ pub fn inspect_archive_entries(
         return Err(TTZipError::FileNotFound { path: archive_path });
     }
 
-    struct EntryCollector {
-        entries: Vec<UniFFIEntryMetadata>,
-    }
-
-    let mut collector = EntryCollector {
-        entries: Vec::new(),
-    };
-
-    unsafe extern "C" fn inspect_cb(
-        meta: *const crate::types::TTZipEntryMetadata,
-        user_data: *mut libc::c_void,
-    ) -> bool {
-        if meta.is_null() || user_data.is_null() {
-            return true;
-        }
-        let collector = &mut *(user_data as *mut EntryCollector);
-        let m = &*meta;
-        let path = if !m.path.is_null() {
-            std::ffi::CStr::from_ptr(m.path).to_string_lossy().into_owned()
-        } else {
-            String::new()
-        };
-        let method = match m.compression_method {
-            0 => "store",
-            8 => "deflate",
-            12 => "bzip2",
-            14 => "lzma",
-            95 => "zstd",
-            _ => "unknown",
-        }.to_string();
-        let encoding = if !m.detected_encoding.is_null() {
-            Some(std::ffi::CStr::from_ptr(m.detected_encoding).to_string_lossy().into_owned())
-        } else {
-            None
-        };
-
-        collector.entries.push(UniFFIEntryMetadata {
-            path,
-            uncompressed_size: m.uncompressed_size,
-            compressed_size: m.compressed_size,
-            crc32: m.crc32,
-            mtime_epoch_secs: m.mtime_epoch_secs,
-            mode: m.mode,
-            is_directory: m.is_directory,
-            is_encrypted: m.is_encrypted,
-            compression_method: method,
-            detected_encoding: encoding,
-        });
-        true
-    }
+    let mut entries = Vec::new();
 
     let res = crate::archive::unified::inspect::inspect_archive(
         p,
         secure_pwd.as_deref(),
         true,
-        Some(inspect_cb),
-        &mut collector as *mut EntryCollector as *mut libc::c_void,
+        |entry_ref| {
+            let method = match entry_ref.compression_method {
+                0 => "store",
+                8 => "deflate",
+                12 => "bzip2",
+                14 => "lzma",
+                93 | 20 => "zstd",
+                95 => "xz",
+                _ => "unknown",
+            }.to_string();
+
+            entries.push(UniFFIEntryMetadata {
+                path: entry_ref.path.to_string(),
+                uncompressed_size: entry_ref.uncompressed_size,
+                compressed_size: entry_ref.compressed_size,
+                crc32: entry_ref.crc32,
+                mtime_epoch_secs: entry_ref.mtime_epoch_secs,
+                mode: entry_ref.mode,
+                is_directory: entry_ref.is_directory,
+                is_encrypted: entry_ref.is_encrypted,
+                compression_method: method,
+                detected_encoding: entry_ref.detected_encoding.map(|s| s.to_string()),
+            });
+            true
+        },
     );
 
     match res {
-        Ok(_) => Ok(collector.entries),
+        Ok(_) => Ok(entries),
         Err(status) => {
             if status == crate::types::TTZipStatus::ErrInvalidPassword {
                 Err(TTZipError::InvalidPassword)
@@ -355,11 +277,27 @@ pub fn create_archive_stream(
     let start = std::time::Instant::now();
     let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
 
-    struct ProgressBox {
+    struct ProgressContext {
         handler: Option<Box<dyn ProgressHandler>>,
         token: Option<Arc<CancellationToken>>,
     }
-    let mut pbox = ProgressBox { handler: progress, token };
+    let progress_ctx = Arc::new(ProgressContext {
+        handler: progress,
+        token,
+    });
+    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+
+    struct ContextGuard(*mut libc::c_void);
+    impl Drop for ContextGuard {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    drop(Arc::from_raw(self.0 as *const ProgressContext));
+                }
+            }
+        }
+    }
+    let _guard = ContextGuard(raw_ctx);
 
     unsafe extern "C" fn progress_cb(
         processed: u64,
@@ -370,60 +308,27 @@ pub fn create_archive_stream(
         if user_data.is_null() {
             return true;
         }
-        let p = &*(user_data as *const ProgressBox);
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
+        let unwind_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let p = &*(user_data as *const ProgressContext);
+            if let Some(ref t) = p.token {
+                if t.is_cancelled() {
+                    return false;
+                }
             }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            return h.on_progress(processed, total, name);
-        }
-        true
-    }
+            if let Some(ref h) = p.handler {
+                let name = if !entry_name.is_null() {
+                    Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                } else {
+                    None
+                };
+                return h.on_progress(processed, total, name);
+            }
+            true
+        }));
 
-    let raw_fmt = match format {
-        ArchiveFormat::Zip => crate::types::TTZipArchiveFormat::Zip,
-        ArchiveFormat::SevenZip => crate::types::TTZipArchiveFormat::SevenZip,
-        ArchiveFormat::Tar => crate::types::TTZipArchiveFormat::Tar,
-        ArchiveFormat::TarGz => crate::types::TTZipArchiveFormat::TarGz,
-        ArchiveFormat::TarBz2 => crate::types::TTZipArchiveFormat::TarBz2,
-        ArchiveFormat::TarXz => crate::types::TTZipArchiveFormat::TarXz,
-        ArchiveFormat::TarZstd => crate::types::TTZipArchiveFormat::TarZstd,
-        ArchiveFormat::TarLz4 => crate::types::TTZipArchiveFormat::TarLz4,
-        ArchiveFormat::TarBrotli => crate::types::TTZipArchiveFormat::TarBrotli,
-        ArchiveFormat::TarLzip => crate::types::TTZipArchiveFormat::TarLzip,
-        ArchiveFormat::TarLrzip => crate::types::TTZipArchiveFormat::TarLrzip,
-        ArchiveFormat::Dmg => crate::types::TTZipArchiveFormat::Dmg,
-        ArchiveFormat::Lzfse => crate::types::TTZipArchiveFormat::Lzfse,
-        ArchiveFormat::Snappy => crate::types::TTZipArchiveFormat::Snappy,
-        ArchiveFormat::Gzip => crate::types::TTZipArchiveFormat::Gzip,
-        ArchiveFormat::Bzip2 => crate::types::TTZipArchiveFormat::Bzip2,
-        ArchiveFormat::Xz => crate::types::TTZipArchiveFormat::Xz,
-        ArchiveFormat::Zstd => crate::types::TTZipArchiveFormat::Zstd,
-        ArchiveFormat::Lz4 => crate::types::TTZipArchiveFormat::Lz4,
-        ArchiveFormat::Brotli => crate::types::TTZipArchiveFormat::Brotli,
-        ArchiveFormat::Iso => crate::types::TTZipArchiveFormat::Iso,
-        ArchiveFormat::Cab => crate::types::TTZipArchiveFormat::Cab,
-        ArchiveFormat::Wim => crate::types::TTZipArchiveFormat::Wim,
-        ArchiveFormat::Rar => crate::types::TTZipArchiveFormat::Rar,
-        ArchiveFormat::Aar => crate::types::TTZipArchiveFormat::Aar,
-        ArchiveFormat::Lzip => crate::types::TTZipArchiveFormat::Lzip,
-        ArchiveFormat::Lrzip => crate::types::TTZipArchiveFormat::Lrzip,
-        ArchiveFormat::Cpio => crate::types::TTZipArchiveFormat::Cpio,
-        ArchiveFormat::Ar => crate::types::TTZipArchiveFormat::Ar,
-        ArchiveFormat::Deb => crate::types::TTZipArchiveFormat::Deb,
-        ArchiveFormat::Rpm => crate::types::TTZipArchiveFormat::Rpm,
-        ArchiveFormat::Xar => crate::types::TTZipArchiveFormat::Xar,
-        ArchiveFormat::Squashfs => crate::types::TTZipArchiveFormat::Squashfs,
-        ArchiveFormat::Lzh => crate::types::TTZipArchiveFormat::Lzh,
-        ArchiveFormat::Auto => crate::types::TTZipArchiveFormat::Auto,
-    };
+        unwind_res.unwrap_or(false)
+    }
+    let raw_fmt: crate::types::TTZipArchiveFormat = format.into();
 
     let comp_level = match level {
         0 => crate::types::TTZipCompressionLevel::Store,
@@ -451,7 +356,7 @@ pub fn create_archive_stream(
         thread_budget: 0,
         solid_block_size_mb: 64,
         progress_callback: Some(progress_cb),
-        user_data: &mut pbox as *mut ProgressBox as *mut libc::c_void,
+        user_data: raw_ctx,
     };
 
     crate::archive::unified::create::create_archive(&paths, out_p, &options, 0)
@@ -509,6 +414,281 @@ pub fn create_archive_stream(
     })
 }
 
+/// Advanced archive creation configuration parameters exposed via UniFFI.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct UniFFICreateArchiveConfig {
+    pub source_paths: Vec<String>,
+    pub output_path: String,
+    pub format: TTZipArchiveFormat,
+    pub level: i32,
+    pub password: Option<String>,
+    pub split_volume_size_bytes: Option<u64>,
+    pub exclude_patterns: Vec<String>,
+    pub include_patterns: Vec<String>,
+    pub exclude_vcs: bool,
+    pub no_mac_metadata: bool,
+    pub thread_budget: u32,
+}
+
+/// Advanced archive creation pipeline with single-pass parallel scanning, filtering,
+/// split volume output, and atomic transactional cleanup.
+#[uniffi::export]
+pub fn create_archive_advanced(
+    config: UniFFICreateArchiveConfig,
+    progress: Option<Box<dyn ProgressHandler>>,
+    token: Option<Arc<CancellationToken>>,
+) -> Result<CompressionReport, TTZipError> {
+    if let Some(ref t) = token {
+        if t.is_cancelled() {
+            return Err(TTZipError::Cancelled);
+        }
+    }
+
+    if config.source_paths.is_empty() {
+        return Err(TTZipError::EngineError { code: -404 });
+    }
+
+    let out_path = std::path::Path::new(&config.output_path);
+    let parent = out_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    if !parent.exists() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let inc_refs: Vec<&str> = config.include_patterns.iter().map(|s| s.as_str()).collect();
+    let exc_refs: Vec<&str> = config.exclude_patterns.iter().map(|s| s.as_str()).collect();
+    let filter = crate::fs::filter::pattern::PathPatternFilter::new(
+        &inc_refs,
+        &exc_refs,
+        config.exclude_vcs,
+        config.no_mac_metadata,
+    )
+    .map_err(|e| TTZipError::IoError { message: e })?;
+
+    let start = std::time::Instant::now();
+    let mut planned_entries: Vec<(std::path::PathBuf, String)> = Vec::new();
+    let mut total_uncompressed_bytes: u64 = 0;
+
+    for src_str in &config.source_paths {
+        if let Some(ref t) = token {
+            if t.is_cancelled() {
+                return Err(TTZipError::Cancelled);
+            }
+        }
+        let src_path = std::path::Path::new(src_str);
+        if !src_path.exists() && std::fs::symlink_metadata(src_path).is_err() {
+            return Err(TTZipError::FileNotFound { path: src_str.clone() });
+        }
+        let canonical_src = std::fs::canonicalize(src_path).unwrap_or_else(|_| src_path.to_path_buf());
+        let meta = match std::fs::metadata(&canonical_src) {
+            Ok(m) => m,
+            Err(_) => match std::fs::symlink_metadata(src_path) {
+                Ok(m) => m,
+                Err(e) => return Err(TTZipError::IoError { message: e.to_string() }),
+            },
+        };
+
+        if meta.is_dir() && !meta.file_type().is_symlink() {
+            let scan_opts = crate::fs::scanner::ScanOptions {
+                include_hidden: true,
+                skip_mac_junk: config.no_mac_metadata,
+                max_depth: 0,
+                thread_budget: config.thread_budget,
+            };
+            let scanned_items = crate::fs::scanner::scan_directory_parallel(&canonical_src, &scan_opts);
+            for item in scanned_items {
+                if filter.should_include(&item.rel_path) {
+                    total_uncompressed_bytes = total_uncompressed_bytes.saturating_add(item.file_size);
+                    planned_entries.push((std::path::PathBuf::from(item.src_path), item.rel_path));
+                }
+            }
+        } else {
+            let file_name = src_path.file_name().and_then(|n| n.to_str()).unwrap_or(src_str);
+            if filter.should_include(file_name) {
+                let size = if meta.file_type().is_symlink() { 0 } else { meta.len() };
+                total_uncompressed_bytes = total_uncompressed_bytes.saturating_add(size);
+                planned_entries.push((canonical_src, file_name.to_string()));
+            }
+        }
+    }
+
+    if planned_entries.is_empty() {
+        return Err(TTZipError::EngineError { code: -404 });
+    }
+
+    let file_name = out_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or(TTZipError::EngineError { code: -1 })?;
+    static TXN_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let seq = TXN_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let txn_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let txn_dir = parent.join(format!(".ttzip_txn_{}_{}_{}_{}", std::process::id(), txn_id, seq, file_name));
+    std::fs::create_dir_all(&txn_dir).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+
+    struct TxnCleanupGuard<'a> {
+        dir: &'a std::path::Path,
+        defused: bool,
+    }
+    impl<'a> Drop for TxnCleanupGuard<'a> {
+        fn drop(&mut self) {
+            if !self.defused {
+                let _ = std::fs::remove_dir_all(self.dir);
+            }
+        }
+    }
+    let mut cleanup_guard = TxnCleanupGuard {
+        dir: &txn_dir,
+        defused: false,
+    };
+
+    let staged_target = txn_dir.join(file_name);
+
+    let secure_pwd = config.password.map(crate::crypto::ZeroizingString::new);
+    let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
+
+    struct ProgressContextExplicit {
+        handler: Option<Box<dyn ProgressHandler>>,
+        token: Option<Arc<CancellationToken>>,
+        total_bytes: u64,
+    }
+    let progress_ctx = Arc::new(ProgressContextExplicit {
+        handler: progress,
+        token,
+        total_bytes: total_uncompressed_bytes,
+    });
+    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+
+    struct ContextGuardExplicit(*mut libc::c_void);
+    impl Drop for ContextGuardExplicit {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    drop(Arc::from_raw(self.0 as *const ProgressContextExplicit));
+                }
+            }
+        }
+    }
+    let _guard = ContextGuardExplicit(raw_ctx);
+
+    unsafe extern "C" fn progress_cb(
+        processed: u64,
+        _total: u64,
+        entry_name: *const libc::c_char,
+        user_data: *mut libc::c_void,
+    ) -> bool {
+        if user_data.is_null() {
+            return true;
+        }
+        let unwind_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let p = &*(user_data as *const ProgressContextExplicit);
+            if let Some(ref t) = p.token {
+                if t.is_cancelled() {
+                    return false;
+                }
+            }
+            if let Some(ref h) = p.handler {
+                let name = if !entry_name.is_null() {
+                    Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                } else {
+                    None
+                };
+                return h.on_progress(processed, p.total_bytes, name);
+            }
+            true
+        }));
+
+        unwind_res.unwrap_or(false)
+    }
+
+    let raw_fmt: crate::types::TTZipArchiveFormat = config.format.into();
+    let comp_level = match config.level {
+        0 => crate::types::TTZipCompressionLevel::Store,
+        1 => crate::types::TTZipCompressionLevel::Fastest,
+        2..=4 => crate::types::TTZipCompressionLevel::Fast,
+        5..=6 => crate::types::TTZipCompressionLevel::Normal,
+        7..=9 => crate::types::TTZipCompressionLevel::Maximum,
+        10..=22 => crate::types::TTZipCompressionLevel::Ultra,
+        _ => crate::types::TTZipCompressionLevel::Normal,
+    };
+
+    let enc_method = if pwd_cstr.is_some() {
+        crate::types::TTZipEncryptionMethod::Aes256
+    } else {
+        crate::types::TTZipEncryptionMethod::None
+    };
+
+    let options = crate::types::TTZipCreateOptions {
+        struct_size: std::mem::size_of::<crate::types::TTZipCreateOptions>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_2,
+        format: raw_fmt,
+        level: comp_level,
+        encryption: enc_method,
+        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
+        thread_budget: config.thread_budget,
+        solid_block_size_mb: 64,
+        progress_callback: Some(progress_cb),
+        user_data: raw_ctx,
+    };
+
+    let split_size = config.split_volume_size_bytes.unwrap_or(0);
+    crate::archive::unified::create::create_archive_explicit(
+        &planned_entries,
+        &staged_target,
+        &options,
+        split_size,
+    )
+    .map_err(|s| {
+        if s == crate::types::TTZipStatus::Cancelled {
+            TTZipError::Cancelled
+        } else {
+            TTZipError::EngineError { code: s as i32 }
+        }
+    })?;
+
+    let entries_in_txn = std::fs::read_dir(&txn_dir)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    let mut created_files = Vec::new();
+    for entry in entries_in_txn.flatten() {
+        let src_file = entry.path();
+        let fname = entry.file_name();
+        let dst_file = parent.join(fname);
+        if dst_file.exists() {
+            let _ = std::fs::remove_file(&dst_file);
+        }
+        std::fs::rename(&src_file, &dst_file)
+            .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+        created_files.push(dst_file);
+    }
+    cleanup_guard.defused = true;
+    let _ = std::fs::remove_dir_all(&txn_dir);
+
+    let elapsed = start.elapsed();
+    let elapsed_nanos = elapsed.as_nanos() as u64;
+    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
+    let comp_size: u64 = created_files
+        .iter()
+        .map(|f| std::fs::metadata(f).map(|m| m.len()).unwrap_or(0))
+        .sum();
+    let throughput_mbs = (total_uncompressed_bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
+    let space_savings_pct = if total_uncompressed_bytes > 0 && comp_size <= total_uncompressed_bytes {
+        ((total_uncompressed_bytes - comp_size) as f64 / total_uncompressed_bytes as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(CompressionReport {
+        uncompressed_bytes: total_uncompressed_bytes,
+        compressed_bytes: comp_size,
+        elapsed_nanos,
+        throughput_mbs,
+        space_savings_pct,
+        engine_provenance: "Mozilla UniFFI Advanced Create Pipeline".to_string(),
+    })
+}
+
 /// Recovers password against an encrypted archive using Rayon multi-core parallel probing.
 #[uniffi::export]
 pub fn recover_archive_password(
@@ -528,10 +708,17 @@ pub fn recover_archive_password(
     let found_password = dictionary.into_par_iter().find_any(|candidate| {
         if file_bytes.starts_with(b"7z\xBC\xAF\x27\x1C") {
             if let Ok(arch) = crate::sevenz::decoder::SevenZArchive::open_slice(&file_bytes) {
-                return arch.extract_entry_bytes_stream(0, Some(candidate.as_str())).is_ok();
+                if !arch.info().is_encrypted {
+                    return false;
+                }
+                let enc_idx = arch.files().iter().position(|f| !f.is_directory).unwrap_or(0);
+                return arch.extract_entry_bytes_stream(enc_idx, Some(candidate.as_str())).is_ok();
             }
         } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(&file_bytes) {
-            return zip_archive.extract_entry_bytes(0, Some(candidate.as_str())).is_ok();
+            let enc_idx = zip_archive.entries().iter().position(|e| e.is_encrypted && !e.is_directory && e.uncompressed_size > 0);
+            if let Some(idx) = enc_idx {
+                return zip_archive.extract_entry_bytes(idx, Some(candidate.as_str())).is_ok();
+            }
         }
         false
     });

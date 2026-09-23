@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Integration tests for DepthFirstDirFixup reverse directory attribute restoration
 //! and APFS native sparse file hole-punching state machines.
@@ -12,6 +8,8 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+mod common;
+use common::SafeTempDir;
 use tempfile::tempdir;
 use ttzip_engine::archive::unified::entry::fields::EntryFields;
 use ttzip_engine::archive::unified::entry::timestamp::TTZipTimestamp;
@@ -21,7 +19,7 @@ use ttzip_engine::fs::sparse::{is_zero_block, SparseFileWriter};
 
 #[test]
 fn test_nested_readonly_directory_structure_fixup() {
-    let tmp = tempdir().expect("tempdir");
+    let tmp = SafeTempDir::new().expect("safe tempdir");
     let base = tmp.path();
 
     let dir_l1 = base.join("readonly_l1");

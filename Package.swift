@@ -1,41 +1,12 @@
 // swift-tools-version: 6.0
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import PackageDescription
 import Foundation
 
-let ttlogDependencyResolution: (dependency: Package.Dependency, packageName: String) = {
-    // Tier 1: Explicit environment variable override
-    if let envPath = ProcessInfo.processInfo.environment["TTLOG_PATH"],
-       FileManager.default.fileExists(atPath: "\(envPath)/Package.swift") {
-        return (.package(path: envPath), "TTLog")
-    }
-
-    // Tier 2: Standard peer workspace probe (e.g. ../../../infra/ttlog or ../../infra/ttlog)
-    if ProcessInfo.processInfo.environment["TTZIP_USE_REMOTE_TTLOG"] != "1" {
-        let candidates = ["../../../infra/ttlog", "../../infra/ttlog"]
-        for relPath in candidates {
-            let manifestURL = URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()
-                .appendingPathComponent("\(relPath)/Package.swift")
-                .standardized
-            if FileManager.default.fileExists(atPath: manifestURL.path) {
-                return (.package(path: relPath), "TTLog")
-            }
-        }
-    }
-
-    // Tier 3: Remote GitHub repository fallback for external machines and CI
-    return (.package(url: "https://github.com/wittkung/ttlog.git", branch: "main"), "TTLog")
-}()
-
-let ttlogPackage = ttlogDependencyResolution.dependency
-let ttlogPackageName = ttlogDependencyResolution.packageName
+let ttlogPackage: Package.Dependency = .package(url: "https://github.com/wittkung/ttlog.git", exact: "0.1.0")
+let ttlogPackageName = "TTLog"
 
 let coreSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("StrictConcurrency")
@@ -82,10 +53,11 @@ let package = Package(
                 .linkedLibrary("archive"),
                 .linkedLibrary("bz2"),
                 .linkedLibrary("lzma"),
-                .linkedLibrary("iconv"),
-                .linkedLibrary("c++"),
-                .linkedLibrary("compression"),
-                .linkedFramework("Security")
+                .linkedLibrary("iconv", .when(platforms: [.macOS, .iOS])),
+                .linkedLibrary("c++", .when(platforms: [.macOS, .iOS])),
+                .linkedLibrary("compression", .when(platforms: [.macOS, .iOS])),
+                .linkedFramework("Security", .when(platforms: [.macOS, .iOS])),
+                .unsafeFlags(["-Xlinker", "-w"])
             ]
         ),
         .target(
@@ -127,5 +99,6 @@ let package = Package(
             path: "Tests/TTZipCoreTests",
             swiftSettings: coreSwiftSettings
         )
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

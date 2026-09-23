@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -21,7 +17,7 @@ public enum TTZipOfficeFormat: String, Sendable, Codable, CaseIterable, Equatabl
     case ods
     case odp
 
-    internal init(from uniffi: UniFfiOfficeFormat) {
+    public init(from uniffi: UniFfiOfficeFormat) {
         switch uniffi {
         case .unknown: self = .unknown
         case .docx: self = .docx
@@ -95,7 +91,7 @@ public enum TTZipCellValue: Sendable, Codable, Equatable, Hashable {
         }
     }
 
-    internal init(from uniffi: UniFfiCellValue) {
+    public init(from uniffi: UniFfiCellValue) {
         switch uniffi {
         case .empty:
             self = .empty
@@ -112,7 +108,7 @@ public enum TTZipCellValue: Sendable, Codable, Equatable, Hashable {
         }
     }
 
-    internal func toUniffi() -> UniFfiCellValue {
+    public func toUniffi() -> UniFfiCellValue {
         switch self {
         case .empty:
             return .empty
@@ -154,7 +150,7 @@ public struct TTZipCell: Sendable, Codable, Equatable, Hashable, Identifiable {
         self.formula = formula
     }
 
-    internal init(from uniffi: UniFfiCell) {
+    public init(from uniffi: UniFfiCell) {
         self.row = Int(uniffi.row)
         self.col = Int(uniffi.col)
         self.coordinate = uniffi.coordinate
@@ -162,7 +158,7 @@ public struct TTZipCell: Sendable, Codable, Equatable, Hashable, Identifiable {
         self.formula = uniffi.formula
     }
 
-    internal func toUniffi() -> UniFfiCell {
+    public func toUniffi() -> UniFfiCell {
         UniFfiCell(
             row: UInt32(row),
             col: UInt32(col),
@@ -184,7 +180,7 @@ public struct TTZipSheetRow: Sendable, Codable, Equatable, Hashable, Identifiabl
         self.cells = cells
     }
 
-    internal init(from uniffi: UniFfiSheetRow) {
+    public init(from uniffi: UniFfiSheetRow) {
         self.rowNumber = Int(uniffi.rowNumber)
         self.cells = uniffi.cells.map { TTZipCell(from: $0) }
     }
@@ -219,7 +215,7 @@ public struct TTZipSheetData: Sendable, Codable, Equatable, Hashable, Identifiab
         self.sharedStringsCount = sharedStringsCount
     }
 
-    internal init(from uniffi: UniFfiSheetData) {
+    public init(from uniffi: UniFfiSheetData) {
         self.sheetName = uniffi.sheetName
         self.sheetIndex = Int(uniffi.sheetIndex)
         self.totalRows = Int(uniffi.totalRows)
@@ -255,7 +251,7 @@ public struct TTZipDocxParagraph: Sendable, Codable, Equatable, Hashable, Identi
         self.listLevel = listLevel
     }
 
-    internal init(from uniffi: UniFfiDocxParagraph) {
+    public init(from uniffi: UniFfiDocxParagraph) {
         self.id = UUID().uuidString
         self.style = uniffi.style
         self.text = uniffi.text
@@ -287,7 +283,7 @@ public struct TTZipDocxTable: Sendable, Codable, Equatable, Hashable, Identifiab
         self.rows = rows
     }
 
-    internal init(from uniffi: UniFfiDocxTable) {
+    public init(from uniffi: UniFfiDocxTable) {
         self.id = UUID().uuidString
         self.totalRows = Int(uniffi.totalRows)
         self.totalCols = Int(uniffi.totalCols)
@@ -324,7 +320,7 @@ public struct TTZipDocxDocument: Sendable, Codable, Equatable, Hashable, Identif
         self.markdownContent = markdownContent
     }
 
-    internal init(from uniffi: UniFfiDocxDocument, sourceId: String) {
+    public init(from uniffi: UniFfiDocxDocument, sourceId: String) {
         self.id = sourceId
         self.title = uniffi.title
         self.paragraphs = uniffi.paragraphs.map { TTZipDocxParagraph(from: $0) }

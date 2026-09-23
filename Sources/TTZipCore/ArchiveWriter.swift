@@ -1,11 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
+
+public typealias UniFFICreateArchiveConfig = UniFfiCreateArchiveConfig
 
 /// High-performance multi-format archive compression engine (100% Pure Mozilla UniFFI Engine).
 public final class ArchiveWriter: ArchiveWriting, Sendable {
@@ -80,20 +78,34 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
         try Task.checkCancellation()
 
-        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-            try self.createArchiveSync(
-                outputPath: outputPath,
-                format: format,
-                level: level,
-                inputPaths: inputPaths,
-                options: options,
-                password: password,
-                splitVolumeSizeBytes: splitVolumeSizeBytes,
-                advancedOptions: advancedOptions,
-                progressHandler: progressHandler,
-                token: token
-            )
+        if token?.isCancelled() == true {
+            throw ArchiveError.cancelled
+        }
+
+        let boundToken = token ?? CancellationToken()
+        let handle = TaskExecutionHandle(token: boundToken)
+
+        do {
+            try await NativeComputeDispatcher.shared.dispatchCompute(
+                qos: .userInitiated,
+                cancellationHandle: handle
+            ) { [weak self] (_: CancellationToken) in
+                guard let self = self else { return }
+                try self.createArchiveSync(
+                    outputPath: outputPath,
+                    format: format,
+                    level: level,
+                    inputPaths: inputPaths,
+                    options: options,
+                    password: password,
+                    splitVolumeSizeBytes: splitVolumeSizeBytes,
+                    advancedOptions: advancedOptions,
+                    progressHandler: progressHandler,
+                    token: boundToken
+                )
+            }
+        } catch is CancellationError {
+            throw ArchiveError.cancelled
         }
     }
 
@@ -116,9 +128,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         }
 
         let startTime = Date()
-        let totalBytes = inputPaths.reduce(Int64(0)) { $0 + Self.recursivePathSize(at: $1) }
 
-        try createArchiveInternal(
+        _ = try createArchiveInternal(
             outputPath: outputPath,
             format: format,
             level: level,
@@ -129,7 +140,6 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
             advancedOptions: advancedOptions,
             progressHandler: progressHandler,
             startTime: startTime,
-            totalBytes: totalBytes,
             token: token
         )
     }
@@ -145,38 +155,43 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         password: String? = nil,
         splitVolumeSizeBytes: Int64? = nil,
         advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
-        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
     ) throws -> EngineDispatchProvenance {
-        var totalInputBytes: Int64 = 0
-        for path in inputPaths {
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-               let size = attrs[.size] as? Int64 {
-                totalInputBytes += size
-            }
+        guard !inputPaths.isEmpty else {
+            throw ArchiveError.readFailed(code: -10)
         }
+
+        var compressionReport: CompressionReport?
+        let startTime = Date()
         let (_, provenance) = try EngineProvenanceCollector.capture(
             expectedEngine: format == .sevenZip ? .rustZeroCopy7zDecoder : .rustStreamingParallelZip,
-            uncompressedBytes: totalInputBytes
+            uncompressedBytes: 0
         ) {
-            try self.createArchiveSync(
+            compressionReport = try self.createArchiveInternal(
                 outputPath: outputPath,
                 format: format,
                 level: level,
                 inputPaths: inputPaths,
                 options: options,
-                password: password,
                 splitVolumeSizeBytes: splitVolumeSizeBytes,
+                password: password,
                 advancedOptions: advancedOptions,
-                progressHandler: progressHandler
+                progressHandler: progressHandler,
+                startTime: startTime,
+                token: token
             )
         }
-        let outputBytes = (try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? Int64) ?? provenance.compressedBytes
+        let uncompressedBytes = compressionReport.map { Int64($0.uncompressedBytes) } ?? provenance.uncompressedBytes
+        let outputBytes = compressionReport.map { Int64($0.compressedBytes) } ?? ((try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? Int64) ?? provenance.compressedBytes)
+        let kernelDuration = compressionReport?.elapsedNanos ?? provenance.kernelDurationNanos
+
         return EngineDispatchProvenance(
             engineTag: provenance.engineTag,
             threadCount: provenance.threadCount,
-            uncompressedBytes: provenance.uncompressedBytes,
+            uncompressedBytes: max(1, uncompressedBytes),
             compressedBytes: max(1, outputBytes),
-            kernelDurationNanos: provenance.kernelDurationNanos,
+            kernelDurationNanos: kernelDuration,
             isFallback: provenance.isFallback,
             fallbackReason: provenance.fallbackReason,
             ffiBridgeOverheadNanos: provenance.ffiBridgeOverheadNanos,
@@ -187,7 +202,7 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
     // MARK: - Format Mappings
 
-    internal static func mapUniFFIFormat(_ format: ArchiveCompressionFormat) -> ArchiveFormat {
+    internal static func mapUniFFIFormat(_ format: ArchiveCompressionFormat) -> TtZipArchiveFormat {
         switch format {
         case .sevenZip: return .sevenZip
         case .zip: return .zip
@@ -227,11 +242,9 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
 private final class ProgressRelay: ProgressHandler, @unchecked Sendable {
     let handler: (@Sendable (ArchiveProgress) -> Void)?
-    let totalBytes: Int64
     let startTime: Date
 
-    init(totalBytes: Int64, startTime: Date, handler: (@Sendable (ArchiveProgress) -> Void)?) {
-        self.totalBytes = totalBytes
+    init(startTime: Date, handler: (@Sendable (ArchiveProgress) -> Void)?) {
         self.startTime = startTime
         self.handler = handler
     }
@@ -242,7 +255,7 @@ private final class ProgressRelay: ProgressHandler, @unchecked Sendable {
         handler?(ArchiveProgress(
             state: .processing,
             bytesProcessed: Int64(processedBytes),
-            totalBytes: Int64(totalBytes > 0 ? totalBytes : UInt64(self.totalBytes)),
+            totalBytes: Int64(totalBytes),
             currentFileName: currentEntry ?? "",
             throughputMBs: throughput
         ))
@@ -251,6 +264,7 @@ private final class ProgressRelay: ProgressHandler, @unchecked Sendable {
 }
 
 extension ArchiveWriter {
+    @discardableResult
     internal func createArchiveInternal(
         outputPath: String,
         format: ArchiveCompressionFormat,
@@ -262,37 +276,54 @@ extension ArchiveWriter {
         advancedOptions: ArchiveAdvancedOptions,
         progressHandler: (@Sendable (ArchiveProgress) -> Void)?,
         startTime: Date,
-        totalBytes: Int64,
         token: CancellationToken? = nil
-    ) throws {
+    ) throws -> CompressionReport {
         let targetFmt = self.targetFormat ?? format
         let uniffiFmt = ArchiveWriter.mapUniFFIFormat(targetFmt)
         let uniffiLvl = ArchiveWriter.mapUniFFILevel(level)
 
+        let splitBytes: UInt64? = splitVolumeSizeBytes.flatMap { $0 > 0 ? UInt64($0) : nil }
+        let threadBudget = UInt32(max(0, advancedOptions.cpuThreads))
+
+        let config = UniFfiCreateArchiveConfig(
+            sourcePaths: inputPaths,
+            outputPath: outputPath,
+            format: uniffiFmt,
+            level: uniffiLvl,
+            password: password,
+            splitVolumeSizeBytes: splitBytes,
+            excludePatterns: options.excludePatterns,
+            includePatterns: options.includePatterns,
+            excludeVcs: options.excludeVCS,
+            noMacMetadata: options.noMacMetadata,
+            threadBudget: threadBudget
+        )
+
         let relay = progressHandler.map {
-            ProgressRelay(totalBytes: totalBytes, startTime: startTime, handler: $0)
+            ProgressRelay(startTime: startTime, handler: $0)
         }
 
         do {
-            _ = try createArchiveStream(
-                sourcePaths: inputPaths,
-                outputPath: outputPath,
-                format: uniffiFmt,
-                level: uniffiLvl,
-                password: password,
+            let report = try createArchiveAdvanced(
+                config: config,
                 progress: relay,
                 token: token
             )
 
             let duration = max(0.001, Date().timeIntervalSince(startTime))
-            let throughput = (Double(totalBytes) / (1024 * 1024)) / duration
+            let throughput = report.throughputMbs > 0
+                ? report.throughputMbs
+                : ((Double(report.uncompressedBytes) / (1024 * 1024)) / duration)
+
             progressHandler?(ArchiveProgress(
                 state: .completed,
-                bytesProcessed: totalBytes,
-                totalBytes: totalBytes,
+                bytesProcessed: Int64(report.uncompressedBytes),
+                totalBytes: Int64(report.uncompressedBytes),
                 currentFileName: "Archive created",
                 throughputMBs: throughput
             ))
+
+            return report
         } catch {
             if token?.isCancelled() == true || Task.isCancelled {
                 throw ArchiveError.cancelled
@@ -300,23 +331,5 @@ extension ArchiveWriter {
             throw ArchiveError.from(error: error)
         }
     }
-
-    /// Calculates physical directory byte size recursively.
-    static func recursivePathSize(at path: String) -> Int64 {
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir) else { return 0 }
-        if !isDir.boolValue {
-            let attr = try? FileManager.default.attributesOfItem(atPath: path)
-            return (attr?[.size] as? Int64) ?? 0
-        }
-        var total: Int64 = 0
-        if let enumerator = FileManager.default.enumerator(atPath: path) {
-            while let sub = enumerator.nextObject() as? String {
-                let full = (path as NSString).appendingPathComponent(sub)
-                let attr = try? FileManager.default.attributesOfItem(atPath: full)
-                total += (attr?[.size] as? Int64) ?? 0
-            }
-        }
-        return total
-    }
 }
+

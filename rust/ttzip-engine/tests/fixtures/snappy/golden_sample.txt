@@ -1,0 +1,5 @@
+TTZip Industrial Compression Engine: Brotli and Snappy Deterministic Golden Vector.
+Repetition pattern: ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789.
+The quick brown fox jumps over the lazy dog.
+The quick brown fox jumps over the lazy dog.
+TTZip microkernel zero-copy verification passed.

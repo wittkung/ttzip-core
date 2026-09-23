@@ -1,12 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
+@testable import TTZipCoreCrypto
 
 final class VaultMemorySanitizationTests: XCTestCase {
     
@@ -34,8 +31,8 @@ final class VaultMemorySanitizationTests: XCTestCase {
         // 3. Verify buffer pointer reports scrubbed state and returns empty buffer
         secure.withUnsafeBytes { buf in
             XCTAssertEqual(buf.count, 0)
+            XCTAssertNil(buf.baseAddress)
         }
-        XCTAssertNil(secure.baseAddress)
     }
 
     /// Tests that SecureBytes(utf8String:) creates locked memory without intermediary heap leaks.
@@ -54,6 +51,9 @@ final class VaultMemorySanitizationTests: XCTestCase {
         }
 
         secure.wipeAndFree()
-        XCTAssertNil(secure.baseAddress)
+        secure.withUnsafeBytes { buf in
+            XCTAssertEqual(buf.count, 0)
+            XCTAssertNil(buf.baseAddress)
+        }
     }
 }

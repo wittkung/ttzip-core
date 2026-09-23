@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -23,15 +19,20 @@ extension ArchiveError {
             switch code {
             case RustTTZipStatusCode.errFileNotFound.rawValue:
                 return .fileNotFound
+            case RustTTZipStatusCode.errCorruptHeader.rawValue:
+                return .corruptHeader
             case RustTTZipStatusCode.errOpenFailed.rawValue:
+                return .openFailed
+            case RustTTZipStatusCode.errInvalidPassword.rawValue:
                 return .passwordRequired
             case RustTTZipStatusCode.errOutOfMemory.rawValue:
-                return .corruptedData(archivePath: "code_\(code)", entryPath: "header")
+                return .engineFailure(code: -501, message: "Out of memory: memory allocation failed in microkernel")
             case -21:
                 return .invalidFormat
             case -23:
                 return .cancelled
-            case RustTTZipStatusCode.errSolidBudgetExceeded.rawValue:
+            case RustTTZipStatusCode.errSolidBudgetExceeded.rawValue,
+                 RustTTZipStatusCode.errSecurityViolation.rawValue:
                 return .engineFailure(code: -403, message: "Security violation")
             default:
                 return .readFailed(code: code)
@@ -40,6 +41,15 @@ extension ArchiveError {
             return .engineFailure(code: -500, message: message)
         case .Cancelled:
             return .cancelled
+        case let .OutOfMemory(details):
+            return .engineFailure(code: -501, message: "Out of memory: \(details)")
+        case let .DecompressionBombDetected(reason):
+            return .engineFailure(code: -403, message: "Decompression bomb detected: \(reason)")
+        case let .ChecksumMismatch(expected, actual):
+            return .corruptedData(
+                archivePath: "checksum",
+                entryPath: String(format: "Expected 0x%08x, got 0x%08x", expected, actual)
+            )
         }
     }
 }

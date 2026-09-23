@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI System Metadata, Delta Patching, and Appcast Update Module.
 
@@ -72,26 +68,24 @@ mod tests {
 
     #[test]
     fn test_tree_hash_calculation() {
-        let temp_dir = std::env::temp_dir().join(format!("ttzip_tree_test_{}", std::process::id()));
-        let _ = fs::remove_dir_all(&temp_dir);
-        fs::create_dir_all(temp_dir.join("sub")).unwrap();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let base_path = temp_dir.path();
+        fs::create_dir_all(base_path.join("sub")).unwrap();
 
-        fs::write(temp_dir.join("file1.txt"), b"File 1 content").unwrap();
-        fs::write(temp_dir.join("sub").join("file2.txt"), b"File 2 content in subdir").unwrap();
+        fs::write(base_path.join("file1.txt"), b"File 1 content").unwrap();
+        fs::write(base_path.join("sub").join("file2.txt"), b"File 2 content in subdir").unwrap();
 
-        let hash1 = uniffi_calculate_tree_hash(temp_dir.to_string_lossy().to_string()).unwrap();
+        let hash1 = uniffi_calculate_tree_hash(base_path.to_string_lossy().to_string()).unwrap();
         assert_eq!(hash1.len(), 64);
 
         // Determinism test
-        let hash2 = uniffi_calculate_tree_hash(temp_dir.to_string_lossy().to_string()).unwrap();
+        let hash2 = uniffi_calculate_tree_hash(base_path.to_string_lossy().to_string()).unwrap();
         assert_eq!(hash1, hash2);
 
         // Mutation test
-        fs::write(temp_dir.join("file1.txt"), b"File 1 mutated").unwrap();
-        let hash3 = uniffi_calculate_tree_hash(temp_dir.to_string_lossy().to_string()).unwrap();
+        fs::write(base_path.join("file1.txt"), b"File 1 mutated").unwrap();
+        let hash3 = uniffi_calculate_tree_hash(base_path.to_string_lossy().to_string()).unwrap();
         assert_ne!(hash1, hash3);
-
-        let _ = fs::remove_dir_all(&temp_dir);
     }
 
     #[test]

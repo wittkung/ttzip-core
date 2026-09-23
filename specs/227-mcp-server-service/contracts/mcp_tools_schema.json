@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZipMcpToolsSchema",
+  "description": "JSON Schema specification for all TTZip Model Context Protocol (MCP) tools",
+  "type": "object",
+  "definitions": {
+    "ttzip_list": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Absolute path to the archive file on the local filesystem"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional decryption password for encrypted archives"
+        },
+        "include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns to include in listing (e.g. ['*.rs', 'docs/*'])"
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns to exclude from listing (e.g. ['*.tmp', '.git/*'])"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Pagination page index (1-based)"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 200,
+          "description": "Maximum number of entries per page"
+        }
+      },
+      "required": ["archive_path"]
+    },
+    "ttzip_extract": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Absolute path to the archive file to extract"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Target destination directory path (default: current working directory)"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional decryption password for encrypted archives"
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 4,
+          "description": "Number of concurrent decompression threads"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, simulates extraction without writing any files to disk"
+        },
+        "include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns to filter files for extraction"
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns to skip during extraction"
+        }
+      },
+      "required": ["archive_path"]
+    },
+    "ttzip_create": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Output archive file path (e.g. '/path/to/archive.zip' or '/path/to/archive.7z')"
+        },
+        "source_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "List of source file or directory paths to include in the archive"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["zip", "7z", "tar", "brotli", "snappy"],
+          "description": "Archive container format (default: auto-detected from archive_path extension)"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12,
+          "default": 6,
+          "description": "Compression level: 0 (store), 1 (fastest), 6 (default), 9 (maximum), 12 (ultra)"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional encryption password"
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 4,
+          "description": "Number of concurrent compression threads"
+        },
+        "volume_size": {
+          "type": "string",
+          "pattern": "^[0-9]+[kKmMgG][bB]?$",
+          "description": "Split volume chunk size (e.g. '10M', '100MB', '1G')"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, simulates compression without creating the archive on disk"
+        }
+      },
+      "required": ["archive_path", "source_paths"]
+    },
+    "ttzip_inspect": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Absolute path to the archive file to inspect"
+        },
+        "deep_scan": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, performs deep header and payload scans"
+        }
+      },
+      "required": ["archive_path"]
+    },
+    "ttzip_cat": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Absolute path to the archive file"
+        },
+        "entry_path": {
+          "type": "string",
+          "description": "Relative path of the target file entry inside the archive"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password for encrypted archives"
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10485760,
+          "default": 1048576,
+          "description": "Maximum bytes to return (default: 1MB, max: 10MB)"
+        }
+      },
+      "required": ["archive_path", "entry_path"]
+    },
+    "ttzip_verify": {
+      "type": "object",
+      "properties": {
+        "archive_path": {
+          "type": "string",
+          "description": "Absolute path to the archive file to verify"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password for encrypted archives"
+        },
+        "deep": {
+          "type": "boolean",
+          "default": true,
+          "description": "Perform full decompression pass to verify payload CRC32/CRC64 checksums"
+        }
+      },
+      "required": ["archive_path"]
+    },
+    "ttzip_convert": {
+      "type": "object",
+      "properties": {
+        "source_archive": {
+          "type": "string",
+          "description": "Source archive file path"
+        },
+        "destination_archive": {
+          "type": "string",
+          "description": "Destination archive file path"
+        },
+        "target_format": {
+          "type": "string",
+          "enum": ["zip", "7z", "tar", "brotli", "snappy"],
+          "description": "Target container format override"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12,
+          "default": 6,
+          "description": "Compression level for target archive"
+        }
+      },
+      "required": ["source_archive", "destination_archive"]
+    },
+    "ttzip_repair": {
+      "type": "object",
+      "properties": {
+        "damaged_archive": {
+          "type": "string",
+          "description": "Path to the corrupted archive file"
+        },
+        "output_path": {
+          "type": "string",
+          "description": "Path to write the reconstructed/salvaged archive"
+        },
+        "format_override": {
+          "type": "string",
+          "enum": ["zip", "tar"],
+          "description": "Archive format override if headers cannot be detected"
+        }
+      },
+      "required": ["damaged_archive", "output_path"]
+    }
+  }
+}

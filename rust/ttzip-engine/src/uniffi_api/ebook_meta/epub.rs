@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! EPUB Standard Publication Container Resolution, OPF Manifest Parsing,
 //! NCX/NAV Hierarchical TOC Extraction, Spine Ordering, and Chapter Reading.
@@ -28,6 +24,16 @@ pub(crate) struct ManifestItem {
     pub _properties: String,
 }
 
+#[inline]
+pub(crate) fn bytes_to_clean_utf8(bytes: &[u8]) -> Result<&str, std::str::Utf8Error> {
+    let clean = if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &bytes[3..]
+    } else {
+        bytes
+    };
+    std::str::from_utf8(clean)
+}
+
 pub(crate) fn open_epub_zip(
     data: &[u8],
 ) -> Result<(ZipArchive<'_>, String, String), UniFFIEbookError> {
@@ -37,7 +43,7 @@ pub(crate) fn open_epub_zip(
     let opf_path = resolve_opf_path(&zip)?;
     let opf_bytes = find_and_extract_entry(&zip, &opf_path)
         .ok_or_else(|| UniFFIEbookError::not_found(&opf_path))?;
-    let opf_xml = std::str::from_utf8(&opf_bytes)
+    let opf_xml = bytes_to_clean_utf8(&opf_bytes)
         .map_err(|e| UniFFIEbookError::corrupted(e.to_string()))?
         .to_string();
 
@@ -46,7 +52,7 @@ pub(crate) fn open_epub_zip(
 
 pub(crate) fn resolve_opf_path(zip: &ZipArchive<'_>) -> Result<String, UniFFIEbookError> {
     if let Some(bytes) = find_and_extract_entry(zip, "META-INF/container.xml") {
-        if let Ok(s) = std::str::from_utf8(&bytes) {
+        if let Ok(s) = bytes_to_clean_utf8(&bytes) {
             if let Ok(doc) = roxmltree::Document::parse(s) {
                 if let Some(rf) = doc.descendants().find(|n| n.tag_name().name() == "rootfile") {
                     if let Some(p) = rf.attribute("full-path") {
@@ -253,7 +259,7 @@ pub(crate) fn parse_epub_toc(data: &[u8]) -> Result<Vec<UniFFIEbookTocNode>, Uni
     if let Some(ncx_rel) = ncx_href {
         let full = resolve_path(opf_dir, &ncx_rel);
         if let Some(bytes) = find_and_extract_entry(&zip, &full) {
-            if let Ok(s) = std::str::from_utf8(&bytes) {
+            if let Ok(s) = bytes_to_clean_utf8(&bytes) {
                 if let Ok(ncx_doc) = roxmltree::Document::parse(s) {
                     if let Some(nav_map) =
                         ncx_doc.descendants().find(|n| n.tag_name().name() == "navMap")
@@ -277,7 +283,7 @@ pub(crate) fn parse_epub_toc(data: &[u8]) -> Result<Vec<UniFFIEbookTocNode>, Uni
     if let Some(nav_rel) = nav_href {
         let full = resolve_path(opf_dir, &nav_rel);
         if let Some(bytes) = find_and_extract_entry(&zip, &full) {
-            if let Ok(s) = std::str::from_utf8(&bytes) {
+            if let Ok(s) = bytes_to_clean_utf8(&bytes) {
                 if let Ok(nav_doc) = roxmltree::Document::parse(s) {
                     let nav_dir = Path::new(&full)
                         .parent()

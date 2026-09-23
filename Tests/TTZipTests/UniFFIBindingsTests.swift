@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
@@ -205,4 +201,140 @@ final class UniFFIBindingsTests: XCTestCase {
         XCTAssertEqual(NativeMicrokernelBridge.naturalCompare("v1.10.0", "v1.2.0"), .orderedDescending)
         XCTAssertEqual(NativeMicrokernelBridge.naturalCompare("abc", "abc"), .orderedSame)
     }
+
+    func testComputeFileStreamHashAllAlgorithms() throws {
+        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("test_stream_hash_\(UUID().uuidString).txt")
+        let testData = Data("123456789".utf8)
+        try testData.write(to: tempUrl)
+        defer { try? FileManager.default.removeItem(at: tempUrl) }
+
+        // CRC32
+        let crc32 = try computeFileStreamHash(filePath: tempUrl.path, algorithm: "crc32")
+        XCTAssertEqual(crc32, "CBF43926")
+
+        // Adler32
+        let adler32 = try computeFileStreamHash(filePath: tempUrl.path, algorithm: "adler32")
+        XCTAssertEqual(adler32, "091E01DE")
+
+        // CRC64
+        let crc64 = try computeFileStreamHash(filePath: tempUrl.path, algorithm: "crc64")
+        XCTAssertEqual(crc64, "b86883e6fa710a9f")
+
+        // SHA-256
+        let sha256 = try computeFileStreamHash(filePath: tempUrl.path, algorithm: "sha256")
+        XCTAssertEqual(sha256, "15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225")
+
+        // MD5
+        let md5 = try computeFileStreamHash(filePath: tempUrl.path, algorithm: "md5")
+        XCTAssertEqual(md5, "25f9e794323b453885f5181f1b624d0b")
+    }
+
+    func testArchiveStandardsComplianceViaUniFFI() throws {
+        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("test_compliance_\(UUID().uuidString).zip")
+        let eocd: [UInt8] = [
+            0x50, 0x4B, 0x05, 0x06,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00
+        ]
+        try Data(eocd).write(to: tempUrl)
+        defer { try? FileManager.default.removeItem(at: tempUrl) }
+
+        let report = try checkArchiveStandardsCompliance(archivePath: tempUrl.path)
+        XCTAssertEqual(report.formatName, "Zip")
+        XCTAssertTrue(report.isCompliant)
+        XCTAssertTrue(report.violations.isEmpty)
+    }
+
+    func testStandardsComplianceCheckerIntegration() throws {
+        let tempUrl = FileManager.default.temporaryDirectory.appendingPathComponent("test_checker_\(UUID().uuidString).zip")
+        let eocd: [UInt8] = [
+            0x50, 0x4B, 0x05, 0x06,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00
+        ]
+        try Data(eocd).write(to: tempUrl)
+        defer { try? FileManager.default.removeItem(at: tempUrl) }
+
+        // Test checkCompliance with fileURL
+        let report = try StandardsComplianceChecker.checkCompliance(fileURL: tempUrl)
+        XCTAssertEqual(report.format, .zip)
+        XCTAssertTrue(report.isCompliant)
+        XCTAssertTrue(report.violations.isEmpty)
+
+        // Test checkComplianceNative
+        let nativeRes = StandardsComplianceChecker.checkComplianceNative(fileURL: tempUrl)
+        XCTAssertTrue(nativeRes.isCompliant)
+        XCTAssertNotNil(nativeRes.reportJson)
+        XCTAssertTrue(nativeRes.reportJson?.contains("\"isCompliant\" : true") == true)
+
+        // Test non-existent file
+        let nonExistentURL = URL(fileURLWithPath: "/tmp/non_existent_archive_\(UUID().uuidString).zip")
+        let missingReport = try StandardsComplianceChecker.checkCompliance(fileURL: nonExistentURL)
+        XCTAssertFalse(missingReport.isCompliant)
+        XCTAssertFalse(missingReport.violations.isEmpty)
+    }
+
+    func testPlatformPathSanitizerWithMicrokernel() {
+        // Normal relative path
+        let clean = PlatformPathSanitizer.sanitize(path: "documents/photos/summer.jpg")
+        XCTAssertEqual(clean.normalizedPath, "documents/photos/summer.jpg")
+        XCTAssertFalse(clean.hasTraversalAttack)
+        XCTAssertFalse(clean.isAbsolute)
+        XCTAssertNil(clean.strippedAlternateDataStream)
+
+        // ZipSlip path traversal
+        let traversal = PlatformPathSanitizer.sanitize(path: "../../etc/shadow")
+        XCTAssertTrue(traversal.hasTraversalAttack)
+
+        // Windows Alternate Data Stream (ADS)
+        let ads = PlatformPathSanitizer.sanitize(path: "payload.txt:hidden_stream")
+        XCTAssertNotNil(ads.strippedAlternateDataStream)
+        XCTAssertEqual(ads.strippedAlternateDataStream, ":hidden_stream")
+        XCTAssertEqual(ads.normalizedPath, "payload.txt")
+
+        // Windows DOS reserved device name
+        let reserved = PlatformPathSanitizer.sanitize(path: "NUL")
+        XCTAssertTrue(reserved.containsWindowsReservedDeviceName)
+    }
+
+    func testMicrokernelDecompressionLimits() {
+        // Safe entry: 2 MB decompressed from 1 MB compressed (2:1 ratio)
+        let safe = MicrokernelDecompressionLimits.isDecompressionBomb(
+            uncompressedSize: 2 * 1024 * 1024,
+            compressedSize: 1024 * 1024
+        )
+        XCTAssertFalse(safe)
+
+        // Malicious entry exceeding defaultSuspiciousRatio (100:1) above threshold (1 MB)
+        let bomb = MicrokernelDecompressionLimits.isDecompressionBomb(
+            uncompressedSize: 200 * 1024 * 1024,
+            compressedSize: 100 * 1024 // 2000:1 ratio
+        )
+        XCTAssertTrue(bomb)
+
+        // Small entry below activation threshold (500 KB < 1 MB)
+        let small = MicrokernelDecompressionLimits.isDecompressionBomb(
+            uncompressedSize: 500 * 1024,
+            compressedSize: 100
+        )
+        XCTAssertFalse(small)
+
+        // Massive entry exceeding defaultMaxEntrySizeBytes (10 GiB)
+        let oversized = MicrokernelDecompressionLimits.isDecompressionBomb(
+            uncompressedSize: 11 * 1024 * 1024 * 1024,
+            compressedSize: 1024 * 1024 * 1024
+        )
+        XCTAssertTrue(oversized)
+    }
 }
+

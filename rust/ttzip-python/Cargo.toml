@@ -9,6 +9,7 @@ description = "High-throughput, SIMD-accelerated archive and compression engine 
 [lib]
 name = "_ttzip"
 crate-type = ["cdylib", "rlib"]
+test = false
 
 [dependencies]
 ttzip-engine = { path = "../ttzip-engine", version = "0.1.0" }

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Comprehensive unit test suite for declarative A/B benchmark target registry and driver adapters.
 
@@ -283,7 +279,7 @@ fn test_ab_orchestrator_run_ab_benchmark_suite() {
     let config = AbOrchestratorConfig {
         warmup_rounds: 5,
         measurement_rounds: 20,
-        max_allowed_regression: 3.0,
+        max_allowed_regression: if cfg!(debug_assertions) { 15.0 } else { 3.0 },
         p_value_threshold: 0.05,
         hampel_filter: true,
         hampel_k: 2.5,

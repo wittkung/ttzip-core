@@ -29,8 +29,8 @@ docs/
 │   ├── competitor_analysis.md                     # 竞品功能与架构对比分析
 │   └── competitor_performance_analysis.md         # 竞品性能基准差距分析
 │
-├── design-system/                                 # 3. UI/UX 设计系统
-│   └── ttzip_ui_design_system_specification.md    # 禅意金缮与 WSJ 报刊设计系统规范
+├── design-system/                                 # 3. UI/UX 设计系统 (已废弃并迁移至 infra/ttkit)
+│   └── ttzip_ui_design_system_specification.md    # [已废弃 -> infra/ttkit] 禅意金缮与 WSJ 报刊设计系统规范
 │
 ├── audits/                                        # 4. 质量审查与性能审计
 │   ├── comprehensive_systemic_audit_report.md     # 综合系统审计报告
@@ -65,7 +65,7 @@ docs/
 - **[Apple Silicon 指令集审计 (`apple_silicon_m5_max_isa_audit.md`)](research/apple_silicon_m5_max_isa_audit.md)**：分析 ARM64 NEON、PMULL、CRC32、SVE2 及 Apple Silicon 微架构缓存特性对压缩吞吐的加持。
 
 ### 3. UI/UX 设计系统 (`docs/design-system/`)
-- **[TTZip UI 设计系统规范 (`ttzip_ui_design_system_specification.md`)](design-system/ttzip_ui_design_system_specification.md)**：融合“侘寂禅意 (Wabi-Sabi)”、“金缮裂纹 (Kintsugi Gold)”与“WSJ 报刊排版”的 macOS 原生桌面界面设计语言规范。
+- **[TTZip UI 设计系统规范 (已废弃并迁移)](design-system/ttzip_ui_design_system_specification.md)**：已全局收敛迁移至大仓统一人机交互设计宪章 [`infra/ttkit/docs/DESIGN_AXIOMS.md`](../../../../infra/ttkit/docs/DESIGN_AXIOMS.md)。
 
 ### 4. 质量审查与性能审计 (`docs/audits/`)
 - **[低于 1000MB/s 性能专项归因 (`performance_sub_1000mbs_audit.md`)](audits/performance_sub_1000mbs_audit.md)**：定位慢速格式（如 LRZIP、LZIP、Brotli）的瓶颈根因，并给出修复前后的物理跑分明细。

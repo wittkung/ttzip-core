@@ -1,15 +1,5 @@
-#!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# ==============================================================================
-# scripts/build_rust.sh
-# 自动化编译 TTZip Rust 引擎并生成 100% Mozilla UniFFI 绑定与 XCFramework
-# ==============================================================================
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 
@@ -18,14 +8,12 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
 FRAMEWORKS_DIR="${REPO_ROOT}/Frameworks"
 XCFRAMEWORK_DIR="${FRAMEWORKS_DIR}/TTZipVendor.xcframework"
-XCFRAMEWORK_MAC_DIR="${XCFRAMEWORK_DIR}/macos-arm64"
-SLICE_DIR="${XCFRAMEWORK_DIR}/macos-arm64_x86_64"
 
 BUILD_MODE="release"
 CARGO_FLAGS="--release"
 BUILD_TARGET=""
+UNIVERSAL=0
 OFFLINE_FLAG=""
-SWIFT_ONLY=0
 FORCE_REBUILD=0
 
 usage() {
@@ -34,7 +22,7 @@ usage() {
     echo "  --release        Build in release mode with ThinLTO and -O3 (default)"
     echo "  --debug          Build in debug mode"
     echo "  --target <TRGT>  Build specific target (e.g. aarch64-apple-darwin)"
-    echo "  --swift-only     Generate only Swift UniFFI bindings (skip Python/Kotlin)"
+    echo "  --universal      Build universal fat binary (arm64 + x86_64)"
     echo "  --force, -f      Force full rebuild"
     echo "  --offline        Build offline without network access"
     echo "  --help           Show this help message"
@@ -54,7 +42,6 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --swift-only)
-            SWIFT_ONLY=1
             shift
             ;;
         --force|-f)
@@ -68,6 +55,10 @@ while [[ $# -gt 0 ]]; do
         --target)
             BUILD_TARGET="$2"
             shift 2
+            ;;
+        --universal)
+            UNIVERSAL=1
+            shift
             ;;
         --help|-h)
             usage
@@ -85,15 +76,42 @@ export MACOSX_DEPLOYMENT_TARGET="14.0"
 EFFECTIVE_TARGET_DIR="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 HOST_ARCH="$(uname -m)"
 TARGETS=()
+ARCHS=()
 
-if [ -n "${BUILD_TARGET}" ]; then
+if [ "${UNIVERSAL}" -eq 1 ]; then
+    TARGETS=("aarch64-apple-darwin" "x86_64-apple-darwin")
+    ARCHS=("arm64" "x86_64")
+    SLICE_IDENTIFIER="macos-arm64_x86_64"
+elif [ -n "${BUILD_TARGET}" ]; then
     TARGETS+=("${BUILD_TARGET}")
+    case "${BUILD_TARGET}" in
+        aarch64*) ARCHS=("arm64") ;;
+        x86_64*)  ARCHS=("x86_64") ;;
+        *)        ARCHS=("${BUILD_TARGET}") ;;
+    esac
+    SLICE_IDENTIFIER="macos-${ARCHS[0]}"
 else
     if [ "${HOST_ARCH}" = "arm64" ]; then
         TARGETS+=("aarch64-apple-darwin")
+        ARCHS=("arm64")
+        SLICE_IDENTIFIER="macos-arm64"
     else
         TARGETS+=("x86_64-apple-darwin")
+        ARCHS=("x86_64")
+        SLICE_IDENTIFIER="macos-x86_64"
     fi
+fi
+
+SLICE_DIR="${XCFRAMEWORK_DIR}/${SLICE_IDENTIFIER}"
+
+# Clean obsolete slices to prevent stale slices or mismatched metadata
+if [ -d "${XCFRAMEWORK_DIR}" ]; then
+    for existing_slice in "${XCFRAMEWORK_DIR}"/macos-*; do
+        if [ -d "${existing_slice}" ] && [ "$(basename "${existing_slice}")" != "${SLICE_IDENTIFIER}" ]; then
+            echo "--> Cleaning obsolete slice: $(basename "${existing_slice}")"
+            rm -rf "${existing_slice}"
+        fi
+    done
 fi
 
 # Helper function to copy only if content differs to preserve file mtime
@@ -110,7 +128,7 @@ echo "=========================================="
 echo "📦 Building TTZip Rust Engine (${BUILD_MODE})"
 echo "=========================================="
 
-mkdir -p "${XCFRAMEWORK_MAC_DIR}/Headers" "${SLICE_DIR}/Headers" "${REPO_ROOT}/Sources/CTTZipBridge/include" "${REPO_ROOT}/Sources/TTZipCore/Generated"
+mkdir -p "${SLICE_DIR}/Headers" "${REPO_ROOT}/Sources/CTTZipBridge/include" "${REPO_ROOT}/Sources/TTZipCore/Generated"
 
 echo "--> Target architectures: ${TARGETS[*]}"
 
@@ -131,42 +149,66 @@ done
 # ------------------------------------------------------------------------------
 # 3. 生成并幂等部署静态库 libTTZipVendor.a
 # ------------------------------------------------------------------------------
-echo "--> [INFO] Packaging static library into ${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a..."
-mkdir -p "${XCFRAMEWORK_MAC_DIR}" "${SLICE_DIR}"
+echo "--> [INFO] Packaging static library into ${SLICE_DIR}/libTTZipVendor.a..."
+mkdir -p "${SLICE_DIR}"
 
-NATIVE_CODECS_LIBS=()
+PER_TARGET_MERGED=()
 for target in "${TARGETS[@]}"; do
+    TARGET_PARTS=()
+    TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
+    if [ -f "${TARGET_LIB}" ]; then
+        TARGET_PARTS+=("${TARGET_LIB}")
+    fi
+    
     CODEC_LIB="$(ls -t ${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/build/ttzip-engine-*/out/libttzip_native_codecs.a 2>/dev/null | head -n 1 || true)"
     if [ -z "${CODEC_LIB}" ]; then
         CODEC_LIB="$(find "${EFFECTIVE_TARGET_DIR}/${target}" -name "libttzip_native_codecs.a" -exec ls -t {} + 2>/dev/null | head -n 1 || true)"
     fi
     if [ -n "${CODEC_LIB}" ] && [ -f "${CODEC_LIB}" ]; then
-        NATIVE_CODECS_LIBS+=("${CODEC_LIB}")
-        break
+        TARGET_PARTS+=("${CODEC_LIB}")
     fi
+
+    for libname in libdeflate.a liblz4.a libzstd.a; do
+        if [[ "${target}" == aarch64* ]] && [ -f "/opt/homebrew/lib/${libname}" ]; then
+            TARGET_PARTS+=("/opt/homebrew/lib/${libname}")
+        elif [[ "${target}" == x86_64* ]] && [ -f "/usr/local/lib/${libname}" ]; then
+            TARGET_PARTS+=("/usr/local/lib/${libname}")
+        fi
+    done
+
+    PER_TARGET_OUT="$(mktemp /tmp/ttzip_part_${target}_XXXXXX.a)"
+    if [ ${#TARGET_PARTS[@]} -gt 1 ]; then
+        libtool -static -no_warning_for_no_symbols -o "${PER_TARGET_OUT}" "${TARGET_PARTS[@]}"
+    elif [ ${#TARGET_PARTS[@]} -eq 1 ]; then
+        cp "${TARGET_PARTS[0]}" "${PER_TARGET_OUT}"
+    fi
+    PER_TARGET_MERGED+=("${PER_TARGET_OUT}")
 done
 
 TMP_LIB="$(mktemp /tmp/libTTZipVendor_XXXXXX)"
-if [ ${#NATIVE_CODECS_LIBS[@]} -gt 0 ]; then
-    echo "--> Merging engine library with native codecs: ${NATIVE_CODECS_LIBS[*]}"
-    libtool -static -no_warning_for_no_symbols -o "${TMP_LIB}" "${BUILT_LIBS[@]}" "${NATIVE_CODECS_LIBS[@]}"
-elif [ ${#BUILT_LIBS[@]} -eq 1 ]; then
-    cp "${BUILT_LIBS[0]}" "${TMP_LIB}"
-else
-    echo "--> Combining slices via lipo: ${BUILT_LIBS[*]}"
-    lipo -create "${BUILT_LIBS[@]}" -output "${TMP_LIB}"
+if [ ${#PER_TARGET_MERGED[@]} -gt 1 ]; then
+    echo "--> Combining slices via lipo: ${PER_TARGET_MERGED[*]}"
+    lipo -create "${PER_TARGET_MERGED[@]}" -output "${TMP_LIB}"
+elif [ ${#PER_TARGET_MERGED[@]} -eq 1 ]; then
+    cp "${PER_TARGET_MERGED[0]}" "${TMP_LIB}"
 fi
+rm -f "${PER_TARGET_MERGED[@]}"
 
 strip -x "${TMP_LIB}" 2>/dev/null || true
-copy_if_changed "${TMP_LIB}" "${XCFRAMEWORK_MAC_DIR}/libTTZipVendor.a"
 copy_if_changed "${TMP_LIB}" "${SLICE_DIR}/libTTZipVendor.a"
 rm -f "${TMP_LIB}"
 
 # ------------------------------------------------------------------------------
 # 4. 幂等生成 XCFramework 必需的 Info.plist
 # ------------------------------------------------------------------------------
+ARCHS_PLIST_ENTRIES=""
+for arch in "${ARCHS[@]}"; do
+    ARCHS_PLIST_ENTRIES="${ARCHS_PLIST_ENTRIES}				<string>${arch}</string>
+"
+done
+
 TMP_PLIST="$(mktemp /tmp/ttzip_plist_XXXXXX)"
-cat > "${TMP_PLIST}" << 'EOF'
+cat > "${TMP_PLIST}" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -177,14 +219,12 @@ cat > "${TMP_PLIST}" << 'EOF'
 			<key>HeadersPath</key>
 			<string>Headers</string>
 			<key>LibraryIdentifier</key>
-			<string>macos-arm64_x86_64</string>
+			<string>${SLICE_IDENTIFIER}</string>
 			<key>LibraryPath</key>
 			<string>libTTZipVendor.a</string>
 			<key>SupportedArchitectures</key>
 			<array>
-				<string>arm64</string>
-				<string>x86_64</string>
-			</array>
+${ARCHS_PLIST_ENTRIES}			</array>
 			<key>SupportedPlatform</key>
 			<string>macos</string>
 		</dict>
@@ -200,9 +240,9 @@ copy_if_changed "${TMP_PLIST}" "${XCFRAMEWORK_DIR}/Info.plist"
 rm -f "${TMP_PLIST}"
 
 # ------------------------------------------------------------------------------
-# 5. 在临时沙盒中生成 Mozilla UniFFI 绑定并幂等同步
+# 5. 在临时沙盒中生成 Mozilla UniFFI Swift 绑定并幂等同步
 # ------------------------------------------------------------------------------
-echo "--> [INFO] Generating Mozilla UniFFI bindings..."
+echo "--> [INFO] Generating Mozilla UniFFI Swift bindings..."
 FIRST_TARGET="${TARGETS[0]}"
 FIRST_DYLIB="${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/libttzip_engine.dylib"
 if [ ! -f "${FIRST_DYLIB}" ]; then
@@ -210,95 +250,18 @@ if [ ! -f "${FIRST_DYLIB}" ]; then
 fi
 
 if [ -f "${FIRST_DYLIB}" ]; then
-    UNIFFI_BIN=""
-    for candidate in \
-        "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
-        "${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/uniffi-bindgen" \
-        "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
-        "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
-        "${RUST_DIR}/target/release/uniffi-bindgen" \
-        "${RUST_DIR}/target/debug/uniffi-bindgen"; do
-        if [ -x "${candidate}" ]; then
-            UNIFFI_BIN="${candidate}"
-            break
-        fi
-    done
-
-    if [ -z "${UNIFFI_BIN}" ]; then
-        echo "--> [INFO] Building ttzip-bindgen tool..."
-        cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen ${CARGO_FLAGS} ${OFFLINE_FLAG}
-        for candidate in \
-            "${EFFECTIVE_TARGET_DIR}/${BUILD_MODE}/uniffi-bindgen" \
-            "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/uniffi-bindgen" \
-            "${EFFECTIVE_TARGET_DIR}/release/uniffi-bindgen" \
-            "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
-            "${RUST_DIR}/target/release/uniffi-bindgen" \
-            "${RUST_DIR}/target/debug/uniffi-bindgen"; do
-            if [ -x "${candidate}" ]; then
-                UNIFFI_BIN="${candidate}"
-                break
-            fi
-        done
-    fi
-
     TMP_UNIFFI_DIR="$(mktemp -d /tmp/ttzip_uniffi.XXXXXX)"
 
-    if [ -n "${UNIFFI_BIN}" ]; then
-        (
-            cd "${RUST_DIR}"
-            "${UNIFFI_BIN}" generate \
-                --library "${FIRST_DYLIB}" \
-                --language swift \
-                --out-dir "${TMP_UNIFFI_DIR}" \
-                --no-format \
-                --metadata-no-deps
+    (
+        cd "${RUST_DIR}"
+        cargo run ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen -- generate \
+            --library "${FIRST_DYLIB}" \
+            --language swift \
+            --out-dir "${TMP_UNIFFI_DIR}" \
+            --no-format \
+            --metadata-no-deps
+    )
 
-            if [ "${SWIFT_ONLY}" = "0" ]; then
-                mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
-                "${UNIFFI_BIN}" generate \
-                    --library "${FIRST_DYLIB}" \
-                    --language python \
-                    --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
-                    --no-format \
-                    --metadata-no-deps
-
-                mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-                "${UNIFFI_BIN}" generate \
-                    --library "${FIRST_DYLIB}" \
-                    --language kotlin \
-                    --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
-                    --no-format \
-                    --metadata-no-deps
-            fi
-        )
-    else
-        (
-            cd "${RUST_DIR}"
-            cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
-                --library "${FIRST_DYLIB}" \
-                --language swift \
-                --out-dir "${TMP_UNIFFI_DIR}" \
-                --no-format \
-                --metadata-no-deps
-
-            if [ "${SWIFT_ONLY}" = "0" ]; then
-                mkdir -p "${REPO_ROOT}/sdk/python/ttzip"
-                cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
-                    --library "${FIRST_DYLIB}" \
-                    --language python \
-                    --out-dir "${REPO_ROOT}/sdk/python/ttzip" \
-                    --metadata-no-deps
-
-                mkdir -p "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip"
-                cargo run ${OFFLINE_FLAG} --package ttzip-bindgen --bin uniffi-bindgen -- generate \
-                    --library "${FIRST_DYLIB}" \
-                    --language kotlin \
-                    --out-dir "${REPO_ROOT}/sdk/jvm/src/main/kotlin/com/ttzip" \
-                    --metadata-no-deps
-            fi
-        )
-    fi
-    
     # 执行 Swift 6 并发安全后处理
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engine.swift" ]; then
         python3 "${REPO_ROOT}/scripts/postprocess_uniffi_swift.py" "${TMP_UNIFFI_DIR}/ttzip_engine.swift"
@@ -309,7 +272,6 @@ if [ -f "${FIRST_DYLIB}" ]; then
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" ]; then
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h"
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
-        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${XCFRAMEWORK_MAC_DIR}/Headers/ttzip_engineFFI.h"
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${SLICE_DIR}/Headers/ttzip_engineFFI.h"
     fi
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.modulemap" ]; then

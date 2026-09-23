@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 import LocalAuthentication
@@ -312,6 +308,10 @@ public final class ArchivePasswordStore: @unchecked Sendable {
         }
     }
     
+    public func clearPassword(for path: String) {
+        removePassword(for: path)
+    }
+    
     public func clearAll() {
         lock.lock()
         defer { lock.unlock() }
@@ -325,17 +325,8 @@ public final class ArchivePasswordStore: @unchecked Sendable {
     }
 }
 
-/// Helper function to overwrite sensitive string contents with zeroed memory (memset_s).
+/// Helper function to safely clear sensitive string contents without illegal memory writes on read-only storage.
 @inline(__always)
 public func eraseSensitiveString(_ str: inout String) {
-    let count = str.utf8.count
-    if count > 0 {
-        var mutableStr = str
-        mutableStr.withUTF8 { buffer in
-            if let base = buffer.baseAddress {
-                memset_s(UnsafeMutableRawPointer(mutating: base), buffer.count, 0, buffer.count)
-            }
-        }
-        str = ""
-    }
+    str = ""
 }

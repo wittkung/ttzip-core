@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import XCTest
 @testable import TTZipCore
@@ -26,7 +22,7 @@ final class APFSCloneServiceTests: XCTestCase {
     }
 
     func testAPFSFileSystemDetection() {
-        let isAPFS = APFSCloneService.isAPFSFileSystem(at: tempDir.path)
+        let isAPFS = isAPFSFileSystem(at: tempDir.path)
         XCTAssertTrue(isAPFS, "macOS system temporary directory must be on an APFS volume")
     }
 
@@ -42,9 +38,9 @@ final class APFSCloneServiceTests: XCTestCase {
         let originalData = Data(randomBytes)
         try originalData.write(to: srcURL)
 
-        // Clone file via APFS
-        let success = APFSCloneService.cloneFile(from: srcURL.path, to: dstURL.path, overwrite: true)
-        XCTAssertTrue(success, "APFS Clonefile should succeed on APFS filesystem")
+        // Clone file via Rust microkernel APFS clone/copy
+        let success = TTZipCore.apfsCloneOrCopy(from: srcURL.path, to: dstURL.path, overwrite: true)
+        XCTAssertTrue(success, "Rust APFS clone or copy must succeed on APFS filesystem")
 
         // Verify cloned file exists and data is identical
         XCTAssertTrue(FileManager.default.fileExists(atPath: dstURL.path))
@@ -64,7 +60,8 @@ final class APFSCloneServiceTests: XCTestCase {
         let nonExistent = tempDir.appendingPathComponent("does_not_exist.bin").path
         let dst = tempDir.appendingPathComponent("out.bin").path
 
-        let result = APFSCloneService.cloneFile(from: nonExistent, to: dst)
+        let result = TTZipCore.apfsCloneOrCopy(from: nonExistent, to: dst)
         XCTAssertFalse(result, "Cloning non-existent source must return false without crashing")
     }
 }
+

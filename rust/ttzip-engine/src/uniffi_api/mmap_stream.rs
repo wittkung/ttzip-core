@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 //! Mozilla UniFFI Memory-Mapped (Mmap) Zero-Copy Data Stream & Kernel Advice Scaffolding.
 
@@ -40,6 +36,7 @@ pub struct UniFFIMmapSlice {
     pub length: u64,
     pub data: Vec<u8>,
 }
+
 
 struct SafeMmapAllocation {
     ptr: *const u8,
@@ -211,6 +208,7 @@ impl UniFFIMmapReader {
     pub fn is_empty(&self) -> bool {
         self.file_size == 0
     }
+
 
     /// Reads a bounded slice descriptor starting from offset with requested length.
     pub fn read_slice(&self, offset: u64, length: u64) -> Result<UniFFIMmapSlice, TTZipError> {

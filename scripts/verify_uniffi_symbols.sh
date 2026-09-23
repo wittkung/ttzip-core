@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-#
-# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-# All rights reserved.
-#
-# TTZip: High-performance native archiving and compression engine.
-
-# ==============================================================================
-# scripts/verify_uniffi_symbols.sh
-# 自动化 Mozilla UniFFI 符号双向满射防御门禁：校验 Scaffolding 头文件与静态库 Mach-O 符号 100% 对应
-# ==============================================================================
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 set -euo pipefail
 
@@ -17,7 +8,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 HEADER_FILE="${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
-STATIC_LIB="${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+if [ -f "${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64_x86_64/libTTZipVendor.a" ]; then
+    STATIC_LIB="${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64_x86_64/libTTZipVendor.a"
+else
+    STATIC_LIB="${REPO_ROOT}/Frameworks/TTZipVendor.xcframework/macos-arm64/libTTZipVendor.a"
+fi
 
 if [ ! -f "${HEADER_FILE}" ]; then
     echo "❌ [ERROR] UniFFI Header file not found: ${HEADER_FILE}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#
-# This script computes a table that maps each byte to its bitwise reverse.
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
 
 def reverse_byte(v):
     return sum(1 << (7 - bit) for bit in range(8) if (v & (1 << bit)) != 0)

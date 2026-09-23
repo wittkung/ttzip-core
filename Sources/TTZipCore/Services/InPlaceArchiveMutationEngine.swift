@@ -1,13 +1,50 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
-/// High-level in-place archive mutation and live editing coordinator.
+// MARK: - Scoped Temporary Directory RAII Guard
+
+/// RAII resource guard managing temporary directory lifecycle to guarantee atomic cleanup on scope exit or failure.
+final class ScopedTempDirectory: @unchecked Sendable {
+    let url: URL
+    private var isDisarmed: Bool = false
+    private let lock = NSLock()
+    
+    init(prefix: String) throws {
+        let uniqueName = "\(prefix)_\(UUID().uuidString)"
+        self.url = FileManager.default.temporaryDirectory.appendingPathComponent(uniqueName, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+    
+    var path: String {
+        url.path
+    }
+    
+    /// Disarms the guard when ownership is transferred (e.g. to an active session).
+    func disarm() {
+        lock.lock()
+        defer { lock.unlock() }
+        isDisarmed = true
+    }
+    
+    /// Cleans up the directory unless disarmed.
+    func cleanup() {
+        lock.lock()
+        defer { lock.unlock() }
+        if !isDisarmed {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+    
+    deinit {
+        cleanup()
+    }
+}
+
+// MARK: - In-Place Archive Mutation Engine
+
+/// High-level in-place archive mutation and live editing coordinator with transactional lifecycle guarantees.
 public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     public static let shared = InPlaceArchiveMutationEngine()
     
@@ -16,20 +53,30 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     
     private init() {}
     
-    /// Begins a live in-place editing session by extracting target entry to an isolated temporary staging file.
+    /// Begins a live in-place editing session by extracting the target entry to an isolated temporary staging file.
+    /// Guarantees 100% atomic rollback and directory cleanup if extraction, disk write, or hashing fails.
     public func beginEditingSession(
         archivePath: String,
         entryPath: String,
         password: String? = nil
     ) async throws -> InPlaceEditSession {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TTZip_Edit_\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        guard !archivePath.isEmpty, !entryPath.isEmpty else {
+            throw ArchiveError.fileNotFound
+        }
         
         let fm = FileManager.default
-        let stagedFile = tempDir.appendingPathComponent(entryPath)
+        guard fm.fileExists(atPath: archivePath) else {
+            throw ArchiveError.fileNotFound
+        }
+        
+        let tempGuard = try ScopedTempDirectory(prefix: "TTZip_Edit")
+        defer { tempGuard.cleanup() }
+        
+        let stagedFile = tempGuard.url.appendingPathComponent(entryPath)
         let parentDir = stagedFile.deletingLastPathComponent()
-        try? fm.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        if !fm.fileExists(atPath: parentDir.path) {
+            try fm.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
         
         guard let data = try await ArchiveSelectiveExtractor.shared.extractSingleEntryData(
             archivePath: archivePath,
@@ -38,22 +85,30 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         ) else {
             throw ArchiveError.fileNotFound
         }
+        
         try data.write(to: stagedFile, options: .atomic)
         
-        let initialDiff = try? inspectStagingFileMutation(stagedPath: stagedFile.path, initialHash: "")
-        let initialHash = initialDiff?.newHash ?? (HashCalculator.calculateSHA256(filePath: stagedFile.path) ?? "")
+        let stagedFilePath = stagedFile.path
+        let initialHash = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+            let initialDiff = try? inspectStagingFileMutation(stagedPath: stagedFilePath, initialHash: "")
+            return initialDiff?.newHash ?? (HashCalculator.calculateSHA256(filePath: stagedFilePath) ?? "")
+        }
+        
+        let mtime = (try? fm.attributesOfItem(atPath: stagedFilePath)[.modificationDate] as? Date)?.timeIntervalSince1970 
+            ?? Date().timeIntervalSince1970
         
         let session = InPlaceEditSession(
             archivePath: archivePath,
             entryPath: entryPath,
-            stagedFilePath: stagedFile.path,
-            stagedDirectoryPath: tempDir.path,
+            stagedFilePath: stagedFilePath,
+            stagedDirectoryPath: tempGuard.path,
             state: .active,
             initialHash: initialHash,
-            lastKnownMtime: (try? fm.attributesOfItem(atPath: stagedFile.path)[.modificationDate] as? Date)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+            lastKnownMtime: mtime
         )
         
         setSession(session)
+        tempGuard.disarm()
         return session
     }
     
@@ -80,6 +135,13 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         try inspectStagingFileMutation(stagedPath: session.stagedFilePath, initialHash: session.initialHash)
     }
     
+    /// Asynchronously inspects whether an active staging file has mutated against its initial hash using pure Rust offloaded to background.
+    public func inspectSessionMutationAsync(session: InPlaceEditSession) async throws -> UniFfiTransactionDiff {
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+            try self.inspectSessionMutation(session: session)
+        }
+    }
+    
     /// Directly commits changes from a live editing session back into the target archive if modified.
     @discardableResult
     public func commitChangesDirectly(
@@ -88,10 +150,12 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
     ) async throws -> Bool {
         guard FileManager.default.fileExists(atPath: session.stagedFilePath) else { return false }
         
-        let diff = try inspectStagingFileMutation(
-            stagedPath: session.stagedFilePath,
-            initialHash: session.initialHash
-        )
+        let diff = try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
+            try inspectStagingFileMutation(
+                stagedPath: session.stagedFilePath,
+                initialHash: session.initialHash
+            )
+        }
         
         guard diff.hasChanged else {
             return false
@@ -123,12 +187,15 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         destinationVirtualFolder: String? = nil,
         password: String? = nil
     ) async throws {
-        try addFilesToArchiveSync(
-            archivePath: archivePath,
-            sourceFilePaths: sourceFilePaths,
-            destinationVirtualFolder: destinationVirtualFolder,
-            password: password
-        )
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            try self.addFilesToArchiveSync(
+                archivePath: archivePath,
+                sourceFilePaths: sourceFilePaths,
+                destinationVirtualFolder: destinationVirtualFolder,
+                password: password
+            )
+        }
     }
     
     /// Synchronously adds files into an existing archive using 100% pure Rust UniFFI in-place mutation.
@@ -152,6 +219,7 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         }
         
         try inPlaceMutateArchive(archivePath: archivePath, actions: actions)
+        VFSLz4CachePool.shared.clearSession(sessionId: archivePath)
     }
     
     /// Deletes specific entries from inside an existing archive using 100% pure Rust UniFFI in-place mutation.
@@ -160,6 +228,22 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         entryPathsToDelete: [String],
         password: String? = nil
     ) async throws {
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            try self.deleteEntriesFromArchiveSync(
+                archivePath: archivePath,
+                entryPathsToDelete: entryPathsToDelete,
+                password: password
+            )
+        }
+    }
+    
+    /// Synchronously deletes specific entries from inside an existing archive using 100% pure Rust UniFFI in-place mutation.
+    public func deleteEntriesFromArchiveSync(
+        archivePath: String,
+        entryPathsToDelete: [String],
+        password: String? = nil
+    ) throws {
         guard !entryPathsToDelete.isEmpty else { return }
         
         let actions = entryPathsToDelete.map { entry in
@@ -167,12 +251,176 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         }
         
         try inPlaceMutateArchive(archivePath: archivePath, actions: actions)
+        VFSLz4CachePool.shared.clearSession(sessionId: archivePath)
+    }
+    
+    /// Removes specified files or directories from inside an existing archive.
+    public func removeFilesFromArchive(
+        archivePath: String,
+        entryPaths: [String],
+        password: String? = nil
+    ) async throws {
+        try await deleteEntriesFromArchive(
+            archivePath: archivePath,
+            entryPathsToDelete: entryPaths,
+            password: password
+        )
+    }
+    
+    /// Synchronously removes specified files or directories from inside an existing archive.
+    public func removeFilesFromArchiveSync(
+        archivePath: String,
+        entryPaths: [String],
+        password: String? = nil
+    ) throws {
+        try deleteEntriesFromArchiveSync(
+            archivePath: archivePath,
+            entryPathsToDelete: entryPaths,
+            password: password
+        )
+    }
+    
+    /// Replaces an existing entry in the archive with an external file.
+    public func replaceEntry(
+        archivePath: String,
+        entryPath: String,
+        sourceFilePath: String,
+        password: String? = nil
+    ) async throws {
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            try self.replaceEntrySync(
+                archivePath: archivePath,
+                entryPath: entryPath,
+                sourceFilePath: sourceFilePath,
+                password: password
+            )
+        }
+    }
+    
+    /// Synchronously replaces an existing entry in the archive with an external file.
+    public func replaceEntrySync(
+        archivePath: String,
+        entryPath: String,
+        sourceFilePath: String,
+        password: String? = nil
+    ) throws {
+        let action = InPlaceMutationAction(isDelete: false, entryPath: entryPath, sourcePath: sourceFilePath)
+        try inPlaceMutateArchive(archivePath: archivePath, actions: [action])
+        VFSLz4CachePool.shared.clearSession(sessionId: archivePath)
+    }
+    
+    /// Atomically renames an entry inside an existing archive.
+    public func renameEntry(
+        archivePath: String,
+        oldEntryPath: String,
+        newEntryPath: String,
+        password: String? = nil
+    ) async throws {
+        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            try self.renameEntrySync(
+                archivePath: archivePath,
+                oldEntryPath: oldEntryPath,
+                newEntryPath: newEntryPath,
+                password: password
+            )
+        }
+    }
+    
+    /// Asynchronously renames an entry inside an existing archive (alias for renameEntry).
+    public func renameEntryAsync(
+        archivePath: String,
+        oldEntryPath: String,
+        newEntryPath: String,
+        password: String? = nil
+    ) async throws {
+        try await renameEntry(
+            archivePath: archivePath,
+            oldEntryPath: oldEntryPath,
+            newEntryPath: newEntryPath,
+            password: password
+        )
+    }
+    
+    /// Synchronously renames an entry inside an existing archive with RAII staging lifecycle.
+    public func renameEntrySync(
+        archivePath: String,
+        oldEntryPath: String,
+        newEntryPath: String,
+        password: String? = nil
+    ) throws {
+        guard oldEntryPath != newEntryPath else { return }
+        guard !oldEntryPath.isEmpty, !newEntryPath.isEmpty else {
+            throw ArchiveError.fileNotFound
+        }
+        
+        let tempGuard = try ScopedTempDirectory(prefix: "TTZip_Rename")
+        defer { tempGuard.cleanup() }
+        
+        let tempStagingFile = tempGuard.url.appendingPathComponent("staged_entry")
+        let data: Data
+        do {
+            data = try extractSingleEntryByPath(archivePath: archivePath, entryPath: oldEntryPath, password: password)
+        } catch {
+            throw ArchiveError.fileNotFound
+        }
+        
+        try data.write(to: tempStagingFile, options: .atomic)
+        
+        let actions = [
+            InPlaceMutationAction(isDelete: false, entryPath: newEntryPath, sourcePath: tempStagingFile.path),
+            InPlaceMutationAction(isDelete: true, entryPath: oldEntryPath, sourcePath: nil)
+        ]
+        try inPlaceMutateArchive(archivePath: archivePath, actions: actions)
+        VFSLz4CachePool.shared.clearSession(sessionId: archivePath)
+        
+        updateActiveSessionsForRename(
+            archivePath: archivePath,
+            oldEntryPath: oldEntryPath,
+            newEntryPath: newEntryPath
+        )
     }
     
     /// Closes and cleans up an in-place editing session and its temporary directory.
     public func closeEditingSession(session: InPlaceEditSession) {
+        FileWatcherEngine.shared.stopWatching(sessionKey: session.sessionId)
         removeSession(sessionId: session.sessionId)
         try? FileManager.default.removeItem(atPath: session.stagedDirectoryPath)
+    }
+    
+    /// Closes and cleans up an in-place editing session by session ID.
+    public func closeEditingSession(sessionId: String) {
+        FileWatcherEngine.shared.stopWatching(sessionKey: sessionId)
+        if let session = getSession(sessionId: sessionId) {
+            removeSession(sessionId: sessionId)
+            try? FileManager.default.removeItem(atPath: session.stagedDirectoryPath)
+        } else {
+            removeSession(sessionId: sessionId)
+        }
+    }
+    
+    /// Discards an active editing session, reverting any unsaved changes and removing temporary files.
+    public func discardEditingSession(session: InPlaceEditSession) {
+        closeEditingSession(session: session)
+    }
+    
+    /// Discards an active editing session by session ID.
+    public func discardEditingSession(sessionId: String) {
+        closeEditingSession(sessionId: sessionId)
+    }
+    
+    /// Closes all active editing sessions and cleans up all associated temporary directories.
+    public func closeAllSessions() {
+        lock.lock()
+        let sessions = Array(activeSessions.values)
+        activeSessions.removeAll()
+        lock.unlock()
+        
+        for session in sessions {
+            FileWatcherEngine.shared.stopWatching(sessionKey: session.sessionId)
+            try? FileManager.default.removeItem(atPath: session.stagedDirectoryPath)
+        }
     }
     
     /// Retrieves an active in-place editing session by its ID.
@@ -180,6 +428,13 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return activeSessions[sessionId]
+    }
+    
+    /// Returns all currently registered active editing sessions.
+    public func allActiveSessions() -> [InPlaceEditSession] {
+        lock.lock()
+        defer { lock.unlock() }
+        return Array(activeSessions.values)
     }
     
     private func setSession(_ session: InPlaceEditSession) {
@@ -192,6 +447,28 @@ public final class InPlaceArchiveMutationEngine: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         activeSessions.removeValue(forKey: sessionId)
+    }
+    
+    private func updateActiveSessionsForRename(archivePath: String, oldEntryPath: String, newEntryPath: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        for (key, session) in activeSessions {
+            if session.archivePath == archivePath && session.entryPath == oldEntryPath {
+                let updated = InPlaceEditSession(
+                    sessionId: session.sessionId,
+                    archivePath: session.archivePath,
+                    entryPath: newEntryPath,
+                    stagedFilePath: session.stagedFilePath,
+                    stagedDirectoryPath: session.stagedDirectoryPath,
+                    state: session.state,
+                    initialHash: session.initialHash,
+                    lastKnownMtime: session.lastKnownMtime,
+                    hasUnsavedChanges: session.hasUnsavedChanges,
+                    errorMessage: session.errorMessage
+                )
+                activeSessions[key] = updated
+            }
+        }
     }
 }
 
@@ -243,3 +520,8 @@ public struct InPlaceEditSession: Sendable, Identifiable, Equatable {
         self.errorMessage = errorMessage
     }
 }
+
+// MARK: - Sendable Conformance Extensions
+
+extension UniFfiTransactionDiff: @unchecked Sendable {}
+extension InPlaceMutationAction: @unchecked Sendable {}

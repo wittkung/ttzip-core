@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
-//
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
-// All rights reserved.
-//
-// TTZip: High-performance native archiving and compression engine.
+// Copyright 2026 MetastudyLine. All rights reserved.
+// Proprietary and confidential.
 
 import Foundation
 
@@ -192,7 +188,9 @@ public actor CommandHistoryManager {
                let size = attr[.size] as? Int64 {
                 fileSize = size
             } else {
-                fileSize = compressCmd.inputs.reduce(Int64(0)) { $0 + ArchiveWriter.recursivePathSize(at: $1) }
+                fileSize = compressCmd.inputs.reduce(Int64(0)) {
+                    $0 + ((try? fileManager.attributesOfItem(atPath: $1)[.size] as? Int64) ?? 0)
+                }
             }
         } else if let extractCmd = command as? ExtractCommand {
             archivePath = extractCmd.archivePath
