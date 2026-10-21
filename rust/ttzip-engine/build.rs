@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 fn find_third_party_or_vendor(repo_root: &Path) -> PathBuf {
     println!("cargo:rerun-if-env-changed=TTZIP_THIRD_PARTY_DIR");
     let monorepo = repo_root.join("../../..");
-    let default_directory = if monorepo.join("MODULE.bazel").is_file() {
+    let default_directory = if repo_root.join("third_party").is_dir() {
+        repo_root.join("third_party")
+    } else if monorepo.join("MODULE.bazel").is_file() {
         monorepo.join("third_party")
     } else {
         repo_root.join("third_party")
