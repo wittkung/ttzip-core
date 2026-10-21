@@ -10,7 +10,7 @@ def postprocess(swift_path):
 
     # 0. Ensure proprietary header is present
     proprietary_header = """// Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 """
     if "SPDX-License-Identifier" in content:
@@ -153,6 +153,8 @@ extension UniFfiMmapReader: @unchecked Sendable {}
         try! rustCall { ffi_ttzip_engine_rustbuffer_free(self, $0) }
     }"""
     content = content.replace(old_dealloc, new_dealloc)
+
+    content = "\n".join(line.rstrip() for line in content.splitlines()) + "\n"
 
     with open(swift_path, "w", encoding="utf-8") as f:
         f.write(content)

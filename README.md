@@ -23,7 +23,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
-> **Early source release:** standalone builds and package-registry installation commands have not been validated as a public release. The Swift SDK currently depends on the private `ttlog` repository; native codec dependencies also need standalone packaging work. SDK and benchmark sections below describe development work and are not a release certification.
+> **Standalone source build:** follow the [build and test guide](docs/standalone-build.md) for the tested workflow, platform scope and prerequisites. Package-manager examples and historical benchmark tables below require their own validation.
 
 ---
 
@@ -72,6 +72,16 @@
 | **Legacy & Proprietary** | `.rar`, `.cbr`, `.zipx`, `.cab` | Read-Only | ✅ | ✅ | - |
 
 ---
+
+## Codex-assisted development
+
+TTZip Core is maintained by one developer and built with Codex assistance. Codex helps explore low-level implementations, investigate failures, develop regression tests and prepare changes for upstream projects. The maintainer reviews changes and validates their behavior before publication.
+
+The project aims to combine broad archive-format support, modern parallel execution and native integration for macOS. Its benchmark tooling compares speed and compression ratio to identify non-dominated configurations for measured workloads. Comparisons should retain the corpus, hardware, versions, thread counts and measurement method; a Pareto frontier is specific to those conditions.
+
+The longer-term vision is to make rigorous low-level maintenance and optimization accessible to more open-source maintainers, including solo developers, by reducing the engineering effort required for investigation, testing and cross-platform validation.
+
+For the standalone source build, see [the build and test guide](docs/standalone-build.md).
 
 ## 📈 Real Physical Hardware Benchmarks (`ttzip-bench matrix`)
 

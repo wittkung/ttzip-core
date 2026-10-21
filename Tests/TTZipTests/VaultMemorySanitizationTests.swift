@@ -1,9 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
 @testable import TTZipCore
-@testable import TTZipCoreCrypto
 
 final class VaultMemorySanitizationTests: XCTestCase {
     
