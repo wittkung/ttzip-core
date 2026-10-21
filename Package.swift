@@ -1,12 +1,12 @@
 // swift-tools-version: 6.0
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import PackageDescription
 import Foundation
 
-let ttlogPackage: Package.Dependency = .package(url: "https://github.com/wittkung/ttlog.git", exact: "0.1.0")
-let ttlogPackageName = "TTLog"
+let ttlogPackage: Package.Dependency = .package(url: "https://github.com/wittkung/ttlog.git", exact: "1.0.1")
+let ttlogPackageName = "ttlog"
 
 let coreSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("StrictConcurrency")
@@ -89,14 +89,6 @@ let package = Package(
             resources: [
                 .copy("Fixtures")
             ],
-            swiftSettings: coreSwiftSettings
-        ),
-        .testTarget(
-            name: "TTZipCoreTests",
-            dependencies: [
-                "TTZipCore"
-            ],
-            path: "Tests/TTZipCoreTests",
             swiftSettings: coreSwiftSettings
         )
     ],

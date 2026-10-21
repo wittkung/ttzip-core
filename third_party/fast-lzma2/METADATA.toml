@@ -1,0 +1,13 @@
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
+
+name = "fast-lzma2"
+version = "1.0.1"
+upstream_url = "https://github.com/conor42/fast-lzma2"
+upstream_tag = "v1.0.1"
+upstream_commit = "9d13017df02e3a0c6cdd1dfd87e141a6a5e2ba30"
+spdx = "BSD-3-Clause"
+
+[verified_files_sha256]
+"LICENSE" = "fa5ac3683c28ec4f8441e8d1530463ce83f1ed457a9831f4e96d236c174221cc"
+"fast-lzma2.h" = "20cd33abda89fcb6246dbc810f9eae38b74b357daa7ca868b34f3992b5c1b3a5"

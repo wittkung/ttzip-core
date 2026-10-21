@@ -18,3 +18,6 @@ libc = "0.2"
 
 [lints]
 workspace = true
+
+[build-dependencies]
+pyo3-build-config = "0.22"

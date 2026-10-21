@@ -1,11 +1,5 @@
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
-
-[target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-
-[target.x86_64-apple-darwin]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+# SPDX-License-Identifier: BSD-3-Clause
 
 [source.crates-io]
 replace-with = 'rsproxy-sparse'

@@ -1,0 +1,14 @@
+# Copyright 2026 MetastudyLine. All rights reserved.
+# Proprietary and confidential.
+
+name = "lzfse"
+version = "1.0"
+upstream_url = "https://github.com/lzfse/lzfse"
+upstream_tag = "lzfse-1.0"
+upstream_commit = "88e2d2788b4021d0b2eb9fe2d97352ae9190f128"
+spdx = "BSD-3-Clause"
+
+[verified_files_sha256]
+"LICENSE" = "2a20082c2219edbbdb2e862a0566ba4f762a564ade7c04b09250ae4464bc4b32"
+"lzfse.h" = "a71a29096c022ac4b42af79a8b014538b93cc00bd30295f51ad8b49f3f65a304"
+"lzfse_encode_base.c" = "ad69af28e09d5a4e40912bfbe67fb4c570a1e3186c7621dca15b72c41830e34e"

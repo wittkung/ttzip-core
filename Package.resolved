@@ -1,0 +1,15 @@
+{
+  "originHash" : "acda91265a6b8b575489ace9645de0a2511910ccece13738ccdbf5b6ce017e3f",
+  "pins" : [
+    {
+      "identity" : "ttlog",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wittkung/ttlog.git",
+      "state" : {
+        "revision" : "2bfe0a8984c43310641db8d37ae43fd9dd304b6d",
+        "version" : "1.0.1"
+      }
+    }
+  ],
+  "version" : 3
+}

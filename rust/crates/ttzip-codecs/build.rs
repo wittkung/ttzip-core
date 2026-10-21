@@ -1,23 +1,31 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::env;
 use std::path::{Path, PathBuf};
 
-fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
-    let mut current = Some(start_dir);
-    while let Some(dir) = current {
-        let tp = dir.join("third_party");
-        if tp.is_dir() {
-            return tp;
-        }
-        let v = dir.join("vendor");
-        if v.is_dir() {
-            return v;
-        }
-        current = dir.parent();
+fn find_third_party_or_vendor(repo_root: &Path) -> PathBuf {
+    println!("cargo:rerun-if-env-changed=TTZIP_THIRD_PARTY_DIR");
+    let monorepo = repo_root.join("../../..");
+    let default_directory = if repo_root.join("third_party").is_dir() {
+        repo_root.join("third_party")
+    } else if monorepo.join("MODULE.bazel").is_file() {
+        monorepo.join("third_party")
+    } else {
+        repo_root.join("third_party")
+    };
+    let directory = env::var_os("TTZIP_THIRD_PARTY_DIR")
+        .map(PathBuf::from)
+        .unwrap_or(default_directory);
+    for library in ["fast-lzma2", "lzfse"] {
+        assert!(
+            directory.join(library).is_dir(),
+            "Missing native source {library} in {}. Use a complete standalone checkout or set TTZIP_THIRD_PARTY_DIR.",
+            directory.display()
+        );
     }
-    start_dir.join("vendor")
+    println!("cargo:rerun-if-changed={}", directory.display());
+    directory
 }
 
 /// Compiles in-tree native C codecs (fast-lzma2, lzfse) for standalone Cargo builds.
@@ -200,6 +208,7 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let repo_root = manifest_dir
         .parent()
+        .and_then(|p| p.parent())
         .and_then(|p| p.parent())
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest_dir.clone());

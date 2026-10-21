@@ -15,12 +15,9 @@ xcuserdata/
 *.xcworkspace
 *.dSYM/
 Frameworks/*.dylib
-!Frameworks/TTZipVendor.xcframework/
-!Frameworks/TTZipVendor.xcframework/**
 vendor/
 upstream/
 *.a
-!Frameworks/TTZipVendor.xcframework/**/*.a
 
 
 # Rust Cargo & UniFFI
@@ -83,3 +80,6 @@ docs/benchmarks/benchmark_report_*.md
 *.tmp
 *.log
 .system_generated/
+
+# Build native artifacts from source with scripts/build_rust.sh.
+Frameworks/TTZipVendor.xcframework/

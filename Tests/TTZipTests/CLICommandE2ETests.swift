@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
 import Foundation
@@ -50,6 +50,13 @@ final class CLICommandE2ETests: XCTestCase {
         candidates.append(coreDir.appendingPathComponent("rust/ttzip-tui/target/debug/ttzip_cli"))
         candidates.append(coreDir.appendingPathComponent("rust/ttzip-tui/target/release/ttzip_cli"))
         candidates.append(coreDir.appendingPathComponent("bin/ttzip"))
+        // Cargo's workspace target directory contains the standalone CLI.
+        for profile in ["debug", "release"] {
+            candidates.append(coreDir.appendingPathComponent("rust/target/\(profile)/ttzip"))
+            if let targetDir = env["CARGO_TARGET_DIR"] {
+                candidates.append(URL(fileURLWithPath: targetDir).appendingPathComponent("\(profile)/ttzip"))
+            }
+        }
 
         return candidates
     }
@@ -82,7 +89,7 @@ final class CLICommandE2ETests: XCTestCase {
     private func runCLI(arguments: [String]) throws -> (exitCode: Int32, stdout: String, stderr: String) {
         guard let binaryURL = ttzipBinaryURL else {
             let searched = candidateBinaryURLs.map(\.path).joined(separator: "\n  - ")
-            XCTFail("ttzip CLI binary not found in test environment. Inspected candidate paths:\n  - \(searched)\nEnsure //products/ttzip/core/rust/ttzip-tui:ttzip_cli is declared in BUILD.bazel data.")
+            XCTFail("ttzip CLI binary not found in test environment. Inspected candidate paths:\n  - \(searched)\nRun cargo build --workspace --manifest-path rust/Cargo.toml first, or provide TTZIP_BIN_PATH. Bazel tests must include the ttzip_cli runfile.")
             struct BinaryNotFoundError: Error {}
             throw BinaryNotFoundError()
         }
