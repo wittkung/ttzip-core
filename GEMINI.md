@@ -85,10 +85,10 @@ swift run ttzip-bench pipeline
 ```swift
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// Copyright (c) 2026 Witt Kung <kevintungs@163.com>
 // All rights reserved.
 //
 // TTZip: High-performance native archiving and compression engine.
 ```
-- **作者署名**: `Witt Kung <witt.w.kung@gmail.com>`
+- **作者署名**: `Witt Kung <kevintungs@163.com>`
 - **英文注释标准**: 源码内部所有注释、Docstrings、常量与错误说明统一采用专业英语书写。

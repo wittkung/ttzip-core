@@ -274,4 +274,4 @@ swift test
 
 - **TTZip Core (`core/`)**: Dual-licensed under the **BSD 3-Clause License** ([LICENSE-BSD](LICENSE-BSD)) and the **Apache License 2.0** ([LICENSE-APACHE](LICENSE-APACHE)).
 - **TTZip Apple Client (`apple/`)**: Licensed under the **GNU General Public License v3.0 or later** ([apple/LICENSE](../apple/LICENSE)).
-- **SPDX Standard**: All source files must include standard SPDX header identifiers and author attribution: `Witt Kung <witt.w.kung@gmail.com>`.
+- **SPDX Standard**: All source files must include standard SPDX header identifiers and author attribution: `Witt Kung <kevintungs@163.com>`.

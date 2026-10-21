@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <kevintungs@163.com> and TTZip Contributors.
 // All rights reserved.
 //
 // TTZip: Advanced Dart & Flutter SDK Features Showcase.

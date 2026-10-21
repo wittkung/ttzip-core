@@ -273,4 +273,4 @@ swift test
 
 - **TTZip Core 引擎 (`core/`)**：采用 **BSD 3-Clause** ([LICENSE-BSD](LICENSE-BSD)) 与 **Apache 2.0** ([LICENSE-APACHE](LICENSE-APACHE)) 双重开源许可。
 - **TTZip Apple 客户端 (`apple/`)**：采用 **GNU General Public License v3.0 or later** ([apple/LICENSE](../apple/LICENSE)) 开源许可。
-- **SPDX 标准**：所有源码顶部必须声明标准 SPDX 标识与作者署名：`Witt Kung <witt.w.kung@gmail.com>`。
+- **SPDX 标准**：所有源码顶部必须声明标准 SPDX 标识与作者署名：`Witt Kung <kevintungs@163.com>`。

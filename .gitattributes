@@ -70,3 +70,6 @@ Package.resolved linguist-generated
 Formula/** linguist-generated
 reports/** linguist-generated
 docs/** linguist-documentation
+
+# Restore the Brotli RFC dictionary when cloning this standalone repository.
+rust/crates/ttzip-codecs/src/brotli/data/rfc7932_dictionary.bin filter=lfs diff=lfs merge=lfs -text

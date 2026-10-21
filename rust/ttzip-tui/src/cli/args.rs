@@ -11,7 +11,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug, Clone)]
 #[command(
     name = "ttzip",
-    author = "Witt Kung <witt.w.kung@gmail.com>",
+    author = "Witt Kung <kevintungs@163.com>",
     version = "1.0.0",
     about = "TTZip: High-performance native archiving and terminal TUI engine for macOS",
     long_about = "TTZip provides an ultra-fast interactive TUI archive explorer and a standalone zero-dependency CLI engine for ZIP, 7z, TAR, Snappy, and Brotli archives on macOS."

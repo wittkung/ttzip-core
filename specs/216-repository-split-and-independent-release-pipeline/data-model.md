@@ -11,7 +11,7 @@
 // swift-tools-version: 6.0
 // SPDX-License-Identifier: BSD-3-Clause OR Apache-2.0
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
+// Copyright (c) 2026 Witt Kung <kevintungs@163.com> and TTZip Contributors.
 
 import PackageDescription
 
@@ -73,7 +73,7 @@ let package = Package(
 // swift-tools-version: 6.0
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
+// Copyright (c) 2026 Witt Kung <kevintungs@163.com>
 
 import PackageDescription
 

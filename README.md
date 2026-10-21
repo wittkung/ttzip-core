@@ -20,8 +20,10 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
+
+> **Early source release:** standalone builds and package-registry installation commands have not been validated as a public release. The Swift SDK currently depends on the private `ttlog` repository; native codec dependencies also need standalone packaging work. SDK and benchmark sections below describe development work and are not a release certification.
 
 ---
 
@@ -300,12 +302,12 @@ We actively contribute verified hardware acceleration routines back to foundatio
 
 ## 📄 License & Community Model
  
-TTZip Core is dual-licensed under the **BSD 3-Clause License** and the **Apache License (Version 2.0)**:
+TTZip Core is released under the **BSD 3-Clause License**:
  
-- See [LICENSE-BSD](LICENSE-BSD) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
-- **100% Open Source**: All source code in `ttzip-core` is available for commercial, academic, and personal use under OSI-approved licenses.
-- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [apple/LICENSE](../apple/LICENSE) (GPL-3.0-or-later).
-- Commercial Inquiries: `witt.w.kung@gmail.com`.
+- See [LICENSE](LICENSE) for the complete terms. Third-party components retain their respective licenses.
+- **Open Source**: First-party code in this distribution may be used for commercial, academic, and personal purposes under BSD-3-Clause. This license governs this distribution even where older first-party file headers retain proprietary wording.
+- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [its own repository](https://github.com/wittkung/ttzip-apple) (GPL-3.0-or-later).
+- Commercial Inquiries: `kevintungs@163.com`.
  
 ---
  

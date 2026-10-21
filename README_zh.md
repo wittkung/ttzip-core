@@ -20,7 +20,7 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20严格并发-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/向量%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---
@@ -236,12 +236,12 @@ TTZip 秉持开源回馈精神，积极将验证过的硬件加速与架构优�
 
 ## 📄 开源许可证与社区准则
 
-TTZip Core 遵循 **BSD 3-Clause** 与 **Apache 2.0** 双重开源协议：
+TTZip Core 的开源分发采用 **BSD 3-Clause** 许可证：
 
-- 详见 [LICENSE-BSD](LICENSE-BSD) 与 [LICENSE-APACHE](LICENSE-APACHE)。
-- **100% 开源自由**：`ttzip-core` 所有源码完全开放用于商业、学术研究与个人使用。
-- **桌面客户端开源协议**：macOS 原生桌面客户端（`ttzip-apple`）遵循 [apple/LICENSE](../apple/LICENSE)（GPL-3.0-or-later）。
-- 商业授权咨询：`witt.w.kung@gmail.com`。
+- 完整条款见 [LICENSE](LICENSE)。第三方组件保留各自的许可证。
+- **开源使用**：本分发中的第一方代码可按 BSD-3-Clause 用于商业、学术研究与个人用途；即使旧文件头仍保留专有措辞，本分发也以该许可证为准。
+- **桌面客户端开源协议**：macOS 原生桌面客户端（`ttzip-apple`）遵循 [其独立仓库](https://github.com/wittkung/ttzip-apple)（GPL-3.0-or-later）。
+- 商业授权咨询：`kevintungs@163.com`。
 
 ---
 
