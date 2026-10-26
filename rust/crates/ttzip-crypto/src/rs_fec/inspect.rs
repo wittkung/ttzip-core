@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Inspection and parsing routines for TTZip recovery records.
 
@@ -68,11 +68,16 @@ pub fn inspect_recovery_record_reader<R: Read + Seek>(
     let mut root_hash = [0u8; 32];
     root_hash.copy_from_slice(&header[22..54]);
 
-    let redundancy_percent = if total_k > 0 {
-        (total_m as f64 / total_k as f64) * 100.0
-    } else {
-        0.0
-    };
+    if total_k == 0
+        || total_m == 0
+        || total_k + total_m > 256
+        || slice_size == 0
+        || slice_size > 64 * 1024 * 1024
+    {
+        return Ok(None);
+    }
+
+    let redundancy_percent = (total_m as f64 / total_k as f64) * 100.0;
 
     Ok(Some(RecoveryRecordInfo {
         slice_size,

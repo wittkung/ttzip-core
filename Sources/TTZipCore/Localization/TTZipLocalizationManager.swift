@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -165,6 +165,11 @@ extension ArchiveError {
             return "\(template) (\(fileName): \(entryPath))"
         case .cancelled:
             return manager.string(for: L10n.Errors.operationCancelled, language: targetLang)
+        case .extractionStopped:
+            return manager.string(for: L10n.Errors.operationCancelled, language: targetLang)
+        case .partialExtractionFailure(let outcome):
+            let firstPath = outcome.failed.first?.relativePath ?? ""
+            return "Extraction completed with \(outcome.failed.count) failed item(s)\(firstPath.isEmpty ? "" : " (\(firstPath))")"
         case .invalidState:
             return manager.string(for: L10n.Common.error, language: targetLang)
         case .engineFailure(let code, let message):

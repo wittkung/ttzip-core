@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TTZip Multi-Threaded Streaming Pipeline (`TTZipMT`).
 //!
@@ -9,15 +9,14 @@
 //! 3. `OrderedDrainer`: Strictly monotonic ordered sink drainer for out-of-order worker outputs;
 //! 4. `TTZipMtEngine`: High-level multi-core parallel streaming compression/decompression pipeline.
 
-use crate::archive::zero_vtable_dispatch::ArchiveEngineStrategy;
-use crate::types::{TTZipCompressionLevel, TTZipStatus};
+use crate::types::TTZipStatus;
 use parking_lot::Mutex;
-use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 // MARK: - Constants
 
@@ -281,12 +280,54 @@ impl JobScheduler {
         Ok((jobs, is_eof))
     }
 
-    /// Dispatches a batch of jobs across worker threads via Rayon.
+    /// Dispatches a batch of jobs across worker threads via scoped concurrency.
     pub fn dispatch_parallel<F>(&self, jobs: Vec<Job>, worker: F) -> Vec<CompletedJob>
     where
         F: Fn(Job) -> CompletedJob + Sync + Send,
     {
-        jobs.into_par_iter().map(worker).collect()
+        let total = jobs.len();
+        if total == 0 {
+            return Vec::new();
+        }
+        if total == 1 {
+            return vec![worker(jobs.into_iter().next().unwrap())];
+        }
+
+        let num_threads = ttzip_types::recommended_compute_threads().min(total).max(1);
+        if num_threads <= 1 {
+            return jobs.into_iter().map(worker).collect();
+        }
+
+        let mut buckets: Vec<Vec<(usize, Job)>> = (0..num_threads).map(|_| Vec::new()).collect();
+        for (idx, job) in jobs.into_iter().enumerate() {
+            buckets[idx % num_threads].push((idx, job));
+        }
+
+        let result_slots: Mutex<Vec<Option<CompletedJob>>> = Mutex::new((0..total).map(|_| None).collect());
+        let pool = LocalWorkStealingPool::with_threads(num_threads);
+
+        pool.scope(|s| {
+            for bucket in buckets {
+                let w_ref = &worker;
+                let slots_ref = &result_slots;
+                s.spawn(move || {
+                    let bucket_done: Vec<_> = bucket
+                        .into_iter()
+                        .map(|(idx, job)| (idx, w_ref(job)))
+                        .collect();
+                    let mut guard = slots_ref.lock();
+                    for (idx, comp) in bucket_done {
+                        guard[idx] = Some(comp);
+                    }
+                });
+            }
+        });
+
+        result_slots
+            .into_inner()
+            .into_iter()
+            .map(|opt| opt.expect("All jobs in batch must be processed"))
+            .collect()
     }
 }
 
@@ -484,20 +525,6 @@ impl TTZipMtEngine {
         writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         Ok(drainer.metrics())
     }
-
-    /// Parallel block compression over stream using specified strategy.
-    pub fn compress_stream_parallel<R: Read, W: Write>(
-        &self,
-        reader: &mut R,
-        writer: &mut W,
-        strategy: ArchiveEngineStrategy,
-        level: TTZipCompressionLevel,
-    ) -> Result<PipelineMetrics, TTZipStatus> {
-        self.process_stream(reader, writer, |chunk| {
-            strategy.compress_to_vec(chunk, level)
-        })
-    }
-
 }
 
 // MARK: - Thread-Local Worker Buffer

@@ -1,6 +1,6 @@
 # Quickstart & Verification Guide: TurboBench 4D Architecture Evolution Suite
 
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/086-turbobench-architecture-evolution/spec.md)  
+**Feature**: [spec.md](file://../specs/086-turbobench-architecture-evolution/spec.md)  
 **Status**: Ready for Validation  
 
 ---

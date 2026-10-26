@@ -1,48 +1,90 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive 7-Zip Compliance Test Matrix & Multi-Codec Integration Suite.
 //!
-//! Covers 30+ real fixture compliance tests, edge cases, encryption interception,
-//! corruption fuzz/rejection, and full end-to-end roundtrip verification.
+//! Covers owned fixture compliance, edge cases, encryption interception,
+//! corruption rejection and end-to-end roundtrips. Every fixture is an owned
+//! archive whose data-layer coder id, plaintext size, CRC32 and SHA-256 are
+//! pinned in `fixtures/sevenz/manifest.json`.
 
 use std::fs;
-use std::path::PathBuf;
+use sha2::{Digest, Sha256};
+use ttzip_engine::types::TTZipStatus;
 use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::sevenz::{
     create_7z_solid_archive_bytes, parse_7z_metadata, SevenZArchive, SevenZReader,
 };
 use ttzip_engine::zip::writer::ZipInputItem;
 
-fn fixture_path(name: &str) -> Option<PathBuf> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let candidates = [
-        manifest_dir.join("../../../vendor/sevenz-rust/tests/resources").join(name),
-        manifest_dir.join("tests/fixtures/sevenz").join(name),
-    ];
-    for c in &candidates {
-        if c.exists() {
-            return Some(c.clone());
-        }
-    }
-    None
-}
-
-fn read_fixture(name: &str) -> Option<Vec<u8>> {
-    let p = fixture_path(name)?;
-    fs::read(&p).ok()
+// Inputs are compile-time repository data: missing files fail compilation, not coverage.
+fn read_fixture(name: &str) -> Vec<u8> {
+    let bytes: &[u8] = match name {
+        "single_empty_file.7z" => include_bytes!("fixtures/sevenz/single_empty_file.7z"),
+        "two_empty_file.7z" => include_bytes!("fixtures/sevenz/two_empty_file.7z"),
+        "single_file_with_content_lzma.7z" => include_bytes!("fixtures/sevenz/single_file_with_content_lzma.7z"),
+        "two_files_with_content_lzma.7z" => include_bytes!("fixtures/sevenz/two_files_with_content_lzma.7z"),
+        "solid.7z" => include_bytes!("fixtures/sevenz/solid.7z"),
+        "non_solid.7z" => include_bytes!("fixtures/sevenz/non_solid.7z"),
+        "copy.7z" => include_bytes!("fixtures/sevenz/copy.7z"),
+        "delta.7z" => include_bytes!("fixtures/sevenz/delta.7z"),
+        "delta_bcj2.7z" => include_bytes!("fixtures/sevenz/delta_bcj2.7z"),
+        "bcj2_x86.7z" => include_bytes!("fixtures/sevenz/bcj2_x86.7z"),
+        "bcj_arm64.7z" => include_bytes!("fixtures/sevenz/bcj_arm64.7z"),
+        "bcj_x86.7z" => include_bytes!("fixtures/sevenz/bcj_x86.7z"),
+        "ppmd.7z" => include_bytes!("fixtures/sevenz/ppmd.7z"),
+        "bzip2_file.7z" => include_bytes!("fixtures/sevenz/bzip2_file.7z"),
+        "brotli.7z" => include_bytes!("fixtures/sevenz/brotli.7z"),
+        "aes_data.7z" => include_bytes!("fixtures/sevenz/aes_data.7z"),
+        "aes_header.7z" => include_bytes!("fixtures/sevenz/aes_header.7z"),
+        "lz4.7z" => include_bytes!("fixtures/sevenz/lz4.7z"),
+        _ => panic!("unregistered required 7z fixture: {name}"),
+    };
+    let manifest: serde_json::Value = serde_json::from_str(include_str!("fixtures/sevenz/manifest.json")).unwrap();
+    assert_eq!(format!("{:x}", Sha256::digest(bytes)), manifest[name]["sha256"].as_str().unwrap());
+    bytes.to_vec()
 }
 
 macro_rules! require_fixture {
-    ($name:expr) => {
-        match read_fixture($name) {
-            Some(d) => d,
-            None => {
-                eprintln!("Skipping: optional vendor fixture '{}' not present", $name);
-                return;
-            }
-        }
-    };
+    ($name:expr) => { read_fixture($name) };
+}
+
+fn assert_owned_plaintexts(reader: &SevenZReader<'_>, fixture: &str, password: Option<&str>) {
+    let manifest: serde_json::Value = serde_json::from_str(include_str!("fixtures/sevenz/manifest.json")).unwrap();
+    let expected = manifest[fixture]["plaintext"].as_object().unwrap();
+    assert_eq!(reader.files().iter().filter(|file| !file.is_directory).count(), expected.len());
+    for (path, record) in expected {
+        let index = reader.seek_index().get_by_path(path).unwrap_or_else(|| panic!("missing {path}")).file_index;
+        let content = reader.extract_entry_bytes_stream(index, password).expect("owned plaintext extraction");
+        assert_eq!(content.len() as u64, record["bytes"].as_u64().unwrap(), "{fixture}: {path}");
+        assert_eq!(crc32_fast(0, &content) as u64, record["crc32"].as_u64().unwrap());
+        assert_eq!(format!("{:x}", Sha256::digest(&content)), record["sha256"].as_str().unwrap());
+    }
+    for method in manifest[fixture]["required_data_coder_ids"].as_array().unwrap() {
+        let id = u64::from_str_radix(method.as_str().unwrap().trim_start_matches("0x"), 16).unwrap();
+        assert!(reader.info().folders.iter().flat_map(|folder| &folder.coders).any(|coder| coder.method_id == id), "missing declared coder {id:#x}");
+    }
+}
+
+#[test]
+fn test_owned_fixture_methods_and_strict_plaintext_manifest() {
+    let manifest: serde_json::Value = serde_json::from_str(include_str!("fixtures/sevenz/manifest.json")).unwrap();
+    for (name, record) in manifest.as_object().unwrap() {
+        let bytes = read_fixture(name);
+        let password = record["password"].as_str();
+        let reader = SevenZReader::open_slice_with_password(&bytes, password).expect("open owned archive");
+        assert_owned_plaintexts(&reader, name, password);
+    }
+}
+
+fn assert_password_rejected(fixture: &str, correct: &str, supplied: Option<&str>, index: usize) {
+    let data = read_fixture(fixture);
+    let positive = SevenZReader::open_slice_with_password(&data, Some(correct)).expect("positive password control");
+    assert_owned_plaintexts(&positive, fixture, Some(correct));
+    match SevenZReader::open_slice_with_password(&data, supplied) {
+        Err(error) => assert_eq!(error, TTZipStatus::ErrInvalidPassword),
+        Ok(reader) => assert_eq!(reader.extract_entry_bytes_stream(index, supplied).unwrap_err(), TTZipStatus::ErrInvalidPassword),
+    }
 }
 
 // MARK: - 1. Empty & Single/Multiple Entries Matrix
@@ -99,6 +141,7 @@ fn test_fixture_05_solid_archive() {
     let data = require_fixture!("solid.7z");
     let reader = SevenZReader::open_slice(&data).expect("open solid.7z");
     assert_eq!(reader.len(), 3);
+    assert_eq!(reader.info().folders.len(), 1);
     let t1 = reader.extract_entry_bytes_stream(1, None).expect("extract test1.txt");
     let t2 = reader.extract_entry_bytes_stream(2, None).expect("extract test2.txt");
     assert_eq!(t1.len(), 3447);
@@ -110,6 +153,7 @@ fn test_fixture_06_non_solid_archive() {
     let data = require_fixture!("non_solid.7z");
     let reader = SevenZReader::open_slice(&data).expect("open non_solid.7z");
     assert_eq!(reader.len(), 3);
+    assert_eq!(reader.info().folders.len(), 2);
     let t1 = reader.extract_entry_bytes_stream(1, None).expect("extract test1.txt");
     let t2 = reader.extract_entry_bytes_stream(2, None).expect("extract test2.txt");
     assert_eq!(t1.len(), 3447);
@@ -150,36 +194,36 @@ fn test_fixture_09_delta_bcj2_dag() {
 }
 
 #[test]
-fn test_fixture_10_7za433_lzma2_bcj2_x86_binary() {
-    let data = require_fixture!("7za433_7zip_lzma2_bcj2.7z");
-    let reader = SevenZReader::open_slice(&data).expect("open 7za433");
+fn test_fixture_10_owned_lzma2_bcj2_x86_binary() {
+    let data = require_fixture!("bcj2_x86.7z");
+    let reader = SevenZReader::open_slice(&data).expect("open owned BCJ2 x86 data");
     assert_eq!(reader.len(), 6);
     let idx = reader
         .seek_index()
-        .get_by_path("7za433_7zip_lzma2_bcj2/bin/7za.exe")
-        .expect("find 7za.exe")
+        .get_by_path("synthetic/bin/branch.bin")
+        .expect("find owned branch.bin")
         .file_index;
-    let exe = reader.extract_entry_bytes_stream(idx, None).expect("extract 7za.exe");
+    let exe = reader.extract_entry_bytes_stream(idx, None).expect("extract owned branch.bin");
     assert_eq!(exe.len(), 462336);
     assert_eq!(&exe[..2], b"MZ");
 }
 
 #[test]
 fn test_fixture_11_bcj_arm64_binary() {
-    let data = require_fixture!("decompress_example_bcj_arm64.7z");
+    let data = require_fixture!("bcj_arm64.7z");
     let reader = SevenZReader::open_slice(&data).expect("open bcj_arm64");
     assert_eq!(reader.len(), 1);
-    let exe = reader.extract_entry_bytes_stream(0, None).expect("extract decompress_arm64.exe");
+    let exe = reader.extract_entry_bytes_stream(0, None).expect("extract owned ARM64 branch data");
     assert_eq!(exe.len(), 357888);
     assert_eq!(&exe[..2], b"MZ");
 }
 
 #[test]
 fn test_fixture_12_lzma2_bcj_x86_binary() {
-    let data = require_fixture!("decompress_example_lzma2_bcj_x86.7z");
+    let data = require_fixture!("bcj_x86.7z");
     let reader = SevenZReader::open_slice(&data).expect("open lzma2_bcj_x86");
     assert_eq!(reader.len(), 1);
-    let exe = reader.extract_entry_bytes_stream(0, None).expect("extract decompress.exe");
+    let exe = reader.extract_entry_bytes_stream(0, None).expect("extract owned x86 branch data");
     assert_eq!(exe.len(), 367104);
     assert_eq!(&exe[..2], b"MZ");
 }
@@ -189,9 +233,9 @@ fn test_fixture_13_ppmd() {
     let data = require_fixture!("ppmd.7z");
     let reader = SevenZReader::open_slice(&data).expect("open ppmd.7z");
     assert_eq!(reader.len(), 1);
-    let txt = reader.extract_entry_bytes_stream(0, None).expect("extract apache2.txt");
+    let txt = reader.extract_entry_bytes_stream(0, None).expect("extract owned.txt");
     assert_eq!(txt.len(), 11356);
-    assert!(txt.starts_with(b"                                 Apache License"));
+    assert!(txt.starts_with(b"Owned TTZip codec compliance fixture."));
 }
 
 #[test]
@@ -199,83 +243,92 @@ fn test_fixture_14_bzip2() {
     let data = require_fixture!("bzip2_file.7z");
     let reader = SevenZReader::open_slice(&data).expect("open bzip2_file.7z");
     assert_eq!(reader.len(), 2);
-    let h = reader.extract_entry_bytes_stream(0, None).expect("extract hello.txt");
-    let f = reader.extract_entry_bytes_stream(1, None).expect("extract foo.txt");
+    let h_index = reader.seek_index().get_by_path("hello.txt").unwrap().file_index;
+    let f_index = reader.seek_index().get_by_path("foo.txt").unwrap().file_index;
+    let h = reader.extract_entry_bytes_stream(h_index, None).expect("extract hello.txt");
+    let f = reader.extract_entry_bytes_stream(f_index, None).expect("extract foo.txt");
     assert_eq!(h, b"world\n");
     assert_eq!(f, b"bar\n");
 }
 
 #[test]
-fn test_fixture_15_zstdmt_lz4() {
-    let data = require_fixture!("zstdmt-lz4.7z");
-    let reader = SevenZReader::open_slice(&data).expect("open zstdmt-lz4.7z");
+fn test_fixture_15_lz4() {
+    let data = require_fixture!("lz4.7z");
+    let reader = SevenZReader::open_slice(&data).expect("open lz4.7z");
     assert_eq!(reader.len(), 1);
-    let lic = reader.extract_entry_bytes_stream(0, None).expect("extract LICENSE");
+    // The data layer must really be the LZ4 coder, not a renamed sibling codec.
+    let coders: Vec<u64> = reader
+        .info()
+        .folders
+        .iter()
+        .flat_map(|folder| &folder.coders)
+        .map(|coder| coder.method_id)
+        .collect();
+    assert_eq!(coders, vec![0x04F7_1104]);
+    let lic = reader
+        .extract_entry_bytes_stream(0, None)
+        .expect("extract owned.txt");
     assert_eq!(lic.len(), 11556);
-    assert!(lic.starts_with(b"                                 Apache License"));
+    assert!(lic.starts_with(b"Owned TTZip codec compliance fixture."));
+    assert_eq!(crc32_fast(0, &lic), 379793058);
+    assert_eq!(
+        format!("{:x}", Sha256::digest(&lic)),
+        "1a8a5ad1c4962a47fe2f3e3231079b772b8b1edb56fa7ad0a7d45e0a49af7be0"
+    );
 }
 
 #[test]
-fn test_fixture_16_zstdmt_brotli() {
-    let data = require_fixture!("zstdmt-brotli.7z");
-    let reader = SevenZReader::open_slice(&data).expect("open zstdmt-brotli.7z");
+fn test_fixture_16_owned_brotli() {
+    let data = require_fixture!("brotli.7z");
+    let reader = SevenZReader::open_slice(&data).expect("open brotli.7z");
     assert_eq!(reader.len(), 1);
-    let lic = reader.extract_entry_bytes_stream(0, None).expect("extract LICENSE");
+    let lic = reader.extract_entry_bytes_stream(0, None).expect("extract owned.txt");
     assert_eq!(lic.len(), 11556);
-    assert!(lic.starts_with(b"                                 Apache License"));
+    assert!(lic.starts_with(b"Owned TTZip codec compliance fixture."));
 }
 
 // MARK: - 4. AES-256 Encryption & Interception Matrix
 
 #[test]
 fn test_fixture_17_aes_data_encryption() {
-    let data = require_fixture!("aes_small_test.7z");
-    let reader = SevenZReader::open_slice_with_password(&data, Some("iBlm8NTigvru0Jr0"))
-        .expect("open aes_small_test");
+    let data = require_fixture!("aes_data.7z");
+    let reader = SevenZReader::open_slice_with_password(&data, Some("owned-data-password"))
+        .expect("open owned AES data");
     assert_eq!(reader.len(), 1);
     let content = reader
-        .extract_entry_bytes_stream(0, Some("iBlm8NTigvru0Jr0"))
+        .extract_entry_bytes_stream(0, Some("owned-data-password"))
         .expect("extract encrypted data");
     assert_eq!(content.len(), 129421);
-    assert_eq!(crc32_fast(0, &content), 263185209);
+    assert_eq!(crc32_fast(0, &content), 119628983);
 }
 
 #[test]
 fn test_fixture_18_encrypted_header_and_data() {
-    let data = require_fixture!("encrypted.7z");
-    let reader = SevenZReader::open_slice_with_password(&data, Some("sevenz-rust"))
-        .expect("open encrypted.7z");
+    let data = require_fixture!("aes_header.7z");
+    let reader = SevenZReader::open_slice_with_password(&data, Some("owned-header-password"))
+        .expect("open aes_header.7z");
     assert_eq!(reader.len(), 3);
-    let f1 = reader.extract_entry_bytes_stream(1, Some("sevenz-rust")).expect("extract 7zFormat.txt");
-    let f2 = reader.extract_entry_bytes_stream(2, Some("sevenz-rust")).expect("extract 7ziplogo.png");
+    let f1 = reader.extract_entry_bytes_stream(1, Some("owned-header-password")).expect("extract docs/message.txt");
+    let f2 = reader.extract_entry_bytes_stream(2, Some("owned-header-password")).expect("extract docs/pattern.bin");
     assert_eq!(f1.len(), 2247);
     assert_eq!(f2.len(), 1417);
-    assert_eq!(crc32_fast(0, &f1), 1351509981);
-    assert_eq!(crc32_fast(0, &f2), 688999252);
+    assert_eq!(crc32_fast(0, &f1), 1515423321);
+    assert_eq!(crc32_fast(0, &f2), 3958222186);
 }
 
 #[test]
 fn test_wrong_password_interception_data() {
-    let data = require_fixture!("aes_small_test.7z");
-    let reader = SevenZReader::open_slice_with_password(&data, Some("wrong_password")).expect("header open");
-    let res = reader.extract_entry_bytes_stream(0, Some("wrong_password"));
-    assert!(res.is_err());
+    assert_password_rejected("aes_data.7z", "owned-data-password", Some("wrong_password"), 0);
 }
 
 #[test]
 fn test_wrong_password_interception_encoded_header() {
-    let data = require_fixture!("encrypted.7z");
-    let reader = SevenZReader::open_slice_with_password(&data, Some("wrong_password")).expect("header parse");
-    let res = reader.extract_entry_bytes_stream(1, Some("wrong_password"));
-    assert!(res.is_err());
+    assert_password_rejected("aes_header.7z", "owned-header-password", Some("wrong_password"), 1);
 }
 
 #[test]
 fn test_missing_password_interception_encrypted_archive() {
-    let data = require_fixture!("encrypted.7z");
-    let reader = SevenZReader::open_slice(&data).expect("open without pass");
-    let res = reader.extract_entry_bytes_stream(1, None);
-    assert!(res.is_err());
+    assert_password_rejected("aes_header.7z", "owned-header-password", None, 1);
 }
 
 // MARK: - 5. Malformed & Corrupted Archive Rejection
@@ -303,6 +356,9 @@ fn test_corrupted_next_header_crc_rejection() {
     let mut data = require_fixture!("copy.7z");
     // Corrupt next_header_crc at offset 28
     data[28] ^= 0xAA;
+    // Keep the start header valid so this isolates the next-header CRC check.
+    let start_crc = crc32_fast(0, &data[12..32]);
+    data[8..12].copy_from_slice(&start_crc.to_le_bytes());
     let res = parse_7z_metadata(&data, None);
     assert!(res.is_err());
 }

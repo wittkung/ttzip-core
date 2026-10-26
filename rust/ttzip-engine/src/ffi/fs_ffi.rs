@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI FFI exports for filesystem security, APFS optimizations, and VFS hierarchical tree & search.
 
@@ -9,7 +9,7 @@ use crate::fs::apfs::{
 };
 use crate::fs::safe_extract::sanitize_and_validate_path;
 use crate::fs::scanner::{scan_directory_parallel, ScanOptions};
-use crate::fs::vfs::{VfsArena, VfsEntry, VfsTree};
+use crate::fs::vfs::{VfsArena, VfsEntry};
 use crate::types::{TTZipEntryMetadata, TTZipStatus};
 use libc::{c_char, c_void};
 use std::ffi::CString;
@@ -125,7 +125,7 @@ impl Default for TTZipScannedItemRaw {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             src_path: std::ptr::null(),
             rel_path: std::ptr::null(),
             file_size: 0,
@@ -154,7 +154,7 @@ impl Default for TTZipScanConfigRaw {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             include_hidden: false,
             skip_mac_junk: true,
             max_depth: 0,
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn ttzip_rust_scan_directory_parallel(
                 let c_rel = match CString::new(item.rel_path.as_bytes()) { Ok(c) => c, Err(_) => continue };
                 let raw_item = TTZipScannedItemRaw {
                     struct_size: std::mem::size_of::<TTZipScannedItemRaw>() as u32,
-                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_3,
                     src_path: c_src.as_ptr(),
                     rel_path: c_rel.as_ptr(),
                     file_size: item.file_size,
@@ -218,8 +218,7 @@ pub unsafe extern "C" fn ttzip_rust_scan_directory_parallel(
 // MARK: - VFS Tree and Fuzzy Search C-ABI
 
 pub struct TTZipVfsTreeHandle {
-    pub inner: VfsTree,
-    pub arena: Option<VfsArena>,
+    pub arena: VfsArena,
 }
 
 /// Constructs a unified VFS tree from C-ABI entry metadata array.
@@ -253,10 +252,9 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_build(
                 });
             }
         }
-        let tree = VfsTree::build_from_entries(&vfs_entries, r_name);
+        let arena = VfsArena::build_from_entries(&vfs_entries, r_name);
         Box::into_raw(Box::new(TTZipVfsTreeHandle {
-            inner: tree,
-            arena: None,
+            arena,
         }))
     }).unwrap_or(std::ptr::null_mut())
 }
@@ -274,10 +272,8 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_build_packed(
         let r_name = unsafe { safe_cstr(root_name) }.unwrap_or("");
         let packed_ref = unsafe { &*packed };
         let arena = VfsArena::build_from_packed(packed_ref, r_name);
-        let tree = VfsTree::new(r_name);
         Box::into_raw(Box::new(TTZipVfsTreeHandle {
-            inner: tree,
-            arena: Some(arena),
+            arena,
         }))
     }).unwrap_or(std::ptr::null_mut())
 }
@@ -299,12 +295,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
             return TTZipStatus::ErrInvalidParam;
         }
         let handle_ref = unsafe { &*handle };
-        let arena = match &handle_ref.arena {
-            Some(a) => a,
-            None => return TTZipStatus::ErrInvalidParam,
-        };
-
-        let (summaries, total) = arena.get_children_slice(dir_node_id, offset, limit);
+        let (summaries, total) = handle_ref.arena.get_children_slice(dir_node_id, offset, limit);
         let count = summaries.len();
 
         if count > out_capacity {
@@ -332,11 +323,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_render(
             return TTZipStatus::ErrInvalidParam;
         }
         let h = unsafe { &*handle };
-        let rendered = if let Some(ref arena) = h.arena {
-            format!("VfsArena: {} nodes\n", arena.total_nodes)
-        } else {
-            h.inner.render_tree()
-        };
+        let rendered = format!("VfsArena: {} nodes\n", h.arena.total_nodes);
         let c_str = match CString::new(rendered) {
             Ok(s) => s,
             Err(_) => return TTZipStatus::ErrInvalidParam,
@@ -365,7 +352,7 @@ impl Default for TTZipVfsSearchResultRaw {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             name: std::ptr::null(),
             path: std::ptr::null(),
             uncompressed_size: 0,
@@ -395,78 +382,46 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
         let q_str = match unsafe { safe_cstr(query) } { Ok(s) => s, Err(st) => return st };
 
         let h = unsafe { &*handle };
-        if let Some(ref arena) = h.arena {
-            for i in 1..arena.total_nodes {
-                let name_off = arena.name_offsets[i] as usize;
-                let name_len = arena.name_lens[i] as usize;
-                let path_off = arena.full_path_offsets[i] as usize;
-                let path_len = arena.full_path_lens[i] as usize;
+        let arena = &h.arena;
+        for i in 1..arena.total_nodes {
+            let (name_off, name_len) = arena.name_offset_and_len[i];
+            let name_bytes = &arena.names_pool[name_off as usize..name_off as usize + name_len as usize];
+            let name_str = std::str::from_utf8(name_bytes).unwrap_or("");
+            let full_path = arena.node_full_path(i as u32);
 
-                let name_bytes = &arena.string_arena[name_off..name_off + name_len];
-                let path_bytes = &arena.string_arena[path_off..path_off + path_len];
+            let is_dir = (arena.node_attributes[i] & crate::fs::vfs::arena::VFS_FLAG_IS_DIR) != 0;
+            let is_enc = (arena.node_attributes[i] & crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED) != 0;
 
-                let name_str = std::str::from_utf8(name_bytes).unwrap_or("");
-                let path_str = std::str::from_utf8(path_bytes).unwrap_or("");
-
-                let is_dir = (arena.flags[i] & crate::fs::vfs::arena::VFS_FLAG_IS_DIR) != 0;
-                let is_enc = (arena.flags[i] & crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED) != 0;
-
-                let score = if let Some(s) = crate::fs::vfs::search::fuzzy_match_zero_alloc(name_str, q_str) {
-                    Some(s + 100)
-                } else {
-                    crate::fs::vfs::search::fuzzy_match_zero_alloc(path_str, q_str)
-                };
-
-                if let Some(s) = score {
-                    let c_name = match CString::new(name_str.as_bytes()) {
-                        Ok(c) => c,
-                        Err(_) => continue,
-                    };
-                    let c_path = match CString::new(path_str.as_bytes()) {
-                        Ok(c) => c,
-                        Err(_) => continue,
-                    };
-                    let raw_res = TTZipVfsSearchResultRaw {
-                        struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
-                        abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                        name: c_name.as_ptr(),
-                        path: c_path.as_ptr(),
-                        uncompressed_size: arena.uncompressed_sizes[i],
-                        compressed_size: arena.compressed_sizes[i],
-                        crc32: arena.crc32s[i],
-                        is_directory: is_dir,
-                        is_encrypted: is_enc,
-                        score: s,
-                    };
-                    if !unsafe { cb(&raw_res, user_data) } {
-                        break;
-                    }
-                }
-            }
-            return TTZipStatus::Ok;
-        }
-
-        let tree = &h.inner;
-        let search_results = tree.fuzzy_search(q_str);
-
-        for res in &search_results {
-            let c_name = match CString::new(res.name.as_bytes()) { Ok(c) => c, Err(_) => continue };
-            let c_path = match CString::new(res.path.as_bytes()) { Ok(c) => c, Err(_) => continue };
-            let raw_res = TTZipVfsSearchResultRaw {
-                struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                name: c_name.as_ptr(),
-                path: c_path.as_ptr(),
-                uncompressed_size: res.uncompressed_size,
-                compressed_size: res.compressed_size,
-                crc32: res.crc32,
-                is_directory: res.is_directory,
-                is_encrypted: res.is_encrypted,
-                score: res.score,
+            let score = if let Some(s) = crate::fs::vfs::search::fuzzy_match_zero_alloc(name_str, q_str) {
+                Some(s + 100)
+            } else {
+                crate::fs::vfs::search::fuzzy_match_zero_alloc(&full_path, q_str)
             };
-            // SAFETY: cb called with valid raw_res reference
-            if !unsafe { cb(&raw_res, user_data) } {
-                break;
+
+            if let Some(s) = score {
+                let c_name = match CString::new(name_str.as_bytes()) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+                let c_path = match CString::new(full_path.as_bytes()) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+                let raw_res = TTZipVfsSearchResultRaw {
+                    struct_size: std::mem::size_of::<TTZipVfsSearchResultRaw>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_3,
+                    name: c_name.as_ptr(),
+                    path: c_path.as_ptr(),
+                    uncompressed_size: arena.uncompressed_sizes[i],
+                    compressed_size: arena.compressed_sizes[i],
+                    crc32: arena.crc32s[i],
+                    is_directory: is_dir,
+                    is_encrypted: is_enc,
+                    score: s,
+                };
+                if !unsafe { cb(&raw_res, user_data) } {
+                    break;
+                }
             }
         }
         TTZipStatus::Ok
@@ -498,17 +453,10 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_get_stats(
     let _ = catch_unwind(|| {
         if handle.is_null() { return; }
         let h = unsafe { &*handle };
-        if let Some(ref arena) = h.arena {
-            let (f, d, s) = arena.get_stats();
-            if !out_total_files.is_null() { *out_total_files = f; }
-            if !out_total_dirs.is_null() { *out_total_dirs = d; }
-            if !out_total_size.is_null() { *out_total_size = s; }
-            return;
-        }
-        let tree = &h.inner;
-        if !out_total_files.is_null() { *out_total_files = tree.root.total_files() as u64; }
-        if !out_total_dirs.is_null() { *out_total_dirs = tree.root.total_directories() as u64; }
-        if !out_total_size.is_null() { *out_total_size = tree.root.uncompressed_size; }
+        let (f, d, s) = h.arena.get_stats();
+        if !out_total_files.is_null() { *out_total_files = f; }
+        if !out_total_dirs.is_null() { *out_total_dirs = d; }
+        if !out_total_size.is_null() { *out_total_size = s; }
     });
 }
 
@@ -532,12 +480,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_search_zero_alloc(
         };
         let h = unsafe { &*handle };
         let slice = unsafe { std::slice::from_raw_parts_mut(out_matches, capacity as usize) };
-        if let Some(ref arena) = h.arena {
-            let count = arena.search_zero_alloc(q_str, slice);
-            return count as i32;
-        }
-        let tree = &h.inner;
-        let count = crate::fs::vfs::search::search_vfs_tree_zero_alloc(&tree.root, q_str, slice);
+        let count = h.arena.search_zero_alloc(q_str, slice);
         count as i32
     }).unwrap_or(-1)
 }

@@ -1,6 +1,6 @@
 # Implementation Plan: Liblzma (XZ Utils) ARM NEON Match Finder Acceleration & Upstream Baseline Integration
 
-**Branch**: `059-liblzma-neon-acceleration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/059-liblzma-neon-acceleration/spec.md)
+**Branch**: `059-liblzma-neon-acceleration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/059-liblzma-neon-acceleration/spec.md)
 
 **Input**: Feature specification from `specs/059-liblzma-neon-acceleration/spec.md`
 
@@ -65,13 +65,13 @@ This feature integrates hardware-accelerated ARM NEON and ACLE CRC32 primitives 
 ## Planned Code Changes by Component
 
 ### Component 1: Core C Bridge & Native Match Finder (`Sources/CTTZipBridge/`)
-- [`ttzip_lzma_hc4_neon.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c): Refine and verify hybrid SWAR/NEON match length evaluation and hardware CRC32 hashing.
-- [`include/ttzip_lzma_hc4_neon.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h): Ensure clean C symbol exports and function signatures.
+- [`ttzip_lzma_hc4_neon.c`](file://../Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c): Refine and verify hybrid SWAR/NEON match length evaluation and hardware CRC32 hashing.
+- [`include/ttzip_lzma_hc4_neon.h`](file://../Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h): Ensure clean C symbol exports and function signatures.
 
 ### Component 2: Upstream Source Tree & Static Vendor Libraries (`Vendor/`)
-- [`Vendor/xz-upstream/src/liblzma/common/memcmplen.h`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/xz-upstream/src/liblzma/common/memcmplen.h): Implement ARM NEON 128-bit match length comparison with preprocessor architecture guards.
-- [`Vendor/xz-upstream/src/liblzma/lz/lz_encoder_hash.h`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/xz-upstream/src/liblzma/lz/lz_encoder_hash.h): Implement ARMv8 ACLE hardware CRC32 hash calculation.
-- [`scripts/build_liblzma.sh`](file:///Users/kevintung/Documents/dev/TTZip/scripts/build_liblzma.sh): Automated CMake build script for Universal 2 `liblzma.a` and `libTTZipVendor.a` re-packaging.
+- [`Vendor/xz-upstream/src/liblzma/common/memcmplen.h`](file://../Vendor/xz-upstream/src/liblzma/common/memcmplen.h): Implement ARM NEON 128-bit match length comparison with preprocessor architecture guards.
+- [`Vendor/xz-upstream/src/liblzma/lz/lz_encoder_hash.h`](file://../Vendor/xz-upstream/src/liblzma/lz/lz_encoder_hash.h): Implement ARMv8 ACLE hardware CRC32 hash calculation.
+- [`scripts/build_liblzma.sh`](file://../scripts/build_liblzma.sh): Automated CMake build script for Universal 2 `liblzma.a` and `libTTZipVendor.a` re-packaging.
 
 ### Component 3: Unit Tests & Micro-Benchmarks (`Tests/TTZipTests/`)
-- [`Tests/TTZipTests/HybridMatchFinderMicroTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/HybridMatchFinderMicroTests.swift): Add comprehensive boundary, throughput, and parity verification test suites.
+- [`Tests/TTZipTests/HybridMatchFinderMicroTests.swift`](file://../Tests/TTZipTests/HybridMatchFinderMicroTests.swift): Add comprehensive boundary, throughput, and parity verification test suites.

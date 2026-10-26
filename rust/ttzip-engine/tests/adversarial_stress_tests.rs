@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tier 5 Adversarial Stress Testing & Empirical Hardening Suite.
 //!
@@ -21,7 +21,7 @@ static ADVERSARIAL_TEST_MUTEX: Mutex<()> = Mutex::new(());
 use ttzip_engine::charset::detector::{detect_charset, detect_charset_with_confidence};
 use ttzip_engine::codecs::brotli::{brotli_compress, brotli_compress_bound, brotli_decompress};
 use ttzip_engine::codecs::bzip2::{bzip2_compress_to_vec, bzip2_decompress_to_vec};
-use ttzip_engine::codecs::lz4::{lz4_compress_to_vec, lz4_decompress_custom_to_vec};
+use ttzip_engine::codecs::lz4::{lz4_compress_to_vec, lz4_decompress_to_vec};
 use ttzip_engine::security::path_sanitizer::{
     is_windows_reserved_device_name, normalize_to_nfc, sanitize_path,
 };
@@ -71,7 +71,7 @@ fn test_adversarial_truncated_streams_all_codecs() {
     let lz4_compressed = lz4_compress_to_vec(raw_payload, 1).expect("lz4 compress");
     for cut in 0..lz4_compressed.len() {
         let truncated = &lz4_compressed[..cut];
-        let res = lz4_decompress_custom_to_vec(truncated, raw_payload.len());
+        let res = lz4_decompress_to_vec(truncated, raw_payload.len());
         if cut < lz4_compressed.len() {
             assert!(res.is_err(), "LZ4 truncated at {} must return Err", cut);
         }
@@ -337,11 +337,7 @@ fn test_adversarial_zero_tmp_leak_and_rss_memory_bound() {
     }
 
     let final_rss = get_current_rss_bytes();
-    let delta_rss = if final_rss > baseline_rss {
-        final_rss - baseline_rss
-    } else {
-        0
-    };
+    let delta_rss = final_rss.saturating_sub(baseline_rss);
 
     // Hard invariant: Delta RSS must remain strictly <= 64MB
     let max_allowed_delta = 64 * 1024 * 1024;

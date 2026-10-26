@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Stream Index variable-length block metadata serialization, parsing,
 //! arithmetic overflow circuit breakers, and seekable binary-search jump table.

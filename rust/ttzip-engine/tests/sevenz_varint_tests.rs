@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit, edge-case, differential, and fuzz tests for 7z Varint (`Real_UINT64`) codec.
 

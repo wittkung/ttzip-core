@@ -1,6 +1,6 @@
 # Implementation Plan: 前端性能指标监控与基准测试体系 (Frontend Performance Metrics System)
 
-**Branch**: `005-frontend-perf-metrics` | **Date**: 2026-08-15 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/005-frontend-perf-metrics/spec.md)
+**Branch**: `005-frontend-perf-metrics` | **Date**: 2026-08-15 | **Spec**: [spec.md](file://../specs/005-frontend-perf-metrics/spec.md)
 
 **Input**: Feature specification from `specs/005-frontend-perf-metrics/spec.md`
 

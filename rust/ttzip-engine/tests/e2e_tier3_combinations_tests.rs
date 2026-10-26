@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tier 3 E2E Test Suite: Cross-Feature Combinations (C01 - C08).
 //!
@@ -22,7 +22,6 @@ use ttzip_engine::archive::split::{
 use ttzip_engine::codecs::brotli::{brotli_compress_to_vec, brotli_decompress_to_vec};
 use ttzip_engine::codecs::chardet::detect_charset;
 use ttzip_engine::crypto::aes256::{aes256_cbc_decrypt, aes256_cbc_encrypt};
-use ttzip_engine::crypto::ed25519::SigningKey;
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, get_current_rss_bytes, SevenZReader};
 use ttzip_engine::system::delta::engine::TTZipDeltaEngine;
 use ttzip_engine::zip::writer::ZipInputItem;
@@ -127,23 +126,28 @@ fn test_e2e_t3_c04_delta_patching_across_split_volume_images() {
 
 #[test]
 fn test_e2e_t3_c05_pdf_metadata_extraction_from_7z_solid_under_rss_guard() {
-    // Generate minimal lopdf document
-    use lopdf::{dictionary, Document, Object, Stream};
-    let mut doc = Document::with_version("1.5");
-    let pages_id = doc.new_object_id();
-    let font_id = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica" });
-    let content_id = doc.add_object(Stream::new(dictionary! {}, b"BT /F1 12 Tf (Combined PDF) Tj ET".to_vec()));
-    let page_id = doc.add_object(dictionary! {
-        "Type" => "Page",
-        "Parent" => pages_id,
-        "Contents" => content_id,
-        "Resources" => dictionary! { "Font" => dictionary! { "F1" => font_id } },
-    });
-    doc.objects.insert(pages_id, Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 }));
-    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
-    doc.trailer.set("Root", catalog_id);
-    let mut pdf_bytes = Vec::new();
-    doc.save_to(&mut pdf_bytes).unwrap();
+    // Generate minimal PDF document
+    let pdf_bytes = b"%PDF-1.5\n\
+1 0 obj\n\
+<< /Type /Catalog /Pages 2 0 R >>\n\
+endobj\n\
+2 0 obj\n\
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n\
+endobj\n\
+3 0 obj\n\
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\n\
+endobj\n\
+xref\n\
+0 4\n\
+0000000000 65535 f \n\
+0000000010 00000 n \n\
+0000000053 00000 n \n\
+0000000102 00000 n \n\
+trailer\n\
+<< /Size 4 /Root 1 0 R >>\n\
+startxref\n\
+165\n\
+%%EOF\n".to_vec();
 
     // Solid archive packing
     let items = vec![ZipInputItem {

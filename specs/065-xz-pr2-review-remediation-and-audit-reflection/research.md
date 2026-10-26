@@ -19,7 +19,7 @@
   ```
 - **Rationale**: Eliminates the unintended fallthrough `return true;` while keeping the detection concise, idiomatic, and 100% consistent with the rest of liblzma.
 - **Alternatives Considered**: Direct compile-time `#define is_arch_extension_supported() true` on Apple Silicon. Rejected because liblzma maintains a unified runtime detection structure for `CRC64_ARCH_OPTIMIZED` builds.
-- **Source**: [`Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h:126-139`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h#L126-L139).
+- **Source**: [`Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h:126-139`](file://../Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h#L126-L139).
 
 ---
 

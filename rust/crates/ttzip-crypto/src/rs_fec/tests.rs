@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use crate::crc32::crc32_fast;
 use crate::rs_fec::cauchy::*;
@@ -249,3 +249,33 @@ use tempfile::NamedTempFile;
         let res = repair_archive_file_streaming(&path).unwrap();
         assert!(!res, "Repair should return false when corruption exceeds M");
     }
+
+    #[test]
+    fn test_repair_rejects_corrupted_header_bounds() {
+        let original_payload: Vec<u8> = (0..64 * 1024)
+            .map(|i| ((i * 13 + 7) & 0xFF) as u8)
+            .collect();
+        let slice_size = 16384;
+
+        let rec_block = create_recovery_record(&original_payload, 25.0, slice_size)
+            .expect("Failed to create recovery record");
+
+        let mut archive_with_fec = original_payload.clone();
+        archive_with_fec.extend_from_slice(&rec_block);
+
+        // Corrupt k in header (at offset payload_len + 10): set k = 300 > 256
+        let mut corrupt_k = archive_with_fec.clone();
+        let k_offset = original_payload.len() + 10;
+        corrupt_k[k_offset..k_offset + 2].copy_from_slice(&300u16.to_le_bytes());
+        let res_k = repair_archive_data(&mut corrupt_k).expect("Should not panic");
+        assert!(!res_k, "Must reject k > 256");
+
+        // Corrupt slice_size in header (at offset payload_len + 6): set slice_size = 128MB
+        let mut corrupt_slice = archive_with_fec.clone();
+        let slice_offset = original_payload.len() + 6;
+        corrupt_slice[slice_offset..slice_offset + 4]
+            .copy_from_slice(&(128 * 1024 * 1024u32).to_le_bytes());
+        let res_slice = repair_archive_data(&mut corrupt_slice).expect("Should not panic");
+        assert!(!res_slice, "Must reject slice_size > 64MB");
+    }
+

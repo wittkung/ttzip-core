@@ -2,10 +2,10 @@
 
 **Feature**: Android Device Management from macOS  
 **Branch**: `001-android-device-management`  
-**Specification**: [spec.md](file:///Users/kevintung/Documents/dev/products/ttzip/specs/001-android-device-management/spec.md)  
-**Implementation Plan**: [plan.md](file:///Users/kevintung/Documents/dev/products/ttzip/specs/001-android-device-management/plan.md)  
-**Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/products/ttzip/specs/001-android-device-management/data-model.md)  
-**Interface Contracts**: [contracts/](file:///Users/kevintung/Documents/dev/products/ttzip/specs/001-android-device-management/contracts/)
+**Specification**: [spec.md](file://$HOME/Documents/dev/products/ttzip/specs/001-android-device-management/spec.md)  
+**Implementation Plan**: [plan.md](file://$HOME/Documents/dev/products/ttzip/specs/001-android-device-management/plan.md)  
+**Data Model**: [data-model.md](file://$HOME/Documents/dev/products/ttzip/specs/001-android-device-management/data-model.md)  
+**Interface Contracts**: [contracts/](file://$HOME/Documents/dev/products/ttzip/specs/001-android-device-management/contracts/)
 
 ---
 

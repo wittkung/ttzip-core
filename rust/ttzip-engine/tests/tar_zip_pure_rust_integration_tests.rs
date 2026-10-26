@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests for pure Rust TAR and ZIP C-ABI direct scan and extract entry points.
 
@@ -132,7 +132,7 @@ fn test_pure_rust_zip_scan_entries_ffi() {
     let zip_path = temp_dir.join("test_scan.zip");
     let create_opt = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Fastest,
         encryption: TTZipEncryptionMethod::None,

@@ -1,21 +1,326 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Concurrent Directory Scanner & POSIX Path Normalization Layer.
 
 use std::path::Path;
+use super::defensive;
 use super::types::{DiskItemSummary, PathSuggestionItem, TTZipError, UniFFIParentAndPrefix};
 
+#[cfg(target_os = "macos")]
+const SCAN_BUFFER_SIZE: usize = 256 * 1024; // 256 KB thread-local aligned buffer
+
+#[cfg(target_os = "macos")]
+const ATTR_CMN_ERROR: libc::attrgroup_t = 0x20000000;
+
+#[cfg(target_os = "macos")]
+#[repr(align(8))]
+struct AlignedScanBuffer([u8; SCAN_BUFFER_SIZE]);
+
+#[cfg(target_os = "macos")]
+thread_local! {
+    static SCAN_BUFFER: std::cell::RefCell<Box<AlignedScanBuffer>> =
+        std::cell::RefCell::new(Box::new(AlignedScanBuffer([0u8; SCAN_BUFFER_SIZE])));
+}
+
+#[cfg(target_os = "macos")]
+struct DirFdGuard(libc::c_int);
+
+#[cfg(target_os = "macos")]
+impl DirFdGuard {
+    #[inline]
+    fn new(fd: libc::c_int) -> Self {
+        Self(fd)
+    }
+
+    #[inline]
+    fn raw(&self) -> libc::c_int {
+        self.0
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for DirFdGuard {
+    fn drop(&mut self) {
+        if self.0 >= 0 {
+            unsafe {
+                libc::close(self.0);
+            }
+        }
+    }
+}
+
 /// Scans a directory and returns lightweight item summaries.
+// On macOS, utilizes `getattrlistbulk` with a thread-local 256KB aligned buffer and relative
+// `openat` descriptor traversal to completely avoid `PATH_MAX` limitations and string heap churn.
+// Inhibits dataless cloud materialization prior to scan and never follows symlinks.
 #[uniffi::export]
 pub fn scan_directory(path: String, _max_depth: u32) -> Result<Vec<DiskItemSummary>, TTZipError> {
+    let max_depth = _max_depth;
+    defensive::apply_vfs_dataless_materialization_policy();
+
     let root = Path::new(&path);
     if !root.exists() {
         return Err(TTZipError::FileNotFound { path });
     }
 
-    let entries = std::fs::read_dir(root).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+    #[cfg(target_os = "macos")]
+    {
+        match scan_directory_darwin(&path, max_depth) {
+            Ok(items) => Ok(items),
+            Err(e) => {
+                log::debug!("getattrlistbulk scan failed: {e:?}, falling back to read_dir");
+                scan_directory_fallback(&path, max_depth)
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        scan_directory_fallback(&path, max_depth)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn scan_directory_darwin(path: &str, max_depth: u32) -> Result<Vec<DiskItemSummary>, TTZipError> {
+    let c_path = std::ffi::CString::new(path.as_bytes())
+        .map_err(|e| TTZipError::InvalidArgument { message: e.to_string() })?;
+
+    let root_fd = unsafe {
+        libc::open(
+            c_path.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
+        )
+    };
+
+    if root_fd < 0 {
+        let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+        return match errno {
+            libc::ENOENT => Err(TTZipError::FileNotFound { path: path.to_string() }),
+            libc::EACCES | libc::EPERM => Err(TTZipError::IoError {
+                message: format!("Permission denied: {path}"),
+            }),
+            libc::ENOTDIR | libc::ELOOP => Err(TTZipError::InvalidArgument {
+                message: format!("Not a directory or symlink loop: {path}"),
+            }),
+            _ => Err(TTZipError::IoError {
+                message: format!("Failed to open directory {path}: errno {errno}"),
+            }),
+        };
+    }
+
+    let root_guard = DirFdGuard::new(root_fd);
     let mut items = Vec::new();
+    let effective_max_depth = if max_depth == 0 { 1 } else { max_depth };
+
+    scan_dir_darwin_fd(root_guard.raw(), path, 1, effective_max_depth, &mut items)?;
+
+    items.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => crate::fs::natural_sort::natural_cmp(&a.name, &b.name),
+    });
+
+    Ok(items)
+}
+
+#[cfg(target_os = "macos")]
+fn scan_dir_darwin_fd(
+    dir_fd: libc::c_int,
+    parent_path: &str,
+    current_depth: u32,
+    max_depth: u32,
+    out: &mut Vec<DiskItemSummary>,
+) -> Result<(), TTZipError> {
+    let mut subdirs: Vec<(DirFdGuard, String)> = Vec::new();
+
+    SCAN_BUFFER.with(|buf_cell| -> Result<(), TTZipError> {
+        let mut buf_ref = buf_cell.borrow_mut();
+        let buf_ptr = buf_ref.0.as_mut_ptr();
+        let buf_size = SCAN_BUFFER_SIZE;
+
+        loop {
+            let mut attr_list: libc::attrlist = unsafe { std::mem::zeroed() };
+            attr_list.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
+            attr_list.commonattr = libc::ATTR_CMN_RETURNED_ATTRS
+                | libc::ATTR_CMN_NAME
+                | libc::ATTR_CMN_OBJTYPE
+                | libc::ATTR_CMN_MODTIME
+                | ATTR_CMN_ERROR;
+            attr_list.fileattr = libc::ATTR_FILE_DATALENGTH;
+
+            let retcount = unsafe {
+                libc::getattrlistbulk(
+                    dir_fd,
+                    &mut attr_list as *mut libc::attrlist as *mut libc::c_void,
+                    buf_ptr as *mut libc::c_void,
+                    buf_size,
+                    0,
+                )
+            };
+
+            if retcount < 0 {
+                let err = std::io::Error::last_os_error();
+                return Err(TTZipError::IoError {
+                    message: format!("getattrlistbulk failed: {err}"),
+                });
+            }
+
+            if retcount == 0 {
+                break;
+            }
+
+            let mut entry_ptr = buf_ptr;
+            let end_ptr = unsafe { buf_ptr.add(buf_size) };
+
+            for _ in 0..retcount {
+                if entry_ptr >= end_ptr {
+                    break;
+                }
+
+                let entry_len = unsafe { std::ptr::read_unaligned(entry_ptr as *const u32) };
+                if entry_len == 0 {
+                    break;
+                }
+
+                let next_entry_ptr = unsafe { entry_ptr.add(entry_len as usize) };
+                if next_entry_ptr > end_ptr {
+                    break;
+                }
+
+                let mut field_ptr = unsafe { entry_ptr.add(std::mem::size_of::<u32>()) };
+
+                let ret_attrs = unsafe {
+                    std::ptr::read_unaligned(field_ptr as *const libc::attribute_set_t)
+                };
+                field_ptr = unsafe { field_ptr.add(std::mem::size_of::<libc::attribute_set_t>()) };
+
+                let mut error_code = 0u32;
+                if ret_attrs.commonattr & ATTR_CMN_ERROR != 0 {
+                    error_code = unsafe { std::ptr::read_unaligned(field_ptr as *const u32) };
+                    field_ptr = unsafe { field_ptr.add(std::mem::size_of::<u32>()) };
+                }
+
+                if error_code != 0 {
+                    entry_ptr = next_entry_ptr;
+                    continue;
+                }
+
+                let mut name = String::new();
+                if ret_attrs.commonattr & libc::ATTR_CMN_NAME != 0 {
+                    let ref_val = unsafe {
+                        std::ptr::read_unaligned(field_ptr as *const libc::attrreference_t)
+                    };
+                    let name_ptr = unsafe {
+                        (field_ptr as *const u8).offset(ref_val.attr_dataoffset as isize)
+                    };
+                    let c_str = unsafe { std::ffi::CStr::from_ptr(name_ptr as *const libc::c_char) };
+                    name = c_str.to_string_lossy().into_owned();
+                    field_ptr = unsafe { field_ptr.add(std::mem::size_of::<libc::attrreference_t>()) };
+                }
+
+                if name.is_empty() || name == "." || name == ".." || name.starts_with('.') {
+                    entry_ptr = next_entry_ptr;
+                    continue;
+                }
+
+                let mut obj_type = 0u32;
+                if ret_attrs.commonattr & libc::ATTR_CMN_OBJTYPE != 0 {
+                    obj_type = unsafe { std::ptr::read_unaligned(field_ptr as *const u32) };
+                    field_ptr = unsafe { field_ptr.add(std::mem::size_of::<u32>()) };
+                }
+
+                let mut mtime_epoch_secs = 0i64;
+                if ret_attrs.commonattr & libc::ATTR_CMN_MODTIME != 0 {
+                    let ts = unsafe {
+                        std::ptr::read_unaligned(field_ptr as *const libc::timespec)
+                    };
+                    mtime_epoch_secs = ts.tv_sec as i64;
+                    field_ptr = unsafe { field_ptr.add(std::mem::size_of::<libc::timespec>()) };
+                }
+
+                let mut size = 0u64;
+                if ret_attrs.fileattr & libc::ATTR_FILE_DATALENGTH != 0 {
+                    let datalen = unsafe {
+                        std::ptr::read_unaligned(field_ptr as *const libc::off_t)
+                    };
+                    size = datalen as u64;
+                }
+
+                const VDIR: u32 = 2;
+                let is_dir = obj_type == VDIR;
+                if is_dir {
+                    size = 0;
+                }
+
+                let item_path = if parent_path == "/" {
+                    format!("/{}", name)
+                } else {
+                    format!("{}/{}", parent_path.trim_end_matches('/'), name)
+                };
+
+                out.push(DiskItemSummary {
+                    path: item_path.clone(),
+                    name: name.clone(),
+                    is_directory: is_dir,
+                    size,
+                    mtime_epoch_secs,
+                });
+
+                if is_dir && current_depth < max_depth {
+                    if let Ok(c_name) = std::ffi::CString::new(name.as_bytes()) {
+                        let sub_fd = unsafe {
+                            libc::openat(
+                                dir_fd,
+                                c_name.as_ptr(),
+                                libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW,
+                            )
+                        };
+                        if sub_fd >= 0 {
+                            subdirs.push((DirFdGuard::new(sub_fd), item_path));
+                        }
+                    }
+                }
+
+                entry_ptr = next_entry_ptr;
+            }
+        }
+        Ok(())
+    })?;
+
+    for (sub_guard, sub_path) in subdirs {
+        let _ = scan_dir_darwin_fd(sub_guard.raw(), &sub_path, current_depth + 1, max_depth, out);
+    }
+
+    Ok(())
+}
+
+fn scan_directory_fallback(path: &str, max_depth: u32) -> Result<Vec<DiskItemSummary>, TTZipError> {
+    let root = Path::new(path);
+    if !root.exists() {
+        return Err(TTZipError::FileNotFound { path: path.to_string() });
+    }
+
+    let mut items = Vec::new();
+    let effective_max_depth = if max_depth == 0 { 1 } else { max_depth };
+    scan_dir_fallback_recursive(root, 1, effective_max_depth, &mut items)?;
+
+    items.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => crate::fs::natural_sort::natural_cmp(&a.name, &b.name),
+    });
+
+    Ok(items)
+}
+
+fn scan_dir_fallback_recursive(
+    dir: &Path,
+    current_depth: u32,
+    max_depth: u32,
+    items: &mut Vec<DiskItemSummary>,
+) -> Result<(), TTZipError> {
+    let entries = std::fs::read_dir(dir).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
 
     for entry in entries.flatten() {
         let p = entry.path();
@@ -24,10 +329,11 @@ pub fn scan_directory(path: String, _max_depth: u32) -> Result<Vec<DiskItemSumma
             continue;
         }
 
-        let is_dir = p.is_dir();
-        let meta = p.metadata().ok();
-        let size = if is_dir { 0 } else { meta.as_ref().map(|m| m.len()).unwrap_or(0) };
-        let mtime = meta
+        let symlink_meta = p.symlink_metadata().ok();
+        let is_symlink = symlink_meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false);
+        let is_dir = !is_symlink && p.is_dir();
+        let size = if is_dir || is_symlink { 0 } else { symlink_meta.as_ref().map(|m| m.len()).unwrap_or(0) };
+        let mtime = symlink_meta
             .and_then(|m| m.modified().ok())
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
@@ -40,15 +346,13 @@ pub fn scan_directory(path: String, _max_depth: u32) -> Result<Vec<DiskItemSumma
             size,
             mtime_epoch_secs: mtime,
         });
+
+        if is_dir && current_depth < max_depth {
+            let _ = scan_dir_fallback_recursive(&p, current_depth + 1, max_depth, items);
+        }
     }
 
-    items.sort_by(|a, b| match (a.is_directory, b.is_directory) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => crate::fs::natural_sort::natural_cmp(&a.name, &b.name),
-    });
-
-    Ok(items)
+    Ok(())
 }
 
 /// Natural string comparator exposed via UniFFI.
@@ -377,6 +681,91 @@ mod tests {
             assert_eq!(res.parent_directory, exp_parent, "Failed parent for {}", input);
             assert_eq!(res.prefix, exp_pre, "Failed prefix for {}", input);
         }
+    }
+
+    #[test]
+    fn test_scan_directory_basic_and_filtering() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let temp_path = temp_dir.path();
+
+        let sub_dir = temp_path.join("subdir");
+        std::fs::create_dir(&sub_dir).expect("create subdir");
+
+        let file_a = temp_path.join("alpha.txt");
+        std::fs::write(&file_a, b"hello world").expect("write file");
+
+        let file_b = temp_path.join("beta.bin");
+        std::fs::write(&file_b, b"12345678").expect("write file");
+
+        let hidden = temp_path.join(".hidden");
+        std::fs::write(&hidden, b"secret").expect("write hidden");
+
+        let res = scan_directory(temp_path.to_string_lossy().to_string(), 1).expect("scan directory");
+
+        assert_eq!(res.len(), 3);
+        assert_eq!(res[0].name, "subdir");
+        assert!(res[0].is_directory);
+        assert_eq!(res[0].size, 0);
+
+        assert_eq!(res[1].name, "alpha.txt");
+        assert!(!res[1].is_directory);
+        assert_eq!(res[1].size, 11);
+
+        assert_eq!(res[2].name, "beta.bin");
+        assert!(!res[2].is_directory);
+        assert_eq!(res[2].size, 8);
+    }
+
+    #[test]
+    fn test_scan_directory_recursive_depth() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let temp_path = temp_dir.path();
+
+        let level1 = temp_path.join("level1");
+        std::fs::create_dir(&level1).expect("create level1");
+
+        let level2 = level1.join("level2");
+        std::fs::create_dir(&level2).expect("create level2");
+
+        let deep_file = level2.join("deep.txt");
+        std::fs::write(&deep_file, b"deep content").expect("write deep file");
+
+        let depth1_items = scan_directory(temp_path.to_string_lossy().to_string(), 1).expect("scan depth 1");
+        assert_eq!(depth1_items.len(), 1);
+        assert_eq!(depth1_items[0].name, "level1");
+
+        let depth2_items = scan_directory(temp_path.to_string_lossy().to_string(), 2).expect("scan depth 2");
+        assert_eq!(depth2_items.len(), 2);
+        assert_eq!(depth2_items[0].name, "level1");
+        assert_eq!(depth2_items[1].name, "level2");
+
+        let depth3_items = scan_directory(temp_path.to_string_lossy().to_string(), 3).expect("scan depth 3");
+        assert_eq!(depth3_items.len(), 3);
+    }
+
+    #[test]
+    fn test_scan_directory_symlink_nofollow() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let temp_path = temp_dir.path();
+
+        let target_dir = temp_path.join("target_dir");
+        std::fs::create_dir(&target_dir).expect("create target_dir");
+
+        let symlink_path = temp_path.join("link_dir");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target_dir, &symlink_path).expect("create symlink");
+
+        let items = scan_directory(temp_path.to_string_lossy().to_string(), 1).expect("scan items");
+        let symlink_item = items.iter().find(|i| i.name == "link_dir");
+        assert!(symlink_item.is_some());
+        assert!(!symlink_item.unwrap().is_directory);
+    }
+
+    #[test]
+    fn test_scan_directory_not_found() {
+        let missing = "/path/to/definitely/missing/dir_12345";
+        let res = scan_directory(missing.to_string(), 1);
+        assert!(matches!(res, Err(TTZipError::FileNotFound { .. })));
     }
 }
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ARM64 hardware-accelerated SHA-256 vector pipeline and 7z KDF engine.
 //!

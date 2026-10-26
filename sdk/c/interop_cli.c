@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,9 +90,7 @@ int main(int argc, char **argv) {
 
     if (strcmp(mode, "create") == 0) {
         TTZipCreateOptions opts;
-        memset(&opts, 0, sizeof(opts));
-        opts.struct_size = sizeof(TTZipCreateOptions);
-        opts.abi_version = 2;
+        ttzip_create_options_init(&opts);
         opts.format = parse_format(format_str);
         opts.level = TTZIP_COMPRESSION_LEVEL_NORMAL;
         if (password && strlen(password) > 0) {
@@ -113,12 +111,10 @@ int main(int argc, char **argv) {
         return 0;
     } else if (strcmp(mode, "extract") == 0) {
         TTZipExtractOptions opts;
-        memset(&opts, 0, sizeof(opts));
-        opts.struct_size = sizeof(TTZipExtractOptions);
-        opts.abi_version = 2;
+        ttzip_extract_options_init(&opts);
         opts.destination_path = dst;
         opts.password = (password && strlen(password) > 0) ? password : NULL;
-        opts.overwrite_existing = true;
+        opts.collision_policy = TTZIP_COLLISION_POLICY_KEEP_BOTH;
         opts.preserve_permissions = true;
         opts.dry_run = false;
 

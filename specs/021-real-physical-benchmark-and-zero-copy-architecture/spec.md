@@ -44,7 +44,7 @@
 
 ### User Story 3 - 解析器字节对齐健壮性与全量单测全绿闭环 (Priority: P2)
 
-作为 TTZip 核心解析引擎的维护者，系统底层 C 语言解析器（[`CTTZipParser.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipParser.c)）必须具备防御性、类型安全且字节对齐无关的逆向扫描能力。能够准确无误地定位任意字节偏移处的 EOCD（0x06054b50）与 CDFH 目录项，彻底消除由于不当向量跳步引起的扫描遗漏缺陷，确保全量 591+ 项单元测试 100% 通过。
+作为 TTZip 核心解析引擎的维护者，系统底层 C 语言解析器（[`CTTZipParser.c`](file://../Sources/CTTZipBridge/CTTZipParser.c)）必须具备防御性、类型安全且字节对齐无关的逆向扫描能力。能够准确无误地定位任意字节偏移处的 EOCD（0x06054b50）与 CDFH 目录项，彻底消除由于不当向量跳步引起的扫描遗漏缺陷，确保全量 591+ 项单元测试 100% 通过。
 
 **Why this priority**: 规范完整性与解析健壮性是归档工具的生命线，任何解析器遗漏都会破坏 ZIP 规范校验与解压能力。
 

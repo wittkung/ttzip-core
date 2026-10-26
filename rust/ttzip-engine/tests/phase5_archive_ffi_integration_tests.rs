@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Phase 5 Integration Tests for Archive FFI:
 //! - ttzip_rust_create_archive (ZIP, TAR, TAR.GZ)
@@ -73,7 +73,7 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
     // 1. Create Archive via FFI
     let create_options = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -115,11 +115,11 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
 
     let dry_run_options = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 4,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: true,
         progress_callback: Some(test_progress_cb),
@@ -139,11 +139,11 @@ fn test_phase5_archive_create_inspect_extract_roundtrip_zip() {
     // 4. Real Extract Archive via FFI
     let extract_options = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 4,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: Some(test_progress_cb),
@@ -189,7 +189,7 @@ fn test_phase5_archive_create_tar_gz_and_extract() {
 
     let create_options = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::TarGz,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -216,11 +216,11 @@ fn test_phase5_archive_create_tar_gz_and_extract() {
 
     let extract_options = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
         thread_budget: 2,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: None,
@@ -275,106 +275,48 @@ fn test_phase5_archive_error_handling() {
     assert_eq!(null_status, TTZipStatus::ErrInvalidParam);
 }
 
+
 #[test]
-fn test_phase5_inplace_editing_ffi_roundtrip() {
-    let temp_dir_guard = tempfile::tempdir().unwrap();
-    let temp_dir = temp_dir_guard.path();
-
-    let src_file = temp_dir.join("initial.txt");
-    fs::write(&src_file, b"Initial FFI Content").unwrap();
-
-    let c_src_path = CString::new(src_file.to_str().unwrap()).unwrap();
-    let src_ptrs = [c_src_path.as_ptr()];
-
-    let archive_path = temp_dir.join("inplace_test.zip");
+fn test_phase5_archive_extract_abi_validation() {
+    let tmp_dir = tempdir().unwrap();
+    let temp_dir = tmp_dir.path();
+    let archive_path = temp_dir.join("test_archive.zip");
+    std::fs::File::create(&archive_path).unwrap();
     let c_archive_path = CString::new(archive_path.to_str().unwrap()).unwrap();
+    let dest_dir = temp_dir.join("extracted");
+    let c_dest_dir = CString::new(dest_dir.to_str().unwrap()).unwrap();
 
-    let create_options = TTZipCreateOptions {
-        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
-        format: TTZipArchiveFormat::Zip,
-        level: TTZipCompressionLevel::Normal,
-        encryption: TTZipEncryptionMethod::None,
-        password: std::ptr::null(),
-        thread_budget: 2,
-        solid_block_size_mb: 0,
-        progress_callback: None,
-        user_data: std::ptr::null_mut(),
-    };
-
-    let create_status = unsafe {
-        ttzip_rust_create_archive(
-            src_ptrs.as_ptr(),
-            src_ptrs.len(),
-            c_archive_path.as_ptr(),
-            &create_options,
-        )
-    };
-    assert_eq!(create_status, TTZipStatus::Ok);
-
-    // FFI In-place session begin
-    let mut session_ptr: *mut ttzip_engine::ffi::TTZipInPlaceSession = std::ptr::null_mut();
-    let begin_status = unsafe {
-        ttzip_rust_inplace_session_begin(c_archive_path.as_ptr(), 1, &mut session_ptr)
-    };
-    assert_eq!(begin_status, TTZipStatus::Ok);
-    assert!(!session_ptr.is_null());
-
-    let rep_file = temp_dir.join("replaced.txt");
-    fs::write(&rep_file, b"Replaced FFI Content").unwrap();
-    let c_rep_file = CString::new(rep_file.to_str().unwrap()).unwrap();
-    let c_entry_name = CString::new("initial.txt").unwrap();
-
-    let rep_status = unsafe {
-        ttzip_rust_inplace_session_replace(session_ptr, c_entry_name.as_ptr(), c_rep_file.as_ptr())
-    };
-    assert_eq!(rep_status, TTZipStatus::Ok);
-
-    let app_file = temp_dir.join("appended.txt");
-    fs::write(&app_file, b"Appended FFI Content").unwrap();
-    let c_app_file = CString::new(app_file.to_str().unwrap()).unwrap();
-    let c_app_entry = CString::new("appended.txt").unwrap();
-
-    let app_status = unsafe {
-        ttzip_rust_inplace_session_append(session_ptr, c_app_entry.as_ptr(), c_app_file.as_ptr())
-    };
-    assert_eq!(app_status, TTZipStatus::Ok);
-
-    let commit_status = unsafe { ttzip_rust_inplace_session_commit(session_ptr) };
-    assert_eq!(commit_status, TTZipStatus::Ok);
-
-    unsafe { ttzip_rust_inplace_session_free(session_ptr) };
-
-    // Extract and verify updated archive
-    let out_dir = temp_dir.join("extracted_inplace");
-    let c_out_dir = CString::new(out_dir.to_str().unwrap()).unwrap();
-    let extract_options = TTZipExtractOptions {
+    let mut invalid_abi_options = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
-        destination_path: c_out_dir.as_ptr(),
+        abi_version: 2, // invalid
+        destination_path: c_dest_dir.as_ptr(),
         password: std::ptr::null(),
-        thread_budget: 2,
-        overwrite_existing: true,
+        thread_budget: 4,
+        collision_policy: 0,
         preserve_permissions: true,
-        dry_run: false,
+        dry_run: true,
         progress_callback: None,
         user_data: std::ptr::null_mut(),
     };
 
-    let ext_status = unsafe {
+    let status = unsafe {
         ttzip_rust_extract_archive(
             c_archive_path.as_ptr(),
-            c_out_dir.as_ptr(),
-            &extract_options,
+            c_dest_dir.as_ptr(),
+            &invalid_abi_options,
         )
     };
-    assert_eq!(ext_status, TTZipStatus::Ok);
+    assert_eq!(status, TTZipStatus::ErrAbiMismatch);
 
-    let content_rep = fs::read_to_string(out_dir.join("initial.txt")).unwrap();
-    assert_eq!(content_rep, "Replaced FFI Content");
-    let content_app = fs::read_to_string(out_dir.join("appended.txt")).unwrap();
-    assert_eq!(content_app, "Appended FFI Content");
+    invalid_abi_options.abi_version = ttzip_engine::types::TTZIP_ABI_VERSION_3;
+    invalid_abi_options.collision_policy = 255; // invalid policy
 
-    let _ = fs::remove_dir_all(temp_dir);
+    let status = unsafe {
+        ttzip_rust_extract_archive(
+            c_archive_path.as_ptr(),
+            c_dest_dir.as_ptr(),
+            &invalid_abi_options,
+        )
+    };
+    assert_eq!(status, TTZipStatus::ErrInvalidParam);
 }
-

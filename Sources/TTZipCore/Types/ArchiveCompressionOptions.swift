@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -172,6 +172,7 @@ public struct SevenZipFormatOptions: Sendable, Equatable, Codable {
     public var algorithm: String // LZMA2 / LZMA / PPMd / BZip2
     public var dictionarySizeMB: Int // 16MB / 32MB / 64MB / 128MB / 256MB / 512MB
     public var enableSolidArchive: Bool // Solid archiving
+    /// When `true` and a non-empty password is provided, encrypts the 7z header (`-mhe=on`, `kEncodedHeader = 0x17`).
     public var encryptFileNames: Bool // Encrypted headers (mhe=on)
     public var matchFinder: String // HC4 / BT4
     public var numFastBytes: Int // 5..273

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ChaCha20-Poly1305 Authenticated Encryption with Associated Data (AEAD - RFC 8439).
 //!

@@ -1,6 +1,6 @@
 # Implementation Plan: Engineering Governance and Quality Gates Hardening
 
-**Branch**: `222-engineering-governance-and-quality-gates-hardening` | **Date**: 2026-08-24 | **Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/222-engineering-governance-and-quality-gates-hardening/spec.md)
+**Branch**: `222-engineering-governance-and-quality-gates-hardening` | **Date**: 2026-08-24 | **Spec**: [`spec.md`](file://../specs/222-engineering-governance-and-quality-gates-hardening/spec.md)
 
 **Input**: Feature specification from `/specs/222-engineering-governance-and-quality-gates-hardening/spec.md`
 

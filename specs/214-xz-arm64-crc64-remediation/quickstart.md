@@ -16,7 +16,7 @@
 ## 2. CMake Validation Workflow
 
 ```bash
-cd /Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/xz/pr2-arm64-crc64
+cd ../Vendor/worktrees/xz/pr2-arm64-crc64
 
 # 1. Clean Build Directory
 rm -rf build-cmake && mkdir build-cmake
@@ -39,7 +39,7 @@ ctest --test-dir build-cmake --output-on-failure
 ## 3. Autotools Validation Workflow
 
 ```bash
-cd /Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/xz/pr2-arm64-crc64
+cd ../Vendor/worktrees/xz/pr2-arm64-crc64
 
 # 1. Regenerate Configure Scripts
 ./autogen.sh

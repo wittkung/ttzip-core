@@ -102,4 +102,4 @@ alias ttzip="./.build/release/ttzip-cli"
   {"schema_version":"1.0.0","event":"completed","exit_code":0,"status":"success","payload":{"operation":"test","duration_seconds":0.004,"total_bytes":148600,"throughput_mbs":37150.0}}
   ```
 - **Failure Diagnostic**:
-  - Validate JSON against [`contracts/cli-json-output-contract.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/069-cli-market-gap-parity/contracts/cli-json-output-contract.json).
+  - Validate JSON against [`contracts/cli-json-output-contract.json`](file://../specs/069-cli-market-gap-parity/contracts/cli-json-output-contract.json).

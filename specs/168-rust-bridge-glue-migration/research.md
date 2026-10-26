@@ -38,11 +38,11 @@ TTZip 当前的高性能多格式归档引擎依赖 `Sources/CTTZipBridge` 中�
   - *方案 B（部分迁移，仅迁移密码学与简单编解码）*：被否决。碎片化的迁移导致 C 与 Rust 双重运行时共存，增加构建复杂度与维护成本。
 
 - **Source (查阅依据与文件)**:
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipExtract.c` (Lines 197-380)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Crypto.c` (Lines 71-193, 426-485)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c` (Lines 256-320)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_threadpool.c` (Lines 25-160)
-  - `file:///Users/kevintung/Documents/dev/TTZip/.specify/memory/constitution.md` (Section 2.A Hot-Path Floors)
+  - `file://../Sources/CTTZipBridge/CTTZipExtract.c` (Lines 197-380)
+  - `file://../Sources/CTTZipBridge/CTTZipBridge_Crypto.c` (Lines 71-193, 426-485)
+  - `file://../Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c` (Lines 256-320)
+  - `file://../Sources/CTTZipBridge/ttzip_threadpool.c` (Lines 25-160)
+  - `file://../.specify/memory/constitution.md` (Section 2.A Hot-Path Floors)
 
 ---
 
@@ -66,9 +66,9 @@ TTZip 当前的高性能多格式归档引擎依赖 `Sources/CTTZipBridge` 中�
   - *方案 C（SPM `BuildToolPlugin` 直接调用 Cargo）*：被否决。SPM Plugin 运行在沙盒内，禁止网络访问与任意写操作，无法稳定拉取依赖与管理多架构 Universal binary。
 
 - **Source (查阅依据与文件)**:
-  - `file:///Users/kevintung/Documents/dev/TTZip/Package.swift` (Lines 1-112)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Vendor/TTZipVendor.xcframework/Info.plist`
-  - `file:///Users/kevintung/Documents/dev/TTZip/scripts/build_libdeflate.sh`
+  - `file://../Package.swift` (Lines 1-112)
+  - `file://../Vendor/TTZipVendor.xcframework/Info.plist`
+  - `file://../scripts/build_libdeflate.sh`
   - UniFFI Issue: *Swift 6 Strict Concurrency & Sending parameter compatibility* ([mozilla/uniffi-rs #2448](https://github.com/mozilla/uniffi-rs/issues/2448))
 
 ---
@@ -91,10 +91,10 @@ TTZip 当前的高性能多格式归档引擎依赖 `Sources/CTTZipBridge` 中�
   - *方案 B（直接依赖 crates.io 上的公共 sys crates）*：被否决。公共 crates 会要求系统动态库或自带源码构建，破坏 TTZip 本地经过特定编译优化和剪裁的 `Vendor/lib/*.a` 确定性。
 
 - **Source (查阅依据与文件)**:
-  - `file:///Users/kevintung/Documents/dev/TTZip/Vendor/include/archive.h` (Lines 260-285, 410-600)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Vendor/include/libdeflate.h`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Vendor/include/zstd.h`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Archive.c`
+  - `file://../Vendor/include/archive.h` (Lines 260-285, 410-600)
+  - `file://../Vendor/include/libdeflate.h`
+  - `file://../Vendor/include/zstd.h`
+  - `file://../Sources/CTTZipBridge/CTTZipBridge_Archive.c`
 
 ---
 
@@ -116,10 +116,10 @@ TTZip 当前的高性能多格式归档引擎依赖 `Sources/CTTZipBridge` 中�
   - *方案 B（在 Rust 中使用 `core::arch::asm!` 内联汇编）*：被否决。内联汇编阻碍 LLVM 编译器进行跨块死代码消除与寄存器重命名优化，且可读性与跨平台维护性较差。
 
 - **Source (查阅依据与文件)**:
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipCRC32Neon.c` (Lines 23-210)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipAdler32Neon.c` (Lines 15-180)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_crypto_neon.c` (Lines 30-150)
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_kdf_arm64.c` (Lines 20-95)
+  - `file://../Sources/CTTZipBridge/CTTZipCRC32Neon.c` (Lines 23-210)
+  - `file://../Sources/CTTZipBridge/CTTZipAdler32Neon.c` (Lines 15-180)
+  - `file://../Sources/CTTZipBridge/ttzip_7z_crypto_neon.c` (Lines 30-150)
+  - `file://../Sources/CTTZipBridge/ttzip_7z_kdf_arm64.c` (Lines 20-95)
   - Rust Standard Library Documentation: `core::arch::aarch64`
 
 ---

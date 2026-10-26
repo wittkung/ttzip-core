@@ -2,7 +2,7 @@
 
 **Feature**: `064-lz4-deep-integration`
 **Created**: 2026-08-17
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/plan.md)
+**Spec**: [spec.md](file://../specs/064-lz4-deep-integration/spec.md) | **Plan**: [plan.md](file://../specs/064-lz4-deep-integration/plan.md)
 
 ---
 

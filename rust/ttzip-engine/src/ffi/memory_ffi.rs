@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Canonical C-ABI 2.0 Memory Management and Universal Deallocator.
 
@@ -60,7 +60,7 @@ pub unsafe extern "C" fn ttzip_free(ptr: *mut c_void, kind: TTZipMemoryKind) {
             Arc::decrement_strong_count(ptr as *const crate::runtime::cancellation::CancellationToken);
         }
         TTZipMemoryKind::InPlaceSession => {
-            drop(Box::from_raw(ptr as *mut crate::ffi::archive_ffi::TTZipInPlaceSession));
+            // In-place session state has been evicted; no-op
         }
     }));
 }
@@ -135,6 +135,6 @@ pub unsafe extern "C" fn ttzip_free_cancellation_token(token: *const crate::runt
 
 #[no_mangle]
 #[deprecated(since = "2.0.0", note = "Use ttzip_free(session, TTZipMemoryKind::InPlaceSession) instead")]
-pub unsafe extern "C" fn ttzip_free_inplace_session(session: *mut crate::ffi::archive_ffi::TTZipInPlaceSession) {
-    ttzip_free(session as *mut c_void, TTZipMemoryKind::InPlaceSession);
+pub unsafe extern "C" fn ttzip_free_inplace_session(session: *mut c_void) {
+    ttzip_free(session, TTZipMemoryKind::InPlaceSession);
 }

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -156,7 +156,9 @@ public final class NativeParallelEncryptedSplitEngine: Sendable {
         baseName: String,
         splitVolumeSizeBytes: Int64,
         password: String,
+        level: CompressionLevel = .normal,
         encryptFileNames: Bool = true,
+        token: CancellationToken? = nil,
         progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws -> [String] {
         guard !sourcePaths.isEmpty else {
@@ -164,22 +166,34 @@ public final class NativeParallelEncryptedSplitEngine: Sendable {
         }
         
         let targetExtension = (format == .sevenZip) ? "7z" : "zip"
-        let primaryOutputPath = (outputDir as NSString).appendingPathComponent("\(baseName).\(targetExtension)")
+        let cleanBase = (baseName as NSString).pathExtension.lowercased() == targetExtension ? (baseName as NSString).deletingPathExtension : baseName
+        let primaryOutputPath = (outputDir as NSString).appendingPathComponent("\(cleanBase).\(targetExtension)")
         try? FileManager.default.removeItem(atPath: primaryOutputPath)
         
         progressHandler?(0.1)
         
         let writer = ArchiveWriter()
         let targetFormat: ArchiveCompressionFormat = (format == .sevenZip) ? .sevenZip : .zip
+        let advOpts = ArchiveAdvancedOptions.builder()
+            .withEncryptFileNames(encryptFileNames)
+            .build()
+        let mappedProgress: (@Sendable (ArchiveProgress) -> Void)? = progressHandler.map { handler in
+            { @Sendable (prog: ArchiveProgress) in
+                handler(prog.fractionCompleted)
+            }
+        }
         
         try await writer.createArchive(
             outputPath: primaryOutputPath,
             format: targetFormat,
-            level: .normal,
+            level: level,
             inputPaths: sourcePaths,
             options: .defaultClean,
             splitVolumeSizeBytes: splitVolumeSizeBytes,
-            password: password.isEmpty ? nil : password
+            password: password.isEmpty ? nil : password,
+            advancedOptions: advOpts,
+            progressHandler: mappedProgress,
+            token: token
         )
         
         progressHandler?(1.0)

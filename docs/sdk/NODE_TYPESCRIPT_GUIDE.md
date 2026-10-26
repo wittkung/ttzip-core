@@ -1,8 +1,8 @@
 # 🟢 TTZip Node.js & TypeScript Developer Guide
 
-[![npm](https://img.shields.io/badge/npm-%40ttzip%2Fcore-red.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/node/package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B%20Strict-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/node/index.d.ts)
-[![Node.js](https://img.shields.io/badge/Node.js-18.0%2B-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/node/package.json)
+[![npm](https://img.shields.io/badge/npm-%40ttzip%2Fcore-red.svg)](file://$HOME/Documents/dev/products/ttzip/core/node/package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B%20Strict-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/node/index.d.ts)
+[![Node.js](https://img.shields.io/badge/Node.js-18.0%2B-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/node/package.json)
 
 `@ttzip/core` is the official Node.js and TypeScript binding for TTZip. Engineered as a native N-API addon, it provides **async Promise-based archive manipulation**, in-memory `Buffer` codecs, hardware-accelerated CRC-32 checksums, and zero event loop blocking.
 
@@ -37,7 +37,7 @@ pnpm add @ttzip/core
 
 ## 2. TypeScript API Reference
 
-The package exports full TypeScript type definitions from [index.d.ts](file:///Users/kevintung/Documents/dev/products/ttzip/core/node/index.d.ts):
+The package exports full TypeScript type definitions from [index.d.ts](file://$HOME/Documents/dev/products/ttzip/core/node/index.d.ts):
 
 ```typescript
 export interface EntryMetadata {

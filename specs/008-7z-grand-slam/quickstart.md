@@ -7,7 +7,7 @@ TTZIP_RUN_BENCHMARKS=1 swift test --filter AllFormatsPkSuiteTests
 
 ## 2. Inspect 7Z Leaderboard
 ```bash
-python3 /Users/kevintung/.gemini/antigravity/brain/9148f433-906b-4e79-a8e1-d4f5ea9af6fb/scratch/analyze_new_7z.py
+python3 $HOME/.gemini/antigravity/brain/9148f433-906b-4e79-a8e1-d4f5ea9af6fb/scratch/analyze_new_7z.py
 ```
 
 ## 3. Run Zero-Regression Audit

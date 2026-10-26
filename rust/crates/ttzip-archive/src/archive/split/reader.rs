@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Virtual continuous multi-volume reader with topology detection and linear offset table.
 
@@ -18,19 +18,32 @@ pub struct VolumeSegment {
 
 /// Automatically detects the entire volume chain starting from any given volume in the chain.
 pub fn detect_volume_chain(seed_path: &Path) -> io::Result<Vec<PathBuf>> {
-    if !seed_path.exists() {
+    let resolved_seed = if seed_path.exists() {
+        seed_path.to_path_buf()
+    } else {
+        let candidate_001 = PathBuf::from(format!("{}.001", seed_path.display()));
+        if candidate_001.exists() {
+            candidate_001
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Seed volume not found: {}", seed_path.display()),
+            ));
+        }
+    };
+
+    let abs_seed = resolved_seed.clone();
+    if let Some(desc) = super::PreFlightVolumeProber::probe(&resolved_seed) {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("Seed volume not found: {}", seed_path.display()),
+            format!("Missing split volume(s): {:?}", desc.missing_filenames),
         ));
     }
-
-    let abs_seed = seed_path.to_path_buf();
-    let file_name = match seed_path.file_name().and_then(|n| n.to_str()) {
+    let file_name = match resolved_seed.file_name().and_then(|n| n.to_str()) {
         Some(name) => name,
         None => return Ok(vec![abs_seed]),
     };
-    let parent_dir = seed_path.parent().unwrap_or_else(|| Path::new(""));
+    let parent_dir = resolved_seed.parent().unwrap_or_else(|| Path::new(""));
 
     // Case 1: Numbered extension (e.g., .001, .002, .003 or .0001)
     if let Some(dot_pos) = file_name.rfind('.') {

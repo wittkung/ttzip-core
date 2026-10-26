@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 import CommonCrypto
@@ -79,7 +79,7 @@ public struct TTZipVaultSecurity: Sendable {
             throw TTZipVaultError.invalidParameter
         }
 
-        let secureKey = SecureBytes(capacity: 32)
+        let secureKey = try SecureBytes(capacity: 32)
         let status = secureKey.withUnsafeMutableBytes { keyBuf -> Int32 in
             guard let keyPtr = keyBuf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return -1 }
             return salt.withUnsafeBytes { saltBuf -> Int32 in

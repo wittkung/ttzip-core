@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-19  
-**Feature**: [`specs/110-aarch64-compare256-zero-overhead-optimization/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/110-aarch64-compare256-zero-overhead-optimization/spec.md)  
+**Feature**: [`specs/110-aarch64-compare256-zero-overhead-optimization/spec.md`](file://../specs/110-aarch64-compare256-zero-overhead-optimization/spec.md)  
 
 ## Content Quality
 

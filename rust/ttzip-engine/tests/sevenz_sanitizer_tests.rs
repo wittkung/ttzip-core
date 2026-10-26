@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit tests for 7-Zip bounded count memory safety guards
 //! and safe path sanitization (Zip-Slip defense) subsystem.
@@ -117,6 +117,7 @@ fn test_safe_join_malicious_paths_interception() {
         r"D:\secret.doc",
         "a/../../b",
         r"a\..\..\b",
+        "a/../b/file.txt",
         "../../../../../../../../etc/shadow",
         r"..\..\..\..\..\..\..\..\etc\shadow",
         r"\root\evil.sh",
@@ -170,10 +171,6 @@ fn test_safe_join_valid_nested_paths() {
     // Deep nested hierarchy
     let p3 = safe_join(dest_root, "a/b/c/d/e/f/g.txt").expect("valid deep path");
     assert_eq!(p3, dest_root.join("a/b/c/d/e/f/g.txt"));
-
-    // Safe internal normalization (a/../b stays within root)
-    let p4 = safe_join(dest_root, "a/../b/file.txt").expect("valid internal relative path");
-    assert_eq!(p4, dest_root.join("b/file.txt"));
 
     // Leading ./ ignored
     let p5 = safe_join(dest_root, "./project/Cargo.toml").expect("valid dot prefix path");

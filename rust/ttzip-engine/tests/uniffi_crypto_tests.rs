@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration and verification suite for Mozilla UniFFI 0.28 Crypto & Hash API exports.
 //!

@@ -3,8 +3,8 @@
 **Feature Branch**: `083-snappy-native-engine-analysis-and-integration`  
 **Created**: 2026-08-18  
 **Status**: Ready for Implementation  
-**Feature Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/spec.md)  
-**Implementation Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/plan.md)
+**Feature Spec**: [spec.md](file://../specs/083-snappy-native-engine-analysis-and-integration/spec.md)  
+**Implementation Plan**: [plan.md](file://../specs/083-snappy-native-engine-analysis-and-integration/plan.md)
 
 ---
 

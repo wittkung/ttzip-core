@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-copy streaming scanner for POSIX ustar, GNU TAR, and POSIX.1-2001 PAX archives.
 //!

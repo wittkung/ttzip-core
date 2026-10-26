@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration tests for XZ Variable-Length Integer (VLI) codec,
 //! testing 1..=9 byte ladder boundaries, non-canonical encoding rejection,

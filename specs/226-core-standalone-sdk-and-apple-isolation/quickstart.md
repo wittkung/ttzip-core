@@ -9,7 +9,7 @@
 
 From `core/`:
 ```bash
-cd /Users/kevintung/Documents/dev/products/ttzip/core
+cd $HOME/Documents/dev/products/ttzip/core
 
 # Execute the automated universal SDK packaging script
 ./scripts/build_sdk_framework.sh --release
@@ -43,7 +43,7 @@ swift package compute-checksum dist/TTZipVendor.xcframework.zip
 
 From `apple/`:
 ```bash
-cd /Users/kevintung/Documents/dev/products/ttzip/apple
+cd $HOME/Documents/dev/products/ttzip/apple
 
 # Compile standalone client application
 swift build -c release

@@ -9,7 +9,7 @@
 
 ## 1. Technical Context
 
-- **Source Monorepo**: `/Users/kevintung/Documents/dev/TTZip`
+- **Source Monorepo**: `$HOME/Documents/dev/TTZip`
 - **Output Target Repositories**:
   - `../ttzip-core` (`wittkung/ttzip-core` · BSD-3-Clause OR Apache-2.0)
   - `../ttzip-apple` (`wittkung/ttzip-apple` · GPL-3.0-or-later)

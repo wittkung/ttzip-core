@@ -1,9 +1,9 @@
 # 🚀 TTZip Multi-Language SDK Ecosystem
 
-[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/LICENSE-BSD)
-[![Architecture: Safe Rust Core](https://img.shields.io/badge/Core-Safe%20Rust%20Microkernel-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
-[![C-ABI: Version 2.0](https://img.shields.io/badge/ABI-C--ABI%202.0%20Standard-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.h)
-[![Hardware: ARM NEON & AVX-512](https://img.shields.io/badge/Hardware-ARM%20NEON%20%2F%20PMULL%20%2F%20AVX512-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/BENCHMARK_MATRIX.md)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/LICENSE-BSD)
+[![Architecture: Safe Rust Core](https://img.shields.io/badge/Core-Safe%20Rust%20Microkernel-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+[![C-ABI: Version 2.0](https://img.shields.io/badge/ABI-C--ABI%202.0%20Standard-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.h)
+[![Hardware: ARM NEON & AVX-512](https://img.shields.io/badge/Hardware-ARM%20NEON%20%2F%20PMULL%20%2F%20AVX512-purple.svg)](file://$HOME/Documents/dev/products/ttzip/core/BENCHMARK_MATRIX.md)
 
 Welcome to the official developer documentation for the **TTZip Multi-Language SDK Ecosystem**. TTZip is an enterprise-grade, microkernel-powered native archiving and compression engine engineered in **Safe Rust** and distributed across modern language runtimes via zero-overhead, memory-safe bindings.
 
@@ -15,17 +15,17 @@ TTZip provides official, first-class native bindings for all major systems and a
 
 | Language / Runtime | Official Package / Crate | Integration Mechanism | Concurrency Model | Zero-Copy Support | Developer Guide |
 | :--- | :--- | :--- | :--- | :---: | :---: |
-| **Rust** | `ttzip-engine` | Native Safe Rust Microkernel | Rayon Work-Stealing Pool | ✅ Direct (`&[u8]`, mmap) | [Rust Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/RUST_GUIDE.md) |
-| **Swift 6** | `TTZipCore` (SPM) | Direct C-ABI Modulemap | Strict Concurrency (`Actor`, `Sendable`) | ✅ Pointer Pinning (`UnsafeBufferPointer`) | [Swift Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/SWIFT_GUIDE.md) |
-| **Python** | `ttzip` (PyPI / Maturin) | Native PyO3 Native Extension | GIL-Free Background Worker Threads | ✅ `PyBuffer` / Buffer Protocol | [Python Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/PYTHON_GUIDE.md) |
-| **Java 22+ / Kotlin** | `com.ttzip:ttzip-core` | Panama FFM (`Arena`, `MethodHandle`) | Virtual Threads & Kotlin Coroutine `Flow` | ✅ Panama `MemorySegment` | [JVM & Kotlin Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/JVM_KOTLIN_GUIDE.md) |
-| **C++20 / C11** | `ttzip` (CMake / Header) | Modern C++20 RAII & C11 ABI 2.0 | Standard `std::jthread` / POSIX Threads | ✅ `std::span<const uint8_t>` | [C++20 & C11 Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/CPP_C_GUIDE.md) |
-| **Go** | `github.com/ttzip/ttzip-go` | CGO Zero-Alloc + `io/fs.FS` | Goroutines + `context.Context` | ✅ 1MB Chunk Amortization | [Go Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/GO_GUIDE.md) |
-| **Dart / Flutter** | `ttzip` (pub.dev) | `dart:ffi` Dynamic Library | Background `Isolate.run` & `Stream` | ✅ `TypedData` (`Uint8List`) | [Dart & Flutter Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/DART_FLUTTER_GUIDE.md) |
-| **C# / .NET 8+** | `TTZip` (NuGet) | P/Invoke + `SafeHandle` | `IAsyncEnumerable<T>` + `Channel<T>` | ✅ `ReadOnlySpan<byte>` | [.NET Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/DOTNET_GUIDE.md) |
-| **Node.js / TypeScript** | `@ttzip/core` (npm) | N-API / Native Node Addon | Libuv Thread Pool & Event Loop | ✅ Node.js `Buffer` | [Node.js & TS Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/NODE_TYPESCRIPT_GUIDE.md) |
+| **Rust** | `ttzip-engine` | Native Safe Rust Microkernel | Rayon Work-Stealing Pool | ✅ Direct (`&[u8]`, mmap) | [Rust Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/RUST_GUIDE.md) |
+| **Swift 6** | `TTZipCore` (SPM) | Direct C-ABI Modulemap | Strict Concurrency (`Actor`, `Sendable`) | ✅ Pointer Pinning (`UnsafeBufferPointer`) | [Swift Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/SWIFT_GUIDE.md) |
+| **Python** | `ttzip` (PyPI / Maturin) | Native PyO3 Native Extension | GIL-Free Background Worker Threads | ✅ `PyBuffer` / Buffer Protocol | [Python Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/PYTHON_GUIDE.md) |
+| **Java 22+ / Kotlin** | `com.ttzip:ttzip-core` | Panama FFM (`Arena`, `MethodHandle`) | Virtual Threads & Kotlin Coroutine `Flow` | ✅ Panama `MemorySegment` | [JVM & Kotlin Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/JVM_KOTLIN_GUIDE.md) |
+| **C++20 / C11** | `ttzip` (CMake / Header) | Modern C++20 RAII & C11 ABI 2.0 | Standard `std::jthread` / POSIX Threads | ✅ `std::span<const uint8_t>` | [C++20 & C11 Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/CPP_C_GUIDE.md) |
+| **Go** | `github.com/ttzip/ttzip-go` | CGO Zero-Alloc + `io/fs.FS` | Goroutines + `context.Context` | ✅ 1MB Chunk Amortization | [Go Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/GO_GUIDE.md) |
+| **Dart / Flutter** | `ttzip` (pub.dev) | `dart:ffi` Dynamic Library | Background `Isolate.run` & `Stream` | ✅ `TypedData` (`Uint8List`) | [Dart & Flutter Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/DART_FLUTTER_GUIDE.md) |
+| **C# / .NET 8+** | `TTZip` (NuGet) | P/Invoke + `SafeHandle` | `IAsyncEnumerable<T>` + `Channel<T>` | ✅ `ReadOnlySpan<byte>` | [.NET Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/DOTNET_GUIDE.md) |
+| **Node.js / TypeScript** | `@ttzip/core` (npm) | N-API / Native Node Addon | Libuv Thread Pool & Event Loop | ✅ Node.js `Buffer` | [Node.js & TS Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/NODE_TYPESCRIPT_GUIDE.md) |
 
-For specialized enterprise recipes (AES-256 encryption, Reed-Solomon ECC, Solid tuning, VFS cache, cancellation tokens), see the [Advanced Settings Recipes](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/ADVANCED_SETTINGS_RECIPES.md).
+For specialized enterprise recipes (AES-256 encryption, Reed-Solomon ECC, Solid tuning, VFS cache, cancellation tokens), see the [Advanced Settings Recipes](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/ADVANCED_SETTINGS_RECIPES.md).
 
 ---
 
@@ -69,7 +69,7 @@ TTZip links the native engine **directly into the host process**, operating thro
 On the JVM (Java 22+ / Kotlin), TTZip completely replaces legacy JNI wrappers with the OpenJDK Foreign Function & Memory API (`java.lang.foreign`). Off-heap memory is managed through confined `Arena` allocators, ensuring deterministic deallocation and hardware-level throughput (>4.47 GB/s decompression) without garbage collection pauses.
 
 ### Invariant 3: Standardized C-ABI 2.0 Contract
-All cross-language bridges communicate through [ttzip.h](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.h) and [ttzip_rust_glue.h](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip_rust_glue.h). Every options struct enforces:
+All cross-language bridges communicate through [ttzip.h](file://$HOME/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.h) and [ttzip_rust_glue.h](file://$HOME/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip_rust_glue.h). Every options struct enforces:
 ```c
 uint32_t struct_size; // sizeof(TTZipCreateOptions)
 uint32_t abi_version; // Always 2
@@ -163,13 +163,13 @@ cd core && ./scripts/run_sdk_benchmarks.sh
 
 Navigate directly to your target language guide:
 
-- 🦀 [Rust Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/RUST_GUIDE.md)
-- 🐦 [Swift 6 Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/SWIFT_GUIDE.md)
-- 🐍 [Python Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/PYTHON_GUIDE.md)
-- ☕️ [Java 22+ & Kotlin Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/JVM_KOTLIN_GUIDE.md)
-- ⚡️ [C++20 & C11 Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/CPP_C_GUIDE.md)
-- 🦫 [Go Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/GO_GUIDE.md)
-- 🎯 [Dart & Flutter Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/DART_FLUTTER_GUIDE.md)
-- 🔷 [.NET 8+ (C#) Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/DOTNET_GUIDE.md)
-- 🟢 [Node.js & TypeScript Developer Guide](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/NODE_TYPESCRIPT_GUIDE.md)
-- 🛠 [Advanced Settings Recipes](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/ADVANCED_SETTINGS_RECIPES.md)
+- 🦀 [Rust Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/RUST_GUIDE.md)
+- 🐦 [Swift 6 Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/SWIFT_GUIDE.md)
+- 🐍 [Python Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/PYTHON_GUIDE.md)
+- ☕️ [Java 22+ & Kotlin Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/JVM_KOTLIN_GUIDE.md)
+- ⚡️ [C++20 & C11 Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/CPP_C_GUIDE.md)
+- 🦫 [Go Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/GO_GUIDE.md)
+- 🎯 [Dart & Flutter Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/DART_FLUTTER_GUIDE.md)
+- 🔷 [.NET 8+ (C#) Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/DOTNET_GUIDE.md)
+- 🟢 [Node.js & TypeScript Developer Guide](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/NODE_TYPESCRIPT_GUIDE.md)
+- 🛠 [Advanced Settings Recipes](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/ADVANCED_SETTINGS_RECIPES.md)

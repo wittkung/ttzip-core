@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI / FFI export functions for NEON-accelerated ZIP/TAR corrupt archive repair.
 

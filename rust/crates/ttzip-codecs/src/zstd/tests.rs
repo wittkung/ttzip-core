@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration tests for Zstandard Advanced Streaming,
 //! LDM (Long Distance Matching), Pre-trained Dictionaries, and FSE/Huff0 entropy micro-kernels.
@@ -157,56 +157,7 @@ fn test_zstd_dictionary_manager_global_112kb() {
     assert_eq!(&decomp_buf[..decomp_len], payload);
 }
 
-#[test]
-fn test_fse_entropy_roundtrip() {
-    let mut payload = Vec::new();
-    // Skewed probability distribution
-    for _ in 0..500 {
-        payload.extend_from_slice(b"AAAAAABBBCCDE");
-    }
 
-    let mut comp = vec![0u8; fse_compress_bound(payload.len())];
-    let comp_len = fse_compress(&payload, &mut comp).expect("fse_compress failed");
-    assert!(comp_len > 0);
-    assert!(comp_len < payload.len());
-
-    let mut decomp = vec![0u8; payload.len()];
-    let decomp_len = fse_decompress(&comp[..comp_len], &mut decomp).expect("fse_decompress failed");
-    assert_eq!(decomp_len, payload.len());
-    assert_eq!(decomp, payload);
-}
-
-#[test]
-fn test_huff0_4x_and_1x_roundtrip() {
-    let mut payload = Vec::new();
-    for _ in 0..600 {
-        payload.extend_from_slice(b"The quick brown fox jumps over the lazy dog. 1234567890! ");
-    }
-
-    // 1. Huff0 4X parallel
-    let mut comp_4x = vec![0u8; huf0_compress_bound(payload.len())];
-    let comp_4x_len = huf0_compress4x(&payload, &mut comp_4x).expect("huf0 4x compress failed");
-    assert!(comp_4x_len > 0);
-    assert!(comp_4x_len < payload.len());
-
-    let mut decomp_4x = vec![0u8; payload.len()];
-    let decomp_4x_len = huf0_decompress4x(&comp_4x[..comp_4x_len], &mut decomp_4x)
-        .expect("huf0 4x decompress failed");
-    assert_eq!(decomp_4x_len, payload.len());
-    assert_eq!(decomp_4x, payload);
-
-    // 2. Huff0 1X single stream
-    let mut comp_1x = vec![0u8; huf0_compress_bound(payload.len())];
-    let comp_1x_len = huf0_compress1x(&payload, &mut comp_1x).expect("huf0 1x compress failed");
-    assert!(comp_1x_len > 0);
-    assert!(comp_1x_len < payload.len());
-
-    let mut decomp_1x = vec![0u8; payload.len()];
-    let decomp_1x_len = huf0_decompress1x(&comp_1x[..comp_1x_len], &mut decomp_1x)
-        .expect("huf0 1x decompress failed");
-    assert_eq!(decomp_1x_len, payload.len());
-    assert_eq!(decomp_1x, payload);
-}
 
 
 

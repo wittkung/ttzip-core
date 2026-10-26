@@ -11,18 +11,18 @@
 This feature introduces a comprehensive, corpus-driven encryption test harness directly aligned with and adopting libarchive's gold-standard encryption regression fixtures, establishing a resilient 3-tier encryption introspection architecture, and closing the gap on multi-format encryption validation across ZIP, 7Z, RAR4, and RAR5.
 
 ### Phase 0 Research Deliverables
-- `- R001 [SUBAGENT:research] 《静态测试语料加载机制与打包格式选型》`: Resolved in [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/research.md#r001-静态测试语料加载机制与打包格式选型-fixture-loading--storage-strategy)
-- `- R002 [SUBAGENT:research] 《WinZip AES 与 7z/RAR5 加密规范与认证校验机制》`: Resolved in [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/research.md#r002-winzip-aes-与-7zrar5-加密规范与认证校验机制-encryption-matrix--authentication-verification)
-- `- R003 [SUBAGENT:research] 《三级加密状态自省与 Swift 错误模型对齐》`: Resolved in [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/research.md#r003-三级加密状态自省与-swift-错误模型对齐-3-tier-encryption-introspection--error-handling)
+- `- R001 [SUBAGENT:research] 《静态测试语料加载机制与打包格式选型》`: Resolved in [research.md](file://../specs/025-archive-encryption-corpus-regression/research.md#r001-静态测试语料加载机制与打包格式选型-fixture-loading--storage-strategy)
+- `- R002 [SUBAGENT:research] 《WinZip AES 与 7z/RAR5 加密规范与认证校验机制》`: Resolved in [research.md](file://../specs/025-archive-encryption-corpus-regression/research.md#r002-winzip-aes-与-7zrar5-加密规范与认证校验机制-encryption-matrix--authentication-verification)
+- `- R003 [SUBAGENT:research] 《三级加密状态自省与 Swift 错误模型对齐》`: Resolved in [research.md](file://../specs/025-archive-encryption-corpus-regression/research.md#r003-三级加密状态自省与-swift-错误模型对齐-3-tier-encryption-introspection--error-handling)
 
 ### Phase 1 Design Artifacts
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/data-model.md)
+- **Data Model**: [data-model.md](file://../specs/025-archive-encryption-corpus-regression/data-model.md)
 - **Contracts**:
-  - `ArchiveEntry` Schema: [archive_entry.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/contracts/archive_entry.schema.json)
-  - `ArchiveProbeRequest` Schema: [archive_probe_request.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/contracts/archive_probe_request.schema.json)
-  - `ArchiveProbeResponse` Schema: [archive_probe_response.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/contracts/archive_probe_response.schema.json)
-  - `ArchiveFixtureManifest` Schema: [archive_fixture_manifest.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/contracts/archive_fixture_manifest.schema.json)
-- **Quickstart Guide**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/025-archive-encryption-corpus-regression/quickstart.md)
+  - `ArchiveEntry` Schema: [archive_entry.schema.json](file://../specs/025-archive-encryption-corpus-regression/contracts/archive_entry.schema.json)
+  - `ArchiveProbeRequest` Schema: [archive_probe_request.schema.json](file://../specs/025-archive-encryption-corpus-regression/contracts/archive_probe_request.schema.json)
+  - `ArchiveProbeResponse` Schema: [archive_probe_response.schema.json](file://../specs/025-archive-encryption-corpus-regression/contracts/archive_probe_response.schema.json)
+  - `ArchiveFixtureManifest` Schema: [archive_fixture_manifest.schema.json](file://../specs/025-archive-encryption-corpus-regression/contracts/archive_fixture_manifest.schema.json)
+- **Quickstart Guide**: [quickstart.md](file://../specs/025-archive-encryption-corpus-regression/quickstart.md)
 
 ---
 

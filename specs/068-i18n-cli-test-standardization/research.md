@@ -34,10 +34,10 @@
   - *否决理由*：交互体验割裂，违背现代 macOS 原生应用交互标准，且对无状态的 CLI 脚本调用完全无效。
 
 ### 1.5 真实研究源 (Source)
-- `/Users/kevintung/Documents/dev/TTZip/Package.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/TTZipCLIApp.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/SettingsView.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveReader.swift`
+- `../Package.swift`
+- `../Sources/TTZipCLI/TTZipCLIApp.swift`
+- `../Sources/TTZipApp/Views/SettingsView.swift`
+- `../Sources/TTZipCore/ArchiveReader.swift`
 
 ---
 
@@ -80,8 +80,8 @@
 - IEEE Std 1003.1-2017 (POSIX.1-2017) Utility Syntax Guidelines
 - macOS SDK: `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sysexits.h`
 - [NO_COLOR Specification (no-color.org)](https://no-color.org)
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/CLIArgumentParser.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/CLICommandRouter.swift`
+- `../Sources/TTZipCLI/CLIArgumentParser.swift`
+- `../Sources/TTZipCLI/CLICommandRouter.swift`
 
 ---
 
@@ -119,8 +119,8 @@
   - *否决理由*：破坏了 TTZip 100% 独立自包含的工程铁律，且文本格式脆弱易碎。
 
 ### 3.5 真实研究源 (Source)
-- `/Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/XCTestPerformanceMeasureTests.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveMutationFuzzTests.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/SystemDifferentialTests.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/TestCommand.swift`
-- `/Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/TestReportGenerator.swift`
+- `../Tests/TTZipTests/XCTestPerformanceMeasureTests.swift`
+- `../Tests/TTZipTests/ArchiveMutationFuzzTests.swift`
+- `../Tests/TTZipTests/SystemDifferentialTests.swift`
+- `../Sources/TTZipCLI/TestCommand.swift`
+- `../Sources/TTZipCLI/TestReportGenerator.swift`

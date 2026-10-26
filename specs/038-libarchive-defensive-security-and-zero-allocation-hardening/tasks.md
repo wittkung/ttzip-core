@@ -3,8 +3,8 @@
 **Feature Directory**: `specs/038-libarchive-defensive-security-and-zero-allocation-hardening`  
 **Date**: 2026-08-16  
 **Status**: Ready for Implementation  
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/038-libarchive-defensive-security-and-zero-allocation-hardening/spec.md)  
-**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/038-libarchive-defensive-security-and-zero-allocation-hardening/plan.md)
+**Spec**: [spec.md](file://../specs/038-libarchive-defensive-security-and-zero-allocation-hardening/spec.md)  
+**Plan**: [plan.md](file://../specs/038-libarchive-defensive-security-and-zero-allocation-hardening/plan.md)
 
 ---
 

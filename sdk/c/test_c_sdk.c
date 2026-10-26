@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +35,7 @@ typedef struct {
 } ProgressData;
 
 static bool progress_collector(uint64_t processed_bytes, uint64_t total_bytes, const char *current_entry, void *user_data) {
+    (void)current_entry;
     if (!user_data) return true;
     ProgressData *data = (ProgressData *)user_data;
     data->call_count++;
@@ -108,9 +109,7 @@ int main(void) {
 
     ProgressData prog_data = { 0, 0, 0 };
     TTZipCreateOptions create_opts;
-    memset(&create_opts, 0, sizeof(create_opts));
-    create_opts.struct_size = sizeof(TTZipCreateOptions);
-    create_opts.abi_version = 2;
+    ttzip_create_options_init(&create_opts);
     create_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
     create_opts.level = TTZIP_COMPRESSION_LEVEL_NORMAL;
     create_opts.progress_callback = progress_collector;
@@ -135,11 +134,9 @@ int main(void) {
     // 6. Archive Extraction
     const char *extract_dir = "/tmp/ttzip_c_extracted_dir";
     TTZipExtractOptions extract_opts;
-    memset(&extract_opts, 0, sizeof(extract_opts));
-    extract_opts.struct_size = sizeof(TTZipExtractOptions);
-    extract_opts.abi_version = 2;
+    ttzip_extract_options_init(&extract_opts);
     extract_opts.destination_path = extract_dir;
-    extract_opts.overwrite_existing = true;
+    extract_opts.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     extract_opts.preserve_permissions = true;
 
     st = ttzip_extract_archive(archive_path, extract_dir, &extract_opts);
@@ -170,9 +167,7 @@ int main(void) {
         char lvl_archive[256];
         snprintf(lvl_archive, sizeof(lvl_archive), "/tmp/ttzip_c_lvl_%d.zip", i);
         TTZipCreateOptions lvl_opts;
-        memset(&lvl_opts, 0, sizeof(lvl_opts));
-        lvl_opts.struct_size = sizeof(TTZipCreateOptions);
-        lvl_opts.abi_version = 2;
+        ttzip_create_options_init(&lvl_opts);
         lvl_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
         lvl_opts.level = levels[i];
         lvl_opts.thread_budget = 1;
@@ -290,9 +285,7 @@ int main(void) {
     const char *wrong_pass = "WrongSecretPass!";
 
     TTZipCreateOptions pwd_create_opts;
-    memset(&pwd_create_opts, 0, sizeof(pwd_create_opts));
-    pwd_create_opts.struct_size = sizeof(TTZipCreateOptions);
-    pwd_create_opts.abi_version = 2;
+    ttzip_create_options_init(&pwd_create_opts);
     pwd_create_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
     pwd_create_opts.level = TTZIP_COMPRESSION_LEVEL_NORMAL;
     pwd_create_opts.encryption = TTZIP_ENCRYPTION_AES256;
@@ -303,23 +296,19 @@ int main(void) {
 
     // Extract with correct password
     TTZipExtractOptions pwd_ext_valid;
-    memset(&pwd_ext_valid, 0, sizeof(pwd_ext_valid));
-    pwd_ext_valid.struct_size = sizeof(TTZipExtractOptions);
-    pwd_ext_valid.abi_version = 2;
+    ttzip_extract_options_init(&pwd_ext_valid);
     pwd_ext_valid.destination_path = pwd_extract_valid;
     pwd_ext_valid.password = secret_pass;
-    pwd_ext_valid.overwrite_existing = true;
+    pwd_ext_valid.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     st = ttzip_extract_archive(pwd_archive, pwd_extract_valid, &pwd_ext_valid);
     assert(st == TTZIP_STATUS_OK);
 
     // Extract with wrong password
     TTZipExtractOptions pwd_ext_invalid;
-    memset(&pwd_ext_invalid, 0, sizeof(pwd_ext_invalid));
-    pwd_ext_invalid.struct_size = sizeof(TTZipExtractOptions);
-    pwd_ext_invalid.abi_version = 2;
+    ttzip_extract_options_init(&pwd_ext_invalid);
     pwd_ext_invalid.destination_path = pwd_extract_invalid;
     pwd_ext_invalid.password = wrong_pass;
-    pwd_ext_invalid.overwrite_existing = true;
+    pwd_ext_invalid.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     st = ttzip_extract_archive(pwd_archive, pwd_extract_invalid, &pwd_ext_invalid);
     assert(st != TTZIP_STATUS_OK);
 

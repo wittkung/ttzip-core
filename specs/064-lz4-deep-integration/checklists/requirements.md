@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality for LZ4 deep integration
 **Created**: 2026-08-17
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/spec.md)
+**Feature**: [spec.md](file://../specs/064-lz4-deep-integration/spec.md)
 
 ## Content Quality
 

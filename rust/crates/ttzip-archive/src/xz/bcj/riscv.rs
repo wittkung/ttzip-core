@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! RISC-V (RV32I / RV64I) BCJ Hardware Instruction Filter (Filter ID `0x0B`).
 //!

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -28,9 +28,24 @@ extension ArchiveTreeNode {
 
     /// Builds root level nodes backed by a persistent `UniFFIVfsTree`.
     /// Nodes are lazily paged and do NOT instantiate full recursive tree hierarchies in memory.
-    public static func buildRootNodes(from tree: UniFfiVfsTree, limit: Int = 1000) -> [ArchiveTreeNode] {
-        let paged = tree.getChildrenPaged(subpath: nil, offset: 0, limit: UInt32(limit))
-        return paged.nodes.map { ArchiveTreeNode(summary: $0, vfsTree: tree) }
+    /// If limit is provided, limits returned count to that value; if nil, performs continuous pagination.
+    public static func buildRootNodes(from tree: UniFfiVfsTree, limit: Int? = nil) -> [ArchiveTreeNode] {
+        if let limit = limit {
+            let paged = tree.getChildrenPaged(subpath: nil, offset: 0, limit: UInt32(limit))
+            return paged.nodes.map { ArchiveTreeNode(summary: $0, vfsTree: tree) }
+        }
+        var accumulated: [ArchiveTreeNode] = []
+        var currentOffset = 0
+        let batchSize = 1000
+        while true {
+            let paged = tree.getChildrenPaged(subpath: nil, offset: UInt32(currentOffset), limit: UInt32(batchSize))
+            accumulated.append(contentsOf: paged.nodes.map { ArchiveTreeNode(summary: $0, vfsTree: tree) })
+            currentOffset += paged.nodes.count
+            if currentOffset >= Int(paged.totalCount) || paged.nodes.isEmpty {
+                break
+            }
+        }
+        return accumulated
     }
 
     /// Obtains a paged window of children for a given subpath from a native `UniFFIVfsTree`.
@@ -56,17 +71,17 @@ public final class ArchiveTreeBuilder: @unchecked Sendable {
     }
 
     /// Builds root nodes directly backed by persistent UniFFIVfsTree without recursive class object allocation.
-    public static func buildTree(from tree: UniFfiVfsTree, limit: Int = 1000) -> [ArchiveTreeNode] {
+    public static func buildTree(from tree: UniFfiVfsTree, limit: Int? = nil) -> [ArchiveTreeNode] {
         return ArchiveTreeNode.buildRootNodes(from: tree, limit: limit)
     }
 
     /// Builds root nodes from an existing RustVfsSession.
-    public static func buildTree(from session: RustVfsSession, limit: Int = 1000) -> [ArchiveTreeNode] {
+    public static func buildTree(from session: RustVfsSession, limit: Int? = nil) -> [ArchiveTreeNode] {
         return ArchiveTreeNode.buildRootNodes(from: session.uniffiTree, limit: limit)
     }
 
     /// Directly opens an archive file and builds root nodes backed by UniFFIVfsTree.
-    public static func buildTree(archivePath: String, password: String? = nil, limit: Int = 1000) -> [ArchiveTreeNode]? {
+    public static func buildTree(archivePath: String, password: String? = nil, limit: Int? = nil) -> [ArchiveTreeNode]? {
         guard let session = RustVfsBridge.session(forArchivePath: archivePath, password: password) else {
             return nil
         }

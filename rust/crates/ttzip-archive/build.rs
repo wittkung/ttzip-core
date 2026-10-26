@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -20,11 +20,24 @@ fn main() {
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
-        if Path::new("/opt/homebrew/lib").exists() {
-            println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
-        }
-        if Path::new("/usr/local/lib").exists() {
-            println!("cargo:rustc-link-search=native=/usr/local/lib");
+        // Resolve native library search path hermetically without hardcoded host paths
+        if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
+            println!("cargo:rustc-link-search=native={lib_dir}");
+        } else if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
+            let p = Path::new(&brew_prefix).join("lib");
+            if p.exists() {
+                println!("cargo:rustc-link-search=native={}", p.display());
+            }
+        } else if let Ok(output) = std::process::Command::new("pkg-config")
+            .args(["--variable=libdir", "libarchive"])
+            .output()
+        {
+            if output.status.success() {
+                let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !dir.is_empty() && Path::new(&dir).exists() {
+                    println!("cargo:rustc-link-search=native={dir}");
+                }
+            }
         }
         println!("cargo:rustc-link-lib=archive");
         println!("cargo:rustc-link-lib=iconv");

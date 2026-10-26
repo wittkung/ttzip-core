@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
 @testable import TTZipCore
@@ -123,6 +123,7 @@ final class UniFFIBindingsTests: XCTestCase {
             let extractReport = try extractArchiveStream(
                 archivePath: archivePath,
                 destinationDir: extractDir.path,
+                policy: .keepBoth,
                 password: nil,
                 progress: nil,
                 token: nil

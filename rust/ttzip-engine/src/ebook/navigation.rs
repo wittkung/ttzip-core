@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! E-book Navigation Extractor for EPUB 2 NCX and EPUB 3 Navigation Documents.
 //!
@@ -109,12 +109,12 @@ impl EbookNavigationExtractor {
                         }
                     }
                 }
-                Event::Text(ref e) if in_text => {
+                Event::Text(e) if in_text => {
                     if let Ok(s) = e.unescape() {
                         label_text.push_str(&s);
                     }
                 }
-                Event::CData(ref e) if in_text => {
+                Event::CData(e) if in_text => {
                     if let Ok(s) = std::str::from_utf8(e.as_ref()) {
                         label_text.push_str(s);
                     }
@@ -227,7 +227,7 @@ impl EbookNavigationExtractor {
                         _ => {}
                     }
                 }
-                Event::Text(ref e) if in_toc_nav && in_a => {
+                Event::Text(e) if in_toc_nav && in_a => {
                     if let Ok(s) = e.unescape() {
                         if !text_buf.is_empty() {
                             text_buf.push(' ');
@@ -235,7 +235,7 @@ impl EbookNavigationExtractor {
                         text_buf.push_str(&s);
                     }
                 }
-                Event::CData(ref e) if in_toc_nav && in_a => {
+                Event::CData(e) if in_toc_nav && in_a => {
                     if let Ok(s) = std::str::from_utf8(e.as_ref()) {
                         if !text_buf.is_empty() {
                             text_buf.push(' ');

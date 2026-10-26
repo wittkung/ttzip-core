@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Stream Header and Stream Footer parser, encoder, and flags comparison logic.
 
@@ -81,18 +81,21 @@ impl XzStreamHeader {
     /// - `[6..8]`: Stream Flags (2 bytes)
     /// - `[8..12]`: CRC32 of Stream Flags (4 bytes, little-endian)
     pub fn parse(bytes: &[u8; 12]) -> Result<Self, XzError> {
-        let magic: &[u8; 6] = bytes[0..6].try_into().unwrap();
-        if magic != &XZ_HEADER_MAGIC {
+        let mut magic = [0u8; 6];
+        magic.copy_from_slice(&bytes[0..6]);
+        if magic != XZ_HEADER_MAGIC {
             return Err(XzError::InvalidHeaderMagic {
                 expected: XZ_HEADER_MAGIC,
-                actual: *magic,
+                actual: magic,
             });
         }
 
         let flags_bytes = [bytes[6], bytes[7]];
         let flags = XzStreamFlags::parse(flags_bytes)?;
 
-        let expected_crc = u32::from_le_bytes(bytes[8..12].try_into().unwrap());
+        let mut crc_bytes = [0u8; 4];
+        crc_bytes.copy_from_slice(&bytes[8..12]);
+        let expected_crc = u32::from_le_bytes(crc_bytes);
         let actual_crc = crc32_fast(0, &flags_bytes);
 
         if expected_crc != actual_crc {
@@ -144,15 +147,18 @@ impl XzStreamFooter {
     /// - `[8..10]`: Stream Flags (2 bytes)
     /// - `[10..12]`: Footer Magic (`YZ`)
     pub fn parse(bytes: &[u8; 12]) -> Result<Self, XzError> {
-        let magic: &[u8; 2] = bytes[10..12].try_into().unwrap();
-        if magic != &XZ_FOOTER_MAGIC {
+        let mut magic = [0u8; 2];
+        magic.copy_from_slice(&bytes[10..12]);
+        if magic != XZ_FOOTER_MAGIC {
             return Err(XzError::InvalidFooterMagic {
                 expected: XZ_FOOTER_MAGIC,
-                actual: *magic,
+                actual: magic,
             });
         }
 
-        let expected_crc = u32::from_le_bytes(bytes[0..4].try_into().unwrap());
+        let mut crc_bytes = [0u8; 4];
+        crc_bytes.copy_from_slice(&bytes[0..4]);
+        let expected_crc = u32::from_le_bytes(crc_bytes);
         let actual_crc = crc32_fast(0, &bytes[4..10]);
 
         if expected_crc != actual_crc {
@@ -162,7 +168,9 @@ impl XzStreamFooter {
             });
         }
 
-        let stored_backward_size = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
+        let mut back_bytes = [0u8; 4];
+        back_bytes.copy_from_slice(&bytes[4..8]);
+        let stored_backward_size = u32::from_le_bytes(back_bytes);
         let backward_size = (stored_backward_size as u64 + 1) * XZ_BACKWARD_SIZE_UNIT;
 
         let flags_bytes = [bytes[8], bytes[9]];

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! End-to-end fidelity and compression gain integration tests for BCJ and BCJ2 4-Stream filters.
 

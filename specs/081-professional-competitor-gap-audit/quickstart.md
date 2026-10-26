@@ -1,7 +1,7 @@
 # Quickstart & Verification Guide: 081-professional-competitor-gap-audit
 
 **Feature**: TTZip 对标顶级专业归档软件全维度差距审计与深度能力补齐  
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/081-professional-competitor-gap-audit/spec.md)  
+**Spec**: [spec.md](file://../specs/081-professional-competitor-gap-audit/spec.md)  
 **Date**: 2026-08-18  
 
 ---

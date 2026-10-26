@@ -57,20 +57,20 @@ graph TD
 ## 五、 改动清单与组件设计 (Component Breakdown)
 
 ### 1. 正交管道数据模型与解耦中枢
-- `[NEW]` [`Sources/TTZipCore/Pipeline/ArchiveContainerFormat.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Pipeline/ArchiveContainerFormat.swift): 容器格式与流式滤镜正交枚举。
-- `[NEW]` [`Sources/TTZipCore/Pipeline/ArchivePipelineCompositor.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Pipeline/ArchivePipelineCompositor.swift): 正交管道组合器与 Fast-Path 判定。
-- `[NEW]` [`Sources/TTZipCore/Pipeline/TTZipStatus.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Pipeline/TTZipStatus.swift): 6 级错误码与状态恢复模型。
+- `[NEW]` [`Sources/TTZipCore/Pipeline/ArchiveContainerFormat.swift`](file://../Sources/TTZipCore/Pipeline/ArchiveContainerFormat.swift): 容器格式与流式滤镜正交枚举。
+- `[NEW]` [`Sources/TTZipCore/Pipeline/ArchivePipelineCompositor.swift`](file://../Sources/TTZipCore/Pipeline/ArchivePipelineCompositor.swift): 正交管道组合器与 Fast-Path 判定。
+- `[NEW]` [`Sources/TTZipCore/Pipeline/TTZipStatus.swift`](file://../Sources/TTZipCore/Pipeline/TTZipStatus.swift): 6 级错误码与状态恢复模型。
 
 ### 2. C 桥接层头文件自解释契约注释重构
-- `[MODIFY]` [`Sources/CTTZipBridge/include/ttzip_platform.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_platform.h): 补齐 libarchive 级四维契约注释。
-- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipBridge.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipBridge.h): 补齐四维契约注释。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/ttzip_platform.h`](file://../Sources/CTTZipBridge/include/ttzip_platform.h): 补齐 libarchive 级四维契约注释。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipBridge.h`](file://../Sources/CTTZipBridge/include/CTTZipBridge.h): 补齐四维契约注释。
 
 ### 3. Swift PAL 平台模块工业级 DocC 注释规范化
-- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformMemory.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformMemory.swift): 补齐复杂度、所有权与内存屏障文档。
-- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformPathSanitizer.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformPathSanitizer.swift): 补齐防御深度与不变式文档。
-- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformFileSystem.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformFileSystem.swift): 补齐 POSIX/Win32 映射与预分配文档。
-- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformHardware.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformHardware.swift): 补齐 CPU 拓扑与指令集探测文档。
+- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformMemory.swift`](file://../Sources/TTZipCore/Platform/PlatformMemory.swift): 补齐复杂度、所有权与内存屏障文档。
+- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformPathSanitizer.swift`](file://../Sources/TTZipCore/Platform/PlatformPathSanitizer.swift): 补齐防御深度与不变式文档。
+- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformFileSystem.swift`](file://../Sources/TTZipCore/Platform/PlatformFileSystem.swift): 补齐 POSIX/Win32 映射与预分配文档。
+- `[MODIFY]` [`Sources/TTZipCore/Platform/PlatformHardware.swift`](file://../Sources/TTZipCore/Platform/PlatformHardware.swift): 补齐 CPU 拓扑与指令集探测文档。
 
 ### 4. 单元测试套件
-- `[NEW]` [`Tests/TTZipTests/ArchiveOrthogonalPipelineTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveOrthogonalPipelineTests.swift): 正交组合与 Fast-Path 验证测试。
-- `[NEW]` [`Tests/TTZipTests/TTZipStatusAndRecoveryTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/TTZipStatusAndRecoveryTests.swift): 状态码映射与恢复测试。
+- `[NEW]` [`Tests/TTZipTests/ArchiveOrthogonalPipelineTests.swift`](file://../Tests/TTZipTests/ArchiveOrthogonalPipelineTests.swift): 正交组合与 Fast-Path 验证测试。
+- `[NEW]` [`Tests/TTZipTests/TTZipStatusAndRecoveryTests.swift`](file://../Tests/TTZipTests/TTZipStatusAndRecoveryTests.swift): 状态码映射与恢复测试。

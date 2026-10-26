@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Stream Header and Stream Footer fixed-length structural geometry, field layout constants, and strong types.
 
@@ -114,7 +114,7 @@ impl XzCheckType {
 }
 
 /// Strong-typed error variants for XZ stream header and footer decoding and validation.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum XzError {
     /// The stream header magic bytes do not match `XZ_HEADER_MAGIC`.
     #[error("Invalid XZ stream header magic: expected {expected:?}, found {actual:?}")]
@@ -232,14 +232,179 @@ pub enum XzError {
 
     /// I/O error occurred while reading or seeking stream.
     #[error("I/O error: {0}")]
-    Io(String),
+    Io(#[from] std::io::Error),
 }
 
-impl From<std::io::Error> for XzError {
+impl XzError {
+    /// Returns a zero-allocation iterator over the causal chain of errors.
     #[inline]
-    fn from(err: std::io::Error) -> Self {
-        XzError::Io(err.to_string())
+    #[must_use]
+    pub fn chain(&self) -> crate::types::ErrorChain<'_> {
+        crate::types::ErrorChain::empty()
+    }
+
+    /// Downcasts by reference to a specific error type along the causal source chain.
+    #[inline]
+    #[must_use]
+    pub fn downcast_ref<T: std::error::Error + 'static>(&self) -> Option<&T> {
+        let mut current: Option<&(dyn std::error::Error + 'static)> = Some(self);
+        while let Some(err) = current {
+            if let Some(target) = err.downcast_ref::<T>() {
+                return Some(target);
+            }
+            current = err.source();
+        }
+        None
+    }
+
+    /// Returns true if this error or any error in its causal chain matches the target type `T`.
+    #[inline]
+    #[must_use]
+    pub fn is<T: std::error::Error + 'static>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Navigates the causal chain to locate the bottom-most root cause.
+    #[inline]
+    #[must_use]
+    pub fn root_cause(&self) -> &(dyn std::error::Error + 'static) {
+        let mut current: &(dyn std::error::Error + 'static) = self;
+        while let Some(cause) = current.source() {
+            current = cause;
+        }
+        current
+    }
+
+    /// Borrows the underlying standard I/O error if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn as_io_error(&self) -> Option<&std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Mutably borrows the underlying standard I/O error if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn as_io_error_mut(&mut self) -> Option<&mut std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Extracts the underlying standard I/O error by value if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn into_io_error(self) -> Option<std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this error was caused by an underlying I/O failure.
+    #[inline]
+    #[must_use]
+    pub fn is_io(&self) -> bool {
+        self.as_io_error().is_some()
     }
 }
+
+impl Clone for XzError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::InvalidHeaderMagic { expected, actual } => Self::InvalidHeaderMagic { expected: *expected, actual: *actual },
+            Self::InvalidFooterMagic { expected, actual } => Self::InvalidFooterMagic { expected: *expected, actual: *actual },
+            Self::HeaderCrcMismatch { expected, actual } => Self::HeaderCrcMismatch { expected: *expected, actual: *actual },
+            Self::FooterCrcMismatch { expected, actual } => Self::FooterCrcMismatch { expected: *expected, actual: *actual },
+            Self::ReservedFlagsNonZero { byte0, reserved_bits } => Self::ReservedFlagsNonZero { byte0: *byte0, reserved_bits: *reserved_bits },
+            Self::UnsupportedCheckType(id) => Self::UnsupportedCheckType(*id),
+            Self::InvalidBackwardSize(sz) => Self::InvalidBackwardSize(*sz),
+            Self::FlagsMismatch { header, footer } => Self::FlagsMismatch { header: *header, footer: *footer },
+            Self::TruncatedData { expected, actual } => Self::TruncatedData { expected: *expected, actual: *actual },
+            Self::InvalidIndexIndicator(b) => Self::InvalidIndexIndicator(*b),
+            Self::IndexCrcMismatch { expected, actual } => Self::IndexCrcMismatch { expected: *expected, actual: *actual },
+            Self::NonZeroIndexPadding => Self::NonZeroIndexPadding,
+            Self::IndexRecordCountMismatch { expected, actual } => Self::IndexRecordCountMismatch { expected: *expected, actual: *actual },
+            Self::BackwardSizeMismatch { expected, actual } => Self::BackwardSizeMismatch { expected: *expected, actual: *actual },
+            Self::SizeOverflow(s) => Self::SizeOverflow(s),
+            Self::InvalidUnpaddedSize(sz) => Self::InvalidUnpaddedSize(*sz),
+            Self::InvalidVli(e) => Self::InvalidVli(e.clone()),
+            Self::BlockError(e) => Self::BlockError(e.clone()),
+            Self::ChecksumError(e) => Self::ChecksumError(e.clone()),
+            Self::DecompressError(s) => Self::DecompressError(s.clone()),
+            Self::UnsupportedFilter(f) => Self::UnsupportedFilter(*f),
+            Self::Io(err) => Self::Io(std::io::Error::new(err.kind(), err.to_string())),
+        }
+    }
+}
+
+impl PartialEq for XzError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::InvalidHeaderMagic { expected: e1, actual: a1 }, Self::InvalidHeaderMagic { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::InvalidFooterMagic { expected: e1, actual: a1 }, Self::InvalidFooterMagic { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::HeaderCrcMismatch { expected: e1, actual: a1 }, Self::HeaderCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::FooterCrcMismatch { expected: e1, actual: a1 }, Self::FooterCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::ReservedFlagsNonZero { byte0: b1, reserved_bits: r1 }, Self::ReservedFlagsNonZero { byte0: b2, reserved_bits: r2 }) => b1 == b2 && r1 == r2,
+            (Self::UnsupportedCheckType(a), Self::UnsupportedCheckType(b)) => a == b,
+            (Self::InvalidBackwardSize(a), Self::InvalidBackwardSize(b)) => a == b,
+            (Self::FlagsMismatch { header: h1, footer: f1 }, Self::FlagsMismatch { header: h2, footer: f2 }) => h1 == h2 && f1 == f2,
+            (Self::TruncatedData { expected: e1, actual: a1 }, Self::TruncatedData { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::InvalidIndexIndicator(a), Self::InvalidIndexIndicator(b)) => a == b,
+            (Self::IndexCrcMismatch { expected: e1, actual: a1 }, Self::IndexCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::NonZeroIndexPadding, Self::NonZeroIndexPadding) => true,
+            (Self::IndexRecordCountMismatch { expected: e1, actual: a1 }, Self::IndexRecordCountMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::BackwardSizeMismatch { expected: e1, actual: a1 }, Self::BackwardSizeMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::SizeOverflow(a), Self::SizeOverflow(b)) => a == b,
+            (Self::InvalidUnpaddedSize(a), Self::InvalidUnpaddedSize(b)) => a == b,
+            (Self::InvalidVli(a), Self::InvalidVli(b)) => a == b,
+            (Self::BlockError(a), Self::BlockError(b)) => a == b,
+            (Self::ChecksumError(a), Self::ChecksumError(b)) => a == b,
+            (Self::DecompressError(a), Self::DecompressError(b)) => a == b,
+            (Self::UnsupportedFilter(a), Self::UnsupportedFilter(b)) => a == b,
+            (Self::Io(a), Self::Io(b)) => a.kind() == b.kind() && a.to_string() == b.to_string(),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for XzError {}
+
+impl From<XzError> for std::io::Error {
+    fn from(err: XzError) -> Self {
+        match err {
+            XzError::Io(io_err) => io_err,
+            err => std::io::Error::new(std::io::ErrorKind::InvalidData, err),
+        }
+    }
+}
+
+// Compile-time barrier ensuring XzError memory bounds and contracts
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync + 'static>() {}
+    const fn assert_clone<T: Clone>() {}
+    const fn assert_unpin<T: Unpin>() {}
+    const fn assert_eq_bounds<T: Eq>() {}
+    const fn assert_from<T, U>()
+    where
+        U: From<T>,
+    {
+    }
+
+    assert_send_sync::<XzError>();
+    assert_clone::<XzError>();
+    assert_unpin::<XzError>();
+    assert_eq_bounds::<XzError>();
+
+    assert_from::<std::io::Error, XzError>();
+    assert_from::<XzError, std::io::Error>();
+
+    assert!(std::mem::size_of::<XzError>() <= 64);
+    assert!(std::mem::align_of::<XzError>() <= 8);
+};
 
 

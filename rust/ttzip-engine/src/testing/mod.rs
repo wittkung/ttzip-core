@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Testing utilities, SIMD binary hex diff engine, and deterministic fuzz mutation suite.
 
@@ -14,6 +14,14 @@ pub use differential::*;
 pub use fuzz::*;
 pub use fuzz_data_producer::*;
 pub use hex_diff::*;
+
+use std::time::Duration;
+
+/// Standard test timeout configuration constants ensuring deterministic test execution without arbitrary magic numbers.
+pub const TEST_FAST_TIMEOUT: Duration = Duration::from_millis(50);
+pub const TEST_INTEGRATION_TIMEOUT: Duration = Duration::from_millis(100);
+pub const TEST_CORRUPTED_SAFETY_TIMEOUT: Duration = Duration::from_millis(500);
+pub const TEST_DEFAULT_RETRY_COUNT: usize = 3;
 
 #[cfg(test)]
 mod tests {

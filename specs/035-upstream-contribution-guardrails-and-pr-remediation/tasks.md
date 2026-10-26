@@ -13,9 +13,9 @@
 
 **Goal**: 升级全局代码审查规范与建立专属上游贡献 SOP，从根源确立工程防线。
 
-- [x] T001 [P] [US1] 升级全局代码审查规范，在 `/Users/kevintung/.agents/skills/code-review/SKILL.md` 中新增第 5 节《系统级 C / 跨平台防御性编程审查规范》（包含 32/64 位溢出 clamp、流式 I/O NULL 判空、状态消费返回值检查）
-- [x] T002 [P] [US1] 创建开源上游贡献专员技能规范在 `/Users/kevintung/.agents/skills/upstream-contribution/SKILL.md`（包含 Git 纯净分支物理隔离断言、原子 Commit 序列编排、官方原生预言机对齐与社区沟通礼仪）
-- [x] T003 [US1] 更新 `/Users/kevintung/Documents/dev/TTZip/GEMINI.md`，在第七节注入上游贡献审查硬门禁协议
+- [x] T001 [P] [US1] 升级全局代码审查规范，在 `$HOME/.agents/skills/code-review/SKILL.md` 中新增第 5 节《系统级 C / 跨平台防御性编程审查规范》（包含 32/64 位溢出 clamp、流式 I/O NULL 判空、状态消费返回值检查）
+- [x] T002 [P] [US1] 创建开源上游贡献专员技能规范在 `$HOME/.agents/skills/upstream-contribution/SKILL.md`（包含 Git 纯净分支物理隔离断言、原子 Commit 序列编排、官方原生预言机对齐与社区沟通礼仪）
+- [x] T003 [US1] 更新 `../GEMINI.md`，在第七节注入上游贡献审查硬门禁协议
 
 
 **Checkpoint**: 规范与硬门禁就绪，所有后续 PR 代码修改必须无条件遵循此标准。

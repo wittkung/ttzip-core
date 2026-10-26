@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! `spk!` binary delta archive container serialization, deserialization, and compression.
 //!
@@ -218,7 +218,7 @@ fn write_chunk(buf: &mut Vec<u8>, data: &[u8]) {
 }
 
 #[inline]
-fn read_chunk<'a>(bytes: &'a [u8], offset: &mut usize) -> DeltaResult<Vec<u8>> {
+fn read_chunk(bytes: &[u8], offset: &mut usize) -> DeltaResult<Vec<u8>> {
     if *offset + 4 > bytes.len() {
         return Err(DeltaError::TruncatedData {
             needed: *offset + 4,
@@ -234,15 +234,22 @@ fn read_chunk<'a>(bytes: &'a [u8], offset: &mut usize) -> DeltaResult<Vec<u8>> {
     ]) as usize;
     *offset += 4;
 
-    if *offset + len > bytes.len() {
+    let end = offset
+        .checked_add(len)
+        .ok_or(DeltaError::TruncatedData {
+            needed: usize::MAX,
+            available: bytes.len(),
+        })?;
+
+    if end > bytes.len() {
         return Err(DeltaError::TruncatedData {
-            needed: *offset + len,
+            needed: end,
             available: bytes.len(),
         });
     }
 
-    let slice = &bytes[*offset..*offset + len];
-    *offset += len;
+    let slice = &bytes[*offset..end];
+    *offset = end;
     Ok(slice.to_vec())
 }
 

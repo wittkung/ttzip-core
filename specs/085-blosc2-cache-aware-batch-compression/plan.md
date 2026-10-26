@@ -1,6 +1,6 @@
 # Implementation Plan: Blosc2 Cache-Aware Batch Compression Pipeline
 
-**Branch**: `085-blosc2-cache-aware-batch-compression` | **Date**: 2026-08-18 | **Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/085-blosc2-cache-aware-batch-compression/spec.md)
+**Branch**: `085-blosc2-cache-aware-batch-compression` | **Date**: 2026-08-18 | **Spec**: [`spec.md`](file://../specs/085-blosc2-cache-aware-batch-compression/spec.md)
 
 ---
 
@@ -89,9 +89,9 @@ Tests/
 
 ## Phase 1: Design & Contracts
 
-- [x] Data Model defined in [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/085-blosc2-cache-aware-batch-compression/data-model.md)
-- [x] Interface Contracts defined in [`contracts/`](file:///Users/kevintung/Documents/dev/TTZip/specs/085-blosc2-cache-aware-batch-compression/contracts/)
+- [x] Data Model defined in [`data-model.md`](file://../specs/085-blosc2-cache-aware-batch-compression/data-model.md)
+- [x] Interface Contracts defined in [`contracts/`](file://../specs/085-blosc2-cache-aware-batch-compression/contracts/)
   - `batch-compression-request-schema.json` [SUBAGENT:research]
   - `batch-compression-response-schema.json` [SUBAGENT:research]
   - `batch-compression-event-schema.json` [SUBAGENT:research]
-- [x] Quickstart Validation Guide defined in [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/085-blosc2-cache-aware-batch-compression/quickstart.md)
+- [x] Quickstart Validation Guide defined in [`quickstart.md`](file://../specs/085-blosc2-cache-aware-batch-compression/quickstart.md)

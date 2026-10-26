@@ -30,20 +30,20 @@
 
 ## 3. Phase 0: Research Index
 
-- - R001 [SUBAGENT:research] 《DEFLATE 分块流式多线程无缝拼接与 BFINAL 机制》：详见 [`research.md#R001`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/research.md)
-- - R002 [SUBAGENT:research] 《libdeflate v1.21+ 源码升级与 macOS Universal 2 自动化编译参数》：详见 [`research.md#R002`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/research.md)
-- - R003 [SUBAGENT:research] 《Windows MSVC / CMake 跨平台 C 桥接层与符号导出设计》：详见 [`research.md#R003`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/research.md)
+- - R001 [SUBAGENT:research] 《DEFLATE 分块流式多线程无缝拼接与 BFINAL 机制》：详见 [`research.md#R001`](file://../specs/053-chunked-deflate-compressor/research.md)
+- - R002 [SUBAGENT:research] 《libdeflate v1.21+ 源码升级与 macOS Universal 2 自动化编译参数》：详见 [`research.md#R002`](file://../specs/053-chunked-deflate-compressor/research.md)
+- - R003 [SUBAGENT:research] 《Windows MSVC / CMake 跨平台 C 桥接层与符号导出设计》：详见 [`research.md#R003`](file://../specs/053-chunked-deflate-compressor/research.md)
 
 ---
 
 ## 4. Phase 1: Design Artifacts & Contracts
 
-- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/data-model.md)
+- **Data Model**: [`data-model.md`](file://../specs/053-chunked-deflate-compressor/data-model.md)
 - **Contracts** `[SUBAGENT:research]`:
-  - [`contracts/chunked_pipeline_options.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/chunked_pipeline_options.json)
-  - [`contracts/chunk_stream_event.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/chunk_stream_event.json)
-  - [`contracts/cross_platform_build_manifest.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/cross_platform_build_manifest.json)
-- **Validation Guide**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/quickstart.md)
+  - [`contracts/chunked_pipeline_options.json`](file://../specs/053-chunked-deflate-compressor/contracts/chunked_pipeline_options.json)
+  - [`contracts/chunk_stream_event.json`](file://../specs/053-chunked-deflate-compressor/contracts/chunk_stream_event.json)
+  - [`contracts/cross_platform_build_manifest.json`](file://../specs/053-chunked-deflate-compressor/contracts/cross_platform_build_manifest.json)
+- **Validation Guide**: [`quickstart.md`](file://../specs/053-chunked-deflate-compressor/quickstart.md)
 
 ---
 
@@ -51,43 +51,43 @@
 
 ### Component 1: CTTZipBridge (C Platform & Streaming Core)
 
-#### [NEW] [CTTZipPlatform.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipPlatform.h)
+#### [NEW] [CTTZipPlatform.h](file://../Sources/CTTZipBridge/include/CTTZipPlatform.h)
 - 跨平台系统抽象层 (PAL)，封装 `TTZIP_THREAD_LOCAL`、`TTZIP_API`、`ttzip_sleep_ms`、`ssize_t`、`O_BINARY` 与内存对齐分配。
 
-#### [NEW] [CTTZipBridge_ZipChunkedStream.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipBridge_ZipChunkedStream.h)
+#### [NEW] [CTTZipBridge_ZipChunkedStream.h](file://../Sources/CTTZipBridge/include/CTTZipBridge_ZipChunkedStream.h)
 - 分块流式压缩器 C 接口定义，声明 `ttzip_zip_chunked_stream_init`、`write_chunk`、`finish` 与 `free`。
 
-#### [NEW] [CTTZipBridge_ZipChunkedStream.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_ZipChunkedStream.c)
+#### [NEW] [CTTZipBridge_ZipChunkedStream.c](file://../Sources/CTTZipBridge/CTTZipBridge_ZipChunkedStream.c)
 - 1MB 分块流式多线程压缩核心实现，包含 32 槽位有界环形缓冲、RFC 1951 字节对齐同步块注入、增量 CRC-32 累加与保序落盘。
 
-#### [MODIFY] [CTTZipStreamCoder.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c)
+#### [MODIFY] [CTTZipStreamCoder.c](file://../Sources/CTTZipBridge/CTTZipStreamCoder.c)
 - 引入 `CTTZipPlatform.h`，将原生 `__thread` 迁移为 `TTZIP_THREAD_LOCAL`。
 
 ---
 
 ### Component 2: TTZipCore (Swift Adaptive Pipeline & Adapters)
 
-#### [NEW] [ChunkedDeflateStreamWriter.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ChunkedDeflateStreamWriter.swift)
+#### [NEW] [ChunkedDeflateStreamWriter.swift](file://../Sources/TTZipCore/Zip/ChunkedDeflateStreamWriter.swift)
 - Swift 强类型分块流式写入器包装，集成自适应路由：$\le 256\text{MB}$ 走 Whole-Buffer Fast-Path，$> 256\text{MB}$ 自动激活分块流式。
 
-#### [MODIFY] [LibdeflateCAdapter.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift)
+#### [MODIFY] [LibdeflateCAdapter.swift](file://../Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift)
 - 增加流式分块压缩适配协议方法，桥接 C 接口。
 
 ---
 
 ### Component 3: Build Scripts & Tooling
 
-#### [NEW] [build_libdeflate.sh](file:///Users/kevintung/Documents/dev/TTZip/scripts/build_libdeflate.sh)
+#### [NEW] [build_libdeflate.sh](file://../scripts/build_libdeflate.sh)
 - 自动化构建脚本，支持拉取 `libdeflate v1.22` 并编译产出 Universal 2 (`arm64` + `x86_64`) 静态库。
 
-#### [NEW] [CMakeLists.txt](file:///Users/kevintung/Documents/dev/TTZip/CMakeLists.txt)
+#### [NEW] [CMakeLists.txt](file://../CMakeLists.txt)
 - 根目录跨平台 CMake 构建工程，支持 MSVC / Clang-cl 构建 `libdeflate` 与 `CTTZipBridge`。
 
 ---
 
 ### Component 4: Tests & Regression
 
-#### [NEW] [ChunkedDeflateStreamingTests.swift](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ChunkedDeflateStreamingTests.swift)
+#### [NEW] [ChunkedDeflateStreamingTests.swift](file://../Tests/TTZipTests/ChunkedDeflateStreamingTests.swift)
 - 针对 1MB、256MB、500MB 及 1GB 样本的常驻内存（RSS $\le 64\text{MB}$）与差分测试（`/usr/bin/unzip` 100% 校验）。
 
 ---

@@ -1,6 +1,6 @@
 # Implementation Plan: TTZipCore Standalone Binary SDK Distribution & Complete Apple Isolation
 
-**Branch**: `226-core-standalone-sdk-and-apple-isolation` | **Date**: 2026-08-26 | **Spec**: [specs/226-core-standalone-sdk-and-apple-isolation/spec.md](file:///Users/kevintung/Documents/dev/products/ttzip/core/specs/226-core-standalone-sdk-and-apple-isolation/spec.md)
+**Branch**: `226-core-standalone-sdk-and-apple-isolation` | **Date**: 2026-08-26 | **Spec**: [specs/226-core-standalone-sdk-and-apple-isolation/spec.md](file://$HOME/Documents/dev/products/ttzip/core/specs/226-core-standalone-sdk-and-apple-isolation/spec.md)
 
 ---
 

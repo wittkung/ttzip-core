@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Format detection and format resolution submodule for Unified Orchestrator.
 
@@ -11,11 +11,21 @@ use crate::types::{TTZipArchiveFormat, TTZipStatus};
 
 /// Sniffs detailed 50+ archive format with 3-state evaluation.
 pub fn detect_archive_sniff(path: &Path) -> Result<SniffResult, TTZipStatus> {
+    if let Some(special) = sniff_special_container_headers(path) {
+        return Ok(SniffResult::Yes {
+            confidence: 100,
+            format: special,
+        });
+    }
     FormatSniffer::sniff_file(path).map_err(|_| TTZipStatus::ErrFileNotFound)
 }
 
 /// Detects format of an archive from file headers with extension fallback.
 pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundFormat>), TTZipStatus> {
+    if let Some(special) = sniff_special_container_headers(path) {
+        return Ok((special, None));
+    }
+
     let sniff = detect_format_file(path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
     if sniff.format != DetectedFormat::Unknown {
         return Ok((sniff.format, sniff.compound_format));
@@ -29,9 +39,10 @@ pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundForm
         }
     }
 
-    // Extension fallback
+    // Extension fallback (stripping numeric split suffix like .001 first)
     let ext_str = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    let lower = ext_str.to_lowercase();
+    let lower_raw = ext_str.to_lowercase();
+    let lower = strip_split_suffix_for_detect(&lower_raw);
     if lower.ends_with(".zip")
         || lower.ends_with(".cbz")
         || lower.ends_with(".jar")
@@ -196,3 +207,45 @@ pub fn resolve_create_format(format: TTZipArchiveFormat, dest_path: &Path) -> TT
         TTZipArchiveFormat::Zip
     }
 }
+
+fn strip_split_suffix_for_detect(name_lower: &str) -> &str {
+    if let Some((stem, ext)) = name_lower.rsplit_once('.') {
+        let is_num = ext.len() >= 3 && ext.bytes().all(|b| b.is_ascii_digit());
+        let is_z = ext.starts_with('z')
+            && ext.len() >= 3
+            && ext.as_bytes()[1..].iter().all(|b| b.is_ascii_digit());
+        if is_num || is_z {
+            return stem;
+        }
+    }
+    name_lower
+}
+
+fn sniff_special_container_headers(path: &Path) -> Option<DetectedFormat> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut f = std::fs::File::open(path).ok()?;
+    let mut head = [0u8; 8];
+    let n = f.read(&mut head).ok()?;
+    if n >= 4
+        && (&head[..4] == b"pbze"
+            || &head[..4] == b"AA01"
+            || &head[..4] == b"YAA1"
+            || &head[..4] == b"AEA1")
+    {
+        return Some(DetectedFormat::Aar);
+    }
+    let file_len = f.metadata().ok()?.len();
+    if file_len >= 512 && f.seek(SeekFrom::End(-512)).is_ok() {
+        let mut trailer = [0u8; 16];
+        if f.read_exact(&mut trailer).is_ok() && &trailer[..4] == b"koly" {
+            let version = u32::from_be_bytes([trailer[4], trailer[5], trailer[6], trailer[7]]);
+            let header_size =
+                u32::from_be_bytes([trailer[8], trailer[9], trailer[10], trailer[11]]);
+            if version == 4 && header_size == 512 {
+                return Some(DetectedFormat::Dmg);
+            }
+        }
+    }
+    None
+}
+

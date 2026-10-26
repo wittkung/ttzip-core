@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! RFC 1952 GZIP format standards compliance checker.
 
@@ -131,10 +131,17 @@ pub fn check_gzip_compliance(buffer: &[u8]) -> ComplianceReport {
     if buffer.len() >= 18 {
         report.add_validated_header("RFC 1952: Trailer CRC32 and ISIZE Fields (offset EOF-8)");
         let trailer_start = buffer.len() - 8;
-        let crc32_val = u32::from_le_bytes(buffer[trailer_start..trailer_start + 4].try_into().unwrap());
-        let isize_val = u32::from_le_bytes(buffer[trailer_start + 4..trailer_start + 8].try_into().unwrap());
-        report.add_metadata("trailer_crc32", format!("0x{:08X}", crc32_val));
-        report.add_metadata("trailer_isize", isize_val.to_string());
+        if let (Some(crc_slice), Some(isize_slice)) = (
+            buffer.get(trailer_start..trailer_start + 4),
+            buffer.get(trailer_start + 4..trailer_start + 8),
+        ) {
+            if let (Ok(crc_bytes), Ok(isize_bytes)) = (crc_slice.try_into(), isize_slice.try_into()) {
+                let crc32_val = u32::from_le_bytes(crc_bytes);
+                let isize_val = u32::from_le_bytes(isize_bytes);
+                report.add_metadata("trailer_crc32", format!("0x{:08X}", crc32_val));
+                report.add_metadata("trailer_isize", isize_val.to_string());
+            }
+        }
     } else {
         let citation = StandardCitation::new(ComplianceStandard::Rfc1952Gzip, "2.3.1", "Member Trailer");
         report.add_warning(citation, "RFC 1952: Stream too short to contain full trailer CRC32 and ISIZE fields", Some(buffer.len() as u64));

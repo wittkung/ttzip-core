@@ -3,8 +3,8 @@
 **Feature Branch**: `086-turbobench-architecture-evolution`  
 **Created**: 2026-08-18  
 **Status**: Ready for Implementation  
-**Specification**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/086-turbobench-architecture-evolution/spec.md)  
-**Research**: [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/086-turbobench-architecture-evolution/research.md)  
+**Specification**: [spec.md](file://../specs/086-turbobench-architecture-evolution/spec.md)  
+**Research**: [research.md](file://../specs/086-turbobench-architecture-evolution/research.md)  
 
 ---
 
@@ -45,12 +45,12 @@ This feature incorporates TurboBench & lzbench architectural capabilities across
 
 ## 3. Phase 1: Design Artifacts & Contracts
 
-- **Data Models**: Defined in [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/086-turbobench-architecture-evolution/data-model.md).
+- **Data Models**: Defined in [data-model.md](file://../specs/086-turbobench-architecture-evolution/data-model.md).
 - **Contracts**:
   - `contracts/pareto-analysis.schema.json` [SUBAGENT:research]
   - `contracts/transfer-speed-sheet.schema.json` [SUBAGENT:research]
   - `contracts/smart-codec-recommendation.schema.json` [SUBAGENT:research]
-- **Validation Guide**: Defined in [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/086-turbobench-architecture-evolution/quickstart.md).
+- **Validation Guide**: Defined in [quickstart.md](file://../specs/086-turbobench-architecture-evolution/quickstart.md).
 
 ---
 

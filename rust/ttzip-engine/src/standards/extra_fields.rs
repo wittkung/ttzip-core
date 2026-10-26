@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-copy ZIP Type-Length-Value (TLV) Extra Fields parser and validator.
 //!

@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-17  
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/041-full-codebase-standards-audit/spec.md)
+**Feature**: [spec.md](file://../specs/041-full-codebase-standards-audit/spec.md)
 
 ## Content Quality
 

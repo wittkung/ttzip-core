@@ -1,6 +1,6 @@
 # TTZip 专业解压缩软件 — 全功能清单、研发进度与单元测试全覆盖报告
 
-本文档汇总 TTZip 项目（路径：`/Users/kevintung/Documents/dev/TTZip`）在 8 大维度的详细功能清单矩阵、底层架构实现、独家压缩预设系统，以及 **43 个 XCTest 单元测试用例**的 100% 覆盖报告。
+本文档汇总 TTZip 项目（路径：`$HOME/Documents/dev/TTZip`）在 8 大维度的详细功能清单矩阵、底层架构实现、独家压缩预设系统，以及 **43 个 XCTest 单元测试用例**的 100% 覆盖报告。
 
 ---
 
@@ -64,7 +64,7 @@
 ## 二、 项目架构与代码结构
 
 ```text
-/Users/kevintung/Documents/dev/TTZip
+$HOME/Documents/dev/TTZip
 ├── Package.swift                   # SPM 配置 (Core, CLI, App, Tests 4大 Target)
 ├── LICENSE                         # MIT 商业授权协议
 ├── README.md                       # 产品说明

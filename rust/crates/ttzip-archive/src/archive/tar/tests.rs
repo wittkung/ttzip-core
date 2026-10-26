@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unit tests for pure Rust TAR (POSIX ustar, GNU, PAX) parser and generator.
 
@@ -191,11 +191,11 @@ use std::fs;
         let archive = TarArchive::open_slice(&archive_bytes).unwrap();
         let options = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 2,
-            overwrite_existing: true,
+            collision_policy: 0,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,

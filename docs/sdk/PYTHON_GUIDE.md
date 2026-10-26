@@ -1,8 +1,8 @@
 # 🐍 TTZip Python SDK Developer Guide
 
-[![PyPI](https://img.shields.io/badge/pypi-v1.0.0-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/python)
-[![Python: 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/python)
-[![Engine: PyO3 Safe Rust](https://img.shields.io/badge/binding-PyO3%20Native%20Extension-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/specs/217-python-native-pyo3-sdk/contracts/python_sdk_contract.md)
+[![PyPI](https://img.shields.io/badge/pypi-v1.0.0-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/python)
+[![Python: 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/python)
+[![Engine: PyO3 Safe Rust](https://img.shields.io/badge/binding-PyO3%20Native%20Extension-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/specs/217-python-native-pyo3-sdk/contracts/python_sdk_contract.md)
 
 The `ttzip` Python package provides high-performance native archiving, decompression, and in-memory codec operations. Built with **PyO3 directly against the Safe Rust microkernel**, `ttzip` releases the Python Global Interpreter Lock (GIL) during heavy computation and eliminates subprocess spawn overhead.
 

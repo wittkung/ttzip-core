@@ -1,8 +1,8 @@
 # ☕️ TTZip JVM & Kotlin Developer Guide
 
-[![Java 22+](https://img.shields.io/badge/Java-22%2B%20Panama%20FFM-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/jvm/src/main/java/com/ttzip/TTZip.java)
-[![Kotlin 2.0+](https://img.shields.io/badge/Kotlin-2.0%2B%20Flow%20%26%20Coroutines-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt)
-[![Zero-JNI](https://img.shields.io/badge/Architecture-Zero--JNI%20%2F%20Zero--Subprocess-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/BENCHMARK_MATRIX.md)
+[![Java 22+](https://img.shields.io/badge/Java-22%2B%20Panama%20FFM-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/jvm/src/main/java/com/ttzip/TTZip.java)
+[![Kotlin 2.0+](https://img.shields.io/badge/Kotlin-2.0%2B%20Flow%20%26%20Coroutines-purple.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/jvm/src/main/kotlin/com/ttzip/TTZipExtensions.kt)
+[![Zero-JNI](https://img.shields.io/badge/Architecture-Zero--JNI%20%2F%20Zero--Subprocess-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/BENCHMARK_MATRIX.md)
 
 `com.ttzip:ttzip-core` is the official Java 22+ and Kotlin SDK for TTZip. It completely eliminates legacy JNI overhead and slow subprocess calls by utilizing the **OpenJDK Project Panama Foreign Function & Memory (FFM) API** (`java.lang.foreign`), delivering native microsecond latencies and up to **4.47 GB/s** decompression throughput.
 

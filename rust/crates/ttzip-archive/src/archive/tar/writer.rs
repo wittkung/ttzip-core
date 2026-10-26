@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Streaming PAX-format TAR Archive Generator.
 //!
@@ -438,24 +438,30 @@ impl<W: Write> TarWriter<W> {
     }
 }
 
-/// Helper to recursively collect files and directories for TAR creation.
+/// Helper to recursively collect files and directories for TAR creation using an explicit heap worklist (O(1) stack).
 fn collect_tar_entries_recursive(
     root: &Path,
-    current: &Path,
+    start: &Path,
     out: &mut Vec<(PathBuf, String)>,
 ) -> std::io::Result<()> {
-    let rel_prefix = current.strip_prefix(root).unwrap_or(current);
-    let rel_str = rel_prefix.to_string_lossy().to_string();
+    let mut stack: Vec<PathBuf> = vec![start.to_path_buf()];
 
-    if !rel_str.is_empty() {
-        out.push((current.to_path_buf(), rel_str));
-    }
+    while let Some(current) = stack.pop() {
+        let rel_prefix = current.strip_prefix(root).unwrap_or(&current);
+        let rel_str = rel_prefix.to_string_lossy().to_string();
 
-    if let Ok(meta) = fs::symlink_metadata(current) {
-        if meta.is_dir() && !meta.file_type().is_symlink() {
-            for entry in fs::read_dir(current)? {
-                let entry = entry?;
-                collect_tar_entries_recursive(root, &entry.path(), out)?;
+        if !rel_str.is_empty() {
+            out.push((current.clone(), rel_str));
+        }
+
+        if let Ok(meta) = fs::symlink_metadata(&current) {
+            if meta.is_dir() && !meta.file_type().is_symlink() {
+                let mut children = Vec::new();
+                for entry in fs::read_dir(&current)? {
+                    children.push(entry?.path());
+                }
+                children.sort_unstable_by(|a, b| b.cmp(a));
+                stack.extend(children);
             }
         }
     }
@@ -472,7 +478,6 @@ pub fn write_tar_to_writer<W: Write>(
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let mut tar_writer = TarWriter::new(writer);
     let mut entries_to_write = Vec::new();
     for src_path in source_paths {
         if !src_path.exists() && fs::symlink_metadata(src_path).is_err() {
@@ -483,14 +488,35 @@ pub fn write_tar_to_writer<W: Write>(
             .map_err(|_| TTZipStatus::ErrFileNotFound)?;
     }
 
+    write_tar_entries_to_writer(&entries_to_write, writer, options)
+}
+
+/// Writes pre-collected `(disk_path, archive_path)` entries to any `Write` sink as a PAX/USTAR TAR stream.
+pub fn write_tar_entries_to_writer<W: Write>(
+    entries: &[(PathBuf, String)],
+    writer: W,
+    options: &TTZipCreateOptions,
+) -> Result<W, TTZipStatus> {
+    if entries.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+
+    let total_bytes: u64 = entries
+        .iter()
+        .filter_map(|(p, _)| fs::symlink_metadata(p).ok())
+        .filter(|m| m.is_file())
+        .map(|m| m.len())
+        .sum();
+
+    let mut tar_writer = TarWriter::new(writer);
     let mut processed_bytes: u64 = 0;
     let mut io_buf = vec![0u8; 64 * 1024];
-    for (abs_path, rel_name) in entries_to_write {
-        let meta = match fs::symlink_metadata(&abs_path) {
+
+    for (abs_path, rel_name) in entries {
+        let meta = match fs::symlink_metadata(abs_path) {
             Ok(m) => m,
             Err(_) => continue,
         };
-
         let mtime = meta
             .modified()
             .ok()
@@ -500,160 +526,33 @@ pub fn write_tar_to_writer<W: Write>(
         let filetype = meta.file_type();
 
         if filetype.is_symlink() {
-            if let Ok(target) = fs::read_link(&abs_path) {
-                tar_writer.append_symlink(&rel_name, &target.to_string_lossy(), 0o777, mtime)?;
+            if let Ok(target) = fs::read_link(abs_path) {
+                tar_writer.append_symlink(rel_name, &target.to_string_lossy(), 0o777, mtime)?;
             }
         } else if filetype.is_dir() {
             let mode = (meta.permissions().mode() & 0o777) as u32;
-            tar_writer.append_dir(&rel_name, mode, mtime)?;
+            tar_writer.append_dir(rel_name, mode, mtime)?;
         } else {
             let size = meta.len();
             let mode = (meta.permissions().mode() & 0o777) as u32;
-            let mut file = File::open(&abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-
-            let normalized_path = rel_name.replace('\\', "/");
-            let path_len = normalized_path.len();
-            let ustar_split = split_ustar_path(&normalized_path);
-
-            let needs_pax = ustar_split.is_none()
-                || size >= 0o77777777777
-                || mtime > 0o77777777777;
-
-            if needs_pax {
-                let mut pax_records = Vec::new();
-                if path_len > 100 {
-                    pax_records.push(("path", normalized_path.as_str()));
-                }
-                let size_str;
-                if size >= 0o77777777777 {
-                    size_str = size.to_string();
-                    pax_records.push(("size", &size_str));
-                }
-                let mtime_str;
-                if mtime > 0o77777777777 {
-                    mtime_str = mtime.to_string();
-                    pax_records.push(("mtime", &mtime_str));
-                }
-
-                let pax_payload = build_pax_payload(&pax_records);
-                let pax_filename = format!(
-                    "PaxHeaders.0/{}",
-                    normalized_path.rsplit('/').next().unwrap_or("entry")
-                );
-                let pax_header = TarHeader {
-                    name: pax_filename,
-                    mode: 0o644,
-                    uid: 0,
-                    gid: 0,
-                    size: pax_payload.len() as u64,
-                    mtime: mtime.max(0),
-                    chksum: 0,
-                    typeflag: TYPE_PAX_EXT_HEADER,
-                    linkname: String::new(),
-                    magic: *MAGIC_USTAR,
-                    version: *VERSION_USTAR,
-                    uname: "root".to_string(),
-                    gname: "root".to_string(),
-                    devmajor: 0,
-                    devminor: 0,
-                    prefix: String::new(),
-                };
-
-                let pax_block = build_tar_header_block(&pax_header);
-                tar_writer
-                    .inner
-                    .write_all(&pax_block)
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                tar_writer
-                    .inner
-                    .write_all(&pax_payload)
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-                let pax_pad =
-                    (TAR_BLOCK_SIZE - (pax_payload.len() % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
-                if pax_pad > 0 {
-                    tar_writer
-                        .inner
-                        .write_all(&ZERO_BLOCK[..pax_pad])
-                        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                }
-            }
-
-            let (prefix, name) = match ustar_split {
-                Some((pfx, nm)) => (pfx.to_string(), nm.to_string()),
-                None => (
-                    String::new(),
-                    truncate_to_char_boundary(&normalized_path, 100).to_string(),
-                ),
-            };
-
-            let header = TarHeader {
-                name,
-                mode: if mode != 0 { mode } else { 0o644 },
-                uid: 0,
-                gid: 0,
+            append_tar_regular_file_from_disk(
+                &mut tar_writer,
+                abs_path,
+                rel_name,
                 size,
-                mtime: mtime.max(0),
-                chksum: 0,
-                typeflag: TYPE_REGULAR,
-                linkname: String::new(),
-                magic: *MAGIC_USTAR,
-                version: *VERSION_USTAR,
-                uname: String::new(),
-                gname: String::new(),
-                devmajor: 0,
-                devminor: 0,
-                prefix,
-            };
-
-            let block = build_tar_header_block(&header);
-            tar_writer
-                .inner
-                .write_all(&block)
-                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-            if size > 0 {
-                let mut remaining = size;
-                while remaining > 0 {
-                    let to_read = (remaining as usize).min(io_buf.len());
-                    let n = file
-                        .read(&mut io_buf[..to_read])
-                        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                    if n == 0 {
-                        break;
-                    }
-                    tar_writer
-                        .inner
-                        .write_all(&io_buf[..n])
-                        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                    remaining = remaining.saturating_sub(n as u64);
-                    processed_bytes = processed_bytes.saturating_add(n as u64);
-
-                    if let Some(cb) = options.progress_callback {
-                        let rel_c = std::ffi::CString::new(rel_name.as_str()).unwrap_or_default();
-                        let should_continue = unsafe {
-                            cb(processed_bytes, processed_bytes, rel_c.as_ptr(), options.user_data)
-                        };
-                        if !should_continue {
-                            return Err(TTZipStatus::Cancelled);
-                        }
-                    }
-                }
-
-                let pad = (TAR_BLOCK_SIZE - ((size as usize) % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
-                if pad > 0 {
-                    tar_writer
-                        .inner
-                        .write_all(&ZERO_BLOCK[..pad])
-                        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                }
-            }
+                mode,
+                mtime,
+                &mut io_buf,
+                &mut processed_bytes,
+                total_bytes,
+                options,
+            )?;
         }
 
         if let Some(cb) = options.progress_callback {
             let rel_c = std::ffi::CString::new(rel_name.as_str()).unwrap_or_default();
             let should_continue = unsafe {
-                cb(processed_bytes, processed_bytes, rel_c.as_ptr(), options.user_data)
+                cb(processed_bytes, total_bytes.max(processed_bytes), rel_c.as_ptr(), options.user_data)
             };
             if !should_continue {
                 return Err(TTZipStatus::Cancelled);
@@ -663,4 +562,210 @@ pub fn write_tar_to_writer<W: Write>(
 
     tar_writer.finish()?;
     Ok(tar_writer.into_inner())
+}
+
+#[allow(clippy::too_many_arguments, reason = "Internal helper passing pre-allocated IO buffer and progress counters")]
+fn append_tar_regular_file_from_disk<W: Write>(
+    tar_writer: &mut TarWriter<W>,
+    abs_path: &Path,
+    rel_name: &str,
+    size: u64,
+    mode: u32,
+    mtime: i64,
+    io_buf: &mut [u8],
+    processed_bytes: &mut u64,
+    total_bytes: u64,
+    options: &TTZipCreateOptions,
+) -> Result<(), TTZipStatus> {
+    let mut file = File::open(abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let normalized_path = rel_name.replace('\\', "/");
+    let ustar_split = split_ustar_path(&normalized_path);
+
+    if ustar_split.is_none() || size >= 0o77777777777 || mtime > 0o77777777777 {
+        write_pax_extended_header(tar_writer, &normalized_path, size, mtime)?;
+    }
+
+    let (prefix, name) = match ustar_split {
+        Some((pfx, nm)) => (pfx.to_string(), nm.to_string()),
+        None => (
+            String::new(),
+            truncate_to_char_boundary(&normalized_path, 100).to_string(),
+        ),
+    };
+
+    let header = TarHeader {
+        name,
+        mode: if mode != 0 { mode } else { 0o644 },
+        uid: 0,
+        gid: 0,
+        size,
+        mtime: mtime.max(0),
+        chksum: 0,
+        typeflag: TYPE_REGULAR,
+        linkname: String::new(),
+        magic: *MAGIC_USTAR,
+        version: *VERSION_USTAR,
+        uname: String::new(),
+        gname: String::new(),
+        devmajor: 0,
+        devminor: 0,
+        prefix,
+    };
+
+    let block = build_tar_header_block(&header);
+    tar_writer
+        .inner
+        .write_all(&block)
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+    if size > 0 {
+        stream_tar_file_payload(
+            tar_writer,
+            &mut file,
+            rel_name,
+            size,
+            io_buf,
+            processed_bytes,
+            total_bytes,
+            options,
+        )?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments, reason = "Internal helper streaming file payload into tar writer with progress callback")]
+fn stream_tar_file_payload<W: Write>(
+    tar_writer: &mut TarWriter<W>,
+    file: &mut File,
+    rel_name: &str,
+    size: u64,
+    io_buf: &mut [u8],
+    processed_bytes: &mut u64,
+    total_bytes: u64,
+    options: &TTZipCreateOptions,
+) -> Result<(), TTZipStatus> {
+    let mut remaining = size;
+    while remaining > 0 {
+        let to_read = (remaining as usize).min(io_buf.len());
+        let n = file
+            .read(&mut io_buf[..to_read])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        if n == 0 {
+            break;
+        }
+        tar_writer
+            .inner
+            .write_all(&io_buf[..n])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        remaining = remaining.saturating_sub(n as u64);
+        *processed_bytes = processed_bytes.saturating_add(n as u64);
+
+        if let Some(cb) = options.progress_callback {
+            let rel_c = std::ffi::CString::new(rel_name).unwrap_or_default();
+            let should_continue = unsafe {
+                cb(*processed_bytes, total_bytes.max(*processed_bytes), rel_c.as_ptr(), options.user_data)
+            };
+            if !should_continue {
+                return Err(TTZipStatus::Cancelled);
+            }
+        }
+    }
+
+    let pad = (TAR_BLOCK_SIZE - ((size as usize) % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
+    if pad > 0 {
+        tar_writer
+            .inner
+            .write_all(&ZERO_BLOCK[..pad])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    }
+    Ok(())
+}
+
+fn write_pax_extended_header<W: Write>(
+    tar_writer: &mut TarWriter<W>,
+    normalized_path: &str,
+    size: u64,
+    mtime: i64,
+) -> Result<(), TTZipStatus> {
+    let mut pax_records = Vec::new();
+    if normalized_path.len() > 100 {
+        pax_records.push(("path", normalized_path));
+    }
+    let size_str;
+    if size >= 0o77777777777 {
+        size_str = size.to_string();
+        pax_records.push(("size", &size_str));
+    }
+    let mtime_str;
+    if mtime > 0o77777777777 {
+        mtime_str = mtime.to_string();
+        pax_records.push(("mtime", &mtime_str));
+    }
+
+    let pax_payload = build_pax_payload(&pax_records);
+    let pax_filename = format!(
+        "PaxHeaders.0/{}",
+        normalized_path.rsplit('/').next().unwrap_or("entry")
+    );
+    let pax_header = TarHeader {
+        name: pax_filename,
+        mode: 0o644,
+        uid: 0,
+        gid: 0,
+        size: pax_payload.len() as u64,
+        mtime: mtime.max(0),
+        chksum: 0,
+        typeflag: TYPE_PAX_EXT_HEADER,
+        linkname: String::new(),
+        magic: *MAGIC_USTAR,
+        version: *VERSION_USTAR,
+        uname: "root".to_string(),
+        gname: "root".to_string(),
+        devmajor: 0,
+        devminor: 0,
+        prefix: String::new(),
+    };
+
+    let pax_block = build_tar_header_block(&pax_header);
+    tar_writer
+        .inner
+        .write_all(&pax_block)
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    tar_writer
+        .inner
+        .write_all(&pax_payload)
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+    let pax_pad = (TAR_BLOCK_SIZE - (pax_payload.len() % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
+    if pax_pad > 0 {
+        tar_writer
+            .inner
+            .write_all(&ZERO_BLOCK[..pax_pad])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_collect_tar_entries_deep_worklist_iteration() {
+        let temp = tempdir().expect("tempdir");
+        let mut curr = temp.path().to_path_buf();
+        for i in 0..50 {
+            curr = curr.join(format!("level_{}", i));
+            fs::create_dir(&curr).expect("create_dir");
+        }
+        let leaf_file = curr.join("leaf.txt");
+        fs::write(&leaf_file, b"deep_content").expect("write");
+
+        let mut out = Vec::new();
+        collect_tar_entries_recursive(temp.path(), temp.path(), &mut out).expect("collect");
+
+        assert_eq!(out.len(), 51);
+        assert!(out.iter().any(|(_, rel)| rel.ends_with("leaf.txt")));
+    }
 }

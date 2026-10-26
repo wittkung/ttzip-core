@@ -1,6 +1,6 @@
 # Implementation Plan: Comprehensive Codebase Architecture & Quality Audit Remediation
 
-**Branch**: `220-comprehensive-codebase-and-quality-audit` | **Date**: 2026-08-24 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/220-comprehensive-codebase-and-quality-audit/spec.md)
+**Branch**: `220-comprehensive-codebase-and-quality-audit` | **Date**: 2026-08-24 | **Spec**: [spec.md](file://../specs/220-comprehensive-codebase-and-quality-audit/spec.md)
 
 **Input**: Feature specification from `specs/220-comprehensive-codebase-and-quality-audit/spec.md`
 

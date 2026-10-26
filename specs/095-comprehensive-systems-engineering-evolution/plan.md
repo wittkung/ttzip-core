@@ -40,13 +40,13 @@
 ## Phase 2: Implementation Breakdown by Component
 
 ### Component 1: Defensive C Core (`Sources/CTTZipBridge/`)
-1. [`CTTZipCommon.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipCommon.h):
+1. [`CTTZipCommon.h`](file://../Sources/CTTZipBridge/include/CTTZipCommon.h):
    - Add `ttzip_add_overflow`, `ttzip_mul_overflow`, `ttzip_sub_overflow`.
    - Add `TTZIP_STRUCT_MAGIC` (`0x545A4354`) and `TTZIP_POISON_FREE` (`0xDEADBEEFU`).
    - Add `TTZIP_CACHELINE_ALIGNED` (128 bytes on Apple Silicon ARM64, 64 bytes on x86_64).
-2. [`CTTZipBridge_Crypto.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Crypto.c):
+2. [`CTTZipBridge_Crypto.c`](file://../Sources/CTTZipBridge/CTTZipBridge_Crypto.c):
    - Add `ttzip_secure_zero` on sensitive key schedule buffers before function exit.
-3. [`Package.swift`](file:///Users/kevintung/Documents/dev/TTZip/Package.swift):
+3. [`Package.swift`](file://../Package.swift):
    - Add strict compiler flags: `-fvisibility=hidden`, `-Wall`, `-Wextra`, `-Wmissing-prototypes`, `-Wstrict-prototypes`, `-Wvla`, `-Wshadow`, `-Wformat=2`.
 
 ### Component 2: Documentation & Mathematical Invariants
@@ -56,11 +56,11 @@
    - `ttzip_bcj_arm64_neon.c`: ARM64 branch offset sign-extension arithmetic.
 
 ### Component 3: Testing & Verification Harness (`Tests/TTZipTests/`)
-1. [`DifferentialOracleTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/DifferentialOracleTests.swift):
+1. [`DifferentialOracleTests.swift`](file://../Tests/TTZipTests/DifferentialOracleTests.swift):
    - Expand oracle discovery to include `ditto`, `bsdtar`, `7z`, and `zipinfo`.
-2. [`ArchiveMutationFuzzTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveMutationFuzzTests.swift):
+2. [`ArchiveMutationFuzzTests.swift`](file://../Tests/TTZipTests/ArchiveMutationFuzzTests.swift):
    - Verify hostile archive defense against truncated streams, out-of-bounds varints, and overlapping headers.
 
 ### Component 4: Microarchitectural Search Acceleration (`Sources/TTZipCore/`)
-1. [`ArchiveSearchIndex.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Search/ArchiveSearchIndex.swift):
+1. [`ArchiveSearchIndex.swift`](file://../Sources/TTZipCore/Search/ArchiveSearchIndex.swift):
    - Implement fast candidate prefix/suffix filtering before calling scalar string matchers.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Adversarial Verification Test Suite for Challenger 2.
 //!
@@ -34,19 +34,25 @@ fn test_adv_multivol_missing_middle_volume_chain_truncation() {
     fs::write(&vol2, b"PART2_BBB").unwrap();
     fs::write(&vol4, b"PART4_DDD").unwrap();
 
-    // 1. Detection from vol1 stops at gap (returns 001 and 002)
-    let chain_from_1 = detect_volume_chain(&vol1).unwrap();
-    assert_eq!(chain_from_1.len(), 2);
-    assert_eq!(chain_from_1[0], vol1);
-    assert_eq!(chain_from_1[1], vol2);
+    // 1. Detection from vol1 rejects missing intermediate volume instead of silently truncating
+    let err_from_1 = detect_volume_chain(&vol1).expect_err("Missing middle volume must be rejected");
+    assert_eq!(err_from_1.kind(), std::io::ErrorKind::NotFound);
+    assert!(
+        err_from_1.to_string().contains("archive.7z.003"),
+        "Expected missing volume name 'archive.7z.003' in error, got: {}",
+        err_from_1
+    );
 
-    // 2. Detection from vol4 searches from 001 upwards and stops at gap
-    let chain_from_4 = detect_volume_chain(&vol4).unwrap();
-    assert_eq!(chain_from_4.len(), 2);
-    assert_eq!(chain_from_4[0], vol1);
-    assert_eq!(chain_from_4[1], vol2);
+    // 2. Detection from vol4 also rejects the missing intermediate volume
+    let err_from_4 = detect_volume_chain(&vol4).expect_err("Missing middle volume from part 4 must be rejected");
+    assert_eq!(err_from_4.kind(), std::io::ErrorKind::NotFound);
+    assert!(
+        err_from_4.to_string().contains("archive.7z.003"),
+        "Expected missing volume name 'archive.7z.003' in error, got: {}",
+        err_from_4
+    );
 
-    // 3. Passing the incomplete set explicitly reads continuous virtual stream
+    // 3. Passing an explicit volume list directly to VirtualMultiVolumeReader reads the provided segments
     let mut reader =
         VirtualMultiVolumeReader::from_volumes(vec![vol1.clone(), vol2.clone(), vol4.clone()])
             .unwrap();

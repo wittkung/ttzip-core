@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive compliance test suite verifying 25+ official XZ scenarios against the
 //! Tukaani XZ specification and reference test files.

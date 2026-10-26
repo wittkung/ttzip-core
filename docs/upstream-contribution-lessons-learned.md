@@ -114,14 +114,14 @@
 为确保上述经验永久成为团队的无意识肌肉记忆，我们已落盘以下资产：
 
 1. **双构建系统静态一致性审计工具**：
-   - 脚本路径：[`Vendor/worktrees/libarchive/pr-3391-crc32/scripts/audit_dual_build.py`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/libarchive/pr-3391-crc32/scripts/audit_dual_build.py)
+   - 脚本路径：[`Vendor/worktrees/libarchive/pr-3391-crc32/scripts/audit_dual_build.py`](file://../Vendor/worktrees/libarchive/pr-3391-crc32/scripts/audit_dual_build.py)
    - 作用：自动化对比 `Makefile.am` 与 `CMakeLists.txt` 的源文件列表，漏加源文件即报错退出。
 2. **物理预分配微基准测试工具**：
-   - 源码路径：[`scripts/bench_preallocate.c`](file:///Users/kevintung/Documents/dev/TTZip/scripts/bench_preallocate.c)
+   - 源码路径：[`scripts/bench_preallocate.c`](file://../scripts/bench_preallocate.c)
    - 作用：基于 `CLOCK_MONOTONIC` 测量 APFS / Linux fallocate 的真实吞吐增益与快速失败表现。
 3. **全局规则与技能更新**：
-   - [`GEMINI.md`](file:///Users/kevintung/Documents/dev/TTZip/GEMINI.md)：写入 §5.5 双构建系统全量物理验证与原型确界。
-   - [`.agents/skills/upstream-contribution/SKILL.md`](file:///Users/kevintung/.agents/skills/upstream-contribution/SKILL.md)：写入 Pre-Flight Checklist 强制双构建验证与 BSD 注释排版要求。
+   - [`GEMINI.md`](file://../GEMINI.md)：写入 §5.5 双构建系统全量物理验证与原型确界。
+   - [`.agents/skills/upstream-contribution/SKILL.md`](file://$HOME/.agents/skills/upstream-contribution/SKILL.md)：写入 Pre-Flight Checklist 强制双构建验证与 BSD 注释排版要求。
 
 ---
 

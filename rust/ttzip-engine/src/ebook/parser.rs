@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TTZip E-book Format Detector, OPF Package Parser, and Unified Parsing Microkernel.
 //!
@@ -646,12 +646,12 @@ fn parse_opf_xml(xml: &[u8], opf_dir: &str) -> EbookResult<ParsedOpfResult> {
                     }
                 }
             }
-            Event::Text(ref e) if in_metadata => {
+            Event::Text(e) if in_metadata => {
                 if let Ok(s) = e.unescape() {
                     text_buffer.push_str(&s);
                 }
             }
-            Event::CData(ref e) if in_metadata => {
+            Event::CData(e) if in_metadata => {
                 if let Ok(s) = std::str::from_utf8(e.as_ref()) {
                     text_buffer.push_str(s);
                 }

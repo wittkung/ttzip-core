@@ -32,4 +32,4 @@
 ### Phase 6: Zero-Cloud CI & LOC Defense Gate
 1. Execute `scripts/lint_loc_gate.sh`.
 2. Execute `scripts/run_local_ci_gate.sh`.
-3. Synchronize to `/Users/kevintung/Documents/dev/ttzip-core/` and push.
+3. Synchronize to `$HOME/Documents/dev/ttzip-core/` and push.

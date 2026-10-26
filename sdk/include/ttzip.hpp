@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef TTZIP_HPP
 #define TTZIP_HPP
@@ -241,7 +241,7 @@ inline void compress_files(
 
     TTZipCreateOptions opts{};
     opts.struct_size = sizeof(TTZipCreateOptions);
-    opts.abi_version = 2;
+    opts.abi_version = TTZIP_ABI_VERSION_3;
     opts.format = static_cast<TTZipArchiveFormat>(format);
     opts.level = static_cast<TTZipCompressionLevel>(level);
     opts.encryption = password.empty() ? TTZIP_ENCRYPTION_NONE : TTZIP_ENCRYPTION_AES256;
@@ -266,15 +266,16 @@ inline void extract_archive(
     const std::string& archive_path,
     const std::string& destination,
     const std::string& password = "",
-    uint32_t threads = 0
+    uint32_t threads = 0,
+    TTZipCollisionPolicy collision_policy = TTZIP_COLLISION_POLICY_KEEP_BOTH
 ) {
     TTZipExtractOptions opts{};
     opts.struct_size = sizeof(TTZipExtractOptions);
-    opts.abi_version = 2;
+    opts.abi_version = TTZIP_ABI_VERSION_3;
     opts.destination_path = destination.c_str();
     opts.password = password.empty() ? nullptr : password.c_str();
     opts.thread_budget = threads;
-    opts.overwrite_existing = true;
+    opts.collision_policy = static_cast<uint8_t>(collision_policy);
     opts.preserve_permissions = true;
     opts.dry_run = false;
 

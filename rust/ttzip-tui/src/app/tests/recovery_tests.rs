@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unit and integration tests for Password Recovery Modal, speed gauge, and Rayon worker.
 
@@ -133,11 +133,12 @@ fn test_recovery_runner_and_auto_unlock() {
     // Auto-unlock via Enter returns to Explorer with password stored
     state.handle_key_event(KeyEvent::from(KeyCode::Enter), tx.clone());
     assert_eq!(state.current_mode, AppMode::Explorer);
+    assert!(state.recovery_modal_state.is_none());
     assert_eq!(state.recovered_password.as_deref(), Some(password));
 }
 
 #[test]
-fn test_recovery_runner_generator_and_cancellation() {
+fn test_recovery_runner_generator_and_pre_start_cancellation() {
     let top = get_top_passwords();
     assert!(top.len() > 100);
     assert!(top.contains(&"123456".to_string()));
@@ -154,21 +155,27 @@ fn test_recovery_runner_generator_and_cancellation() {
     let token = CancellationToken::new();
     let (tx, rx) = crossbeam_channel::unbounded();
 
-    // Spawn huge search
-    spawn_recovery_worker(target, pins, 2, token.clone(), tx);
-
-    // Cancel immediately (< 5ms)
+    // Cancellation precedes worker creation; dictionary size is not synchronization.
     token.cancel(ttzip_engine::runtime::cancellation::CancellationReason::UserRequested);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(5000);
+    spawn_recovery_worker(target, pins, 2, token, tx);
 
-    let mut cancelled = false;
-    while let Ok(event) = rx.recv_timeout(std::time::Duration::from_millis(5000)) {
-        if let AppEvent::RecoveryCompleted(Err(msg)) = event {
-            assert!(msg.to_lowercase().contains("cancel"));
-            cancelled = true;
-            break;
+    let event = rx
+        .recv_timeout(deadline.saturating_duration_since(std::time::Instant::now()))
+        .expect("pre-cancelled worker must report a terminal event within the budget");
+    match event {
+        AppEvent::RecoveryCompleted(Err(message)) => {
+            assert!(message.to_lowercase().contains("cancel"));
         }
+        _ => panic!("pre-cancelled worker must report cancellation before any other event"),
     }
-    assert!(cancelled, "Recovery worker must report cancellation event");
+    assert!(
+        matches!(
+            rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now())),
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected)
+        ),
+        "worker must release its sender without emitting any event after cancellation"
+    );
 }
 
 #[test]

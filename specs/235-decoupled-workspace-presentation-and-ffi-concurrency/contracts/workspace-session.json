@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkspaceSessionContract",
+  "type": "object",
+  "required": ["activeTabID", "tabs"],
+  "properties": {
+    "activeTabID": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tabs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "historyStack", "viewState"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["fileSystem", "archive", "device", "storageInspector"]
+          },
+          "historyStack": {
+            "type": "object",
+            "required": ["backCount", "forwardCount", "current"],
+            "properties": {
+              "backCount": { "type": "integer" },
+              "forwardCount": { "type": "integer" },
+              "current": { "type": "string" }
+            }
+          },
+          "viewState": {
+            "type": "object",
+            "properties": {
+              "millerColumnPaths": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "selectedPaths": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "scrollTargetURL": { "type": ["string", "null"] },
+              "searchQuery": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zip64 Dual-Threshold Promotion State Machine and LFH/CDFH Type-Safe Orchestrator.
 //!
@@ -118,24 +118,36 @@ impl Zip64EocdRecord {
         }
     }
 
+    /// Serializes the fixed 56-byte header of the Zip64 EOCD record into a stack array without heap allocation.
+    #[inline]
+    #[must_use]
+    pub fn serialize_fixed_header(&self) -> [u8; ZIP64_EOCD_MIN_SIZE] {
+        let rec_size = 44u64 + self.extensible_data.len() as u64;
+        let mut out = [0u8; ZIP64_EOCD_MIN_SIZE];
+        out[0..4].copy_from_slice(&MAGIC_ZIP64_EOCD.to_le_bytes());
+        out[4..12].copy_from_slice(&rec_size.to_le_bytes());
+        out[12..14].copy_from_slice(&self.version_made_by.to_le_bytes());
+        out[14..16].copy_from_slice(&self.version_needed.to_le_bytes());
+        out[16..20].copy_from_slice(&self.disk_number.to_le_bytes());
+        out[20..24].copy_from_slice(&self.disk_with_cd_start.to_le_bytes());
+        out[24..32].copy_from_slice(&self.entries_on_this_disk.to_le_bytes());
+        out[32..40].copy_from_slice(&self.total_entries.to_le_bytes());
+        out[40..48].copy_from_slice(&self.cd_size.to_le_bytes());
+        out[48..56].copy_from_slice(&self.cd_offset.to_le_bytes());
+        out
+    }
+
     /// Serializes the Zip64 EOCD record into binary bytes.
     pub fn serialize(&self) -> Vec<u8> {
-        let rec_size = 44u64 + self.extensible_data.len() as u64;
-        let mut out = Vec::with_capacity(ZIP64_EOCD_MIN_SIZE + self.extensible_data.len());
-        out.extend_from_slice(&MAGIC_ZIP64_EOCD.to_le_bytes());
-        out.extend_from_slice(&rec_size.to_le_bytes());
-        out.extend_from_slice(&self.version_made_by.to_le_bytes());
-        out.extend_from_slice(&self.version_needed.to_le_bytes());
-        out.extend_from_slice(&self.disk_number.to_le_bytes());
-        out.extend_from_slice(&self.disk_with_cd_start.to_le_bytes());
-        out.extend_from_slice(&self.entries_on_this_disk.to_le_bytes());
-        out.extend_from_slice(&self.total_entries.to_le_bytes());
-        out.extend_from_slice(&self.cd_size.to_le_bytes());
-        out.extend_from_slice(&self.cd_offset.to_le_bytes());
-        if !self.extensible_data.is_empty() {
+        let fixed = self.serialize_fixed_header();
+        if self.extensible_data.is_empty() {
+            fixed.to_vec()
+        } else {
+            let mut out = Vec::with_capacity(ZIP64_EOCD_MIN_SIZE + self.extensible_data.len());
+            out.extend_from_slice(&fixed);
             out.extend_from_slice(&self.extensible_data);
+            out
         }
-        out
     }
 
     /// Parses a Zip64 EOCD record from a byte slice with boundary validation.
@@ -144,12 +156,13 @@ impl Zip64EocdRecord {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let sig = read_u32_le(slice, 0);
+        let fixed = &slice[..ZIP64_EOCD_MIN_SIZE];
+        let sig = read_u32_le(fixed, 0);
         if sig != MAGIC_ZIP64_EOCD {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let size_of_record = read_u64_le(slice, 4);
+        let size_of_record = read_u64_le(fixed, 4);
         if size_of_record < 44 {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
@@ -161,14 +174,14 @@ impl Zip64EocdRecord {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let version_made_by = read_u16_le(slice, 12);
-        let version_needed = read_u16_le(slice, 14);
-        let disk_number = read_u32_le(slice, 16);
-        let disk_with_cd_start = read_u32_le(slice, 20);
-        let entries_on_this_disk = read_u64_le(slice, 24);
-        let total_entries = read_u64_le(slice, 32);
-        let cd_size = read_u64_le(slice, 40);
-        let cd_offset = read_u64_le(slice, 48);
+        let version_made_by = read_u16_le(fixed, 12);
+        let version_needed = read_u16_le(fixed, 14);
+        let disk_number = read_u32_le(fixed, 16);
+        let disk_with_cd_start = read_u32_le(fixed, 20);
+        let entries_on_this_disk = read_u64_le(fixed, 24);
+        let total_entries = read_u64_le(fixed, 32);
+        let cd_size = read_u64_le(fixed, 40);
+        let cd_offset = read_u64_le(fixed, 48);
 
         let extensible_len = (size_of_record as usize) - 44;
         let extensible_data = if extensible_len > 0 {
@@ -234,14 +247,15 @@ impl Zip64EocdLocator {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let sig = read_u32_le(slice, 0);
+        let fixed = &slice[..ZIP64_LOCATOR_SIZE];
+        let sig = read_u32_le(fixed, 0);
         if sig != MAGIC_ZIP64_LOCATOR {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let disk_with_zip64_eocd = read_u32_le(slice, 4);
-        let zip64_eocd_offset = read_u64_le(slice, 8);
-        let total_disks = read_u32_le(slice, 16);
+        let disk_with_zip64_eocd = read_u32_le(fixed, 4);
+        let zip64_eocd_offset = read_u64_le(fixed, 8);
+        let total_disks = read_u32_le(fixed, 16);
 
         Ok(Self {
             disk_with_zip64_eocd,
@@ -271,15 +285,24 @@ pub enum Zip64ExtraField {
 }
 
 impl Zip64ExtraField {
+    /// Builds binary extra field for Local File Header (LFH) mode as a fixed 20-byte stack array.
+    #[inline]
+    #[must_use]
+    pub fn build_lfh_fixed(uncompressed_size: u64, compressed_size: u64) -> [u8; 4 + ZIP64_LFH_PAYLOAD_SIZE] {
+        let mut out = [0u8; 4 + ZIP64_LFH_PAYLOAD_SIZE];
+        out[0..2].copy_from_slice(&TAG_ZIP64.to_le_bytes());
+        out[2..4].copy_from_slice(&(ZIP64_LFH_PAYLOAD_SIZE as u16).to_le_bytes());
+        out[4..12].copy_from_slice(&uncompressed_size.to_le_bytes());
+        out[12..20].copy_from_slice(&compressed_size.to_le_bytes());
+        out
+    }
+
     /// Builds binary extra field for Local File Header (LFH) mode.
     /// Payload is strictly locked to 16 bytes (total 20 bytes with tag and size headers).
+    #[inline]
+    #[must_use]
     pub fn build_lfh(uncompressed_size: u64, compressed_size: u64) -> Vec<u8> {
-        let mut out = Vec::with_capacity(4 + ZIP64_LFH_PAYLOAD_SIZE);
-        out.extend_from_slice(&TAG_ZIP64.to_le_bytes());
-        out.extend_from_slice(&(ZIP64_LFH_PAYLOAD_SIZE as u16).to_le_bytes());
-        out.extend_from_slice(&uncompressed_size.to_le_bytes());
-        out.extend_from_slice(&compressed_size.to_le_bytes());
-        out
+        Self::build_lfh_fixed(uncompressed_size, compressed_size).to_vec()
     }
 
     /// Builds binary extra field for Central Directory File Header (CDFH) mode.
@@ -337,12 +360,14 @@ impl Zip64ExtraField {
     }
 
     /// Parses an LFH Zip64 extra field payload slice (must be >= 16 bytes).
+    #[inline]
     pub fn parse_lfh_payload(payload: &[u8]) -> Result<(u64, u64), TTZipStatus> {
         if payload.len() < ZIP64_LFH_PAYLOAD_SIZE {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
-        let uncomp = read_u64_le(payload, 0);
-        let comp = read_u64_le(payload, 8);
+        let fixed = &payload[..ZIP64_LFH_PAYLOAD_SIZE];
+        let uncomp = read_u64_le(fixed, 0);
+        let comp = read_u64_le(fixed, 8);
         Ok((uncomp, comp))
     }
 
@@ -628,3 +653,19 @@ impl Zip64DecisionMatrix {
         )
     }
 }
+
+// Compile-time barrier ensuring thread-safety, unpin, and layout invariants
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync + 'static>() {}
+    const fn assert_unpin<T: Unpin>() {}
+
+    assert_send_sync::<Zip64EocdRecord>();
+    assert_send_sync::<Zip64EocdLocator>();
+    assert_send_sync::<Zip64ExtraField>();
+
+    assert_unpin::<Zip64EocdRecord>();
+    assert_unpin::<Zip64EocdLocator>();
+    assert_unpin::<Zip64ExtraField>();
+
+    assert!(std::mem::size_of::<Zip64EocdLocator>() == 16);
+};

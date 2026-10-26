@@ -64,7 +64,7 @@ stateDiagram-v2
 
 ## 3. 双向一致性断言 (Bidirectional Consistency Assertions)
 
-- `ChunkedCompressionOptions` $\leftrightarrow$ [`contracts/chunked_pipeline_options.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/chunked_pipeline_options.json)
-- `StreamChunkDescriptor` $\leftrightarrow$ [`contracts/chunk_stream_event.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/chunk_stream_event.json)
-- `PlatformBuildManifest` $\leftrightarrow$ [`contracts/cross_platform_build_manifest.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/contracts/cross_platform_build_manifest.json)
+- `ChunkedCompressionOptions` $\leftrightarrow$ [`contracts/chunked_pipeline_options.json`](file://../specs/053-chunked-deflate-compressor/contracts/chunked_pipeline_options.json)
+- `StreamChunkDescriptor` $\leftrightarrow$ [`contracts/chunk_stream_event.json`](file://../specs/053-chunked-deflate-compressor/contracts/chunk_stream_event.json)
+- `PlatformBuildManifest` $\leftrightarrow$ [`contracts/cross_platform_build_manifest.json`](file://../specs/053-chunked-deflate-compressor/contracts/cross_platform_build_manifest.json)
 - **禁止裸对象**：所有契约模式严格定义全部属性并设置 `additionalProperties: false`，杜绝任何 `type: "object"` 占位。

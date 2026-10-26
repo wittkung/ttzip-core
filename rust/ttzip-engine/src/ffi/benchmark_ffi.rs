@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI FFI exports for hardware MIPS benchmarking, 50-point Matrix Gate, and Pareto visualization.
 
@@ -40,7 +40,7 @@ impl Default for TTZipMIPSBenchmarkResult {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             dictionary_size_mb: 32,
             thread_count: 1,
             compress_mips: 0.0,
@@ -58,7 +58,7 @@ impl From<MIPSResult> for TTZipMIPSBenchmarkResult {
     fn from(r: MIPSResult) -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             dictionary_size_mb: r.dictionary_size_mb,
             thread_count: r.thread_count,
             compress_mips: r.compress_mips,

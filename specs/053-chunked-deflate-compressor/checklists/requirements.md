@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-17
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/053-chunked-deflate-compressor/spec.md)
+**Feature**: [spec.md](file://../specs/053-chunked-deflate-compressor/spec.md)
 
 ## Content Quality
 

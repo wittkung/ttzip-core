@@ -34,8 +34,8 @@
   2. **并发 GCD 递归目录遍历 (`DispatchQueue.concurrentPerform` 每个子目录)**: 当目录层级深、扇出大时，过多的 GCD 任务导致线程池剧烈争用与文件描述符（FD）耗尽崩溃（`EMFILE`），故否决。
 
 - **Source**:  
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipDirectoryScanner.swift#L13-L125`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/NativeCoreArchitecture.swift#L45-L95`
+  - `file://../Sources/TTZipCore/Zip/ZipDirectoryScanner.swift#L13-L125`
+  - `file://../Sources/TTZipCore/NativeCoreArchitecture.swift#L45-L95`
   - macOS Kernel XNU APFS VFS Reference (`getattrlistbulk(2)`, `fts(3)`)
 
 ---
@@ -57,9 +57,9 @@
   2. **单文件直接 `Data(contentsOf: URL)` 独立读取压缩**: 产生 50,000 次 autoreleasepool 堆分配与 page-in，触发 macOS UBC (Unified Buffer Cache) 剧烈抖动，故否决。
 
 - **Source**:  
-  - `file:///Users/kevintung/Documents/dev/TTZip/GEMINI.md#L94-L125`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipExtract.c#L50-L120`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipParallelCompressor.swift`
+  - `file://../GEMINI.md#L94-L125`
+  - `file://../Sources/CTTZipBridge/CTTZipExtract.c#L50-L120`
+  - `file://../Sources/TTZipCore/Zip/ZipParallelCompressor.swift`
 
 ---
 
@@ -83,5 +83,5 @@
   2. **纯随机 `arc4random_buf` 填充文件**: 纯随机数据无法模拟真实微服务 JSON 和日志的字典重合度，无法有效验证 LZMA2/ZSTD/Deflate 真实匹配算法，故否决。
 
 - **Source**:  
-  - `file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/TestFixtureLoader.swift#L1-L80`
-  - `file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/XCTestPerformanceMeasureTests.swift#L20-L100`
+  - `file://../Tests/TTZipTests/TestFixtureLoader.swift#L1-L80`
+  - `file://../Tests/TTZipTests/XCTestPerformanceMeasureTests.swift#L20-L100`

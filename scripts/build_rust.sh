@@ -1,5 +1,5 @@
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 set -euo pipefail
 
@@ -128,7 +128,7 @@ echo "=========================================="
 echo "📦 Building TTZip Rust Engine (${BUILD_MODE})"
 echo "=========================================="
 
-mkdir -p "${SLICE_DIR}/Headers" "${REPO_ROOT}/Sources/CTTZipBridge/include" "${REPO_ROOT}/Sources/TTZipCore/Generated"
+mkdir -p "${SLICE_DIR}/Headers" "${REPO_ROOT}/Sources/TTZipEngineFFI/include" "${REPO_ROOT}/Sources/TTZipCore/Generated"
 
 echo "--> Target architectures: ${TARGETS[*]}"
 
@@ -168,11 +168,38 @@ for target in "${TARGETS[@]}"; do
         TARGET_PARTS+=("${CODEC_LIB}")
     fi
 
+    # Resolve library directory dynamically without hardcoded host paths
+    CANDIDATE_LIB_DIRS=()
+    if [ -n "${TTZIP_SYS_LIB_DIR:-}" ] && [ -d "${TTZIP_SYS_LIB_DIR}" ]; then
+        CANDIDATE_LIB_DIRS+=("${TTZIP_SYS_LIB_DIR}")
+    fi
+    if command -v brew >/dev/null 2>&1; then
+        BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
+        if [ -n "${BREW_PREFIX}" ] && [ -d "${BREW_PREFIX}/lib" ]; then
+            CANDIDATE_LIB_DIRS+=("${BREW_PREFIX}/lib")
+        fi
+    fi
+
     for libname in libdeflate.a liblz4.a libzstd.a; do
-        if [[ "${target}" == aarch64* ]] && [ -f "/opt/homebrew/lib/${libname}" ]; then
-            TARGET_PARTS+=("/opt/homebrew/lib/${libname}")
-        elif [[ "${target}" == x86_64* ]] && [ -f "/usr/local/lib/${libname}" ]; then
-            TARGET_PARTS+=("/usr/local/lib/${libname}")
+        FOUND_LIB=""
+        pkg_base="${libname#lib}"
+        pkg_base="${pkg_base%.a}"
+        if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists "${pkg_base}" 2>/dev/null; then
+            PKG_LIB_DIR="$(pkg-config --variable=libdir "${pkg_base}" 2>/dev/null || true)"
+            if [ -n "${PKG_LIB_DIR}" ] && [ -f "${PKG_LIB_DIR}/${libname}" ]; then
+                FOUND_LIB="${PKG_LIB_DIR}/${libname}"
+            fi
+        fi
+        if [ -z "${FOUND_LIB}" ]; then
+            for candidate in "${CANDIDATE_LIB_DIRS[@]}"; do
+                if [ -f "${candidate}/${libname}" ]; then
+                    FOUND_LIB="${candidate}/${libname}"
+                    break
+                fi
+            done
+        fi
+        if [ -n "${FOUND_LIB}" ]; then
+            TARGET_PARTS+=("${FOUND_LIB}")
         fi
     done
 
@@ -271,8 +298,11 @@ if [ -f "${FIRST_DYLIB}" ]; then
     # 幂等同步 Scaffolding 头文件
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" ]; then
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h"
-        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
+        copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/TTZipEngineFFI/include/ttzip_engineFFI.h"
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${SLICE_DIR}/Headers/ttzip_engineFFI.h"
+    fi
+    if [ -f "${REPO_ROOT}/Sources/TTZipEngineFFI/include/module.modulemap" ]; then
+        copy_if_changed "${REPO_ROOT}/Sources/TTZipEngineFFI/include/module.modulemap" "${SLICE_DIR}/Headers/module.modulemap"
     fi
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.modulemap" ]; then
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.modulemap" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.modulemap"

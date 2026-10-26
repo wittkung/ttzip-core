@@ -1,10 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Subcommand execution handler: list.
 
 use crate::cli::args::{VfsNodeContractDto, VfsTreeContractDto};
-use crate::cli::format::{format_bytes, parse_archive_entries, read_archive_data_auto};
+use crate::cli::format::{
+    format_bytes, parse_archive_entries, read_archive_data_auto, sanitize_terminal_display,
+};
 use crate::cli::handlers::extract::pattern_matches;
 use std::path::Path;
 
@@ -76,10 +78,11 @@ pub fn execute_list(
         return Ok(());
     }
 
+    let safe_archive_path = sanitize_terminal_display(&archive_path.display().to_string());
     if volumes.len() > 1 {
         println!(
             "Archive: {} (Format: {}, Multi-volume: {} parts, Entries: {})",
-            archive_path.display(),
+            safe_archive_path,
             format.name(),
             volumes.len(),
             entries.len()
@@ -87,7 +90,7 @@ pub fn execute_list(
     } else {
         println!(
             "Archive: {} (Format: {}, Entries: {})",
-            archive_path.display(),
+            safe_archive_path,
             format.name(),
             entries.len()
         );
@@ -109,12 +112,13 @@ pub fn execute_list(
             "-".to_string()
         };
 
-        let path_display = if entry.is_directory {
+        let raw_path_display = if entry.is_directory {
             format!("{}/", entry.relative_path.trim_end_matches('/'))
         } else {
             entry.relative_path.clone()
         };
 
+        let path_display = sanitize_terminal_display(&raw_path_display);
         let path_truncated = truncate_path_display(&path_display, 36);
 
         let crc_str = if entry.is_directory {

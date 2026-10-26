@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Cryptographic routines for SHA-1, HMAC-SHA1, PBKDF2-SHA1, and WinZip AES-256.
 //!

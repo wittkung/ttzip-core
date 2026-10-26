@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit test suite for TTZip delta patching, bsdiff/bspatch microkernel,
 //! format serialization, and boundary fault tolerance.
@@ -240,6 +240,6 @@ fn test_large_payload_multi_block_diff() {
         .expect("Large patch apply failed");
 
     assert_eq!(reconstructed, new_large);
+    assert_eq!(telemetry.bytes_in, patch.len());
     assert_eq!(telemetry.bytes_out, new_large.len());
-    assert_eq!(telemetry.bytes_out, 32768);
 }

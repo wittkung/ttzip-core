@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Phase 5 Integration Tests for Container Format Parsing and Parallel Execution Engine.
 //!
@@ -163,7 +163,7 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
     // Create archive using top-level helper
     let create_opt = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: ttzip_engine::types::TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -190,11 +190,11 @@ fn test_phase5_zip_e2e_disk_extraction_and_safe_landing() {
     // Extract all to destination directory
     let ext_opts = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 2,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: None,

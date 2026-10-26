@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #![allow(clippy::useless_conversion)]
 
@@ -184,7 +184,7 @@ fn compress(
 
         let options = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             format: fmt,
             level: opt_level,
             encryption: if c_pwd.is_some() {
@@ -247,11 +247,11 @@ fn extract(
 
         let options = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             destination_path: c_dest.as_ptr(),
             password: c_pwd.as_ref().map_or(std::ptr::null(), |p| p.as_ptr()),
             thread_budget: threads,
-            overwrite_existing: true,
+            collision_policy: 0,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,

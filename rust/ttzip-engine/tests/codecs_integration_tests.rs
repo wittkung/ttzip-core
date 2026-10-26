@@ -1,10 +1,11 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests and C-ABI validation for TTZip single-format codecs (Phase 3).
 
 use std::ffi::CStr;
 use std::thread;
+use ttzip_engine::codecs::*;
 use ttzip_engine::ffi::*;
 use ttzip_engine::*;
 

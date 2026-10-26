@@ -1,30 +1,25 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ZIP Archive Decompression and Extraction Engine.
 //!
 //! Features Rayon multi-core parallel decompression, thread-local libdeflate pooling,
 //! WinZip AES-256 hardware decryption, Direct I/O + APFS extent preallocation, and ZipSlip-immune safe landing.
 
-use crate::codecs::deflate::with_thread_local_decompressor;
 use crate::crypto::crc32::crc32_fast;
-use crate::crypto::sha1::winzip_aes256_decrypt_and_verify;
 use crate::fs::apfs::apfs_preallocate;
-use crate::fs::safe_extract::{
-    open_extracted_file_strictly_nofollow, sanitize_and_validate_path,
-    validate_no_intermediate_symlinks, SafeExtractEngine,
-};
+use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::security::zip_defense::{detect_overlapping_entries, ExtractionQuotaGuard};
 use crate::types::{TTZipExtractOptions, TTZipStatus};
 use crate::zip::parser::{parse_all_entries, parse_local_file_header, ZipEntry};
-use rayon::prelude::*;
 use std::ffi::CString;
 use std::fs;
 use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use ttzip_types::options::ProgressAtomicSheet;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 /// Maximum in-memory single-entry decompression threshold (64 MB).
 /// Entries exceeding 64 MB must use stream-to-disk or stream-to-sink fallback.
@@ -84,37 +79,32 @@ impl<'a> ZipArchive<'a> {
             .get(entry_idx)
             .ok_or(TTZipStatus::ErrInvalidOffset)?;
 
-        if entry.is_directory || entry.uncompressed_size == 0 {
+        if entry.is_directory || (entry.uncompressed_size == 0 && !entry.is_encrypted) {
+            return Ok(Vec::new());
+        }
+        if entry.uncompressed_size == 0 {
+            self.verify_entry_encryption_key(entry_idx, password)?;
             return Ok(Vec::new());
         }
 
-        let lfh_offset = entry.lfh_offset as usize;
+        let lfh_offset = usize::try_from(entry.lfh_offset).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
         let (payload_offset, _) = parse_local_file_header(self.data, lfh_offset)?;
-        let comp_size = entry.compressed_size as usize;
+        let comp_size = usize::try_from(entry.compressed_size).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
 
-        if payload_offset + comp_size > self.data.len() {
+        let payload_end = payload_offset.checked_add(comp_size).ok_or(TTZipStatus::ErrCorruptHeader)?;
+        if payload_end > self.data.len() {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let raw_payload = &self.data[payload_offset..payload_offset + comp_size];
-        let mut decrypted_storage = Vec::new();
-
-        let effective_payload = if entry.is_encrypted {
-            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
-            if pass.is_empty() {
-                return Err(TTZipStatus::ErrInvalidPassword);
-            }
-            if comp_size < 28 {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
-
-            let cipher_len = comp_size - 28;
-            decrypted_storage.resize(cipher_len, 0);
-            let dec_len = winzip_aes256_decrypt_and_verify(pass, raw_payload, &mut decrypted_storage)?;
-            &decrypted_storage[..dec_len]
-        } else {
-            raw_payload
-        };
+        let raw_payload = &self.data[payload_offset..payload_end];
+        let effective_cow = super::reader_stream::decrypt_slice_entry_payload(
+            self.data,
+            entry,
+            lfh_offset,
+            raw_payload,
+            password,
+        )?;
+        let effective_payload = effective_cow.as_ref();
 
         let uncomp_size = entry.uncompressed_size as usize;
         // Defense-in-depth: limit single-entry in-memory extraction to 64MB to prevent zip-bomb OOM attacks.
@@ -127,31 +117,40 @@ impl<'a> ZipArchive<'a> {
         match entry.actual_method {
             0 => {
                 if effective_payload.len() != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
+                    return Err(super::reader_stream::map_zipcrypto_decode_err(
+                        entry,
+                        TTZipStatus::ErrCorruptHeader,
+                    ));
                 }
                 out_buffer.copy_from_slice(effective_payload);
             }
             8 => {
-                let decomp_size = with_thread_local_decompressor(|dec| {
-                    dec.decompress(effective_payload, &mut out_buffer)
-                })?;
-                if decomp_size != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
-                }
+                super::reader_stream::decompress_deflate_in_memory(
+                    entry,
+                    effective_payload,
+                    &mut out_buffer,
+                )?;
             }
             93 => {
-                let decomp_size = crate::codecs::zstd::zstd_decompress(effective_payload, &mut out_buffer)?;
+                let decomp_size = crate::codecs::zstd::zstd_decompress(effective_payload, &mut out_buffer)
+                    .map_err(|e| super::reader_stream::map_zipcrypto_decode_err(entry, e))?;
                 if decomp_size != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
+                    return Err(super::reader_stream::map_zipcrypto_decode_err(
+                        entry,
+                        TTZipStatus::ErrCorruptHeader,
+                    ));
                 }
             }
             _ => return Err(TTZipStatus::ErrArchiveInitFailed),
         }
 
-        if !entry.is_encrypted || entry.crc32 != 0 {
+        if super::reader_stream::should_verify_entry_crc32(entry) {
             let computed_crc = crc32_fast(0, &out_buffer);
             if computed_crc != entry.crc32 {
-                return Err(TTZipStatus::ErrCorruptHeader);
+                return Err(super::reader_stream::map_zipcrypto_decode_err(
+                    entry,
+                    TTZipStatus::ErrCorruptHeader,
+                ));
             }
         }
 
@@ -164,13 +163,25 @@ impl<'a> ZipArchive<'a> {
         dest_dir: &Path,
         options: &TTZipExtractOptions,
     ) -> Result<ZipExtractReport, TTZipStatus> {
+        self.extract_all_with_sheet(dest_dir, options, None)
+    }
+
+    /// Extracts all entries to the destination directory with fine-grained cancellation and atomic progress tracking.
+    pub fn extract_all_with_sheet(
+        &self,
+        dest_dir: &Path,
+        options: &TTZipExtractOptions,
+        sheet: Option<&ProgressAtomicSheet>,
+    ) -> Result<ZipExtractReport, TTZipStatus> {
         let start_time = std::time::Instant::now();
         fs::create_dir_all(dest_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let jail = DirJail::open(dest_dir)?;
 
         let mut engine = SafeExtractEngine::for_root(dest_dir);
         let num_entries = self.entries.len();
         let mut total_uncomp_bytes = 0u64;
         let mut total_comp_bytes = 0u64;
+        let mut has_symlinks = false;
 
         let password_str = if !options.password.is_null() {
             unsafe { std::ffi::CStr::from_ptr(options.password) }
@@ -180,24 +191,53 @@ impl<'a> ZipArchive<'a> {
             None
         };
 
+        let has_encrypted = self.entries.iter().any(|e| e.is_encrypted);
+        if has_encrypted {
+            if password_str.filter(|p| !p.is_empty()).is_none() {
+                return Err(TTZipStatus::ErrInvalidPassword);
+            }
+            if let Some((enc_idx, _)) = self
+                .entries
+                .iter()
+                .enumerate()
+                .find(|(_, e)| {
+                    e.is_encrypted
+                        && !e.is_directory
+                        && ((e.compression_method == 99 && e.compressed_size >= 28)
+                            || (e.compression_method != 99 && e.compressed_size >= 12))
+                })
+            {
+                self.verify_entry_encryption_key(enc_idx, password_str)?;
+            }
+        }
+
+        let mut seen_file_comps = std::collections::HashSet::new();
         for entry in &self.entries {
             total_uncomp_bytes += entry.uncompressed_size;
             total_comp_bytes += entry.compressed_size;
 
             let safe_path = sanitize_and_validate_path(dest_dir, &entry.rel_path)?;
             let is_symlink = (entry.mode & 0o170000) == 0o120000;
-            if !is_symlink {
-                engine.register_entry(
-                    safe_path.clone(),
-                    entry.mode & 0o7777,
-                    entry.mtime_epoch_secs,
-                    0,
-                    entry.is_directory,
-                );
+            if is_symlink {
+                has_symlinks = true;
             }
+            if !entry.is_directory {
+                let comps = DirJail::extract_clean_components(&entry.rel_path)?;
+                if !seen_file_comps.insert(comps) {
+                    has_symlinks = true;
+                }
+            }
+            engine.register_entry_typed(
+                safe_path,
+                entry.mode & 0o7777,
+                entry.mtime_epoch_secs,
+                0,
+                entry.is_directory,
+                is_symlink,
+            );
 
-            if entry.is_directory {
-                fs::create_dir_all(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+            if entry.is_directory && !options.dry_run {
+                jail.create_dir_all_in_jail(&entry.rel_path)?;
             }
         }
 
@@ -220,93 +260,121 @@ impl<'a> ZipArchive<'a> {
             });
         }
 
-        let file_indices: Vec<usize> = self
+        let mut file_indices: Vec<usize> = self
             .entries
             .iter()
             .enumerate()
             .filter(|(_, e)| !e.is_directory)
             .map(|(i, _)| i)
             .collect();
+        if has_encrypted {
+            file_indices.sort_by_key(|&i| {
+                let e = &self.entries[i];
+                !(e.is_encrypted && e.uncompressed_size > 0)
+            });
+        }
 
         let thread_budget = crate::types::resolve_thread_budget(options.thread_budget);
-        let processed_bytes = Arc::new(AtomicU64::new(0));
-        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let local_sheet = ProgressAtomicSheet::with_total(total_uncomp_bytes);
+        let active_sheet = sheet.unwrap_or(&local_sheet);
+        active_sheet.set_total(total_uncomp_bytes);
 
-        if thread_budget <= 1 || file_indices.len() <= 4 {
+        if thread_budget <= 1
+            || file_indices.len() <= 4
+            || has_symlinks
+            || has_encrypted
+            || options.progress_callback.is_some()
+        {
             let mut quota_guard = ExtractionQuotaGuard::default_limits();
             for &idx in &file_indices {
+                if active_sheet.is_cancelled() {
+                    return Err(TTZipStatus::Cancelled);
+                }
                 let entry = &self.entries[idx];
                 quota_guard.observe_and_validate(entry.compressed_size, entry.uncompressed_size)?;
-                self.extract_single_file_to_disk(dest_dir, idx, entry, password_str)?;
-                let current_done = processed_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed)
-                    + entry.uncompressed_size;
+                self.extract_single_file_to_disk(
+                    &jail,
+                    idx,
+                    entry,
+                    password_str,
+                    Some(active_sheet),
+                    Some((options, total_uncomp_bytes)),
+                )?;
+                let current_done = active_sheet.read_snapshot().processed_bytes;
 
-                if let Some(cb) = options.progress_callback {
-                    let c_path = CString::new(entry.rel_path.as_str()).unwrap_or_default();
-                    let should_continue = unsafe {
-                        cb(current_done, total_uncomp_bytes, c_path.as_ptr(), options.user_data)
-                    };
-                    if !should_continue {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
+                let elapsed_secs = start_time.elapsed().as_secs_f64();
+                let instant_bps = if elapsed_secs > 0.001 {
+                    (current_done as f64 / elapsed_secs) as u64
+                } else {
+                    0
+                };
+                active_sheet.update_progress(current_done, instant_bps);
             }
         } else {
-            let pool = crate::platform::cpu::EngineThreadPool::global();
-
             let pwd_owned = password_str.map(|s| s.to_string());
             let quota_mutex = std::sync::Mutex::new(ExtractionQuotaGuard::default_limits());
-            let last_reported_bytes = Arc::new(AtomicU64::new(0));
-            let progress_cb = options.progress_callback;
-            let user_data_raw = options.user_data as usize;
 
-            let par_res = pool.install(|| {
-                file_indices.par_iter().try_for_each(|&idx| -> Result<(), TTZipStatus> {
-                    if cancel_flag.load(Ordering::Acquire) {
-                        return Err(TTZipStatus::Cancelled);
-                    }
+            let num_threads = ttzip_types::recommended_compute_threads().min(file_indices.len()).max(1);
+            let next_work_idx = std::sync::atomic::AtomicUsize::new(0);
+            let first_error: parking_lot::Mutex<Option<TTZipStatus>> = parking_lot::Mutex::new(None);
+            let pool = LocalWorkStealingPool::with_threads(num_threads);
 
-                    let entry = &self.entries[idx];
-                    {
-                        let mut guard = quota_mutex.lock().map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-                        guard.observe_and_validate(entry.compressed_size, entry.uncompressed_size)?;
-                    }
+            pool.scope(|s| {
+                for _ in 0..num_threads {
+                    s.spawn(|| {
+                        let res: Result<(), TTZipStatus> = (|| {
+                            loop {
+                                if active_sheet.is_cancelled() {
+                                    return Err(TTZipStatus::Cancelled);
+                                }
+                                if first_error.lock().is_some() {
+                                    break;
+                                }
+                                let work_i = next_work_idx.fetch_add(1, Ordering::Relaxed);
+                                if work_i >= file_indices.len() {
+                                    break;
+                                }
+                                let idx = file_indices[work_i];
+                                let entry = &self.entries[idx];
+                                {
+                                    let mut guard = quota_mutex.lock().map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+                                    guard.observe_and_validate(entry.compressed_size, entry.uncompressed_size)?;
+                                }
 
-                    self.extract_single_file_to_disk(dest_dir, idx, entry, pwd_owned.as_deref())?;
-                    let current_done = processed_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed)
-                        + entry.uncompressed_size;
-
-                    if let Some(cb) = progress_cb {
-                        let prev = last_reported_bytes.load(Ordering::Relaxed);
-                        if (current_done.saturating_sub(prev) >= 1024 * 1024 || current_done >= total_uncomp_bytes)
-                            && last_reported_bytes
-                                .compare_exchange(prev, current_done, Ordering::AcqRel, Ordering::Relaxed)
-                                .is_ok()
-                        {
-                            let c_path = CString::new(entry.rel_path.as_str()).unwrap_or_default();
-                            let should_continue = unsafe {
-                                cb(
-                                    current_done,
-                                    total_uncomp_bytes,
-                                    c_path.as_ptr(),
-                                    user_data_raw as *mut std::ffi::c_void,
-                                )
-                            };
-                            if !should_continue {
-                                cancel_flag.store(true, Ordering::Release);
-                                return Err(TTZipStatus::Cancelled);
+                                self.extract_single_file_to_disk(
+                                    &jail,
+                                    idx,
+                                    entry,
+                                    pwd_owned.as_deref(),
+                                    Some(active_sheet),
+                                    None,
+                                )?;
+                            }
+                            Ok(())
+                        })();
+                        if let Err(e) = res {
+                            let mut err_guard = first_error.lock();
+                            if err_guard.is_none() {
+                                *err_guard = Some(e);
                             }
                         }
-                    }
-                    Ok(())
-                })
+                    });
+                }
             });
-            par_res?;
+
+            if let Some(err) = first_error.into_inner() {
+                return Err(err);
+            }
         }
 
-        if options.preserve_permissions {
-            engine.apply_all()?;
+        if has_symlinks {
+            jail.verify_all_jail_symlinks()?;
         }
+
+        engine.apply_deferred_metadata(options.preserve_permissions)?;
+
+        active_sheet.mark_finished();
+
 
         Ok(ZipExtractReport {
             processed_entries_count: num_entries,
@@ -316,188 +384,179 @@ impl<'a> ZipArchive<'a> {
         })
     }
 
+    fn verify_entry_encryption_key(
+        &self,
+        entry_idx: usize,
+        password: Option<&str>,
+    ) -> Result<(), TTZipStatus> {
+        let entry = self
+            .entries
+            .get(entry_idx)
+            .ok_or(TTZipStatus::ErrInvalidOffset)?;
+        if !entry.is_encrypted {
+            return Ok(());
+        }
+        let pass = password
+            .filter(|p| !p.is_empty())
+            .ok_or(TTZipStatus::ErrInvalidPassword)?;
+        if entry.uncompressed_size == 0 && entry.compressed_size == 0 {
+            return Ok(());
+        }
+        let lfh_offset =
+            usize::try_from(entry.lfh_offset).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+        let (payload_offset, _) = parse_local_file_header(self.data, lfh_offset)?;
+        let comp_size =
+            usize::try_from(entry.compressed_size).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+        let payload_end = payload_offset
+            .checked_add(comp_size)
+            .ok_or(TTZipStatus::ErrCorruptHeader)?;
+        if payload_end > self.data.len() {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        let raw_payload = &self.data[payload_offset..payload_end];
+        super::reader_stream::decrypt_slice_entry_payload(
+            self.data,
+            entry,
+            lfh_offset,
+            raw_payload,
+            Some(pass),
+        )
+        .map(|_| ())
+    }
+
     fn extract_single_file_to_disk(
         &self,
-        dest_dir: &Path,
+        jail: &DirJail,
         idx: usize,
         entry: &ZipEntry,
         password: Option<&str>,
+        sheet: Option<&ProgressAtomicSheet>,
+        progress_ctx: Option<(&TTZipExtractOptions, u64)>,
     ) -> Result<(), TTZipStatus> {
-        let safe_path = sanitize_and_validate_path(dest_dir, &entry.rel_path)?;
-        if let Some(parent) = safe_path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        validate_no_intermediate_symlinks(dest_dir, &safe_path)?;
+        self.verify_entry_encryption_key(idx, password)?;
 
         let is_symlink = (entry.mode & 0o170000) == 0o120000;
         if is_symlink {
             let bytes = self.extract_entry_bytes(idx, password)?;
-            if let Ok(target_str) = std::str::from_utf8(&bytes) {
-                // Strict depth tracking traversal defense
-                let mut depth = Path::new(&entry.rel_path).components().count().saturating_sub(1);
-                for comp in Path::new(target_str).components() {
-                    match comp {
-                        std::path::Component::ParentDir => {
-                            if depth == 0 {
-                                return Err(TTZipStatus::ErrSecurityViolation);
-                            }
-                            depth -= 1;
-                        }
-                        std::path::Component::Normal(_) => {
-                            depth += 1;
-                        }
-                        std::path::Component::CurDir => {}
-                        std::path::Component::RootDir | std::path::Component::Prefix(_) => {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
+            let target_str =
+                std::str::from_utf8(&bytes).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+            jail.create_symlink_in_jail(&entry.rel_path, target_str)?;
+            return Self::check_zip_entry_progress(&entry.rel_path, sheet, progress_ctx);
+        }
+
+        let mut inflight =
+            crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.rel_path, true)?;
+        if entry.uncompressed_size > 0 {
+            let fd = inflight.file_mut().as_raw_fd();
+            let _ = apfs_preallocate(fd, entry.uncompressed_size as i64);
+
+            #[cfg(target_os = "macos")]
+            if entry.uncompressed_size >= DIRECT_IO_THRESHOLD {
+                unsafe {
+                    libc::fcntl(fd, libc::F_NOCACHE, 1);
+                }
+            }
+
+            self.extract_entry_to_sink_with_sheet(idx, password, inflight.file_mut(), sheet)?;
+        }
+        Self::check_zip_entry_progress(&entry.rel_path, sheet, progress_ctx)?;
+        inflight.commit(jail)
+    }
+
+    fn check_zip_entry_progress(
+        rel_path: &str,
+        sheet: Option<&ProgressAtomicSheet>,
+        progress_ctx: Option<(&TTZipExtractOptions, u64)>,
+    ) -> Result<(), TTZipStatus> {
+        if let Some((options, total_uncomp_bytes)) = progress_ctx {
+            if let Some(cb) = options.progress_callback {
+                let current_done = sheet.map_or(0, |s| s.read_snapshot().processed_bytes);
+                let c_path = CString::new(rel_path).unwrap_or_default();
+                let should_continue = unsafe {
+                    cb(
+                        current_done,
+                        total_uncomp_bytes,
+                        c_path.as_ptr(),
+                        options.user_data,
+                    )
+                };
+                if !should_continue {
+                    if let Some(s) = sheet {
+                        s.cancel();
                     }
+                    return Err(TTZipStatus::Cancelled);
                 }
-                if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
-                    let _ = fs::remove_file(&safe_path);
-                }
-                #[cfg(unix)]
-                let _ = std::os::unix::fs::symlink(target_str, &safe_path);
-                return Ok(());
             }
         }
-
-        if entry.uncompressed_size == 0 {
-            open_extracted_file_strictly_nofollow(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            return Ok(());
-        }
-
-        let mut file = open_extracted_file_strictly_nofollow(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-        let fd = file.as_raw_fd();
-
-        let _ = apfs_preallocate(fd, entry.uncompressed_size as i64);
-
-        #[cfg(target_os = "macos")]
-        if entry.uncompressed_size >= DIRECT_IO_THRESHOLD {
-            unsafe {
-                libc::fcntl(fd, libc::F_NOCACHE, 1);
-            }
-        }
-
-        self.extract_entry_to_sink(idx, password, &mut file)?;
         Ok(())
     }
 
     /// Streams decompressed entry bytes directly into `sink` with a bounded 64KB buffer quota,
     /// enforcing strict memory bounds without in-memory allocation limits.
+    #[inline]
     pub fn extract_entry_to_sink<W: Write>(
         &self,
         entry_idx: usize,
         password: Option<&str>,
         sink: &mut W,
     ) -> Result<u64, TTZipStatus> {
+        self.extract_entry_to_sink_with_sheet(entry_idx, password, sink, None)
+    }
+
+    /// Streams decompressed entry bytes directly into `sink` with fine-grained cancellation probe
+    /// and atomic progress updating on each 64KB chunk.
+    pub fn extract_entry_to_sink_with_sheet<W: Write>(
+        &self,
+        entry_idx: usize,
+        password: Option<&str>,
+        sink: &mut W,
+        sheet: Option<&ProgressAtomicSheet>,
+    ) -> Result<u64, TTZipStatus> {
         let entry = self
             .entries
             .get(entry_idx)
             .ok_or(TTZipStatus::ErrInvalidOffset)?;
 
-        if entry.is_directory || entry.uncompressed_size == 0 {
+        if entry.is_directory || (entry.uncompressed_size == 0 && !entry.is_encrypted) {
+            return Ok(0);
+        }
+        if entry.uncompressed_size == 0 {
+            self.verify_entry_encryption_key(entry_idx, password)?;
             return Ok(0);
         }
 
-        let lfh_offset = entry.lfh_offset as usize;
+        let lfh_offset = usize::try_from(entry.lfh_offset).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
         let (payload_offset, _) = parse_local_file_header(self.data, lfh_offset)?;
-        let comp_size = entry.compressed_size as usize;
+        let comp_size = usize::try_from(entry.compressed_size).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
 
-        if payload_offset + comp_size > self.data.len() {
+        let payload_end = payload_offset.checked_add(comp_size).ok_or(TTZipStatus::ErrCorruptHeader)?;
+        if payload_end > self.data.len() {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        let raw_payload = &self.data[payload_offset..payload_offset + comp_size];
-        let mut decrypted_storage = Vec::new();
+        let raw_payload = &self.data[payload_offset..payload_end];
+        let effective_cow = super::reader_stream::decrypt_slice_entry_payload(
+            self.data,
+            entry,
+            lfh_offset,
+            raw_payload,
+            password,
+        )?;
+        let effective_payload = effective_cow.as_ref();
 
-        let effective_payload = if entry.is_encrypted {
-            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
-            if pass.is_empty() {
-                return Err(TTZipStatus::ErrInvalidPassword);
-            }
-            if comp_size < 28 {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
+        let (total_written, computed_crc) =
+            super::reader_stream::decode_decrypted_payload_to_sink(
+                entry,
+                effective_payload,
+                sink,
+                sheet,
+            )?;
 
-            let cipher_len = comp_size - 28;
-            decrypted_storage.resize(cipher_len, 0);
-            let dec_len = winzip_aes256_decrypt_and_verify(pass, raw_payload, &mut decrypted_storage)?;
-            &decrypted_storage[..dec_len]
-        } else {
-            raw_payload
-        };
-
-        let mut computed_crc = 0u32;
-        let uncomp_size = entry.uncompressed_size;
-        let mut total_written = 0u64;
-
-        // Bounded 64KB buffer quota
-        const BUFFER_QUOTA: usize = 64 * 1024;
-        let mut chunk = [0u8; BUFFER_QUOTA];
-
-        match entry.actual_method {
-            0 => {
-                if (effective_payload.len() as u64) != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
-                }
-                for piece in effective_payload.chunks(BUFFER_QUOTA) {
-                    if total_written.saturating_add(piece.len() as u64)
-                        > entry.uncompressed_size.saturating_add(4096)
-                    {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    sink.write_all(piece).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                    computed_crc = crc32_fast(computed_crc, piece);
-                    total_written += piece.len() as u64;
-                }
-            }
-            8 => {
-                use std::io::Read;
-                let mut decoder = flate2::read::DeflateDecoder::new(effective_payload);
-                loop {
-                    let n = decoder.read(&mut chunk).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-                    if n == 0 {
-                        break;
-                    }
-                    if total_written.saturating_add(n as u64)
-                        > entry.uncompressed_size.saturating_add(4096)
-                    {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    sink.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                    computed_crc = crc32_fast(computed_crc, &chunk[..n]);
-                    total_written += n as u64;
-                }
-                if total_written != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
-                }
-            }
-            93 => {
-                use std::io::Read;
-                let mut decoder = crate::codecs::zstd::stream::ZstdStreamReader::new(effective_payload)?;
-                loop {
-                    let n = decoder.read(&mut chunk).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-                    if n == 0 {
-                        break;
-                    }
-                    if total_written.saturating_add(n as u64)
-                        > entry.uncompressed_size.saturating_add(4096)
-                    {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    sink.write_all(&chunk[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                    computed_crc = crc32_fast(computed_crc, &chunk[..n]);
-                    total_written += n as u64;
-                }
-                if total_written != uncomp_size {
-                    return Err(TTZipStatus::ErrCorruptHeader);
-                }
-            }
-            _ => return Err(TTZipStatus::ErrArchiveInitFailed),
-        }
-
-        if (!entry.is_encrypted || entry.crc32 != 0) && computed_crc != entry.crc32 {
-            return Err(TTZipStatus::ErrCorruptHeader);
+        if super::reader_stream::should_verify_entry_crc32(entry) && computed_crc != entry.crc32 {
+            return Err(super::reader_stream::map_zipcrypto_decode_err(
+                entry,
+                TTZipStatus::ErrCorruptHeader,
+            ));
         }
 
         Ok(total_written)
@@ -627,6 +686,76 @@ mod tests {
         let res = archive.extract_all(&dest, &opts);
         assert_eq!(res.err(), Some(TTZipStatus::ErrSecurityViolation));
         assert!(!outside.join("evil.txt").exists());
+    }
+
+    #[test]
+    fn test_extract_entry_to_sink_cancellation_probe() {
+        let payload = vec![0x42u8; 256 * 1024];
+        let items = vec![ZipInputItem {
+            rel_path: "large.bin".to_string(),
+            data: payload,
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        }];
+        let compressed = compress_items_parallel(
+            items,
+            1,
+            TTZipEncryptionMethod::None,
+            None,
+            1,
+        ).expect("compression failed");
+        let zip_bytes = assemble_zip_archive(&compressed).expect("assembly failed");
+
+        let archive = ZipArchive::open_slice(&zip_bytes).expect("open zip slice");
+        let sheet = ProgressAtomicSheet::new();
+        sheet.cancel();
+
+        let mut sink = Vec::new();
+        let res = archive.extract_entry_to_sink_with_sheet(0, None, &mut sink, Some(&sheet));
+        assert_eq!(res.err(), Some(TTZipStatus::Cancelled));
+    }
+
+    #[test]
+    fn test_extract_all_with_sheet_progress_and_cancel() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dest = tmp.path().join("extract_cancel");
+        fs::create_dir_all(&dest).unwrap();
+
+        let payload = vec![0x99u8; 128 * 1024];
+        let items = vec![ZipInputItem {
+            rel_path: "item.bin".to_string(),
+            data: payload,
+            mtime_epoch_secs: 1700000000,
+            mode: 0o644,
+            is_directory: false,
+        }];
+        let compressed = compress_items_parallel(
+            items,
+            1,
+            TTZipEncryptionMethod::None,
+            None,
+            1,
+        ).expect("compression failed");
+        let zip_bytes = assemble_zip_archive(&compressed).expect("assembly failed");
+
+        let archive = ZipArchive::open_slice(&zip_bytes).expect("open zip slice");
+
+        // Test normal extraction with sheet tracking
+        let sheet = ProgressAtomicSheet::new();
+        let opts = TTZipExtractOptions::default();
+        let report = archive.extract_all_with_sheet(&dest, &opts, Some(&sheet)).unwrap();
+        assert_eq!(report.processed_entries_count, 1);
+        let snap = sheet.read_snapshot();
+        assert!(snap.is_finished);
+        assert_eq!(snap.processed_bytes, 128 * 1024);
+
+        // Test cancellation abort
+        let cancel_sheet = ProgressAtomicSheet::new();
+        cancel_sheet.cancel();
+        let cancel_dest = tmp.path().join("dest2");
+        let res = archive.extract_all_with_sheet(&cancel_dest, &opts, Some(&cancel_sheet));
+        assert_eq!(res.err(), Some(TTZipStatus::Cancelled));
     }
 }
 

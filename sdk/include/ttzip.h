@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef TTZIP_H
 #define TTZIP_H
@@ -12,6 +12,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// MARK: - ABI Version & Collision Policy
+
+#define TTZIP_ABI_VERSION_3 3u
+#define TTZIP_ABI_VERSION   TTZIP_ABI_VERSION_3
+
+typedef enum TTZipCollisionPolicy {
+    TTZIP_COLLISION_POLICY_KEEP_BOTH = 0,
+    TTZIP_COLLISION_POLICY_REPLACE = 1,
+    TTZIP_COLLISION_POLICY_SKIP = 2,
+    TTZIP_COLLISION_POLICY_STOP = 3
+} TTZipCollisionPolicy;
 
 // MARK: - Status Codes
 
@@ -31,7 +43,11 @@ typedef enum TTZipStatus {
     TTZIP_STATUS_ERR_INVALID_PASSWORD = -10,
     TTZIP_STATUS_ERR_EXTRACTION_FAILED = -11,
     TTZIP_STATUS_ERR_COMPRESSION_FAILED = -12,
+    TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE = -13,
+    TTZIP_STATUS_ERR_BUFFER_TOO_SMALL = -14,
+    TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED = -24,
     TTZIP_STATUS_ERR_SECURITY_VIOLATION = -30,
+    TTZIP_STATUS_ERR_ABI_MISMATCH = -40,
     TTZIP_STATUS_ERR_PANIC_CAUGHT = -99
 } TTZipStatus;
 
@@ -128,7 +144,7 @@ typedef struct TTZipExtractOptions {
     const char *destination_path;
     const char *password;
     uint32_t thread_budget;
-    bool overwrite_existing;
+    uint8_t collision_policy;
     bool preserve_permissions;
     bool dry_run;
     TTZipProgressCallback progress_callback;
@@ -149,6 +165,8 @@ typedef struct TTZipCreateOptions {
 } TTZipCreateOptions;
 
 typedef struct TTZipErrorInfo {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipStatus status;
     int32_t error_code;
     char message[512];
@@ -172,9 +190,13 @@ typedef struct TTZipCpuCapsRaw {
 // MARK: - Rust C-ABI Export Prototypes
 
 const char *ttzip_rust_version(void);
+uint32_t ttzip_abi_version(void);
+bool ttzip_abi_is_compatible(uint32_t requested_version);
 TTZipStatus ttzip_rust_init(void);
 const char *ttzip_rust_status_string(TTZipStatus status);
 const char *ttzip_rust_last_error_message(void);
+bool ttzip_rust_get_last_error_info(TTZipErrorInfo *out_error);
+char *ttzip_rust_get_last_error_message_owned(void);
 void ttzip_rust_clear_last_error(void);
 bool ttzip_rust_is_hardware_accelerated(void);
 uint32_t ttzip_rust_crc32(uint32_t crc, const uint8_t *data, size_t len);
@@ -188,6 +210,36 @@ TTZipStatus ttzip_rust_create_archive(
     const TTZipCreateOptions *options
 );
 
+/*
+ * Extraction result contract (spec 229 FR-022 / FR-023), shared by
+ * ttzip_rust_extract_archive, ttzip_rust_archive_extract_unified,
+ * ttzip_rust_archive_extract_unified_v2 and ttzip_rust_archive_extract_selected:
+ *
+ *   - Entries are decoded into a private staging directory inside the destination and then
+ *     committed according to TTZipExtractOptions.collision_policy
+ *     (0 = Keep Both, 1 = Replace, 2 = Skip, 3 = Stop).
+ *   - TTZIP_STATUS_OK                    every staged item was committed (Skip decisions count as
+ *                                        resolved, not as failures).
+ *   - TTZIP_STATUS_CANCELLED             policy Stop found a destination conflict, or a progress
+ *                                        callback returned false; the destination is unchanged.
+ *   - TTZIP_STATUS_ERR_EXTRACTION_FAILED at least one item could not be committed (other items may
+ *                                        already be in place), or the commit could not start.
+ *   - Decode / integrity / password errors keep their own status; nothing is committed.
+ *   - Items that do not conflict, and Keep Both names, are placed only via an atomic exclusive
+ *     kernel primitive (RENAME_EXCL, or linkat for regular files); an existing file or
+ *     directory (even if empty) is never replaced unless policy Replace covers it. When no
+ *     atomic exclusive primitive is supported by the destination volume, the item fails with
+ *     ENOTSUP (TTZIP_STATUS_ERR_EXTRACTION_FAILED) without modifying the destination or staged
+ *     source.
+ *   - ttzip_rust_archive_extract_selected: *out_extracted_count is zeroed on entry; after a commit
+ *     it holds the number of destination placements actually performed (a directory moved as a
+ *     whole counts once); with dry_run it holds the number of matched entries.
+ *   - ttzip_rust_archive_extract_unified_v2: *out_extracted_bytes is 0 unless the result is
+ *     TTZIP_STATUS_OK; *out_error (792-byte ABI v3 TTZipErrorInfo) is initialized on entry
+ *     (struct_size = sizeof(TTZipErrorInfo), abi_version = TTZIP_ABI_VERSION_3, status = OK)
+ *     and populated with status, error_code, message, entry_path, and offset on any non-OK
+ *     return.
+ */
 TTZipStatus ttzip_rust_extract_archive(
     const char *archive_path,
     const char *destination_path,
@@ -333,6 +385,40 @@ int32_t ttzip_rust_zipcrypto_encrypt(const uint8_t *password, size_t password_le
 
 // MARK: - Inline C SDK Wrappers
 
+static inline void ttzip_error_info_init(TTZipErrorInfo *info) {
+    if (!info) {
+        return;
+    }
+    memset(info, 0, sizeof(*info));
+    info->struct_size = (uint32_t)sizeof(TTZipErrorInfo);
+    info->abi_version = TTZIP_ABI_VERSION_3;
+    info->status = TTZIP_STATUS_OK;
+}
+
+static inline void ttzip_extract_options_init(TTZipExtractOptions *options) {
+    if (!options) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = (uint32_t)sizeof(TTZipExtractOptions);
+    options->abi_version = TTZIP_ABI_VERSION_3;
+    options->collision_policy = TTZIP_COLLISION_POLICY_KEEP_BOTH;
+    options->preserve_permissions = true;
+}
+
+static inline void ttzip_create_options_init(TTZipCreateOptions *options) {
+    if (!options) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = (uint32_t)sizeof(TTZipCreateOptions);
+    options->abi_version = TTZIP_ABI_VERSION_3;
+    options->format = TTZIP_ARCHIVE_FORMAT_ZIP;
+    options->level = TTZIP_COMPRESSION_LEVEL_NORMAL;
+    options->encryption = TTZIP_ENCRYPTION_NONE;
+    options->solid_block_size_mb = 64;
+}
+
 static inline const char *ttzip_version(void) {
     return ttzip_rust_version();
 }
@@ -359,13 +445,13 @@ static inline TTZipStatus ttzip_create_archive(
     if (options) {
         opt_copy = *options;
     } else {
-        memset(&opt_copy, 0, sizeof(opt_copy));
+        ttzip_create_options_init(&opt_copy);
     }
     if (opt_copy.struct_size == 0) {
         opt_copy.struct_size = (uint32_t)sizeof(TTZipCreateOptions);
     }
     if (opt_copy.abi_version == 0) {
-        opt_copy.abi_version = 2;
+        opt_copy.abi_version = TTZIP_ABI_VERSION_3;
     }
     return ttzip_rust_create_archive(source_paths, source_count, destination_path, &opt_copy);
 }
@@ -379,13 +465,13 @@ static inline TTZipStatus ttzip_extract_archive(
     if (options) {
         opt_copy = *options;
     } else {
-        memset(&opt_copy, 0, sizeof(opt_copy));
+        ttzip_extract_options_init(&opt_copy);
     }
     if (opt_copy.struct_size == 0) {
         opt_copy.struct_size = (uint32_t)sizeof(TTZipExtractOptions);
     }
     if (opt_copy.abi_version == 0) {
-        opt_copy.abi_version = 2;
+        opt_copy.abi_version = TTZIP_ABI_VERSION_3;
     }
     if (destination_path) {
         opt_copy.destination_path = destination_path;
@@ -420,7 +506,11 @@ static inline const char *ttzip_status_string(TTZipStatus status) {
         case TTZIP_STATUS_ERR_INVALID_PASSWORD: return "Invalid Password / Authentication Failed";
         case TTZIP_STATUS_ERR_EXTRACTION_FAILED: return "Extraction Failed";
         case TTZIP_STATUS_ERR_COMPRESSION_FAILED: return "Compression Failed";
+        case TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE: return "Unsupported Feature";
+        case TTZIP_STATUS_ERR_BUFFER_TOO_SMALL: return "Buffer Too Small";
+        case TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED: return "Solid Decompression Budget Exceeded";
         case TTZIP_STATUS_ERR_SECURITY_VIOLATION: return "Security Violation";
+        case TTZIP_STATUS_ERR_ABI_MISMATCH: return "ABI Version Mismatch";
         case TTZIP_STATUS_ERR_PANIC_CAUGHT: return "Panic Caught";
         default: return "Unknown Error";
     }

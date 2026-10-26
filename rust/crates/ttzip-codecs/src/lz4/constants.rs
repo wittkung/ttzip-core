@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Standard LZ4 Frame format constants, magic tables, bitfield descriptors, and checksum routines.
 //!

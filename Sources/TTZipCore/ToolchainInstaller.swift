@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -436,58 +436,21 @@ public final class SubprocessExecutor: Sendable {
     }
 }
 
-// MARK: - Temp CleanUp Manager
+// MARK: - Legacy Temporary Cleanup Compatibility
 
-//
-//
-
-
-/// Centralized temporary directory cleanup manager.
+/// Legacy compatibility shim for the retired shared temporary-directory sweep.
+///
+/// This type preserves existing source-level API compatibility. It no longer scans
+/// or removes temporary files. Operations remain responsible for their own resources;
+/// automatic recovery of crash-orphaned temporary files is not implemented.
 public final class TempDirectoryCleanUpManager: Sendable {
     public static let shared = TempDirectoryCleanUpManager()
     
     private init() {}
     
-    /// Cleans up transient temporary directories generated across operations (`ttzip_*`, `pwd_test_*`, `measure_*`).
-    public func cleanupAllTemporaryDirectories() {
-        let fileManager = FileManager.default
-        let tempDir = fileManager.temporaryDirectory
-        
-        guard let items = try? fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) else {
-            return
-        }
-        
-        for item in items {
-            let lowerName = item.lastPathComponent.lowercased()
-            if lowerName.hasPrefix("ttzip") ||
-               lowerName.hasPrefix("ttzipedit_") ||
-               lowerName.hasPrefix("ttzip_edit_") ||
-               lowerName.hasPrefix("pwd_test") ||
-               lowerName.hasPrefix("tt_") ||
-               lowerName.hasPrefix("measure_") ||
-               lowerName.hasPrefix("dest_") ||
-               lowerName.hasPrefix("joined_") ||
-               lowerName.hasPrefix("warmup_") ||
-               lowerName.hasPrefix("iter_") ||
-               lowerName.hasPrefix("arc_") ||
-               lowerName.hasPrefix("sample_") ||
-               lowerName.hasPrefix("huge_") ||
-               lowerName.hasPrefix("ditto_") ||
-               lowerName.hasPrefix("7zz_") ||
-               lowerName.hasPrefix("pigz_") ||
-               lowerName.hasPrefix("libdeflate_") ||
-               lowerName.hasPrefix("zstd_") ||
-               lowerName.hasPrefix("bz2_") ||
-               lowerName.hasPrefix("xz_") ||
-               lowerName.hasPrefix("lz_") ||
-               lowerName.hasPrefix("lz4_") ||
-               lowerName.hasPrefix("br_") ||
-               lowerName.hasPrefix("lrz_") ||
-               lowerName.hasPrefix("inspect_") ||
-               lowerName.hasPrefix("repair_") ||
-               lowerName.contains("exhaustivedatasetcache") {
-                try? fileManager.removeItem(at: item)
-            }
-        }
-    }
+    /// Performs no work; retained for compatibility with existing callers.
+    ///
+    /// The previous name-based sweep was retired because temporary-directory names
+    /// do not establish resource ownership or prove that another session is inactive.
+    public func cleanupAllTemporaryDirectories() {}
 }

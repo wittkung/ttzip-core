@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 """
 Cross-SDK Execution Drivers for Security & Resilience Verification.
@@ -54,7 +54,7 @@ class SdkDriverRegistry:
                 "clang",
                 "-std=c11",
                 "-I",
-                str(self.repo_root / "Sources" / "CTTZipBridge" / "include"),
+                str(self.repo_root / "Sources" / "TTZipEngineFFI" / "include"),
                 str(self.repo_root / "sdk" / "c" / "interop_cli.c"),
                 str(self.repo_root / "rust" / "target" / "release" / "libttzip_engine.a"),
                 "-larchive",
@@ -74,7 +74,7 @@ class SdkDriverRegistry:
                 "clang++",
                 "-std=c++20",
                 "-I",
-                str(self.repo_root / "Sources" / "CTTZipBridge" / "include"),
+                str(self.repo_root / "Sources" / "TTZipEngineFFI" / "include"),
                 str(self.repo_root / "sdk" / "cpp" / "interop_cli.cpp"),
                 str(self.repo_root / "rust" / "target" / "release" / "libttzip_engine.a"),
                 "-larchive",

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Codec-backed streaming filter wrappers for Gzip, Bzip2, Xz, Zstd, Snappy, and Brotli.
 
@@ -87,7 +87,7 @@ impl<R: Read + Send> Bzip2Filter<R> {
     /// Creates a new Bzip2 streaming filter.
     pub fn new(reader: R) -> io::Result<Self> {
         let decompressor = Bzip2Decompressor::new(false, 0)
-            .map_err(|e| io::Error::other(format!("bzip2 init failed: {:?}", e)))?;
+            .map_err(io::Error::from)?;
         Ok(Self {
             inner: SlidingLookaheadReader::new(reader),
             decompressor,
@@ -115,7 +115,7 @@ impl<R: Read + Send> Read for Bzip2Filter<R> {
             let (in_consumed, out_produced, finished) = self
                 .decompressor
                 .decompress_chunk(peeked, &mut self.out_buf)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("bzip2 error: {:?}", e)))?;
+                .map_err(io::Error::from)?;
 
             self.inner.consume_bytes(in_consumed);
             self.bytes_consumed += in_consumed as u64;

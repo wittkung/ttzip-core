@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Traditional PKZIP 3-Key Stream Cipher implementation with hardware acceleration and Zeroize.
 

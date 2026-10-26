@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware-accelerated cryptographic primitives and checksum routines.
 
@@ -53,7 +53,7 @@ pub use rs_fec::{
 pub use secure_bytes::{SecureBytes, ZeroizingCString, ZeroizingString};
 pub use sevenz_kdf::{
     derive_7z_aes_key, password_to_utf16le, AesKdfCache, DerivedKey, MAX_AES_CYCLES_POWER,
-    RAW_KEY_CYCLES_POWER,
+    RAW_KEY_CYCLES_POWER, SevenZKdfError,
 };
 pub use sha1::{
     hmac_sha1, hmac_sha1_10, pbkdf2_sha1, sha1, winzip_aes256_decrypt_and_verify,
@@ -75,6 +75,19 @@ pub use xxh3::{xxh3_128, xxh3_128_bytes, xxh3_64, Xxh3_128, Xxh3_64};
 pub use zipcrypto::{
     zipcrypto_decrypt_slice, zipcrypto_encrypt_slice, ZipCryptoBatch4, ZipCryptoEngine,
     ZipCryptoKeys,
+};
+
+// Compile-time static concurrency contract assertions ensuring Tier-1 thread safety & L1 cache line compactness.
+const fn assert_send_sync_static<T: Send + Sync + 'static>() {}
+const _: () = {
+    assert_send_sync_static::<security::Ed25519DefenseError>();
+    assert_send_sync_static::<security::PathSecurityError>();
+    assert_send_sync_static::<security::AclError>();
+    assert_send_sync_static::<ed25519::Ed25519Error>();
+    assert!(std::mem::size_of::<security::Ed25519DefenseError>() <= 64);
+    assert!(std::mem::size_of::<security::PathSecurityError>() <= 64);
+    assert!(std::mem::size_of::<security::AclError>() <= 64);
+    assert!(std::mem::size_of::<ed25519::Ed25519Error>() <= 64);
 };
 
 

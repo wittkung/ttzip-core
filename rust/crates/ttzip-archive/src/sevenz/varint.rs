@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-performance, branchless 7-Zip (`Real_UINT64`) Variable-Length Integer (Varint) Codec
 //! and 7z Property Tag (NID) namespace definitions.

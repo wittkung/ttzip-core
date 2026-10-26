@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-19
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/121-single-core-lz77-vector-match-finder/spec.md)
+**Feature**: [spec.md](file://../specs/121-single-core-lz77-vector-match-finder/spec.md)
 
 ## Content Quality
 

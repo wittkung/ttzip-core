@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -207,14 +207,22 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         case .sevenZip: return .sevenZip
         case .zip: return .zip
         case .tar: return .tar
-        case .tarGz, .gz: return .tarGz
-        case .tarBz2, .bz2: return .tarBz2
-        case .tarXz, .xz: return .tarXz
-        case .tarZst, .zst: return .tarZstd
-        case .tarLz4, .lz4: return .tarLz4
-        case .tarBrotli, .brotli: return .tarBrotli
-        case .tarLzip, .lzip: return .tarLzip
-        case .tarLrzip, .lrzip: return .tarLrzip
+        case .tarGz: return .tarGz
+        case .gz: return .gzip
+        case .tarBz2: return .tarBz2
+        case .bz2: return .bzip2
+        case .tarXz: return .tarXz
+        case .xz: return .xz
+        case .tarZst: return .tarZstd
+        case .zst: return .zstd
+        case .tarLz4: return .tarLz4
+        case .lz4: return .lz4
+        case .tarBrotli: return .tarBrotli
+        case .brotli: return .brotli
+        case .tarLzip: return .tarLzip
+        case .lzip: return .lzip
+        case .tarLrzip: return .tarLrzip
+        case .lrzip: return .lrzip
         case .dmg: return .dmg
         case .iso: return .iso
         case .cab: return .cab
@@ -264,6 +272,31 @@ private final class ProgressRelay: ProgressHandler, @unchecked Sendable {
 }
 
 extension ArchiveWriter {
+    private static func validateAndBuildExtraOptions(
+        outputPath: String,
+        targetFmt: ArchiveCompressionFormat,
+        password: String?,
+        advancedOptions: ArchiveAdvancedOptions
+    ) throws -> UniFfiCreateArchiveExtraOptions {
+        if let pwd = password, pwd.isEmpty {
+            throw ArchiveError.passwordRequired
+        }
+        let hasNonEmptyPassword = (password?.isEmpty == false)
+        if advancedOptions.encryptFileNames && !hasNonEmptyPassword {
+            throw ArchiveError.passwordRequired
+        }
+        if advancedOptions.encryptFileNames && targetFmt != .sevenZip {
+            throw ArchiveError.unsupportedEncryptionMethod(
+                archivePath: outputPath,
+                method: "7z-HeaderEncryption"
+            )
+        }
+        let encryptFileNames: Bool? = advancedOptions.encryptFileNames
+            ? true
+            : ((targetFmt == .sevenZip && hasNonEmptyPassword) ? false : nil)
+        return UniFfiCreateArchiveExtraOptions(encryptFileNames: encryptFileNames)
+    }
+
     @discardableResult
     internal func createArchiveInternal(
         outputPath: String,
@@ -279,9 +312,15 @@ extension ArchiveWriter {
         token: CancellationToken? = nil
     ) throws -> CompressionReport {
         let targetFmt = self.targetFormat ?? format
+        let extraOptions = try Self.validateAndBuildExtraOptions(
+            outputPath: outputPath,
+            targetFmt: targetFmt,
+            password: password,
+            advancedOptions: advancedOptions
+        )
+
         let uniffiFmt = ArchiveWriter.mapUniFFIFormat(targetFmt)
         let uniffiLvl = ArchiveWriter.mapUniFFILevel(level)
-
         let splitBytes: UInt64? = splitVolumeSizeBytes.flatMap { $0 > 0 ? UInt64($0) : nil }
         let threadBudget = UInt32(max(0, advancedOptions.cpuThreads))
 
@@ -304,8 +343,9 @@ extension ArchiveWriter {
         }
 
         do {
-            let report = try createArchiveAdvanced(
+            let report = try createArchiveAdvancedWithOptions(
                 config: config,
+                extraOptions: extraOptions,
                 progress: relay,
                 token: token
             )
@@ -332,4 +372,3 @@ extension ArchiveWriter {
         }
     }
 }
-

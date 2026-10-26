@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Compound TAR stream in-place editing engine (TAR.GZ / TAR.BZ2 / TAR.XZ / TAR.ZSTD) via single-pass in-memory micro-buffering.
 

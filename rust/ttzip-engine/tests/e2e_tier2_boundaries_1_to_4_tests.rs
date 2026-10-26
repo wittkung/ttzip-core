@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tier 2 E2E Test Suite: Boundary & Corner Cases for Features 1 through 4.
 //!
@@ -134,9 +134,22 @@ fn test_e2e_t2_f4_missing_intermediate_volume_detection() {
     // Delete intermediate volume .002
     fs::remove_file(&paths[1]).unwrap();
 
-    // Opening chain from part 1 should fail or detect missing part 2
-    let chain = detect_volume_chain(&paths[0]).unwrap();
-    assert_ne!(chain.len(), 3, "Missing volume must break complete chain");
+    // Opening chain from part 1 or part 3 must fail with an explicit missing-volume error naming .002
+    let err_from_1 = detect_volume_chain(&paths[0]).expect_err("Missing intermediate volume must return an error");
+    assert_eq!(err_from_1.kind(), std::io::ErrorKind::NotFound);
+    assert!(
+        err_from_1.to_string().contains("split_test.7z.002"),
+        "Expected missing volume name 'split_test.7z.002' in error, got: {}",
+        err_from_1
+    );
+
+    let err_from_3 = detect_volume_chain(&paths[2]).expect_err("Missing intermediate volume from part 3 must return an error");
+    assert_eq!(err_from_3.kind(), std::io::ErrorKind::NotFound);
+    assert!(
+        err_from_3.to_string().contains("split_test.7z.002"),
+        "Expected missing volume name 'split_test.7z.002' in error, got: {}",
+        err_from_3
+    );
 }
 
 #[test]
@@ -188,7 +201,7 @@ fn test_e2e_t2_f4_seek_past_virtual_eof_boundary() {
     let dir = tempdir().unwrap();
     let base_path = dir.path().join("seek_test.bin");
     let mut writer = SplitVolumeWriter::new(&base_path, 100, VolumeNamingScheme::NumberedExtension).unwrap();
-    writer.write_all(&vec![0x55u8; 200]).unwrap();
+    writer.write_all(&[0x55u8; 200]).unwrap();
     let paths = writer.close().unwrap();
 
     let mut reader = VirtualMultiVolumeReader::from_volumes(paths).unwrap();

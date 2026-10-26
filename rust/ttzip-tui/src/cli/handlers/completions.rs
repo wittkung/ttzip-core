@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Dynamic shell completion generator for Bash, Zsh, Fish, PowerShell, and Elvish.
 

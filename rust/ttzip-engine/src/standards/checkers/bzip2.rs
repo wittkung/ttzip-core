@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! bzip2 format standards compliance checker.
 
@@ -47,8 +47,8 @@ pub fn check_bzip2_compliance(buffer: &[u8]) -> ComplianceReport {
         if block_magic == PI_BLOCK_MAGIC {
             report.add_metadata("first_block_type", "data_block");
             report.add_validated_header("bzip2: Block / Stream-End Magic Sequence");
-            if buffer.len() >= 14 {
-                let block_crc = u32::from_be_bytes(buffer[10..14].try_into().unwrap());
+            if let Some(crc_bytes) = buffer.get(10..14).and_then(|s| s.try_into().ok()) {
+                let block_crc = u32::from_be_bytes(crc_bytes);
                 report.add_metadata("first_block_crc32", format!("0x{:08X}", block_crc));
             }
         } else if block_magic == EOS_BLOCK_MAGIC {

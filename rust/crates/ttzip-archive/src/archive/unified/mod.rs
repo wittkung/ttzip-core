@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unified Archive Lifecycle Orchestrator Engine.
 //!
@@ -11,21 +11,29 @@
 //! 5. Self-healing archive repair integrating RS-FEC streaming and damaged header recovery.
 
 pub mod create;
+pub mod create_staging;
 pub mod detect;
 pub mod entry;
 pub mod extract;
 pub mod extract_single;
+pub mod fallback_policy;
 pub mod filter_pipeline;
 pub mod format_config;
 pub mod format_sniffer;
 pub mod inspect;
 pub mod repair;
+pub mod selection;
 pub mod stream_adapter;
 pub mod verify;
+pub mod zip_central_directory;
 #[cfg(test)]
 pub mod tests_detection;
 #[cfg(test)]
+pub mod tests_full_extract_ownership;
+#[cfg(test)]
 pub mod tests_lifecycle;
+#[cfg(test)]
+pub mod tests_multivolume_selective;
 
 pub use create::{create_archive, create_archive_to_writer};
 pub use detect::{detect_archive_sniff, detect_format, resolve_create_format};
@@ -33,8 +41,9 @@ pub use entry::{
     coalesce_sparse_extents, clean_sparse_extents, EntryFields, LinkAction, LinkResolver,
     LinkResolverStrategy, SparseExtent, TTZipEntry, TTZipFileType, TTZipTimestamp,
 };
-pub use extract::{extract_archive, extract_archive_with_metrics};
+pub use extract::{extract_archive, extract_archive_with_metrics, extract_archive_with_sheet};
 pub use extract_single::{extract_selected_entries, extract_single_entry_memory};
+pub use selection::{normalize_entry_path, EntrySelection};
 pub use filter_pipeline::{
     FilterKind, FilterPipeline, FilterPipelineError, FilterPipelineResult,
     StreamFilter, MAX_FILTER_CHAIN_DEPTH,
@@ -123,21 +132,33 @@ impl UnifiedArchiveOrchestrator {
     #[inline]
     pub fn extract_archive(
         archive_path: &Path,
-        destination_path: &Path,
+        staging: &crate::fs::collision::staging::StagingRoot,
         options: &TTZipExtractOptions,
     ) -> Result<(), TTZipStatus> {
-        extract::extract_archive(archive_path, destination_path, options)
+        extract::extract_archive(archive_path, staging, options)
     }
 
     /// Extracts an archive and returns total extracted uncompressed bytes.
     #[inline]
     pub fn extract_archive_with_metrics(
         archive_path: &Path,
-        destination_path: &Path,
+        staging: &crate::fs::collision::staging::StagingRoot,
         options: &TTZipExtractOptions,
     ) -> Result<u64, TTZipStatus> {
-        extract::extract_archive_with_metrics(archive_path, destination_path, options)
+        extract::extract_archive_with_metrics(archive_path, staging, options)
     }
+
+    /// Extracts an archive with an optional atomic progress sheet for non-blocking cancellation and progress tracking.
+    #[inline]
+    pub fn extract_archive_with_sheet(
+        archive_path: &Path,
+        staging: &crate::fs::collision::staging::StagingRoot,
+        options: &TTZipExtractOptions,
+        sheet: Option<&crate::types::ProgressAtomicSheet>,
+    ) -> Result<u64, TTZipStatus> {
+        extract::extract_archive_with_sheet(archive_path, staging, options, sheet)
+    }
+
 
     /// Inspects an archive and invokes the callback for every discovered entry metadata item.
     #[inline]
@@ -174,14 +195,14 @@ impl UnifiedArchiveOrchestrator {
         repair::repair_archive(damaged_path, repaired_path)
     }
 
-    /// Batch selective extraction to destination directory.
+    /// Selective extraction into a staging root.
     #[inline]
-    pub fn extract_selected(
+    pub fn extract_selected_entries(
         archive_path: &Path,
-        target_paths: &[String],
-        destination_dir: &Path,
+        selection: &EntrySelection,
+        staging: &crate::fs::collision::staging::StagingRoot,
         options: &TTZipExtractOptions,
     ) -> Result<usize, TTZipStatus> {
-        extract_single::extract_selected_entries(archive_path, target_paths, destination_dir, options)
+        extract_single::extract_selected_entries(archive_path, selection, staging, options)
     }
 }

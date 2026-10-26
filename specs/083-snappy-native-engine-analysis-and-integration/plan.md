@@ -3,7 +3,7 @@
 **Feature Branch**: `083-snappy-native-engine-analysis-and-integration`  
 **Created**: 2026-08-18  
 **Status**: Ready for Tasks  
-**Feature Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/spec.md)
+**Feature Spec**: [spec.md](file://../specs/083-snappy-native-engine-analysis-and-integration/spec.md)
 
 ---
 
@@ -28,21 +28,21 @@
 
 ## 3. Phase 0: Research Index
 
-- - R001 [SUBAGENT:research] 《Google Snappy 源码架构与 C 桥接中枢接入方案》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/research.md#1-r001-google-snappy-源码架构与-c-桥接中枢设计)
-- - R002 [SUBAGENT:research] 《Snappy 官方 Framing Format 规范与 Apple Silicon ARM64 CRC32C 硬件加速》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/research.md#2-r002-snappy-官方-framing-format-规范与-apple-silicon-arm64-crc32c-硬件加速)
-- - R003 [SUBAGENT:research] 《100% 进程内 TAR.SZ 流式管道与 Libarchive 自定义回调》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/research.md#3-r003-100-进程内-tarsz-流式管道与-libarchive-自定义回调)
-- - R004 [SUBAGENT:research] 《不可信输入/恶意损坏流内存安全防御与 13 维 Fuzzing 矩阵》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/research.md#4-r004-不可信输入恶意损坏流内存安全防御与-13-维-fuzzing-矩阵)
+- - R001 [SUBAGENT:research] 《Google Snappy 源码架构与 C 桥接中枢接入方案》：详见 [research.md](file://../specs/083-snappy-native-engine-analysis-and-integration/research.md#1-r001-google-snappy-源码架构与-c-桥接中枢设计)
+- - R002 [SUBAGENT:research] 《Snappy 官方 Framing Format 规范与 Apple Silicon ARM64 CRC32C 硬件加速》：详见 [research.md](file://../specs/083-snappy-native-engine-analysis-and-integration/research.md#2-r002-snappy-官方-framing-format-规范与-apple-silicon-arm64-crc32c-硬件加速)
+- - R003 [SUBAGENT:research] 《100% 进程内 TAR.SZ 流式管道与 Libarchive 自定义回调》：详见 [research.md](file://../specs/083-snappy-native-engine-analysis-and-integration/research.md#3-r003-100-进程内-tarsz-流式管道与-libarchive-自定义回调)
+- - R004 [SUBAGENT:research] 《不可信输入/恶意损坏流内存安全防御与 13 维 Fuzzing 矩阵》：详见 [research.md](file://../specs/083-snappy-native-engine-analysis-and-integration/research.md#4-r004-不可信输入恶意损坏流内存安全防御与-13-维-fuzzing-矩阵)
 
 ---
 
 ## 4. Phase 1: Architecture & Design Artifacts
 
-- **数据模型**：[data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/data-model.md)
+- **数据模型**：[data-model.md](file://../specs/083-snappy-native-engine-analysis-and-integration/data-model.md)
 - **接口契约**：
-  - [contracts/snappy_block_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_block_contract.json) `[SUBAGENT:research]`
-  - [contracts/snappy_framing_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_framing_contract.json) `[SUBAGENT:research]`
-  - [contracts/snappy_tar_pipeline_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_tar_pipeline_contract.json) `[SUBAGENT:research]`
-- **验证指南**：[quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/quickstart.md)
+  - [contracts/snappy_block_contract.json](file://../specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_block_contract.json) `[SUBAGENT:research]`
+  - [contracts/snappy_framing_contract.json](file://../specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_framing_contract.json) `[SUBAGENT:research]`
+  - [contracts/snappy_tar_pipeline_contract.json](file://../specs/083-snappy-native-engine-analysis-and-integration/contracts/snappy_tar_pipeline_contract.json) `[SUBAGENT:research]`
+- **验证指南**：[quickstart.md](file://../specs/083-snappy-native-engine-analysis-and-integration/quickstart.md)
 
 ---
 

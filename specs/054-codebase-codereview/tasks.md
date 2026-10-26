@@ -1,8 +1,8 @@
 # Tasks: Full Codebase Architecture, Security & Testing Remediation
 
 **Feature Branch**: `054-codebase-codereview`
-**Feature Spec**: [`specs/054-codebase-codereview/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/spec.md)
-**Implementation Plan**: [`specs/054-codebase-codereview/plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/plan.md)
+**Feature Spec**: [`specs/054-codebase-codereview/spec.md`](file://../specs/054-codebase-codereview/spec.md)
+**Implementation Plan**: [`specs/054-codebase-codereview/plan.md`](file://../specs/054-codebase-codereview/plan.md)
 
 ---
 

@@ -1,10 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-disk-footprint streaming parsing and metadata extraction engine for complex documents:
 //! - **DOCX**: SIMD SAX streaming text and paragraph extraction via `quick-xml` (>600 MB/s throughput)
 //! - **EPUB**: In-memory container resolution, metadata, spine, TOC, and cover image byte streaming via `roxmltree`
-//! - **PDF**: Cross-reference table, Info dictionary, and page content stream text extraction via `lopdf`
+//! - **PDF**: Header, Info dictionary, and page content stream text extraction via zero-copy parser
 
 pub(crate) mod docx;
 pub(crate) mod epub;

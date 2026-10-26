@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Libarchive Stream Writing adapter and C-ABI trampolines.
 
@@ -7,7 +7,6 @@ use super::read::{archive_close_callback_trampoline, archive_open_callback_tramp
 use super::{ARCHIVE_FATAL, ARCHIVE_OK, StreamStateSnapshot};
 use crate::types::TTZipStatus;
 use std::io::Write;
-use std::panic::catch_unwind;
 use std::pin::Pin;
 
 /// Internal state for custom stream writing callbacks.
@@ -73,23 +72,20 @@ pub unsafe extern "C" fn archive_write_callback_trampoline<W: Write>(
     buffer: *const libc::c_void,
     length: libc::size_t,
 ) -> libc::ssize_t {
-    let result = catch_unwind(|| {
-        if client_data.is_null() || (buffer.is_null() && length > 0) {
-            return ARCHIVE_FATAL as libc::ssize_t;
-        }
-        let state = &mut *(client_data as *mut StreamWriterState<W>);
-        let slice = if length > 0 {
-            std::slice::from_raw_parts(buffer as *const u8, length)
-        } else {
-            &[]
-        };
+    if client_data.is_null() || (buffer.is_null() && length > 0) {
+        return ARCHIVE_FATAL as libc::ssize_t;
+    }
+    let state = &mut *(client_data as *mut StreamWriterState<W>);
+    let slice = if length > 0 {
+        std::slice::from_raw_parts(buffer as *const u8, length)
+    } else {
+        &[]
+    };
 
-        match state.write_chunk(slice) {
-            Ok(n) => n as libc::ssize_t,
-            Err(_) => ARCHIVE_FATAL as libc::ssize_t,
-        }
-    });
-    result.unwrap_or(ARCHIVE_FATAL as libc::ssize_t)
+    match state.write_chunk(slice) {
+        Ok(n) => n as libc::ssize_t,
+        Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+    }
 }
 
 // ---------------------------------------------------------------------------

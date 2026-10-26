@@ -34,10 +34,10 @@
 
 ## 3. Phase 1: Design Artifacts Index
 
-- **数据模型**: [`specs/171-decommission-legacy-c-bridge-and-converge/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/171-decommission-legacy-c-bridge-and-converge/data-model.md)
+- **数据模型**: [`specs/171-decommission-legacy-c-bridge-and-converge/data-model.md`](file://../specs/171-decommission-legacy-c-bridge-and-converge/data-model.md)
 - **强类型契约**:
   - [SUBAGENT:research] `contracts/compat_c_abi_contract.json`
-- **快速验证指南**: [`specs/171-decommission-legacy-c-bridge-and-converge/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/171-decommission-legacy-c-bridge-and-converge/quickstart.md)
+- **快速验证指南**: [`specs/171-decommission-legacy-c-bridge-and-converge/quickstart.md`](file://../specs/171-decommission-legacy-c-bridge-and-converge/quickstart.md)
 
 ---
 

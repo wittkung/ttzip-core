@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Fast-LZMA2 compression context and single-pass operations.
 
@@ -13,6 +13,9 @@ pub struct Fl2CCtx {
 }
 
 unsafe impl Send for Fl2CCtx {}
+
+/// Default timeout in milliseconds for streaming LZMA2 compression/decompression operations.
+pub const DEFAULT_FL2_STREAM_TIMEOUT_MS: u32 = 100;
 
 impl Fl2CCtx {
     /// Creates a single-threaded compression context.
@@ -185,6 +188,9 @@ impl Fl2CStream {
             Ok(res)
         }
     }
+
+    /// Default timeout in milliseconds for streaming LZMA2 operations.
+    pub const DEFAULT_TIMEOUT_MS: u32 = 100;
 
     /// Sets a timeout in milliseconds for streaming compression.
     pub fn set_timeout(&mut self, timeout_ms: u32) -> Result<(), TTZipStatus> {

@@ -3,7 +3,7 @@
 **Feature Directory**: `specs/039-systemic-engineering-methodology-and-invariants-reconstruction`  
 **Created**: 2026-08-16  
 **Status**: In Progress  
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/039-systemic-engineering-methodology-and-invariants-reconstruction/spec.md)
+**Spec**: [spec.md](file://../specs/039-systemic-engineering-methodology-and-invariants-reconstruction/spec.md)
 
 ---
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 64KB Chunk Self-Healing Recovery Record Streaming Generation and Repair Engine.
 

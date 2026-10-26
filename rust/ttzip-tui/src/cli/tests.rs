@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use super::*;
 use clap::Parser;
@@ -325,4 +325,91 @@ fn test_headless_new_subcommands_e2e() {
     // 9. Convert
     let converted_tar = temp_dir.path().join("converted.zip");
     assert!(execute_convert(&archive_file, &converted_tar, Some("zip"), 1).is_ok());
+}
+
+#[test]
+fn test_cli_parsing_extract_on_conflict() {
+    let default_cli = Cli::parse_from(["ttzip", "extract", "test.zip"]);
+    match default_cli.command {
+        Some(Commands::Extract { on_conflict, .. }) => {
+            assert_eq!(on_conflict, "keep-both");
+        }
+        _ => panic!("Expected Extract subcommand"),
+    }
+
+    let explicit_cli = Cli::parse_from(["ttzip", "extract", "test.zip", "--on-conflict", "replace"]);
+    match explicit_cli.command {
+        Some(Commands::Extract { on_conflict, .. }) => {
+            assert_eq!(on_conflict, "replace");
+        }
+        _ => panic!("Expected Extract subcommand"),
+    }
+
+    let stop_cli = Cli::parse_from(["ttzip", "extract", "test.zip", "--on-conflict", "stop"]);
+    match stop_cli.command {
+        Some(Commands::Extract { on_conflict, .. }) => {
+            assert_eq!(on_conflict, "stop");
+        }
+        _ => panic!("Expected Extract subcommand"),
+    }
+}
+
+#[test]
+fn test_parse_conflict_policy() {
+    assert_eq!(
+        parse_conflict_policy("keep-both").unwrap(),
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_KEEP_BOTH
+    );
+    assert_eq!(
+        parse_conflict_policy("replace").unwrap(),
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_REPLACE
+    );
+    assert_eq!(
+        parse_conflict_policy("skip").unwrap(),
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_SKIP
+    );
+    assert_eq!(
+        parse_conflict_policy("stop").unwrap(),
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_STOP
+    );
+    assert!(parse_conflict_policy("invalid").is_err());
+}
+
+#[test]
+fn test_resolve_destination_path_behavior() {
+    let temp_dir = tempdir().expect("tempdir");
+    let existing_file = temp_dir.path().join("file.txt");
+    fs::write(&existing_file, "original").expect("write");
+
+    // Replace
+    let replace_res = resolve_destination_path(
+        &existing_file,
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_REPLACE,
+        false,
+    ).unwrap();
+    assert_eq!(replace_res, Some(existing_file.clone()));
+
+    // Skip
+    let skip_res = resolve_destination_path(
+        &existing_file,
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_SKIP,
+        false,
+    ).unwrap();
+    assert_eq!(skip_res, None);
+
+    // Stop
+    let stop_res = resolve_destination_path(
+        &existing_file,
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_STOP,
+        false,
+    );
+    assert!(stop_res.is_err());
+
+    // Keep Both
+    let keep_res = resolve_destination_path(
+        &existing_file,
+        ttzip_engine::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
+        false,
+    ).unwrap();
+    assert_eq!(keep_res, Some(temp_dir.path().join("file 2.txt")));
 }

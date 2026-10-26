@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-copy memory-mapped TAR Archive Reader and safe extraction engine.
 //!
@@ -8,16 +8,16 @@
 
 use super::scanner::{TarEntry, TarSeekScanner};
 use crate::fs::apfs::apfs_preallocate;
-use crate::fs::safe_extract::{open_extracted_file_strictly_nofollow, sanitize_and_validate_path, SafeExtractEngine};
+use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::types::{TTZipExtractOptions, TTZipStatus};
-use rayon::prelude::*;
 use std::ffi::CString;
 use std::fs;
 use std::io::Write;
 use std::os::unix::io::AsRawFd;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 /// Extraction report summarizing processed entries and byte counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -88,13 +88,19 @@ impl<'a> TarArchive<'a> {
     ) -> Result<TarExtractReport, TTZipStatus> {
         let start_time = std::time::Instant::now();
         fs::create_dir_all(dest_dir).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let jail = DirJail::open(dest_dir)?;
 
         let mut engine = SafeExtractEngine::for_root(dest_dir);
         let mut total_uncomp_bytes = 0u64;
+        let mut has_links = false;
+        let mut seen_file_comps = std::collections::HashSet::new();
 
         // Stage 1: Register all entries with SafeExtractEngine & create directories
         for entry in &self.entries {
             total_uncomp_bytes += entry.size;
+            if entry.is_symlink || entry.is_hardlink {
+                has_links = true;
+            }
             let trimmed = entry.path.trim_matches('/');
             let is_root_dir = trimmed.is_empty() || trimmed == ".";
             let safe_path = if is_root_dir {
@@ -102,9 +108,15 @@ impl<'a> TarArchive<'a> {
             } else {
                 sanitize_and_validate_path(dest_dir, &entry.path)?
             };
+            if !entry.is_directory && !is_root_dir {
+                let comps = DirJail::extract_clean_components(&entry.path)?;
+                if !seen_file_comps.insert(comps) {
+                    has_links = true;
+                }
+            }
 
             engine.register_entry_typed(
-                safe_path.clone(),
+                safe_path,
                 entry.mode,
                 entry.mtime_epoch_secs,
                 entry.mtime_nanos,
@@ -112,8 +124,8 @@ impl<'a> TarArchive<'a> {
                 entry.is_symlink,
             );
 
-            if entry.is_directory && !is_root_dir {
-                fs::create_dir_all(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+            if entry.is_directory && !is_root_dir && !options.dry_run {
+                jail.create_dir_all_in_jail(&entry.path)?;
             }
         }
 
@@ -138,152 +150,278 @@ impl<'a> TarArchive<'a> {
         let processed_bytes = Arc::new(AtomicU64::new(0));
         let cancel_flag = Arc::new(AtomicBool::new(false));
 
-        if thread_budget <= 1 || file_indices.len() <= 4 {
+        if thread_budget <= 1
+            || file_indices.len() <= 4
+            || has_links
+            || options.progress_callback.is_some()
+        {
             // Single-threaded path
+            let mut deferred_hardlinks = crate::fs::abort_guard::DeferredHardlinks::default();
             for &idx in &file_indices {
                 let entry = &self.entries[idx];
-                let safe_path = sanitize_and_validate_path(dest_dir, &entry.path)?;
-
-                if entry.is_symlink {
-                    if let Some(target) = &entry.link_target {
-                        validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
-                    }
-                } else if entry.is_hardlink {
-                    if let Some(target) = &entry.link_target {
-                        let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
-                        if let Some(parent) = safe_path.parent() {
-                            let _ = fs::create_dir_all(parent);
-                        }
-                        if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
-                            let _ = fs::remove_file(&safe_path);
-                        }
-                        let _ = fs::hard_link(&target_safe, &safe_path);
-                    }
-                } else {
-                    if let Some(parent) = safe_path.parent() {
-                        let _ = fs::create_dir_all(parent);
-                    }
-
-                    let payload = self.extract_entry_bytes(idx)?;
-                    let mut file = open_extracted_file_strictly_nofollow(&safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                    if entry.size > 0 {
-                        let _ = apfs_preallocate(file.as_raw_fd(), entry.size as i64);
-                        file.write_all(payload).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                    }
-                }
-
-                let current_done = processed_bytes.fetch_add(entry.size, Ordering::Relaxed) + entry.size;
-                if let Some(cb) = options.progress_callback {
-                    let c_path = CString::new(entry.path.as_ref()).unwrap_or_default();
-                    let should_continue = unsafe {
-                        cb(current_done, total_uncomp_bytes, c_path.as_ptr(), options.user_data)
-                    };
-                    if !should_continue {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
+                let current_done =
+                    processed_bytes.fetch_add(entry.size, Ordering::Relaxed) + entry.size;
+                self.extract_single_tar_entry_to_jail(
+                    &jail,
+                    idx,
+                    entry,
+                    Some(&mut deferred_hardlinks),
+                    Some((options, current_done, total_uncomp_bytes)),
+                )?;
             }
+            deferred_hardlinks.finalize(&jail)?;
         } else {
-            // Rayon multi-core parallel extraction
-            let pool = crate::platform::cpu::EngineThreadPool::global();
+            let num_threads = ttzip_types::recommended_compute_threads().min(file_indices.len()).max(1);
+            let next_work_idx = std::sync::atomic::AtomicUsize::new(0);
+            let first_error: parking_lot::Mutex<Option<TTZipStatus>> = parking_lot::Mutex::new(None);
+            let pool = LocalWorkStealingPool::with_threads(num_threads);
 
-            let par_res = pool.install(|| {
-                file_indices.par_iter().try_for_each(|&idx| -> Result<(), TTZipStatus> {
-                    if cancel_flag.load(Ordering::Relaxed) {
-                        return Err(TTZipStatus::Cancelled);
-                    }
+            pool.scope(|s| {
+                for _ in 0..num_threads {
+                    s.spawn(|| {
+                        let task_res: Result<(), TTZipStatus> = (|| {
+                            loop {
+                                if cancel_flag.load(Ordering::Relaxed) {
+                                    return Err(TTZipStatus::Cancelled);
+                                }
+                                if first_error.lock().is_some() {
+                                    break;
+                                }
+                                let work_i = next_work_idx.fetch_add(1, Ordering::Relaxed);
+                                if work_i >= file_indices.len() {
+                                    break;
+                                }
+                                let idx = file_indices[work_i];
+                                let entry = &self.entries[idx];
+                                self.extract_single_tar_entry_to_jail(
+                                    &jail,
+                                    idx,
+                                    entry,
+                                    None,
+                                    None,
+                                )?;
 
-                    let entry = &self.entries[idx];
-                    let safe_path = sanitize_and_validate_path(dest_dir, &entry.path)?;
-
-                    if entry.is_symlink {
-                        if let Some(target) = &entry.link_target {
-                            validate_and_extract_symlink(dest_dir, &safe_path, target.as_ref())?;
-                        }
-                    } else if entry.is_hardlink {
-                        if let Some(target) = &entry.link_target {
-                            let target_safe = sanitize_and_validate_path(dest_dir, target.as_ref())?;
-                            if let Some(parent) = safe_path.parent() {
-                                let _ = fs::create_dir_all(parent);
+                                processed_bytes.fetch_add(entry.size, Ordering::Relaxed);
                             }
-                            if safe_path.exists() || fs::symlink_metadata(&safe_path).is_ok() {
-                                let _ = fs::remove_file(&safe_path);
+                            Ok(())
+                        })();
+
+                        if let Err(e) = task_res {
+                            let mut err_guard = first_error.lock();
+                            if err_guard.is_none() {
+                                *err_guard = Some(e);
                             }
-                            let _ = fs::hard_link(&target_safe, &safe_path);
                         }
-                    } else {
-                        if let Some(parent) = safe_path.parent() {
-                            let _ = fs::create_dir_all(parent);
-                        }
-
-                        let payload = self.extract_entry_bytes(idx)?;
-                        let mut file = open_extracted_file_strictly_nofollow(&safe_path)
-                            .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                        if entry.size > 0 {
-                            let _ = apfs_preallocate(file.as_raw_fd(), entry.size as i64);
-                            file.write_all(payload)
-                                .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                        }
-                    }
-
-                    processed_bytes.fetch_add(entry.size, Ordering::Relaxed);
-                    Ok(())
-                })
+                    });
+                }
             });
 
-            par_res?;
+            if let Some(err) = first_error.into_inner() {
+                return Err(err);
+            }
         }
 
-        // Stage 2: Apply deferred metadata bottom-up
-        if options.preserve_permissions {
-            engine.apply_all()?;
+        if has_links {
+            jail.verify_all_jail_symlinks()?;
         }
+
+        // Stage 2: Apply deferred metadata bottom-up (or record staged plan if in StagingArea)
+        engine.apply_deferred_metadata(options.preserve_permissions)?;
 
         Ok(TarExtractReport {
+
             processed_entries_count: self.entries.len(),
             total_uncompressed_bytes: total_uncomp_bytes,
             duration_ms: start_time.elapsed().as_millis() as u64,
         })
     }
+
+    fn write_tar_regular_payload_to_jail(
+        jail: &DirJail,
+        entry: &TarEntry<'a>,
+        payload: &[u8],
+        progress_ctx: Option<(&TTZipExtractOptions, u64, u64)>,
+    ) -> Result<(), TTZipStatus> {
+        let mut inflight =
+            crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.path, true)?;
+        if entry.size > 0 {
+            let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), entry.size as i64);
+            inflight
+                .file_mut()
+                .write_all(payload)
+                .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        }
+        Self::check_tar_progress(&entry.path, progress_ctx)?;
+        inflight.commit(jail)
+    }
+
+    fn extract_single_tar_entry_to_jail(
+        &self,
+        jail: &DirJail,
+        idx: usize,
+        entry: &TarEntry<'a>,
+        mut deferred_hardlinks: Option<&mut crate::fs::abort_guard::DeferredHardlinks>,
+        progress_ctx: Option<(&TTZipExtractOptions, u64, u64)>,
+    ) -> Result<(), TTZipStatus> {
+        let entry_comps = DirJail::extract_clean_components(&entry.path)?;
+        if let Some(ref mut hl) = deferred_hardlinks {
+            hl.invalidate_destination(&entry_comps);
+        }
+
+        if entry.is_symlink {
+            let target = entry
+                .link_target
+                .as_deref()
+                .ok_or(TTZipStatus::ErrSecurityViolation)?;
+            jail.create_symlink_components(&entry_comps, target)?;
+            return Self::check_tar_progress(&entry.path, progress_ctx);
+        }
+        if entry.is_hardlink {
+            let target = entry
+                .link_target
+                .as_deref()
+                .ok_or(TTZipStatus::ErrSecurityViolation)?;
+            if let Some(hl) = deferred_hardlinks {
+                hl.record_or_apply(jail, &entry.path, target)?;
+            } else {
+                jail.create_hardlink_in_jail(&entry.path, target)?;
+            }
+            return Self::check_tar_progress(&entry.path, progress_ctx);
+        }
+        let payload = self.extract_entry_bytes(idx)?;
+        Self::write_tar_regular_payload_to_jail(jail, entry, payload, progress_ctx)?;
+        if let Some(hl) = deferred_hardlinks {
+            hl.on_regular_committed(jail, &entry_comps, None)?;
+        }
+        Ok(())
+    }
+
+    fn check_tar_progress(
+        entry_path: &str,
+        progress_ctx: Option<(&TTZipExtractOptions, u64, u64)>,
+    ) -> Result<(), TTZipStatus> {
+        if let Some((options, current_done, total_uncomp_bytes)) = progress_ctx {
+            if let Some(cb) = options.progress_callback {
+                let c_path = CString::new(entry_path).unwrap_or_default();
+                let should_continue = unsafe {
+                    cb(
+                        current_done,
+                        total_uncomp_bytes,
+                        c_path.as_ptr(),
+                        options.user_data,
+                    )
+                };
+                if !should_continue {
+                    return Err(TTZipStatus::Cancelled);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
-/// Validates symlink target invariants to prevent sandbox escapes (Zip-Slip via symlink)
-/// and safely extracts the symbolic link to the sanitized destination path.
-fn validate_and_extract_symlink(
+/// Lexically resolves a relative symlink target against the destination root sandbox.
+///
+/// Resolves `.` and `..` components lexically without performing file I/O.
+/// If any `..` component attempts to ascend above `dest_dir`, returns `Err(TTZipStatus::ErrSecurityViolation)`.
+/// Legitimate in-sandbox relative symlinks (e.g. `../foo.txt` from `/dest/sub/link` to `/dest/foo.txt`)
+/// resolve safely to their normalized in-sandbox target path.
+pub fn lexical_normalize_relative(
     dest_dir: &Path,
-    safe_path: &Path,
+    parent_dir: &Path,
     target: &str,
-) -> Result<(), TTZipStatus> {
-    // 1. Reject absolute symlink targets
+) -> Result<PathBuf, TTZipStatus> {
     if target.starts_with('/') || target.starts_with('\\') {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
+    let target_path = Path::new(target);
+    if target_path.is_absolute() {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
 
-    // 2. Validate that relative symlink target does not escape destination root sandbox
-    let parent_dir = safe_path.parent().unwrap_or(dest_dir);
-    let resolved_target = parent_dir.join(target);
-    match resolved_target.strip_prefix(dest_dir) {
-        Ok(rel_to_dest) => {
-            let rel_str = rel_to_dest.to_string_lossy();
-            if !rel_str.is_empty() && sanitize_and_validate_path(dest_dir, &rel_str).is_err() {
-                return Err(TTZipStatus::ErrSecurityViolation);
+    let rel_parent = parent_dir
+        .strip_prefix(dest_dir)
+        .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+
+    let mut stack = Vec::new();
+    for comp in rel_parent.components() {
+        match comp {
+            std::path::Component::Normal(c) => stack.push(c.to_os_string()),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if stack.pop().is_none() {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
             }
-        }
-        Err(_) => {
-            // Target points outside dest_dir
-            return Err(TTZipStatus::ErrSecurityViolation);
+            _ => return Err(TTZipStatus::ErrSecurityViolation),
         }
     }
 
-    // 3. Verify that no intermediate path segment is a symlink
-    crate::fs::safe_extract::validate_no_intermediate_symlinks(dest_dir, safe_path)?;
+    for comp in target_path.components() {
+        match comp {
+            std::path::Component::Normal(c) => stack.push(c.to_os_string()),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if stack.pop().is_none() {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+            }
+            _ => return Err(TTZipStatus::ErrSecurityViolation),
+        }
+    }
 
-    // 4. Safely ensure parent directory exists and atomically link
-    if let Some(parent) = safe_path.parent() {
-        let _ = fs::create_dir_all(parent);
+    if stack.is_empty() {
+        return Err(TTZipStatus::ErrSecurityViolation);
     }
-    if safe_path.exists() || fs::symlink_metadata(safe_path).is_ok() {
-        let _ = fs::remove_file(safe_path);
+
+    let mut resolved = dest_dir.to_path_buf();
+    for comp in stack {
+        resolved.push(comp);
     }
-    std::os::unix::fs::symlink(target, safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)
+    Ok(resolved)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lexical_normalize_relative_valid_sibling() {
+        let dest = Path::new("/var/sandbox/dest");
+        let parent = Path::new("/var/sandbox/dest/sub");
+        let res = lexical_normalize_relative(dest, parent, "../foo.txt").expect("should resolve");
+        assert_eq!(res, Path::new("/var/sandbox/dest/foo.txt"));
+    }
+
+    #[test]
+    fn test_lexical_normalize_relative_valid_nested() {
+        let dest = Path::new("/var/sandbox/dest");
+        let parent = Path::new("/var/sandbox/dest/a/b/c");
+        let res = lexical_normalize_relative(dest, parent, "../../d/target.txt").expect("should resolve");
+        assert_eq!(res, Path::new("/var/sandbox/dest/a/d/target.txt"));
+    }
+
+    #[test]
+    fn test_lexical_normalize_relative_escape_rejected() {
+        let dest = Path::new("/var/sandbox/dest");
+        let parent = Path::new("/var/sandbox/dest/sub");
+        let res = lexical_normalize_relative(dest, parent, "../../escape.txt");
+        assert_eq!(res.unwrap_err(), TTZipStatus::ErrSecurityViolation);
+    }
+
+    #[test]
+    fn test_lexical_normalize_relative_root_parent_escape_rejected() {
+        let dest = Path::new("/var/sandbox/dest");
+        let parent = Path::new("/var/sandbox/dest");
+        let res = lexical_normalize_relative(dest, parent, "../escape.txt");
+        assert_eq!(res.unwrap_err(), TTZipStatus::ErrSecurityViolation);
+    }
+
+    #[test]
+    fn test_lexical_normalize_relative_absolute_target_rejected() {
+        let dest = Path::new("/var/sandbox/dest");
+        let parent = Path::new("/var/sandbox/dest/sub");
+        let res = lexical_normalize_relative(dest, parent, "/etc/passwd");
+        assert_eq!(res.unwrap_err(), TTZipStatus::ErrSecurityViolation);
+    }
 }

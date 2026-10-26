@@ -1,12 +1,11 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use ttzip_engine::fs::vfs::node::VfsEntry;
-use ttzip_engine::fs::vfs::search::{search_vfs_tree_zero_alloc, TTZipVfsMatchDto};
-use ttzip_engine::fs::vfs::VfsTree;
+use ttzip_engine::fs::vfs::search::TTZipVfsMatchDto;
+use ttzip_engine::fs::vfs::{VfsArena, VfsEntry};
 
 pub struct TrackingAllocator {
     underlying: System,
@@ -95,12 +94,12 @@ fn test_vfs_tree_100k_nodes_zero_heap_allocation_search() {
             is_encrypted: false,
         });
     }
-    let tree = VfsTree::build_from_entries(&entries, "ProjectRoot");
-    assert_eq!(tree.total_entries, NODE_COUNT);
+    let arena = VfsArena::build_from_entries(&entries, "ProjectRoot");
+    assert_eq!(arena.total_entries_count(), NODE_COUNT);
 
     let mut result_slots = [TTZipVfsMatchDto {
         struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         name: std::ptr::null(),
         name_len: 0,
         path: std::ptr::null(),
@@ -114,7 +113,7 @@ fn test_vfs_tree_100k_nodes_zero_heap_allocation_search() {
     }; 64];
 
     let match_count = assert_zero_alloc(|| {
-        search_vfs_tree_zero_alloc(&tree.root, "file_99999", &mut result_slots)
+        arena.search_zero_alloc("file_99999", &mut result_slots)
     });
 
     assert!(match_count >= 1);

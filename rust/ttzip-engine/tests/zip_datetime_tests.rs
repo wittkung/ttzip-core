@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use ttzip_engine::zip::datetime::{
     days_in_month, dos_to_unix_epoch_secs, is_leap_year, unix_epoch_secs_to_dos, DosDateTime,

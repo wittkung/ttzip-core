@@ -1,8 +1,8 @@
 # Tasks: TTZip 全语言 SDK 零配置分发与外部开发者极致易用性体系 (Zero-Config SDK Distribution & Out-Of-Tree DX System)
 
 - **Feature ID**: `007-zero-config-sdk-distribution-and-developer-experience`
-- **Specification**: [`specs/007-zero-config-sdk-distribution-and-developer-experience/spec.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/007-zero-config-sdk-distribution-and-developer-experience/spec.md)
-- **Implementation Plan**: [`specs/007-zero-config-sdk-distribution-and-developer-experience/plan.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/007-zero-config-sdk-distribution-and-developer-experience/plan.md)
+- **Specification**: [`specs/007-zero-config-sdk-distribution-and-developer-experience/spec.md`](file://$HOME/Documents/dev/products/ttzip/specs/007-zero-config-sdk-distribution-and-developer-experience/spec.md)
+- **Implementation Plan**: [`specs/007-zero-config-sdk-distribution-and-developer-experience/plan.md`](file://$HOME/Documents/dev/products/ttzip/specs/007-zero-config-sdk-distribution-and-developer-experience/plan.md)
 - **Status**: `COMPLETED`
 
 ---

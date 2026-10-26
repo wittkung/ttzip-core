@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Block Header encoding, variable-length header parsing, filter flag chain,
 //! and 4-byte alignment padding utilities.

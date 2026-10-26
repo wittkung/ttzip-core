@@ -30,17 +30,17 @@
 
 ## 3. Phase 0: Research Summary
 
-- R001 [SUBAGENT:research] 《Clang 死存储消除 (DSE) 与敏感凭据物理擦除加固》：统一采用 C11 Annex K `memset_s` 内联中枢 `ttzip_secure_zero`，详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/research.md#1-r001-clang-死存储消除-dse-与敏感凭据物理擦除加固)。
-- R002 [SUBAGENT:research] 《Swift 6 核心热路径零分配与 16KB 物理页对齐》：推行栈上临时分配、Per-Worker 无锁槽位与 16KB 物理页对齐，详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/research.md#2-r002-swift-6-核心热路径零分配与-apple-silicon-16kb-物理页对齐)。
-- R003 [SUBAGENT:research] 《测试真理预言机 (Oracle-First) 与性能门禁稳定性》：确立 `bitcrc32`、GoldenCorpus `.uu` 与系统 `/usr/bin/tar` 双向差分三位一体预言机，详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/research.md#3-r003-测试真理预言机-oracle-first-与性能门禁稳定性)。
+- R001 [SUBAGENT:research] 《Clang 死存储消除 (DSE) 与敏感凭据物理擦除加固》：统一采用 C11 Annex K `memset_s` 内联中枢 `ttzip_secure_zero`，详见 [research.md](file://../specs/042-craftsmanship-engineering-and-orchestration/research.md#1-r001-clang-死存储消除-dse-与敏感凭据物理擦除加固)。
+- R002 [SUBAGENT:research] 《Swift 6 核心热路径零分配与 16KB 物理页对齐》：推行栈上临时分配、Per-Worker 无锁槽位与 16KB 物理页对齐，详见 [research.md](file://../specs/042-craftsmanship-engineering-and-orchestration/research.md#2-r002-swift-6-核心热路径零分配与-apple-silicon-16kb-物理页对齐)。
+- R003 [SUBAGENT:research] 《测试真理预言机 (Oracle-First) 与性能门禁稳定性》：确立 `bitcrc32`、GoldenCorpus `.uu` 与系统 `/usr/bin/tar` 双向差分三位一体预言机，详见 [research.md](file://../specs/042-craftsmanship-engineering-and-orchestration/research.md#3-r003-测试真理预言机-oracle-first-与性能门禁稳定性)。
 
 ---
 
 ## 4. Phase 1: Design Artifacts & Contracts
 
-- **数据模型**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/data-model.md)
-- **强类型契约**: [craftsmanship_engineering_spec.json](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/contracts/craftsmanship_engineering_spec.json)
-- **验证指南**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/042-craftsmanship-engineering-and-orchestration/quickstart.md)
+- **数据模型**: [data-model.md](file://../specs/042-craftsmanship-engineering-and-orchestration/data-model.md)
+- **强类型契约**: [craftsmanship_engineering_spec.json](file://../specs/042-craftsmanship-engineering-and-orchestration/contracts/craftsmanship_engineering_spec.json)
+- **验证指南**: [quickstart.md](file://../specs/042-craftsmanship-engineering-and-orchestration/quickstart.md)
 
 ---
 

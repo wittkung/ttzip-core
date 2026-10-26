@@ -2,7 +2,7 @@
 
 ## Research Overview
 
-本研究基于 upstream `libarchive` 源码（[`Vendor/libarchive-upstream/libarchive/`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/)）与 TTZip 底层优化实现（[`Sources/CTTZipBridge/`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/)、[`Sources/TTZipCore/`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/)）进行逐项对比，提取并论证除 PR #3388（7z AES-256 解密）外最具价值的上游开源贡献。
+本研究基于 upstream `libarchive` 源码（[`Vendor/libarchive-upstream/libarchive/`](file://../Vendor/libarchive-upstream/libarchive/)）与 TTZip 底层优化实现（[`Sources/CTTZipBridge/`](file://../Sources/CTTZipBridge/)、[`Sources/TTZipCore/`](file://../Sources/TTZipCore/)）进行逐项对比，提取并论证除 PR #3388（7z AES-256 解密）外最具价值的上游开源贡献。
 
 ---
 
@@ -17,8 +17,8 @@
   - *替代方案 A：仅在 TTZip 内部维护 7z 写入加密*：否决。TTZip 内部固然可直接调用 7zz 或自研写入器，但 upstream 缺失该能力会导致依赖 libarchive 的数万个开源项目无法生成加密 7z 归档。
   - *替代方案 B：在 PR #3388 中一并提交写入端*：否决。单 PR 代码变更超过 1500 行会极大增加审核阻力，拆分为 Read PR (#3388) 与 Write PR 是最佳工程实践。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_set_format_7zip.c:234, 912, 948`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_write_set_format_7zip.c#L234), [`Vendor/libarchive-upstream/libarchive/archive_cryptor.c:838-897`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_cryptor.c#L838-L897)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_Crypto.c:460-510`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Crypto.c#L460-L510), [`Sources/CTTZipBridge/ttzip_7z_header_writer.c:1-120`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_header_writer.c#L1-L120)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_set_format_7zip.c:234, 912, 948`](file://../Vendor/libarchive-upstream/libarchive/archive_write_set_format_7zip.c#L234), [`Vendor/libarchive-upstream/libarchive/archive_cryptor.c:838-897`](file://../Vendor/libarchive-upstream/libarchive/archive_cryptor.c#L838-L897)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_Crypto.c:460-510`](file://../Sources/CTTZipBridge/CTTZipBridge_Crypto.c#L460-L510), [`Sources/CTTZipBridge/ttzip_7z_header_writer.c:1-120`](file://../Sources/CTTZipBridge/ttzip_7z_header_writer.c#L1-L120)
 
 ---
 
@@ -33,8 +33,8 @@
   - *替代方案 A：强制要求所有环境链接 zlib*：否决。嵌入式或轻量级构建环境常关闭 zlib，`archive_crc32.h` 是 libarchive 的独立兜底保障，硬件加速内嵌价值极高。
   - *替代方案 B：引入外部 libdeflate 库依赖*：否决。libarchive 秉持极小依赖原则，直接使用编译器内置 ACLE / SSE Intrinsics 是最轻量纯粹的方案。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_crc32.h:36-121`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_crc32.h#L36-L121)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipCRC32Neon.c:1-15`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipCRC32Neon.c#L1-L15), [`Sources/CTTZipBridge/CTTZipUtils.c:63-145`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipUtils.c#L63-L145)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_crc32.h:36-121`](file://../Vendor/libarchive-upstream/libarchive/archive_crc32.h#L36-L121)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipCRC32Neon.c:1-15`](file://../Sources/CTTZipBridge/CTTZipCRC32Neon.c#L1-L15), [`Sources/CTTZipBridge/CTTZipUtils.c:63-145`](file://../Sources/CTTZipBridge/CTTZipUtils.c#L63-L145)
 
 ---
 
@@ -49,8 +49,8 @@
   - *替代方案 A：仅调用 `ftruncate` 扩容*：否决。`ftruncate` 仅修改逻辑文件大小，产生稀疏空洞，并不分配物理块，无法避免写入时的碎片与后续断电数据不一致。
   - *替代方案 B：默认无条件开启预分配*：否决。部分稀疏文件（Sparse File）或特殊文件系统可能不希望物理预分配，增加显式 `ARCHIVE_EXTRACT_PREALLOCATE` 控制标志最为稳妥。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_disk_posix.c:990-1052, 1714-1792`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_write_disk_posix.c#L990-L1052), [`Vendor/libarchive-upstream/libarchive/archive.h:707-747`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive.h#L707-L747)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_APFS.c:14-29`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_APFS.c#L14-L29)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_disk_posix.c:990-1052, 1714-1792`](file://../Vendor/libarchive-upstream/libarchive/archive_write_disk_posix.c#L990-L1052), [`Vendor/libarchive-upstream/libarchive/archive.h:707-747`](file://../Vendor/libarchive-upstream/libarchive/archive.h#L707-L747)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_APFS.c:14-29`](file://../Sources/CTTZipBridge/CTTZipBridge_APFS.c#L14-L29)
 
 ---
 
@@ -63,8 +63,8 @@
 - **Alternatives Considered**:
   - *替代方案 A：同时重写 x86/Thumb/PowerPC 的 SIMD 转换*：否决。先以 ARM64 作为基准验证 PR，待合并后再扩展其他架构。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_support_format_7zip.c:4546-4597`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_read_support_format_7zip.c#L4546-L4597)
-  - TTZip: [`Sources/CTTZipBridge/ttzip_bcj_arm64_neon.c:11-120`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_bcj_arm64_neon.c#L1-L120)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_support_format_7zip.c:4546-4597`](file://../Vendor/libarchive-upstream/libarchive/archive_read_support_format_7zip.c#L4546-L4597)
+  - TTZip: [`Sources/CTTZipBridge/ttzip_bcj_arm64_neon.c:11-120`](file://../Sources/CTTZipBridge/ttzip_bcj_arm64_neon.c#L1-L120)
 
 ---
 
@@ -77,8 +77,8 @@
 - **Alternatives Considered**:
   - *替代方案 A：完全废弃 `read()` 仅保留 `mmap`*：否决。管道（Pipe）、FIFO、字符设备或 32 位地址空间受限系统仍必须使用流式 `read()`。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_open_filename.c:429-465`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_read_open_filename.c#L429-L465)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_Mmap.c:30-53`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Mmap.c#L30-L53)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_open_filename.c:429-465`](file://../Vendor/libarchive-upstream/libarchive/archive_read_open_filename.c#L429-L465)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipBridge_Mmap.c:30-53`](file://../Sources/CTTZipBridge/CTTZipBridge_Mmap.c#L30-L53)
 
 ---
 
@@ -90,8 +90,8 @@
 - **Alternatives Considered**:
   - *替代方案 A：同时引入 Apple Archive (AAR) 容器格式*：否决。AAR 容器深度依赖 macOS 专有文件系统属性，格式复杂度高且非通用标准，先行提交独立的 LZFSE 压缩过滤器阻力最小。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_support_filter_lz4.c`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_read_support_filter_lz4.c), [`Vendor/libarchive-upstream/libarchive/archive_write_add_filter_lz4.c`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_write_add_filter_lz4.c)
-  - TTZip: [`Sources/TTZipCore/NativeAppleArchiveEngine.swift:34-40`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/NativeAppleArchiveEngine.swift#L34-L40)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_read_support_filter_lz4.c`](file://../Vendor/libarchive-upstream/libarchive/archive_read_support_filter_lz4.c), [`Vendor/libarchive-upstream/libarchive/archive_write_add_filter_lz4.c`](file://../Vendor/libarchive-upstream/libarchive/archive_write_add_filter_lz4.c)
+  - TTZip: [`Sources/TTZipCore/NativeAppleArchiveEngine.swift:34-40`](file://../Sources/TTZipCore/NativeAppleArchiveEngine.swift#L34-L40)
 
 ---
 
@@ -103,5 +103,5 @@
 - **Alternatives Considered**:
   - *替代方案 A：在 libarchive 中引入分块滑动窗口以适配 libdeflate*：否决。代码侵入性极大且无法发挥 libdeflate 无边界匹配的性能优势。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_add_filter_gzip.c:38-68`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_write_add_filter_gzip.c#L38-L68)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipExtract.c:293-318`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipExtract.c#L293-L318), [`Sources/TTZipCore/LibdeflateAccelerator.swift:1-45`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/LibdeflateAccelerator.swift#L1-L45)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_write_add_filter_gzip.c:38-68`](file://../Vendor/libarchive-upstream/libarchive/archive_write_add_filter_gzip.c#L38-L68)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipExtract.c:293-318`](file://../Sources/CTTZipBridge/CTTZipExtract.c#L293-L318), [`Sources/TTZipCore/LibdeflateAccelerator.swift:1-45`](file://../Sources/TTZipCore/LibdeflateAccelerator.swift#L1-L45)

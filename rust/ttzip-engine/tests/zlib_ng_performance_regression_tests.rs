@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! zlib-ng Modern Deflate Industrial Performance Anti-Regression Benchmark Suite (Invariant 6 <= 3.0% Hard Gate).
 //!

@@ -48,13 +48,13 @@
 
 ## 3. Phase 1: Design Artifacts Index (设计工件索引)
 
-- **数据模型**: [`specs/168-rust-bridge-glue-migration/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/168-rust-bridge-glue-migration/data-model.md)
+- **数据模型**: [`specs/168-rust-bridge-glue-migration/data-model.md`](file://../specs/168-rust-bridge-glue-migration/data-model.md)
 - **强类型契约 (Contracts)**:
   - [SUBAGENT:research] `contracts/ttzip_glue_ffi_contract.json` (核心 FFI 交互契约)
   - [SUBAGENT:research] `contracts/ttzip_stream_contract.json` (流式微缓冲与分块契约)
   - [SUBAGENT:research] `contracts/ttzip_crypto_contract.json` (硬件加速密码与校验契约)
   - [SUBAGENT:research] `contracts/ttzip_progress_log_event.json` (进度、取消与日志事件契约)
-- **快速验证指南**: [`specs/168-rust-bridge-glue-migration/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/168-rust-bridge-glue-migration/quickstart.md)
+- **快速验证指南**: [`specs/168-rust-bridge-glue-migration/quickstart.md`](file://../specs/168-rust-bridge-glue-migration/quickstart.md)
 
 ---
 

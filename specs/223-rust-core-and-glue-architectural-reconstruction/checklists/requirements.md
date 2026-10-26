@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-24  
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/core/specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
+**Feature**: [spec.md](file://specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
 
 ## Content Quality
 

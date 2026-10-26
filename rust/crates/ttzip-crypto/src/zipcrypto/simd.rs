@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware-accelerated CRC-32 instructions and multi-stream SIMD batch processing for ZipCrypto.
 

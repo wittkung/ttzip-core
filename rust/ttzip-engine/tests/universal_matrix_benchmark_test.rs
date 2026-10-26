@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Universal 8x8 Matrix Benchmark & Codec Regression Test Suite.
 //!
@@ -13,9 +13,9 @@
 use ttzip_engine::analytics::entropy::compute_shannon_entropy;
 use ttzip_engine::benchmark::codecs_driver::{
     BrotliBenchmarkDriver, Bzip2BenchmarkDriver, CodecBenchmarkDriver, DeflateBenchmarkDriver,
-    FseBenchmarkDriver, Huff0BenchmarkDriver, Lz4BenchmarkDriver, LzfseBenchmarkDriver,
-    Lzma2BenchmarkDriver, MatrixCodecDriver, PpmdBenchmarkDriver, SnappyBenchmarkDriver,
-    ZstdBenchmarkDriver, ZstdDictBenchmarkDriver, ZstdLdmBenchmarkDriver,
+    Lz4BenchmarkDriver, LzfseBenchmarkDriver, Lzma2BenchmarkDriver, MatrixCodecDriver,
+    PpmdBenchmarkDriver, SnappyBenchmarkDriver, ZstdBenchmarkDriver, ZstdDictBenchmarkDriver,
+    ZstdLdmBenchmarkDriver,
 };
 use ttzip_engine::benchmark::corpus::{BenchmarkCorpusGenerator, BenchmarkCorpusType};
 use ttzip_engine::benchmark::crypto_driver::MatrixCryptoDriver;
@@ -78,8 +78,6 @@ fn test_universal_matrix_13_codecs_by_8_corpora_roundtrip_fidelity() {
     let zstd = ZstdBenchmarkDriver;
     let zstd_ldm = ZstdLdmBenchmarkDriver;
     let zstd_dict = ZstdDictBenchmarkDriver;
-    let fse = FseBenchmarkDriver;
-    let huff0 = Huff0BenchmarkDriver;
     let lzma2 = Lzma2BenchmarkDriver;
     let brotli = BrotliBenchmarkDriver;
     let bzip2 = Bzip2BenchmarkDriver;
@@ -95,8 +93,6 @@ fn test_universal_matrix_13_codecs_by_8_corpora_roundtrip_fidelity() {
         ("Zstd-L19", &zstd, 19),
         ("Zstd-LDM", &zstd_ldm, 3),
         ("Zstd-Dict", &zstd_dict, 3),
-        ("FSE-tANS", &fse, 1),
-        ("Huff0-4X", &huff0, 1),
         ("LZMA2-L3", &lzma2, 3),
         ("LZMA2-L9", &lzma2, 9),
         ("Brotli-Q4", &brotli, 4),

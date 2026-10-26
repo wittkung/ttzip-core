@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe RAII wrapper for `liblzma` (XZ Utils) LZMA1 / LZMA-Alone decoder.
 
@@ -134,6 +134,9 @@ impl LzmaAloneDecoder {
             Ok((in_consumed, out_produced, true))
         } else if ret == LZMA_OK {
             Ok((in_consumed, out_produced, false))
+        } else if ret == LZMA_DATA_ERROR && out_produced == output.len() && !output.is_empty() {
+            // Uncompressed size boundary reached exactly despite trailing padding/garbage
+            Ok((in_consumed, out_produced, true))
         } else if ret == LZMA_MEM_ERROR || ret == LZMA_MEMLIMIT_ERROR {
             Err(TTZipStatus::ErrOutOfMemory)
         } else if ret == LZMA_DATA_ERROR || ret == LZMA_FORMAT_ERROR || ret == LZMA_OPTIONS_ERROR {
@@ -191,11 +194,11 @@ pub fn lzma1_decompress(
 
     // 3. Zero-copy stream raw payload directly without intermediate Vec allocation
     let mut payload_slice = raw_payload;
-    while !payload_slice.is_empty() {
-        let (consumed, produced, is_end) = decoder.decompress_chunk(payload_slice, &mut dst[out_offset..], true)?;
+    while !payload_slice.is_empty() && out_offset < dst.len() {
+        let (consumed, produced, is_end) = decoder.decompress_chunk(payload_slice, &mut dst[out_offset..], false)?;
         payload_slice = &payload_slice[consumed..];
         out_offset += produced;
-        if is_end || (consumed == 0 && produced == 0) {
+        if is_end || out_offset >= dst.len() || (consumed == 0 && produced == 0) {
             break;
         }
     }

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Native ZIP Engine module.
 //!
@@ -14,6 +14,7 @@ pub mod datetime;
 pub mod extra;
 pub mod parser;
 pub mod reader;
+pub mod reader_stream;
 pub mod scanner;
 pub mod writer;
 pub mod zip64;
@@ -31,7 +32,8 @@ pub use blocks::{
 };
 pub use cp437::{decode_cp437, decode_zip_filename};
 pub use datetime::{
-    days_in_month, dos_to_unix_epoch_secs, is_leap_year, unix_epoch_secs_to_dos, DosDateTime,
+    days_in_month, dos_to_local_unix_epoch_secs, dos_to_unix_epoch_secs, is_leap_year,
+    resolve_zip_mtime_secs, unix_epoch_secs_to_dos, DosDateTime,
 };
 pub use extra::ZipExtraFields;
 
@@ -40,6 +42,11 @@ pub use parser::{
     EocdInfo, ZipEntry, MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
 };
 pub use reader::{ZipArchive, ZipExtractReport};
+pub use reader_stream::{
+    extract_zip_entry_to_sink_from_reader, extract_zip_from_reader,
+    extract_zip_selected_from_reader, extract_zip_single_entry_from_reader,
+    parse_entries_from_reader,
+};
 pub use scanner::{
     find_eocd_candidate_offsets, CentralDirectoryEndInfo, EocdScanner, ZipEngineError,
     EOCD_MIN_SIZE, MAX_COMMENT_LEN, MAX_EOCD_SEARCH_WINDOW,
@@ -165,7 +172,7 @@ mod tests {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -185,11 +192,11 @@ mod tests {
 
         let extract_opt = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 4,
-            overwrite_existing: true,
+            collision_policy: 0,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,

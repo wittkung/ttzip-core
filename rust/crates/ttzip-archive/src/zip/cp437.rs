@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Code Page 437 (DOS Latin US / OEM) decoder with zero-allocation ASCII fast-path.
 //!

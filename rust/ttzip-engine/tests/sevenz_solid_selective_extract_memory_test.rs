@@ -1,11 +1,11 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration and Physical RSS memory test for 7z Solid archive selective extraction.
 //!
 //! Creates a 500-entry 7z solid archive, verifies single-file selective decoding integrity
 //! (SHA-256 and CRC32), validates Early Termination execution latency advantages, and
-//! asserts physical memory peak RSS <= 32MB.
+//! asserts a sampled RSS delta <= 16 MiB and peak <= max(32 MiB, baseline + 16 MiB).
 
 use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -61,25 +61,27 @@ impl MemoryPeakTracker {
 
         let delta_rss = peak.saturating_sub(self.baseline_rss);
         println!(
-            "-> Baseline RSS: {:.2} MB, Peak RSS: {:.2} MB (Delta: {:.2} MB, Limit: {:.2} MB)",
+            "-> Baseline RSS: {:.2} MiB, Sampled Peak RSS: {:.2} MiB, Delta: {:.2} MiB; \
+             Delta limit: 16.00 MiB, Requested total budget: {:.2} MiB, Effective peak limit: {:.2} MiB",
             self.baseline_rss as f64 / 1024.0 / 1024.0,
             peak as f64 / 1024.0 / 1024.0,
             delta_rss as f64 / 1024.0 / 1024.0,
-            max_allowed_bytes as f64 / 1024.0 / 1024.0
+            max_allowed_bytes as f64 / 1024.0 / 1024.0,
+            max_allowed_bytes.max(self.baseline_rss + 16 * 1024 * 1024) as f64 / 1024.0 / 1024.0
         );
 
         #[cfg(target_os = "macos")]
         if peak > 0 {
             assert!(
                 delta_rss <= 16 * 1024 * 1024,
-                "Micro-buffer Invariant Violated! Delta RSS: {:.2} MB > 16.00 MB",
+                "Micro-buffer Invariant Violated! Delta RSS: {:.2} MiB > 16.00 MiB",
                 delta_rss as f64 / 1024.0 / 1024.0
             );
             assert!(
                 peak <= max_allowed_bytes.max(self.baseline_rss + 16 * 1024 * 1024),
-                "Memory Invariant Violated! Peak RSS: {:.2} MB > limit {:.2} MB (Delta: {:.2} MB)",
+                "Memory Invariant Violated! Peak RSS: {:.2} MiB > effective limit {:.2} MiB (Delta: {:.2} MiB)",
                 peak as f64 / 1024.0 / 1024.0,
-                max_allowed_bytes as f64 / 1024.0 / 1024.0,
+                max_allowed_bytes.max(self.baseline_rss + 16 * 1024 * 1024) as f64 / 1024.0 / 1024.0,
                 delta_rss as f64 / 1024.0 / 1024.0
             );
         }
@@ -156,7 +158,7 @@ fn test_7z_solid_500_entries_selective_extract_and_rss_bound() {
     let archive = SevenZArchive::open_slice(&archive_bytes).expect("open 7z solid archive failed");
     assert_eq!(archive.len(), 500);
 
-    // Start memory RSS tracker with 32MB physical memory threshold
+    // Track both the 16 MiB RSS delta and max(32 MiB, baseline + 16 MiB) sampled peak.
     let tracker = MemoryPeakTracker::start();
 
     // 2. Selectively extract 1st file (Index 0), 250th file (Index 249), 499th file (Index 498)
@@ -227,7 +229,7 @@ fn test_7z_solid_500_entries_selective_extract_and_rss_bound() {
 
     assert_eq!(total_unpacked, total_expected_bytes);
 
-    // 4. Assert Physical RSS limit <= 32MB (or delta bounded)
+    // 4. Assert the unchanged 16 MiB delta and baseline-aware peak limits.
     let max_allowed_rss = 32 * 1024 * 1024; // 32 MB
     tracker.stop_and_assert_peak(max_allowed_rss);
 }

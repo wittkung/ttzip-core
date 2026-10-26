@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-19
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/spec.md)
+**Feature**: [spec.md](file://../specs/123-block-splitting-and-cost-evaluation/spec.md)
 
 ## Content Quality
 

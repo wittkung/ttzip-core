@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTWorkspaceVfsSearchContract",
+  "description": "Contract schema for real-time keystroke search and filtered index slice responses",
+  "type": "object",
+  "required": [
+    "query",
+    "case_sensitive",
+    "max_results",
+    "generation"
+  ],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search query substring or prefix"
+    },
+    "case_sensitive": {
+      "type": "boolean",
+      "description": "Whether matching should be case-sensitive"
+    },
+    "max_results": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000,
+      "description": "Maximum number of matched node indices to return"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Snapshot generation against which the search was performed"
+    },
+    "execution_time_micros": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Microkernel search execution latency in microseconds"
+    },
+    "matched_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total count of matching nodes"
+    }
+  },
+  "additionalProperties": false
+}

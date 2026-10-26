@@ -12,7 +12,7 @@
 `libarchive` 是类 Unix 操作系统（包括 macOS 原生 `bsdtar`、FreeBSD、Debian/Ubuntu `libarchive-tools` 等）及数十个开源包管理器的核心归档基础库。
 然而，自 2017 年开启 [Issue #878](https://github.com/libarchive/libarchive/issues/878) 以来，`libarchive` 长期无法解密受密码保护的 7z 归档（遇到加密文件时直接返回 `ARCHIVE_FAILED: "Crypto codec not supported yet (ID: 0x6F10701)"`）。
 
-本 Feature 旨在从数学与密码学理论出发，构建严谨的 7z AES-256-SHA-256 密钥派生（KDF）与 AES-256-CBC 流式解密数学模型，依托 TTZip 已有的高性能实现（[`ttzip_7z_kdf_arm64.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_kdf_arm64.c) 与 [`CTTZipBridge_7z.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_7z.c)），为 `libarchive` 扩展通用的多后端密码学抽象（`archive_cryptor`），并在 `archive_read_support_format_7zip.c` 中完整支持：
+本 Feature 旨在从数学与密码学理论出发，构建严谨的 7z AES-256-SHA-256 密钥派生（KDF）与 AES-256-CBC 流式解密数学模型，依托 TTZip 已有的高性能实现（[`ttzip_7z_kdf_arm64.c`](file://../Sources/CTTZipBridge/ttzip_7z_kdf_arm64.c) 与 [`CTTZipBridge_7z.c`](file://../Sources/CTTZipBridge/CTTZipBridge_7z.c)），为 `libarchive` 扩展通用的多后端密码学抽象（`archive_cryptor`），并在 `archive_read_support_format_7zip.c` 中完整支持：
 1. **数据流加密（Stream Encryption / Plain Header）**：Folder 级别的 AES-256-CBC 解密。
 2. **全头加密（Header Encryption / Encoded Header `0x17`）**：中央目录树的密码解密与递归解析。
 3. **多密码学后端适配**：Apple CommonCrypto、OpenSSL (1.1 & 3.x)、Windows CNG (BCrypt)、mbedTLS、Nettle 及纯 C Fallback，确保跨平台 CI 全绿。

@@ -1,11 +1,11 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Multi-volume split archive writer with byte-level accuracy and volume rotation.
 
 use super::VolumeNamingScheme;
-use std::fs::{self, File};
-use std::io::{self, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufWriter, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 /// Computes volume file path for the given 1-based index according to the naming scheme.
@@ -137,6 +137,31 @@ impl SplitVolumeWriter {
         self.open_volume(self.current_volume_index + 1)
     }
 
+    /// Patches the header bytes at offset 0 of the first volume (`.001`).
+    pub fn write_header_at_start(&mut self, header: &[u8]) -> io::Result<()> {
+        if self.current_volume_index == 1 {
+            let file = self.active_file.as_mut().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "No active volume file")
+            })?;
+            file.flush()?;
+            file.seek(SeekFrom::Start(0))?;
+            file.write_all(header)?;
+            file.seek(SeekFrom::Start(self.bytes_written_in_current))?;
+            file.flush()
+        } else {
+            if let Some(file) = self.active_file.as_mut() {
+                file.flush()?;
+            }
+            let first_path = self.generated_volume_paths.first().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::NotFound, "Missing first volume path")
+            })?;
+            let mut first_file = OpenOptions::new().write(true).open(first_path)?;
+            first_file.seek(SeekFrom::Start(0))?;
+            first_file.write_all(header)?;
+            first_file.flush()
+        }
+    }
+
     /// Flushes and closes all volume handles, applying final volume naming conventions.
     pub fn close(&mut self) -> io::Result<Vec<PathBuf>> {
         if self.is_closed {
@@ -236,3 +261,183 @@ impl Drop for SplitVolumeWriter {
         }
     }
 }
+
+/// Unified single-file or single-pass multi-volume output sink for 7z archives.
+pub enum SevenZOutputTarget {
+    Single {
+        writer: BufWriter<File>,
+        abort_guard: Option<crate::fs::FileAbortGuard>,
+    },
+    Split {
+        writer: SplitVolumeWriter,
+        committed: bool,
+    },
+}
+
+impl SevenZOutputTarget {
+    /// Opens either a single buffered file or a single-pass `SplitVolumeWriter`.
+    pub fn open(dest_path: &Path, split_volume_size_bytes: u64, buf_cap: usize) -> io::Result<Self> {
+        if let Some(parent) = dest_path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)?;
+        }
+        if split_volume_size_bytes > 0 {
+            let base_path = if dest_path.extension().and_then(|e| e.to_str()) == Some("001") {
+                dest_path.with_extension("")
+            } else {
+                dest_path.to_path_buf()
+            };
+            let writer = SplitVolumeWriter::new(
+                &base_path,
+                split_volume_size_bytes,
+                VolumeNamingScheme::NumberedExtension,
+            )?;
+            Ok(Self::Split {
+                writer,
+                committed: false,
+            })
+        } else {
+            let abort_guard = crate::fs::FileAbortGuard::new(dest_path);
+            let raw_file = File::create(dest_path)?;
+            Ok(Self::Single {
+                writer: BufWriter::with_capacity(buf_cap, raw_file),
+                abort_guard: Some(abort_guard),
+            })
+        }
+    }
+
+    /// Patches the 32-byte 7z signature header at offset 0 and commits the output.
+    pub fn finalize_signature(mut self, sig_bytes: &[u8; 32]) -> io::Result<()> {
+        match &mut self {
+            Self::Single { writer, abort_guard } => {
+                writer.seek(SeekFrom::Start(0))?;
+                writer.write_all(sig_bytes)?;
+                writer.flush()?;
+                if let Some(guard) = abort_guard.take() {
+                    guard.commit();
+                }
+                Ok(())
+            }
+            Self::Split { writer, committed } => {
+                writer.write_header_at_start(sig_bytes)?;
+                writer.close()?;
+                *committed = true;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Write for SevenZOutputTarget {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::Single { writer, .. } => writer.write(buf),
+            Self::Split { writer, .. } => writer.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Self::Single { writer, .. } => writer.flush(),
+            Self::Split { writer, .. } => writer.flush(),
+        }
+    }
+}
+
+impl Drop for SevenZOutputTarget {
+    fn drop(&mut self) {
+        if let Self::Split { writer, committed } = self {
+            if !*committed {
+                writer.cancel_and_cleanup();
+            }
+        }
+    }
+}
+
+/// Unified single-file or single-pass multi-volume streaming output sink for sequential archive formats.
+pub enum StreamOutputTarget {
+    Single {
+        file: File,
+        abort_guard: Option<crate::fs::FileAbortGuard>,
+    },
+    Split {
+        writer: SplitVolumeWriter,
+        committed: bool,
+    },
+}
+
+impl StreamOutputTarget {
+    /// Opens either a single output file or a single-pass `SplitVolumeWriter` using numbered `.001` volumes.
+    pub fn open(dest_path: &Path, split_volume_size_bytes: u64) -> io::Result<Self> {
+        if let Some(parent) = dest_path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)?;
+        }
+        if split_volume_size_bytes > 0 {
+            let base_path = if dest_path.extension().and_then(|e| e.to_str()) == Some("001") {
+                dest_path.with_extension("")
+            } else {
+                dest_path.to_path_buf()
+            };
+            let writer = SplitVolumeWriter::new(
+                &base_path,
+                split_volume_size_bytes,
+                VolumeNamingScheme::NumberedExtension,
+            )?;
+            Ok(Self::Split {
+                writer,
+                committed: false,
+            })
+        } else {
+            let abort_guard = crate::fs::FileAbortGuard::new(dest_path);
+            let file = File::create(dest_path)?;
+            Ok(Self::Single {
+                file,
+                abort_guard: Some(abort_guard),
+            })
+        }
+    }
+
+    /// Flushes and commits the output target, preventing rollback on drop.
+    pub fn commit(mut self) -> io::Result<()> {
+        match &mut self {
+            Self::Single { file, abort_guard } => {
+                file.flush()?;
+                if let Some(guard) = abort_guard.take() {
+                    guard.commit();
+                }
+                Ok(())
+            }
+            Self::Split { writer, committed } => {
+                writer.close()?;
+                *committed = true;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Write for StreamOutputTarget {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::Single { file, .. } => file.write(buf),
+            Self::Split { writer, .. } => writer.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Self::Single { file, .. } => file.flush(),
+            Self::Split { writer, .. } => writer.flush(),
+        }
+    }
+}
+
+impl Drop for StreamOutputTarget {
+    fn drop(&mut self) {
+        if let Self::Split { writer, committed } = self {
+            if !*committed {
+                writer.cancel_and_cleanup();
+            }
+        }
+    }
+}
+

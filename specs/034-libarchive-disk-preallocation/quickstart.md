@@ -8,7 +8,7 @@
 
 ### Command
 ```bash
-cd /Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream
+cd ../Vendor/libarchive-upstream
 mkdir -p build_test && cd build_test
 cmake .. -DENABLE_TEST=ON -DENABLE_TAR=ON
 make -j$(sysctl -n hw.ncpu)
@@ -30,7 +30,7 @@ make -j$(sysctl -n hw.ncpu)
 
 ### Command
 ```bash
-cd /Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/build_test
+cd ../Vendor/libarchive-upstream/build_test
 ctest -R "test_write_disk" --output-on-failure
 ```
 
@@ -49,7 +49,7 @@ ctest -R "test_write_disk" --output-on-failure
 
 ### Command
 ```bash
-cd /Users/kevintung/Documents/dev/TTZip
+cd $HOME/Documents/dev/TTZip
 swift test --filter ArchiveIntegrationTests
 ```
 

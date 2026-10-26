@@ -1,6 +1,6 @@
 # Implementation Plan: Comprehensive Physical Benchmarking Suite, Detailed Comparison Documentation, and Top-Tier Professional README Reconstruction
 
-**Branch**: `073-performance-benchmarking-and` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/073-performance-benchmarking-and/spec.md)
+**Branch**: `073-performance-benchmarking-and` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/073-performance-benchmarking-and/spec.md)
 
 **Input**: Feature specification from `/specs/073-performance-benchmarking-and/spec.md`
 

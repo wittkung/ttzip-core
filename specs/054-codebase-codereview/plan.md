@@ -1,6 +1,6 @@
 # Implementation Plan: Full Codebase Architecture, Security & Testing Remediation
 
-**Branch**: `054-codebase-codereview` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/spec.md)
+**Branch**: `054-codebase-codereview` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/054-codebase-codereview/spec.md)
 
 **Input**: Full Codebase Code Review findings across Systems C, Swift Core Engines, 28 Design Patterns, Desktop UI, and Test/Benchmark oracles.
 
@@ -60,14 +60,14 @@ This plan outlines the end-to-end technical remediation across the 5 core projec
 ## Phase 1: Design & Contracts
 
 ### Interface Contracts
-- [x] - [SUBAGENT:research] [`contracts/ci_invariant_linter.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/contracts/ci_invariant_linter.schema.json): CI 静态扫描结果与违规项数据契约。
-- [x] - [SUBAGENT:research] [`contracts/engine_strategy_template.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/contracts/engine_strategy_template.schema.json): 策略与模板编排上下文及执行结果契约。
-- [x] - [SUBAGENT:research] [`contracts/ui_progress_throttler.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/contracts/ui_progress_throttler.schema.json): UI 纳秒级单调时钟节流事件契约。
-- [x] - [SUBAGENT:research] [`contracts/system_differential_oracle.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/contracts/system_differential_oracle.schema.json): 双向系统差分测试比对预言机契约。
+- [x] - [SUBAGENT:research] [`contracts/ci_invariant_linter.schema.json`](file://../specs/054-codebase-codereview/contracts/ci_invariant_linter.schema.json): CI 静态扫描结果与违规项数据契约。
+- [x] - [SUBAGENT:research] [`contracts/engine_strategy_template.schema.json`](file://../specs/054-codebase-codereview/contracts/engine_strategy_template.schema.json): 策略与模板编排上下文及执行结果契约。
+- [x] - [SUBAGENT:research] [`contracts/ui_progress_throttler.schema.json`](file://../specs/054-codebase-codereview/contracts/ui_progress_throttler.schema.json): UI 纳秒级单调时钟节流事件契约。
+- [x] - [SUBAGENT:research] [`contracts/system_differential_oracle.schema.json`](file://../specs/054-codebase-codereview/contracts/system_differential_oracle.schema.json): 双向系统差分测试比对预言机契约。
 
 ### Data Models & Quickstart
-- [x] [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/data-model.md): 强类型数据模型与字段约束定义。
-- [x] [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/quickstart.md): 4 大核心验证场景（Linter、Differential Oracle、Golden Corpus、Performance Gate）运行指南。
+- [x] [`data-model.md`](file://../specs/054-codebase-codereview/data-model.md): 强类型数据模型与字段约束定义。
+- [x] [`quickstart.md`](file://../specs/054-codebase-codereview/quickstart.md): 4 大核心验证场景（Linter、Differential Oracle、Golden Corpus、Performance Gate）运行指南。
 
 ---
 

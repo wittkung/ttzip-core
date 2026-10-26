@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI 0.28 Export Layer for Ebook Metadata, Hierarchical TOC,
 //! Spine Layout, Chapter Content Extraction, and Embedded Resources.

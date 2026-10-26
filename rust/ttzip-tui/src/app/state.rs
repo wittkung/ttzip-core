@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Core Application State Machine definition and lifecycle.
 
@@ -8,11 +8,11 @@ use super::types::{AppMode, ArchiveFormat};
 use crate::event::AppEvent;
 use crate::preview::{PreviewData, SyntaxHighlighter};
 use crate::ui::progress::ProgressSnapshot;
-use crate::vfs::{VfsEntryMeta, VfsSearchResult, VfsTree};
 use crossbeam_channel::Sender;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use ttzip_archive::vfs::{VfsCompactArena, VfsEntry, VfsSearchResult};
 use ttzip_engine::runtime::cancellation::{CancellationReason, CancellationToken};
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::types::TTZipStatus;
@@ -28,7 +28,7 @@ pub struct AppState {
     pub uncompressed_size_bytes: u64,
     pub entries_count: usize,
     pub selected_index: usize,
-    pub vfs: VfsTree,
+    pub vfs: VfsCompactArena,
     pub search_query: String,
     pub search_results: Vec<VfsSearchResult>,
     pub search_selected_index: usize,
@@ -62,9 +62,9 @@ impl AppState {
         // Try parsing as ZIP
         if let Ok(zip_archive) = ZipArchive::open_slice(&raw_data) {
             format = ArchiveFormat::Zip;
-            for (idx, e) in zip_archive.entries().iter().enumerate() {
+            for e in zip_archive.entries() {
                 uncompressed_size_bytes += e.uncompressed_size;
-                entries.push(VfsEntryMeta {
+                entries.push(VfsEntry {
                     path: e.rel_path.clone(),
                     uncompressed_size: e.uncompressed_size,
                     compressed_size: e.compressed_size,
@@ -73,7 +73,6 @@ impl AppState {
                     mode: e.mode,
                     is_directory: e.is_directory,
                     is_encrypted: e.is_encrypted,
-                    entry_idx: Some(idx),
                 });
             }
         } else if let Ok(sevenz_archive) = SevenZArchive::open_slice(&raw_data) {
@@ -82,7 +81,7 @@ impl AppState {
             let info = sevenz_archive.info();
             let mut stream_idx = 0usize;
 
-            for (idx, f) in info.files.iter().enumerate() {
+            for f in &info.files {
                 let (uncomp_sz, crc) = if !f.is_directory && !f.is_empty_stream {
                     let sz = info.stream_sizes.get(stream_idx).copied().unwrap_or(0);
                     let c = info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
@@ -93,7 +92,7 @@ impl AppState {
                 };
 
                 uncompressed_size_bytes += uncomp_sz;
-                entries.push(VfsEntryMeta {
+                entries.push(VfsEntry {
                     path: f.rel_path.clone(),
                     uncompressed_size: uncomp_sz,
                     compressed_size: if uncomp_sz > 0 { info.payload_len as u64 / info.stream_sizes.len().max(1) as u64 } else { 0 },
@@ -102,7 +101,6 @@ impl AppState {
                     mode: f.mode,
                     is_directory: f.is_directory,
                     is_encrypted: info.is_encrypted,
-                    entry_idx: Some(idx),
                 });
             }
         }
@@ -119,7 +117,7 @@ impl AppState {
         }
 
         let entries_count = entries.len();
-        let mut vfs = VfsTree::from_metadata_list(&archive_path.to_string_lossy(), &entries);
+        let mut vfs = VfsCompactArena::build_from_entries(&entries, &archive_path.to_string_lossy());
         vfs.set_all_expanded(true);
 
         Ok(Self {

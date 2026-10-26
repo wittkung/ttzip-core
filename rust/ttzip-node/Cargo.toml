@@ -16,3 +16,7 @@ napi-derive = "2.16"
 
 [build-dependencies]
 napi-build = "2.1"
+
+[lints]
+workspace = true
+

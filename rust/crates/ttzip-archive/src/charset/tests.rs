@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use crate::charset::{
     detect_charset, detect_charset_with_confidence, sanitize_filename,

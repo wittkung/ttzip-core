@@ -1,14 +1,14 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
-//! Parallel filesystem directory scanner with Rayon work-stealing and 64-sharded cycle detector.
+//! Parallel filesystem directory scanner with scoped threads and 64-sharded cycle detector.
 
-use parking_lot::RwLock;
-use rayon::prelude::*;
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 use crate::fs::apfs::is_mac_junk_file;
 
@@ -199,12 +199,42 @@ fn scan_dir_recursive_parallel(
         }
     }
 
-    let recursive_sub_items: Vec<ScannedFsItem> = sub_dirs
-        .into_par_iter()
-        .flat_map(|(sub_path, sub_rel)| {
-            scan_dir_recursive_parallel(&sub_path, &sub_rel, current_depth + 1, options, detector)
-        })
-        .collect();
+    let recursive_sub_items: Vec<ScannedFsItem> = if current_depth == 0 && sub_dirs.len() > 1 {
+        let num_threads = ttzip_types::recommended_compute_threads().min(sub_dirs.len()).max(1);
+        let mut buckets: Vec<Vec<(std::path::PathBuf, String)>> = (0..num_threads).map(|_| Vec::new()).collect();
+        for (idx, item) in sub_dirs.into_iter().enumerate() {
+            buckets[idx % num_threads].push(item);
+        }
+
+        let results_mutex = Mutex::new(Vec::new());
+        let pool = LocalWorkStealingPool::with_threads(num_threads);
+        pool.scope(|s| {
+            for bucket in buckets {
+                let results_ref = &results_mutex;
+                s.spawn(move || {
+                    let mut local = Vec::new();
+                    for (sub_path, sub_rel) in bucket {
+                        local.extend(scan_dir_recursive_parallel(
+                            &sub_path,
+                            &sub_rel,
+                            current_depth + 1,
+                            options,
+                            detector,
+                        ));
+                    }
+                    results_ref.lock().extend(local);
+                });
+            }
+        });
+        results_mutex.into_inner()
+    } else {
+        sub_dirs
+            .into_iter()
+            .flat_map(|(sub_path, sub_rel)| {
+                scan_dir_recursive_parallel(&sub_path, &sub_rel, current_depth + 1, options, detector)
+            })
+            .collect()
+    };
 
     direct_files.extend(recursive_sub_items);
     direct_files

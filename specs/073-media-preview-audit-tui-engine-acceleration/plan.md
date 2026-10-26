@@ -37,11 +37,11 @@ This plan details the implementation strategy for:
 
 ## Phase 1: Design & Contract Artifacts
 
-- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/073-media-preview-audit-tui-engine-acceleration/data-model.md)
+- **Data Model**: [`data-model.md`](file://../specs/073-media-preview-audit-tui-engine-acceleration/data-model.md)
 - **Contracts**:
   - `contracts/tui_session_state.json` [SUBAGENT:research]
   - `contracts/media_preview_audit_report.json` [SUBAGENT:research]
-- **Verification**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/073-media-preview-audit-tui-engine-acceleration/quickstart.md)
+- **Verification**: [`quickstart.md`](file://../specs/073-media-preview-audit-tui-engine-acceleration/quickstart.md)
 
 ---
 

@@ -36,11 +36,11 @@
 
 ## 3. Phase 1: Design Artifacts Index
 
-- **数据模型**: [`specs/170-rust-interactive-tui-engine/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/170-rust-interactive-tui-engine/data-model.md)
+- **数据模型**: [`specs/170-rust-interactive-tui-engine/data-model.md`](file://../specs/170-rust-interactive-tui-engine/data-model.md)
 - **强类型契约**:
   - [SUBAGENT:research] `contracts/tui_event_contract.json`
   - [SUBAGENT:research] `contracts/tui_vfs_tree_contract.json`
-- **快速验证指南**: [`specs/170-rust-interactive-tui-engine/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/170-rust-interactive-tui-engine/quickstart.md)
+- **快速验证指南**: [`specs/170-rust-interactive-tui-engine/quickstart.md`](file://../specs/170-rust-interactive-tui-engine/quickstart.md)
 
 ---
 

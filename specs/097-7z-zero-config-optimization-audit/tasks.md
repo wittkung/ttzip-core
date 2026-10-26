@@ -1,7 +1,7 @@
 # Tasks: 097-7z-zero-config-optimization-audit
 
 **Input**: Design documents from `specs/097-7z-zero-config-optimization-audit/`  
-**Prerequisites**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/plan.md), [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/spec.md), [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/research.md), [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/data-model.md), [contracts/](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/contracts/)
+**Prerequisites**: [plan.md](file://../specs/097-7z-zero-config-optimization-audit/plan.md), [spec.md](file://../specs/097-7z-zero-config-optimization-audit/spec.md), [research.md](file://../specs/097-7z-zero-config-optimization-audit/research.md), [data-model.md](file://../specs/097-7z-zero-config-optimization-audit/data-model.md), [contracts/](file://../specs/097-7z-zero-config-optimization-audit/contracts/)
 
 ---
 

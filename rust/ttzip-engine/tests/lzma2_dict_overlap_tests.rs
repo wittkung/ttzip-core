@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive Verification Test Suite for LZMA2 Sliding Dictionary Overlap,
 //! History Buffering, Boundary Compaction, and Invariant Memory Defense.
@@ -91,17 +91,17 @@ fn test_dict_sliding_window_compaction_past_2x_max_size() {
     let max_size = 1024usize; // 1 KB max dictionary window
     let mut dict = Lzma2Dict::new(max_size);
 
-    // Fill buffer beyond 2 * max_size (2048 bytes) to trigger compaction
+    // Fill buffer beyond max_size (1024 bytes) to verify fixed-window ring buffer clamping
     let chunk = vec![0x42u8; 1500];
     dict.put_slice(&chunk);
-    assert_eq!(dict.len(), 1500);
+    assert_eq!(dict.len(), max_size);
     assert_eq!(dict.total_written(), 1500);
 
-    // Append second chunk of 1000 bytes -> total buffered would be 2500 (> 2048)
+    // Append second chunk of 1000 bytes -> total buffered reaches 2500 (> 2048)
     let marker_chunk: Vec<u8> = (0..1000).map(|i| (i % 256) as u8).collect();
     dict.put_slice(&marker_chunk);
 
-    // After compaction, buffer len must be clamped down to max_size (1024)
+    // In ring buffer, accessible history len remains clamped to max_size (1024)
     assert_eq!(dict.len(), max_size);
     assert_eq!(dict.total_written(), 2500);
 

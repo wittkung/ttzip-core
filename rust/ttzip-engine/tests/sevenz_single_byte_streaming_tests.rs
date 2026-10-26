@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Full-Operator Single-Byte Micro-Buffer Cataclysm Stress Test Suite.
 //!
@@ -12,10 +12,7 @@ use ttzip_engine::codecs::branch::bcj2_stream::{
 };
 use ttzip_engine::codecs::lzma::alone::LzmaAloneDecoder;
 use ttzip_engine::codecs::lzma::{RangeDecoder, RangeEncoder, PROB_INIT_VAL};
-use ttzip_engine::codecs::ppmd::{ppmd_compress_to_vec, PpmdModel, PpmdRangeDecoder};
-use ttzip_engine::codecs::ppmd_suballoc::{
-    PpmdContext, PpmdState, PpmdVariant, SubAllocBumpArena, PPMD_UNIT_SIZE,
-};
+use ttzip_engine::codecs::ppmd::{ppmd_compress_to_vec, ppmd_decompress};
 use ttzip_engine::crypto::aes256::{aes256_cbc_decrypt, aes256_cbc_encrypt};
 use ttzip_engine::sevenz::varint::{
     decode_7z_varint, encode_7z_varint, encode_7z_varint_vec, varint_size_7z, VarintError,
@@ -437,28 +434,15 @@ fn test_bcj2_4stream_single_byte_demand_driven_arbitration_torture() {
 
 #[test]
 fn test_ppmd_suballoc_single_byte_streaming_torture() {
-    let arena = SubAllocBumpArena::new(2 * 1024 * 1024, PpmdVariant::Ppmd7).expect("arena init");
-    assert!(arena.size >= 2 * 1024 * 1024);
-    assert_eq!(std::mem::size_of::<PpmdContext>(), 12);
-    assert_eq!(std::mem::size_of::<PpmdState>(), 6);
-    assert_eq!(PPMD_UNIT_SIZE, 12);
-    assert!(arena.hi_unit > arena.lo_unit);
-
     let test_data = b"TTZip PPMd Model H Statistical Single-Byte Micro-Buffer Cataclysm Torture Payload! \
         Repeating sequences: 0123456789 0123456789 aabbccddeeff gghhiijjkkll.";
 
     let compressed = ppmd_compress_to_vec(test_data, 6, 2 * 1024 * 1024).expect("ppmd compress");
     assert!(!compressed.is_empty());
 
-    let mut rc = PpmdRangeDecoder::new(&compressed).expect("PpmdRangeDecoder init");
-    let mut model = PpmdModel::new(6, 2 * 1024 * 1024).expect("PpmdModel init");
-    let mut decompressed = Vec::with_capacity(test_data.len());
-
-    for _ in 0..test_data.len() {
-        let sym = model.decode_symbol(&mut rc).expect("decode symbol");
-        decompressed.push(sym);
-    }
-
+    let mut decompressed = vec![0u8; test_data.len()];
+    let written = ppmd_decompress(&compressed, &mut decompressed, 6, 2 * 1024 * 1024).expect("ppmd decompress");
+    assert_eq!(written, test_data.len());
     assert_eq!(decompressed.as_slice(), test_data, "PPMd Single-Byte mismatch!");
 }
 

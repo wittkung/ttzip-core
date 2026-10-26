@@ -86,5 +86,5 @@
 - **Source (查阅来源)**:
   1. zlib-ng 官方仓库: `arch/x86/x86_features.c`, `arch/arm/arm_features.c`, `functable.h`
   2. Microsoft Learn 官方文档: `IsProcessorFeaturePresent`, `__cpuid`, `_xgetbv`
-  3. 本地项目文件: [CMakeLists.txt](file:///Users/kevintung/Documents/dev/TTZip/CMakeLists.txt), [Package.swift](file:///Users/kevintung/Documents/dev/TTZip/Package.swift), [Sources/CTTZipBridge/include/CTTZipStreamCoder.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipStreamCoder.h)
+  3. 本地项目文件: [CMakeLists.txt](file://../CMakeLists.txt), [Package.swift](file://../Package.swift), [Sources/CTTZipBridge/include/CTTZipStreamCoder.h](file://../Sources/CTTZipBridge/include/CTTZipStreamCoder.h)
   4. 业界基准测试数据: Legacy zlib 1.3.1 (MSVC x64) 压缩 ~45 MB/s, 解压 ~180 MB/s; zlib-ng (AVX2/AVX-512) 压缩 ~380–520 MB/s, 解压 ~650–920 MB/s.

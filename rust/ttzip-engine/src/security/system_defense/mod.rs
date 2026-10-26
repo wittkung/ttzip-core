@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TTZip 6-Layer System Defense-in-Depth & Incremental Update Security Subsystem.
 //!
@@ -55,76 +55,119 @@ use crate::types::TTZipStatus;
 // ============================================================================
 
 /// Errors emitted when system defense invariants, sandbox boundaries, or quotas are breached.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemDefenseError {
     /// Sandbox jail escape attempt detected.
-    #[error("Sandbox escape attempt detected: path '{path}', reason: {reason}")]
     SandboxEscapeAttempt { path: String, reason: String },
 
     /// Intermediate directory symlink escape detected.
-    #[error("Symlink escaping detected on path '{path}': {reason}")]
     SymlinkEscapingDetected { path: String, reason: String },
 
     /// Single task resident memory budget exceeded.
-    #[error("Delta memory budget exceeded: {allocated} bytes > maximum budget {max_budget} bytes")]
     DeltaMemoryBudgetExceeded { allocated: usize, max_budget: usize },
 
     /// Input patch file size exceeded configured maximum limit.
-    #[error("Delta patch size exceeded: {size} bytes > maximum allowed {max_size} bytes")]
     DeltaPatchSizeExceeded { size: usize, max_size: usize },
 
     /// Patch expansion ratio exceeded decompression explosion limit.
-    #[error("Delta expansion ratio exceeded: {ratio}x > maximum allowed {max_ratio}x")]
     DeltaExpansionRatioExceeded { ratio: usize, max_ratio: usize },
 
     /// Delta instruction count exceeded safety quota.
-    #[error("Delta instruction count exceeded quota: {count} > maximum allowed {max_quota}")]
     DeltaInstructionQuotaExceeded { count: usize, max_quota: usize },
 
     /// Small subgroup public key detected in signature verification.
-    #[error("Ed25519 small subgroup key rejected: prefix {key_prefix}")]
     SmallSubgroupKeyDetected { key_prefix: String },
 
     /// Non-canonical scalar S detected ($S \ge \ell$).
-    #[error("Ed25519 non-canonical scalar S detected (S >= l)")]
     NonCanonicalScalarDetected,
 
     /// Malleable or tampered signature structure detected.
-    #[error("Ed25519 signature malleability violation: {reason}")]
     MalleableSignatureDetected { reason: String },
 
     /// Cryptographic signature verification failed.
-    #[error("Signature verification failed: {reason}")]
     SignatureVerificationFailed { reason: String },
 
     /// Version downgrade attempt detected.
-    #[error("Version downgrade rejected: attempted '{attempted}' <= current '{current}'")]
     VersionDowngradeDetected { current: String, attempted: String },
 
     /// Path traversal or Zip-Slip attack detected.
-    #[error("Path traversal attack detected: path '{path}', reason: {reason}")]
     PathTraversalAttackDetected { path: String, reason: String },
 
     /// Null-byte injection detected in path.
-    #[error("Null-byte injection detected in path '{path}'")]
     NullByteInjectionDetected { path: String },
 
     /// Windows/POSIX reserved device name detected in path segment.
-    #[error("Reserved system device name detected in path: '{segment}'")]
     ReservedDeviceNameDetected { segment: String },
 
     /// Path length exceeded maximum limit.
-    #[error("Path length exceeded limit: {len} > {max_len} bytes")]
     PathTooLong { len: usize, max_len: usize },
 
     /// Temporary directory creation failed.
-    #[error("Failed to create isolated temporary directory '{path}': {reason}")]
     TempDirectoryCreationFailed { path: String, reason: String },
 
     /// Temporary directory cleanup failed.
-    #[error("Failed to clean temporary workspace: {reason}")]
     TempDirectoryCleanupFailed { reason: String },
 }
+
+impl std::fmt::Display for SystemDefenseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SandboxEscapeAttempt { path, reason } => {
+                write!(f, "Sandbox escape attempt detected: path '{}', reason: {reason}", path.escape_debug())
+            }
+            Self::SymlinkEscapingDetected { path, reason } => {
+                write!(f, "Symlink escaping detected on path '{}': {reason}", path.escape_debug())
+            }
+            Self::DeltaMemoryBudgetExceeded { allocated, max_budget } => {
+                write!(f, "Delta memory budget exceeded: {allocated} bytes > maximum budget {max_budget} bytes")
+            }
+            Self::DeltaPatchSizeExceeded { size, max_size } => {
+                write!(f, "Delta patch size exceeded: {size} bytes > maximum allowed {max_size} bytes")
+            }
+            Self::DeltaExpansionRatioExceeded { ratio, max_ratio } => {
+                write!(f, "Delta expansion ratio exceeded: {ratio}x > maximum allowed {max_ratio}x")
+            }
+            Self::DeltaInstructionQuotaExceeded { count, max_quota } => {
+                write!(f, "Delta instruction count exceeded quota: {count} > maximum allowed {max_quota}")
+            }
+            Self::SmallSubgroupKeyDetected { key_prefix } => {
+                write!(f, "Ed25519 small subgroup key rejected: prefix {}", key_prefix.escape_debug())
+            }
+            Self::NonCanonicalScalarDetected => {
+                write!(f, "Ed25519 non-canonical scalar S detected (S >= l)")
+            }
+            Self::MalleableSignatureDetected { reason } => {
+                write!(f, "Ed25519 signature malleability violation: {reason}")
+            }
+            Self::SignatureVerificationFailed { reason } => {
+                write!(f, "Signature verification failed: {reason}")
+            }
+            Self::VersionDowngradeDetected { current, attempted } => {
+                write!(f, "Version downgrade rejected: attempted '{}' <= current '{}'", attempted.escape_debug(), current.escape_debug())
+            }
+            Self::PathTraversalAttackDetected { path, reason } => {
+                write!(f, "Path traversal attack detected: path '{}', reason: {reason}", path.escape_debug())
+            }
+            Self::NullByteInjectionDetected { path } => {
+                write!(f, "Null-byte injection detected in path '{}'", path.escape_debug())
+            }
+            Self::ReservedDeviceNameDetected { segment } => {
+                write!(f, "Reserved system device name detected in path: '{}'", segment.escape_debug())
+            }
+            Self::PathTooLong { len, max_len } => {
+                write!(f, "Path length exceeded limit: {len} > {max_len} bytes")
+            }
+            Self::TempDirectoryCreationFailed { path, reason } => {
+                write!(f, "Failed to create isolated temporary directory '{}': {reason}", path.escape_debug())
+            }
+            Self::TempDirectoryCleanupFailed { reason } => {
+                write!(f, "Failed to clean temporary workspace: {reason}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for SystemDefenseError {}
 
 impl From<SystemDefenseError> for TTZipStatus {
     fn from(err: SystemDefenseError) -> Self {

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -10,19 +10,26 @@ public struct ExtractResult: Sendable, Equatable {
     public let durationSeconds: Double
     public let unlockedPassword: String?
     public let isVaultUnlocked: Bool
+    public let outcome: ExtractionOutcome?
+
+    public var status: OutcomeStatus {
+        outcome?.status ?? .completed
+    }
     
     public init(
         archivePath: String,
         destinationDir: String,
         durationSeconds: Double,
         unlockedPassword: String? = nil,
-        isVaultUnlocked: Bool = false
+        isVaultUnlocked: Bool = false,
+        outcome: ExtractionOutcome? = nil
     ) {
         self.archivePath = archivePath
         self.destinationDir = destinationDir
         self.durationSeconds = durationSeconds
         self.unlockedPassword = unlockedPassword
         self.isVaultUnlocked = isVaultUnlocked
+        self.outcome = outcome
     }
 }
 
@@ -105,14 +112,32 @@ public protocol TTZipEngineFacading: Sendable {
         progress: (@Sendable (ArchiveProgress) -> Void)?,
         token: CancellationToken?
     ) async throws -> ExtractResult
+
+    func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        handling: CollisionHandling,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
+    ) async throws -> ExtractResult
     
+    @discardableResult
     func extractSingleEntry(
         archivePath: String,
         entryPath: String,
         destinationDir: String,
-        password: String?
-    ) async throws
+        password: String?,
+        handling: CollisionHandling
+    ) async throws -> ExtractionOutcome
     
+    /// Inspects an archive and reports the credential that worked.
+    ///
+    /// The inspection is a query: it may read the shared password cache to pick a candidate
+    /// and it keeps the vault retry policy, but it must not publish, restore or remove a
+    /// shared credential. Committing to the shared cache is an authorization act owned by the
+    /// caller that accepts the result.
     func inspectArchive(
         archivePath: String,
         password: String?,
@@ -124,6 +149,12 @@ public protocol TTZipEngineFacading: Sendable {
     func recoverPassword(archivePath: String, dictionary: [String]) async throws -> PasswordRecoveryResult
     
     // MARK: - Command Pattern: Execution and Undo/Redo Control
+    /// Legacy raw snapshot API. Success is an owning `OpaquePointer` erased as `Any`;
+    /// its caller must transfer or release the one reference through the snapshot C-ABI.
+    /// Missing symbols are a bridge error; a null open is `ArchiveError.openFailed`,
+    /// without a detailed file/password/format diagnosis from the legacy ABI.
+    func openVfsSnapshot(archivePath: String, password: String?) async throws -> Any
+
     var historyManager: CommandHistoryManager { get }
     var canUndoCommand: Bool { get async }
     var canRedoCommand: Bool { get async }
@@ -172,6 +203,45 @@ extension TTZipEngineFacading {
             destinationDir: destinationDir,
             password: password,
             autoVaultUnlock: autoVaultUnlock,
+            handling: .policy(.keepBoth),
+            progress: progress,
+            token: nil
+        )
+    }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
+    ) async throws -> ExtractResult {
+        return try await quickExtract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            autoVaultUnlock: autoVaultUnlock,
+            handling: .policy(.keepBoth),
+            progress: progress,
+            token: token
+        )
+    }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        handling: CollisionHandling,
+        progress: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> ExtractResult {
+        return try await quickExtract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            autoVaultUnlock: autoVaultUnlock,
+            handling: handling,
             progress: progress,
             token: nil
         )

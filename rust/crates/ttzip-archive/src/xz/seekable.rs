@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe, high-throughput random-access seekable reader for indexed XZ archives.
 
@@ -190,8 +190,7 @@ impl<R: Read + Seek> Read for XzSeekableReader<R> {
             })?;
 
         let stream_offset = (XZ_STREAM_HEADER_SIZE as u64) + comp_offset;
-        self.load_block(block_idx, stream_offset)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+        self.load_block(block_idx, stream_offset)?;
 
         let offset_in_block = self.current_pos - uncomp_offset;
         let available = self.cached_block_data.len().saturating_sub(offset_in_block as usize);

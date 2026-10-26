@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe, high-throughput XZ Single-Stream and Multi-Block decompression state machine,
 //! Filter Chain inverse transformation engine, and streaming decoder.
@@ -80,7 +80,17 @@ impl From<XzDecodeError> for io::Error {
     fn from(err: XzDecodeError) -> Self {
         match err {
             XzDecodeError::Io(e) => e,
-            other => io::Error::new(io::ErrorKind::InvalidData, other.to_string()),
+            err @ (XzDecodeError::CorruptedData(_)
+            | XzDecodeError::ChecksumMismatch { .. }
+            | XzDecodeError::MemlimitExceeded { .. }
+            | XzDecodeError::UnsupportedFilter { .. }
+            | XzDecodeError::TruncatedData { .. }
+            | XzDecodeError::Header(_)
+            | XzDecodeError::BlockHeader(_)
+            | XzDecodeError::Vli(_)
+            | XzDecodeError::Checksum(_)
+            | XzDecodeError::InvalidIndex(_)
+            | XzDecodeError::InvalidSeek(_)) => io::Error::new(io::ErrorKind::InvalidData, err),
         }
     }
 }

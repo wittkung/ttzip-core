@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration tests for LZ4 Frame constants, skippable magic matching,
 //! descriptor bitfield serialization, and header checksum validation.

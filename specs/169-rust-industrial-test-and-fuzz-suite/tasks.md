@@ -3,8 +3,8 @@
 **Feature ID**: `169-rust-industrial-test-and-fuzz-suite`  
 **Created**: 2026-08-21  
 **Status**: Ready for Implementation  
-**Specification**: [`specs/169-rust-industrial-test-and-fuzz-suite/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/169-rust-industrial-test-and-fuzz-suite/spec.md)  
-**Plan**: [`specs/169-rust-industrial-test-and-fuzz-suite/plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/169-rust-industrial-test-and-fuzz-suite/plan.md)
+**Specification**: [`specs/169-rust-industrial-test-and-fuzz-suite/spec.md`](file://../specs/169-rust-industrial-test-and-fuzz-suite/spec.md)  
+**Plan**: [`specs/169-rust-industrial-test-and-fuzz-suite/plan.md`](file://../specs/169-rust-industrial-test-and-fuzz-suite/plan.md)
 
 ---
 

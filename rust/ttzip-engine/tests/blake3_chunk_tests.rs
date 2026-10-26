@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration and unit tests for BLAKE3 `ChunkState` 1024-byte chunk buffering,
 //! micro-block state machine transitions, domain flag emissions, and oracle fidelity.

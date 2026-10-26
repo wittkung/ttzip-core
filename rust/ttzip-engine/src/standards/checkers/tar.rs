@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! POSIX.1 ustar and GNU tar format compliance checker.
 
@@ -53,7 +53,7 @@ pub fn check_tar_compliance(buffer: &[u8]) -> ComplianceReport {
 
         match parsed_chksum {
             Some(val) => {
-                if val == unsigned_sum as u64 || val == signed_sum as u64 {
+                if val == unsigned_sum as u64 || (val as i32) == signed_sum {
                     report.add_validated_header("POSIX.1: Header Octal Checksum (offset 148)");
                 } else {
                     let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.1", "Header Checksum Field");

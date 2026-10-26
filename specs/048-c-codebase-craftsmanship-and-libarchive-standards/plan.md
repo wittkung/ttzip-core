@@ -48,14 +48,14 @@ graph TD
 ## 五、 改动清单与组件设计 (Component Breakdown)
 
 ### 1. C 头文件契约重构
-- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipCommon.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipCommon.h): 补齐 HeaderDoc、所有权、Clamp 宏与 6 级错误码体系。
-- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipSysAlloc.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipSysAlloc.h): 补齐分配器说明与对齐释放职责。
-- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipIO.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipIO.h): 补齐 I/O Entry 结构体文档与 SSIZE_MAX 保护说明。
-- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipBridge_Archive.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipBridge_Archive.h): 补齐解密、检视与提取契约。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipCommon.h`](file://../Sources/CTTZipBridge/include/CTTZipCommon.h): 补齐 HeaderDoc、所有权、Clamp 宏与 6 级错误码体系。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipSysAlloc.h`](file://../Sources/CTTZipBridge/include/CTTZipSysAlloc.h): 补齐分配器说明与对齐释放职责。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipIO.h`](file://../Sources/CTTZipBridge/include/CTTZipIO.h): 补齐 I/O Entry 结构体文档与 SSIZE_MAX 保护说明。
+- `[MODIFY]` [`Sources/CTTZipBridge/include/CTTZipBridge_Archive.h`](file://../Sources/CTTZipBridge/include/CTTZipBridge_Archive.h): 补齐解密、检视与提取契约。
 
 ### 2. C 实现文件安全性与死锁防御加固
-- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipCommon.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipCommon.c): 统一 APFS 预分配与内存写屏障。
-- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipSysAlloc.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipSysAlloc.c): 强化算术溢出保护与统一 APFS 逻辑。
-- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipIO.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipIO.c): 修复 payload 释放遗漏与 SSIZE_MAX 分块。
-- `[MODIFY]` [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_enc_native.c): 统一 Arena 析构，修复错误分支 interior pointer 非法释放。
-- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipBridge_GzParallel.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_GzParallel.c): 修复失败分支条件变量唤醒，消除死锁隐患。
+- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipCommon.c`](file://../Sources/CTTZipBridge/CTTZipCommon.c): 统一 APFS 预分配与内存写屏障。
+- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipSysAlloc.c`](file://../Sources/CTTZipBridge/CTTZipSysAlloc.c): 强化算术溢出保护与统一 APFS 逻辑。
+- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipIO.c`](file://../Sources/CTTZipBridge/CTTZipIO.c): 修复 payload 释放遗漏与 SSIZE_MAX 分块。
+- `[MODIFY]` [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c`](file://../Sources/CTTZipBridge/ttzip_lzma2_enc_native.c): 统一 Arena 析构，修复错误分支 interior pointer 非法释放。
+- `[MODIFY]` [`Sources/CTTZipBridge/CTTZipBridge_GzParallel.c`](file://../Sources/CTTZipBridge/CTTZipBridge_GzParallel.c): 修复失败分支条件变量唤醒，消除死锁隐患。

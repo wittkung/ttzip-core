@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Corrupted Zip64 Modulo Overflow and LZMA 4GB OOM Dictionary Bomb Test Suite.
 //!
@@ -124,10 +124,10 @@ fn build_synthetic_zip64_modulo_overflow() -> Vec<u8> {
 pub fn test_corrupted_zip64_uncompressed_size_off_by_4gib_real_asset() {
     let asset_bytes = load_libarchive_asset("test_read_format_zip_uncompressed_size_off_by_4gib.zip");
     assert!(
-        asset_bytes.is_some(),
+        !asset_bytes.is_empty(),
         "libarchive test_read_format_zip_uncompressed_size_off_by_4gib.zip fixture must load"
     );
-    let bytes = asset_bytes.unwrap();
+    let bytes = asset_bytes;
 
     // 1. Pure Rust Zip parser inspection
     let parse_res = ZipArchive::open_slice(&bytes);
@@ -153,7 +153,7 @@ pub fn test_corrupted_zip64_uncompressed_size_off_by_4gib_real_asset() {
     let (_tmp_dir, arch_path) = write_temp_archive("off_by_4gib.zip", &bytes);
     let dest_dir = tempfile::tempdir().unwrap();
     let options = TTZipExtractOptions::default();
-    let orch_res = UnifiedArchiveOrchestrator::extract_archive(&arch_path, dest_dir.path(), &options);
+    let orch_res = UnifiedArchiveOrchestrator::extract_archive(&arch_path, &ttzip_engine::fs::collision::staging::StagingRoot(dest_dir.path().to_path_buf()), &options);
     assert!(
         orch_res.is_err(),
         "Unified orchestrator must reject corrupted off-by-4gib archive"
@@ -249,17 +249,17 @@ pub fn test_corrupted_lzma_alone_decoder_memlimit_guard() {
 
 #[test]
 pub fn test_corrupted_libarchive_zipx_lzma_oom_asset() {
-    if let Some(asset) = load_libarchive_asset("test_read_format_zip_zipx_lzma_oom.zipx") {
-        let (_tmp, path) = write_temp_archive("lzma_oom.zipx", &asset);
-        let dest = tempfile::tempdir().unwrap();
-        let options = TTZipExtractOptions::default();
+    let asset = load_libarchive_asset("test_read_format_zip_zipx_lzma_oom.zipx");
+    let (_tmp, path) = write_temp_archive("lzma_oom.zipx", &asset);
+    let dest = tempfile::tempdir().unwrap();
+    let options = TTZipExtractOptions::default();
 
-        let res = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
-        assert!(
-            res.is_err(),
-            "ZIPX LZMA 4GB dictionary bomb must fail and not cause OOM"
-        );
-    }
+    let res = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
+    assert!(
+        res.is_err(),
+        "ZIPX LZMA 4GB dictionary bomb must fail and not cause OOM"
+    );
+
 }
 
 #[test]
@@ -275,17 +275,17 @@ pub fn test_corrupted_libarchive_7z_oom_assets() {
     ];
 
     for fixture in &oom_fixtures {
-        if let Some(bytes) = load_libarchive_asset(fixture) {
-            let res = catch_unwind(AssertUnwindSafe(|| {
-                let _ = SevenZArchive::open_slice(&bytes);
-                let mut info = SevenZHeaderInfo::default();
-                let _ = parse_7z_header_stream(&bytes, &mut info);
-            }));
-            assert!(
-                res.is_ok(),
-                "Parsing 7z corrupted asset '{}' must never panic or abort",
-                fixture
-            );
-        }
+        let bytes = load_libarchive_asset(fixture);
+        let res = catch_unwind(AssertUnwindSafe(|| {
+            let _ = SevenZArchive::open_slice(&bytes);
+            let mut info = SevenZHeaderInfo::default();
+            let _ = parse_7z_header_stream(&bytes, &mut info);
+        }));
+        assert!(
+            res.is_ok(),
+            "Parsing 7z corrupted asset '{}' must never panic or abort",
+            fixture
+        );
+
     }
 }

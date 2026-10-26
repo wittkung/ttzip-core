@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef TTZIP_C_ABI_CONTRACT_H
 #define TTZIP_C_ABI_CONTRACT_H

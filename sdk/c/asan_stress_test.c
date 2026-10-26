@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,9 +25,7 @@ int main(int argc, char **argv) {
     const char *archive_path = "/tmp/ttzip_asan_stress.zip";
 
     TTZipCreateOptions c_opts;
-    memset(&c_opts, 0, sizeof(c_opts));
-    c_opts.struct_size = sizeof(TTZipCreateOptions);
-    c_opts.abi_version = 2;
+    ttzip_create_options_init(&c_opts);
     c_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
     c_opts.level = TTZIP_COMPRESSION_LEVEL_FASTEST;
 
@@ -39,11 +37,9 @@ int main(int argc, char **argv) {
 
     const char *dest_dir = "/tmp/ttzip_asan_extracted";
     TTZipExtractOptions e_opts;
-    memset(&e_opts, 0, sizeof(e_opts));
-    e_opts.struct_size = sizeof(TTZipExtractOptions);
-    e_opts.abi_version = 2;
+    ttzip_extract_options_init(&e_opts);
     e_opts.destination_path = dest_dir;
-    e_opts.overwrite_existing = true;
+    e_opts.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     e_opts.preserve_permissions = true;
 
     for (int i = 0; i < iterations; i++) {

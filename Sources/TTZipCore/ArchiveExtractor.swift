@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -35,6 +35,14 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
 
+        let isUntrusted = QuarantineWorkerClient.shared.shouldRouteToSandboxWorker(url: URL(fileURLWithPath: archivePath))
+        if isUntrusted && QuarantineWorkerClient.shared.locateWorkerExecutable() == nil {
+            TTLogger.info(
+                "Quarantine worker executable not found for untrusted archive at \(archivePath), executing via native in-process engine.",
+                category: .general
+            )
+        }
+
         let spotlightCreated = Self.preventSpotlightIndexing(at: destinationDir)
         defer {
             Self.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
@@ -55,7 +63,10 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             lastExtractionError = error
         }
 
-        if password == nil || password?.isEmpty == true {
+        if (password == nil || password?.isEmpty == true),
+           let err = lastExtractionError,
+           Self.isPasswordError(err)
+        {
             for vaultPwd in PasswordVaultManager.shared.candidatePasswordsForAutoUnlock() {
                 do {
                     let extractedBytes = try performUniFFIExtraction(
@@ -69,6 +80,9 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
                     return extractedBytes.clampedToInt64
                 } catch {
                     lastExtractionError = error
+                    if !Self.isPasswordError(error) {
+                        break
+                    }
                 }
             }
         }
@@ -102,6 +116,53 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
             try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
         }
 
+        let archiveUrl = URL(fileURLWithPath: archivePath)
+        let isUntrusted = QuarantineWorkerClient.shared.shouldRouteToSandboxWorker(url: archiveUrl)
+        let hasPassword = password != nil && !(password?.isEmpty ?? true)
+        if isUntrusted && !hasPassword {
+            if QuarantineWorkerClient.shared.locateWorkerExecutable() != nil {
+                let destUrl = URL(fileURLWithPath: destinationDir)
+                let spotlightCreated = Self.preventSpotlightIndexing(at: destinationDir)
+                defer {
+                    Self.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
+                }
+                do {
+                    if token?.isCancelled() == true || Task.isCancelled {
+                        throw ArchiveError.cancelled
+                    }
+                    let startTime = Date()
+                    let extractedBytes = try await QuarantineWorkerClient.shared.extractQuarantinedArchive(
+                        url: archiveUrl,
+                        destinationDirectory: destUrl
+                    )
+                    Self.propagateQuarantine(from: archivePath, to: destinationDir)
+                    let totalBytesInt64 = extractedBytes.clampedToInt64
+                    let duration = max(0.001, Date().timeIntervalSince(startTime))
+                    let throughput = (Double(extractedBytes) / (1024 * 1024)) / duration
+                    progressHandler?(ArchiveProgress(
+                        state: .completed,
+                        bytesProcessed: totalBytesInt64,
+                        totalBytes: totalBytesInt64,
+                        currentFileName: archiveUrl.lastPathComponent,
+                        throughputMBs: throughput
+                    ))
+                    return totalBytesInt64
+                } catch is CancellationError {
+                    throw ArchiveError.cancelled
+                } catch let error as ArchiveError {
+                    throw error
+                } catch let workerError as QuarantineWorkerError {
+                    throw Self.mapQuarantineWorkerError(workerError)
+                } catch {
+                    throw ArchiveError.from(error: error)
+                }
+            } else {
+                TTLogger.info(
+                    "Quarantine worker executable not found, executing via native in-process DirJail engine.",
+                    category: .general
+                )
+            }
+        }
 
         let capturedToken = token
         let capturedOptions = options
@@ -148,54 +209,6 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
         )
     }
 
-    /// Extracts a single file matching the ArchiveExtracting protocol requirement.
-    public func extractSingleFile(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String?
-    ) async throws {
-        try await extractSingleFile(
-            archivePath: archivePath,
-            entryPath: entryPath,
-            destinationDir: destinationDir,
-            password: password,
-            token: nil
-        )
-    }
-
-    /// Asynchronously extracts a single file from the archive without processing other entries.
-    public func extractSingleFile(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String?,
-        token: CancellationToken?
-    ) async throws {
-        let explicitHandle = token.map { TaskExecutionHandle(token: $0) }
-        try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated, cancellationHandle: explicitHandle) { (dispatchToken: CancellationToken) in
-            let fileManager = FileManager.default
-            if !fileManager.fileExists(atPath: destinationDir) {
-                try fileManager.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
-            }
-
-            let spotlightCreated = Self.preventSpotlightIndexing(at: destinationDir)
-            defer {
-                Self.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
-            }
-
-            _ = try extractSelectedEntries(
-                archivePath: archivePath,
-                targetEntries: [entryPath],
-                destinationDir: destinationDir,
-                password: password,
-                progress: nil,
-                token: token ?? dispatchToken
-            )
-            Self.propagateQuarantine(from: archivePath, to: destinationDir)
-        }
-    }
-
     /// Joins multi-volume split archive files into a continuous output file via UniFFI (protocol conformance).
     public func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool {
         do {
@@ -218,7 +231,7 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
     // MARK: - Helpers
 
     /// Propagates com.apple.quarantine extended attribute from the parent archive to destinationDir and all extracted files.
-    internal static func propagateQuarantine(from sourceArchive: String, to destinationDir: String) {
+    public static func propagateQuarantine(from sourceArchive: String, to destinationDir: String) {
         let qValue: [CChar]? = sourceArchive.withCString { srcPtr in
             let sz = getxattr(srcPtr, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
             guard sz > 0 else { return nil }
@@ -260,14 +273,14 @@ public final class ArchiveExtractor: ArchiveExtracting, Sendable {
     private static let spotlightToken = "TTZIP_SPOTLIGHT_PREVENTION_TOKEN_V1".data(using: .utf8)!
 
     @discardableResult
-    internal static func preventSpotlightIndexing(at dirPath: String) -> Bool {
+    package static func preventSpotlightIndexing(at dirPath: String) -> Bool {
         let noIndexFilePath = (dirPath as NSString).appendingPathComponent(".noindex")
         let fm = FileManager.default
         guard !fm.fileExists(atPath: noIndexFilePath) else { return false }
         return fm.createFile(atPath: noIndexFilePath, contents: spotlightToken)
     }
 
-    internal static func removeSpotlightPrevention(at dirPath: String, wasCreated: Bool = true) {
+    package static func removeSpotlightPrevention(at dirPath: String, wasCreated: Bool = true) {
         guard wasCreated else { return }
         let noIndexFilePath = (dirPath as NSString).appendingPathComponent(".noindex")
         let fm = FileManager.default
@@ -315,6 +328,66 @@ private final class ExtractProgressRelay: ProgressHandler, @unchecked Sendable {
 }
 
 extension ArchiveExtractor {
+    internal static func isPasswordError(_ error: Error) -> Bool {
+        if let ttErr = error as? TtZipError {
+            if case .InvalidPassword = ttErr {
+                return true
+            }
+            return false
+        }
+        if let archErr = error as? ArchiveError {
+            switch archErr {
+            case .passwordRequired, .wrongPassword:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
+
+    internal static func mapQuarantineWorkerError(_ error: QuarantineWorkerError) -> ArchiveError {
+        switch error {
+        case .fileNotFound:
+            return .fileNotFound
+        case .zipSlipDetected(let msg):
+            return .engineFailure(
+                code: RustTTZipStatusCode.errSecurityViolation.rawValue,
+                message: msg
+            )
+        case .executionFailed(let code, let msg):
+            let lower = msg.lowercased()
+            if code == -30
+                || code == -403
+                || lower.contains("zip slip")
+                || lower.contains("security")
+                || lower.contains("symlink")
+                || lower.contains("traversal")
+            {
+                return .engineFailure(
+                    code: RustTTZipStatusCode.errSecurityViolation.rawValue,
+                    message: msg
+                )
+            }
+            return .engineFailure(
+                code: RustTTZipStatusCode.errExtractionFailed.rawValue,
+                message: msg
+            )
+        case .workerCrashed(let exitCode, let reason):
+            return .engineFailure(code: exitCode, message: reason)
+        case .communicationFailure(let reason):
+            return .engineFailure(
+                code: RustTTZipStatusCode.errExtractionFailed.rawValue,
+                message: reason
+            )
+        case .workerNotFound:
+            return .engineFailure(
+                code: RustTTZipStatusCode.errSecurityViolation.rawValue,
+                message: error.localizedDescription
+            )
+        }
+    }
+
     internal func performUniFFIExtraction(
         archivePath: String,
         destinationDir: String,
@@ -328,6 +401,7 @@ extension ArchiveExtractor {
         let report = try extractArchiveStream(
             archivePath: archivePath,
             destinationDir: destinationDir,
+            policy: .keepBoth,
             password: password,
             progress: relay,
             token: token
@@ -343,36 +417,6 @@ public final class ArchiveSelectiveExtractor: Sendable {
     public static let shared = ArchiveSelectiveExtractor()
     
     private init() {}
-    
-    /// Selectively extracts a subset of files matching targetEntryPaths into destinationDir via single-pass UniFFI stream.
-    public func extractSelected(
-        archivePath: String,
-        targetEntryPaths: Set<String>,
-        destinationDir: String,
-        password: String? = nil,
-        token: CancellationToken? = nil
-    ) async throws -> Int {
-        guard !targetEntryPaths.isEmpty else { return 0 }
-        
-        let fm = FileManager.default
-        if !fm.fileExists(atPath: destinationDir) {
-            try fm.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
-        }
-        
-        let targetsArray = Array(targetEntryPaths)
-        let explicitHandle = token.map { TaskExecutionHandle(token: $0) }
-        return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated, cancellationHandle: explicitHandle) { (dispatchToken: CancellationToken) in
-            let count = try extractSelectedEntries(
-                archivePath: archivePath,
-                targetEntries: targetsArray,
-                destinationDir: destinationDir,
-                password: password,
-                progress: nil,
-                token: token ?? dispatchToken
-            )
-            return Int(count)
-        }
-    }
     
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
     /// Memory preview limit strictly defaults to 64MB aligning with microkernel bounds.
@@ -394,7 +438,8 @@ public final class ArchiveSelectiveExtractor: Sendable {
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
             // Fast-path: extract directly by path without parsing entire archive catalog
-            if let data = try? extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password) {
+            do {
+                let data = try extractSingleEntryByPath(archivePath: archivePath, entryPath: entryPath, password: password)
                 if data.count > maxAllowedBytes {
                     throw ArchiveError.engineFailure(
                         code: RustTTZipStatusCode.errOutOfMemory.rawValue,
@@ -403,10 +448,49 @@ public final class ArchiveSelectiveExtractor: Sendable {
                 }
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
+            } catch let error as TtZipError {
+                switch error {
+                case .InvalidPassword:
+                    if password == nil {
+                        throw ArchiveError.passwordRequired
+                    } else {
+                        throw ArchiveError.wrongPassword(archivePath: archivePath)
+                    }
+                case .DecompressionBombDetected(let reason), .SecurityViolation(let reason):
+                    throw ArchiveError.engineFailure(
+                        code: RustTTZipStatusCode.errSecurityViolation.rawValue,
+                        message: reason
+                    )
+                case .CorruptHeader:
+                    throw ArchiveError.corruptHeader
+                default:
+                    break
+                }
+            } catch {
+                // Non-TTZip errors fall through to catalog inspection
             }
 
             // Fallback for subpaths or index probing only if direct path lookup fails
-            let entries = (try? inspectArchiveEntries(archivePath: archivePath, password: password)) ?? []
+            let entries: [UniFfiEntryMetadata]
+            do {
+                entries = try inspectArchiveEntries(archivePath: archivePath, password: password)
+            } catch let error as TtZipError {
+                switch error {
+                case .InvalidPassword:
+                    if password == nil {
+                        throw ArchiveError.passwordRequired
+                    } else {
+                        throw ArchiveError.wrongPassword(archivePath: archivePath)
+                    }
+                case .CorruptHeader:
+                    throw ArchiveError.corruptHeader
+                default:
+                    return nil
+                }
+            } catch {
+                return nil
+            }
+
             guard let idx = entries.firstIndex(where: {
                 $0.path == entryPath || $0.path.hasSuffix("/" + entryPath) || ($0.path.contains("/") ? String($0.path.split(separator: "/").last!) == entryPath : false)
             }) else {
@@ -419,7 +503,9 @@ public final class ArchiveSelectiveExtractor: Sendable {
                     message: "Entry uncompressed size \(entry.uncompressedSize) exceeds memory limit of \(maxAllowedBytes) bytes"
                 )
             }
-            if let data = try? extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password) {
+
+            do {
+                let data = try extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password)
                 if data.count > maxAllowedBytes {
                     throw ArchiveError.engineFailure(
                         code: RustTTZipStatusCode.errOutOfMemory.rawValue,
@@ -428,8 +514,27 @@ public final class ArchiveSelectiveExtractor: Sendable {
                 }
                 VFSLz4CachePool.shared.cacheEntry(archivePath: archivePath, entryPath: entryPath, data: data)
                 return data
+            } catch let error as TtZipError {
+                switch error {
+                case .InvalidPassword:
+                    if password == nil {
+                        throw ArchiveError.passwordRequired
+                    } else {
+                        throw ArchiveError.wrongPassword(archivePath: archivePath)
+                    }
+                case .CorruptHeader:
+                    throw ArchiveError.corruptHeader
+                case .DecompressionBombDetected(let reason), .SecurityViolation(let reason):
+                    throw ArchiveError.engineFailure(
+                        code: RustTTZipStatusCode.errSecurityViolation.rawValue,
+                        message: reason
+                    )
+                default:
+                    return nil
+                }
+            } catch {
+                return nil
             }
-            return nil
         }
     }
 }

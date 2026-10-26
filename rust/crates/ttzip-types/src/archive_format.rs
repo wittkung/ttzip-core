@@ -1,14 +1,14 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Supported archive, container, disk image, and compressed stream formats.
 
 use serde::{Deserialize, Serialize};
-use crate::detected_format::DetectedFormat;
-use crate::formats::TTZipArchiveFormat;
+use crate::status::TTZipStatus;
 
-/// Supported archive, container, disk image, and compressed stream formats (60 formats).
+/// Supported archive, container, disk image, and compressed stream formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 #[repr(i32)]
 pub enum ArchiveFormat {
     Unknown = 0,
@@ -77,7 +77,22 @@ pub enum ArchiveFormat {
     Mtree = 58,
     Raw = 59,
     Empty = 60,
+    // Consolidated Formats
+    Auto = 61,
+    Rar = 62,
+    TarGz = 63,
+    TarBz2 = 64,
+    TarXz = 65,
+    TarZstd = 66,
+    TarLz4 = 67,
+    TarBrotli = 68,
+    TarLzip = 69,
+    TarLrzip = 70,
 }
+
+pub type TTZipArchiveFormat = ArchiveFormat;
+pub type DetectedFormat = ArchiveFormat;
+pub type CompoundFormat = ArchiveFormat;
 
 impl ArchiveFormat {
     /// Returns the canonical lower-case name of the format.
@@ -88,7 +103,7 @@ impl ArchiveFormat {
             Self::Zip => "zip",
             Self::Zip64 => "zip64",
             Self::Tar => "tar",
-            Self::Rar4 => "rar4",
+            Self::Rar | Self::Rar4 => "rar4",
             Self::Rar5 => "rar5",
             Self::Cab => "cab",
             Self::Wim => "wim",
@@ -113,7 +128,7 @@ impl ArchiveFormat {
             Self::Lrzip => "lrz",
             Self::MsLz => "mslz",
             Self::Apfs => "apfs",
-            Self::HfsPlus => "hfsplus",
+            Self::HfsPlus => "hfs+",
             Self::Vhd => "vhd",
             Self::Vhdx => "vhdx",
             Self::Vmdk => "vmdk",
@@ -130,7 +145,7 @@ impl ArchiveFormat {
             Self::Rpm => "rpm",
             Self::Xar => "xar",
             Self::Ar => "ar",
-            Self::PeExe => "exe",
+            Self::PeExe => "pe",
             Self::Elf => "elf",
             Self::MachO => "macho",
             Self::Swf => "swf",
@@ -144,6 +159,15 @@ impl ArchiveFormat {
             Self::Mtree => "mtree",
             Self::Raw => "raw",
             Self::Empty => "empty",
+            Self::Auto => "auto",
+            Self::TarGz => "tar.gz",
+            Self::TarBz2 => "tar.bz2",
+            Self::TarXz => "tar.xz",
+            Self::TarZstd => "tar.zst",
+            Self::TarLz4 => "tar.lz4",
+            Self::TarBrotli => "tar.br",
+            Self::TarLzip => "tar.lz",
+            Self::TarLrzip => "tar.lrz",
             Self::Unknown => "unknown",
         }
     }
@@ -155,7 +179,7 @@ impl ArchiveFormat {
             Self::SevenZip => "7z",
             Self::Zip | Self::Zip64 => "zip",
             Self::Tar => "tar",
-            Self::Rar4 | Self::Rar5 => "rar",
+            Self::Rar | Self::Rar4 | Self::Rar5 => "rar",
             Self::Cab => "cab",
             Self::Wim => "wim",
             Self::Iso => "iso",
@@ -195,7 +219,7 @@ impl ArchiveFormat {
             Self::Deb => "deb",
             Self::Rpm => "rpm",
             Self::Xar => "xar",
-            Self::Ar => "a",
+            Self::Ar => "ar",
             Self::PeExe => "exe",
             Self::Elf => "elf",
             Self::MachO => "dylib",
@@ -210,6 +234,15 @@ impl ArchiveFormat {
             Self::Mtree => "mtree",
             Self::Raw => "raw",
             Self::Empty => "empty",
+            Self::Auto => "",
+            Self::TarGz => "tar.gz",
+            Self::TarBz2 => "tar.bz2",
+            Self::TarXz => "tar.xz",
+            Self::TarZstd => "tar.zst",
+            Self::TarLz4 => "tar.lz4",
+            Self::TarBrotli => "tar.br",
+            Self::TarLzip => "tar.lz",
+            Self::TarLrzip => "tar.lrz",
             Self::Unknown => "bin",
         }
     }
@@ -218,10 +251,11 @@ impl ArchiveFormat {
     #[must_use]
     pub const fn mime_type(self) -> &'static str {
         match self {
+            Self::Auto => "application/octet-stream",
             Self::SevenZip => "application/x-7z-compressed",
             Self::Zip | Self::Zip64 => "application/zip",
             Self::Tar => "application/x-tar",
-            Self::Rar4 | Self::Rar5 => "application/vnd.rar",
+            Self::Rar | Self::Rar4 | Self::Rar5 => "application/vnd.rar",
             Self::Cab => "application/vnd.ms-cab-compressed",
             Self::Wim => "application/x-ms-wim",
             Self::Iso => "application/x-iso9660-image",
@@ -233,16 +267,16 @@ impl ArchiveFormat {
             Self::Chm => "application/vnd.ms-htmlhelp",
             Self::Nsis | Self::PeExe => "application/x-msdownload",
             Self::Msi => "application/x-msi",
-            Self::Gzip => "application/gzip",
-            Self::Bzip2 => "application/x-bzip2",
-            Self::Xz => "application/x-xz",
-            Self::Zstd => "application/zstd",
-            Self::Lz4 => "application/x-lz4",
+            Self::Gzip | Self::TarGz => "application/gzip",
+            Self::Bzip2 | Self::TarBz2 => "application/x-bzip2",
+            Self::Xz | Self::TarXz => "application/x-xz",
+            Self::Zstd | Self::TarZstd => "application/zstd",
+            Self::Lz4 | Self::TarLz4 => "application/x-lz4",
             Self::Snappy => "application/x-snappy-framed",
             Self::Lzfse => "application/x-lzfse",
-            Self::Brotli => "application/x-brotli",
-            Self::Lzip => "application/x-lzip",
-            Self::Lrzip => "application/x-lrzip",
+            Self::Brotli | Self::TarBrotli => "application/x-brotli",
+            Self::Lzip | Self::TarLzip => "application/x-lzip",
+            Self::Lrzip | Self::TarLrzip => "application/x-lrzip",
             Self::MsLz => "application/x-ms-compress-lz",
             Self::Apfs => "application/x-apfs-image",
             Self::HfsPlus => "application/x-hfs-image",
@@ -277,78 +311,244 @@ impl ArchiveFormat {
         }
     }
 
-    /// Converts into existing DetectedFormat enum if compatible.
+    /// Returns `true` if this format is a compound tar archive container.
+    #[inline]
     #[must_use]
-    pub const fn to_detected_format(self) -> DetectedFormat {
+    pub const fn is_compound_tar(self) -> bool {
+        matches!(
+            self,
+            Self::TarGz
+                | Self::TarBz2
+                | Self::TarXz
+                | Self::TarZstd
+                | Self::TarLz4
+                | Self::TarBrotli
+                | Self::TarLzip
+                | Self::TarLrzip
+        )
+    }
+
+    /// Returns `true` if this format supports multi-file archive packing.
+    #[must_use]
+    pub const fn is_archive_container(self) -> bool {
+        matches!(
+            self,
+            Self::Zip
+                | Self::Zip64
+                | Self::SevenZip
+                | Self::Tar
+                | Self::TarGz
+                | Self::TarBz2
+                | Self::TarXz
+                | Self::TarZstd
+                | Self::TarLz4
+                | Self::TarBrotli
+                | Self::TarLzip
+                | Self::TarLrzip
+                | Self::Iso
+                | Self::Udf
+                | Self::Cab
+                | Self::Wim
+                | Self::Rar
+                | Self::Rar4
+                | Self::Rar5
+                | Self::Aar
+                | Self::Cpio
+                | Self::Ar
+                | Self::Deb
+                | Self::Rpm
+                | Self::Xar
+                | Self::Squashfs
+                | Self::Lzh
+                | Self::Dmg
+        )
+    }
+
+    /// Returns `true` if this format supports password encryption / security protection.
+    #[inline]
+    #[must_use]
+    pub const fn supports_password(self) -> bool {
+        matches!(
+            self,
+            Self::Zip | Self::Zip64 | Self::SevenZip | Self::Wim | Self::Dmg | Self::Aar | Self::Rar | Self::Rar4 | Self::Rar5
+        )
+    }
+
+    /// Returns `true` if this format natively supports multi-part split volume output.
+    #[inline]
+    #[must_use]
+    pub const fn supports_split_volume(self) -> bool {
+        matches!(
+            self,
+            Self::Zip | Self::Zip64 | Self::SevenZip | Self::Wim | Self::Rar | Self::Rar4 | Self::Rar5
+        )
+    }
+
+    /// Returns `true` if this format supports solid mode archiving blocks across multiple files.
+    #[must_use]
+    pub const fn supports_solid_mode(self) -> bool {
+        matches!(
+            self,
+            Self::SevenZip
+                | Self::Tar
+                | Self::TarGz
+                | Self::TarBz2
+                | Self::TarXz
+                | Self::TarZstd
+                | Self::TarLz4
+                | Self::TarBrotli
+                | Self::TarLzip
+                | Self::TarLrzip
+                | Self::Rar
+                | Self::Rar4
+                | Self::Rar5
+                | Self::Squashfs
+        )
+    }
+
+    /// Returns `true` if this archive format is solid or inherently solid-stream compressed.
+    #[inline]
+    #[must_use]
+    pub const fn is_solid(self) -> bool {
+        self.supports_solid_mode()
+    }
+
+    /// Returns `true` if this format supports password encryption or security protection.
+    #[inline]
+    #[must_use]
+    pub const fn is_encrypted(self) -> bool {
+        self.supports_password()
+    }
+
+    /// Returns `true` if this format supports single-pass linear streaming decompression without random seek.
+    #[must_use]
+    pub const fn supports_streaming(self) -> bool {
+        matches!(
+            self,
+            Self::Tar
+                | Self::Gzip
+                | Self::Bzip2
+                | Self::Xz
+                | Self::Zstd
+                | Self::Lz4
+                | Self::Snappy
+                | Self::Brotli
+                | Self::Lzip
+                | Self::Lrzip
+                | Self::Lzfse
+                | Self::TarGz
+                | Self::TarBz2
+                | Self::TarXz
+                | Self::TarZstd
+                | Self::TarLz4
+                | Self::TarBrotli
+                | Self::TarLzip
+                | Self::TarLrzip
+                | Self::Cpio
+                | Self::Ar
+        )
+    }
+
+    /// Returns the minimum and maximum valid integer compression level `(min, max)`.
+    #[must_use]
+    pub const fn compression_level_range(self) -> (i32, i32) {
         match self {
-            Self::SevenZip => DetectedFormat::SevenZip,
-            Self::Zip | Self::Zip64 => DetectedFormat::Zip,
-            Self::Tar => DetectedFormat::Tar,
-            Self::Gzip => DetectedFormat::Gzip,
-            Self::Bzip2 => DetectedFormat::Bzip2,
-            Self::Xz => DetectedFormat::Xz,
-            Self::Zstd => DetectedFormat::Zstd,
-            Self::Rar4 | Self::Rar5 => DetectedFormat::Rar,
-            Self::Cab => DetectedFormat::Cab,
-            Self::Iso => DetectedFormat::Iso,
-            Self::Dmg => DetectedFormat::Dmg,
-            Self::Xar => DetectedFormat::Xar,
-            Self::Lzh => DetectedFormat::Lzh,
-            Self::Ar => DetectedFormat::Ar,
-            Self::Lzfse => DetectedFormat::Lzfse,
-            Self::Snappy => DetectedFormat::Snappy,
-            Self::Lz4 => DetectedFormat::Lz4,
-            Self::Lzip => DetectedFormat::Lzip,
-            Self::Lrzip => DetectedFormat::Lrzip,
-            Self::Brotli => DetectedFormat::Brotli,
-            Self::Aar => DetectedFormat::Aar,
-            Self::Wim => DetectedFormat::Wim,
-            Self::Cpio => DetectedFormat::Cpio,
-            Self::Deb => DetectedFormat::Deb,
-            Self::Rpm => DetectedFormat::Rpm,
-            Self::Squashfs => DetectedFormat::Squashfs,
-            _ => DetectedFormat::Unknown,
+            Self::Tar
+            | Self::Dmg
+            | Self::Iso
+            | Self::Udf
+            | Self::Aar
+            | Self::Cpio
+            | Self::Ar
+            | Self::Rar
+            | Self::Rar4
+            | Self::Rar5
+            | Self::Squashfs
+            | Self::Lzh => (0, 0),
+            Self::Zip | Self::Zip64 => (0, 12),
+            Self::Zstd | Self::TarZstd => (0, 22),
+            Self::Brotli | Self::TarBrotli => (0, 11),
+            Self::SevenZip
+            | Self::Gzip
+            | Self::TarGz
+            | Self::Bzip2
+            | Self::TarBz2
+            | Self::Xz
+            | Self::TarXz
+            | Self::Lzip
+            | Self::TarLzip
+            | Self::Lz4
+            | Self::TarLz4
+            | Self::Lrzip
+            | Self::TarLrzip
+            | Self::Snappy
+            | Self::Wim
+            | Self::Cab
+            | Self::Deb
+            | Self::Rpm
+            | Self::Xar
+            | Self::Lzfse
+            | Self::Auto
+            | Self::Unknown => (0, 9),
+            _ => (0, 9),
         }
     }
 
-    /// Converts to TTZipArchiveFormat enum.
+    /// Returns the default recommended compression level integer for standard operations.
     #[must_use]
-    pub const fn to_ttzip_format(self) -> TTZipArchiveFormat {
+    pub const fn default_compression_level(self) -> i32 {
         match self {
-            Self::SevenZip => TTZipArchiveFormat::SevenZip,
-            Self::Zip | Self::Zip64 => TTZipArchiveFormat::Zip,
-            Self::Tar => TTZipArchiveFormat::Tar,
-            Self::Gzip => TTZipArchiveFormat::Gzip,
-            Self::Bzip2 => TTZipArchiveFormat::Bzip2,
-            Self::Xz => TTZipArchiveFormat::Xz,
-            Self::Zstd => TTZipArchiveFormat::Zstd,
-            Self::Rar4 | Self::Rar5 => TTZipArchiveFormat::Rar,
-            Self::Cab => TTZipArchiveFormat::Cab,
-            Self::Iso | Self::Udf => TTZipArchiveFormat::Iso,
-            Self::Dmg => TTZipArchiveFormat::Dmg,
-            Self::Xar => TTZipArchiveFormat::Xar,
-            Self::Lzh => TTZipArchiveFormat::Lzh,
-            Self::Ar => TTZipArchiveFormat::Ar,
-            Self::Lzfse => TTZipArchiveFormat::Lzfse,
-            Self::Snappy => TTZipArchiveFormat::Snappy,
-            Self::Lz4 => TTZipArchiveFormat::Lz4,
-            Self::Lzip => TTZipArchiveFormat::Lzip,
-            Self::Lrzip => TTZipArchiveFormat::Lrzip,
-            Self::Brotli => TTZipArchiveFormat::Brotli,
-            Self::Aar => TTZipArchiveFormat::Aar,
-            Self::Wim => TTZipArchiveFormat::Wim,
-            Self::Cpio => TTZipArchiveFormat::Cpio,
-            Self::Deb => TTZipArchiveFormat::Deb,
-            Self::Rpm => TTZipArchiveFormat::Rpm,
-            Self::Squashfs => TTZipArchiveFormat::Squashfs,
-            _ => TTZipArchiveFormat::Unknown,
+            Self::Tar
+            | Self::Dmg
+            | Self::Iso
+            | Self::Udf
+            | Self::Aar
+            | Self::Cpio
+            | Self::Ar
+            | Self::Rar
+            | Self::Rar4
+            | Self::Rar5
+            | Self::Squashfs
+            | Self::Lzh => 0,
+            Self::Zstd | Self::TarZstd => 3,
+            Self::Brotli | Self::TarBrotli => 4,
+            Self::Lz4 | Self::TarLz4 => 1,
+            _ => 6,
         }
     }
-}
 
-impl From<ArchiveFormat> for TTZipArchiveFormat {
-    fn from(fmt: ArchiveFormat) -> Self {
-        fmt.to_ttzip_format()
+    /// Validates archive configuration parameters against the capability envelope.
+    pub fn validate_configuration(
+        self,
+        level: i32,
+        has_password: bool,
+        is_split: bool,
+    ) -> Result<(), TTZipStatus> {
+        if has_password && !self.supports_password() {
+            return Err(TTZipStatus::ErrUnsupportedFeature);
+        }
+        if is_split && !self.supports_split_volume() {
+            return Err(TTZipStatus::ErrUnsupportedFeature);
+        }
+        let (min, max) = self.compression_level_range();
+        if level < min || level > max {
+            return Err(TTZipStatus::ErrInvalidParam);
+        }
+        Ok(())
+    }
+
+    /// Converts into existing DetectedFormat enum (self-identity).
+    #[inline]
+    #[must_use]
+    pub const fn to_detected_format(self) -> Self {
+        self
+    }
+
+    /// Converts to TTZipArchiveFormat enum (self-identity).
+    #[inline]
+    #[must_use]
+    pub const fn to_ttzip_format(self) -> Self {
+        self
     }
 }
 

@@ -1,6 +1,6 @@
 # Tasks: 078-lzfse-dmg-windows-support
 
-**Branch**: `078-lzfse-dmg-windows-support` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/plan.md)
+**Branch**: `078-lzfse-dmg-windows-support` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/078-lzfse-dmg-windows-support/spec.md) | **Plan**: [plan.md](file://../specs/078-lzfse-dmg-windows-support/plan.md)
 
 ---
 

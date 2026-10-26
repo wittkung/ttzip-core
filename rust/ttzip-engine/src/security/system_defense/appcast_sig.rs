@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Appcast & Release Signature Defense Guard (`AppcastSignatureGuard`).
 //!
@@ -228,10 +228,10 @@ fn hex_prefix_8(bytes: &[u8; 32]) -> String {
 
 /// Parses a version string into a sequence of numeric and lexical tuple components.
 fn parse_version_tuple(ver: &str) -> Vec<u64> {
-    let clean = ver.trim_start_matches(|c: char| c == 'v' || c == 'V');
+    let clean = ver.trim_start_matches(['v', 'V']);
     let mut parts = Vec::new();
 
-    for segment in clean.split(|c: char| c == '.' || c == '-' || c == '+' || c == '_') {
+    for segment in clean.split(['.', '-', '+', '_']) {
         if let Ok(num) = segment.parse::<u64>() {
             parts.push(num);
         } else {

@@ -1,6 +1,6 @@
 # Implementation Plan: Zstandard Match Counting SWAR SIMD Acceleration & Upstream Alignment
 
-**Branch**: `061-zstd-match-counting-acceleration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/spec.md)
+**Branch**: `061-zstd-match-counting-acceleration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/061-zstd-match-counting-acceleration/spec.md)
 
 **Input**: Feature specification from `specs/061-zstd-match-counting-acceleration/spec.md`
 
@@ -47,12 +47,12 @@ This feature executes a dual-track strategy:
 
 ## 5. Phase 1: Design & Contracts Index
 
-- **Data Model**: [`specs/061-zstd-match-counting-acceleration/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/data-model.md)
+- **Data Model**: [`specs/061-zstd-match-counting-acceleration/data-model.md`](file://../specs/061-zstd-match-counting-acceleration/data-model.md)
 - **Contracts**:
-  - [`contracts/double_fast_table.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/contracts/double_fast_table.json)
-  - [`contracts/match_candidate.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/contracts/match_candidate.json)
-  - [`contracts/upstream_patch.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/contracts/upstream_patch.json)
-- **Quickstart**: [`specs/061-zstd-match-counting-acceleration/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/quickstart.md)
+  - [`contracts/double_fast_table.json`](file://../specs/061-zstd-match-counting-acceleration/contracts/double_fast_table.json)
+  - [`contracts/match_candidate.json`](file://../specs/061-zstd-match-counting-acceleration/contracts/match_candidate.json)
+  - [`contracts/upstream_patch.json`](file://../specs/061-zstd-match-counting-acceleration/contracts/upstream_patch.json)
+- **Quickstart**: [`specs/061-zstd-match-counting-acceleration/quickstart.md`](file://../specs/061-zstd-match-counting-acceleration/quickstart.md)
 
 ---
 

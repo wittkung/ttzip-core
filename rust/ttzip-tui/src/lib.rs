@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TTZip Terminal User Interface (TUI) and Standalone CLI Engine Library.
 
@@ -8,4 +8,5 @@ pub mod cli;
 pub mod event;
 pub mod preview;
 pub mod ui;
-pub mod vfs;
+
+pub use ttzip_archive::vfs;

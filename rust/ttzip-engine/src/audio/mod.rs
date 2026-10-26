@@ -1,16 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Pure Safe Rust audio waveform extraction and acoustic envelope downsampler.
 
-use std::io::Cursor;
 use std::path::Path;
-use symphonia::core::audio::AudioBufferRef;
-use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 /// Dual-track acoustic waveform representation containing peak and RMS envelopes.
 #[derive(Debug, Clone, PartialEq)]
@@ -40,97 +33,88 @@ pub fn default_waveform(count: usize) -> Vec<f32> {
 /// Extracts normalized peak amplitudes `[0.0 .. 1.0]` across `bucket_count` buckets from memory data.
 pub fn extract_waveform_from_bytes(data: &[u8], bucket_count: usize) -> Vec<f32> {
     let count = bucket_count.clamp(16, 2048);
-    if data.len() < 12 {
+    if data.len() < 44 {
         return default_waveform(count);
     }
 
-    let source = Box::new(Cursor::new(data.to_vec()));
-    let mss = MediaSourceStream::new(source, Default::default());
-    let hint = Hint::new();
-    let meta_opts = MetadataOptions::default();
-    let fmt_opts = FormatOptions::default();
-
-    let probed = match symphonia::default::get_probe().format(&hint, mss, &fmt_opts, &meta_opts) {
-        Ok(p) => p,
-        Err(_) => return default_waveform(count),
-    };
-
-    let mut format = probed.format;
-    let track = match format.tracks().iter().find(|t| t.codec_params.codec != CODEC_TYPE_NULL) {
-        Some(t) => t,
-        None => return default_waveform(count),
-    };
-
-    let track_id = track.id;
-    let dec_opts = DecoderOptions::default();
-    let mut decoder = match symphonia::default::get_codecs().make(&track.codec_params, &dec_opts) {
-        Ok(d) => d,
-        Err(_) => return default_waveform(count),
-    };
-
-    let mut samples: Vec<f32> = Vec::new();
-    while let Ok(packet) = format.next_packet() {
-        if packet.track_id() != track_id {
-            continue;
+    if let Some(samples) = decode_wav_samples(data) {
+        if !samples.is_empty() {
+            return downsample_peaks(&samples, count);
         }
-        if let Ok(decoded) = decoder.decode(&packet) {
-            match decoded {
-                AudioBufferRef::F32(buf) => {
-                    for plane in buf.planes().planes() {
-                        samples.extend_from_slice(plane);
-                    }
-                }
-                AudioBufferRef::U8(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push((v as f32 - 128.0) / 128.0);
-                        }
-                    }
-                }
-                AudioBufferRef::U16(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push((v as f32 - 32768.0) / 32768.0);
-                        }
-                    }
-                }
-                AudioBufferRef::S16(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push(v as f32 / 32768.0);
-                        }
-                    }
-                }
-                AudioBufferRef::S24(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push(v.0 as f32 / 8388608.0);
-                        }
-                    }
-                }
-                AudioBufferRef::S32(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push(v as f32 / 2147483648.0);
-                        }
-                    }
-                }
-                AudioBufferRef::F64(buf) => {
-                    for plane in buf.planes().planes() {
-                        for &v in *plane {
-                            samples.push(v as f32);
-                        }
-                    }
-                }
-                _ => {}
+    }
+
+    default_waveform(count)
+}
+
+fn decode_wav_samples(data: &[u8]) -> Option<Vec<f32>> {
+    if data.len() < 12 || &data[0..4] != b"RIFF" || &data[8..12] != b"WAVE" {
+        return None;
+    }
+
+    let mut cursor = 12;
+    let mut bits_per_sample = 16u16;
+    let mut audio_format = 1u16;
+    let mut data_chunk: Option<&[u8]> = None;
+
+    while cursor + 8 <= data.len() {
+        let chunk_id = &data[cursor..cursor + 4];
+        let chunk_size = u32::from_le_bytes(data[cursor + 4..cursor + 8].try_into().ok()?) as usize;
+        cursor += 8;
+
+        if chunk_id == b"fmt " {
+            if cursor + 16 <= data.len() && chunk_size >= 16 {
+                audio_format = u16::from_le_bytes(data[cursor..cursor + 2].try_into().ok()?);
+                bits_per_sample = u16::from_le_bytes(data[cursor + 14..cursor + 16].try_into().ok()?);
+            }
+        } else if chunk_id == b"data" {
+            let end = (cursor + chunk_size).min(data.len());
+            data_chunk = Some(&data[cursor..end]);
+            break;
+        }
+
+        cursor = cursor.checked_add(chunk_size)?;
+    }
+
+    let raw = data_chunk?;
+    let mut samples = Vec::with_capacity(raw.len() / (bits_per_sample.max(8) as usize / 8));
+
+    match (audio_format, bits_per_sample) {
+        (1, 8) => {
+            for &b in raw {
+                samples.push((b as f32 - 128.0) / 128.0);
             }
         }
+        (1, 16) => {
+            for chunk in raw.chunks_exact(2) {
+                let val = i16::from_le_bytes([chunk[0], chunk[1]]);
+                samples.push(val as f32 / 32768.0);
+            }
+        }
+        (1, 24) => {
+            for chunk in raw.chunks_exact(3) {
+                let val = (chunk[0] as i32) | ((chunk[1] as i32) << 8) | (((chunk[2] as i8) as i32) << 16);
+                samples.push(val as f32 / 8388608.0);
+            }
+        }
+        (1, 32) => {
+            for chunk in raw.chunks_exact(4) {
+                let val = i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                samples.push(val as f32 / 2147483648.0);
+            }
+        }
+        (3, 32) => {
+            for chunk in raw.chunks_exact(4) {
+                let val = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                samples.push(val);
+            }
+        }
+        _ => return None,
     }
 
-    if samples.is_empty() {
-        return default_waveform(count);
-    }
+    Some(samples)
+}
 
+fn downsample_peaks(samples: &[f32], count: usize) -> Vec<f32> {
     let mut peak_buckets = vec![0.0f32; count];
     let total_samples = samples.len();
     for (i, &s) in samples.iter().enumerate() {
@@ -149,8 +133,8 @@ pub fn extract_waveform_from_bytes(data: &[u8], bucket_count: usize) -> Vec<f32>
         }
     }
 
-    for i in 0..count {
-        peak_buckets[i] = (peak_buckets[i] / max_peak).clamp(0.0, 1.0);
+    for p in &mut peak_buckets {
+        *p = (*p / max_peak).clamp(0.0, 1.0);
     }
 
     peak_buckets

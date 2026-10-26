@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 20+ Container Formats Reader/Writer State Machine & Extreme Boundary Matrix Test Suite (Task 16.9).
 //!

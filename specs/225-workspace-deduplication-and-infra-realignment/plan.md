@@ -1,6 +1,6 @@
 # Implementation Plan: Workspace Deduplication & Infrastructure Realignment
 
-**Branch**: `main` | **Date**: 2026-08-26 | **Spec**: [specs/225-workspace-deduplication-and-infra-realignment/spec.md](file:///Users/kevintung/Documents/dev/products/ttzip/specs/225-workspace-deduplication-and-infra-realignment/spec.md)
+**Branch**: `main` | **Date**: 2026-08-26 | **Spec**: [specs/225-workspace-deduplication-and-infra-realignment/spec.md](file://$HOME/Documents/dev/products/ttzip/specs/225-workspace-deduplication-and-infra-realignment/spec.md)
 
 ## Summary
 Purge all legacy duplicate flat source files and build manifests from the root workspace directory, relocate unique test/metadata assets to `core/` and `apple/`, update dependency paths to point to the canonical `dev/infra/ttkit` location, and verify that both `core` and `apple` build cleanly.
@@ -32,7 +32,7 @@ Purge all legacy duplicate flat source files and build manifests from the root w
 ### Phase 2: Root Directory Purge
 1. Delete redundant directories: `Sources`, `rust`, `Vendor`, `Tests`, `sdk`, `python`, `node`, `bin`, `cmake`, `completions`, `examples`, `Formula`, `logo`, `man`, `patches`, `reports`, `resources`, `specs`, `scripts`, `dist`, `assets`, `docs`, `TTZip.xcodeproj`.
 2. Delete redundant files: `Package.swift`, `CMakeLists.txt`, `Makefile`, `pyproject.toml`, `ttzip.pc`, `ttzip.pc.in`, `TTZip_trademark.jpg`, `appcast.xml`, `Install-TTZip.command`, `重新构建并启动TTZip.command`, duplicate markdown documents.
-3. Write clean workspace [README.md](file:///Users/kevintung/Documents/dev/products/ttzip/README.md) and [.gitignore](file:///Users/kevintung/Documents/dev/products/ttzip/.gitignore).
+3. Write clean workspace [README.md](file://$HOME/Documents/dev/products/ttzip/README.md) and [.gitignore](file://$HOME/Documents/dev/products/ttzip/.gitignore).
 
 ### Phase 3: Build & Verification
 1. Validate `core/`: Run `swift build` and `cargo check`.

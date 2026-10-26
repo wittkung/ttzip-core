@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 import Security
@@ -112,11 +112,15 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
                 return
             }
             
-            let vaultKey = SecureBytes(data: Data(keyBytes))
+            guard let vaultKey = try? SecureBytes(data: Data(keyBytes)),
+                  let masterSecret = try? SecureBytes(utf8String: pwd) else {
+                TTLogger.error("Failed to allocate SecureBytes memory during master password initialization")
+                return
+            }
             let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
             
             self.masterVerifierHash = verifier
-            self.activeMasterSecret = SecureBytes(utf8String: pwd)
+            self.activeMasterSecret = masterSecret
             self.activeDerivedVaultKey = vaultKey
             self._isUnlocked = true
             
@@ -158,7 +162,10 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
             guard let keyBytes = deriveSymmetricKeyBytesV4(pwd, salt: salt, iterations: Self.defaultV4Iterations) else {
                 return false
             }
-            let vaultKey = SecureBytes(data: Data(keyBytes))
+            guard let vaultKey = try? SecureBytes(data: Data(keyBytes)) else {
+                TTLogger.error("Failed to allocate vaultKey SecureBytes during unlockVault")
+                return false
+            }
             let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
             
             if let expectedVerifier = masterVerifierHash {
@@ -171,7 +178,12 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
                 saveConfigLocked()
             }
             
-            self.activeMasterSecret = SecureBytes(utf8String: pwd)
+            guard let masterSecret = try? SecureBytes(utf8String: pwd) else {
+                vaultKey.wipeAndFree()
+                TTLogger.error("Failed to allocate masterSecret SecureBytes during unlockVault")
+                return false
+            }
+            self.activeMasterSecret = masterSecret
             self.activeDerivedVaultKey = vaultKey
             self._isUnlocked = true
             
@@ -195,7 +207,10 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
             guard let vaultKeyData = loadBiometricVaultKey(), vaultKeyData.count == 32 else {
                 return false
             }
-            let vaultKey = SecureBytes(data: vaultKeyData)
+            guard let vaultKey = try? SecureBytes(data: vaultKeyData) else {
+                TTLogger.error("Failed to allocate vaultKey SecureBytes during unlockWithBiometrics")
+                return false
+            }
             
             if let expectedVerifier = masterVerifierHash, let salt = masterPasswordSalt {
                 let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)

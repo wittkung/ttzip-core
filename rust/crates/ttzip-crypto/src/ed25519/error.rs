@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Strongly-typed error definitions for Ed25519 operations, batch verification,
 //! and PKI certificate chain validations.

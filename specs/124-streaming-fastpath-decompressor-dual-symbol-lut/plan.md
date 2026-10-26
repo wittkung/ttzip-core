@@ -28,17 +28,17 @@ PR 5 focuses on ultra-high-throughput single-core Deflate decompression:
 - - R001 [SUBAGENT:research] 《10-Bit Dual-Symbol Decode Table Design》：4KB 1024-entry LUT for dual-literal single-cycle emit.
 - - R002 [SUBAGENT:research] 《NEON 128-Bit & SWAR Fast Match Replication》：16-byte unaligned copy and 64-bit pattern broadcast.
 
-See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/research.md).
+See [`research.md`](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/research.md).
 
 ---
 
 ## Phase 1: Data Model & Contracts Index
 
-- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/data-model.md)
+- **Data Model**: [`data-model.md`](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/data-model.md)
 - **Contracts**:
-  - [`contracts/decompressor_request.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/contracts/decompressor_request.schema.json)
-  - [`contracts/decompressor_response.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/contracts/decompressor_response.schema.json)
-- **Quickstart**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/quickstart.md)
+  - [`contracts/decompressor_request.schema.json`](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/contracts/decompressor_request.schema.json)
+  - [`contracts/decompressor_response.schema.json`](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/contracts/decompressor_response.schema.json)
+- **Quickstart**: [`quickstart.md`](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/quickstart.md)
 
 ---
 
@@ -46,7 +46,7 @@ See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-stream
 
 ### Component 1: C Bridge Layer (`Sources/CTTZipBridge`)
 
-#### [MODIFY] [`ttzip_inflate_engine.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_inflate_engine.c)
+#### [MODIFY] [`ttzip_inflate_engine.c`](file://../Sources/CTTZipBridge/native_deflate/ttzip_inflate_engine.c)
 - Implement 10-bit dual-symbol LUT decoding loop.
 - Implement NEON 128-bit match copy and SWAR short offset broadcast.
 
@@ -54,7 +54,7 @@ See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/124-stream
 
 ### Component 2: Swift Core & Test Suite (`Tests/TTZipTests`)
 
-#### [NEW] [`StreamingDecompressorDualSymbolLutTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/StreamingDecompressorDualSymbolLutTests.swift)
+#### [NEW] [`StreamingDecompressorDualSymbolLutTests.swift`](file://../Tests/TTZipTests/StreamingDecompressorDualSymbolLutTests.swift)
 - Unit tests asserting multi-compressor stream equivalence and $\ge 8,000\text{ MB/s}$ throughput floor.
 
 ---

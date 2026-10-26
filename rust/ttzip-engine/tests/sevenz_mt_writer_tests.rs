@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive Test Suite for 7-Zip Multi-Threaded Offline Block Preparation & Append Pipeline.
 

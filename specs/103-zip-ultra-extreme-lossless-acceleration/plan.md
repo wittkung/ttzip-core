@@ -9,13 +9,13 @@
 - [x] **零损失确界**：32KB 跨块历史字典无缝衔接，压缩后体积严禁任何膨胀。
 
 ## 3. Phase 0: Research Items
-- - R001 [SUBAGENT:research] 《L2 缓存拓扑感知分块与滑动历史字典连续性研究》：已完成，见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/103-zip-ultra-extreme-lossless-acceleration/research.md)。
-- - R002 [SUBAGENT:research] 《不动点决策向量严格无损自适应早退与 SIMD 代价计算研究》：已完成，见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/103-zip-ultra-extreme-lossless-acceleration/research.md)。
+- - R001 [SUBAGENT:research] 《L2 缓存拓扑感知分块与滑动历史字典连续性研究》：已完成，见 [research.md](file://../specs/103-zip-ultra-extreme-lossless-acceleration/research.md)。
+- - R002 [SUBAGENT:research] 《不动点决策向量严格无损自适应早退与 SIMD 代价计算研究》：已完成，见 [research.md](file://../specs/103-zip-ultra-extreme-lossless-acceleration/research.md)。
 
 ## 4. Phase 1: Design Artifacts
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/103-zip-ultra-extreme-lossless-acceleration/data-model.md)
-- **Contracts**: [contracts/zip-extreme-lossless.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/103-zip-ultra-extreme-lossless-acceleration/contracts/zip-extreme-lossless.schema.json)
-- **Quickstart**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/103-zip-ultra-extreme-lossless-acceleration/quickstart.md)
+- **Data Model**: [data-model.md](file://../specs/103-zip-ultra-extreme-lossless-acceleration/data-model.md)
+- **Contracts**: [contracts/zip-extreme-lossless.schema.json](file://../specs/103-zip-ultra-extreme-lossless-acceleration/contracts/zip-extreme-lossless.schema.json)
+- **Quickstart**: [quickstart.md](file://../specs/103-zip-ultra-extreme-lossless-acceleration/quickstart.md)
 
 ## 5. Component Modification List
 1. **[MODIFY] `Sources/TTZipCore/Zip/ZipExtremeBlockWriter.swift`**:

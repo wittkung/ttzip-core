@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Explorer Table Component: Multi-level directory tree navigation with file metadata.
 
@@ -60,7 +60,7 @@ pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
         .enumerate()
         .map(|(local_idx, item)| {
             let is_selected_cursor = local_idx == selected_in_window;
-            let node = item.node;
+            let node = &item.node;
 
             // Selection mark column
             let sel_mark = if node.is_selected {

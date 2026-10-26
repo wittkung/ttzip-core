@@ -2,7 +2,7 @@
 
 **Feature**: `063-lz4-engine-analysis`
 **Created**: 2026-08-17
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/plan.md)
+**Spec**: [spec.md](file://../specs/063-lz4-engine-analysis/spec.md) | **Plan**: [plan.md](file://../specs/063-lz4-engine-analysis/plan.md)
 
 ---
 

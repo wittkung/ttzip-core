@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-18
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/spec.md)
+**Feature**: [spec.md](file://../specs/078-lzfse-dmg-windows-support/spec.md)
 
 ## Content Quality
 

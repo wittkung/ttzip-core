@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Typed Record, Enum, Error, and Interface Definitions.
 
@@ -30,6 +30,18 @@ pub enum TTZipError {
 
     #[error("Operation was cancelled by caller")]
     Cancelled,
+
+    #[error("Invalid session state: expected {expected}, actual {actual:?}")]
+    InvalidSessionState { expected: String, actual: crate::uniffi_api::extraction_session::SessionState },
+
+    #[error("Invalid resolution: {detail}")]
+    InvalidResolution { detail: String },
+
+    #[error("Destination unavailable (errno {errno})")]
+    DestinationUnavailable { errno: i32 },
+
+    #[error("Invalid argument: {message}")]
+    InvalidArgument { message: String },
 
     #[error("Out of memory during decompression: {details}")]
     OutOfMemory { details: String },
@@ -71,9 +83,37 @@ impl TTZipError {
     }
 }
 
-/// Archive format enum exposed to Swift.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum ArchiveFormat {
+macro_rules! define_canonical_archive_formats {
+    ($($variant:ident),* $(,)?) => {
+        /// Archive format enum exposed to Swift and UniFFI SDKs.
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+        pub enum ArchiveFormat {
+            $($variant),*
+        }
+
+        /// Canonical alias for TTZip archive format exposed via UniFFI.
+        pub type TTZipArchiveFormat = ArchiveFormat;
+
+        impl From<ArchiveFormat> for crate::types::TTZipArchiveFormat {
+            fn from(fmt: ArchiveFormat) -> Self {
+                match fmt {
+                    $(ArchiveFormat::$variant => crate::types::TTZipArchiveFormat::$variant,)*
+                }
+            }
+        }
+
+        impl From<crate::types::TTZipArchiveFormat> for ArchiveFormat {
+            fn from(fmt: crate::types::TTZipArchiveFormat) -> Self {
+                match fmt {
+                    $(crate::types::TTZipArchiveFormat::$variant => ArchiveFormat::$variant,)*
+                    _ => ArchiveFormat::Auto,
+                }
+            }
+        }
+    };
+}
+
+define_canonical_archive_formats!(
     Auto,
     Zip,
     SevenZip,
@@ -109,179 +149,7 @@ pub enum ArchiveFormat {
     Xar,
     Squashfs,
     Lzh,
-}
-
-/// Canonical TTZip archive format enumeration exposed via UniFFI.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum TTZipArchiveFormat {
-    Auto,
-    Zip,
-    SevenZip,
-    Tar,
-    TarGz,
-    TarBz2,
-    TarXz,
-    TarZstd,
-    TarLz4,
-    TarBrotli,
-    TarLzip,
-    TarLrzip,
-    Dmg,
-    Lzfse,
-    Snappy,
-    Gzip,
-    Bzip2,
-    Xz,
-    Zstd,
-    Lz4,
-    Brotli,
-    Iso,
-    Cab,
-    Wim,
-    Rar,
-    Aar,
-    Lzip,
-    Lrzip,
-    Cpio,
-    Ar,
-    Deb,
-    Rpm,
-    Xar,
-    Squashfs,
-    Lzh,
-}
-
-impl From<ArchiveFormat> for TTZipArchiveFormat {
-    fn from(fmt: ArchiveFormat) -> Self {
-        match fmt {
-            ArchiveFormat::Auto => Self::Auto,
-            ArchiveFormat::Zip => Self::Zip,
-            ArchiveFormat::SevenZip => Self::SevenZip,
-            ArchiveFormat::Tar => Self::Tar,
-            ArchiveFormat::TarGz => Self::TarGz,
-            ArchiveFormat::TarBz2 => Self::TarBz2,
-            ArchiveFormat::TarXz => Self::TarXz,
-            ArchiveFormat::TarZstd => Self::TarZstd,
-            ArchiveFormat::TarLz4 => Self::TarLz4,
-            ArchiveFormat::TarBrotli => Self::TarBrotli,
-            ArchiveFormat::TarLzip => Self::TarLzip,
-            ArchiveFormat::TarLrzip => Self::TarLrzip,
-            ArchiveFormat::Dmg => Self::Dmg,
-            ArchiveFormat::Lzfse => Self::Lzfse,
-            ArchiveFormat::Snappy => Self::Snappy,
-            ArchiveFormat::Gzip => Self::Gzip,
-            ArchiveFormat::Bzip2 => Self::Bzip2,
-            ArchiveFormat::Xz => Self::Xz,
-            ArchiveFormat::Zstd => Self::Zstd,
-            ArchiveFormat::Lz4 => Self::Lz4,
-            ArchiveFormat::Brotli => Self::Brotli,
-            ArchiveFormat::Iso => Self::Iso,
-            ArchiveFormat::Cab => Self::Cab,
-            ArchiveFormat::Wim => Self::Wim,
-            ArchiveFormat::Rar => Self::Rar,
-            ArchiveFormat::Aar => Self::Aar,
-            ArchiveFormat::Lzip => Self::Lzip,
-            ArchiveFormat::Lrzip => Self::Lrzip,
-            ArchiveFormat::Cpio => Self::Cpio,
-            ArchiveFormat::Ar => Self::Ar,
-            ArchiveFormat::Deb => Self::Deb,
-            ArchiveFormat::Rpm => Self::Rpm,
-            ArchiveFormat::Xar => Self::Xar,
-            ArchiveFormat::Squashfs => Self::Squashfs,
-            ArchiveFormat::Lzh => Self::Lzh,
-        }
-    }
-}
-
-impl From<TTZipArchiveFormat> for ArchiveFormat {
-    fn from(fmt: TTZipArchiveFormat) -> Self {
-        match fmt {
-            TTZipArchiveFormat::Auto => Self::Auto,
-            TTZipArchiveFormat::Zip => Self::Zip,
-            TTZipArchiveFormat::SevenZip => Self::SevenZip,
-            TTZipArchiveFormat::Tar => Self::Tar,
-            TTZipArchiveFormat::TarGz => Self::TarGz,
-            TTZipArchiveFormat::TarBz2 => Self::TarBz2,
-            TTZipArchiveFormat::TarXz => Self::TarXz,
-            TTZipArchiveFormat::TarZstd => Self::TarZstd,
-            TTZipArchiveFormat::TarLz4 => Self::TarLz4,
-            TTZipArchiveFormat::TarBrotli => Self::TarBrotli,
-            TTZipArchiveFormat::TarLzip => Self::TarLzip,
-            TTZipArchiveFormat::TarLrzip => Self::TarLrzip,
-            TTZipArchiveFormat::Dmg => Self::Dmg,
-            TTZipArchiveFormat::Lzfse => Self::Lzfse,
-            TTZipArchiveFormat::Snappy => Self::Snappy,
-            TTZipArchiveFormat::Gzip => Self::Gzip,
-            TTZipArchiveFormat::Bzip2 => Self::Bzip2,
-            TTZipArchiveFormat::Xz => Self::Xz,
-            TTZipArchiveFormat::Zstd => Self::Zstd,
-            TTZipArchiveFormat::Lz4 => Self::Lz4,
-            TTZipArchiveFormat::Brotli => Self::Brotli,
-            TTZipArchiveFormat::Iso => Self::Iso,
-            TTZipArchiveFormat::Cab => Self::Cab,
-            TTZipArchiveFormat::Wim => Self::Wim,
-            TTZipArchiveFormat::Rar => Self::Rar,
-            TTZipArchiveFormat::Aar => Self::Aar,
-            TTZipArchiveFormat::Lzip => Self::Lzip,
-            TTZipArchiveFormat::Lrzip => Self::Lrzip,
-            TTZipArchiveFormat::Cpio => Self::Cpio,
-            TTZipArchiveFormat::Ar => Self::Ar,
-            TTZipArchiveFormat::Deb => Self::Deb,
-            TTZipArchiveFormat::Rpm => Self::Rpm,
-            TTZipArchiveFormat::Xar => Self::Xar,
-            TTZipArchiveFormat::Squashfs => Self::Squashfs,
-            TTZipArchiveFormat::Lzh => Self::Lzh,
-        }
-    }
-}
-
-impl From<ArchiveFormat> for crate::types::TTZipArchiveFormat {
-    fn from(fmt: ArchiveFormat) -> Self {
-        match fmt {
-            ArchiveFormat::Auto => crate::types::TTZipArchiveFormat::Auto,
-            ArchiveFormat::Zip => crate::types::TTZipArchiveFormat::Zip,
-            ArchiveFormat::SevenZip => crate::types::TTZipArchiveFormat::SevenZip,
-            ArchiveFormat::Tar => crate::types::TTZipArchiveFormat::Tar,
-            ArchiveFormat::TarGz => crate::types::TTZipArchiveFormat::TarGz,
-            ArchiveFormat::TarBz2 => crate::types::TTZipArchiveFormat::TarBz2,
-            ArchiveFormat::TarXz => crate::types::TTZipArchiveFormat::TarXz,
-            ArchiveFormat::TarZstd => crate::types::TTZipArchiveFormat::TarZstd,
-            ArchiveFormat::TarLz4 => crate::types::TTZipArchiveFormat::TarLz4,
-            ArchiveFormat::TarBrotli => crate::types::TTZipArchiveFormat::TarBrotli,
-            ArchiveFormat::TarLzip => crate::types::TTZipArchiveFormat::TarLzip,
-            ArchiveFormat::TarLrzip => crate::types::TTZipArchiveFormat::TarLrzip,
-            ArchiveFormat::Dmg => crate::types::TTZipArchiveFormat::Dmg,
-            ArchiveFormat::Lzfse => crate::types::TTZipArchiveFormat::Lzfse,
-            ArchiveFormat::Snappy => crate::types::TTZipArchiveFormat::Snappy,
-            ArchiveFormat::Gzip => crate::types::TTZipArchiveFormat::Gzip,
-            ArchiveFormat::Bzip2 => crate::types::TTZipArchiveFormat::Bzip2,
-            ArchiveFormat::Xz => crate::types::TTZipArchiveFormat::Xz,
-            ArchiveFormat::Zstd => crate::types::TTZipArchiveFormat::Zstd,
-            ArchiveFormat::Lz4 => crate::types::TTZipArchiveFormat::Lz4,
-            ArchiveFormat::Brotli => crate::types::TTZipArchiveFormat::Brotli,
-            ArchiveFormat::Iso => crate::types::TTZipArchiveFormat::Iso,
-            ArchiveFormat::Cab => crate::types::TTZipArchiveFormat::Cab,
-            ArchiveFormat::Wim => crate::types::TTZipArchiveFormat::Wim,
-            ArchiveFormat::Rar => crate::types::TTZipArchiveFormat::Rar,
-            ArchiveFormat::Aar => crate::types::TTZipArchiveFormat::Aar,
-            ArchiveFormat::Lzip => crate::types::TTZipArchiveFormat::Lzip,
-            ArchiveFormat::Lrzip => crate::types::TTZipArchiveFormat::Lrzip,
-            ArchiveFormat::Cpio => crate::types::TTZipArchiveFormat::Cpio,
-            ArchiveFormat::Ar => crate::types::TTZipArchiveFormat::Ar,
-            ArchiveFormat::Deb => crate::types::TTZipArchiveFormat::Deb,
-            ArchiveFormat::Rpm => crate::types::TTZipArchiveFormat::Rpm,
-            ArchiveFormat::Xar => crate::types::TTZipArchiveFormat::Xar,
-            ArchiveFormat::Squashfs => crate::types::TTZipArchiveFormat::Squashfs,
-            ArchiveFormat::Lzh => crate::types::TTZipArchiveFormat::Lzh,
-        }
-    }
-}
-
-impl From<TTZipArchiveFormat> for crate::types::TTZipArchiveFormat {
-    fn from(fmt: TTZipArchiveFormat) -> Self {
-        ArchiveFormat::from(fmt).into()
-    }
-}
+);
 
 /// Metadata record for a single archive entry exposed via UniFFI.
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -368,30 +236,7 @@ pub struct CompressionReport {
     pub throughput_mbs: f64,
     pub space_savings_pct: f64,
     pub engine_provenance: String,
-}
-
-/// Configuration options for archive extraction through UniFFI.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct UniFFIExtractArchiveConfig {
-    pub archive_path: String,
-    pub destination_dir: String,
-    pub password: Option<String>,
-    pub thread_budget: u32,
-    pub overwrite_existing: bool,
-    pub preserve_permissions: bool,
-}
-
-impl Default for UniFFIExtractArchiveConfig {
-    fn default() -> Self {
-        Self {
-            archive_path: String::new(),
-            destination_dir: String::new(),
-            password: None,
-            thread_budget: 0,
-            overwrite_existing: true,
-            preserve_permissions: true,
-        }
-    }
+    pub outcome: Option<super::extraction_session::ExtractionOutcome>,
 }
 
 /// VFS Search Result item exposed to Swift.

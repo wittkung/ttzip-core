@@ -29,7 +29,7 @@
 ### 1. C 底层桥接与系统安全 (Systems C & Memory Safety)
 
 #### 🔴 [MUST-C01] 7z 头部解析无界分配与堆越界写入漏洞 (Unbounded Header Allocation & Heap OOB Write)
-- **文件**: [`Sources/CTTZipBridge/ttzip_7z_header_parser.c:263-269, 296, 326`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_header_parser.c#L263-L269)
+- **文件**: [`Sources/CTTZipBridge/ttzip_7z_header_parser.c:263-269, 296, 326`](file://../Sources/CTTZipBridge/ttzip_7z_header_parser.c#L263-L269)
 - **风险**: 当读取到恶意的 `numFilesVal`（如 40 亿）时，`realloc` 失败返回 `NULL`，但 `out_info->num_files` 仍被赋值为 40 亿，后续循环直接在未分配的堆内存执行 `out_info->files[f].rel_path` 写入，导致 Heap Buffer Overflow。
 - **修复方案**:
   ```c
@@ -46,7 +46,7 @@
   ```
 
 #### 🔴 [MUST-C02] 加密 7z 压缩失败时静默降级为明文未加密归档 (Silent Plaintext Fallback Bypassing Password)
-- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:416, 442`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L416)
+- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:416, 442`](file://../Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L416)
 - **风险**: 当 LZMA2 分块压缩失败时，代码调用 `ttzip_create_7z_store_fast_c`，该函数不支持密码且创建未加密归档。用户请求加密压缩时会静默生成明文文件，造成严重机密数据泄漏。
 - **修复方案**:
   ```c
@@ -62,25 +62,25 @@
   ```
 
 #### 🔴 [MUST-C03] 原生 LZMA2 解码器将压缩码流当明文拷贝并返回成功 (Corrupt Data as Success on Range-Coded Chunks)
-- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_dec_native.c:146-168`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_dec_native.c#L146-L168)
+- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_dec_native.c:146-168`](file://../Sources/CTTZipBridge/ttzip_lzma2_dec_native.c#L146-L168)
 - **风险**: 当 `ttzip_lzma2_decode_raw_lzma` 失败后，Fallback 分支将 `control >= 0x80`（Range-Coded 压缩块）当成未压缩数据直接 `memcpy` 到目标缓冲区并返回 0，导致静默解压出乱码损坏数据。
 - **修复方案**: 彻底移除伪明文拷贝分支，在 `ttzip_lzma2_decode_raw_lzma` 失败时直接返回明确错误码 `-2`。
 
 #### 🔴 [MUST-C04] `alloca` 栈溢出与 `writev` 超越 POSIX `IOV_MAX` (Stack Overflow & POSIX Limit Violation)
-- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:495-507`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L495-L507)
+- **文件**: [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:495-507`](file://../Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L495-L507)
 - **风险**: 对数万个 Block 执行 `alloca(num_blocks * sizeof(struct iovec))` 导致栈溢出 Crash。此外 macOS 上 `IOV_MAX = 1024`，超过 1024 个向量会使 `writev` 返回 `EINVAL`，产生损坏归档。
 - **修复方案**: 使用 `ttzip_7z_write_all` 循环写入或分批按 1024 限制切片调用 `writev`。
 
 #### 🔴 [MUST-C05] 写入器全局偏移数组 `malloc` 缺失空指针检查 (Unchecked malloc Return Value)
-- **文件**: [`Sources/CTTZipBridge/CTTZipBridge_ZipWriterCore.c:43, 203`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_ZipWriterCore.c#L43)
+- **文件**: [`Sources/CTTZipBridge/CTTZipBridge_ZipWriterCore.c:43, 203`](file://../Sources/CTTZipBridge/CTTZipBridge_ZipWriterCore.c#L43)
 - **修复方案**: 增加 `if (!offsets) { close(out_fd); return TTZIP_ERR_OUT_OF_MEMORY; }` 保护。
 
 #### 🔴 [MUST-C06] 密钥派生异常分支遗漏密码内存清零 (Sensitive Key Memory Erasure Bypassed on Error)
-- **文件**: [`Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c:244-247, 296-299, 331-334`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c#L244-L247)
+- **文件**: [`Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c:244-247, 296-299, 331-334`](file://../Sources/CTTZipBridge/CTTZipBridge_ZipWrite.c#L244-L247)
 - **修复方案**: 统一在函数退出前无条件调用 `ttzip_secure_zero(derived_keys, sizeof(derived_keys))`。
 
 #### 🔴 [MUST-C07] 对齐内存分配器与 `free()` 混用破坏跨平台稳定性 (Asymmetric Aligned Memory Deallocation)
-- **文件**: [`Sources/CTTZipBridge/CTTZipUtils.c:202`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipUtils.c#L202), [`ttzip_tar_zstd_direct.c:508, 728`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_tar_zstd_direct.c#L508)
+- **文件**: [`Sources/CTTZipBridge/CTTZipUtils.c:202`](file://../Sources/CTTZipBridge/CTTZipUtils.c#L202), [`ttzip_tar_zstd_direct.c:508, 728`](file://../Sources/CTTZipBridge/ttzip_tar_zstd_direct.c#L508)
 - **修复方案**: 严格将 `ttzip_core_aligned_alloc_16k` 配对使用 `ttzip_core_aligned_free_16k`。
 
 ---
@@ -88,35 +88,35 @@
 ### 2. Core 引擎与设计模式体系 (Core Engine & Design Patterns)
 
 #### 🔴 [MUST-DP01] 策略模式双重执行解压/压缩严重性能倒退 (Strategy Double Execution)
-- **文件**: [`Sources/TTZipCore/ArchiveEngineStrategy.swift:114-155, 177-218`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveEngineStrategy.swift#L114-L155)
+- **文件**: [`Sources/TTZipCore/ArchiveEngineStrategy.swift:114-155, 177-218`](file://../Sources/TTZipCore/ArchiveEngineStrategy.swift#L114-L155)
 - **风险**: `extract` 与 `createArchive` 方法在执行完 `engineTemplate.performWorkflow` 后，又调用了 `bridgeImplementor.extractStream` / `compressStream`，导致所有文件被重复压缩/解压 2 遍并引发全盘目录双重扫描。
 - **修复方案**: 移除冗余的 Bridge 调用，单由 Template Method 统一收敛执行。
 
 #### 🔴 [MUST-DP02] 责任链共享单例并发改写 `nextHandler` 指针 (Chain of Responsibility Concurrency Race)
-- **文件**: [`Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift:48-52`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift#L48-L52)
+- **文件**: [`Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift:48-52`](file://../Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift#L48-L52)
 - **风险**: 共享单例在并发校验时循环调用 `setNext`，导致多线程竞态改写指针引发死循环或 Crash。
 - **修复方案**: 改为纯迭代循环 `for handler in pipelineHandlers` 处理，消除运行时链表指针修改。
 
 #### 🔴 [MUST-DP03] 享元池 `clearPool()` 遗漏 16KB 缓存池释放 (Flyweight Pool 16KB Leak)
-- **文件**: [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:194-202`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L194-L202)
+- **文件**: [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:194-202`](file://../Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L194-L202)
 - **修复方案**: 在 `clearPool()` 中补齐 `pool16K.removeAll()`。
 
 #### 🔴 [MUST-DP04] 享元降级分配器内存管理原语不匹配 (Allocator/Deallocator Mismatch)
-- **文件**: [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:36-50`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L36-L50)
+- **文件**: [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:36-50`](file://../Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L36-L50)
 - **风险**: `sharedEmergencyFallback` 使用 Swift `.allocate()` 分配，但在 `deinit` 中使用 C `free()` 释放。
 - **修复方案**: 统一在内部使用 `posix_memalign` / `malloc` 分配。
 
 #### 🔴 [MUST-ENG01] 生产消费管道热路径内核页清零中断 (Hot-Path Kernel Zeroing via Data(count:))
-- **文件**: [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:124-136`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L124-L136), [`ZipMemoryEngine.swift:46, 100`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipMemoryEngine.swift#L46)
+- **文件**: [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:124-136`](file://../Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L124-L136), [`ZipMemoryEngine.swift:46, 100`](file://../Sources/TTZipCore/Zip/ZipMemoryEngine.swift#L46)
 - **风险**: 违反 Constitution §4.I 铁律。在并发循环中调用 `Data(count:)` 触发内核零填充页中断。
 - **修复方案**: 使用未初始化的 `UnsafeMutablePointer<UInt8>.allocate(capacity:)` 配对 `Data(bytesNoCopy:deallocator:)`。
 
 #### 🔴 [MUST-ENG02] 并发热循环内部加锁 (NSLock inside concurrentPerform)
-- **文件**: [`Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift:21, 47-49`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift#L21), [`SevenZipCryptoEngine.swift:91, 131`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift#L91)
+- **文件**: [`Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift:21, 47-49`](file://../Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift#L21), [`SevenZipCryptoEngine.swift:91, 131`](file://../Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift#L91)
 - **修复方案**: 使用原子操作 `OSAtomicCompareAndSwap32` 或无锁原子标记替换 `NSLock`。
 
 #### 🔴 [MUST-ENG03] `withUnsafeBytes` 内部指针逃逸到外部结构体 (Unsafe Pointer Escape)
-- **文件**: [`Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift:64-66`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift#L64-L66)
+- **文件**: [`Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift:64-66`](file://../Sources/TTZipCore/SevenZip/SevenZipCryptoEngine.swift#L64-L66)
 - **修复方案**: 将整个并发循环包裹在 `inputData.withUnsafeBytes` 作用域内。
 
 ---
@@ -124,32 +124,32 @@
 ### 3. 前端 UI 与 AppKit/SwiftUI 架构 (Desktop App & Concurrency)
 
 #### 🔴 [MUST-UI01] 压缩模态框高频进度回调未节流导致主线程饥饿 (Unthrottled Progress UI Starvation)
-- **文件**: [`Sources/TTZipApp/Views/CompressModalView.swift:333-337`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/CompressModalView.swift#L333-L337)
+- **文件**: [`Sources/TTZipApp/Views/CompressModalView.swift:333-337`](file://../Sources/TTZipApp/Views/CompressModalView.swift#L333-L337)
 - **风险**: 压缩时底层每秒产生数万次进度事件，无节流派发 `Task { @MainActor in }` 瞬间卡死主线程。
 - **修复方案**: 接入 `ThrottledProgressPublisher` 进行 $\le 60\text{Hz}$ 纳秒单调时钟节流门控。
 
 #### 🔴 [MUST-UI02] 异常与完成分支未重置 `isProcessing` 导致界面永久锁定 (Permanent UI Lock)
-- **文件**: [`Sources/TTZipApp/Views/CompressModalView.swift:305, 358-365`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/CompressModalView.swift#L305)
+- **文件**: [`Sources/TTZipApp/Views/CompressModalView.swift:305, 358-365`](file://../Sources/TTZipApp/Views/CompressModalView.swift#L305)
 - **修复方案**: 引入 `defer { Task { @MainActor in self.isProcessing = false } }` 单调状态恢复。
 
 #### 🔴 [MUST-UI03] `AppLogoCache` 硬编码开发机绝对路径破坏沙盒规范 (Hardcoded Developer Path)
-- **文件**: [`Sources/TTZipApp/Views/MainView.swift:6-12`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/MainView.swift#L6-L12)
-- **修复方案**: 移除 `/Users/kevintung/...` 路径，改用 `Bundle.main.path` 与 `NSImage(named:)`。
+- **文件**: [`Sources/TTZipApp/Views/MainView.swift:6-12`](file://../Sources/TTZipApp/Views/MainView.swift#L6-L12)
+- **修复方案**: 移除 `$HOME/...` 路径，改用 `Bundle.main.path` 与 `NSImage(named:)`。
 
 #### 🔴 [MUST-UI04] `NativeArchiveOutlineView` 节点数相等时不触发更新 (Silent Outline View Stale Data)
-- **文件**: [`Sources/TTZipApp/Views/Explorer/NativeArchiveOutlineView.swift:335-338`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/Explorer/NativeArchiveOutlineView.swift#L335-L338)
+- **文件**: [`Sources/TTZipApp/Views/Explorer/NativeArchiveOutlineView.swift:335-338`](file://../Sources/TTZipApp/Views/Explorer/NativeArchiveOutlineView.swift#L335-L338)
 - **修复方案**: 使用根节点集合唯一标识哈希替代简单的 `count` 脏检查。
 
 #### 🔴 [MUST-UI05] 密码弹窗遮罩状态与输入框脱节 (UI Fake Password Mask Interaction)
-- **文件**: [`Sources/TTZipApp/Views/PasswordPromptSheetView.swift:10, 117-131`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/PasswordPromptSheetView.swift#L10)
+- **文件**: [`Sources/TTZipApp/Views/PasswordPromptSheetView.swift:10, 117-131`](file://../Sources/TTZipApp/Views/PasswordPromptSheetView.swift#L10)
 - **修复方案**: 接入 `TTSecureTextField` 安全遮罩组件。
 
 #### 🔴 [MUST-UI06] 密码库重置与恢复 Sheet 绑定缺失 (Missing Sheet Bindings)
-- **文件**: [`Sources/TTZipApp/Views/PasswordVaultView.swift:151-169, 343-348`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/PasswordVaultView.swift#L151-L169)
+- **文件**: [`Sources/TTZipApp/Views/PasswordVaultView.swift:151-169, 343-348`](file://../Sources/TTZipApp/Views/PasswordVaultView.swift#L151-L169)
 - **修复方案**: 在 View 底部补齐 `.sheet(isPresented: $viewModel.isResetSheetPresented)` 挂载。
 
 #### 🔴 [MUST-UI07] `AppViewState` 备忘录非隔离调用运行时崩溃风险 (MainActor Isolation Crash Risk)
-- **文件**: [`Sources/TTZipApp/ViewModels/AppViewState.swift:664-683`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/ViewModels/AppViewState.swift#L664-L683)
+- **文件**: [`Sources/TTZipApp/ViewModels/AppViewState.swift:664-683`](file://../Sources/TTZipApp/ViewModels/AppViewState.swift#L664-L683)
 - **修复方案**: 声明 `ArchiveOriginatorProtocol` 为 `@MainActor`，消除非主线程直接 `assumeIsolated` 崩溃。
 
 ---
@@ -157,17 +157,17 @@
 ### 4. 测试体系与基准门禁 (Tests & Benchmark Infrastructure)
 
 #### 🔴 [MUST-TST01] 性能防倒退守卫阈值私自下调 (Silent Performance Floor Downgrades)
-- **文件**: [`Tests/TTZipTests/PerformanceRegressionGuardTests.swift:24-26, 76-84`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/PerformanceRegressionGuardTests.swift#L24-L26), [`FrontendPerformanceGateTests.swift:38-42`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/FrontendPerformanceGateTests.swift#L38-L42)
+- **文件**: [`Tests/TTZipTests/PerformanceRegressionGuardTests.swift:24-26, 76-84`](file://../Tests/TTZipTests/PerformanceRegressionGuardTests.swift#L24-L26), [`FrontendPerformanceGateTests.swift:38-42`](file://../Tests/TTZipTests/FrontendPerformanceGateTests.swift#L38-L42)
 - **风险**: `PerformanceRegressionGuardTests` 将 Constitution §4.V 规定的 90% 底线（$\le 10\%$ 倒退）私自下调至 50%；`FrontendPerformanceGateTests` 将 50k 节点树构建吞吐从 250,000 items/s 下调至 200,000 items/s。
 - **修复方案**: 立即恢复 `floorRatio = 0.90` 与 `250_000.0 items/s` 硬门禁。
 
 #### 🔴 [MUST-TST02] 系统双向差分测试预言机缺失 (Missing Dual-Verification Differential Oracle)
-- **文件**: [`Tests/TTZipTests/SystemDifferentialTests.swift:28-66`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/SystemDifferentialTests.swift#L28-L66)
+- **文件**: [`Tests/TTZipTests/SystemDifferentialTests.swift:28-66`](file://../Tests/TTZipTests/SystemDifferentialTests.swift#L28-L66)
 - **风险**: 仅验证了系统 `/usr/bin/tar` 的 magic 头部，未验证 TTZip 解压，未执行反向测试（TTZip 创建 $\to$ 系统解压），未执行 `/usr/bin/unzip`。
 - **修复方案**: 补齐“TTZip 创建 $\to$ 系统 `/usr/bin/tar` / `/usr/bin/unzip` 解压校验”以及“系统创建 $\to$ TTZip 解压校验”双向 SHA-256 差分断言。
 
 #### 🔴 [MUST-TST03] 黄金缺陷语料库未连接解压器 (Golden Corpus Test Missing Extraction Assertion)
-- **文件**: [`Tests/TTZipTests/ArchiveGoldenCorpusTests.swift:44-77`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveGoldenCorpusTests.swift#L44-L77), [`LibarchiveGoldenCorpusTests.swift:68-89, 207-238`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/LibarchiveGoldenCorpusTests.swift#L68-L89)
+- **文件**: [`Tests/TTZipTests/ArchiveGoldenCorpusTests.swift:44-77`](file://../Tests/TTZipTests/ArchiveGoldenCorpusTests.swift#L44-L77), [`LibarchiveGoldenCorpusTests.swift:68-89, 207-238`](file://../Tests/TTZipTests/LibarchiveGoldenCorpusTests.swift#L68-L89)
 - **修复方案**: 将内存还原的 `.uu` 样本直接输入 `ArchiveExtractor` 进行解压防御断言，并添加用例加载非空断言。
 
 #### 🔴 [MUST-TST04] 测试套件中残留裸 `print(...)` 违背宪法纪律 (Bare Logging Violations)

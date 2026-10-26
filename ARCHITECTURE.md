@@ -12,6 +12,8 @@
 
 ---
 
+> **Historical document / scope**: This document retains the August 2026 v2 architecture background, including historical descriptions of the app and shared infrastructure. It is not the current product-wide specification. Use the [product doc-twin index](../docs/twin/SPEC_INDEX.md) for current process boundaries and VFS implementation status. Claims here about all-Safe-Rust execution, all-UniFFI bridging, or performance are not evidence of current production wiring or acceptance.
+
 ## 1. System Overview & Dual-Core Philosophy
 
 TTZip is an enterprise-grade, ultra-high-throughput archiving and compression ecosystem engineered for Apple Silicon and cross-platform environments. It adopts a strict **Dual-Core Architecture**:

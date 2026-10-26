@@ -17,8 +17,8 @@
 **Why this priority**: 规范先行。这是解决当前问题并防止未来所有上游贡献再次发生质量事故的根本前提。
 
 **Independent Test**:
-- 检查 `/Users/kevintung/.agents/skills/code-review/SKILL.md` 包含系统级 C 防御性编程审查章节（32/64 位溢出、流式 I/O NULL 防御、返回值捕获、前向推进死循环防护）。
-- 检查 `/Users/kevintung/.agents/skills/upstream-contribution/SKILL.md` 完整落地（涵盖分支隔离断言、Git Worktree 物理隔离 SOP、原子 Commit 拆分、原生 Oracle 对齐、社区沟通纪律）。
+- 检查 `$HOME/.agents/skills/code-review/SKILL.md` 包含系统级 C 防御性编程审查章节（32/64 位溢出、流式 I/O NULL 防御、返回值捕获、前向推进死循环防护）。
+- 检查 `$HOME/.agents/skills/upstream-contribution/SKILL.md` 完整落地（涵盖分支隔离断言、Git Worktree 物理隔离 SOP、原子 Commit 拆分、原生 Oracle 对齐、社区沟通纪律）。
 - 检查 `GEMINI.md` 注入了上游贡献审查的硬门禁。
 
 **Acceptance Scenarios**:
@@ -95,8 +95,8 @@
 
 ### Functional Requirements
 
-- **FR-001**: 必须在全局 `/Users/kevintung/.agents/skills/code-review/SKILL.md` 中新增《系统级 C / 跨平台防御性编程审查规范》，强制约束跨架构整型转换、流式 I/O 指针安全、前向推进与死循环熔断、副作用函数返回值检查。
-- **FR-002**: 必须创建专用 Skill `/Users/kevintung/.agents/skills/upstream-contribution/SKILL.md`，规范化开源上游 PR 贡献全生命周期 SOP 与 Git Worktree 物理隔离操作指南。
+- **FR-001**: 必须在全局 `$HOME/.agents/skills/code-review/SKILL.md` 中新增《系统级 C / 跨平台防御性编程审查规范》，强制约束跨架构整型转换、流式 I/O 指针安全、前向推进与死循环熔断、副作用函数返回值检查。
+- **FR-002**: 必须创建专用 Skill `$HOME/.agents/skills/upstream-contribution/SKILL.md`，规范化开源上游 PR 贡献全生命周期 SOP 与 Git Worktree 物理隔离操作指南。
 - **FR-003**: 必须在 `TTZip/GEMINI.md` 中引用上游贡献审查门禁。
 - **FR-004**: PR #3388 必须修复 32 位整型截断风险（将 `to_read` 限制在 `UBUFF_SIZE`）。
 - **FR-005**: PR #3388 必须在 `__archive_read_ahead` 返回 `NULL` 或可用字节不足时进行显式判空与错误返回。

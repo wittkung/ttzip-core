@@ -3,7 +3,7 @@
 **Feature Branch**: `072-cli-packaging-homebrew-gui-integration`  
 **Created**: 2026-08-18  
 **Status**: Ready for Implementation  
-**Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/spec.md) | **Plan**: [`plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/plan.md)
+**Spec**: [`spec.md`](file://../specs/072-cli-packaging-homebrew-gui-integration/spec.md) | **Plan**: [`plan.md`](file://../specs/072-cli-packaging-homebrew-gui-integration/plan.md)
 
 ---
 

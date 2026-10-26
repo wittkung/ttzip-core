@@ -1,14 +1,16 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ZIP Archive Parallel Compression and Writing Engine.
 //!
 //! Supports Store, Deflate (Levels 1..12 via `libdeflate`), WinZip AES-256 hardware encryption,
 //! and automatic Zip64 extension promotion for large files (>4GB) and large catalogs (>65535 files).
 
+mod batch_execution;
 pub mod assemble;
 pub mod data_descriptor;
 pub mod parallel;
+pub mod parallel_batch;
 pub mod store_stream;
 pub mod streaming_parallel;
 pub mod streaming_sink;
@@ -17,6 +19,7 @@ pub mod types;
 pub use assemble::*;
 pub use data_descriptor::*;
 pub use parallel::*;
+pub use parallel_batch::*;
 pub use store_stream::*;
 pub use streaming_parallel::*;
 pub use streaming_sink::*;

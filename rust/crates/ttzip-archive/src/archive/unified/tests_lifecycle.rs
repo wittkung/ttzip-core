@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Creation, extraction, split volume, cancellation, and repair unit tests for Unified Orchestrator.
 
@@ -8,9 +8,10 @@ mod tests {
     use crate::archive::split::detect_volume_chain;
     use crate::archive::unified::UnifiedArchiveOrchestrator;
     use crate::types::{
-        TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
-        TTZipExtractOptions, TTZipStatus,
+        ProgressAtomicSheet, TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions,
+        TTZipEncryptionMethod, TTZipExtractOptions, TTZipStatus,
     };
+
     use libc::c_void;
     use std::fs;
     use tempfile::tempdir;
@@ -26,7 +27,7 @@ mod tests {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -49,22 +50,18 @@ mod tests {
 
         let extract_opt = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: 0,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,
             user_data: std::ptr::null_mut(),
         };
 
-        UnifiedArchiveOrchestrator::extract_archive(
-            &zip_out,
-            &extract_out,
-            &extract_opt,
-        )
+        UnifiedArchiveOrchestrator::extract_archive(&zip_out, &crate::fs::collision::staging::StagingRoot(extract_out.to_path_buf()), &extract_opt)
         .expect("Extract zip failed");
 
         let restored_file = extract_out.join("hello.txt");
@@ -94,7 +91,7 @@ mod tests {
 
             let create_opt = TTZipCreateOptions {
                 struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
                 format: fmt,
                 level: TTZipCompressionLevel::Fast,
                 encryption: TTZipEncryptionMethod::None,
@@ -117,22 +114,18 @@ mod tests {
 
             let extract_opt = TTZipExtractOptions {
                 struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
                 destination_path: std::ptr::null(),
                 password: std::ptr::null(),
                 thread_budget: 0,
-                overwrite_existing: true,
+                collision_policy: 0,
                 preserve_permissions: true,
                 dry_run: false,
                 progress_callback: None,
                 user_data: std::ptr::null_mut(),
             };
 
-            UnifiedArchiveOrchestrator::extract_archive(
-                &out_archive,
-                &extract_dir,
-                &extract_opt,
-            )
+            UnifiedArchiveOrchestrator::extract_archive(&out_archive, &crate::fs::collision::staging::StagingRoot(extract_dir.to_path_buf()), &extract_opt)
             .unwrap_or_else(|_| panic!("Failed to extract {}", filename));
 
             let restored = extract_dir.join("payload.dat");
@@ -151,7 +144,7 @@ mod tests {
         let split_out = dir.path().join("archive.zip");
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -176,22 +169,18 @@ mod tests {
         let ext_dir = dir.path().join("split_extracted");
         let extract_opt = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: std::ptr::null(),
             password: std::ptr::null(),
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: 0,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,
             user_data: std::ptr::null_mut(),
         };
 
-        UnifiedArchiveOrchestrator::extract_archive(
-            &chain[0],
-            &ext_dir,
-            &extract_opt,
-        )
+        UnifiedArchiveOrchestrator::extract_archive(&chain[0], &crate::fs::collision::staging::StagingRoot(ext_dir.to_path_buf()), &extract_opt)
         .expect("Split extract failed");
 
         let restored = ext_dir.join("large_payload.bin");
@@ -210,7 +199,7 @@ mod tests {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Store,
             encryption: TTZipEncryptionMethod::None,
@@ -260,7 +249,7 @@ mod tests {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -294,7 +283,7 @@ mod tests {
         let cases = [
             (TTZipArchiveFormat::TarZstd, "test_stream.tar.zst"),
             (TTZipArchiveFormat::TarBrotli, "test_stream.tar.br"),
-            (TTZipArchiveFormat::Snappy, "test_stream.sz"),
+            (TTZipArchiveFormat::TarLz4, "test_stream.tar.lz4"),
         ];
 
         for (fmt, filename) in cases {
@@ -303,7 +292,7 @@ mod tests {
 
             let create_opt = TTZipCreateOptions {
                 struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
                 format: fmt,
                 level: TTZipCompressionLevel::Normal,
                 encryption: TTZipEncryptionMethod::None,
@@ -338,22 +327,18 @@ mod tests {
 
             let extract_opt = TTZipExtractOptions {
                 struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
                 destination_path: std::ptr::null(),
                 password: std::ptr::null(),
                 thread_budget: 0,
-                overwrite_existing: true,
+                collision_policy: 0,
                 preserve_permissions: true,
                 dry_run: false,
                 progress_callback: None,
                 user_data: std::ptr::null_mut(),
             };
 
-            let extracted_bytes = UnifiedArchiveOrchestrator::extract_archive_with_metrics(
-                &archive_out,
-                &extract_out,
-                &extract_opt,
-            )
+            let extracted_bytes = UnifiedArchiveOrchestrator::extract_archive_with_metrics(&archive_out, &crate::fs::collision::staging::StagingRoot(extract_out.to_path_buf()), &extract_opt)
             .unwrap_or_else(|_| panic!("Failed to stream extract {}", filename));
 
             assert!(extracted_bytes >= (data1.len() + data2.len()) as u64);
@@ -379,7 +364,7 @@ mod tests {
 
         let opt_fast = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::TarZstd,
             level: TTZipCompressionLevel::Fastest,
             encryption: TTZipEncryptionMethod::None,
@@ -440,7 +425,7 @@ mod tests {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: TTZipArchiveFormat::Zip,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -460,7 +445,7 @@ mod tests {
         .expect("Create zip archive");
 
         let extract_opt = TTZipExtractOptions::default();
-        let res = UnifiedArchiveOrchestrator::extract_archive(&zip_out, &dest_out, &extract_opt);
+        let res = UnifiedArchiveOrchestrator::extract_archive(&zip_out, &crate::fs::collision::staging::StagingRoot(dest_out.to_path_buf()), &extract_opt);
         assert!(res.is_ok(), "Extraction must succeed");
     }
 
@@ -473,9 +458,11 @@ mod tests {
 
         // 1. Gzip raw single stream
         let gz_out = dir.path().join("source.txt.gz");
-        let mut create_opt = TTZipCreateOptions::default();
-        create_opt.format = TTZipArchiveFormat::Gzip;
-        UnifiedArchiveOrchestrator::create_archive(&[src_file.clone()], &gz_out, &create_opt, 0)
+        let mut create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::Gzip,
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_file), &gz_out, &create_opt, 0)
             .expect("Create raw gzip failed");
         assert!(gz_out.exists());
         let gz_bytes = fs::read(&gz_out).unwrap();
@@ -483,7 +470,7 @@ mod tests {
 
         let dest_gz = dir.path().join("extracted_gz");
         let extract_opt = TTZipExtractOptions::default();
-        UnifiedArchiveOrchestrator::extract_archive(&gz_out, &dest_gz, &extract_opt)
+        UnifiedArchiveOrchestrator::extract_archive(&gz_out, &crate::fs::collision::staging::StagingRoot(dest_gz.to_path_buf()), &extract_opt)
             .expect("Extract raw gzip failed");
         let extracted_gz_content = fs::read(dest_gz.join("source.txt")).unwrap();
         assert_eq!(extracted_gz_content, payload);
@@ -491,14 +478,14 @@ mod tests {
         // 2. Bzip2 raw single stream
         let bz2_out = dir.path().join("source.txt.bz2");
         create_opt.format = TTZipArchiveFormat::Bzip2;
-        UnifiedArchiveOrchestrator::create_archive(&[src_file.clone()], &bz2_out, &create_opt, 0)
+        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_file), &bz2_out, &create_opt, 0)
             .expect("Create raw bzip2 failed");
         assert!(bz2_out.exists());
         let bz2_bytes = fs::read(&bz2_out).unwrap();
         assert_eq!(&bz2_bytes[..3], b"BZh", "Bzip2 magic mismatch");
 
         let dest_bz2 = dir.path().join("extracted_bz2");
-        UnifiedArchiveOrchestrator::extract_archive(&bz2_out, &dest_bz2, &extract_opt)
+        UnifiedArchiveOrchestrator::extract_archive(&bz2_out, &crate::fs::collision::staging::StagingRoot(dest_bz2.to_path_buf()), &extract_opt)
             .expect("Extract raw bzip2 failed");
         let extracted_bz2_content = fs::read(dest_bz2.join("source.txt")).unwrap();
         assert_eq!(extracted_bz2_content, payload);
@@ -506,14 +493,14 @@ mod tests {
         // 3. Xz raw single stream
         let xz_out = dir.path().join("source.txt.xz");
         create_opt.format = TTZipArchiveFormat::Xz;
-        UnifiedArchiveOrchestrator::create_archive(&[src_file.clone()], &xz_out, &create_opt, 0)
+        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_file), &xz_out, &create_opt, 0)
             .expect("Create raw xz failed");
         assert!(xz_out.exists());
         let xz_bytes = fs::read(&xz_out).unwrap();
         assert_eq!(&xz_bytes[..6], &[0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00], "Xz magic mismatch");
 
         let dest_xz = dir.path().join("extracted_xz");
-        UnifiedArchiveOrchestrator::extract_archive(&xz_out, &dest_xz, &extract_opt)
+        UnifiedArchiveOrchestrator::extract_archive(&xz_out, &crate::fs::collision::staging::StagingRoot(dest_xz.to_path_buf()), &extract_opt)
             .expect("Extract raw xz failed");
         let extracted_xz_content = fs::read(dest_xz.join("source.txt")).unwrap();
         assert_eq!(extracted_xz_content, payload);
@@ -521,14 +508,14 @@ mod tests {
         // 4. Zstd raw single stream
         let zst_out = dir.path().join("source.txt.zst");
         create_opt.format = TTZipArchiveFormat::Zstd;
-        UnifiedArchiveOrchestrator::create_archive(&[src_file.clone()], &zst_out, &create_opt, 0)
+        UnifiedArchiveOrchestrator::create_archive(std::slice::from_ref(&src_file), &zst_out, &create_opt, 0)
             .expect("Create raw zstd failed");
         assert!(zst_out.exists());
         let zst_bytes = fs::read(&zst_out).unwrap();
         assert_eq!(&zst_bytes[..4], &[0x28, 0xb5, 0x2f, 0xfd], "Zstd magic mismatch");
 
         let dest_zst = dir.path().join("extracted_zst");
-        UnifiedArchiveOrchestrator::extract_archive(&zst_out, &dest_zst, &extract_opt)
+        UnifiedArchiveOrchestrator::extract_archive(&zst_out, &crate::fs::collision::staging::StagingRoot(dest_zst.to_path_buf()), &extract_opt)
             .expect("Extract raw zstd failed");
         let extracted_zst_content = fs::read(dest_zst.join("source.txt")).unwrap();
         assert_eq!(extracted_zst_content, payload);
@@ -544,10 +531,12 @@ mod tests {
         let sevenz_out = dir.path().join("secret.7z");
         let pwd = std::ffi::CString::new("SecurePass2026!").unwrap();
 
-        let mut create_opt = TTZipCreateOptions::default();
-        create_opt.format = TTZipArchiveFormat::SevenZip;
-        create_opt.encryption = TTZipEncryptionMethod::Aes256;
-        create_opt.password = pwd.as_ptr();
+        let create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::SevenZip,
+            encryption: TTZipEncryptionMethod::Aes256,
+            password: pwd.as_ptr(),
+            ..Default::default()
+        };
 
         UnifiedArchiveOrchestrator::create_archive(&[src_file], &sevenz_out, &create_opt, 0)
             .expect("7z archive creation with AES-256 password must succeed");
@@ -555,23 +544,27 @@ mod tests {
 
         // 1. Extraction with wrong password must fail safely
         let dest_fail = dir.path().join("extracted_fail");
-        let mut extract_fail_opt = TTZipExtractOptions::default();
         let wrong_pwd = std::ffi::CString::new("WrongPassword2026!").unwrap();
-        extract_fail_opt.password = wrong_pwd.as_ptr();
-        let res_fail = UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &dest_fail, &extract_fail_opt);
+        let extract_fail_opt = TTZipExtractOptions {
+            password: wrong_pwd.as_ptr(),
+            ..Default::default()
+        };
+        let res_fail = UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &crate::fs::collision::staging::StagingRoot(dest_fail.to_path_buf()), &extract_fail_opt);
         assert!(res_fail.is_err(), "7z extraction with wrong password must fail");
 
         // 2. Extraction without password must fail
         let dest_none = dir.path().join("extracted_none");
         let extract_none_opt = TTZipExtractOptions::default();
-        let res_none = UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &dest_none, &extract_none_opt);
+        let res_none = UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &crate::fs::collision::staging::StagingRoot(dest_none.to_path_buf()), &extract_none_opt);
         assert!(res_none.is_err(), "7z extraction without password must fail");
 
         // 3. Extraction with correct password must succeed and payload match exactly
         let dest_success = dir.path().join("extracted_success");
-        let mut extract_success_opt = TTZipExtractOptions::default();
-        extract_success_opt.password = pwd.as_ptr();
-        UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &dest_success, &extract_success_opt)
+        let extract_success_opt = TTZipExtractOptions {
+            password: pwd.as_ptr(),
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &crate::fs::collision::staging::StagingRoot(dest_success.to_path_buf()), &extract_success_opt)
             .expect("7z extraction with valid password must succeed");
 
         let extracted_content = fs::read(dest_success.join("secret.txt")).unwrap();
@@ -596,10 +589,12 @@ mod tests {
         let sevenz_out = dir.path().join("explicit_secret.7z");
         let pwd = std::ffi::CString::new("ExplicitPass2026!").unwrap();
 
-        let mut create_opt = TTZipCreateOptions::default();
-        create_opt.format = TTZipArchiveFormat::SevenZip;
-        create_opt.encryption = TTZipEncryptionMethod::Aes256;
-        create_opt.password = pwd.as_ptr();
+        let create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::SevenZip,
+            encryption: TTZipEncryptionMethod::Aes256,
+            password: pwd.as_ptr(),
+            ..Default::default()
+        };
 
         UnifiedArchiveOrchestrator::create_archive_explicit(&entries, &sevenz_out, &create_opt, 0)
             .expect("Explicit 7z creation with AES-256 password must succeed");
@@ -607,9 +602,11 @@ mod tests {
 
         // Extract with valid password
         let dest_success = dir.path().join("explicit_extracted");
-        let mut extract_success_opt = TTZipExtractOptions::default();
-        extract_success_opt.password = pwd.as_ptr();
-        UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &dest_success, &extract_success_opt)
+        let extract_success_opt = TTZipExtractOptions {
+            password: pwd.as_ptr(),
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::extract_archive(&sevenz_out, &crate::fs::collision::staging::StagingRoot(dest_success.to_path_buf()), &extract_success_opt)
             .expect("7z extraction of explicit archive must succeed");
 
         let out1 = fs::read(dest_success.join("sub/dir/one.bin")).unwrap();
@@ -617,4 +614,80 @@ mod tests {
         assert_eq!(out1, payload1);
         assert_eq!(out2, payload2);
     }
+
+    #[test]
+    fn test_unified_extract_with_sheet_cancellation() {
+        let dir = tempdir().unwrap();
+        let payload = vec![0xABu8; 10000];
+        let src_file = dir.path().join("data.bin");
+        fs::write(&src_file, &payload).unwrap();
+
+        let tar_out = dir.path().join("test.tar");
+        let create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::Tar,
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::create_archive(&[src_file], &tar_out, &create_opt, 0).unwrap();
+
+        let sheet = ProgressAtomicSheet::with_total(10000);
+        sheet.cancel();
+
+        let dest = dir.path().join("extracted_cancel");
+        let extract_opt = TTZipExtractOptions::default();
+        let res = UnifiedArchiveOrchestrator::extract_archive_with_sheet(&tar_out, &crate::fs::collision::staging::StagingRoot(dest.to_path_buf()), &extract_opt, Some(&sheet),
+        );
+        assert_eq!(res.err(), Some(TTZipStatus::Cancelled));
+    }
+
+    #[test]
+    fn test_unified_extract_with_sheet_progress_monotonic() {
+        let dir = tempdir().unwrap();
+        let payload = vec![0x55u8; 20000];
+        let src_file = dir.path().join("sample.bin");
+        fs::write(&src_file, &payload).unwrap();
+
+        let zip_out = dir.path().join("sample.zip");
+        let create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::Zip,
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::create_archive(&[src_file], &zip_out, &create_opt, 0).unwrap();
+
+        let sheet = ProgressAtomicSheet::new();
+        let dest = dir.path().join("extracted_sample");
+        let extract_opt = TTZipExtractOptions::default();
+        let extracted_bytes = UnifiedArchiveOrchestrator::extract_archive_with_sheet(&zip_out, &crate::fs::collision::staging::StagingRoot(dest.to_path_buf()), &extract_opt, Some(&sheet),
+        ).expect("Extraction must succeed");
+
+        assert_eq!(extracted_bytes, 20000);
+        assert!(sheet.is_finished());
+        assert_eq!(sheet.processed_bytes.load(std::sync::atomic::Ordering::Relaxed), 20000);
+    }
+
+    #[test]
+    fn test_unified_extract_tar_with_sheet_progress_monotonic() {
+        let dir = tempdir().unwrap();
+        let payload = vec![0x77u8; 15000];
+        let src_file = dir.path().join("tar_sample.bin");
+        fs::write(&src_file, &payload).unwrap();
+
+        let tar_out = dir.path().join("tar_sample.tar");
+        let create_opt = TTZipCreateOptions {
+            format: TTZipArchiveFormat::Tar,
+            ..Default::default()
+        };
+        UnifiedArchiveOrchestrator::create_archive(&[src_file], &tar_out, &create_opt, 0).unwrap();
+
+        let sheet = ProgressAtomicSheet::new();
+        let dest = dir.path().join("extracted_tar_sample");
+        let extract_opt = TTZipExtractOptions::default();
+        let extracted_bytes = UnifiedArchiveOrchestrator::extract_archive_with_sheet(&tar_out, &crate::fs::collision::staging::StagingRoot(dest.to_path_buf()), &extract_opt, Some(&sheet),
+        ).expect("Tar extraction must succeed");
+
+        assert_eq!(extracted_bytes, 15000);
+        assert!(sheet.is_finished());
+        assert_eq!(sheet.processed_bytes.load(std::sync::atomic::Ordering::Relaxed), 15000);
+    }
 }
+
+

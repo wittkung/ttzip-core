@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Libarchive Stream Reading adapter and C-ABI trampolines.
 
@@ -10,7 +10,6 @@ use super::{
 };
 use crate::types::TTZipStatus;
 use std::io::{Read, Seek};
-use std::panic::catch_unwind;
 use std::pin::Pin;
 
 /// Internal state for custom stream reading callbacks.
@@ -111,20 +110,17 @@ pub unsafe extern "C" fn archive_read_callback_trampoline<R: Read>(
     client_data: *mut libc::c_void,
     buffer: *mut *const libc::c_void,
 ) -> libc::ssize_t {
-    let result = catch_unwind(|| {
-        if client_data.is_null() || buffer.is_null() {
-            return ARCHIVE_FATAL as libc::ssize_t;
+    if client_data.is_null() || buffer.is_null() {
+        return ARCHIVE_FATAL as libc::ssize_t;
+    }
+    let state = &mut *(client_data as *mut StreamReaderState<R>);
+    match state.read_chunk() {
+        Ok((ptr, len)) => {
+            *buffer = ptr as *const libc::c_void;
+            len as libc::ssize_t
         }
-        let state = &mut *(client_data as *mut StreamReaderState<R>);
-        match state.read_chunk() {
-            Ok((ptr, len)) => {
-                *buffer = ptr as *const libc::c_void;
-                len as libc::ssize_t
-            }
-            Err(_) => ARCHIVE_FATAL as libc::ssize_t,
-        }
-    });
-    result.unwrap_or(ARCHIVE_FATAL as libc::ssize_t)
+        Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+    }
 }
 
 /// C-ABI open callback trampoline for `libarchive`.
@@ -132,8 +128,7 @@ pub unsafe extern "C" fn archive_open_callback_trampoline(
     _archive: *mut libc::c_void,
     _client_data: *mut libc::c_void,
 ) -> libc::c_int {
-    let result = catch_unwind(|| ARCHIVE_OK);
-    result.unwrap_or(ARCHIVE_FATAL)
+    ARCHIVE_OK
 }
 
 /// C-ABI close callback trampoline for `libarchive`.
@@ -141,8 +136,7 @@ pub unsafe extern "C" fn archive_close_callback_trampoline(
     _archive: *mut libc::c_void,
     _client_data: *mut libc::c_void,
 ) -> libc::c_int {
-    let result = catch_unwind(|| ARCHIVE_OK);
-    result.unwrap_or(ARCHIVE_FATAL)
+    ARCHIVE_OK
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +185,7 @@ pub struct ArchiveStreamReader<R> {
 }
 
 impl<R: Read + 'static> ArchiveStreamReader<R> {
-    /// Creates and opens a new sequential `ArchiveStreamReader`.
+    /// Creates and opens a new sequential container `ArchiveStreamReader`.
     pub fn open_sequential(reader: R, buffer_size: usize) -> Result<Self, TTZipStatus> {
         let mut state = Box::pin(StreamReaderState::new(reader, buffer_size));
         unsafe {
@@ -200,7 +194,6 @@ impl<R: Read + 'static> ArchiveStreamReader<R> {
                 return Err(TTZipStatus::ErrOutOfMemory);
             }
             archive_read_support_format_all(a);
-            archive_read_support_format_raw(a);
             archive_read_support_filter_all(a);
 
             let state_raw: *mut StreamReaderState<R> = Pin::get_unchecked_mut(state.as_mut());
@@ -224,10 +217,75 @@ impl<R: Read + 'static> ArchiveStreamReader<R> {
             })
         }
     }
+
+    /// Creates and opens a raw-filter `ArchiveStreamReader` strictly for confirmed single-stream
+    /// filter codecs (`.bz2`, `.xz`, `.lz4`, `.lz`, `.lrz`) after magic signature validation.
+    pub fn open_raw_filter(reader: R, buffer_size: usize) -> Result<Self, TTZipStatus> {
+        let mut state = Box::pin(StreamReaderState::new(reader, buffer_size));
+        unsafe {
+            let a = archive_read_new();
+            if a.is_null() {
+                return Err(TTZipStatus::ErrOutOfMemory);
+            }
+            archive_read_support_format_raw(a);
+            archive_read_support_filter_all(a);
+
+            let state_raw: *mut StreamReaderState<R> = Pin::get_unchecked_mut(state.as_mut());
+            let ret = archive_read_open2(
+                a,
+                state_raw as *mut libc::c_void,
+                Some(archive_open_callback_trampoline),
+                Some(archive_read_callback_trampoline::<R>),
+                None,
+                Some(archive_close_callback_trampoline),
+            );
+
+            if ret != ARCHIVE_OK && ret != ARCHIVE_WARN {
+                archive_read_free(a);
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+
+            Ok(Self {
+                archive_ptr: a,
+                state,
+            })
+        }
+    }
+}
+
+impl<R: Read> ArchiveStreamReader<R> {
+    /// Drains any remaining trailing padding/checksum trailer from the underlying stream after
+    /// `libarchive` finishes reading an inner container (e.g. TAR zero blocks inside `.tar.gz`/`.tar.br`/`.tar.zst`).
+    pub fn verify_underlying_eof(&mut self) -> Result<(), TTZipStatus> {
+        if self.state.has_error {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        let state = unsafe { Pin::get_unchecked_mut(self.state.as_mut()) };
+        if state.is_eof {
+            return Ok(());
+        }
+        let mut scratch = [0u8; 16384];
+        let mut drained = 0usize;
+        const MAX_TRAILER_DRAIN: usize = 2 * 1024 * 1024;
+        while drained < MAX_TRAILER_DRAIN {
+            match state.reader.read(&mut scratch) {
+                Ok(0) => {
+                    state.is_eof = true;
+                    break;
+                }
+                Ok(n) => {
+                    drained = drained.saturating_add(n);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(_) => return Err(TTZipStatus::ErrCorruptHeader),
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<R: Read + Seek + 'static> ArchiveStreamReader<R> {
-    /// Creates and opens a new seekable `ArchiveStreamReader`.
+    /// Creates and opens a new seekable container `ArchiveStreamReader`.
     pub fn open_seekable(reader: R, buffer_size: usize) -> Result<Self, TTZipStatus> {
         let mut state = Box::pin(StreamReaderState::new(reader, buffer_size));
         unsafe {
@@ -236,7 +294,6 @@ impl<R: Read + Seek + 'static> ArchiveStreamReader<R> {
                 return Err(TTZipStatus::ErrOutOfMemory);
             }
             archive_read_support_format_all(a);
-            archive_read_support_format_raw(a);
             archive_read_support_filter_all(a);
 
             let state_raw: *mut StreamReaderState<R> = Pin::get_unchecked_mut(state.as_mut());

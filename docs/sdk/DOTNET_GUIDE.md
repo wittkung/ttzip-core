@@ -1,8 +1,8 @@
 # 🔷 TTZip .NET 8+ (C#) Developer Guide
 
-[![NuGet](https://img.shields.io/badge/nuget-v1.0.0-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.csproj)
-[![.NET 8+](https://img.shields.io/badge/.NET-8.0%2B%20%7C%20C%23%2012-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.csproj)
-[![Zero-Copy](https://img.shields.io/badge/Memory-ReadOnlySpan%20%26%20SafeHandle-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.cs#L215)
+[![NuGet](https://img.shields.io/badge/nuget-v1.0.0-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.csproj)
+[![.NET 8+](https://img.shields.io/badge/.NET-8.0%2B%20%7C%20C%23%2012-purple.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.csproj)
+[![Zero-Copy](https://img.shields.io/badge/Memory-ReadOnlySpan%20%26%20SafeHandle-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dotnet/src/TTZip/TTZip.cs#L215)
 
 `TTZip` is the official high-performance .NET 8+ SDK for TTZip. It utilizes modern C# features including **`ReadOnlySpan<byte>` zero-copy buffer slicing**, `SafeHandle` memory lifecycle management, and **`IAsyncEnumerable<ArchiveProgress>` reactive channels** for non-blocking server and desktop workloads.
 

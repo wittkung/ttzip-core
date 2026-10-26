@@ -1,6 +1,6 @@
 # Implementation Plan: Rust Core & Glue Layer Architectural Reconstruction
 
-**Branch**: `223-rust-core-and-glue-architectural-reconstruction` | **Date**: 2026-08-24 | **Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/core/specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
+**Branch**: `223-rust-core-and-glue-architectural-reconstruction` | **Date**: 2026-08-24 | **Spec**: [`spec.md`](file://specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
 
 ---
 

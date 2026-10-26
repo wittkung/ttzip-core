@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI FFI bindings for path sanitization and security defenses.
 
@@ -30,7 +30,7 @@ impl Default for TTZipPathSanitizationResult {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             normalized_path: [0; 4096],
             win32_formatted_path: [0; 4096],
             stripped_ads: [0; 1024],

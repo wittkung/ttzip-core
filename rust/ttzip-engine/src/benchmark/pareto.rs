@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 2D Pareto non-dominated frontier and Andrew's Monotone Chain upper convex hull algorithms.
 

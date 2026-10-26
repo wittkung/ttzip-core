@@ -1,7 +1,7 @@
 # Tasks: TTZip 全维度专业归档能力补齐与工程落地
 
 **Input**: Design documents from `/specs/082-pro-software-gap-audit/`  
-**Prerequisites**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/plan.md), [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/spec.md), [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/research.md), [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/data-model.md), [contracts/](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/contracts/)
+**Prerequisites**: [plan.md](file://../specs/082-pro-software-gap-audit/plan.md), [spec.md](file://../specs/082-pro-software-gap-audit/spec.md), [research.md](file://../specs/082-pro-software-gap-audit/research.md), [data-model.md](file://../specs/082-pro-software-gap-audit/data-model.md), [contracts/](file://../specs/082-pro-software-gap-audit/contracts/)
 
 ---
 

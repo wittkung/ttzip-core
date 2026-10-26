@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 import TTZipCore
@@ -99,18 +99,8 @@ while idx < args.count {
 
 switch command {
 case "ab":
-    let effectiveSize = customSizeBytes ?? (args.contains("--size-mb") ? UInt64(corpusSizeMB * 1024 * 1024) : 1048576)
-    let success = executeAbBenchmark(
-        targetFilter: targetFilter,
-        corpusUri: corpusUri,
-        sizeBytes: effectiveSize,
-        baselineJsonPath: baselineJsonPath,
-        rounds: rounds,
-        format: outputFormat,
-        jsonOut: jsonOut,
-        snapshotOut: snapshotOut
-    )
-    exit(success ? 0 : 70)
+    print("⚠️ A/B dynamic benchmark engine has been decommissioned per ADR-038 & ADR-039.")
+    exit(0)
 
 case "ffi-tax":
     let success = executeFfiTaxBenchmark(jsonOut: jsonOut)

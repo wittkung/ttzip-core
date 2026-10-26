@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Shared test harness infrastructure for 20+ container format matrix verification.
 
@@ -218,7 +218,7 @@ where
     .map_err(|e| format!("CString conversion error: {}", e))?;
 
     unsafe {
-        libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
+        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
         let a = archive_write_new();
         if a.is_null() {
             return Err("archive_write_new returned null".to_string());
@@ -313,7 +313,7 @@ pub fn read_archive_buffer(archive_bytes: &[u8]) -> Result<Vec<ExtractedEntry>, 
     let mut extracted = Vec::new();
 
     unsafe {
-        libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
+        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
         let a = archive_read_new();
         if a.is_null() {
             return Err("archive_read_new returned null".to_string());

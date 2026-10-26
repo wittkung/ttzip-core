@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -47,6 +47,10 @@ public enum L10n {
         case newArchiveShortcut = "common.new_archive_shortcut"
         case calculating = "common.calculating"
         case unknown = "common.unknown"
+        case copyName = "common.copy_name"
+        case copyPath = "common.copy_path"
+        case open = "common.open"
+        case revealShort = "common.reveal_short"
     }
     
     // MARK: - 2. Sidebar Navigation & Layout
@@ -64,6 +68,18 @@ public enum L10n {
         case openArchiveHeader = "sidebar.open_archive_header"
         case printedInMacOS = "sidebar.printed_in_macos"
         case zeroCopyAcceleration = "sidebar.zero_copy_acceleration"
+        case storageInspector = "sidebar.storage_inspector"
+        case home = "sidebar.home"
+        case desktop = "sidebar.desktop"
+        case downloads = "sidebar.downloads"
+        case documents = "sidebar.documents"
+        case favorites = "sidebar.favorites"
+        case syncFinderFavorites = "sidebar.sync_finder_favorites"
+        case syncFinderFavoritesDesc = "sidebar.sync_finder_favorites_desc"
+        case authorize = "sidebar.authorize"
+        case authorizeSync = "sidebar.authorize_sync"
+        case authorizeSyncPrompt = "sidebar.authorize_sync_prompt"
+        case showFavoritesSidebar = "sidebar.show_favorites_sidebar"
     }
     
     // MARK: - 3. File Explorer & Archive Outline
@@ -102,6 +118,20 @@ public enum L10n {
         case rootAccess = "explorer.root_access"
         case rootAccessHelp = "explorer.root_access_help"
         case create = "explorer.create"
+        case treemapView = "explorer.treemap_view"
+        case newTab = "explorer.new_tab"
+        case closeTab = "explorer.close_tab"
+        case folderShort = "explorer.folder_short"
+        case fileShort = "explorer.file_short"
+        case parentDirectory = "explorer.parent_directory"
+        case untitledFolder = "explorer.untitled_folder"
+        case untitledFolderFormat = "explorer.untitled_folder_format"
+        case untitledFile = "explorer.untitled_file"
+        case untitledFileFormat = "explorer.untitled_file_format"
+        case closeArchive = "explorer.close_archive"
+        case filterPrompt = "explorer.filter_prompt"
+        case createFolderPrompt = "explorer.create_folder_prompt"
+        case createFilePrompt = "explorer.create_file_prompt"
     }
     
     // MARK: - 4. Compression Options & Progress
@@ -156,6 +186,28 @@ public enum L10n {
         case zipMethodZipCrypto = "compress.zip_method_zipcrypto"
         case zstdLevel = "compress.zstd_level"
         case zstdLdm = "compress.zstd_ldm"
+        case studioTitle = "compress.studio_title"
+        case closeStudio = "compress.close_studio"
+        case sourceFiles = "compress.source_files"
+        case addFiles = "compress.add_files"
+        case addFolder = "compress.add_folder"
+        case addFilesEllipsis = "compress.add_files_ellipsis"
+        case addFolderEllipsis = "compress.add_folder_ellipsis"
+        case addShort = "compress.add_short"
+        case removeSelected = "compress.remove_selected"
+        case clearAll = "compress.clear_all"
+        case dropPrompt = "compress.drop_prompt"
+        case removeItem = "compress.remove_item"
+        case sourceFeeder = "compress.source_feeder"
+        case collapseFeeder = "compress.collapse_feeder"
+        case feederDragPrompt = "compress.feeder_drag_prompt"
+        case addSelected = "compress.add_selected"
+        case hideFeeder = "compress.hide_feeder"
+        case hideFeederHelp = "compress.hide_feeder_help"
+        case showFeeder = "compress.show_feeder"
+        case addToStudio = "compress.add_to_studio"
+        case compressShort = "compress.compress_short"
+        case compressFolder = "compress.compress_folder"
     }
     
     // MARK: - 5. Extraction Workflow
@@ -178,6 +230,10 @@ public enum L10n {
         case extractingTo = "extract.extracting_to"
         case totalExtractedFiles = "extract.total_extracted_files"
         case speedMetric = "extract.speed_metric"
+        case extractSelected = "extract.extract_selected"
+        case extractAll = "extract.extract_all"
+        case extractAllPrompt = "extract.extract_all_prompt"
+        case extractOptionsPrompt = "extract.extract_options_prompt"
     }
     
     // MARK: - 6. Benchmark Metrics & Speed Test
@@ -229,6 +285,7 @@ public enum L10n {
         case filterRules = "presets.filter_rules"
         case filterMacJunkDesc = "presets.filter_mac_junk_desc"
         case filterGitDesc = "presets.filter_git_desc"
+        case customPreset = "presets.custom_preset"
     }
     
     // MARK: - 8. Password Keychain Vault
@@ -287,6 +344,22 @@ public enum L10n {
         case chipModel = "settings.chip_model"
         case cpuCores = "settings.cpu_cores"
         case unifiedMemory = "settings.unified_memory"
+        case conflictHeader = "settings.conflict_header"
+        case conflictDesc = "settings.conflict_desc"
+        case conflictAsk = "settings.conflict_ask"
+        case conflictKeepBoth = "settings.conflict_keep_both"
+        case conflictReplace = "settings.conflict_replace"
+        case conflictSkip = "settings.conflict_skip"
+
+        /// Localized title for the Local Models settings tab.
+        public static var localModels: String {
+            LocalModelLocaleKey.tabTitle.resolve()
+        }
+
+        /// Strongly-typed localization key for the Local Models settings tab.
+        public static var localModelsKey: LocalModelLocaleKey {
+            .tabTitle
+        }
     }
     
     // MARK: - 10. Operations Queue
@@ -313,7 +386,8 @@ public enum L10n {
         Benchmark.self, Presets.self, Vault.self, Settings.self, Queue.self,
         Preview.self, Menu.self, Dialogs.self, Errors.self, Units.self,
         CLI.self, Notification.self, Diagnostics.self, Recovery.self,
-        QuickLook.self, FinderSync.self, Inspector.self
+        QuickLook.self, FinderSync.self, Inspector.self, Search.self,
+        Device.self
     ]
     
     /// Returns all defined raw keys across all localization namespaces.
@@ -402,6 +476,40 @@ extension L10n {
         case finderCompressSeparate = "menu.finder_compress_separate"
         case finderCompressDeleteSource = "menu.finder_compress_delete_source"
         case finderCompressAdvanced = "menu.finder_compress_advanced"
+        case exportDiagnosticReport = "menu.export_diagnostic_report"
+        case globalSearch = "menu.global_search"
+        case omnibar = "menu.omnibar"
+        case quickExtractAll = "menu.quick_extract_all"
+        case revealLogsInFinder = "menu.reveal_logs_in_finder"
+        case toggleInspector = "menu.toggle_inspector"
+        case toggleSidebar = "menu.toggle_sidebar"
+        case openWith = "menu.open_with"
+        case defaultSuffix = "menu.default_suffix"
+        case otherEllipsis = "menu.other_ellipsis"
+        case chooseApplication = "menu.choose_application"
+        case openInApp = "menu.open_in_app"
+        case extractTo = "menu.extract_to"
+        case replaceWith = "menu.replace_with"
+        case replace = "menu.replace"
+        case pasteIntoFolder = "menu.paste_into_folder"
+        case moveToTrash = "menu.move_to_trash"
+        case copySubpath = "menu.copy_subpath"
+        case quickLookItemFormat = "menu.quick_look_item_format"
+        case copyItemFormat = "menu.copy_item_format"
+        case copyPathFormat = "menu.copy_path_format"
+        case openItemsFormat = "menu.open_items_format"
+        case newArchiveItemsFormat = "menu.new_archive_items_format"
+        case compressZipItemsFormat = "menu.compress_zip_items_format"
+        case quickLookItemsFormat = "menu.quick_look_items_format"
+        case copyItemsFormat = "menu.copy_items_format"
+        case copyPathsFormat = "menu.copy_paths_format"
+        case cutItemsFormat = "menu.cut_items_format"
+        case trashItemsFormat = "menu.trash_items_format"
+        case extractHere = "menu.extract_here"
+        case inspectArchive = "menu.inspect_archive"
+        case compressZip = "menu.compress_zip"
+        case compress7z = "menu.compress_7z"
+        case newFile = "menu.new_file"
     }
     
     // MARK: - 13. System Dialogs & Confirmations
@@ -556,5 +664,81 @@ extension L10n {
         case ownerGroup = "inspector.owner_group"
         case permissions = "inspector.permissions"
         case size = "inspector.size"
+        case exposure = "inspector.exposure"
+        case overviewAttributes = "inspector.overview_attributes"
+        case whereLocation = "inspector.where_location"
+        case quickLookHelp = "inspector.quick_look_help"
+        case revealInFinderHelp = "inspector.reveal_in_finder_help"
+        case extractArchiveHelp = "inspector.extract_archive_help"
+        case compressFileHelp = "inspector.compress_file_help"
+        case appleFileSystemApfs = "inspector.apple_file_system_apfs"
+        case owner = "inspector.owner"
+        case ownerGroupFormat = "inspector.owner_group_format"
+        case videoSpecs = "inspector.video_specs"
+        case imageSpecs = "inspector.image_specs"
+        case resolution = "inspector.resolution"
+        case colorSpace = "inspector.color_space"
+        case bitDepth = "inspector.bit_depth"
+        case cameraExif = "inspector.camera_exif"
+        case camera = "inspector.camera"
+        case toggleInspectorPanel = "inspector.toggle_inspector_panel"
+        case multiItemsFormat = "inspector.multi_items_format"
+        case filesLabel = "inspector.files_label"
+        case foldersLabel = "inspector.folders_label"
+        case largestItem = "inspector.largest_item"
+        case fileTypes = "inspector.file_types"
+        case selectToInspect = "inspector.select_to_inspect"
+        case storageActive = "inspector.storage_active"
+        case multiSelectionTitle = "inspector.multi_selection_title"
+        case quickLookShortcut = "inspector.quick_look_shortcut"
+        case itemActionsHelp = "inspector.item_actions_help"
+    }
+    
+    // MARK: - 23. Spotlight & Global Search Overlay
+    public enum Search: String, LocaleKeyProtocol, CaseIterable {
+        case placeholder = "search.placeholder"
+        case actionOpen = "search.action_open"
+        case actionReveal = "search.action_reveal"
+        case actionQuickLook = "search.action_quick_look"
+        case actionDismiss = "search.action_dismiss"
+        case badgeActiveArchive = "search.badge_active_archive"
+        case badgeFolder = "search.badge_folder"
+        case badgeFile = "search.badge_file"
+        case badgeRecent = "search.badge_recent"
+        case badgeAction = "search.badge_action"
+        case noResults = "search.no_results"
+        case searchInFolder = "search.search_in_folder"
+    }
+    
+    // MARK: - 24. Peripheral Device & ADB / MTP Pairing
+    public enum Device: String, LocaleKeyProtocol, CaseIterable {
+        case pairingInProgress = "device.pairing_in_progress"
+        case pairingSuccess = "device.pairing_success"
+        case pairingSuccessDesc = "device.pairing_success_desc"
+        case pairingFailed = "device.pairing_failed"
+        case pairingFailedDesc = "device.pairing_failed_desc"
+        case phoneStepsTitle = "device.phone_steps_title"
+        case phoneStepsDesc = "device.phone_steps_desc"
+        case pinCodeTitle = "device.pin_code_title"
+        case invalidPortError = "device.invalid_port_error"
+        case pinDigitsError = "device.pin_digits_error"
+        case specifyIpError = "device.specify_ip_error"
+        case handshakeStep = "device.handshake_step"
+        case verifyPinStep = "device.verify_pin_step"
+        case timeoutMsg = "device.timeout_msg"
+        case guideTitle = "device.guide_title"
+        case guideStep1Title = "device.guide_step1_title"
+        case guideStep1Desc = "device.guide_step1_desc"
+        case guideStep2Title = "device.guide_step2_title"
+        case guideStep2Desc = "device.guide_step2_desc"
+        case guideStep3Title = "device.guide_step3_title"
+        case guideStep3Desc = "device.guide_step3_desc"
+        case guideStep4Title = "device.guide_step4_title"
+        case guideStep4Desc = "device.guide_step4_desc"
+        case adbActive = "device.adb_active"
+        case adbNotFound = "device.adb_not_found"
+        case recheck = "device.recheck"
+        case switchAdbMode = "device.switch_adb_mode"
+        case switchAdbModeDesc = "device.switch_adb_mode_desc"
     }
 }

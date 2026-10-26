@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-20
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/147-full-122-files-c-migration-and-swift-slimming/spec.md)
+**Feature**: [spec.md](file://../specs/147-full-122-files-c-migration-and-swift-slimming/spec.md)
 
 ## Content Quality
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-performance zero-allocation natural string comparator and sorter.
 
@@ -72,7 +72,8 @@ pub fn natural_cmp(a: &str, b: &str) -> Ordering {
                 Ordering::Equal => {
                     // Equal numerical value; if both were pure zeros, compare zero counts
                     if len_a == 0 && zeros_a != zeros_b {
-                        // More leading zeros comes after fewer leading zeros or tie break
+                        // Fewer leading zeros sort before more leading zeros (e.g. "0" < "00" < "000")
+                        return zeros_a.cmp(&zeros_b);
                     }
                 }
                 other => return other,
@@ -166,4 +167,19 @@ mod tests {
         natural_sort(&mut versions);
         assert_eq!(versions, vec!["v1.1.0", "v1.2.0", "V1.2.1", "v1.10.0"]);
     }
+
+    #[test]
+    fn test_natural_sort_pure_zeros() {
+        let mut files = vec!["file00.txt", "file0.txt", "file000.txt", "file01.txt"];
+        natural_sort(&mut files);
+        assert_eq!(
+            files,
+            vec!["file0.txt", "file00.txt", "file000.txt", "file01.txt"]
+        );
+
+        let mut items = vec!["00_a", "0_b"];
+        natural_sort(&mut items);
+        assert_eq!(items, vec!["0_b", "00_a"]);
+    }
 }
+

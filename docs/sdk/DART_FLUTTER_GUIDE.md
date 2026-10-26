@@ -1,8 +1,8 @@
 # 🎯 TTZip Dart & Flutter Developer Guide
 
-[![pub package](https://img.shields.io/badge/pub.dev-ttzip%20v1.0.0-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dart/lib/ttzip.dart)
-[![Platforms](https://img.shields.io/badge/Platforms-Flutter%20%7C%20Dart%20VM%20%7C%20macOS%20%7C%20iOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dart/pubspec.yaml)
-[![Concurrency: Isolates](https://img.shields.io/badge/Threading-Background%20Isolates%20(Zero%20UI%20Stutter)-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/dart/lib/ttzip.dart#L234)
+[![pub package](https://img.shields.io/badge/pub.dev-ttzip%20v1.0.0-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dart/lib/ttzip.dart)
+[![Platforms](https://img.shields.io/badge/Platforms-Flutter%20%7C%20Dart%20VM%20%7C%20macOS%20%7C%20iOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dart/pubspec.yaml)
+[![Concurrency: Isolates](https://img.shields.io/badge/Threading-Background%20Isolates%20(Zero%20UI%20Stutter)-purple.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/dart/lib/ttzip.dart#L234)
 
 The `ttzip` Dart & Flutter package provides high-performance native archiving and decompression for mobile, desktop, and server applications. Using **`dart:ffi` with background `Isolate.run` worker pools**, it offloads heavy cryptographic and compression tasks off the Flutter UI thread to maintain 120 FPS frame rates.
 

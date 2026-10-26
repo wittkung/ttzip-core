@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Depth-first reverse deferred directory metadata restoration engine.
 //!
@@ -332,7 +332,9 @@ impl DepthFirstDirFixup {
             if item.uid.is_some() || item.gid.is_some() {
                 let target_uid = item.uid.map(|u| u as libc::uid_t).unwrap_or(st.st_uid);
                 let target_gid = item.gid.map(|g| g as libc::gid_t).unwrap_or(st.st_gid);
-                let _ = libc::lchown(c_path.as_ptr(), target_uid, target_gid);
+                if libc::lchown(c_path.as_ptr(), target_uid, target_gid) != 0 {
+                    return Err(TTZipStatus::ErrExtractionFailed);
+                }
             }
 
             // 2. Apply ACL if present
@@ -403,8 +405,11 @@ impl DepthFirstDirFixup {
         unsafe {
             let native_acl = acl_from_text(c_acl_text.as_ptr());
             if !native_acl.is_null() {
-                let _ = acl_set_file(c_path.as_ptr(), ACL_TYPE_EXTENDED, native_acl);
+                let ret = acl_set_file(c_path.as_ptr(), ACL_TYPE_EXTENDED, native_acl);
                 acl_free(native_acl);
+                if ret != 0 {
+                    return Err(TTZipStatus::ErrExtractionFailed);
+                }
             }
         }
 

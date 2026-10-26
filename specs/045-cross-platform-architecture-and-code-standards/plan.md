@@ -81,21 +81,21 @@ graph TD
 ## 五、 改动清单与组件设计 (Component Breakdown)
 
 ### 1. C 桥接层跨平台头文件与对齐宏
-- `[NEW]` [`Sources/CTTZipBridge/include/ttzip_platform.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_platform.h): 跨平台 API 导出宏、对齐宏与安全擦除 `ttzip_secure_zero`。
-- `[NEW]` [`Sources/CTTZipBridge/include/ttzip_windows.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_windows.h): Windows 特有句柄与宽字符桥接定义。
+- `[NEW]` [`Sources/CTTZipBridge/include/ttzip_platform.h`](file://../Sources/CTTZipBridge/include/ttzip_platform.h): 跨平台 API 导出宏、对齐宏与安全擦除 `ttzip_secure_zero`。
+- `[NEW]` [`Sources/CTTZipBridge/include/ttzip_windows.h`](file://../Sources/CTTZipBridge/include/ttzip_windows.h): Windows 特有句柄与宽字符桥接定义。
 
 ### 2. Swift 平台抽象层 (PAL) 核心模块
-- `[NEW]` [`Sources/TTZipCore/Platform/PlatformOperatingSystem.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformOperatingSystem.swift): 操作系统与平台标识。
-- `[NEW]` [`Sources/TTZipCore/Platform/PlatformHardware.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformHardware.swift): CPUID 与 ARM NEON / AES-NI 硬件特性探测中枢。
-- `[NEW]` [`Sources/TTZipCore/Platform/PlatformPathSanitizer.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformPathSanitizer.swift): 跨平台路径净化、DOS 设备名拦截与长路径支持。
-- `[NEW]` [`Sources/TTZipCore/Platform/PlatformMemory.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformMemory.swift): 统一页对齐内存申请、虚拟内存映射与安全擦除。
-- `[NEW]` [`Sources/TTZipCore/Platform/PlatformFileSystem.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformFileSystem.swift): 统一文件打开、元数据读取与空间预分配。
+- `[NEW]` [`Sources/TTZipCore/Platform/PlatformOperatingSystem.swift`](file://../Sources/TTZipCore/Platform/PlatformOperatingSystem.swift): 操作系统与平台标识。
+- `[NEW]` [`Sources/TTZipCore/Platform/PlatformHardware.swift`](file://../Sources/TTZipCore/Platform/PlatformHardware.swift): CPUID 与 ARM NEON / AES-NI 硬件特性探测中枢。
+- `[NEW]` [`Sources/TTZipCore/Platform/PlatformPathSanitizer.swift`](file://../Sources/TTZipCore/Platform/PlatformPathSanitizer.swift): 跨平台路径净化、DOS 设备名拦截与长路径支持。
+- `[NEW]` [`Sources/TTZipCore/Platform/PlatformMemory.swift`](file://../Sources/TTZipCore/Platform/PlatformMemory.swift): 统一页对齐内存申请、虚拟内存映射与安全擦除。
+- `[NEW]` [`Sources/TTZipCore/Platform/PlatformFileSystem.swift`](file://../Sources/TTZipCore/Platform/PlatformFileSystem.swift): 统一文件打开、元数据读取与空间预分配。
 
 ### 3. 核心引擎重构与异味消除
-- `[MODIFY]` [`Sources/TTZipCore/Zip/MmapBufferHandle.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/MmapBufferHandle.swift): 接入 `PlatformMemory.mapFileReadOnly`，消除裸 POSIX 调用。
-- `[MODIFY]` [`Sources/TTZipCore/Zip/ZipMemoryEngine.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipMemoryEngine.swift): 接入 `PlatformMemory` 与 `PlatformFileSystem`。
+- `[MODIFY]` [`Sources/TTZipCore/Zip/MmapBufferHandle.swift`](file://../Sources/TTZipCore/Zip/MmapBufferHandle.swift): 接入 `PlatformMemory.mapFileReadOnly`，消除裸 POSIX 调用。
+- `[MODIFY]` [`Sources/TTZipCore/Zip/ZipMemoryEngine.swift`](file://../Sources/TTZipCore/Zip/ZipMemoryEngine.swift): 接入 `PlatformMemory` 与 `PlatformFileSystem`。
 
 ### 4. 自动化测试套件
-- `[NEW]` [`Tests/TTZipTests/PlatformPathSanitizerTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/PlatformPathSanitizerTests.swift): 覆盖 30+ 种 Windows/macOS 路径安全用例。
-- `[NEW]` [`Tests/TTZipTests/PlatformHardwareTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/PlatformHardwareTests.swift): 指令集特性与 CPU 拓扑校验。
-- `[NEW]` [`Tests/TTZipTests/PlatformMemoryTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/PlatformMemoryTests.swift): 跨平台内存映射生命周期与页对齐测试。
+- `[NEW]` [`Tests/TTZipTests/PlatformPathSanitizerTests.swift`](file://../Tests/TTZipTests/PlatformPathSanitizerTests.swift): 覆盖 30+ 种 Windows/macOS 路径安全用例。
+- `[NEW]` [`Tests/TTZipTests/PlatformHardwareTests.swift`](file://../Tests/TTZipTests/PlatformHardwareTests.swift): 指令集特性与 CPU 拓扑校验。
+- `[NEW]` [`Tests/TTZipTests/PlatformMemoryTests.swift`](file://../Tests/TTZipTests/PlatformMemoryTests.swift): 跨平台内存映射生命周期与页对齐测试。

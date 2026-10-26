@@ -1,8 +1,8 @@
 # 🦀 TTZip Rust SDK Developer Guide
 
-[![Crate](https://img.shields.io/badge/crate-ttzip--engine-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/rust/ttzip-engine/Cargo.toml)
-[![Documentation](https://img.shields.io/badge/docs-1.0.0-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/README.md)
-[![Safety: Safe Rust Core](https://img.shields.io/badge/Safety-100%25%20Safe%20Rust%20Core-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+[![Crate](https://img.shields.io/badge/crate-ttzip--engine-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/rust/ttzip-engine/Cargo.toml)
+[![Documentation](https://img.shields.io/badge/docs-1.0.0-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/README.md)
+[![Safety: Safe Rust Core](https://img.shields.io/badge/Safety-100%25%20Safe%20Rust%20Core-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
 
 The `ttzip-engine` crate is the native microkernel powering the entire TTZip ecosystem. It provides high-throughput, multi-threaded archive creation, zero-copy streaming extraction, in-place atomic mutations, SIMD-accelerated checksums, and Reed-Solomon error correction.
 
@@ -36,6 +36,13 @@ tempfile = "3.10"
 ### 2.1 Multi-Core ZIP & 7z Compression
 
 Create archives using the streaming parallel engine with APFS preallocation:
+
+For streaming ZIP creation, a thread budget of `0` preserves automatic CPU-topology
+selection. Explicit budgets use at most `min(requested, 64, batch entries)` workers;
+`1` compresses sequentially on the calling thread without spawning batch workers.
+Empty and single-entry batches do not spawn workers. The legacy low-level batch
+functions retain automatic selection for source compatibility. This contract does
+not change codec levels, entry ordering, progress, or cancellation behavior.
 
 ```rust
 use std::path::PathBuf;

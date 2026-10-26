@@ -1,10 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Subcommand execution handler: tree.
 
 use crate::cli::args::{VfsNodeContractDto, VfsTreeContractDto};
-use crate::cli::format::{format_bytes, parse_archive_entries, read_archive_data_auto};
+use crate::cli::format::{
+    format_bytes, parse_archive_entries, read_archive_data_auto, sanitize_terminal_display,
+};
 use crate::cli::handlers::extract::pattern_matches;
 use std::path::Path;
 
@@ -100,10 +102,11 @@ fn render_node(
             }
         }
         let branch = if is_last { "└── " } else { "├── " };
+        let safe_name = sanitize_terminal_display(&node.name);
         if node.is_directory {
-            println!("{}{}{}/", prefix, branch, node.name);
+            println!("{}{}{}/", prefix, branch, safe_name);
         } else {
-            println!("{}{}{} ({})", prefix, branch, node.name, format_bytes(node.size));
+            println!("{}{}{} ({})", prefix, branch, safe_name, format_bytes(node.size));
         }
     }
 
@@ -172,7 +175,7 @@ pub fn execute_tree(
         return Ok(());
     }
 
-    println!("{}/ ({})", archive_path.display(), format.name());
+    println!("{}/ ({})", sanitize_terminal_display(&archive_path.display().to_string()), format.name());
     let depth_limit = max_depth.unwrap_or(usize::MAX);
 
     let mut root = TreeNode::new_dir(archive_path.display().to_string());

@@ -20,7 +20,7 @@
   Executed X tests, with 0 failures (0 unexpected) in ... seconds
   ```
 - **Failure Diagnostic**:
-  - 若提示 C 符号未定义（如 `_ttzip_fl2_compress_block`）：检查 [Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h) 是否已正确在 [module.modulemap](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/module.modulemap) 中导出。
+  - 若提示 C 符号未定义（如 `_ttzip_fl2_compress_block`）：检查 [Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h](file://../Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h) 是否已正确在 [module.modulemap](file://../Sources/CTTZipBridge/include/module.modulemap) 中导出。
   - 若差分解压失败：检查输出 LZMA2 块首字节的 DictSize 编码（`dict_size` 映射至 0~40 阶数）与 Range Coder 的 Flush 对齐。
 
 ---
@@ -38,7 +38,7 @@
   Test Case '-[TTZipTests.XCTestPerformanceMeasureTests test7zLevel5HighCompressionThroughput]' passed (Throughput: >= 800.0 MB/s).
   ```
 - **Failure Diagnostic**:
-  - 若吞吐低于 800 MB/s：排查 [Sources/CTTZipBridge/ttzip_fl2_bridge.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_fl2_bridge.c) 中线程池是否成功绑定全部 P-Core（`get_p_core_count()`），或检查是否意外退化为传统 liblzma 串行路径。
+  - 若吞吐低于 800 MB/s：排查 [Sources/CTTZipBridge/ttzip_fl2_bridge.c](file://../Sources/CTTZipBridge/ttzip_fl2_bridge.c) 中线程池是否成功绑定全部 P-Core（`get_p_core_count()`），或检查是否意外退化为传统 liblzma 串行路径。
   - 若发生 E-Core 线程拖尾：检查 Radix 匹配查找器工作窃取队列分块尺寸是否过大（应保持 2MB~8MB 微分块）。
 
 ---

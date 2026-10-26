@@ -17,5 +17,5 @@
 - **Rationale**: Guarantees zero regression and retains test harnesses and store metadata.
 
 ## Decision 3: Root Workspace Layout
-- **Decision**: The root directory `/Users/kevintung/Documents/dev/products/ttzip` becomes a clean container for the multi-repo workspace containing `core/`, `apple/`, `homebrew/`, `upstream/`, `memory/`, `.agents/`, and a top-level `README.md`.
+- **Decision**: The root directory `$HOME/Documents/dev/products/ttzip` becomes a clean container for the multi-repo workspace containing `core/`, `apple/`, `homebrew/`, `upstream/`, `memory/`, `.agents/`, and a top-level `README.md`.
 - **Rationale**: Aligns directly with Spec 216 two-repo split architecture and eliminates developer confusion.

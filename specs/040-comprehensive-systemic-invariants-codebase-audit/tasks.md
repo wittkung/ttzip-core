@@ -3,8 +3,8 @@
 **Feature Directory**: `specs/040-comprehensive-systemic-invariants-codebase-audit`  
 **Date**: 2026-08-16  
 **Status**: In Progress  
-**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/040-comprehensive-systemic-invariants-codebase-audit/spec.md)  
-**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/040-comprehensive-systemic-invariants-codebase-audit/plan.md)
+**Spec**: [spec.md](file://../specs/040-comprehensive-systemic-invariants-codebase-audit/spec.md)  
+**Plan**: [plan.md](file://../specs/040-comprehensive-systemic-invariants-codebase-audit/plan.md)
 
 ---
 

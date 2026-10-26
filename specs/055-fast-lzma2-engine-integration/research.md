@@ -9,7 +9,7 @@
 ## R001: Fast-LZMA2 In-Tree 编译与 SPM/CMake 构建集成
 
 ### 1. Decision (选定方案)
-采用 **In-tree 源码内嵌编译模式**，将 `conor42/fast-lzma2` 核心 C 源文件与头文件直接置于 `Sources/CTTZipBridge/fast-lzma2/` 目录下，并于 [Package.swift](file:///Users/kevintung/Documents/dev/TTZip/Package.swift) 的 `CTTZipBridge` 目标中追加 `.headerSearchPath("fast-lzma2")` 路径。对外通过 `Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h` 封装统一的 7Z/XZ 流式压缩与多线程调度 C 接口，并导出至 [module.modulemap](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/module.modulemap) 供 `TTZipCore` Swift 层调用。
+采用 **In-tree 源码内嵌编译模式**，将 `conor42/fast-lzma2` 核心 C 源文件与头文件直接置于 `Sources/CTTZipBridge/fast-lzma2/` 目录下，并于 [Package.swift](file://../Package.swift) 的 `CTTZipBridge` 目标中追加 `.headerSearchPath("fast-lzma2")` 路径。对外通过 `Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h` 封装统一的 7Z/XZ 流式压缩与多线程调度 C 接口，并导出至 [module.modulemap](file://../Sources/CTTZipBridge/include/module.modulemap) 供 `TTZipCore` Swift 层调用。
 
 ### 2. Rationale (选择理由)
 1. **SPM 原生无缝集成与全自动化构建**：Swift Package Manager 会自动递归扫描并编译 C Target 根目录及子目录下的所有 `.c` 源文件，无需额外维护 CMake 外部脚本或外部二进制文件。
@@ -24,10 +24,10 @@
    - *否决理由*：`conor42/fast-lzma2` 上游官方仓库未维护原生 `Package.swift`。引入第三方包装仓库存在供应链安全风险、版本更新滞后及符号命名冲突（如 `XXH_NAMESPACE`）不可控问题。
 
 ### 4. Source (实际查阅来源)
-- [Package.swift](file:///Users/kevintung/Documents/dev/TTZip/Package.swift#L32-L48)：查阅 `CTTZipBridge` 目标配置、头文件搜索路径与系统链接库（`libc++`, `z`, `bz2` 等）。
-- [Sources/CTTZipBridge/include/module.modulemap](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/module.modulemap#L1-L27)：查阅 C 桥接模块导出定义与 Clang 模块化头文件约束。
-- [Sources/CTTZipBridge/ttzip_lzma_radix_mf.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma_radix_mf.c#L1-L98)：查阅现有自研 NEON Radix 匹配查找器实现，核对与 fast-lzma2 的混合分流接口。
-- [scripts/build_libdeflate.sh](file:///Users/kevintung/Documents/dev/TTZip/scripts/build_libdeflate.sh#L25-L70)：查阅当前 Vendor 静态库构建与 xcframework 归档流程。
+- [Package.swift](file://../Package.swift#L32-L48)：查阅 `CTTZipBridge` 目标配置、头文件搜索路径与系统链接库（`libc++`, `z`, `bz2` 等）。
+- [Sources/CTTZipBridge/include/module.modulemap](file://../Sources/CTTZipBridge/include/module.modulemap#L1-L27)：查阅 C 桥接模块导出定义与 Clang 模块化头文件约束。
+- [Sources/CTTZipBridge/ttzip_lzma_radix_mf.c](file://../Sources/CTTZipBridge/ttzip_lzma_radix_mf.c#L1-L98)：查阅现有自研 NEON Radix 匹配查找器实现，核对与 fast-lzma2 的混合分流接口。
+- [scripts/build_libdeflate.sh](file://../scripts/build_libdeflate.sh#L25-L70)：查阅当前 Vendor 静态库构建与 xcframework 归档流程。
 - `https://github.com/conor42/fast-lzma2`：查阅 fast-lzma2 源码结构（`fast-lzma2.h`, `fl2_compress.c`, `radix_mf.c`, `fl2_pool.c`, `fl2_threading.c` 等）、BSD-2-Clause 许可与 `FL2_createCCtx`/`FL2_CCtx_setParameter` API 规范。
 
 ---
@@ -37,7 +37,7 @@
 ### 1. Decision (选定方案)
 建立统一的 In-tree C 桥接中枢 `ttzip_fl2_bridge`（提供 `ttzip_fl2_compress_block` 与 `ttzip_fl2_compress_stream` 接口），实施自适应**混合双引擎路由架构 (Hybrid Dual-Engine Architecture)**：
 1. **统一 C 桥接接口设计**：
-   - **块压缩接口**：`int ttzip_fl2_compress_block(const uint8_t* src, size_t src_len, uint8_t* dst, size_t dst_capacity, size_t* out_compressed_len, int level, bool is_zero_block, uint32_t* out_dict_size, int thread_count)`，供 7Z 归档引擎（[ttzip_lzma2_enc_native.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_enc_native.c)）与分块压缩调用。
+   - **块压缩接口**：`int ttzip_fl2_compress_block(const uint8_t* src, size_t src_len, uint8_t* dst, size_t dst_capacity, size_t* out_compressed_len, int level, bool is_zero_block, uint32_t* out_dict_size, int thread_count)`，供 7Z 归档引擎（[ttzip_lzma2_enc_native.c](file://../Sources/CTTZipBridge/ttzip_lzma2_enc_native.c)）与分块压缩调用。
    - **流压缩接口**：`ttzip_fl2_stream_ctx_t* ttzip_fl2_stream_create(int level, uint32_t dict_size, int thread_count)` / `ttzip_fl2_stream_process(...)` / `ttzip_fl2_stream_free(...)`，包装 `FL2_CStream`，无缝嵌入 `CTTZipBridge_GzParallel.c`（`init_parallel_xz`）与 `ttzip_tar_native.c` 的 TAR.XZ 流式管道。
 2. **混合分流路由策略**：
    - **全零数据 / 稀疏块**：前置 `ttzip_is_block_all_zero_neon` 扫描，直通 `encode_zero_chunk_2mb` 极速零块编码器（$\ge 10\text{GB/s}$ 零 RLE）。

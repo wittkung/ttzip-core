@@ -32,10 +32,10 @@
 ## Proposed Component Changes
 
 ### CTTZipBridge
-* **[MODIFY]** [`Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c)
+* **[MODIFY]** [`Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c`](file://../Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c)
   * 重构 `ttzip_match_len_neon` 为高效的 64-bit SWAR 比对核心。
   * 保持函数名向后兼容，更新内部循环为 8 字节 `memcpy` + `v1 ^ v2` + `__builtin_ctzll` 单周期定位。
-* **[MODIFY]** [`Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h)
+* **[MODIFY]** [`Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h`](file://../Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h)
   * 保持头文件声明与注释对齐，确保 C 模块映射一致性。
 
 ### Tests

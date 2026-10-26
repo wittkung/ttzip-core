@@ -1,6 +1,6 @@
 # Implementation Plan: 078-lzfse-dmg-windows-support
 
-**Branch**: `078-lzfse-dmg-windows-support` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/spec.md)
+**Branch**: `078-lzfse-dmg-windows-support` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/078-lzfse-dmg-windows-support/spec.md)
 
 **Input**: Feature specification from `specs/078-lzfse-dmg-windows-support/spec.md`
 
@@ -44,16 +44,16 @@
 - R002 [SUBAGENT:research] 《Apple UDIF (DMG) 磁盘映像规范与 LZFSE 块解码挂载管道》：调研 koly trailer、blkx mish 表与 0x80000006/0x80000007 块解码集成。
 - R003 [SUBAGENT:research] 《跨平台 Scratch Buffer 内存管理与微缓冲流式拉取模型》：设计 Thread-Local Scratch Arena 与双缓冲拉取管道，满足 RSS <= 64MB。
 
-*详细研究结论见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/research.md)*。
+*详细研究结论见 [research.md](file://../specs/078-lzfse-dmg-windows-support/research.md)*。
 
 ## Phase 1: Design & Contracts Index
 
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/data-model.md)（定义 `LZFSEDecodeRequest`, `DMGUDIFDescriptor`, `UDIFChunkBlock` 等实体，零通配类型）
+- **Data Model**: [data-model.md](file://../specs/078-lzfse-dmg-windows-support/data-model.md)（定义 `LZFSEDecodeRequest`, `DMGUDIFDescriptor`, `UDIFChunkBlock` 等实体，零通配类型）
 - **Contracts**:
-  - [SUBAGENT:research] [lzfse-codec-contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/contracts/lzfse-codec-contract.json)（底层 C LZFSE/LZVN 块与流式编解码 Schema）
-  - [SUBAGENT:research] [dmg-udif-schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/contracts/dmg-udif-schema.json)（DMG koly trailer 与 mish 块表描述符 Schema）
-  - [SUBAGENT:research] [dmg-extraction-service-contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/contracts/dmg-extraction-service-contract.json)（DMG 穿透解压与事件广播 Triad 协议 Schema）
-- **Quickstart Guide**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/quickstart.md)（包含回归命令、预期输出及失败诊断）
+  - [SUBAGENT:research] [lzfse-codec-contract.json](file://../specs/078-lzfse-dmg-windows-support/contracts/lzfse-codec-contract.json)（底层 C LZFSE/LZVN 块与流式编解码 Schema）
+  - [SUBAGENT:research] [dmg-udif-schema.json](file://../specs/078-lzfse-dmg-windows-support/contracts/dmg-udif-schema.json)（DMG koly trailer 与 mish 块表描述符 Schema）
+  - [SUBAGENT:research] [dmg-extraction-service-contract.json](file://../specs/078-lzfse-dmg-windows-support/contracts/dmg-extraction-service-contract.json)（DMG 穿透解压与事件广播 Triad 协议 Schema）
+- **Quickstart Guide**: [quickstart.md](file://../specs/078-lzfse-dmg-windows-support/quickstart.md)（包含回归命令、预期输出及失败诊断）
 
 ## Project Structure & Component Changes
 

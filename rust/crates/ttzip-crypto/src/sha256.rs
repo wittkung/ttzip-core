@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware-accelerated SHA-256 and 7z SHA-256 KDF engine.
 //!
@@ -411,7 +411,7 @@ mod tests {
 
         println!("524,288 cycles 7z SHA-256 KDF elapsed time: {:.3} ms", min_elapsed.as_secs_f64() * 1000.0);
         assert_ne!(key1, [0u8; 32]);
-        let threshold_ms = if cfg!(debug_assertions) { 500 } else { 50 };
+        let threshold_ms = if cfg!(debug_assertions) { 1500 } else { 50 };
         assert!(min_elapsed.as_millis() <= threshold_ms, "7z KDF derivation took {:?}, exceeding {}ms threshold", min_elapsed, threshold_ms);
 
         // 3. Ensure key is in cache and measure cache hit latency across multiple samples

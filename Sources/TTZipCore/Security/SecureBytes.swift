@@ -1,7 +1,22 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+
+/// Errors associated with secure memory allocation and page locking.
+public enum SecureBytesError: Error, Sendable, LocalizedError, Equatable {
+    case allocationFailed(status: Int32)
+    case invalidSize(Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case .allocationFailed(let status):
+            return "Failed to allocate page-aligned memory for SecureBytes (posix_memalign status: \(status))."
+        case .invalidSize(let size):
+            return "Invalid memory size requested for SecureBytes: \(size)."
+        }
+    }
+}
 
 /// A page-aligned, locked in-memory buffer for storing sensitive cryptographic material
 /// such as master passwords, derived vault encryption keys, and intermediate plaintexts.
@@ -18,19 +33,25 @@ public final class SecureBytes: @unchecked Sendable {
     private let lock = NSLock()
 
     /// Allocates a new locked secure buffer of the specified byte count and initializes with data.
-    public init(data: Data) {
+    public init(data: Data) throws {
         let byteCount = data.count
+        guard byteCount >= 0 else {
+            throw SecureBytesError.invalidSize(byteCount)
+        }
         self.count = byteCount
         
         // Page-align allocation for mlock compatibility
         let pageSize = Int(getpagesize())
+        guard byteCount <= Int.max - pageSize else {
+            throw SecureBytesError.invalidSize(byteCount)
+        }
         let alignedSize = ((byteCount + pageSize - 1) / pageSize) * pageSize
         self.allocationSize = max(alignedSize, pageSize)
         
         var ptr: UnsafeMutableRawPointer? = nil
         let status = posix_memalign(&ptr, pageSize, self.allocationSize)
         guard status == 0, let allocatedPtr = ptr else {
-            fatalError("Failed to allocate page-aligned memory for SecureBytes (status: \(status))")
+            throw SecureBytesError.allocationFailed(status: status)
         }
         self.rawPointer = allocatedPtr
         
@@ -52,16 +73,26 @@ public final class SecureBytes: @unchecked Sendable {
     }
 
     /// Allocates an empty locked secure buffer with specified capacity and optional logical count.
-    public init(capacity: Int, count: Int? = nil) {
-        self.count = count ?? capacity
+    public init(capacity: Int, count: Int? = nil) throws {
+        guard capacity >= 0 else {
+            throw SecureBytesError.invalidSize(capacity)
+        }
+        let logicalCount = count ?? capacity
+        guard logicalCount >= 0 && logicalCount <= capacity else {
+            throw SecureBytesError.invalidSize(logicalCount)
+        }
+        self.count = logicalCount
         let pageSize = Int(getpagesize())
+        guard capacity <= Int.max - pageSize else {
+            throw SecureBytesError.invalidSize(capacity)
+        }
         let alignedSize = ((capacity + pageSize - 1) / pageSize) * pageSize
         self.allocationSize = max(alignedSize, pageSize)
         
         var ptr: UnsafeMutableRawPointer? = nil
         let status = posix_memalign(&ptr, pageSize, self.allocationSize)
         guard status == 0, let allocatedPtr = ptr else {
-            fatalError("Failed to allocate page-aligned memory for SecureBytes (status: \(status))")
+            throw SecureBytesError.allocationFailed(status: status)
         }
         self.rawPointer = allocatedPtr
         
@@ -70,9 +101,9 @@ public final class SecureBytes: @unchecked Sendable {
     }
 
     /// Initializes buffer from UTF-8 string bytes directly into mlocked memory without intermediate Swift heap allocations.
-    public convenience init(utf8String: String) {
+    public convenience init(utf8String: String) throws {
         let utf8Count = utf8String.utf8.count
-        self.init(capacity: max(1, utf8Count + 1), count: utf8Count)
+        try self.init(capacity: max(1, utf8Count + 1), count: utf8Count)
         if utf8Count > 0 {
             utf8String.withCString { cStr in
                 self.rawPointer.copyMemory(from: cStr, byteCount: utf8Count)
@@ -82,8 +113,8 @@ public final class SecureBytes: @unchecked Sendable {
     }
 
     /// Initializes buffer from byte array.
-    public convenience init(bytes: [UInt8]) {
-        self.init(data: Data(bytes))
+    public convenience init(bytes: [UInt8]) throws {
+        try self.init(data: Data(bytes))
     }
 
     /// Returns a copy of the secure buffer contents as `Data`.

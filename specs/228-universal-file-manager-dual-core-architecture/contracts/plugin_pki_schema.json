@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TTZipPluginManifest",
+  "type": "object",
+  "required": [
+    "plugin_id",
+    "version",
+    "name",
+    "entry_point",
+    "capabilities",
+    "certificate_chain",
+    "signature_base64"
+  ],
+  "properties": {
+    "plugin_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "entry_point": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["fs.read_archive", "fs.write_temp", "net.fetch", "exec.process"]
+      }
+    },
+    "certificate_chain": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "issuer",
+          "subject",
+          "public_key_ed25519",
+          "valid_from",
+          "valid_until",
+          "signature"
+        ],
+        "properties": {
+          "issuer": { "type": "string" },
+          "subject": { "type": "string" },
+          "public_key_ed25519": { "type": "string", "minLength": 44, "maxLength": 44 },
+          "valid_from": { "type": "integer" },
+          "valid_until": { "type": "integer" },
+          "signature": { "type": "string", "minLength": 88, "maxLength": 88 }
+        }
+      }
+    },
+    "signature_base64": {
+      "type": "string",
+      "minLength": 88,
+      "maxLength": 88
+    }
+  }
+}

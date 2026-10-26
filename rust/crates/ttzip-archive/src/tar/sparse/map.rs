@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! GNU Sparse 0.0/0.1/1.0 and PAX Sparse extent map parser, hole calculator, and validator.
 //!

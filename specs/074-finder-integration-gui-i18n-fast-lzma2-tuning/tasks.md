@@ -3,7 +3,7 @@
 **Feature Branch**: `074-finder-integration-gui-i18n-fast-lzma2-tuning`  
 **Created**: 2026-08-18  
 **Status**: Completed  
-**Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md) | **Plan**: [`plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/plan.md)
+**Spec**: [`spec.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md) | **Plan**: [`plan.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/plan.md)
 
 ---
 

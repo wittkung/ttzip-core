@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 import os
 import sys
@@ -176,7 +176,7 @@ class CSdkRunner(SdkRunner):
             return False
         cmd = [
             clang, "-std=c11",
-            "-I", str(REPO_ROOT / "Sources" / "CTTZipBridge" / "include"),
+            "-I", str(REPO_ROOT / "Sources" / "TTZipEngineFFI" / "include"),
             str(src_c),
             "-L", str(RUST_RELEASE),
             "-lttzip_engine",
@@ -224,7 +224,7 @@ class CppSdkRunner(SdkRunner):
             return False
         cmd = [
             clangpp, "-std=c++20",
-            "-I", str(REPO_ROOT / "Sources" / "CTTZipBridge" / "include"),
+            "-I", str(REPO_ROOT / "Sources" / "TTZipEngineFFI" / "include"),
             str(src_cpp),
             "-L", str(RUST_RELEASE),
             "-lttzip_engine",

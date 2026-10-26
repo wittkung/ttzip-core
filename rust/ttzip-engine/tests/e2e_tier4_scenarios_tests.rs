@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tier 4 E2E Test Suite: Real-World Application Scenarios (S01 - S05).
 //!
@@ -27,7 +27,6 @@ use ttzip_engine::zip::writer::ZipInputItem;
 // Scenario S01: Software Release Bundle Workflow
 // ============================================================================
 
-#[cfg(feature = "syntax")]
 #[test]
 fn test_e2e_t4_s01_software_release_bundle_workflow() {
     let release_notes_md = "# TTZip Release v1.1.0\n\n## Highlights\n- Solid 7z Micro-buffer Streaming\n- Tree-sitter Viewport Syntax\n";
@@ -103,22 +102,27 @@ fn test_e2e_t4_s01_software_release_bundle_workflow() {
 #[test]
 fn test_e2e_t4_s02_digital_library_archival_and_ingestion_pipeline() {
     // 1. Synthesize PDF Manual
-    use lopdf::{dictionary, Document, Object, Stream};
-    let mut doc = Document::with_version("1.5");
-    let pages_id = doc.new_object_id();
-    let font_id = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Times-Roman" });
-    let content_id = doc.add_object(Stream::new(dictionary! {}, b"BT /F1 14 Tf (Archived Manuscript 2026) Tj ET".to_vec()));
-    let page_id = doc.add_object(dictionary! {
-        "Type" => "Page",
-        "Parent" => pages_id,
-        "Contents" => content_id,
-        "Resources" => dictionary! { "Font" => dictionary! { "F1" => font_id } },
-    });
-    doc.objects.insert(pages_id, Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 }));
-    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
-    doc.trailer.set("Root", catalog_id);
-    let mut pdf_bytes = Vec::new();
-    doc.save_to(&mut pdf_bytes).unwrap();
+    let pdf_bytes = b"%PDF-1.5\n\
+1 0 obj\n\
+<< /Type /Catalog /Pages 2 0 R >>\n\
+endobj\n\
+2 0 obj\n\
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n\
+endobj\n\
+3 0 obj\n\
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\n\
+endobj\n\
+xref\n\
+0 4\n\
+0000000000 65535 f \n\
+0000000010 00000 n \n\
+0000000053 00000 n \n\
+0000000102 00000 n \n\
+trailer\n\
+<< /Size 4 /Root 1 0 R >>\n\
+startxref\n\
+165\n\
+%%EOF\n".to_vec();
 
     // 2. Synthesize EPUB package metadata with CJK title
     let epub_opf = r#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0"><manifest><item id="c1" href="ch1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>"#;

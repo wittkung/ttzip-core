@@ -24,10 +24,6 @@ let package = Package(
             type: .dynamic,
             targets: ["TTZipCore"]
         ),
-        .library(
-            name: "CTTZipBridge",
-            targets: ["CTTZipBridge"]
-        ),
         .executable(
             name: "ttzip-bench",
             targets: ["TTZipBench"]
@@ -42,13 +38,13 @@ let package = Package(
             path: "Frameworks/TTZipVendor.xcframework"
         ),
         .target(
-            name: "CTTZipBridge",
-            dependencies: ["TTZipVendor"],
-            path: "Sources/CTTZipBridge",
-            publicHeadersPath: "include",
-            cSettings: [
-                .headerSearchPath("include")
+            name: "TTZipCore",
+            dependencies: [
+                "TTZipVendor",
+                .product(name: "TTLogKit", package: ttlogPackageName)
             ],
+            path: "Sources/TTZipCore",
+            swiftSettings: coreSwiftSettings,
             linkerSettings: [
                 .linkedLibrary("archive"),
                 .linkedLibrary("bz2"),
@@ -56,25 +52,13 @@ let package = Package(
                 .linkedLibrary("iconv", .when(platforms: [.macOS, .iOS])),
                 .linkedLibrary("c++", .when(platforms: [.macOS, .iOS])),
                 .linkedLibrary("compression", .when(platforms: [.macOS, .iOS])),
-                .linkedFramework("Security", .when(platforms: [.macOS, .iOS])),
-                .unsafeFlags(["-Xlinker", "-w"])
+                .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
             ]
-        ),
-        .target(
-            name: "TTZipCore",
-            dependencies: [
-                "CTTZipBridge",
-                "TTZipVendor",
-                .product(name: "TTLogKit", package: ttlogPackageName)
-            ],
-            path: "Sources/TTZipCore",
-            swiftSettings: coreSwiftSettings
         ),
         .executableTarget(
             name: "TTZipBench",
             dependencies: [
-                "TTZipCore",
-                "CTTZipBridge"
+                "TTZipCore"
             ],
             path: "Sources/TTZipBench",
             swiftSettings: coreSwiftSettings
@@ -82,8 +66,7 @@ let package = Package(
         .testTarget(
             name: "TTZipTests",
             dependencies: [
-                "TTZipCore",
-                "CTTZipBridge"
+                "TTZipCore"
             ],
             path: "Tests/TTZipTests",
             resources: [

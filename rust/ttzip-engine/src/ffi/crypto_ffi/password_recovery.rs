@@ -1,18 +1,20 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI / FFI export functions for in-memory multi-core password recovery.
 
 use crate::crypto::password_recovery::{
-    inspect_archive_for_recovery, recover_7z_aes_rayon, recover_brute_force_rayon,
-    recover_dictionary_rayon, recover_winzip_aes_rayon, recover_zipcrypto_rayon,
+    recover_7z_aes_rayon, recover_winzip_aes_rayon, recover_zipcrypto_rayon,
+};
+use crate::recovery::{
+    BruteForceCandidates, ConfirmationBudget, RecoverySearch, RecoverySearchOutcome,
+    RecoveryStopReason, SCREEN_BATCH_SIZE,
 };
 use crate::runtime::cancellation::{CancellationReason, CancellationToken};
 use crate::types::TTZipStatus;
 use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::panic::catch_unwind;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 unsafe fn parse_c_string_array<'a>(ptrs: *const *const c_char, count: usize) -> Vec<&'a str> {
     let mut out = Vec::with_capacity(count);
@@ -53,6 +55,103 @@ unsafe fn write_out_string(result: Option<String>, out_buf: *mut c_char, capacit
     }
 }
 
+/// Runs the engine's dictionary search against an archive on disk.
+///
+/// The archive is parsed once and the confirmation target is selected once; the
+/// screening stage only eliminates candidates and every survivor is confirmed by
+/// the archive-layer content verification. A rejected candidate does not end the
+/// search.
+fn run_dictionary_search(
+    archive_path: &str,
+    candidates: &[&str],
+    token: Option<&CancellationToken>,
+) -> (Option<String>, TTZipStatus, u64) {
+    let bytes = match std::fs::read(archive_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return (None, TTZipStatus::ErrFileNotFound, 0),
+    };
+    let search = match RecoverySearch::prepare(&bytes, ConfirmationBudget::default()) {
+        Ok(search) => search,
+        Err(reason) => return (None, stop_reason_to_status(reason), 0),
+    };
+    let outcome = search.run(candidates.iter().copied(), token);
+    let attempted = search.attempted_candidates();
+    match outcome {
+        RecoverySearchOutcome::Confirmed { password } => {
+            (Some(password), TTZipStatus::Ok, attempted)
+        }
+        RecoverySearchOutcome::Exhausted => (None, TTZipStatus::ErrInvalidPassword, attempted),
+        RecoverySearchOutcome::Stopped(reason) => {
+            (None, stop_reason_to_status(reason), attempted)
+        }
+        RecoverySearchOutcome::Cancelled => (None, TTZipStatus::Cancelled, attempted),
+    }
+}
+
+/// Runs the engine's brute-force search against an archive on disk.
+///
+/// The candidate stream is produced in batches, and every batch goes through the
+/// same screening-then-confirmation pipeline, so a rejected candidate only costs
+/// the confirmation of that one candidate.
+fn run_brute_force_search(
+    archive_path: &str,
+    charset: &str,
+    min_len: usize,
+    max_len: usize,
+    token: Option<&CancellationToken>,
+) -> (Option<String>, TTZipStatus, u64) {
+    let bytes = match std::fs::read(archive_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return (None, TTZipStatus::ErrFileNotFound, 0),
+    };
+    let search = match RecoverySearch::prepare(&bytes, ConfirmationBudget::default()) {
+        Ok(search) => search,
+        Err(reason) => return (None, stop_reason_to_status(reason), 0),
+    };
+    let mut source = match BruteForceCandidates::new(charset, min_len, max_len) {
+        Some(source) => source,
+        None => return (None, TTZipStatus::ErrInvalidParam, 0),
+    };
+    let mut batch: Vec<String> = Vec::with_capacity(SCREEN_BATCH_SIZE);
+    while source.fill_batch(&mut batch, SCREEN_BATCH_SIZE) {
+        let outcome = search.run(batch.iter().map(|c| c.as_str()), token);
+        match outcome {
+            RecoverySearchOutcome::Confirmed { password } => {
+                return (Some(password), TTZipStatus::Ok, search.attempted_candidates());
+            }
+            // This batch was rejected; the search continues with the next one.
+            RecoverySearchOutcome::Exhausted => continue,
+            RecoverySearchOutcome::Stopped(reason) => {
+                return (None, stop_reason_to_status(reason), search.attempted_candidates());
+            }
+            RecoverySearchOutcome::Cancelled => {
+                return (None, TTZipStatus::Cancelled, search.attempted_candidates());
+            }
+        }
+    }
+    (None, TTZipStatus::ErrInvalidPassword, search.attempted_candidates())
+}
+
+/// Maps an engine-level stop reason onto the C ABI status surface.
+///
+/// A reason that is not about the candidate never becomes `ErrInvalidPassword` and
+/// never becomes a success.
+fn stop_reason_to_status(reason: RecoveryStopReason) -> TTZipStatus {
+    match reason {
+        RecoveryStopReason::ArchiveDamaged => TTZipStatus::ErrCorruptHeader,
+        other => match other.status_code() {
+            code if code == TTZipStatus::ErrInvalidParam as i32 => TTZipStatus::ErrInvalidParam,
+            code if code == TTZipStatus::ErrUnsupportedFeature as i32 => {
+                TTZipStatus::ErrUnsupportedFeature
+            }
+            code if code == TTZipStatus::ErrSolidBudgetExceeded as i32 => {
+                TTZipStatus::ErrSolidBudgetExceeded
+            }
+            _ => TTZipStatus::ErrInvalidParam,
+        },
+    }
+}
+
 /// Starts multi-core dictionary recovery against an encrypted archive.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_password_recovery_start_dictionary(
@@ -73,11 +172,6 @@ pub unsafe extern "C" fn ttzip_rust_password_recovery_start_dictionary(
             Err(_) => return TTZipStatus::ErrInvalidParam,
         };
 
-        let target = match inspect_archive_for_recovery(path_str) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-
         let pwd_list = parse_c_string_array(passwords, count);
         let token_ref = if cancel_token.is_null() {
             None
@@ -85,22 +179,17 @@ pub unsafe extern "C" fn ttzip_rust_password_recovery_start_dictionary(
             Some(&*cancel_token)
         };
 
-        let attempts_atomic = AtomicU64::new(0);
-        let found = recover_dictionary_rayon(
-            &pwd_list,
-            &target,
-            token_ref,
-            Some(&attempts_atomic),
-        );
-
+        let (found, status, attempted) = run_dictionary_search(path_str, &pwd_list, token_ref);
         if !out_attempts.is_null() {
-            *out_attempts = attempts_atomic.load(Ordering::Relaxed);
+            *out_attempts = attempted;
         }
 
-        if let Some(token) = token_ref {
-            if token.is_cancelled() && found.is_none() {
-                return TTZipStatus::Cancelled;
+        if status != TTZipStatus::Ok {
+            if status == TTZipStatus::ErrInvalidPassword {
+                // Ordinary exhaustion clears a reused output buffer, as before.
+                let _ = write_out_string(None, out_found_pwd, out_capacity);
             }
+            return status;
         }
 
         if write_out_string(found, out_found_pwd, out_capacity) {
@@ -137,35 +226,29 @@ pub unsafe extern "C" fn ttzip_rust_password_recovery_start_brute_force(
             Err(_) => return TTZipStatus::ErrInvalidParam,
         };
 
-        let target = match inspect_archive_for_recovery(path_str) {
-            Ok(t) => t,
-            Err(e) => return e,
-        };
-
         let token_ref = if cancel_token.is_null() {
             None
         } else {
             Some(&*cancel_token)
         };
 
-        let attempts_atomic = AtomicU64::new(0);
-        let found = recover_brute_force_rayon(
+        let (found, status, attempted) = run_brute_force_search(
+            path_str,
             charset_str,
             min_len,
             max_len,
-            &target,
             token_ref,
-            Some(&attempts_atomic),
         );
-
         if !out_attempts.is_null() {
-            *out_attempts = attempts_atomic.load(Ordering::Relaxed);
+            *out_attempts = attempted;
         }
 
-        if let Some(token) = token_ref {
-            if token.is_cancelled() && found.is_none() {
-                return TTZipStatus::Cancelled;
+        if status != TTZipStatus::Ok {
+            if status == TTZipStatus::ErrInvalidPassword {
+                // Ordinary exhaustion clears a reused output buffer, as before.
+                let _ = write_out_string(None, out_found_pwd, out_capacity);
             }
+            return status;
         }
 
         if write_out_string(found, out_found_pwd, out_capacity) {

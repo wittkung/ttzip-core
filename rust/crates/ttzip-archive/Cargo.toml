@@ -1,5 +1,5 @@
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 [package]
 name = "ttzip-archive"
@@ -24,7 +24,6 @@ ttzip-codecs = { path = "../ttzip-codecs" }
 
 libc = "0.2"
 parking_lot = "0.12"
-rayon = "1.10"
 bytes = "1.10"
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -43,6 +42,9 @@ snap = "1.1"
 ppmd-rust = "1"
 chardetng = "0.1"
 encoding_rs = "0.8"
+unicode-normalization = "0.1"
+rayon = "1.10"
+
 [features]
 default = []
 

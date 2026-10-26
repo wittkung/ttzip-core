@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 DEFLATE_OFFSET_SLOT_BASE = [
 	1    , 2    , 3    , 4     , 5     , 7     , 9     , 13    ,

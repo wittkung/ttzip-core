@@ -30,17 +30,17 @@ Single-core Deflate serialization throughput increases by $> 3\text{x}$, boostin
 - - R001 [SUBAGENT:research] 《64-Bit Multi-Symbol Bitstream Word Packing Architecture》：Packed match token serialization into single `uint64_t` ($< 48$ bits).
 - - R002 [SUBAGENT:research] 《Small-File Static Huffman Threshold & Fast Dynamic Tree Bypass》：Bypass dynamic tree generation on files $< 4\text{KB}$ in favor of precomputed static tables.
 
-See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-canonical-huffman-multi-symbol-emission/research.md).
+See [`research.md`](file://../specs/122-simd-canonical-huffman-multi-symbol-emission/research.md).
 
 ---
 
 ## Phase 1: Data Model & Contracts Index
 
-- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-canonical-huffman-multi-symbol-emission/data-model.md)
+- **Data Model**: [`data-model.md`](file://../specs/122-simd-canonical-huffman-multi-symbol-emission/data-model.md)
 - **Contracts**:
-  - [`contracts/huffman_encoder_request.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-canonical-huffman-multi-symbol-emission/contracts/huffman_encoder_request.schema.json)
-  - [`contracts/huffman_encoder_response.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-canonical-huffman-multi-symbol-emission/contracts/huffman_encoder_response.schema.json)
-- **Quickstart**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-canonical-huffman-multi-symbol-emission/quickstart.md)
+  - [`contracts/huffman_encoder_request.schema.json`](file://../specs/122-simd-canonical-huffman-multi-symbol-emission/contracts/huffman_encoder_request.schema.json)
+  - [`contracts/huffman_encoder_response.schema.json`](file://../specs/122-simd-canonical-huffman-multi-symbol-emission/contracts/huffman_encoder_response.schema.json)
+- **Quickstart**: [`quickstart.md`](file://../specs/122-simd-canonical-huffman-multi-symbol-emission/quickstart.md)
 
 ---
 
@@ -48,10 +48,10 @@ See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-c
 
 ### Component 1: C Bridge Layer (`Sources/CTTZipBridge`)
 
-#### [MODIFY] [`ttzip_deflate_bitstream.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_deflate_bitstream.h)
+#### [MODIFY] [`ttzip_deflate_bitstream.h`](file://../Sources/CTTZipBridge/native_deflate/ttzip_deflate_bitstream.h)
 - Add `ttzip_bs_write_bits64` supporting up to 56 bits in a single store.
 
-#### [MODIFY] [`ttzip_deflate_engine.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_deflate_engine.c)
+#### [MODIFY] [`ttzip_deflate_engine.c`](file://../Sources/CTTZipBridge/native_deflate/ttzip_deflate_engine.c)
 - Implement packed 4-field match token serialization.
 - Implement dual-literal pairing loop.
 - Implement sub-4KB static Huffman bypass.
@@ -60,7 +60,7 @@ See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/122-simd-c
 
 ### Component 2: Swift Core & Test Suite (`Tests/TTZipTests`)
 
-#### [NEW] [`HuffmanBitstreamOptimizationTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/HuffmanBitstreamOptimizationTests.swift)
+#### [NEW] [`HuffmanBitstreamOptimizationTests.swift`](file://../Tests/TTZipTests/HuffmanBitstreamOptimizationTests.swift)
 - Exhaustive multi-symbol bitstream encoding oracle test.
 - Small-file static vs dynamic throughput benchmark.
 

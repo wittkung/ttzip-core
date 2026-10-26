@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI FFI exports for SIMD Shannon Entropy Evaluation and Cascaded Codec Recommendation.
 
@@ -54,7 +54,7 @@ impl Default for TTZipRecommendationResult {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             scenario: 0,
             measured_entropy: 0.0,
             trial_compressibility_ratio: 0.0,
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn ttzip_rust_recommend_codec(
 
         let mut res = TTZipRecommendationResult {
             struct_size: std::mem::size_of::<TTZipRecommendationResult>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             scenario: rec.scenario as i32,
             measured_entropy: rec.measured_entropy,
             trial_compressibility_ratio: rec.trial_compressibility_ratio,

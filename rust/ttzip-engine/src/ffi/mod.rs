@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! FFI module declarations and C-ABI export symbols.
 
@@ -16,6 +16,7 @@ pub mod memory_ffi;
 pub mod runtime_ffi;
 pub mod security_ffi;
 pub mod stream_ffi;
+pub mod vfs_cache_ffi;
 pub mod vfs_ffi;
 
 pub use analytics_ffi::*;
@@ -31,6 +32,8 @@ pub use memory_ffi::*;
 pub use runtime_ffi::*;
 pub use security_ffi::*;
 pub use stream_ffi::*;
+pub use vfs_cache_ffi::*;
 pub use vfs_ffi::*;
+pub use ttzip_archive::charset::ffi::ttzip_rust_detect_charset;
 
 

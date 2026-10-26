@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-21  
-**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/168-rust-bridge-glue-migration/spec.md)
+**Feature**: [spec.md](file://../specs/168-rust-bridge-glue-migration/spec.md)
 
 ## 1. Content Quality
 

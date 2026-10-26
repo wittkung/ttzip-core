@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TAR Family Format Matrix (V7, USTAR, POSIX.1-2001 PAX, GNU Tar LongLink).
 

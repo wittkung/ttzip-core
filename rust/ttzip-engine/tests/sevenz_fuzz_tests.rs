@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Full-Matrix Adversarial Fault & Destruction Injection Fuzzing Suite.
 //!
@@ -15,7 +15,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 
 use ttzip_engine::crypto::crc32::crc32_fast;
-use ttzip_engine::crypto::sevenz_kdf::{derive_7z_aes_key, MAX_AES_CYCLES_POWER, RAW_KEY_CYCLES_POWER};
+use ttzip_engine::crypto::sevenz_kdf::{
+    derive_7z_aes_key, MAX_AES_CYCLES_POWER, RAW_KEY_CYCLES_POWER, SevenZKdfError,
+};
 use ttzip_engine::sevenz::dag::{build_and_sort, CoderGraph, SevenZError};
 use ttzip_engine::sevenz::format::{SevenZSignatureHeader, SEVENZ_SIGNATURE};
 use ttzip_engine::sevenz::header::parse_7z_metadata;
@@ -292,7 +294,7 @@ fn test_fuzz_dimension_5_kdf_computational_exhaustion_dos_defense() {
         let res_dos = derive_7z_aes_key(pw_utf16, &salt, power, &iv);
         assert_eq!(
             res_dos.unwrap_err(),
-            SevenZError::CryptoExhaustion,
+            SevenZKdfError::CryptoExhaustion,
             "Cycle power {} must be immediately intercepted as CryptoExhaustion",
             power
         );

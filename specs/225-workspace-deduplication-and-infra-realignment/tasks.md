@@ -18,7 +18,7 @@
 ## Phase 3: Root Workspace Purge & Hygiene
 - [ ] Task 3.1: Remove flat duplicate source/build directories from root (`Sources`, `rust`, `Vendor`, `Tests`, `sdk`, `python`, `node`, `bin`, `cmake`, `completions`, `examples`, `Formula`, `logo`, `man`, `patches`, `reports`, `resources`, `specs`, `scripts`, `dist`, `assets`, `docs`, `TTZip.xcodeproj`, `steam`)
 - [ ] Task 3.2: Remove flat duplicate root files (`Package.swift`, `CMakeLists.txt`, `Makefile`, `pyproject.toml`, `ttzip.pc`, `ttzip.pc.in`, `TTZip_trademark.jpg`, `appcast.xml`, `Install-TTZip.command`, `重新构建并启动TTZip.command`, `ACKNOWLEDGEMENTS.md`, `ARCHITECTURE.md`, `BENCHMARK_MATRIX.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `GEMINI.md`, `LICENSE`, `LICENSE-APACHE`, `LICENSE-BSD`, `LICENSE-GPL`, `NOTICE`, `SECURITY.md`, `README_*.md`)
-- [ ] Task 3.3: Write root [README.md](file:///Users/kevintung/Documents/dev/products/ttzip/README.md) and [.gitignore](file:///Users/kevintung/Documents/dev/products/ttzip/.gitignore)
+- [ ] Task 3.3: Write root [README.md](file://$HOME/Documents/dev/products/ttzip/README.md) and [.gitignore](file://$HOME/Documents/dev/products/ttzip/.gitignore)
 
 ## Phase 4: Verification & Gate Validation
 - [ ] Task 4.1: Verify `core/` builds cleanly (`swift build` / `cargo check`)

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -57,13 +57,6 @@ public protocol ArchiveExtracting: Sendable {
         token: CancellationToken?
     ) async throws -> Int64
 
-    func extractSingleFile(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String?
-    ) async throws
-    
     @discardableResult
     func extractSync(
         archivePath: String,
@@ -76,6 +69,40 @@ public protocol ArchiveExtracting: Sendable {
     ) throws -> Int64
 
     func joinSplitVolumes(firstVolumePath: String, outputPath: String) -> Bool
+}
+
+// MARK: - Collision Protocols & Primitives
+
+public typealias ProgressSink = @Sendable (ArchiveProgress) -> Void
+
+public enum CollisionHandling: Sendable {
+    case policy(CollisionPolicy)
+    case interactive(CollisionDecisionProvider)
+}
+
+public protocol CollisionDecisionProvider: Sendable {
+    /// Called on the main actor. Pages via `fetch`; returns the user's decision or
+    /// nil for Stop. Must not be called for policy-driven sessions.
+    @MainActor
+    func decide(
+        summary: ConflictSummary,
+        fetch: @escaping @Sendable (UInt32, UInt32) async throws -> ConflictPage
+    ) async -> ResolutionSet?
+}
+
+extension CollisionPolicy {
+    public var defaultAction: CollisionAction? {
+        switch self {
+        case .keepBoth:
+            return .keepBoth
+        case .replace:
+            return .replace
+        case .skip:
+            return .skip
+        case .ask, .stop:
+            return nil
+        }
+    }
 }
 
 extension ArchiveExtracting {

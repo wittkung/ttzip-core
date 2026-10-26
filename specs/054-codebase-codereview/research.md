@@ -25,10 +25,10 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Compiler Macro / Plugin*: Rejected due to build time latency and inability to inspect C sources.
 
 ### Source
-- [`scripts/run_local_ci.sh:26-35`](file:///Users/kevintung/Documents/dev/TTZip/scripts/run_local_ci.sh#L26-L35)
-- [`Sources/TTZipApp/Views/MainView.swift:10`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/MainView.swift#L10)
-- [`Sources/TTZipCore/Utilities/Logger.swift:90-142`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Utilities/Logger.swift#L90-L142)
-- [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:124-136`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L124-L136)
+- [`scripts/run_local_ci.sh:26-35`](file://../scripts/run_local_ci.sh#L26-L35)
+- [`Sources/TTZipApp/Views/MainView.swift:10`](file://../Sources/TTZipApp/Views/MainView.swift#L10)
+- [`Sources/TTZipCore/Utilities/Logger.swift:90-142`](file://../Sources/TTZipCore/Utilities/Logger.swift#L90-L142)
+- [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:124-136`](file://../Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L124-L136)
 
 ---
 
@@ -49,9 +49,9 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Hardcoded file limit (e.g. 100,000 files)*: Rejected because legitimate archives (node_modules, linux kernel) exceed 100k files.
 
 ### Source
-- [`Sources/CTTZipBridge/ttzip_7z_header_parser.c:10-35, 261-270`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_7z_header_parser.c#L261-L270)
-- [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:38-47, 411-418, 531-532`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L411-L418)
-- [`Sources/CTTZipBridge/include/CTTZipCommon.h:46-57`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipCommon.h#L46-L57)
+- [`Sources/CTTZipBridge/ttzip_7z_header_parser.c:10-35, 261-270`](file://../Sources/CTTZipBridge/ttzip_7z_header_parser.c#L261-L270)
+- [`Sources/CTTZipBridge/ttzip_lzma2_enc_native.c:38-47, 411-418, 531-532`](file://../Sources/CTTZipBridge/ttzip_lzma2_enc_native.c#L411-L418)
+- [`Sources/CTTZipBridge/include/CTTZipCommon.h:46-57`](file://../Sources/CTTZipBridge/include/CTTZipCommon.h#L46-L57)
 
 ---
 
@@ -73,9 +73,9 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Relying on `-Ounchecked`*: Rejected because Swift Foundation `Data(count:)` contract strictly mandates zeroing for memory safety.
 
 ### Source
-- [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:108-137`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L108-L137)
-- [`Sources/TTZipCore/Zip/ZipMemoryEngine.swift:42-55, 96-109`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipMemoryEngine.swift#L42-L55)
-- [`Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift:20-23, 46-53`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift#L20-L23)
+- [`Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift:108-137`](file://../Sources/TTZipCore/ConcurrencyPatterns/ArchivePipelineProducerConsumerEngine.swift#L108-L137)
+- [`Sources/TTZipCore/Zip/ZipMemoryEngine.swift:42-55, 96-109`](file://../Sources/TTZipCore/Zip/ZipMemoryEngine.swift#L42-L55)
+- [`Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift:20-23, 46-53`](file://../Sources/TTZipCore/SevenZip/SevenZipBlockParallelDecompressor.swift#L20-L23)
 
 ---
 
@@ -96,9 +96,9 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Wrapping `validate()` in `NSLock`*: Rejected because it serializes validations across worker threads.
 
 ### Source
-- [`Sources/TTZipCore/ArchiveEngineStrategy.swift:114-155, 177-218`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveEngineStrategy.swift#L114-L155)
-- [`Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift:38-53, 65-116`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift#L38-L53)
-- [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:194-202`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L194-L202)
+- [`Sources/TTZipCore/ArchiveEngineStrategy.swift:114-155, 177-218`](file://../Sources/TTZipCore/ArchiveEngineStrategy.swift#L114-L155)
+- [`Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift:38-53, 65-116`](file://../Sources/TTZipCore/ChainOfResponsibility/ArchiveValidationPipeline.swift#L38-L53)
+- [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:194-202`](file://../Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L194-L202)
 
 ---
 
@@ -107,7 +107,7 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 ### Decision
 1. **Progress Throttling**: In `CompressModalView.swift:333`, instantiate `let throttler = ThrottledProgressPublisher(maxFrequencyHz: 60.0)`. In the progress callback, dispatch to `@MainActor` only if `prog == 0.0 || prog >= 1.0 || throttler.shouldEmit()`.
 2. **State Recovery**: Add `defer { Task { @MainActor in self.isProcessing = false } }` in `CompressModalView.swift` to ensure unconditional unlock on success, throw, or cancellation.
-3. **AppIcon Portability**: Replace hardcoded `/Users/kevintung/...` in `MainView.swift:6-12` with dynamic bundle resolution (`NSImage(named: "AppIcon")` and `Bundle.main.path(forResource:ofType:)`).
+3. **AppIcon Portability**: Replace hardcoded `$HOME/...` in `MainView.swift:6-12` with dynamic bundle resolution (`NSImage(named: "AppIcon")` and `Bundle.main.path(forResource:ofType:)`).
 
 ### Rationale
 - Gating progress events to 60Hz prevents main thread starvation on multi-GB/s streams while ensuring exact 0% and 100% arrival.
@@ -119,9 +119,9 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Unthrottled `DispatchQueue.main.async`*: Rejected because dispatch queue flooding still exhausts runloop resources.
 
 ### Source
-- [`Sources/TTZipApp/Views/CompressModalView.swift:305-366`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/CompressModalView.swift#L305-L366)
-- [`Sources/TTZipApp/Services/ThrottledProgressPublisher.swift:1-45`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Services/ThrottledProgressPublisher.swift#L1-L45)
-- [`Sources/TTZipApp/Views/MainView.swift:4-12`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/MainView.swift#L4-L12)
+- [`Sources/TTZipApp/Views/CompressModalView.swift:305-366`](file://../Sources/TTZipApp/Views/CompressModalView.swift#L305-L366)
+- [`Sources/TTZipApp/Services/ThrottledProgressPublisher.swift:1-45`](file://../Sources/TTZipApp/Services/ThrottledProgressPublisher.swift#L1-L45)
+- [`Sources/TTZipApp/Views/MainView.swift:4-12`](file://../Sources/TTZipApp/Views/MainView.swift#L4-L12)
 
 ---
 
@@ -144,6 +144,6 @@ Implement `scripts/lint_codebase_invariants.sh` (with companion `scripts/lint_co
 - *Relaxed 50% floor ratio*: Rejected because it permits 50% performance regressions to pass silently.
 
 ### Source
-- [`Tests/TTZipTests/SystemDifferentialTests.swift:1-68`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/SystemDifferentialTests.swift#L1-L68)
-- [`Tests/TTZipTests/ArchiveGoldenCorpusTests.swift:1-79`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveGoldenCorpusTests.swift#L1-L79)
-- [`Tests/TTZipTests/PerformanceRegressionGuardTests.swift:24-26, 75-84`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/PerformanceRegressionGuardTests.swift#L24-L26)
+- [`Tests/TTZipTests/SystemDifferentialTests.swift:1-68`](file://../Tests/TTZipTests/SystemDifferentialTests.swift#L1-L68)
+- [`Tests/TTZipTests/ArchiveGoldenCorpusTests.swift:1-79`](file://../Tests/TTZipTests/ArchiveGoldenCorpusTests.swift#L1-L79)
+- [`Tests/TTZipTests/PerformanceRegressionGuardTests.swift:24-26, 75-84`](file://../Tests/TTZipTests/PerformanceRegressionGuardTests.swift#L24-L26)

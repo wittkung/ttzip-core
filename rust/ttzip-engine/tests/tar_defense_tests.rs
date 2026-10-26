@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tar-Slip Sandbox Path Defense, Link Escape Interception, and Extraction Quota Guard Tests.
 //!

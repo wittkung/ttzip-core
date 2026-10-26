@@ -1,6 +1,6 @@
 # Implementation Plan: Full Architecture Sinking & Swift-Rust Boundary Execution
 
-**Branch**: `202-full-architecture-sinking` | **Date**: 2026-08-22 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/202-full-architecture-sinking/spec.md)
+**Branch**: `202-full-architecture-sinking` | **Date**: 2026-08-22 | **Spec**: [spec.md](file://../specs/202-full-architecture-sinking/spec.md)
 
 **Input**: Feature specification from `specs/202-full-architecture-sinking/spec.md`
 

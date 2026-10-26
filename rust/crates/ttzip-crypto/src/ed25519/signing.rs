@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Ed25519 signature generation, scalar clamping, deterministic nonce derivation,
 //! and zeroize-protected signing keys (RFC 8032).

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit tests for 7-Zip Coder BindPairs Directed Acyclic Graph (DAG)
 //! and Kahn topological sorting engine.

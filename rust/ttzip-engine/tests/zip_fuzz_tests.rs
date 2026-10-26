@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive Malformed ZIP Fault-Injection Fuzzing Harness & Password Brute-Force Interception Suite.
 //!

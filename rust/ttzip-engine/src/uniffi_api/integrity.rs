@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Archive Integrity Verification, Checksum, and Split Volume Scaffolding.
 
@@ -165,11 +165,11 @@ pub fn verify_archive_integrity(
         let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
         let options = crate::types::TTZipExtractOptions {
             struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: std::ptr::null(),
             password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: crate::types::TTZIP_COLLISION_POLICY_REPLACE,
             preserve_permissions: false,
             dry_run: true,
             progress_callback: None,
@@ -177,7 +177,8 @@ pub fn verify_archive_integrity(
         };
 
         let temp_dir = std::env::temp_dir();
-        match crate::archive::unified::extract::extract_archive_with_metrics(p, &temp_dir, &options) {
+        let staging_root = ttzip_archive::fs::collision::StagingRoot(temp_dir.clone());
+        match crate::archive::unified::extract::extract_archive_with_metrics(p, &staging_root, &options) {
             Ok(_) => {
                 total_entries = 1;
                 verified_entries = 1;

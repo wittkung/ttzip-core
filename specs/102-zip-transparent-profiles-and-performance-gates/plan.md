@@ -14,13 +14,13 @@
 - [x] **零幻觉与物理可验证**：所有门禁基于 18 核心真实物理测试，0 failures 0 warnings。
 
 ## 3. Phase 0: Research Items
-- - R001 [SUBAGENT:research] 《强类型 `ZipCompressionProfile` 结构体参数与 libdeflate / in-process Zopfli C 引擎桥接映射研究》：已完成，见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/102-zip-transparent-profiles-and-performance-gates/research.md)。
-- - R002 [SUBAGENT:research] 《Apple Silicon M 系列 18 核心在 8 大黄金档位下的物理吞吐硬门禁标定研究》：已完成，见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/102-zip-transparent-profiles-and-performance-gates/research.md)。
+- - R001 [SUBAGENT:research] 《强类型 `ZipCompressionProfile` 结构体参数与 libdeflate / in-process Zopfli C 引擎桥接映射研究》：已完成，见 [research.md](file://../specs/102-zip-transparent-profiles-and-performance-gates/research.md)。
+- - R002 [SUBAGENT:research] 《Apple Silicon M 系列 18 核心在 8 大黄金档位下的物理吞吐硬门禁标定研究》：已完成，见 [research.md](file://../specs/102-zip-transparent-profiles-and-performance-gates/research.md)。
 
 ## 4. Phase 1: Design Artifacts
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/102-zip-transparent-profiles-and-performance-gates/data-model.md)
-- **Contracts**: [contracts/zip-compression-profile.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/102-zip-transparent-profiles-and-performance-gates/contracts/zip-compression-profile.schema.json)
-- **Quickstart**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/102-zip-transparent-profiles-and-performance-gates/quickstart.md)
+- **Data Model**: [data-model.md](file://../specs/102-zip-transparent-profiles-and-performance-gates/data-model.md)
+- **Contracts**: [contracts/zip-compression-profile.schema.json](file://../specs/102-zip-transparent-profiles-and-performance-gates/contracts/zip-compression-profile.schema.json)
+- **Quickstart**: [quickstart.md](file://../specs/102-zip-transparent-profiles-and-performance-gates/quickstart.md)
 
 ## 5. Component Modification List
 1. **[NEW] `Sources/TTZipCore/Zip/ZipCompressionProfile.swift`**:

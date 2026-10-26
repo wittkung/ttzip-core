@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Meta Zstandard Official Decompressor Errata & Pathological Boundary Test Suite (Task 12.6).
 //!

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Solid Stream Selective Decompression with $O(1)$ Jump Table Indexing
 //! and 4MB Micro-Buffer Sliding Window Early-Exit Circuit Breaker.

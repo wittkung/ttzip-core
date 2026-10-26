@@ -1,6 +1,6 @@
 # Implementation Plan: 097-7z-zero-config-optimization-audit
 
-**Branch**: `097-7z-zero-config-optimization-audit` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/spec.md)
+**Branch**: `097-7z-zero-config-optimization-audit` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/097-7z-zero-config-optimization-audit/spec.md)
 
 **Input**: Feature specification from `specs/097-7z-zero-config-optimization-audit/spec.md`
 
@@ -42,21 +42,21 @@
 
 ## Phase 0: Grounded Research Findings
 
-- R001 [SUBAGENT:research] 《7z 格式多核并行压缩与信息熵自适应路由机制》：验证了 `ttzip_estimate_buffer_entropy_dynamic` 动态信息熵采样判定（$H > 7.90 \rightarrow \text{Store}$）、基于物理 P-Core 拓扑的动态分块算法、SWAR/Radix 匹配查找器与异步后台 `pthread` KDF 派生掩盖机制（耗时 $0\text{ms}$ 感知延迟）。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/research.md)。
-- R002 [SUBAGENT:research] 《7z 格式并行解压与硬件向量化解密机制》：验证了基于 `mmap` + `ttzip_7z_read_varint` 零拷贝头部解析、ARM64 NEON SHA-256 硬件 KDF 与 512KB 并行 AES-256-CBC 向量化解密、LZMA2 字典重置分块并发调度及两级无锁 `mkdir_p` 缓存算法。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/research.md)。
-- R003 [SUBAGENT:research] 《7z 归档检视（Inspection）与目录树遍历架构》：查明了当前 `ArchiveReader.swift` 缺乏 7z 专用零拷贝 Fast-Path 的问题，确立了在 Swift 调度层接入 `NativeSevenZipEngine.inspectSevenZip` $\rightarrow$ `ttzip_native_inspect_archive` 极速通道（$< 2\text{ms}$ 响应）并在头部加密场景平滑回退的安全方案。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/research.md)。
+- R001 [SUBAGENT:research] 《7z 格式多核并行压缩与信息熵自适应路由机制》：验证了 `ttzip_estimate_buffer_entropy_dynamic` 动态信息熵采样判定（$H > 7.90 \rightarrow \text{Store}$）、基于物理 P-Core 拓扑的动态分块算法、SWAR/Radix 匹配查找器与异步后台 `pthread` KDF 派生掩盖机制（耗时 $0\text{ms}$ 感知延迟）。详见 [research.md](file://../specs/097-7z-zero-config-optimization-audit/research.md)。
+- R002 [SUBAGENT:research] 《7z 格式并行解压与硬件向量化解密机制》：验证了基于 `mmap` + `ttzip_7z_read_varint` 零拷贝头部解析、ARM64 NEON SHA-256 硬件 KDF 与 512KB 并行 AES-256-CBC 向量化解密、LZMA2 字典重置分块并发调度及两级无锁 `mkdir_p` 缓存算法。详见 [research.md](file://../specs/097-7z-zero-config-optimization-audit/research.md)。
+- R003 [SUBAGENT:research] 《7z 归档检视（Inspection）与目录树遍历架构》：查明了当前 `ArchiveReader.swift` 缺乏 7z 专用零拷贝 Fast-Path 的问题，确立了在 Swift 调度层接入 `NativeSevenZipEngine.inspectSevenZip` $\rightarrow$ `ttzip_native_inspect_archive` 极速通道（$< 2\text{ms}$ 响应）并在头部加密场景平滑回退的安全方案。详见 [research.md](file://../specs/097-7z-zero-config-optimization-audit/research.md)。
 
 ---
 
 ## Phase 1: Design Artifacts
 
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/data-model.md) 完整定义了 `SevenZipCompressionConfig`、`SevenZipExtractionConfig`、`SevenZipArchiveInspectionResult`、`SevenZipEntryDescriptorItem` 与 `SevenZipEntropyEvaluation` 强类型模型。
-- **Contracts**: [contracts/](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/contracts/) 下包含：
+- **Data Model**: [data-model.md](file://../specs/097-7z-zero-config-optimization-audit/data-model.md) 完整定义了 `SevenZipCompressionConfig`、`SevenZipExtractionConfig`、`SevenZipArchiveInspectionResult`、`SevenZipEntryDescriptorItem` 与 `SevenZipEntropyEvaluation` 强类型模型。
+- **Contracts**: [contracts/](file://../specs/097-7z-zero-config-optimization-audit/contracts/) 下包含：
   - `7z-compression-request.json`
   - `7z-extraction-request.json`
   - `7z-inspection-result.json`
   - `7z-entropy-evaluation.json`
-- **Quickstart Guide**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/097-7z-zero-config-optimization-audit/quickstart.md) 提供了 4 大端到端物理回归验证场景及排错诊断说明。
+- **Quickstart Guide**: [quickstart.md](file://../specs/097-7z-zero-config-optimization-audit/quickstart.md) 提供了 4 大端到端物理回归验证场景及排错诊断说明。
 
 ---
 

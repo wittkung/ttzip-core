@@ -26,8 +26,8 @@
 - **LZFSE**：苹果专有格式，非跨平台标准，解压吞吐（~1.5 GB/s）明显低于 LZ4。
 
 ### Source
-- `/Users/kevintung/Documents/dev/TTZip/Vendor/include/lz4.h`
-- `/Users/kevintung/Documents/dev/TTZip/Vendor/include/lz4frame.h`
+- `../Vendor/include/lz4.h`
+- `../Vendor/include/lz4frame.h`
 - `https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md`
 - `https://github.com/lz4/lz4/blob/dev/doc/lz4_Frame_format.md`
 

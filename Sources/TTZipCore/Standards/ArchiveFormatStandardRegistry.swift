@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -699,7 +699,7 @@ extension ArchiveFormatStandardRegistry {
     /// Consolidated set of standard archive extensions recognized by the microkernel.
     public static var allStandardExtensions: Set<String> {
         var exts = Set(shared.allSpecs().map { $0.id.lowercased() })
-        exts.formUnion(["tgz", "tbz", "tbz2", "txz", "tzst", "tlz", "tlz4", "tbr", "tlrz", "001", "002", "003", "cbr", "cbz", "cb7"])
+        exts.formUnion(["tgz", "tbz", "tbz2", "txz", "tzst", "tlz", "tlz4", "tbr", "tlrz", "001", "002", "003", "z01", "z02", "z03", "cbr", "cbz", "cb7"])
         return exts
     }
 }

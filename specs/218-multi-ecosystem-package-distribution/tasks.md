@@ -8,7 +8,7 @@
 ## Phase 1: Homebrew Official Tap (`wittkung/homebrew-ttzip`)
 
 - [x] T001 [P] [US1] Create GitHub repository `wittkung/homebrew-ttzip`.
-- [x] T002 [US1] Create local repository `/Users/kevintung/Documents/dev/homebrew-ttzip` with `Formula/ttzip.rb`.
+- [x] T002 [US1] Create local repository `$HOME/Documents/dev/homebrew-ttzip` with `Formula/ttzip.rb`.
 - [x] T003 [US1] Push `Formula/ttzip.rb` to `wittkung/homebrew-ttzip`.
 
 ---

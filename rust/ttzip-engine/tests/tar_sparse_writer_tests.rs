@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration test suite for APFS/Linux native physical hole punching,
 //! SEEK_DATA/SEEK_HOLE hardware extent discovery, and GNU Sparse 0.1/1.0 TAR generation and restoration.

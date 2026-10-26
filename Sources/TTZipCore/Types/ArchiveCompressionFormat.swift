@@ -1,7 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+
+/// Canonical UniFFI Rust archive format type alias.
+public typealias TtZipArchiveFormat = ArchiveFormat
 
 /// Logical grouping category for archive formats.
 public enum ArchiveFormatCategory: String, Sendable, CaseIterable, Identifiable, Codable {
@@ -148,10 +151,10 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         }
     }
     
-    /// Whether the format is strictly read-only for inspection and extraction.
+    /// Whether the format is strictly read-only for inspection and extraction (cannot be created).
     public var isReadOnly: Bool {
         switch self {
-        case .rar, .squashfs, .lzh:
+        case .rar, .squashfs, .lzh, .lzfse, .dmg, .cab, .wim, .deb, .rpm:
             return true
         default:
             return false
@@ -161,6 +164,31 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
     /// Whether the format supports writing and creating archives.
     public var isWritable: Bool {
         return !isReadOnly
+    }
+
+    /// Whether the format is a pure single-file compression stream (requires a single regular file input).
+    public var isSingleStreamFormat: Bool {
+        switch self {
+        case .zst, .gz, .bz2, .xz, .lzip, .lz4, .brotli, .snappy, .lrzip, .lzfse:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Returns the corresponding `.tar.*` composite container format for a single-stream format, if available.
+    public var correspondingTarCompositeFormat: ArchiveCompressionFormat? {
+        switch self {
+        case .gz: return .tarGz
+        case .bz2: return .tarBz2
+        case .xz: return .tarXz
+        case .zst: return .tarZst
+        case .lz4: return .tarLz4
+        case .brotli: return .tarBrotli
+        case .lzip: return .tarLzip
+        case .lrzip: return .tarLrzip
+        default: return nil
+        }
     }
     
     /// Format classification category.
@@ -303,7 +331,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
     }
     
     /// Maps to the canonical UniFFI Rust format enum.
-    public var uniffiFormat: TtZipArchiveFormat {
+    public var uniffiFormat: ArchiveFormat {
         switch self {
         case .sevenZip: return .sevenZip
         case .zip: return .zip
@@ -404,18 +432,19 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         )
     }
     
-    /// List of all 17 primary non-proprietary writable creation formats.
+    /// List of primary writable container creation formats (excludes read-only containers and pure single-file streams).
     public static let primary17WritableFormats: [ArchiveCompressionFormat] = [
         .sevenZip, .zip, .tar, .tarGz, .tarBz2, .tarXz, .tarZst,
-        .iso, .cab, .wim, .dmg, .aar, .cpio, .ar, .deb, .rpm, .xar
+        .tarLz4, .tarBrotli, .tarLzip, .tarLrzip,
+        .iso, .aar, .cpio, .ar, .xar
     ]
     
-    /// List of all writable creation formats including standalone streams.
+    /// List of all genuinely writable creation formats including standalone streams.
     public static let allWritableCases: [ArchiveCompressionFormat] = [
         .sevenZip, .zip, .tar, .tarGz, .tarBz2, .tarXz, .tarZst,
-        .iso, .cab, .wim, .dmg, .aar, .cpio, .ar, .deb, .rpm, .xar,
+        .iso, .aar, .cpio, .ar, .xar,
         .tarLz4, .tarBrotli, .tarLzip, .tarLrzip,
-        .zst, .gz, .bz2, .xz, .lzip, .lz4, .brotli, .snappy, .lrzip, .lzfse
+        .zst, .gz, .bz2, .xz, .lzip, .lz4, .brotli, .snappy, .lrzip
     ]
     
     /// List of all 18+ readable and inspectable formats.
@@ -425,6 +454,16 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
 // MARK: - Extension Resolution & Detection Helpers
 
 extension ArchiveCompressionFormat {
+
+    /// Canonical set of all supported archive/stream extensions (without leading dot, including `xar`).
+    public static let supportedArchiveExtensions: Set<String> = [
+        "7z", "cb7", "zip", "zipx", "tar", "tgz", "tbz", "tbz2", "txz", "tzst",
+        "tlz4", "tbr", "tlz", "tlrz", "gz", "bz2", "xz", "zst", "lz4", "br",
+        "brotli", "lz", "lzip", "lrz", "lrzip", "sz", "snappy", "iso", "img",
+        "cab", "wim", "swm", "esd", "dmg", "aar", "aea", "cpio", "ar", "a",
+        "deb", "rpm", "xar", "pkg", "rar", "squashfs", "sqsh", "lzfse", "lzh",
+        "lha", "001", "z01"
+    ]
     
     /// 7Z / DMG / ISO / Split Volume (.001) compatible extensions set.
     public static let sevenZipFamilyExtensions: Set<String> = [
@@ -438,7 +477,7 @@ extension ArchiveCompressionFormat {
         ".tlz", ".tar.lz4", ".tlz4", ".tar.br", ".tbr", ".tar.lrz", ".tlrz",
         ".gz", ".bz2", ".xz", ".lz", ".lzip", ".zst",
         ".lz4", ".br", ".brotli", ".lrz", ".lrzip", ".sz", ".snappy",
-        ".aar", ".wim", ".dmg", ".iso", ".rar", ".cbr",
+        ".aar", ".wim", ".dmg", ".iso", ".rar",
         ".cab", ".cpio", ".ar", ".a", ".deb", ".rpm", ".xar", ".pkg",
         ".squashfs", ".sqsh", ".lzfse", ".lzh", ".lha"
     ]
@@ -454,7 +493,7 @@ extension ArchiveCompressionFormat {
             return true
         }
         let archiveExtraExts: Set<String> = [
-            "zipx", "cbz", "jar", "apk", "epub", "rar", "cbr", "cab", "001", "002", "003",
+            "zipx", "rar", "cab", "001", "002", "003", "z01", "z02", "z03",
             "zst", "iso", "img", "wim", "swm", "esd", "dmg", "aar", "aea",
             "cpio", "ar", "a", "deb", "rpm", "xar", "pkg", "squashfs", "sqsh", "lzfse", "lzh", "lha"
         ]
@@ -495,8 +534,7 @@ extension ArchiveCompressionFormat {
         case "br": return .brotli
         case "lrz": return .lrzip
         case "sz": return .snappy
-        case "cbr": return .rar
-        case "cbz", "zipx", "jar", "apk", "epub": return .zip
+        case "zipx": return .zip
         case "sqsh": return .squashfs
         case "pkg": return .xar
         case "a": return .ar

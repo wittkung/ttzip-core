@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hybrid AArch64 NEON UMAXV vector reduction & SWAR 64-bit wide-word longest match extension.
 //!

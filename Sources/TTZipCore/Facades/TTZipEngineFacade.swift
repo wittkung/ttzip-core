@@ -1,40 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
 // MARK: - Command Pattern Default Facade Injection Extensions
-
-extension CompressCommand {
-    public convenience init(
-        commandId: String = UUID().uuidString,
-        description: String? = nil,
-        inputs: [String],
-        outputPath: String,
-        format: ArchiveCompressionFormat = .zip,
-        level: ArchiveCompressionLevel = .normal,
-        password: String? = nil,
-        splitSize: Int64? = nil,
-        filterOptions: ArchiveFilterOptions = ArchiveFilterOptions(),
-        advancedOptions: ArchiveAdvancedOptions? = nil,
-        progress: (@Sendable (ArchiveProgress) -> Void)? = nil
-    ) {
-        self.init(
-            commandId: commandId,
-            description: description,
-            inputs: inputs,
-            outputPath: outputPath,
-            format: format,
-            level: level,
-            password: password,
-            splitSize: splitSize,
-            filterOptions: filterOptions,
-            advancedOptions: advancedOptions,
-            progress: progress,
-            engineFacade: TTZipEngineFacade.shared
-        )
-    }
-}
 
 extension ExtractCommand {
     public convenience init(
@@ -44,6 +13,7 @@ extension ExtractCommand {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
+        handling: CollisionHandling = .policy(.keepBoth),
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil
     ) {
         self.init(
@@ -53,6 +23,7 @@ extension ExtractCommand {
             destinationDir: destinationDir,
             password: password,
             autoVaultUnlock: autoVaultUnlock,
+            handling: handling,
             progress: progress,
             engineFacade: TTZipEngineFacade.shared
         )
@@ -93,6 +64,7 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
     internal let repairEngine: ArchiveRepairEngine
     internal let recoveryEngine: PasswordRecoveryEngine
     internal let splitEngine: NativeParallelEncryptedSplitEngine
+    internal let snapshotBridge: VfsSnapshotBridge
     
     private convenience init() {
         self.init(
@@ -117,7 +89,8 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
         integrityChecker: ArchiveIntegrityChecking = ArchiveEngineFactory.makeIntegrityChecker(),
         repairEngine: ArchiveRepairEngine = ArchiveRepairEngine(),
         recoveryEngine: PasswordRecoveryEngine = PasswordRecoveryEngine(),
-        splitEngine: NativeParallelEncryptedSplitEngine = NativeParallelEncryptedSplitEngine()
+        splitEngine: NativeParallelEncryptedSplitEngine = NativeParallelEncryptedSplitEngine(),
+        snapshotBridge: VfsSnapshotBridge = .live
     ) {
         self.historyManager = historyManager
         self.pipelineBuilderProvider = pipelineBuilderProvider
@@ -128,6 +101,7 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
         self.repairEngine = repairEngine
         self.recoveryEngine = recoveryEngine
         self.splitEngine = splitEngine
+        self.snapshotBridge = snapshotBridge
     }
     
     // MARK: - Command Pattern Convenience Wrappers
@@ -154,7 +128,7 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
             filterOptions: filterOptions,
             advancedOptions: advancedOptions,
             progress: progress,
-            engineFacade: engineFacade ?? self
+            archiveWriter: ArchiveWriter()
         )
         return try await executeCommand(command)
     }
@@ -164,6 +138,7 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
+        handling: CollisionHandling = .policy(.keepBoth),
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
         engineFacade: TTZipEngineFacading? = nil
     ) async throws -> CommandResult {
@@ -172,6 +147,7 @@ public final class TTZipEngineFacade: TTZipEngineFacading, @unchecked Sendable {
             destinationDir: destinationDir,
             password: password,
             autoVaultUnlock: autoVaultUnlock,
+            handling: handling,
             progress: progress,
             engineFacade: engineFacade ?? self
         )
@@ -218,53 +194,6 @@ extension TTZipEngineFacade {
             progress?(p)
         }
         
-        if let splitBytes = splitSize, splitBytes > 0, (format == .sevenZip || format == .zip) {
-            let splitFormat: NativeParallelEncryptedSplitEngine.SplitFormat = (format == .sevenZip) ? .sevenZip : .zip
-            let outputDir = (outputPath as NSString).deletingLastPathComponent
-            let baseName = (outputPath as NSString).lastPathComponent
-            let targetDir = outputDir.isEmpty ? "." : outputDir
-            
-            let startTime = Date()
-            let generatedVolumes = try await splitEngine.createStandardEncryptedSplitVolume(
-                format: splitFormat,
-                sourcePaths: inputs,
-                outputDir: targetDir,
-                baseName: baseName,
-                splitVolumeSizeBytes: splitBytes,
-                password: password ?? ""
-            )
-            
-            let elapsed = max(0.001, Date().timeIntervalSince(startTime))
-            var totalOrigBytes: Int64 = 0
-            let fm = FileManager.default
-            for p in inputs {
-                if let attr = try? fm.attributesOfItem(atPath: p) {
-                    if (attr[.type] as? FileAttributeType) == .typeDirectory {
-                        let component = ArchiveComponentTreeBuilder.buildTree(fromDiskPath: p)
-                        totalOrigBytes += component.sizeBytes
-                    } else {
-                        totalOrigBytes += (attr[.size] as? Int64) ?? 0
-                    }
-                }
-            }
-            
-            var compressedSize: Int64 = 0
-            for vol in generatedVolumes {
-                if let attr = try? fm.attributesOfItem(atPath: vol) {
-                    compressedSize += (attr[.size] as? Int64) ?? 0
-                }
-            }
-            let rate = (Double(totalOrigBytes) / 1024.0 / 1024.0) / elapsed
-            
-            return ArchiveOperationResult(
-                outputPath: outputPath,
-                originalBytes: totalOrigBytes,
-                compressedBytes: compressedSize,
-                durationSeconds: elapsed,
-                throughputMBs: rate
-            )
-        }
-        
         var builder = pipelineBuilderProvider()
             .withInputPaths(inputs)
             .withOutputPath(outputPath)
@@ -281,7 +210,40 @@ extension TTZipEngineFacade {
         
         builder = builder.withProgressHandler(combinedProgress)
         
-        return try await builder.executeCreate()
+        let result = try await builder.executeCreate()
+        
+        if let splitBytes = splitSize, splitBytes > 0 {
+            return resolveSplitOperationResult(outputPath: outputPath, baseResult: result)
+        }
+        
+        return result
+    }
+
+    private func resolveSplitOperationResult(
+        outputPath: String,
+        baseResult: ArchiveOperationResult
+    ) -> ArchiveOperationResult {
+        let fm = FileManager.default
+        let stem = (outputPath as NSString).deletingPathExtension
+        let candidates = ["\(outputPath).001", "\(stem).z01", outputPath]
+        guard let seed = candidates.first(where: { fm.fileExists(atPath: $0) }) else {
+            return baseResult
+        }
+        let volumes = (try? detectSplitVolumeChain(seedPath: seed)) ?? [seed]
+        var compressedSize: Int64 = 0
+        for vol in volumes {
+            let attr = try? fm.attributesOfItem(atPath: vol)
+            compressedSize += (attr?[.size] as? Int64) ?? 0
+        }
+        let resolvedPath = volumes.first ?? seed
+        let resolvedSize = compressedSize > 0 ? compressedSize : baseResult.compressedBytes
+        return ArchiveOperationResult(
+            outputPath: resolvedPath,
+            originalBytes: baseResult.originalBytes,
+            compressedBytes: resolvedSize,
+            durationSeconds: baseResult.durationSeconds,
+            throughputMBs: baseResult.throughputMBs
+        )
     }
 }
 
@@ -295,6 +257,7 @@ extension TTZipEngineFacade {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
+        handling: CollisionHandling = .policy(.keepBoth),
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
         token: CancellationToken? = nil
     ) async throws -> ExtractResult {
@@ -302,110 +265,187 @@ extension TTZipEngineFacade {
             throw ArchiveError.fileNotFound
         }
         
-        let combinedProgress: @Sendable (ArchiveProgress) -> Void = { p in
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let combinedProgress: ProgressSink = { p in
             progress?(p)
         }
-        
+
+        let initialPolicy = handling.requestPolicy
+
+        var candidatePasswords: [String?] = []
         if let explicitPwd = password, !explicitPwd.isEmpty {
-            let elapsed = try await executePipelineExtract(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                password: explicitPwd,
-                progress: combinedProgress,
-                token: token
-            )
-            ArchivePasswordStore.shared.setPassword(explicitPwd, for: archivePath)
-            return ExtractResult(
-                archivePath: archivePath,
-                destinationDir: destinationDir,
-                durationSeconds: elapsed,
-                unlockedPassword: explicitPwd,
-                isVaultUnlocked: false
-            )
+            candidatePasswords.append(explicitPwd)
         } else {
+            candidatePasswords.append(nil)
+            if autoVaultUnlock {
+                let vaultCandidates = passwordVault.getEntries()
+                for entry in vaultCandidates {
+                    candidatePasswords.append(entry.password)
+                }
+            }
+        }
+
+        var lastError: Error?
+        for candidate in candidatePasswords {
+            let request = ExtractionRequest(
+                archivePath: archivePath,
+                destinationRoot: destinationDir,
+                password: candidate,
+                entryFilter: nil,
+                rootAtCommonParent: false,
+                policy: initialPolicy
+            )
+
             do {
-                let elapsed = try await executePipelineExtract(
-                    archivePath: archivePath,
-                    destinationDir: destinationDir,
-                    password: nil,
+                let outcome = try await extract(
+                    request,
+                    handling: handling,
                     progress: combinedProgress,
                     token: token
                 )
+                if token?.isCancelled() == true || Task.isCancelled {
+                    throw ArchiveError.cancelled
+                }
+                switch outcome.status {
+                case .stopped:
+                    throw ArchiveError.extractionStopped
+                case .completedWithFailures:
+                    throw ArchiveError.partialExtractionFailure(outcome: outcome)
+                case .completed:
+                    break
+                }
+                let elapsed = max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
+                if let pwd = candidate {
+                    ArchivePasswordStore.shared.setPassword(pwd, for: archivePath)
+                }
                 return ExtractResult(
                     archivePath: archivePath,
                     destinationDir: destinationDir,
                     durationSeconds: elapsed,
-                    unlockedPassword: nil,
-                    isVaultUnlocked: false
+                    unlockedPassword: candidate,
+                    isVaultUnlocked: candidate != nil && candidate != password,
+                    outcome: outcome
                 )
             } catch {
                 if token?.isCancelled() == true || Task.isCancelled {
                     throw ArchiveError.cancelled
                 }
+                if let archiveErr = error as? ArchiveError {
+                    if !archiveErr.isPasswordRelated {
+                        throw archiveErr
+                    }
+                    lastError = archiveErr
+                    continue
+                }
                 let archiveErr = ArchiveError.from(error: error)
-                guard archiveErr.isPasswordRelated else {
+                if !archiveErr.isPasswordRelated {
                     throw archiveErr
                 }
-                // Password is required, proceed to auto-unlock via vault candidates
+                lastError = archiveErr
             }
         }
-        
-        if autoVaultUnlock {
-            let vaultEntries = passwordVault.getEntries()
-            var matchedEntry: PasswordVaultEntry? = nil
 
-            for entry in vaultEntries {
-                do {
-                    // Non-destructive in-memory inspection probe before touching disk
-                    _ = try await reader.inspect(archivePath: archivePath, password: entry.password)
-                    matchedEntry = entry
-                    break
-                } catch {
-                    // Password probe failed, try next candidate
-                }
-            }
-
-            if let entry = matchedEntry {
-                let elapsed = try await executePipelineExtract(
-                    archivePath: archivePath,
-                    destinationDir: destinationDir,
-                    password: entry.password,
-                    progress: combinedProgress,
-                    token: token
-                )
-                passwordVault.recordUsage(id: entry.id)
-                ArchivePasswordStore.shared.setPassword(entry.password, for: archivePath)
-                return ExtractResult(
-                    archivePath: archivePath,
-                    destinationDir: destinationDir,
-                    durationSeconds: elapsed,
-                    unlockedPassword: entry.password,
-                    isVaultUnlocked: true
-                )
-            }
+        if let err = lastError {
+            throw err
         }
-        
         throw ArchiveError.passwordRequired
     }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        progress: (@Sendable (ArchiveProgress) -> Void)?
+    ) async throws -> ExtractResult {
+        return try await quickExtract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            autoVaultUnlock: autoVaultUnlock,
+            handling: .policy(.keepBoth),
+            progress: progress,
+            token: nil
+        )
+    }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        autoVaultUnlock: Bool,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken?
+    ) async throws -> ExtractResult {
+        return try await quickExtract(
+            archivePath: archivePath,
+            destinationDir: destinationDir,
+            password: password,
+            autoVaultUnlock: autoVaultUnlock,
+            handling: .policy(.keepBoth),
+            progress: progress,
+            token: token
+        )
+    }
     
+    /// Extracts one entry (a directory entry includes its descendants) directly into `destinationDir`.
+    @discardableResult
     public func extractSingleEntry(
         archivePath: String,
         entryPath: String,
         destinationDir: String,
-        password: String? = nil
-    ) async throws {
+        password: String? = nil,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
+        return try await extractEntries(
+            archivePath: archivePath,
+            entryPaths: [entryPath],
+            destinationDir: destinationDir,
+            password: explicitPwd,
+            handling: handling
+        )
+    }
+
+    /// Extracts the selected entries, plus every descendant of a selected directory, through the
+    /// collision-safe session loop. Entries are placed relative to their deepest common parent:
+    /// selecting `docs/report.pdf` writes `<destinationDir>/report.pdf`.
+    @discardableResult
+    public func extractEntries(
+        archivePath: String,
+        entryPaths: [String],
+        destinationDir: String,
+        password: String?,
+        handling: CollisionHandling = .policy(.keepBoth),
+        progress: ProgressSink? = nil
+    ) async throws -> ExtractionOutcome {
         guard !archivePath.isEmpty, !destinationDir.isEmpty, FileManager.default.fileExists(atPath: archivePath) else {
             throw ArchiveError.fileNotFound
         }
-        
-        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
-        let extractor = ArchiveEngineFactory.makeExtractor()
-        try await extractor.extractSingleFile(
+        guard !entryPaths.isEmpty else { return .nothingSelected }
+        try FileManager.default.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
+
+        let spotlightCreated = ArchiveExtractor.preventSpotlightIndexing(at: destinationDir)
+        defer {
+            ArchiveExtractor.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
+        }
+
+        let request = ExtractionRequest(
             archivePath: archivePath,
-            entryPath: entryPath,
-            destinationDir: destinationDir,
-            password: explicitPwd
+            destinationRoot: destinationDir,
+            password: password,
+            entryFilter: entryPaths,
+            rootAtCommonParent: true,
+            policy: handling.requestPolicy
         )
+        let outcome: ExtractionOutcome
+        do {
+            outcome = try await extract(request, handling: handling, progress: progress)
+        } catch {
+            throw ArchiveError.from(error: error)
+        }
+        ArchiveExtractor.propagateQuarantine(from: archivePath, to: destinationDir)
+        return outcome
     }
     
     internal func executePipelineExtract(
@@ -415,20 +455,27 @@ extension TTZipEngineFacade {
         progress: (@Sendable (ArchiveProgress) -> Void)?,
         token: CancellationToken? = nil
     ) async throws -> Double {
-        var builder = pipelineBuilderProvider()
-            .withArchivePath(archivePath)
-            .withDestinationDir(destinationDir)
-            .withPassword(password)
-            .withToken(token)
-        
-        if let progress = progress {
-            builder = builder.withProgressHandler(progress)
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let request = ExtractionRequest(
+            archivePath: archivePath,
+            destinationRoot: destinationDir,
+            password: password,
+            entryFilter: nil,
+            rootAtCommonParent: false,
+            policy: .keepBoth
+        )
+        let outcome = try await extract(request, handling: .policy(.keepBoth), progress: progress, token: token)
+        switch outcome.status {
+        case .stopped:
+            throw ArchiveError.extractionStopped
+        case .completedWithFailures:
+            throw ArchiveError.partialExtractionFailure(outcome: outcome)
+        case .completed:
+            return max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
         }
-        
-        let res = try await builder.executeExtract()
-        return res.durationSeconds
     }
 }
+
 
 // MARK: - Inspect Facade
 
@@ -439,6 +486,42 @@ extension TTZipEngineFacade {
 // MARK: - Unified Archive Inspection & Structure Probing Facade
 
 extension TTZipEngineFacade {
+    public func openVfsSession(archivePath: String, password: String? = nil) throws -> VfsSession {
+        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
+        return try TTZipCore.openVfsSession(archivePath: archivePath, password: explicitPwd)
+    }
+
+    public func openArchiveSession(archivePath: String, password: String? = nil) throws -> VfsSessionStatus {
+        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
+        return try TTZipCore.openArchiveSession(archivePath: archivePath, passwordHint: explicitPwd)
+    }
+
+    /// Legacy snapshot entry returning an owning `OpaquePointer` erased as `Any`.
+    ///
+    /// The caller must transfer this one reference to an owning wrapper or release it once
+    /// through the matching snapshot C-ABI. This method does not manage the returned lease.
+    /// The temporary output view is not returned. For object-based VFS queries, use
+    /// `openVfsSession`; that interface is not a compact-snapshot representation.
+    ///
+    /// Missing bridge symbols report `engineFailure` with unsupported-feature status.
+    /// A null native result reports `openFailed`, since this ABI exposes no detailed cause.
+    public func openVfsSnapshot(archivePath: String, password: String? = nil) async throws -> Any {
+        try snapshotBridge.open(archivePath: archivePath, password: password)
+    }
+
+    /// Inspects an archive and reports the credential it used, without touching the shared
+    /// password cache.
+    ///
+    /// The inspection is a query: it reads the shared cache to pick a candidate, keeps the
+    /// existing vault retry policy and reports the credential that worked in
+    /// `unlockedPassword`, but it never publishes, restores or removes a shared credential.
+    /// Writing the shared cache is an authorization act and belongs to the owner that accepts
+    /// the result, in that owner's own acceptance block. Publishing from here would also let a
+    /// credential read before an `await` overwrite a newer credential committed while the
+    /// inspection was in flight.
+    ///
+    /// The remaining side effects of the query are unchanged: reading the cache refreshes its
+    /// LRU recency, and a vault unlock still records its usage.
     public func inspectArchive(
         archivePath: String,
         password: String? = nil,
@@ -450,13 +533,12 @@ extension TTZipEngineFacade {
         
         let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
         
+        let passwordFailure: ArchiveError
         do {
-            let entries = try await reader.inspect(archivePath: archivePath, password: explicitPwd)
+            // The facade owns retries. The reader must not consult the global vault as well.
+            let entries = try await reader.inspect(archivePath: archivePath, password: explicitPwd, candidatePasswords: [])
             let treeNode = ArchiveComponentTreeBuilder.buildTree(from: entries)
             let securityReport = securityScanner.scanEntriesForReport(entries)
-            if let p = explicitPwd, !p.isEmpty {
-                ArchivePasswordStore.shared.setPassword(p, for: archivePath)
-            }
             return ArchiveInspectionResult(
                 archivePath: archivePath,
                 entries: entries,
@@ -464,20 +546,23 @@ extension TTZipEngineFacade {
                 securityReport: securityReport,
                 unlockedPassword: explicitPwd
             )
-        } catch ArchiveError.passwordRequired {
-            // Fall through to password vault auto-unlock
         } catch {
-            if explicitPwd != nil && explicitPwd?.isEmpty == false {
-                throw error
-            }
+            let mapped = ArchiveError.from(error: error)
+            guard mapped.isPasswordRelated else { throw mapped }
+            // An explicit or already selected credential has its own failure contract.
+            // Only a passwordless inspection may discover a credential from the vault.
+            guard explicitPwd?.isEmpty != false else { throw mapped }
+            passwordFailure = mapped
         }
-        
+
         if autoVaultUnlock {
             let vaultEntries = passwordVault.getEntries()
             for entry in vaultEntries {
-                if let entries = try? await reader.inspect(archivePath: archivePath, password: entry.password) {
+                do {
+                    let entries = try await reader.inspect(
+                        archivePath: archivePath, password: entry.password, candidatePasswords: []
+                    )
                     passwordVault.recordUsage(id: entry.id)
-                    ArchivePasswordStore.shared.setPassword(entry.password, for: archivePath)
                     let treeNode = ArchiveComponentTreeBuilder.buildTree(from: entries)
                     let securityReport = securityScanner.scanEntriesForReport(entries)
                     return ArchiveInspectionResult(
@@ -487,11 +572,14 @@ extension TTZipEngineFacade {
                         securityReport: securityReport,
                         unlockedPassword: entry.password
                     )
+                } catch {
+                    let mapped = ArchiveError.from(error: error)
+                    guard mapped.isPasswordRelated else { throw mapped }
                 }
             }
         }
         
-        throw ArchiveError.passwordRequired
+        throw passwordFailure
     }
     
     // MARK: - Auxiliary High-Level Facade (Integrity, Repair & Password Recovery)
@@ -514,5 +602,73 @@ extension TTZipEngineFacade {
         dictionary: [String]
     ) async throws -> PasswordRecoveryResult {
         return try await recoveryEngine.recoverPassword(archivePath: archivePath, dictionary: dictionary)
+    }
+}
+
+// MARK: - Selected-Entry Extraction on Extractor Types
+
+// Defined in the TTZipCore module because the session loop (`extract(_:handling:progress:)`) and the
+// staging registry live here; `ArchiveExtractor` itself sits in the lower TTZipCoreArchive module.
+
+extension ArchiveExtractor {
+    /// Extracts a single entry (a directory entry includes its descendants) directly into `destinationDir`.
+    @discardableResult
+    public func extractSingleFile(
+        archivePath: String,
+        entryPath: String,
+        destinationDir: String,
+        password: String?,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        try await TTZipEngineFacade.shared.extractEntries(
+            archivePath: archivePath,
+            entryPaths: [entryPath],
+            destinationDir: destinationDir,
+            password: password,
+            handling: handling
+        )
+    }
+}
+
+extension ArchiveSelectiveExtractor {
+    /// Extracts the selected entries (a directory entry includes its descendants) into `destinationDir`,
+    /// relative to their deepest common parent.
+    @discardableResult
+    public func extractSelected(
+        archivePath: String,
+        targetEntryPaths: Set<String>,
+        destinationDir: String,
+        password: String? = nil,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        try await TTZipEngineFacade.shared.extractEntries(
+            archivePath: archivePath,
+            entryPaths: targetEntryPaths.sorted(),
+            destinationDir: destinationDir,
+            password: password,
+            handling: handling
+        )
+    }
+}
+
+// MARK: - Extraction Request Helpers
+
+private extension CollisionHandling {
+    /// Policy recorded in the `ExtractionRequest`; interactive sessions resolve conflicts
+    /// through the decision provider, so the request carries the non-destructive default.
+    var requestPolicy: CollisionPolicy {
+        switch self {
+        case .policy(let policy):
+            return policy
+        case .interactive:
+            return .keepBoth
+        }
+    }
+}
+
+private extension ExtractionOutcome {
+    /// Outcome of a selection that names no entries: nothing is read or written.
+    static var nothingSelected: ExtractionOutcome {
+        ExtractionOutcome(status: .completed, extracted: 0, replaced: 0, keptBoth: 0, skipped: 0, failed: [])
     }
 }

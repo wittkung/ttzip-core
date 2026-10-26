@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unit tests for 7-Zip Encrypted Header (`kEncodedHeader`, 0x17) recursive
 //! self-extracting state machine and sub-millisecond password probing.

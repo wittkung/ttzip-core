@@ -27,7 +27,7 @@ PR 6 brings the 6-PR single-core optimization sequence to final convergence:
 
 ### Component 1: Benchmark Runner & Suite Execution
 
-#### [MODIFY] [`Tests/TTZipTests/ZipSingleCoreParetoFrontierPkTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ZipSingleCoreParetoFrontierPkTests.swift)
+#### [MODIFY] [`Tests/TTZipTests/ZipSingleCoreParetoFrontierPkTests.swift`](file://../Tests/TTZipTests/ZipSingleCoreParetoFrontierPkTests.swift)
 - Execute Pareto frontier shootout.
 
 ---

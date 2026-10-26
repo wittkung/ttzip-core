@@ -1,6 +1,6 @@
 # Implementation Plan: TurboBench & lzbench In-Memory Benchmarking & High-Precision Timer Calibration Suite
 
-**Branch**: `052-turbobench-inmemory-alignment` | **Date**: 2026-08-17 | **Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/052-turbobench-inmemory-alignment/spec.md)
+**Branch**: `052-turbobench-inmemory-alignment` | **Date**: 2026-08-17 | **Spec**: [`spec.md`](file://../specs/052-turbobench-inmemory-alignment/spec.md)
 
 **Input**: Feature specification from `/specs/052-turbobench-inmemory-alignment/spec.md`
 

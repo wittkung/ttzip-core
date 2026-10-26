@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive Bidirectional Differential Test Suite & 5-Dimension Oracle (Task 16.10).
 //!
@@ -68,7 +68,7 @@ struct TestSandbox {
 impl TestSandbox {
     fn new(prefix: &str) -> Self {
         unsafe {
-            libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
+            libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
         }
         let temp_dir = tempfile::Builder::new()
             .prefix(prefix)
@@ -244,10 +244,10 @@ fn test_direction1_bsdtar_to_ttzip_differential() {
     // 2. Extract with TTZip UnifiedArchiveOrchestrator
     let extract_opts = TTZipExtractOptions {
         preserve_permissions: true,
-        overwrite_existing: true,
+        collision_policy: 0,
         ..Default::default()
     };
-    UnifiedArchiveOrchestrator::extract_archive(&tar_archive, &sandbox.ttzip_out_dir, &extract_opts)
+    UnifiedArchiveOrchestrator::extract_archive(&tar_archive, &ttzip_engine::fs::collision::staging::StagingRoot(sandbox.ttzip_out_dir.clone()), &extract_opts)
         .expect("TTZip extraction of system tar archive failed");
 
     // 3. 5-Dimension Oracle Differential Comparison
@@ -300,10 +300,10 @@ fn test_direction1_bsdcpio_to_ttzip_differential() {
     // 2. Extract with TTZip UnifiedArchiveOrchestrator
     let extract_opts = TTZipExtractOptions {
         preserve_permissions: true,
-        overwrite_existing: true,
+        collision_policy: 0,
         ..Default::default()
     };
-    UnifiedArchiveOrchestrator::extract_archive(&cpio_archive, &sandbox.ttzip_out_dir, &extract_opts)
+    UnifiedArchiveOrchestrator::extract_archive(&cpio_archive, &ttzip_engine::fs::collision::staging::StagingRoot(sandbox.ttzip_out_dir.clone()), &extract_opts)
         .expect("TTZip extraction of system cpio archive failed");
 
     // 3. 5-Dimension Oracle Differential Comparison
@@ -343,10 +343,10 @@ fn test_direction1_zip_to_ttzip_secure_extract_differential() {
     // 2. Extract with TTZip Secure Sandbox Extractor
     let extract_opts = TTZipExtractOptions {
         preserve_permissions: true,
-        overwrite_existing: true,
+        collision_policy: 0,
         ..Default::default()
     };
-    UnifiedArchiveOrchestrator::extract_archive(&zip_archive, &sandbox.ttzip_out_dir, &extract_opts)
+    UnifiedArchiveOrchestrator::extract_archive(&zip_archive, &ttzip_engine::fs::collision::staging::StagingRoot(sandbox.ttzip_out_dir.clone()), &extract_opts)
         .expect("TTZip extraction of system zip archive failed");
 
     // 3. Verify Sandbox Integrity with SecurePathExtractor
@@ -600,10 +600,10 @@ fn test_bidirectional_symlink_hardlink_permission_fidelity() {
     // 4. TTZip unpacks Stage 2 output
     let extract_opts = TTZipExtractOptions {
         preserve_permissions: true,
-        overwrite_existing: true,
+        collision_policy: 0,
         ..Default::default()
     };
-    UnifiedArchiveOrchestrator::extract_archive(&tar_p2, &sandbox.ttzip_out_dir, &extract_opts)
+    UnifiedArchiveOrchestrator::extract_archive(&tar_p2, &ttzip_engine::fs::collision::staging::StagingRoot(sandbox.ttzip_out_dir.clone()), &extract_opts)
         .expect("Stage 2 TTZip extract_archive failed");
 
     // 5. Oracle verification against initial source tree

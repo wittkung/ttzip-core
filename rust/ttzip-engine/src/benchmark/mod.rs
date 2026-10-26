@@ -1,13 +1,13 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Benchmarking, MIPS rating, monotonic timing, Pareto frontier, and Matrix Gate suite.
 
-pub mod ab_engine;
 pub mod clock;
 pub mod codecs_driver;
 pub mod container_driver;
 pub mod corpus;
+pub mod corpus_provider;
 pub mod crypto_driver;
 pub mod delta;
 pub mod mips;
@@ -16,23 +16,34 @@ pub mod pareto;
 pub mod plotter;
 pub mod runner;
 pub mod scenario_driver;
+pub mod silesia_corpus;
 pub mod spline;
+pub mod stats;
+pub mod thermal;
+pub mod timing;
+pub mod zip64_virtual_reader;
+
+pub mod ab_engine {
+    pub use super::corpus_provider;
+    pub use super::silesia_corpus;
+    pub use super::stats;
+    pub use super::thermal;
+    pub use super::timing;
+    pub use super::zip64_virtual_reader;
+}
 
 #[cfg(test)]
 mod tests;
 
-
-pub use ab_engine::{
-    sync_to_next_tick, wait_for_next_tick, BenchmarkCorpusProvider, BenchmarkTarget, CodecMode,
-    CodecTargetAdapter, ComparisonStats, ConfidenceInterval, ContainerMode,
-    ContainerTargetAdapter, CorpusRegistry, CryptoMode, CryptoTargetAdapter,
-    CustomFileCorpusProvider, DecisionVerdict, HampelFilter, HampelFilterResult,
-    Lz4TimeLoopBenchEngine, MeasurementConfig, MeasurementEngine, MeasurementStats, MetricUnit,
-    RealWorldAssetKind, RealWorldCorpusProvider, SyntheticCorpusProvider, TargetCategory,
-    TargetDescriptor, TargetExecutionOutput, TargetRegistry, TimeLoopConfig,
-    TimeLoopPassResult, TimeLoopStats, WelchStudentTTest, WelchTTestResult, NB_TESTS,
-    TIMELOOP_MICROS,
+pub use corpus_provider::{
+    BenchmarkCorpusProvider, CorpusRegistry, RealWorldAssetKind, RealWorldCorpusProvider,
+    SyntheticCorpusProvider,
 };
+pub use silesia_corpus::SilesiaCorpusEngine;
+pub use stats::{sync_to_next_tick, HampelFilter, HampelFilterResult};
+pub use thermal::ThermalThrottleGovernor;
+pub use timing::wait_for_next_tick;
+pub use zip64_virtual_reader::{Zip64ArchiveBuilder, Zip64HeaderInspector};
 pub use clock::MonotonicStopwatch;
 pub use codecs_driver::{
     BrotliBenchmarkDriver, Bzip2BenchmarkDriver, CodecBenchmarkDriver, DeflateBenchmarkDriver,

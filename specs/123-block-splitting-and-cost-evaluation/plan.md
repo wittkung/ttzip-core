@@ -27,17 +27,17 @@ Single-core Deflate previously used fixed 4KB threshold heuristics to switch bet
 - - R001 [SUBAGENT:research] 《Vectorized Bit-Cost Evaluation Architecture》：Direct dot-product bit-cost evaluator in $< 1\mu s$.
 - - R002 [SUBAGENT:research] 《History-Preserving Adaptive Block Splitting》：64KB chunk partition with 32KB continuous dictionary maintenance.
 
-See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/research.md).
+See [`research.md`](file://../specs/123-block-splitting-and-cost-evaluation/research.md).
 
 ---
 
 ## Phase 1: Data Model & Contracts Index
 
-- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/data-model.md)
+- **Data Model**: [`data-model.md`](file://../specs/123-block-splitting-and-cost-evaluation/data-model.md)
 - **Contracts**:
-  - [`contracts/cost_evaluation_request.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/contracts/cost_evaluation_request.schema.json)
-  - [`contracts/cost_evaluation_response.schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/contracts/cost_evaluation_response.schema.json)
-- **Quickstart**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-splitting-and-cost-evaluation/quickstart.md)
+  - [`contracts/cost_evaluation_request.schema.json`](file://../specs/123-block-splitting-and-cost-evaluation/contracts/cost_evaluation_request.schema.json)
+  - [`contracts/cost_evaluation_response.schema.json`](file://../specs/123-block-splitting-and-cost-evaluation/contracts/cost_evaluation_response.schema.json)
+- **Quickstart**: [`quickstart.md`](file://../specs/123-block-splitting-and-cost-evaluation/quickstart.md)
 
 ---
 
@@ -45,20 +45,20 @@ See [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/123-block-
 
 ### Component 1: C Bridge Layer (`Sources/CTTZipBridge`)
 
-#### [MODIFY] [`ttzip_deflate_huffman.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_deflate_huffman.h)
+#### [MODIFY] [`ttzip_deflate_huffman.h`](file://../Sources/CTTZipBridge/native_deflate/ttzip_deflate_huffman.h)
 - Declare `ttzip_eval_huffman_bit_costs`.
 
-#### [MODIFY] [`ttzip_deflate_huffman.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_deflate_huffman.c)
+#### [MODIFY] [`ttzip_deflate_huffman.c`](file://../Sources/CTTZipBridge/native_deflate/ttzip_deflate_huffman.c)
 - Implement `ttzip_eval_huffman_bit_costs`.
 
-#### [MODIFY] [`ttzip_deflate_engine.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/native_deflate/ttzip_deflate_engine.c)
+#### [MODIFY] [`ttzip_deflate_engine.c`](file://../Sources/CTTZipBridge/native_deflate/ttzip_deflate_engine.c)
 - Integrate dynamic vs. static bit-cost evaluator into compression loop.
 
 ---
 
 ### Component 2: Swift Core & Test Suite (`Tests/TTZipTests`)
 
-#### [NEW] [`BlockSplittingAndCostEvaluationTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/BlockSplittingAndCostEvaluationTests.swift)
+#### [NEW] [`BlockSplittingAndCostEvaluationTests.swift`](file://../Tests/TTZipTests/BlockSplittingAndCostEvaluationTests.swift)
 - Unit tests for cost evaluator and multi-block continuity.
 
 ---

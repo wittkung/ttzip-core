@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration test suite for GNU Sparse (0.0, 0.1, 1.0)
 //! and PAX Sparse 0.1 map parsers, hole calculators, and security defense barriers.

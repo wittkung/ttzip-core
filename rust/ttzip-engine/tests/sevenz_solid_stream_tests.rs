@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive test suite for 7-Zip Solid Stream O(1) Indexing and 4MB Micro-Buffer Early-Exit Decompression.
 

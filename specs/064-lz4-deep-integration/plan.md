@@ -1,6 +1,6 @@
 # Implementation Plan: LZ4 Deep Integration and Performance Verification
 
-**Branch**: `064-lz4-deep-integration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/spec.md)
+**Branch**: `064-lz4-deep-integration` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/064-lz4-deep-integration/spec.md)
 
 ---
 
@@ -20,7 +20,7 @@
 ---
 
 ## Phase 0/1 Artifacts
-- **Research**: [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/research.md)
-- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/data-model.md)
-- **Contract Schema**: [contracts/lz4_deep_integration_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/contracts/lz4_deep_integration_contract.json)
-- **Quickstart**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/064-lz4-deep-integration/quickstart.md)
+- **Research**: [research.md](file://../specs/064-lz4-deep-integration/research.md)
+- **Data Model**: [data-model.md](file://../specs/064-lz4-deep-integration/data-model.md)
+- **Contract Schema**: [contracts/lz4_deep_integration_contract.json](file://../specs/064-lz4-deep-integration/contracts/lz4_deep_integration_contract.json)
+- **Quickstart**: [quickstart.md](file://../specs/064-lz4-deep-integration/quickstart.md)
