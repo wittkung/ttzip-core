@@ -3,6 +3,9 @@
 
 import XCTest
 @testable import TTZipCore
+#if canImport(TTZipCoreCrypto)
+@testable import TTZipCoreCrypto
+#endif
 
 final class ArchivePasswordConditionalPublicationTests: XCTestCase {
     func testMatchingAbsentCandidatePublishesAndMismatchingNewOwnerIsPreserved() {

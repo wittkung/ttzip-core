@@ -84,6 +84,57 @@ pub fn is_windows_reserved_device_name(segment: &str) -> bool {
     is_windows_reserved_device_name_slice(segment.as_bytes())
 }
 
+/// Extracts the Windows device stem before the first `.` or `:` and trims
+/// leading spaces/tabs and trailing spaces/tabs/dots without allocation.
+#[inline]
+fn extract_trimmed_windows_device_stem(seg: &[u8]) -> &[u8] {
+    let stem = match seg.iter().position(|&b| b == b'.' || b == b':') {
+        Some(idx) => &seg[..idx],
+        None => seg,
+    };
+    let start = stem
+        .iter()
+        .position(|&b| b != b' ' && b != b'\t')
+        .unwrap_or(stem.len());
+    let end = stem[start..]
+        .iter()
+        .rposition(|&b| b != b' ' && b != b'\t' && b != b'.')
+        .map_or(start, |idx| start + idx + 1);
+    &stem[start..end]
+}
+
+/// Checks fixed-name DOS/Win32 console and clock/config device stems.
+#[inline]
+fn is_fixed_windows_device_stem(trimmed: &[u8]) -> bool {
+    const FIXED_3: [&[u8]; 4] = [b"CON", b"PRN", b"AUX", b"NUL"];
+    const FIXED_6: [&[u8]; 2] = [b"CLOCK$", b"CONIN$"];
+    const FIXED_7: [&[u8]; 2] = [b"CONOUT$", b"CONFIG$"];
+
+    match trimmed.len() {
+        3 => FIXED_3.iter().any(|d| trimmed.eq_ignore_ascii_case(d)),
+        6 => FIXED_6.iter().any(|d| trimmed.eq_ignore_ascii_case(d)),
+        7 => FIXED_7.iter().any(|d| trimmed.eq_ignore_ascii_case(d)),
+        _ => false,
+    }
+}
+
+/// Checks numbered `COM` / `LPT` stems (`COM0..9`, `LPT0..9`, and UTF-8 Latin-1 superscripts `¹..³`).
+#[inline]
+fn is_numbered_com_or_lpt_stem(trimmed: &[u8]) -> bool {
+    if trimmed.len() < 4 {
+        return false;
+    }
+    let prefix = &trimmed[..3];
+    if !prefix.eq_ignore_ascii_case(b"COM") && !prefix.eq_ignore_ascii_case(b"LPT") {
+        return false;
+    }
+    match &trimmed[3..] {
+        [digit] => digit.is_ascii_digit(),
+        [0xC2, 0xB9 | 0xB2 | 0xB3] => true,
+        _ => false,
+    }
+}
+
 /// Zero-allocation slice check for Windows DOS reserved device names.
 #[inline]
 #[must_use]
@@ -101,52 +152,8 @@ pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
         return true;
     }
 
-    // Stem before first dot or colon
-    let stem = match seg.iter().position(|&b| b == b'.' || b == b':') {
-        Some(idx) => &seg[..idx],
-        None => seg,
-    };
-
-    // Trim leading spaces/tabs and trailing spaces/tabs/dots on stem
-    let mut start = 0;
-    while start < stem.len() && (stem[start] == b' ' || stem[start] == b'\t') {
-        start += 1;
-    }
-    let mut end = stem.len();
-    while end > start && (stem[end - 1] == b' ' || stem[end - 1] == b'\t' || stem[end - 1] == b'.') {
-        end -= 1;
-    }
-    let trimmed = &stem[start..end];
-
-    match trimmed.len() {
-        3 => {
-            trimmed.eq_ignore_ascii_case(b"CON")
-                || trimmed.eq_ignore_ascii_case(b"PRN")
-                || trimmed.eq_ignore_ascii_case(b"AUX")
-                || trimmed.eq_ignore_ascii_case(b"NUL")
-        }
-        4 => {
-            let prefix = &trimmed[..3];
-            let digit = trimmed[3];
-            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
-                && digit.is_ascii_digit()
-        }
-        5 => {
-            let prefix = &trimmed[..3];
-            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
-                && trimmed[3] == 0xC2
-                && matches!(trimmed[4], 0xB9 | 0xB2 | 0xB3)
-        }
-        6 => {
-            trimmed.eq_ignore_ascii_case(b"CLOCK$")
-                || trimmed.eq_ignore_ascii_case(b"CONIN$")
-        }
-        7 => {
-            trimmed.eq_ignore_ascii_case(b"CONOUT$")
-                || trimmed.eq_ignore_ascii_case(b"CONFIG$")
-        }
-        _ => false,
-    }
+    let trimmed = extract_trimmed_windows_device_stem(seg);
+    is_fixed_windows_device_stem(trimmed) || is_numbered_com_or_lpt_stem(trimmed)
 }
 
 /// Zero-allocation slice check for URL-encoded traversal patterns (%2e%2e).
