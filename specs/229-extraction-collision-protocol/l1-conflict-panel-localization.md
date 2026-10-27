@@ -8,7 +8,7 @@
 
 ## 1. 背景与已确认问题
 
-在解压同名冲突交互弹窗 [`ForensicCollisionPanel`](file://../../infra/ttkit/Sources/TTKitUI/Omnibar/ForensicCollisionPanel.swift) 中，存在以下已确认问题：
+在解压同名冲突交互弹窗 [`ForensicCollisionPanel`](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttkit/Sources/TTKitUI/Omnibar/ForensicCollisionPanel.swift) 中，存在以下已确认问题：
 
 1. **硬编码英文漏翻**：
    - 弹窗主标题（`File Collision Resolution`）、进度副标题（`Conflict X / Y`）、类型冲突胶囊（`Type Mismatch`）。
@@ -24,13 +24,13 @@
    - 旧比较标签混用 `NEWER` 与 `Latest`，容易产生“应当保留某一方”的倾向性暗示；“停止”旧文案 `Cancel extraction` 未准确区分“停止后续冲突与解压处理”与已提交阶段边界。
 
 > **范围外已记录问题（本轮不扩大修改范围）**：
-> - 侧栏收藏与固定分组标题使用了 `String(localized:)` 而非 `TTI18n`（[`SidebarFavoritesSectionView.swift:48`](file://../apple/Sources/TTZipApp/Views/Sidebar/SidebarFavoritesSectionView.swift#L48) 的 `String(localized: "FAVORITES")`、[`SidebarPinnedSectionView.swift:99`](file://../apple/Sources/TTZipApp/Views/Sidebar/SidebarPinnedSectionView.swift#L99) 的 `String(localized: "PINNED")`），由于主 Bundle 无对应 `.lproj` 词条目录而在中文界面下显示英文。归入侧栏本地化问题清单，不在 L1 修改范围内触碰。
+> - 侧栏收藏与固定分组标题使用了 `String(localized:)` 而非 `TTI18n`（[`SidebarFavoritesSectionView.swift:48`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Sidebar/SidebarFavoritesSectionView.swift#L48) 的 `String(localized: "FAVORITES")`、[`SidebarPinnedSectionView.swift:99`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Sidebar/SidebarPinnedSectionView.swift#L99) 的 `String(localized: "PINNED")`），由于主 Bundle 无对应 `.lproj` 词条目录而在中文界面下显示英文。归入侧栏本地化问题清单，不在 L1 修改范围内触碰。
 
 ---
 
 ## 2. 全部可见文案、提示与 VoiceOver 文案清单
 
-所有词条统一定义在 [`CollisionLocaleKey.swift`](file://Sources/TTZipCore/Localization/CollisionLocaleKey.swift)（命名空间 `collision.*`，可通过 `CollisionLocaleKey` 或 `L10n.Collision` 访问），并通过 [`CollisionPanelLocalization.swift`](file://../apple/Sources/TTZipApp/Views/Localization/CollisionPanelLocalization.swift) 注入 [`ForensicCollisionLocalization.swift`](file://../../infra/ttkit/Sources/TTKitUI/Omnibar/ForensicCollisionLocalization.swift)。
+所有词条统一定义在 [`CollisionLocaleKey.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/core/Sources/TTZipCore/Localization/CollisionLocaleKey.swift)（命名空间 `collision.*`，可通过 `CollisionLocaleKey` 或 `L10n.Collision` 访问），并通过 [`CollisionPanelLocalization.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Localization/CollisionPanelLocalization.swift) 注入 [`ForensicCollisionLocalization.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttkit/Sources/TTKitUI/Omnibar/ForensicCollisionLocalization.swift)。
 
 左右卡片明确采用 **“待解压项目（来自归档）”** 与 **“目标已有项目（当前位置）”** 对照表达，避免用户混淆来源与目标。
 
@@ -101,7 +101,7 @@
 ## 3. TTI18n 语言来源及实时切换方式
 
 1. **单一语言状态源**：
-   - TTZip 应用通过既存の [`AppLocalizationState.shared`](file://../apple/Sources/TTZipUI/Services/AppLocalizationState.swift)（`@Observable @MainActor`）管理当前语言 `currentLanguage: TTZipCore.AppLanguage` 与字节单位标准 `byteUnitStandard: ByteSizeStandard`，并在初始化和 `setLanguage(_:)` 时自动同步至 `TTZipLocalizationManager.shared.currentLanguage` 与 `TTI18nUI.LocalizationState.shared.setLanguage(...)`。
+   - TTZip 应用通过既存の [`AppLocalizationState.shared`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipUI/Services/AppLocalizationState.swift)（`@Observable @MainActor`）管理当前语言 `currentLanguage: TTZipCore.AppLanguage` 与字节单位标准 `byteUnitStandard: ByteSizeStandard`，并在初始化和 `setLanguage(_:)` 时自动同步至 `TTZipLocalizationManager.shared.currentLanguage` 与 `TTI18nUI.LocalizationState.shared.setLanguage(...)`。
    - 不新建任何语言设置存储、不新建语言单例、不引入主 Bundle `String(localized:)`。
 2. **词条解析与覆盖／后备优先级**：
    - `CollisionLocaleKey.resolve(for:manager:)` 先调用 `TTZipLocalizationManager.shared.string(for: self, language: targetLanguage)` 查询底层 Rust UniFFI 静态词典（`ttzipI18nGetString`）：
@@ -112,7 +112,7 @@
        - `.en` 返回英文；
        - `.ja`、`.de`、`.fr`、`.es` 按项目既有后备规则显式回退至英文译文（绝不返回 `rawKey` 或空字符串）。
 3. **弹窗打开期间实时切换语言的状态保持机制（显式注入方案）**：
-   - 采用**显式注入本地化**的接线方案：[`CollisionPanelLocalization.makeLocalization(from:)`](file://../apple/Sources/TTZipApp/Views/Localization/CollisionPanelLocalization.swift) 在 `@MainActor` 视图求值周期内读取 `@Observable` 的 `AppLocalizationState.shared.currentLanguage` 与 `byteUnitStandard`，构造不可变的 `ForensicCollisionLocalization` 值模型显式传入 `ForensicCollisionPanel`。
+   - 采用**显式注入本地化**的接线方案：[`CollisionPanelLocalization.makeLocalization(from:)`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Localization/CollisionPanelLocalization.swift) 在 `@MainActor` 视图求值周期内读取 `@Observable` 的 `AppLocalizationState.shared.currentLanguage` 与 `byteUnitStandard`，构造不可变的 `ForensicCollisionLocalization` 值模型显式传入 `ForensicCollisionPanel`。
    - 说明：虽然代码中定义了 `registerFallbackProvider()` 辅助方法，但**当前应用入口并未调用 `registerFallbackProvider()`**（定义函数不代表已注册，且不为绕开 W1 文件所有权另加隐式初始化）。因此旧调用点在未显式传入 `localization` 时仅保证兼容编译，尚未跟随应用语言，必须由 H 合入 §8.2 的显式注入补丁后才在应用内生效。
    - `ForensicCollisionPanel` 内部不包含任何因 `localization` 变化而触发 `onResolve` 或重置 `@Binding var applyToAllRemaining: Bool` 的副作用：切语言仅触发 SwiftUI 文本与格式重绘，当前冲突记录（`sourceFile`、`targetFile`、`conflictIndex`、`totalConflicts`）、复选框勾选状态与 `CheckedContinuation` 待决回调保持原状。
 
@@ -185,16 +185,16 @@
 
 ## 8. 与 W1 的窗口弹窗调用点交接方式
 
-[`MainRootOverlaysView.swift`](file://../apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 归 W1 独占修改，L1 **不直接修改该文件**，也不为绕开 W1 文件所有权另加隐式初始化。
+[`MainRootOverlaysView.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 归 W1 独占修改，L1 **不直接修改该文件**，也不为绕开 W1 文件所有权另加隐式初始化。
 
 ### 8.1 编译兼容边界与显式注入要求
-1. `ForensicCollisionPanel.init` 新增可选参数 `localization: ForensicCollisionLocalization? = nil`（默认值为 `nil`），使 W1 现有的 [`MainRootOverlaysView.swift`](file://../apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 旧调用点保持编译兼容。
+1. `ForensicCollisionPanel.init` 新增可选参数 `localization: ForensicCollisionLocalization? = nil`（默认值为 `nil`），使 W1 现有的 [`MainRootOverlaysView.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 旧调用点保持编译兼容。
 2. **重要边界说明**：当前应用入口**没有调用** `CollisionPanelLocalization.registerFallbackProvider()`（仅定义函数不代表已注册）。因此旧调用点虽然兼容编译，但**尚未跟随应用语言**。
 3. 正式接线统一采用 **§8.2 显式注入 `localization`** 的方案，待 W1 收口后由 H 合入 `MainRootOverlaysView.swift`。
 
 ### 8.2 给 H / W1 的 `MainRootOverlaysView.swift` 显式注入补丁
 
-在 W1 收口后，由 H 在 [`MainRootOverlaysView.swift`](file://../apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 中显式注入 `CollisionPanelLocalization.makeLocalization(from: l10n)`：
+在 W1 收口后，由 H 在 [`MainRootOverlaysView.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift) 中显式注入 `CollisionPanelLocalization.makeLocalization(from: l10n)`：
 
 ```diff
 --- a/products/ttzip/apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift
@@ -270,7 +270,7 @@
 
 #### B. 应用接线、集成编译与 GUI 待验收项（待 H 接线与 Q1 复验）
 1. **应用显式接线与集成编译（H 负责）**：
-   - 在 W1 收口后，由 H 将本文档 §8.2 的显式注入补丁（`localization: CollisionPanelLocalization.makeLocalization(from: l10n)`）合入 [`MainRootOverlaysView.swift`](file://../apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift)，并完成 `TTZipCore` / `TTZipApp` 全量集成编译验证。
+   - 在 W1 收口后，由 H 将本文档 §8.2 的显式注入补丁（`localization: CollisionPanelLocalization.makeLocalization(from: l10n)`）合入 [`MainRootOverlaysView.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/Main/MainRootOverlaysView.swift)，并完成 `TTZipCore` / `TTZipApp` 全量集成编译验证。
 2. **GUI 与真实解压冲突端到端复验（Q1 负责）**：
    - 在真实归档解压至已有同名文件目录时触发冲突弹窗，核验简体中文、繁体中文、英文下标题、左右卡片（“待解压项目” vs “目标已有项目”）、属性、比较角标、四个操作按钮说明、复选框与悬浮提示的真实窗口渲染效果；
    - 在弹窗开启状态下通过菜单／设置实时切换语言，确认弹窗文案即时刷新、勾选状态不丢失、解压任务不重入；

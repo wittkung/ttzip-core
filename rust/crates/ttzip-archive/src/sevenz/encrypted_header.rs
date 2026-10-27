@@ -686,9 +686,11 @@ mod tests {
 
     #[test]
     fn test_fixture_encrypted_aes256_7z() {
-        let p = std::path::Path::new("$HOME/Documents/ttzip_fixtures/encrypted_aes256.7z");
+        let Some(p) = std::env::var_os("TTZIP_ENCRYPTED_7Z_FIXTURE").map(std::path::PathBuf::from) else {
+            return;
+        };
         if !p.exists() { return; }
-        let data = std::fs::read(p).unwrap();
+        let data = std::fs::read(&p).unwrap();
         let res = EncodedHeaderDecoder::default().decode(&data, Some("testpassword123"));
         assert!(res.is_ok());
     }

@@ -8,7 +8,7 @@ description = "High-throughput, SIMD-accelerated archive and compression engine 
 
 [lib]
 name = "_ttzip"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 test = false
 
 [dependencies]
@@ -16,8 +16,8 @@ ttzip-engine = { path = "../ttzip-engine", version = "0.1.0" }
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
 libc = "0.2"
 
-[lints]
-workspace = true
-
 [build-dependencies]
 pyo3-build-config = "0.22"
+
+[lints]
+workspace = true

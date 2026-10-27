@@ -9,7 +9,7 @@
 
 ## 1. 核心架构方针与边界确认
 
-根据 CTO 架构决策与 [`docs/开源库整理.md`](file://../docs/%E5%BC%80%E6%BA%90%E5%BA%93%E6%95%B4%E7%90%86.md) 确立的铁律：
+根据 CTO 架构决策与 [`docs/开源库整理.md`](file:///Users/kevintung/Documents/dev/TTZip/docs/%E5%BC%80%E6%BA%90%E5%BA%93%E6%95%B4%E7%90%86.md) 确立的铁律：
 1. **底层编解码算法（Core Codecs）**：
    - 坚决不使用未经工业级广泛验证的黑盒自研原型算法，**100% 直调全球最成熟、最快速的工业级原生 SOTA 库**：
      - **Deflate (ZIP / GZ)**：`ebiggers/libdeflate`（平铺 L1D 哈希表、12 位直接无分支查表解码器）；

@@ -69,25 +69,25 @@ This plan executes a comprehensive institutional upgrade to TTZip's repository g
 ## Planned Component Modifications
 
 ### Component 1: GitHub Governance & Issue / PR Templates (`.github/`)
-- **[NEW]** [`.github/ISSUE_TEMPLATE/bug_report.yml`](file://../.github/ISSUE_TEMPLATE/bug_report.yml): Structured Bug Report form with hardware architecture, format dropdown, macOS version, and reproduction steps.
-- **[NEW]** [`.github/ISSUE_TEMPLATE/performance_regression.yml`](file://../.github/ISSUE_TEMPLATE/performance_regression.yml): Dedicated Performance Regression form requiring baseline vs observed MB/s, delta $\Delta\%$, hardware profile, and CLI repro command.
-- **[NEW]** [`.github/ISSUE_TEMPLATE/feature_request.yml`](file://../.github/ISSUE_TEMPLATE/feature_request.yml): Feature Request and Architecture Proposal form with hot-path allocation impact and systems design checklist.
-- **[NEW]** [`.github/ISSUE_TEMPLATE/config.yml`](file://../.github/ISSUE_TEMPLATE/config.yml): Global issue form configuration disabling blank issues and linking to security advisories and discussions.
-- **[NEW]** [`.github/pull_request_template.md`](file://../.github/pull_request_template.md): Comprehensive PR template with 5-stage verification checklist (Performance Floors, Swift 6 Concurrency, ASan/TSan, C Bridge Safety, Dual-Channel Compatibility) and differential benchmark table.
-- **[MODIFY]** [`.github/workflows/ci-cd.yml`](file://../.github/workflows/ci-cd.yml): Confirm and harden `workflow_dispatch` manual-only trigger to guarantee 0 automatic cloud runner minute consumption.
+- **[NEW]** [`.github/ISSUE_TEMPLATE/bug_report.yml`](file:///Users/kevintung/Documents/dev/TTZip/.github/ISSUE_TEMPLATE/bug_report.yml): Structured Bug Report form with hardware architecture, format dropdown, macOS version, and reproduction steps.
+- **[NEW]** [`.github/ISSUE_TEMPLATE/performance_regression.yml`](file:///Users/kevintung/Documents/dev/TTZip/.github/ISSUE_TEMPLATE/performance_regression.yml): Dedicated Performance Regression form requiring baseline vs observed MB/s, delta $\Delta\%$, hardware profile, and CLI repro command.
+- **[NEW]** [`.github/ISSUE_TEMPLATE/feature_request.yml`](file:///Users/kevintung/Documents/dev/TTZip/.github/ISSUE_TEMPLATE/feature_request.yml): Feature Request and Architecture Proposal form with hot-path allocation impact and systems design checklist.
+- **[NEW]** [`.github/ISSUE_TEMPLATE/config.yml`](file:///Users/kevintung/Documents/dev/TTZip/.github/ISSUE_TEMPLATE/config.yml): Global issue form configuration disabling blank issues and linking to security advisories and discussions.
+- **[NEW]** [`.github/pull_request_template.md`](file:///Users/kevintung/Documents/dev/TTZip/.github/pull_request_template.md): Comprehensive PR template with 5-stage verification checklist (Performance Floors, Swift 6 Concurrency, ASan/TSan, C Bridge Safety, Dual-Channel Compatibility) and differential benchmark table.
+- **[MODIFY]** [`.github/workflows/ci-cd.yml`](file:///Users/kevintung/Documents/dev/TTZip/.github/workflows/ci-cd.yml): Confirm and harden `workflow_dispatch` manual-only trigger to guarantee 0 automatic cloud runner minute consumption.
 
 ### Component 2: Repository Cleanliness, Git Ignore & Attributes (`.gitignore`, `.gitattributes`)
-- **[MODIFY]** [`.gitignore`](file://../.gitignore): Comprehensive coverage for SwiftPM (`.build_*/`), Xcode (`DerivedData`, `xcuserdata`), build distributions (`build/`, `dist/`, `build_dist/`, `build_app/`), scratch/benchmark output (`scratch/`, `reports/`, `payload/`, `scratch_bench/`, `*.bin`, `*.tbb`), and vendor upstream clones (`Vendor/*-upstream/`, `Vendor/turbobench/`, `Vendor/worktrees/`).
-- **[NEW]** [`.gitattributes`](file://../.gitattributes): Global LF line normalization, binary file declarations, and GitHub Linguist classification (`linguist-vendored`, `linguist-generated`, `linguist-documentation`).
+- **[MODIFY]** [`.gitignore`](file:///Users/kevintung/Documents/dev/TTZip/.gitignore): Comprehensive coverage for SwiftPM (`.build_*/`), Xcode (`DerivedData`, `xcuserdata`), build distributions (`build/`, `dist/`, `build_dist/`, `build_app/`), scratch/benchmark output (`scratch/`, `reports/`, `payload/`, `scratch_bench/`, `*.bin`, `*.tbb`), and vendor upstream clones (`Vendor/*-upstream/`, `Vendor/turbobench/`, `Vendor/worktrees/`).
+- **[NEW]** [`.gitattributes`](file:///Users/kevintung/Documents/dev/TTZip/.gitattributes): Global LF line normalization, binary file declarations, and GitHub Linguist classification (`linguist-vendored`, `linguist-generated`, `linguist-documentation`).
 
 ### Component 3: Community Governance & Documentation (`CONTRIBUTING.md`, `docs/governance/`)
-- **[MODIFY]** [`CONTRIBUTING.md`](file://../CONTRIBUTING.md): Restructure into comprehensive guide covering Branching Strategy, Conventional Commits, local test/build commands, Performance Invariants, and PR verification rules.
-- **[NEW]** [`docs/governance/BRANCHING_STRATEGY.md`](file://../docs/governance/BRANCHING_STRATEGY.md): Detailed Git branching taxonomy, commit prefix conventions, and upstream patch isolation workflows.
-- **[MODIFY]** [`SECURITY.md`](file://../SECURITY.md): Update reporting instructions, supported versions matrix, and vulnerability handling timeline.
-- **[MODIFY]** [`CODE_OF_CONDUCT.md`](file://../CODE_OF_CONDUCT.md): Align with standard Contributor Covenant v2.1.
+- **[MODIFY]** [`CONTRIBUTING.md`](file:///Users/kevintung/Documents/dev/TTZip/CONTRIBUTING.md): Restructure into comprehensive guide covering Branching Strategy, Conventional Commits, local test/build commands, Performance Invariants, and PR verification rules.
+- **[NEW]** [`docs/governance/BRANCHING_STRATEGY.md`](file:///Users/kevintung/Documents/dev/TTZip/docs/governance/BRANCHING_STRATEGY.md): Detailed Git branching taxonomy, commit prefix conventions, and upstream patch isolation workflows.
+- **[MODIFY]** [`SECURITY.md`](file:///Users/kevintung/Documents/dev/TTZip/SECURITY.md): Update reporting instructions, supported versions matrix, and vulnerability handling timeline.
+- **[MODIFY]** [`CODE_OF_CONDUCT.md`](file:///Users/kevintung/Documents/dev/TTZip/CODE_OF_CONDUCT.md): Align with standard Contributor Covenant v2.1.
 
 ### Component 4: Local Automation & Pre-Flight Quality Gate (`scripts/`)
-- **[NEW]** [`scripts/pre_flight_check.sh`](file://../scripts/pre_flight_check.sh): High-performance standalone local pre-flight script executing Repo Hygiene, Invariant Linting, SwiftLint, Parallel Unit Tests, and Core Performance Floor Gate with formatted summary reporting.
+- **[NEW]** [`scripts/pre_flight_check.sh`](file:///Users/kevintung/Documents/dev/TTZip/scripts/pre_flight_check.sh): High-performance standalone local pre-flight script executing Repo Hygiene, Invariant Linting, SwiftLint, Parallel Unit Tests, and Core Performance Floor Gate with formatted summary reporting.
 
 ---
 

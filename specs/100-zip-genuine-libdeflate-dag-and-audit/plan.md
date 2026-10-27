@@ -9,17 +9,17 @@
 ## Proposed Changes
 
 ### Phase 1: Core C Bridge Fixes
-1. **[MODIFY] [`Sources/CTTZipBridge/CTTZipStreamCoder.c`](file://../Sources/CTTZipBridge/CTTZipStreamCoder.c)**:
+1. **[MODIFY] [`Sources/CTTZipBridge/CTTZipStreamCoder.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c)**:
    - Remove `(level == 6 ? 4 : level)` tampering.
    - Refactor `ttzip_get_tls_compressor` to clean 1:1 level mapping $1..12$.
    - Refactor `ttzip_raw_deflate_block_compress` to use pure `libdeflate_deflate_compress`.
-2. **[MODIFY] [`Sources/CTTZipBridge/CTTZipExtract.c`](file://../Sources/CTTZipBridge/CTTZipExtract.c)**:
+2. **[MODIFY] [`Sources/CTTZipBridge/CTTZipExtract.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipExtract.c)**:
    - Fix `total_entries` to `uint64_t` (resolve ZIP64 65535+ file truncation).
-3. **[MODIFY] [`Sources/CTTZipBridge/CTTZipBridge_GzParallel.c`](file://../Sources/CTTZipBridge/CTTZipBridge_GzParallel.c)**:
+3. **[MODIFY] [`Sources/CTTZipBridge/CTTZipBridge_GzParallel.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_GzParallel.c)**:
    - Fix `bz_level` and `z_level` parameter clamping.
-4. **[MODIFY] [`Sources/CTTZipBridge/CTTZipBridge_Snappy.c`](file://../Sources/CTTZipBridge/CTTZipBridge_Snappy.c)**:
+4. **[MODIFY] [`Sources/CTTZipBridge/CTTZipBridge_Snappy.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_Snappy.c)**:
    - Add `dispatch_once` thread-safe initialization for CRC32C table.
-5. **[MODIFY] [`Sources/TTZipCore/ArchiveWriter+Dispatch.swift`](file://../Sources/TTZipCore/ArchiveWriter+Dispatch.swift)**:
+5. **[MODIFY] [`Sources/TTZipCore/ArchiveWriter+Dispatch.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveWriter+Dispatch.swift)**:
    - Fix fallback branch to pass actual `Int32(level.rawValue)` instead of `advancedOptions.zstdLevel`.
 
 ### Phase 2: Verification & Pareto Re-run

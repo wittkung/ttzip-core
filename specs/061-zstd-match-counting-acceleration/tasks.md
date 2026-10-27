@@ -1,7 +1,7 @@
 # Task Breakdown: Zstandard Match Counting Acceleration & Dual-Track Execution
 
 **Feature**: `061-zstd-match-counting-acceleration`
-**Spec**: [spec.md](file://../specs/061-zstd-match-counting-acceleration/spec.md) | **Plan**: [plan.md](file://../specs/061-zstd-match-counting-acceleration/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/plan.md)
 
 ---
 

@@ -35,7 +35,6 @@ pub mod sort;
 pub mod catalog;
 pub mod simd_dot;
 pub mod semantic_search;
-pub mod path_security;
 
 pub use archive_format::*;
 pub use error_chain::ErrorChain;

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 #ifndef TTWORKSPACE_TREEMAP_CABI_H
 #define TTWORKSPACE_TREEMAP_CABI_H

@@ -2,7 +2,7 @@
 
 **Purpose**: 规范需求质量矩阵与就绪审查  
 **Created**: 2026-08-18  
-**Feature**: [spec.md](file://../specs/083-snappy-native-engine-analysis-and-integration/spec.md)  
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/083-snappy-native-engine-analysis-and-integration/spec.md)  
 **Review Ownership**: 架构师与需求审查员  
 **Marker Semantics**: `[x]` 表示该需求质量维度已审查并确认就绪。
 

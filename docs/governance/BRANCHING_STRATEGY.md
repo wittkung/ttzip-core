@@ -168,4 +168,4 @@ Commit 3: test:    Golden oracle verification and differential regression tests
    ./scripts/pre_flight_check.sh
    ```
 4. **Submitting the PR**:
-   Follow the PR template at [`.github/pull_request_template.md`](file://../.github/pull_request_template.md) and check off all 5 mandatory verification gates.
+   Follow the PR template at [`.github/pull_request_template.md`](file:///Users/kevintung/Documents/dev/TTZip/.github/pull_request_template.md) and check off all 5 mandatory verification gates.

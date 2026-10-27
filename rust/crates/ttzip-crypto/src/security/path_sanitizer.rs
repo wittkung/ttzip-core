@@ -73,7 +73,7 @@ impl PathSanitizationResult {
             && !self.is_windows_reserved
             && self.stripped_ads.is_none()
             && !self.normalized_path.is_empty()
-            && ttzip_types::path_security::path::is_safe_relative_path(&self.normalized_path)
+            && validate_archive_path_slice(self.normalized_path.as_bytes()).is_ok()
     }
 }
 
@@ -81,14 +81,59 @@ impl PathSanitizationResult {
 #[inline]
 #[must_use]
 pub fn is_windows_reserved_device_name(segment: &str) -> bool {
-    ttzip_types::path_security::device::is_windows_reserved_device_name(segment)
+    is_windows_reserved_device_name_slice(segment.as_bytes())
 }
 
 /// Zero-allocation slice check for Windows DOS reserved device names.
 #[inline]
 #[must_use]
 pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
-    ttzip_types::path_security::device::is_windows_reserved_device_name_bytes(seg)
+    if seg.is_empty() {
+        return false;
+    }
+
+    // Windows disallows filenames/directories consisting purely of dots (>= 3 dots)
+    if seg.len() >= 3 && seg.iter().all(|&b| b == b'.') {
+        return true;
+    }
+
+    if seg.len() >= 13 && seg[..13].eq_ignore_ascii_case(b"PHYSICALDRIVE") {
+        return true;
+    }
+
+    // Stem before first dot or colon
+    let stem = match seg.iter().position(|&b| b == b'.' || b == b':') {
+        Some(idx) => &seg[..idx],
+        None => seg,
+    };
+
+    // Trim trailing spaces and dots
+    let mut end = stem.len();
+    while end > 0 && (stem[end - 1] == b' ' || stem[end - 1] == b'.') {
+        end -= 1;
+    }
+    let trimmed = &stem[..end];
+
+    match trimmed.len() {
+        3 => {
+            trimmed.eq_ignore_ascii_case(b"CON")
+                || trimmed.eq_ignore_ascii_case(b"PRN")
+                || trimmed.eq_ignore_ascii_case(b"AUX")
+                || trimmed.eq_ignore_ascii_case(b"NUL")
+        }
+        4 => {
+            let prefix = &trimmed[..3];
+            let digit = trimmed[3];
+            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
+                && digit.is_ascii_digit()
+        }
+        6 => {
+            trimmed.eq_ignore_ascii_case(b"CLOCK$")
+                || trimmed.eq_ignore_ascii_case(b"CONIN$")
+        }
+        7 => trimmed.eq_ignore_ascii_case(b"CONOUT$"),
+        _ => false,
+    }
 }
 
 /// Zero-allocation slice check for URL-encoded traversal patterns (%2e%2e).
@@ -113,7 +158,7 @@ fn contains_encoded_traversal_slice(seg: &[u8]) -> bool {
 ///
 /// Ensures strict resistance against Zip-Slip, path traversal, null-byte injection,
 /// whitespace bypasses, absolute paths, drive letters, UNC paths, NTFS ADS streams,
-/// and Windows DOS reserved device names by delegating core validation to `ttzip_types::path_security`.
+/// and Windows DOS reserved device names.
 #[inline]
 pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> {
     // 1. Null-byte injection check
@@ -140,6 +185,8 @@ pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> 
     // 3. Absolute path, UNC, and drive letter detection
     if trimmed.starts_with(b"/")
         || trimmed.starts_with(b"\\")
+        || trimmed.ends_with(b"/")
+        || trimmed.ends_with(b"\\")
         || trimmed.starts_with(b"//")
         || trimmed.starts_with(b"\\\\")
         || (trimmed.len() >= 2 && trimmed[0].is_ascii_alphabetic() && trimmed[1] == b':')
@@ -162,26 +209,39 @@ pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> 
         return Err(PathSecurityError::AlternateDataStream);
     }
 
-    // 6. Windows reserved device check
+    // 6. Zero-allocation segment-by-segment security validation
+    let mut valid_components_seen = false;
     for seg in trimmed.split(|&b| b == b'/' || b == b'\\') {
+        if seg.is_empty() {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        if seg == b"." {
+            continue;
+        }
+        if seg == b".." {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
         if is_windows_reserved_device_name_slice(seg) {
             return Err(PathSecurityError::ReservedDeviceName);
         }
+        if seg
+            .iter()
+            .any(|&b| b <= 0x1F || matches!(b, b'<' | b'>' | b'"' | b'|' | b'?' | b'*'))
+        {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        if seg.ends_with(b" ") || (seg.ends_with(b".") && seg != b"._.") {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        valid_components_seen = true;
     }
 
-    let s = std::str::from_utf8(trimmed).map_err(|_| PathSecurityError::DirectoryTraversal)?;
+    if !valid_components_seen {
+        return Err(PathSecurityError::DirectoryTraversal);
+    }
 
-    ttzip_types::path_security::path::validate_safe_relative_path(s).map_err(|err| match err {
-        ttzip_types::path_security::PathSecurityError::Empty => PathSecurityError::EmptyPath,
-        ttzip_types::path_security::PathSecurityError::LeadingSlash
-        | ttzip_types::path_security::PathSecurityError::TrailingSlash => PathSecurityError::AbsolutePath,
-        ttzip_types::path_security::PathSecurityError::ParentTraversal
-        | ttzip_types::path_security::PathSecurityError::EmptyComponent
-        | ttzip_types::path_security::PathSecurityError::NoNormalComponent => PathSecurityError::DirectoryTraversal,
-        ttzip_types::path_security::PathSecurityError::WindowsReservedDevice => PathSecurityError::ReservedDeviceName,
-        ttzip_types::path_security::PathSecurityError::ForbiddenChar(b':') => PathSecurityError::AlternateDataStream,
-        _ => PathSecurityError::DirectoryTraversal,
-    })
+    let _ = std::str::from_utf8(trimmed).map_err(|_| PathSecurityError::DirectoryTraversal)?;
+    Ok(())
 }
 
 /// Normalizes Unicode string to NFC form with zero-allocation fast-paths for ASCII and pre-normalized inputs.

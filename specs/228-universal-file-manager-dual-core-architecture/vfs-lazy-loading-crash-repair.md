@@ -127,7 +127,7 @@ All modifications are confined to the VFS1 files plus the explicit value-carried
 ## 5. Reproduction Archive SHA-256 Checksums & Verification Results
 
 ### 5.1 Deterministic Reproduction Archives
-Generated in `$HOME/.gemini/antigravity/brain/5130e40d-9051-4be5-9608-2b0b93e94bcf/scratch/` and synthesized in-memory by `uniffi_vfs_session_tests`:
+Generated in `/Users/kevintung/.gemini/antigravity/brain/5130e40d-9051-4be5-9608-2b0b93e94bcf/scratch/` and synthesized in-memory by `uniffi_vfs_session_tests`:
 
 | Archive File | Purpose | SHA-256 |
 | :--- | :--- | :--- |

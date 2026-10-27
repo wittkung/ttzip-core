@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 #ifndef TTZIP_PROVENANCE_CONTRACT_H
 #define TTZIP_PROVENANCE_CONTRACT_H

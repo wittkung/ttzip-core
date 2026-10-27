@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-17
-**Feature**: [spec.md](file://../specs/054-codebase-codereview/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/spec.md)
 
 ## Content Quality
 
@@ -32,5 +32,5 @@
 ## Notes
 
 - Spec is validated. All 5 subagents have completed exhaustive code review across the entire codebase.
-- Comprehensive report generated at [code_review_report.md](file://../specs/054-codebase-codereview/code_review_report.md).
+- Comprehensive report generated at [code_review_report.md](file:///Users/kevintung/Documents/dev/TTZip/specs/054-codebase-codereview/code_review_report.md).
 - Total of 30 `[MUST]` blockers, 27 `[SHOULD]` recommendations, and 20 `[PRAISE]` architectural highlights identified. Ready for next workflow phase.

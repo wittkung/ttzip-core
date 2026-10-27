@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to tasks
 **Created**: 2026-08-22
-**Feature**: [spec.md](file://../specs/203-swift-codebase-slimming/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/203-swift-codebase-slimming/spec.md)
 
 ## Content Quality
 

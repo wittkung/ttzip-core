@@ -1,6 +1,6 @@
 # Research Notes: ZIP Tier Rebalancing and Intermediate Pareto Frontier Bridge
 
-**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
+**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
 **Date**: 2026-08-19  
 **Status**: Completed  
 
@@ -36,9 +36,9 @@ This document records the grounded empirical research and architectural gap anal
   - *Alternative 1: libdeflate Level 9 (`deflateLevel = 9, zopfliIterations = 0`)*: Yields 3.12 MB @ 320 MB/s. While fast, it misses the Near-Optimal DP parser benefit of L12, leaving a larger gap to Tier 5 (0.25 MB).
   - *Alternative 2: Zopfli 1-Iteration (`deflateLevel = 12, zopfliIterations = 1`)*: Throughput drops to 27 MB/s, heavily overlapping with Tier 5 (20.4 MB/s) and failing to satisfy the >= 150 MB/s interactive responsiveness gate.
 - **Source**:
-  - [`Sources/TTZipCore/Zip/ZipCompressionProfile.swift:L30-L188`](file://../Sources/TTZipCore/Zip/ZipCompressionProfile.swift#L30-L188)
-  - [`Sources/CTTZipBridge/ttzip_zopfli_engine.c:L155-L255`](file://../Sources/CTTZipBridge/ttzip_zopfli_engine.c#L155-L255)
-  - [`Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift:L53-L115`](file://../Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift#L53-L115)
+  - [`Sources/TTZipCore/Zip/ZipCompressionProfile.swift:L30-L188`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipCompressionProfile.swift#L30-L188)
+  - [`Sources/CTTZipBridge/ttzip_zopfli_engine.c:L155-L255`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_zopfli_engine.c#L155-L255)
+  - [`Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift:L53-L115`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift#L53-L115)
 
 ---
 
@@ -61,7 +61,7 @@ This document records the grounded empirical research and architectural gap anal
 - **Alternatives Considered**:
   - *Alternative: Retain 9 or 10 levels*: Rejected because 8 tiers (0..7) is the established project invariant and Mac UI / CLI standard; adding redundant intermediate levels creates configuration creep without meaningful Pareto gain.
 - **Source**:
-  - [`Sources/TTZipCore/Zip/ZipCompressionProfile.swift`](file://../Sources/TTZipCore/Zip/ZipCompressionProfile.swift)
-  - [`Sources/TTZipCore/ArchiveWriter+Dispatch.swift:L100`](file://../Sources/TTZipCore/ArchiveWriter+Dispatch.swift#L100)
-  - [`Sources/CTTZipBridge/ttzip_zopfli_engine.c:L95-256`](file://../Sources/CTTZipBridge/ttzip_zopfli_engine.c#L95-L256)
-  - [`Sources/TTZipApp/Views/Components/CompressIntegratedConfigSectionView.swift:L320-335`](file://../Sources/TTZipApp/Views/Components/CompressIntegratedConfigSectionView.swift#L320-L335)
+  - [`Sources/TTZipCore/Zip/ZipCompressionProfile.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipCompressionProfile.swift)
+  - [`Sources/TTZipCore/ArchiveWriter+Dispatch.swift:L100`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveWriter+Dispatch.swift#L100)
+  - [`Sources/CTTZipBridge/ttzip_zopfli_engine.c:L95-256`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_zopfli_engine.c#L95-L256)
+  - [`Sources/TTZipApp/Views/Components/CompressIntegratedConfigSectionView.swift:L320-335`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipApp/Views/Components/CompressIntegratedConfigSectionView.swift#L320-L335)

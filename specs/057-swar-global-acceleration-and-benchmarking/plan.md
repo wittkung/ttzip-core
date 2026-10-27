@@ -33,9 +33,9 @@
 ## Proposed Component Changes
 
 ### CTTZipBridge
-* **[MODIFY]** [`Sources/CTTZipBridge/CTTZipUtils.c`](file://../Sources/CTTZipBridge/CTTZipUtils.c)
+* **[MODIFY]** [`Sources/CTTZipBridge/CTTZipUtils.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipUtils.c)
   * 在 `ttzip_detect_encoding_fast` 中引入 64-bit SWAR 8 字节 ASCII 快速扫描。
-* **[MODIFY]** [`Sources/CTTZipBridge/ttzip_native_archive.c`](file://../Sources/CTTZipBridge/ttzip_native_archive.c)
+* **[MODIFY]** [`Sources/CTTZipBridge/ttzip_native_archive.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_native_archive.c)
   * 在 `ttzip_detect_format_from_header` 中优化 7z、TAR、XZ、ZSTD、LZ4 的魔数直接比对。
 
 ### Tests

@@ -3,8 +3,8 @@
 **Feature Directory**: `specs/036-libarchive-standards-architecture-workflow-synthesis`  
 **Date**: 2026-08-16  
 **Status**: Ready for Implementation  
-**Spec**: [spec.md](file://../specs/036-libarchive-standards-architecture-workflow-synthesis/spec.md)  
-**Plan**: [plan.md](file://../specs/036-libarchive-standards-architecture-workflow-synthesis/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/036-libarchive-standards-architecture-workflow-synthesis/spec.md)  
+**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/036-libarchive-standards-architecture-workflow-synthesis/plan.md)
 
 ---
 

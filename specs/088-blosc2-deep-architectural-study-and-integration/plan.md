@@ -1,6 +1,6 @@
 # Implementation Plan: Blosc2 Deep Architectural Study and Meta-Compression Integration
 
-**Branch**: `088-blosc2-deep-architectural-study-and-integration` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/088-blosc2-deep-architectural-study-and-integration/spec.md)
+**Branch**: `088-blosc2-deep-architectural-study-and-integration` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/088-blosc2-deep-architectural-study-and-integration/spec.md)
 
 **Input**: Feature specification from `specs/088-blosc2-deep-architectural-study-and-integration/spec.md`
 

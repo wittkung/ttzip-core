@@ -94,16 +94,22 @@ pub fn fixture_corpus() -> &'static FixtureCorpus {
             eprintln!("MANUAL libarchive fixture source: {} (not managed acceptance)", root.display());
             return FixtureCorpus { root, managed: false, filenames: Vec::new() };
         }
-        let root = std::env::var_os("TTZIP_LIBARCHIVE_FIXTURE_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                let local_tp = manifest_dir.join("../../third_party/testdata/libarchive-corrupted");
-                if local_tp.join("manifest.json").exists() {
-                    return local_tp;
+        let root = if let Some(dir) = std::env::var_os("TTZIP_LIBARCHIVE_FIXTURE_DIR") {
+            PathBuf::from(dir)
+        } else {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let mut found = None;
+            let mut cur = Some(manifest_dir.as_path());
+            while let Some(d) = cur {
+                let candidate = d.join("third_party/testdata/libarchive-corrupted");
+                if candidate.join("manifest.json").is_file() {
+                    found = Some(candidate);
+                    break;
                 }
-                panic!("BUILD must provide TTZIP_LIBARCHIVE_FIXTURE_DIR or repository-local third_party/testdata/libarchive-corrupted; personal HOME/compile directories are never probed");
-            });
+                cur = d.parent();
+            }
+            found.expect("BUILD must provide TTZIP_LIBARCHIVE_FIXTURE_DIR or repository third_party/testdata/libarchive-corrupted; personal HOME/compile directories are never probed")
+        };
         let data = fs::read(root.join("manifest.json")).expect("required managed fixture manifest");
         let manifest: serde_json::Value = serde_json::from_slice(&data).expect("fixture manifest JSON");
         assert_eq!(manifest["pinned_commit"], "03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3");

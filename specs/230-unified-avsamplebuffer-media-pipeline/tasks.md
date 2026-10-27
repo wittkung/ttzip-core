@@ -8,19 +8,19 @@
 
 ## Phase 1: Setup & Hermetic Third-Party Infrastructure
 
-- [ ] T001 Add `bazel_dep(name = "rules_foreign_cc", version = "0.13.0")` to [MODULE.bazel](file://../../MODULE.bazel) and register foreign toolchains.
-- [ ] T002 [P] Create hermetic Bazel build definition for minimal whitelist FFmpeg (`libavformat`, `libavutil`, `libavcodec` headers) in [third_party/ffmpeg/BUILD.bazel](file://../../third_party/ffmpeg/BUILD.bazel).
-- [ ] T003 [P] Create hermetic Bazel build definition for `libdav1d` in [third_party/dav1d/BUILD.bazel](file://../../third_party/dav1d/BUILD.bazel).
-- [x] T004 [P] Implement C-ABI header and Swift modulemap for the whitelist demuxer bridge in [infra/ttmedia/include/ttmedia_demux.h](file://../../infra/ttmedia/include/ttmedia_demux.h).
+- [ ] T001 Add `bazel_dep(name = "rules_foreign_cc", version = "0.13.0")` to [MODULE.bazel](file:///Users/kevintung/Documents/dev/metastudyline/source/MODULE.bazel) and register foreign toolchains.
+- [ ] T002 [P] Create hermetic Bazel build definition for minimal whitelist FFmpeg (`libavformat`, `libavutil`, `libavcodec` headers) in [third_party/ffmpeg/BUILD.bazel](file:///Users/kevintung/Documents/dev/metastudyline/source/third_party/ffmpeg/BUILD.bazel).
+- [ ] T003 [P] Create hermetic Bazel build definition for `libdav1d` in [third_party/dav1d/BUILD.bazel](file:///Users/kevintung/Documents/dev/metastudyline/source/third_party/dav1d/BUILD.bazel).
+- [x] T004 [P] Implement C-ABI header and Swift modulemap for the whitelist demuxer bridge in [infra/ttmedia/include/ttmedia_demux.h](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/include/ttmedia_demux.h).
 - [ ] T005 Verify zero Homebrew dynamic library linkage via `otool -L` on compiled static/shared targets in `third_party/ffmpeg`.
 
 ---
 
 ## Phase 2: Foundational Data Plane & IPC Contracts
 
-- [x] T006 Implement CoreMedia DTO structures (`MediaPacketDTO`, `VideoFormatParameters`, `AudioFormatParameters`, `MediaType`, `VideoCodec`, `AudioCodec`) in [infra/ttmedia/Sources/TTMediaKit/Domain/MediaPacketDTO.swift](file://../../infra/ttmedia/Sources/TTMediaKit/Domain/MediaPacketDTO.swift).
-- [x] T007 Implement the XPC communication protocol interface conforming to [contracts/ttmedia-worker.schema.json](file://specs/230-unified-avsamplebuffer-media-pipeline/contracts/ttmedia-worker.schema.json) in [infra/ttmedia/Sources/TTMediaKit/Services/TTMediaWorkerProtocol.swift](file://../../infra/ttmedia/Sources/TTMediaKit/Services/TTMediaWorkerProtocol.swift).
-- [x] T008 [P] Implement in-place Annex-B to AVCC/HVCC NALU converter (4-byte length prefix substitution) in [infra/ttmedia/src/demux/annexb.rs](file://../../infra/ttmedia/src/demux/annexb.rs) with unit tests in `tests/test_annexb.rs`.
+- [x] T006 Implement CoreMedia DTO structures (`MediaPacketDTO`, `VideoFormatParameters`, `AudioFormatParameters`, `MediaType`, `VideoCodec`, `AudioCodec`) in [infra/ttmedia/Sources/TTMediaKit/Domain/MediaPacketDTO.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/Domain/MediaPacketDTO.swift).
+- [x] T007 Implement the XPC communication protocol interface conforming to [contracts/ttmedia-worker.schema.json](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/core/specs/230-unified-avsamplebuffer-media-pipeline/contracts/ttmedia-worker.schema.json) in [infra/ttmedia/Sources/TTMediaKit/Services/TTMediaWorkerProtocol.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/Services/TTMediaWorkerProtocol.swift).
+- [x] T008 [P] Implement in-place Annex-B to AVCC/HVCC NALU converter (4-byte length prefix substitution) in [infra/ttmedia/src/demux/annexb.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/demux/annexb.rs) with unit tests in `tests/test_annexb.rs`.
 
 ---
 
@@ -28,9 +28,9 @@
 
 **Goal**: Deliver instant media preview for MKV and MP4 files on clean macOS machines with 0 Homebrew dependencies and 0 crashes.
 
-- [x] T009 [US1] Scaffold standalone `ttmedia-worker` daemon binary target with App Sandbox entitlements in [infra/ttmedia/BUILD.bazel](file://../../infra/ttmedia/BUILD.bazel) and [infra/ttmedia/src/main.rs](file://../../infra/ttmedia/src/main.rs).
-- [x] T010 [US1] Implement whitelist `libavformat` container demuxer loop for MKV, WebM, and MP4 in [infra/ttmedia/src/demux/format_demuxer.rs](file://../../infra/ttmedia/src/demux/format_demuxer.rs).
-- [x] T011 [US1] Implement XPC service connection manager in host app [infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift](file://../../infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift).
+- [x] T009 [US1] Scaffold standalone `ttmedia-worker` daemon binary target with App Sandbox entitlements in [infra/ttmedia/BUILD.bazel](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/BUILD.bazel) and [infra/ttmedia/src/main.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/main.rs).
+- [x] T010 [US1] Implement whitelist `libavformat` container demuxer loop for MKV, WebM, and MP4 in [infra/ttmedia/src/demux/format_demuxer.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/demux/format_demuxer.rs).
+- [x] T011 [US1] Implement XPC service connection manager in host app [infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift).
 - [x] T012 [US1] Integration test asserting `ttmedia-worker` parses local MKV files and delivers packets over XPC with zero Homebrew dependencies.
 
 ---
@@ -39,12 +39,12 @@
 
 **Goal**: Implement host `AVSampleBufferDisplayLayer` and `AVSampleBufferAudioRenderer` synchronized by `AVSampleBufferRenderSynchronizer` (`CMTimebase` SSOT).
 
-- [x] T013 [US2] Implement `CMSampleBuffer` reconstruction engine in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/SampleBufferReconstructor.swift](file://../../infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/SampleBufferReconstructor.swift) using `CMVideoFormatDescriptionCreateFromH264ParameterSets` and `CMBlockBuffer`.
-- [x] T014 [US2] Wire `AVSampleBufferAudioRenderer` and CoreAudio hardware output into `AVSampleBufferRenderSynchronizer` in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferAudioPipeline.swift](file://../../infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferAudioPipeline.swift).
-- [x] T015 [US2] Implement non-keyframe seek with preroll frame suppression (`kCMSampleAttachmentKey_DoNotDisplay = true`) in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferPlayerCoordinator.swift](file://../../infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferPlayerCoordinator.swift).
+- [x] T013 [US2] Implement `CMSampleBuffer` reconstruction engine in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/SampleBufferReconstructor.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/SampleBufferReconstructor.swift) using `CMVideoFormatDescriptionCreateFromH264ParameterSets` and `CMBlockBuffer`.
+- [x] T014 [US2] Wire `AVSampleBufferAudioRenderer` and CoreAudio hardware output into `AVSampleBufferRenderSynchronizer` in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferAudioPipeline.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferAudioPipeline.swift).
+- [x] T015 [US2] Implement non-keyframe seek with preroll frame suppression (`kCMSampleAttachmentKey_DoNotDisplay = true`) in [infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferPlayerCoordinator.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/UI/Video/AVSampleBuffer/AVSampleBufferPlayerCoordinator.swift).
 - [x] T016 [US2] Implement native macOS Picture-in-Picture (`AVPictureInPictureController`) attached to `AVSampleBufferDisplayLayer`.
-- [x] T017 [US2] Update `UnifiedVideoPlayerView` in [infra/ttmedia/Sources/TTMediaKit/UI/Video/UnifiedVideoPlayerView.swift](file://../../infra/ttmedia/Sources/TTMediaKit/UI/Video/UnifiedVideoPlayerView.swift) to route all supported containers (MP4, MOV, MKV, WebM, AVI, TS) through the AVSampleBuffer pipeline.
-- [x] T018 [US2] Unit and integration tests in [infra/ttmedia/Tests/TTMediaKitTests/AVSampleBufferPresentationTests.swift](file://../../infra/ttmedia/Tests/TTMediaKitTests/AVSampleBufferPresentationTests.swift) verifying lip-sync drift $\le 15\text{ ms}$ and preroll seeking behavior.
+- [x] T017 [US2] Update `UnifiedVideoPlayerView` in [infra/ttmedia/Sources/TTMediaKit/UI/Video/UnifiedVideoPlayerView.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/UI/Video/UnifiedVideoPlayerView.swift) to route all supported containers (MP4, MOV, MKV, WebM, AVI, TS) through the AVSampleBuffer pipeline.
+- [x] T018 [US2] Unit and integration tests in [infra/ttmedia/Tests/TTMediaKitTests/AVSampleBufferPresentationTests.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Tests/TTMediaKitTests/AVSampleBufferPresentationTests.swift) verifying lip-sync drift $\le 15\text{ ms}$ and preroll seeking behavior.
 
 ---
 
@@ -52,10 +52,10 @@
 
 **Goal**: Support open codecs and enforce Two-Tier Sleep state machine (30s standby -> 300s cold exit).
 
-- [ ] T019 [US3] Implement `libdav1d` AV1 fallback and VP9 software decoding in [infra/ttmedia/src/codecs/open_video.rs](file://../../infra/ttmedia/src/codecs/open_video.rs), outputting `IOSurface`-backed pixel buffers.
-- [ ] T020 [US3] Implement software audio decoding (Opus, FLAC, Vorbis) outputting linear PCM in [infra/ttmedia/src/codecs/open_audio.rs](file://../../infra/ttmedia/src/codecs/open_audio.rs).
-- [x] T021 [US3] Implement Two-Tier Sleep timer in `ttmedia-worker`: 30s idle -> close demuxer/decoder contexts; 300s idle -> `exit(0)` in [infra/ttmedia/src/lifecycle.rs](file://../../infra/ttmedia/src/lifecycle.rs).
-- [x] T022 [US3] Host XPC connection fault-recovery and reconnection handler in [infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift](file://../../infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift).
+- [ ] T019 [US3] Implement `libdav1d` AV1 fallback and VP9 software decoding in [infra/ttmedia/src/codecs/open_video.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/codecs/open_video.rs), outputting `IOSurface`-backed pixel buffers.
+- [ ] T020 [US3] Implement software audio decoding (Opus, FLAC, Vorbis) outputting linear PCM in [infra/ttmedia/src/codecs/open_audio.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/codecs/open_audio.rs).
+- [x] T021 [US3] Implement Two-Tier Sleep timer in `ttmedia-worker`: 30s idle -> close demuxer/decoder contexts; 300s idle -> `exit(0)` in [infra/ttmedia/src/lifecycle.rs](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/lifecycle.rs).
+- [x] T022 [US3] Host XPC connection fault-recovery and reconnection handler in [infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/Sources/TTMediaKit/Services/MediaWorkerXPCClient.swift).
 - [x] T023 [US3] Automated lifecycle test in `infra/ttmedia/tests/test_worker_lifecycle.rs` verifying 30s memory drop and 300s process clean termination.
 
 ---
@@ -64,22 +64,22 @@
 
 **Goal**: Permanently delete `third_party/mpv`, `infra/ttmpv`, and all legacy MPV linkages.
 
-- [x] T024 [US4] Remove `//infra/ttmpv:TTMPVKit` dependency from [products/ttzip/apple/BUILD.bazel](file://../apple/BUILD.bazel).
+- [x] T024 [US4] Remove `//infra/ttmpv:TTMPVKit` dependency from [products/ttzip/apple/BUILD.bazel](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/BUILD.bazel).
 - [x] T025 [US4] Delete `third_party/mpv` directory and remove its target from Monorepo build trees.
 - [x] T026 [US4] Delete `infra/ttmpv` directory entirely (`git rm -rf infra/ttmpv`).
-- [x] T027 [US4] Remove legacy MPV strings and view references from [products/ttzip/apple/Sources/TTZipApp/Views/SettingsView+Tabs.swift](file://../apple/Sources/TTZipApp/Views/SettingsView+Tabs.swift) and preview handlers.
-- [x] T028 [US4] Clean up test suites: remove obsolete MPV adversarial and headless tests from [products/ttzip/apple/Tests/TTZipAppTests/](file://../apple/Tests/TTZipAppTests/).
+- [x] T027 [US4] Remove legacy MPV strings and view references from [products/ttzip/apple/Sources/TTZipApp/Views/SettingsView+Tabs.swift](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/SettingsView+Tabs.swift) and preview handlers.
+- [x] T028 [US4] Clean up test suites: remove obsolete MPV adversarial and headless tests from [products/ttzip/apple/Tests/TTZipAppTests/](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Tests/TTZipAppTests/).
 - [x] T029 [US4] Update `.ttaction.toml` and build configurations to remove `ttmpv` build stages.
 
 ---
 
 ## Phase 7: Polish, Benchmarking & CI Gates (Priority: P2)
 
-- [x] T030 Add static anti-corruption check in [tools/ci/lint_code_quality.py](file://../../tools/ci/lint_code_quality.py) forbidding `libmpv`, `mpv_handle`, and `CTTMpvBridge` across all source trees.
+- [x] T030 Add static anti-corruption check in [tools/ci/lint_code_quality.py](file:///Users/kevintung/Documents/dev/metastudyline/source/tools/ci/lint_code_quality.py) forbidding `libmpv`, `mpv_handle`, and `CTTMpvBridge` across all source trees.
 - [ ] T031 Benchmark `bench_media_latency`: measure cold preview first-frame latency across MP4, MKV, and WebM (assert $\le 200\text{ ms}$, SC-002).
 - [ ] T032 Benchmark `bench_lipsync`: measure audio/video timebase drift over 30 minutes continuous playback (assert $\le 45\text{ ms}$, SC-003).
 - [x] T033 Execute `otool -L` audit in CI asserting 0 lines matching `/opt/homebrew` across `TTZip` app and `ttmedia-worker`.
-- [x] T034 Run full [quickstart.md](file://specs/230-unified-avsamplebuffer-media-pipeline/quickstart.md) checklist and verify 100% green.
+- [x] T034 Run full [quickstart.md](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/core/specs/230-unified-avsamplebuffer-media-pipeline/quickstart.md) checklist and verify 100% green.
 
 ---
 

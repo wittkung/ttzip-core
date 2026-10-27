@@ -60,7 +60,7 @@ TTZip Pro is an enterprise-grade, high-performance macOS archive management soft
 - **`asm/`**: Low-level Assembly micro-kernels (`.S`) with `arm64inc.S` macro abstraction for DWARF CFI stack unwinding and AAPCS64 ABI compliance.
 - **`dispatch/`**: `ttzip_cpu_features` hardware detection and `g_ttzip_dispatch` zero-overhead virtual dispatch table.
 - **`harness/`**: Bit-exact differential testing, `mmap` page fault safety guard, and CPB cycle-accurate benchmarking harness.
-- **Detailed Specification**: See [`docs/ASSEMBLY_INFRASTRUCTURE_ARCHITECTURE.md`](file://../docs/ASSEMBLY_INFRASTRUCTURE_ARCHITECTURE.md) for full design standards and 8 low-level architecture patterns.
+- **Detailed Specification**: See [`docs/ASSEMBLY_INFRASTRUCTURE_ARCHITECTURE.md`](file:///Users/kevintung/Documents/dev/TTZip/docs/ASSEMBLY_INFRASTRUCTURE_ARCHITECTURE.md) for full design standards and 8 low-level architecture patterns.
 
 ### 2.4 Platform & In-Memory Microbenchmarking (TurboBench & lzbench Alignment)
 - **`Platform/` (`PlatformMonotonicTimer`)**: 

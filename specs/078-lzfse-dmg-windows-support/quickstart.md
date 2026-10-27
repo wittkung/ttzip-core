@@ -1,6 +1,6 @@
 # Quickstart & Verification Guide: 078-lzfse-dmg-windows-support
 
-**Feature**: [078-lzfse-dmg-windows-support](file://../specs/078-lzfse-dmg-windows-support/spec.md)
+**Feature**: [078-lzfse-dmg-windows-support](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/spec.md)
 **Status**: Completed (Phase 1)
 **Date**: 2026-08-18
 

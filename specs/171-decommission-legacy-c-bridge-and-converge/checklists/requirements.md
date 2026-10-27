@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-21  
-**Feature**: [spec.md](file://../specs/171-decommission-legacy-c-bridge-and-converge/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/171-decommission-legacy-c-bridge-and-converge/spec.md)
 
 ## 1. Content Quality
 

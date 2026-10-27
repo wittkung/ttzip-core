@@ -2,7 +2,7 @@
 
 **Feature**: Silesia Corpus Standard Benchmark Fixtures & Regression Gates
 **Branch**: `049-silesia-corpus-benchmark`
-**Spec**: [spec.md](file://../specs/049-silesia-corpus-benchmark/spec.md) | **Plan**: [plan.md](file://../specs/049-silesia-corpus-benchmark/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/plan.md)
 
 ---
 

@@ -25,7 +25,7 @@
   - *Source*: ARM Architecture Reference Manual & `src/liblzma/check/crc_x86_clmul.h`.
 - R002: Investigate Darwin `sysctlbyname` error handling in `crc32_arm64.h`.
   - *Decision*: Adopt upstream pattern from `crc32_arm64.h:134-138`: `if (sysctlbyname(...) != 0) return false; return has_pmull;`.
-  - *Source*: [`src/liblzma/check/crc32_arm64.h:126-139`](file://../Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h#L126-L139).
+  - *Source*: [`src/liblzma/check/crc32_arm64.h:126-139`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/xz-upstream/src/liblzma/check/crc32_arm64.h#L126-L139).
 - R003: Investigate standalone test harnesses for community reproduction (@ssvb).
   - *Decision*: Build a self-contained ANSI C11 file with embedded reference table generator, PMULL kernel, golden ECMA-182 vectors, and memory clobber loops.
   - *Source*: TTZip Benchmark Suite & `src/liblzma/check/crc_clmul_consts_gen.c`.
@@ -44,7 +44,7 @@
 
 ### Component: Upstream XZ Worktree (`Vendor/worktrees/xz/pr2-arm64-crc64`)
 
-#### [MODIFY] [`src/liblzma/check/crc64_arm64.h`](file://../Vendor/worktrees/xz/pr2-arm64-crc64/src/liblzma/check/crc64_arm64.h)
+#### [MODIFY] [`src/liblzma/check/crc64_arm64.h`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/worktrees/xz/pr2-arm64-crc64/src/liblzma/check/crc64_arm64.h)
 - Line 67: Update `keep_high_bytes` doc comment to state masking/clearing low bytes.
 - Line 75: Update `shift_left` doc comment to state left shift (clearing lowest bytes).
 - Line 83: Update `shift_right` doc comment to state right shift (clearing highest bytes).

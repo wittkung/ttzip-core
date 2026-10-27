@@ -4,8 +4,8 @@
 **Feature Directory**: `specs/041-full-codebase-standards-audit`  
 **Created**: 2026-08-17  
 **Status**: In Progress  
-**Spec**: [spec.md](file://../specs/041-full-codebase-standards-audit/spec.md)  
-**Plan**: [plan.md](file://../specs/041-full-codebase-standards-audit/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/041-full-codebase-standards-audit/spec.md)  
+**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/041-full-codebase-standards-audit/plan.md)
 
 ---
 

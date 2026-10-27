@@ -2,7 +2,7 @@
 
 **Feature**: `004-frontend-perf-optimization`
 **Date**: 2026-08-15
-**Spec**: [spec.md](file://../specs/004-frontend-perf-optimization/spec.md) | **Plan**: [plan.md](file://../specs/004-frontend-perf-optimization/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/004-frontend-perf-optimization/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/004-frontend-perf-optimization/plan.md)
 
 ---
 

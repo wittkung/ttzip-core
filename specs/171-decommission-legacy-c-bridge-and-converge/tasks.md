@@ -3,8 +3,8 @@
 **Feature ID**: `171-decommission-legacy-c-bridge-and-converge`  
 **Created**: 2026-08-21  
 **Status**: Ready for Implementation  
-**Specification**: [`specs/171-decommission-legacy-c-bridge-and-converge/spec.md`](file://../specs/171-decommission-legacy-c-bridge-and-converge/spec.md)  
-**Plan**: [`specs/171-decommission-legacy-c-bridge-and-converge/plan.md`](file://../specs/171-decommission-legacy-c-bridge-and-converge/plan.md)
+**Specification**: [`specs/171-decommission-legacy-c-bridge-and-converge/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/171-decommission-legacy-c-bridge-and-converge/spec.md)  
+**Plan**: [`specs/171-decommission-legacy-c-bridge-and-converge/plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/171-decommission-legacy-c-bridge-and-converge/plan.md)
 
 ---
 

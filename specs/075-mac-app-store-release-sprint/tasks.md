@@ -65,7 +65,7 @@
 - [x] H2-VerificationTools：将原合成令牌脚本重命名并入仓为 `products/ttzip/apple/scripts/verify_synthetic_sandbox_extension.py`（合成 sandbox extension 授权测试）；另补入仓的真实 App Sandbox 宿主验证（`products/ttzip/apple/Tests/SandboxPowerboxHost/` 与 `products/ttzip/apple/scripts/verify_nsopenpanel_sandbox_host.py`），通过 `NSOpenPanel` 选择外部源归档与外部目标目录，经生产 `QuarantineWorkerClient` 调用链完成解压并验证未授权外部目录拒绝访问。
 - [x] H3-LicenseClosure：重构 `products/ttzip/core/scripts/generate_acknowledgements.py`，移除固定组件列表、多 crate 合并项及 `STANDARD_LICENSE_TEXTS` 缩略文本；按三渠道实际构建依赖闭包收集全部第三方组件（187 项）、精确版本及原始上游 `LICENSE`/`COPYING`/`NOTICE` 全文，缺失版本或许可证文件时立即报错退出。
 - [ ] Gate-UIPreviewKitTests：保留 `//products/ttzip/apple:UIPreviewKitTests` 在最终发布门禁中（不因非 H 组职责排除）；已记录当前 4 个失败测试方法及日志路径，交 UI / 媒体预览对应组修复：
-  - 日志路径：`/private/var/tmp/_bazel_user/bc7b818d367659311eafb4e72b48b678/execroot/_main/bazel-out/darwin_arm64-opt/testlogs/products/ttzip/apple/UIPreviewKitTests/test.log`
+  - 日志路径：`/private/var/tmp/_bazel_kevintung/bc7b818d367659311eafb4e72b48b678/execroot/_main/bazel-out/darwin_arm64-opt/testlogs/products/ttzip/apple/UIPreviewKitTests/test.log`
   - 失败用例 1：`-[UIPreviewKitTests.FinderMillerColumnsNavigationTests testIsNavigableArchiveFolder]`（`FinderMillerColumnsNavigationTests.swift:18`：`XCTAssertFalse failed`）
   - 失败用例 2：`-[UIPreviewKitTests.MediaPreviewAuditTests testAll69MediaFormatsClassificationAndZeroHexFallthrough]`（`MediaPreviewAuditTests.swift:610,613,622,627,636,638,658,663,671`：模拟文本载荷 `"mock video payload for ..."` / `"mock audio payload for ..."` 被嗅探器归类为 `.text` 而非 `.video` / `.audio`，且缺少 `ts` 格式枚举）
   - 失败用例 3：`-[UIPreviewKitTests.MediaPreviewAuditTests testAudioFormatMatrixAndNonNativeAudioClassification]`（`MediaPreviewAuditTests.swift:320,329,337,345,353`：`"mock ... audio stream"` 文本载荷被归类为 `.text` 而非 `.audio`）

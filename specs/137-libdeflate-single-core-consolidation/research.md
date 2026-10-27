@@ -18,9 +18,9 @@
   - *Per-Call Allocation (`libdeflate_alloc_compressor` / `libdeflate_free_compressor`)*: Rejected due to extreme performance degradation (thousands of allocations per second, allocator lock contention).
   - *Centralized Mutex / Spinlock Pool (`os_unfair_lock` / `NSLock`)*: Rejected due to CPU cache-line bouncing and lock contention across 8–16 Apple Silicon cores when executing parallel block compression in `ZipBlockParallelCompressor`.
 - **Source**:
-  - [`Sources/CTTZipBridge/CTTZipStreamCoder.c:20-54`](file://../Sources/CTTZipBridge/CTTZipStreamCoder.c#L20-L54)
-  - [`Sources/CTTZipBridge/include/CTTZipStreamCoder.h:27-36`](file://../Sources/CTTZipBridge/include/CTTZipStreamCoder.h#L27-L36)
-  - [`Sources/CTTZipBridge/include/ttzip_platform.h:85-97`](file://../Sources/CTTZipBridge/include/ttzip_platform.h#L85-L97)
+  - [`Sources/CTTZipBridge/CTTZipStreamCoder.c:20-54`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c#L20-L54)
+  - [`Sources/CTTZipBridge/include/CTTZipStreamCoder.h:27-36`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipStreamCoder.h#L27-L36)
+  - [`Sources/CTTZipBridge/include/ttzip_platform.h:85-97`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_platform.h#L85-L97)
 
 ---
 
@@ -39,10 +39,10 @@
   - *Standard `Data(bytes:count:)` Initializer*: Rejected because copying large multi-megabyte buffers doubles peak RSS and consumes valuable memory bus bandwidth.
   - *Swift `Array<UInt8>` Mutable Buffers*: Rejected because Swift ARC retain/release traffic and copy-on-write (COW) checks on large byte arrays degrade single-core compression throughput by 15–25%.
 - **Source**:
-  - [`Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift:15-121`](file://../Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift#L15-L121)
-  - [`Sources/TTZipCore/Adapters/CUnsafeBufferAdapter.swift:98-165`](file://../Sources/TTZipCore/Adapters/CUnsafeBufferAdapter.swift#L98-L165)
-  - [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:10-67,126-196`](file://../Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L10-L196)
-  - [`Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift:25-65`](file://../Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift#L25-L65)
+  - [`Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift:15-121`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift#L15-L121)
+  - [`Sources/TTZipCore/Adapters/CUnsafeBufferAdapter.swift:98-165`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Adapters/CUnsafeBufferAdapter.swift#L98-L165)
+  - [`Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift:10-67,126-196`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift#L10-L196)
+  - [`Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift:25-65`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift#L25-L65)
 
 ---
 
@@ -61,7 +61,7 @@
   - *Emulating Stateful Streaming with libdeflate Micro-Blocks*: Rejected because flushing and re-initializing `libdeflate` across small chunks discards sliding-window history, degrading compression ratio and breaking RFC 1951 continuous stream compatibility.
   - *Deleting `native_deflate/` Code*: Rejected in favor of keeping it isolated as a benchmark oracle / reference implementation, preserving algorithmic assets without incurring production maintenance costs.
 - **Source**:
-  - [`ARCHITECTURE.md:76-83`](file://../ARCHITECTURE.md#L76-L83)
-  - [`Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift:13-122,136-329,540-650`](file://../Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift#L13-L650)
-  - [`Sources/CTTZipBridge/CTTZipStreamCoder.c:56-108,295-431`](file://../Sources/CTTZipBridge/CTTZipStreamCoder.c#L56-L431)
-  - [`specs/137-libdeflate-single-core-consolidation/spec.md:11-20,83-100`](file://../specs/137-libdeflate-single-core-consolidation/spec.md#L11-L100)
+  - [`ARCHITECTURE.md:76-83`](file:///Users/kevintung/Documents/dev/TTZip/ARCHITECTURE.md#L76-L83)
+  - [`Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift:13-122,136-329,540-650`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift#L13-L650)
+  - [`Sources/CTTZipBridge/CTTZipStreamCoder.c:56-108,295-431`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c#L56-L431)
+  - [`specs/137-libdeflate-single-core-consolidation/spec.md:11-20,83-100`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/spec.md#L11-L100)

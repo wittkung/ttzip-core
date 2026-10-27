@@ -31,11 +31,11 @@ Adopt an empirical **"Dual-Layer Whitepaper + Nanosecond Monotonic Timing + 4-Wo
 - *Single Fixed Corpus (e.g. only Silesia)*: Rejected because single-file collections do not measure APFS concurrent directory traversal or multi-hundred megabyte memory-mapped throughput.
 
 ### Source
-- [`Sources/TTZipCore/Platform/PlatformMonotonicTimer.swift`](file://../Sources/TTZipCore/Platform/PlatformMonotonicTimer.swift)
-- [`Sources/TTZipCore/Benchmark/CompetitorBenchmarkRunner+Setup.swift`](file://../Sources/TTZipCore/Benchmark/CompetitorBenchmarkRunner+Setup.swift)
-- [`Sources/CTTZipBridge/ttzip_crc64.c`](file://../Sources/CTTZipBridge/ttzip_crc64.c)
-- [`docs/competitor_benchmark_report.md`](file://../docs/competitor_benchmark_report.md)
-- [`docs/benchmarks/benchmark_report_2026-08-15_071939.md`](file://../docs/benchmarks/benchmark_report_2026-08-15_071939.md)
+- [`Sources/TTZipCore/Platform/PlatformMonotonicTimer.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Platform/PlatformMonotonicTimer.swift)
+- [`Sources/TTZipCore/Benchmark/CompetitorBenchmarkRunner+Setup.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Benchmark/CompetitorBenchmarkRunner+Setup.swift)
+- [`Sources/CTTZipBridge/ttzip_crc64.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_crc64.c)
+- [`docs/competitor_benchmark_report.md`](file:///Users/kevintung/Documents/dev/TTZip/docs/competitor_benchmark_report.md)
+- [`docs/benchmarks/benchmark_report_2026-08-15_071939.md`](file:///Users/kevintung/Documents/dev/TTZip/docs/benchmarks/benchmark_report_2026-08-15_071939.md)
 
 ---
 
@@ -65,11 +65,11 @@ Structure `README.md` following modern tier-1 systems engineering software proje
 - *Monolithic All-in-One README*: Rejected because embedding full man pages and full test logs creates an unreadable document; linking to `docs/` maintains high signal-to-noise ratio.
 
 ### Source
-- [`README.md`](file://../README.md)
-- [`Formula/ttzip-cli.rb`](file://../Formula/ttzip-cli.rb)
-- [`Sources/TTZipCLI/CLICommandRouter.swift`](file://../Sources/TTZipCLI/CLICommandRouter.swift)
-- [`Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift`](file://../Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift)
-- [`ARCHITECTURE.md`](file://../ARCHITECTURE.md)
+- [`README.md`](file:///Users/kevintung/Documents/dev/TTZip/README.md)
+- [`Formula/ttzip-cli.rb`](file:///Users/kevintung/Documents/dev/TTZip/Formula/ttzip-cli.rb)
+- [`Sources/TTZipCLI/CLICommandRouter.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCLI/CLICommandRouter.swift)
+- [`Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift)
+- [`ARCHITECTURE.md`](file:///Users/kevintung/Documents/dev/TTZip/ARCHITECTURE.md)
 
 ---
 
@@ -99,7 +99,7 @@ Establish the **"TTZip Source-Available & Anti-Copycat Public License v1.0 (TTZi
 - *GPL v3 / AGPL v3*: Rejected because it conflicts with Apple Mac App Store distribution terms and does not prevent third parties from distributing free clones that siphon project visibility.
 
 ### Source
-- [`LICENSE`](file://../LICENSE)
-- [`ACKNOWLEDGEMENTS.md`](file://../ACKNOWLEDGEMENTS.md)
-- [`Formula/ttzip-cli.rb`](file://../Formula/ttzip-cli.rb)
-- [`Sources/TTZipCore/CLI/CLIPackageManifest.swift`](file://../Sources/TTZipCore/CLI/CLIPackageManifest.swift)
+- [`LICENSE`](file:///Users/kevintung/Documents/dev/TTZip/LICENSE)
+- [`ACKNOWLEDGEMENTS.md`](file:///Users/kevintung/Documents/dev/TTZip/ACKNOWLEDGEMENTS.md)
+- [`Formula/ttzip-cli.rb`](file:///Users/kevintung/Documents/dev/TTZip/Formula/ttzip-cli.rb)
+- [`Sources/TTZipCore/CLI/CLIPackageManifest.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/CLI/CLIPackageManifest.swift)

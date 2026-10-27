@@ -3,8 +3,8 @@
 **Feature Directory**: `specs/037-libarchive-golden-oracle-and-fuzz-integration`  
 **Date**: 2026-08-16  
 **Status**: Ready for Implementation  
-**Spec**: [spec.md](file://../specs/037-libarchive-golden-oracle-and-fuzz-integration/spec.md)  
-**Plan**: [plan.md](file://../specs/037-libarchive-golden-oracle-and-fuzz-integration/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/037-libarchive-golden-oracle-and-fuzz-integration/spec.md)  
+**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/037-libarchive-golden-oracle-and-fuzz-integration/plan.md)
 
 ---
 

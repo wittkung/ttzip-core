@@ -10,7 +10,7 @@
 ### 1.1 Multi-Tab Workspace Session
 ```swift
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 import Foundation
 
@@ -83,7 +83,7 @@ public struct TabViewState: Equatable, Sendable {
 ### 1.2 Presentation Coordinator & Modal Hierarchy
 ```swift
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 import Foundation
 import Observation
@@ -143,7 +143,7 @@ public final class PresentationCoordinator {
 ### 1.3 Sandbox Security Scope Lease
 ```swift
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 import Foundation
 import os
@@ -180,7 +180,7 @@ public final class SecurityScopeLease: @unchecked Sendable {
 ### 1.4 Right Inspector Surface & Selection Aggregation
 ```swift
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 import Foundation
 
@@ -216,7 +216,7 @@ public struct AggregatedSelectionMetrics: Equatable, Sendable {
 ### 1.5 Carmack 8-Byte Prefix Sorting (Rust & C-ABI)
 ```rust
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 #[repr(C, align(8))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

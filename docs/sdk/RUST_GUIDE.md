@@ -1,8 +1,8 @@
 # 🦀 TTZip Rust SDK Developer Guide
 
-[![Crate](https://img.shields.io/badge/crate-ttzip--engine-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/rust/ttzip-engine/Cargo.toml)
-[![Documentation](https://img.shields.io/badge/docs-1.0.0-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/docs/sdk/README.md)
-[![Safety: Safe Rust Core](https://img.shields.io/badge/Safety-100%25%20Safe%20Rust%20Core-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+[![Crate](https://img.shields.io/badge/crate-ttzip--engine-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/rust/ttzip-engine/Cargo.toml)
+[![Documentation](https://img.shields.io/badge/docs-1.0.0-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/docs/sdk/README.md)
+[![Safety: Safe Rust Core](https://img.shields.io/badge/Safety-100%25%20Safe%20Rust%20Core-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
 
 The `ttzip-engine` crate is the native microkernel powering the entire TTZip ecosystem. It provides high-throughput, multi-threaded archive creation, zero-copy streaming extraction, in-place atomic mutations, SIMD-accelerated checksums, and Reed-Solomon error correction.
 

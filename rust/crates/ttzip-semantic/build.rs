@@ -2,49 +2,47 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+fn find_llama_cpp_root(start_dir: &Path) -> Option<PathBuf> {
+    let mut current = Some(start_dir);
+    while let Some(dir) = current {
+        let candidate = dir.join("third_party/llama_cpp");
+        if candidate.join("include").is_dir() {
+            return Some(candidate);
+        }
+        current = dir.parent();
+    }
+    None
+}
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let repo_root = manifest_dir
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap();
+    if env::var("BAZEL_BUILD").is_ok()
+        || env::var("CARGO_BAZEL").is_ok()
+        || env::var("BUILD_WORKSPACE_DIRECTORY").is_ok()
+    {
+        println!("cargo:rerun-if-changed=build.rs");
+        return;
+    }
 
-    println!("cargo:rerun-if-changed=csrc/ttzip_llama_bridge.c");
-    println!("cargo:rerun-if-changed=csrc/ttzip_llama_bridge.h");
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let c_src = manifest_dir.join("csrc/ttzip_llama_bridge.c");
+    let c_hdr = manifest_dir.join("csrc/ttzip_llama_bridge.h");
+
+    println!("cargo:rerun-if-changed={}", c_src.display());
+    println!("cargo:rerun-if-changed={}", c_hdr.display());
 
     let mut build = cc::Build::new();
-    build
-        .file("csrc/ttzip_llama_bridge.c")
-        .include("csrc")
-        .flag_if_supported("-std=c11")
-        .warnings(false);
+    build.file(&c_src);
+    build.include(manifest_dir.join("csrc"));
+    build.flag_if_supported("-std=c11");
+    build.warnings(false);
 
-    // Prefer repository-local third_party/llama_cpp/include, fallback to enclosing monorepo third_party
-    let local_llama_include = repo_root.join("third_party/llama_cpp/include");
-    let monorepo_llama_include = repo_root
-        .parent()
-        .and_then(|p| p.parent())
-        .and_then(|p| p.parent())
-        .map(|p| p.join("third_party/llama_cpp/include"));
-
-    if local_llama_include.exists() {
-        println!(
-            "cargo:rerun-if-changed={}",
-            local_llama_include.join("llama.h").display()
-        );
-        build.include(&local_llama_include);
-    } else if let Some(mono_inc) = monorepo_llama_include {
-        if mono_inc.exists() {
-            println!(
-                "cargo:rerun-if-changed={}",
-                mono_inc.join("llama.h").display()
-            );
-            build.include(&mono_inc);
+    if let Some(llama_root) = find_llama_cpp_root(&manifest_dir) {
+        build.include(llama_root.join("include"));
+        let llama_lib = llama_root.join("lib");
+        if llama_lib.is_dir() && env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "macos" {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", llama_lib.display());
         }
     }
 

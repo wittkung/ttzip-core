@@ -32,11 +32,11 @@
 
 ## 4. Phase 1: Design & Contracts
 
-- **Data Model**: [`data-model.md`](file://../specs/023-libarchive-7z-aes256-decryption/data-model.md)
+- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/023-libarchive-7z-aes256-decryption/data-model.md)
 - **Contracts**:
-  - [`contracts/sevenzip_crypto_properties.json`](file://../specs/023-libarchive-7z-aes256-decryption/contracts/sevenzip_crypto_properties.json)
-  - [`contracts/sevenzip_folder_crypto_context.json`](file://../specs/023-libarchive-7z-aes256-decryption/contracts/sevenzip_folder_crypto_context.json)
-- **Validation Guide**: [`quickstart.md`](file://../specs/023-libarchive-7z-aes256-decryption/quickstart.md)
+  - [`contracts/sevenzip_crypto_properties.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/023-libarchive-7z-aes256-decryption/contracts/sevenzip_crypto_properties.json)
+  - [`contracts/sevenzip_folder_crypto_context.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/023-libarchive-7z-aes256-decryption/contracts/sevenzip_folder_crypto_context.json)
+- **Validation Guide**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/023-libarchive-7z-aes256-decryption/quickstart.md)
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-19
-**Feature**: [spec.md](file://../specs/124-streaming-fastpath-decompressor-dual-symbol-lut/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/124-streaming-fastpath-decompressor-dual-symbol-lut/spec.md)
 
 ## Content Quality
 

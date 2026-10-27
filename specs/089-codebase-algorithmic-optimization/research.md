@@ -42,7 +42,7 @@ Therefore, $N_{\max} = 5552$ is analytically exact and maximal.
   - **Rejection Reason**: Isolating byte lanes with masks (`0x00FF00FF00FF00FF`) requires 3–4 instructions per 8 bytes, which is slower than 4-way direct scalar loads.
 
 ### Source
-- `../Sources/CTTZipBridge/CTTZipAdler32Neon.c` (lines 15–59, 73–164)
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipAdler32Neon.c` (lines 15–59, 73–164)
 - RFC 1950 (ZLIB Compressed Data Format Specification §9)
 
 ---

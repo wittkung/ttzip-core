@@ -9,7 +9,7 @@
 use std::path::{Component, Path, PathBuf};
 
 use super::dag::SevenZError;
-use crate::security::path_sanitizer::normalize_to_nfc;
+use crate::security::path_sanitizer::{normalize_to_nfc, validate_archive_path_slice};
 
 /// Default upper limit for the number of files/entries in a 7z archive.
 pub const DEFAULT_MAX_FILES_LIMIT: usize = 2_000_000;
@@ -52,7 +52,7 @@ pub fn bounded_usize(value: u64, max_limit: usize, field_name: &'static str) -> 
 /// # Security Invariants
 /// 1. Normalizes Unicode strings to NFC form.
 /// 2. Converts all backslashes `\` to forward slashes `/`.
-/// 3. Validates path safety via `ttzip_types::path_security::path::validate_safe_relative_path`.
+/// 3. Validates path safety via `validate_archive_path_slice`.
 /// 4. Rejects traversal attempts (`..`), absolute paths, Windows drive letters,
 ///    NTFS Alternate Data Streams (ADS), and Windows reserved device names.
 pub fn safe_join(dest_root: &Path, entry_path: &str) -> Result<PathBuf, SevenZError> {
@@ -82,8 +82,8 @@ pub fn safe_join(dest_root: &Path, entry_path: &str) -> Result<PathBuf, SevenZEr
         )));
     }
 
-    // 4. Zero-allocation security validation via ttzip_types::path_security
-    ttzip_types::path_security::path::validate_safe_relative_path(check_path).map_err(|e| {
+    // 4. Zero-allocation security validation via path_sanitizer
+    validate_archive_path_slice(check_path.as_bytes()).map_err(|e| {
         SevenZError::InsecurePath(format!("{e}: '{entry_path}'"))
     })?;
 

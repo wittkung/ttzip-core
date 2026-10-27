@@ -3,8 +3,8 @@
 **Feature ID**: `168-rust-bridge-glue-migration`  
 **Created**: 2026-08-21  
 **Status**: Ready for Implementation  
-**Specification**: [`specs/168-rust-bridge-glue-migration/spec.md`](file://../specs/168-rust-bridge-glue-migration/spec.md)  
-**Plan**: [`specs/168-rust-bridge-glue-migration/plan.md`](file://../specs/168-rust-bridge-glue-migration/plan.md)
+**Specification**: [`specs/168-rust-bridge-glue-migration/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/168-rust-bridge-glue-migration/spec.md)  
+**Plan**: [`specs/168-rust-bridge-glue-migration/plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/168-rust-bridge-glue-migration/plan.md)
 
 ---
 

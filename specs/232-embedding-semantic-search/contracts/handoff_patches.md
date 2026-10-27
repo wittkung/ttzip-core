@@ -29,7 +29,7 @@
 ## 2. Lifecycle & Field Contract Between Q5 (`Services/SemanticSearch`) and W1 (`GlobalSearch` / `Windows` / `AppViewState`)
 
 ### 2.1 Service Initialization (`SemanticSearchEngine.shared`)
-Q5 provides a process-wide actor singleton in [`SemanticSearchEngine.swift`](file://../apple/Sources/TTZipApp/Services/SemanticSearch/SemanticSearchEngine.swift):
+Q5 provides a process-wide actor singleton in [`SemanticSearchEngine.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Services/SemanticSearch/SemanticSearchEngine.swift):
 - `SemanticSearchEngine.shared`: initialized with `SemanticSearchEngine.defaultStorageDirectory()` (`~/Library/Application Support/com.metastudyline.ttzip/SemanticIndex`), backed by `UniFFIRustSemanticCoreBridge` -> `UniFFISemanticSearchEngine`.
 - Checking model readiness from `@MainActor` (e.g., `TTZipApp` or `GlobalSearchPanelController`):
   ```swift
@@ -77,7 +77,7 @@ extension RootFolderAccessManager {
 
 ### 2.3 Query Execution & Cooperative Cancellation Contract (`GlobalSearchPanelController`)
 
-In [`GlobalSearchPanelController.swift`](file://../apple/Sources/TTZipApp/Views/GlobalSearch/GlobalSearchPanelController.swift), W1 already maintains:
+In [`GlobalSearchPanelController.swift`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Views/GlobalSearch/GlobalSearchPanelController.swift), W1 already maintains:
 - `private var searchTask: Task<Void, Never>?`
 - `private var currentGeneration: UInt64 = 0`
 
@@ -111,7 +111,7 @@ When `queryDidChange()` or `hide()` runs:
 
 ### 2.4 Field Mapping & Open Request Contract (`SemanticSearchHit` / `SemanticOpenRequest` ↔ `GlobalSearchResultItem` / `BrowserWindowRouter`)
 
-Q5 provides two verified conversion paths on [`SemanticSearchHit`](file://../apple/Sources/TTZipApp/Services/SemanticSearch/SemanticSearchContracts.swift):
+Q5 provides two verified conversion paths on [`SemanticSearchHit`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/Services/SemanticSearch/SemanticSearchContracts.swift):
 1. `hit.toGlobalSearchResultItem() -> GlobalSearchResultItem` (direct mapping to W1's panel model in `Models/GlobalSearchResultItem.swift`).
 2. `await SemanticSearchEngine.shared.buildOpenRequest(for: hit) -> SemanticOpenRequest` (Rust-backed open descriptor).
 
@@ -131,7 +131,7 @@ Q5 provides two verified conversion paths on [`SemanticSearchHit`](file://../app
 #### Compilable Window & Archive Entry Routing for W1 (`TTZipApp.swift` & `BrowserWindowRouter.swift`)
 
 > **Important Observation in W1's Current Host Code**:
-> In [`TTZipApp.swift:92-94`](file://../apple/Sources/TTZipApp/TTZipApp.swift#L92-L94), `controller.onSelectEntry` is currently wired as:
+> In [`TTZipApp.swift:92-94`](file:///Users/kevintung/Documents/dev/metastudyline/source/products/ttzip/apple/Sources/TTZipApp/TTZipApp.swift#L92-L94), `controller.onSelectEntry` is currently wired as:
 > ```swift
 > controller.onSelectEntry = { archivePath, _ in
 >     BrowserWindowRouter.shared.routeGlobalSearchResult(itemURL: URL(fileURLWithPath: archivePath))

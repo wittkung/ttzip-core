@@ -1,6 +1,6 @@
 # Implementation Plan: ZIP 8-Tier Rebalancing & Intermediate Pareto Frontier Bridge
 
-**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
+**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
 **Date**: 2026-08-19  
 **Status**: Ready  
 
@@ -25,16 +25,16 @@ This plan rebalances the 8 standard tiers by eliminating legacy Tier 2 redundanc
 
 ## 3. Phase 0: Grounded Research Index
 
-- - R001 [SUBAGENT:research] 《新 Tier 4 (High Ratio) 算法选型与吞吐边界实测分析》：在 3.23 MB 与 2.87 MB 之间，通过 libdeflate L12 精准定位 3.06 MB @ 195 MB/s 的最优实现路径。（已完成，见 [`research.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/research.md)）
-- - R002 [SUBAGENT:research] 《8 大黄金标准档位在 Swift 与 C 调度层的重构与无缝对接》：全链路审计 `ZipCompressionProfile`、`ArchiveWriter+Dispatch`、`ZipExtremeBlockWriter` 与 C 桥接层分发。（已完成，见 [`research.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/research.md)）
+- - R001 [SUBAGENT:research] 《新 Tier 4 (High Ratio) 算法选型与吞吐边界实测分析》：在 3.23 MB 与 2.87 MB 之间，通过 libdeflate L12 精准定位 3.06 MB @ 195 MB/s 的最优实现路径。（已完成，见 [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/research.md)）
+- - R002 [SUBAGENT:research] 《8 大黄金标准档位在 Swift 与 C 调度层的重构与无缝对接》：全链路审计 `ZipCompressionProfile`、`ArchiveWriter+Dispatch`、`ZipExtremeBlockWriter` 与 C 桥接层分发。（已完成，见 [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/research.md)）
 
 ---
 
 ## 4. Phase 1: Design Artifacts Index
 
-- **Data Model**: [`data-model.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/data-model.md)
-- **JSON Schema Contract**: [`contracts/zip_compression_profile_schema.json`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/contracts/zip_compression_profile_schema.json)
-- **Quickstart Guide**: [`quickstart.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/quickstart.md)
+- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/data-model.md)
+- **JSON Schema Contract**: [`contracts/zip_compression_profile_schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/contracts/zip_compression_profile_schema.json)
+- **Quickstart Guide**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/quickstart.md)
 
 ---
 

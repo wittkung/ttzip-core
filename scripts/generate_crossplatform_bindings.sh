@@ -285,7 +285,7 @@ if [ "${GEN_CSHARP}" -eq 1 ]; then
 
     cat << 'EOF' > "${STAGING_DIR}/csharp/TTZipEngine.cs"
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 using System;
 using System.Runtime.InteropServices;

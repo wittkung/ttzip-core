@@ -6,7 +6,7 @@
 
 ## 阶段一：基础架构与底层 C 驱动 (Current Stage - Milestone 1)
 
-* [x] **项目物理立项**：创建 `$HOME/Documents/dev/TTZip` 目录，配置 `.gitignore`、`README.md` 与 Git 仓库初始化。
+* [x] **项目物理立项**：创建 `/Users/kevintung/Documents/dev/TTZip` 目录，配置 `.gitignore`、`README.md` 与 Git 仓库初始化。
 * [x] **C 语言扩展库依赖调研**：完成 Homebrew `libarchive`、`zstd` 与 `uchardet` 的依赖检测与编译库对齐。
 * [ ] **C 语言适配层 (`CTTZipBridge`) 编写**：完成 `archive.h` 与 `uchardet.h` 的头文件桥接封装。
 * [ ] **`TTZipCore` 核心 Swift 模块开发**：

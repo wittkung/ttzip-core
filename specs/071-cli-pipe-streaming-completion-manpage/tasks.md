@@ -3,7 +3,7 @@
 **Feature Branch**: `071-cli-pipe-streaming-completion-manpage`  
 **Created**: 2026-08-17  
 **Status**: Ready for Implementation  
-**Spec**: [`spec.md`](file://../specs/071-cli-pipe-streaming-completion-manpage/spec.md) | **Plan**: [`plan.md`](file://../specs/071-cli-pipe-streaming-completion-manpage/plan.md)
+**Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/071-cli-pipe-streaming-completion-manpage/spec.md) | **Plan**: [`plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/071-cli-pipe-streaming-completion-manpage/plan.md)
 
 ---
 

@@ -3,8 +3,8 @@
 **Feature ID**: `170-rust-interactive-tui-engine`  
 **Created**: 2026-08-21  
 **Status**: Ready for Implementation  
-**Specification**: [`specs/170-rust-interactive-tui-engine/spec.md`](file://../specs/170-rust-interactive-tui-engine/spec.md)  
-**Plan**: [`specs/170-rust-interactive-tui-engine/plan.md`](file://../specs/170-rust-interactive-tui-engine/plan.md)
+**Specification**: [`specs/170-rust-interactive-tui-engine/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/170-rust-interactive-tui-engine/spec.md)  
+**Plan**: [`specs/170-rust-interactive-tui-engine/plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/170-rust-interactive-tui-engine/plan.md)
 
 ---
 

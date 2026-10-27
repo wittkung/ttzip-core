@@ -1,8 +1,8 @@
 # 🦫 TTZip Go SDK Developer Guide
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/ttzip/ttzip-go.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/go/ttzip/ttzip.go)
-[![Go: 1.22+](https://img.shields.io/badge/Go-1.22%2B-blue.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/go/go.mod)
-[![Virtual FS](https://img.shields.io/badge/io%2Ffs.FS-Native%20VFS%20Implementation-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/sdk/go/ttzip/ttzip.go#L405)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ttzip/ttzip-go.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/go/ttzip/ttzip.go)
+[![Go: 1.22+](https://img.shields.io/badge/Go-1.22%2B-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/go/go.mod)
+[![Virtual FS](https://img.shields.io/badge/io%2Ffs.FS-Native%20VFS%20Implementation-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/sdk/go/ttzip/ttzip.go#L405)
 
 The `ttzip` Go package provides production-grade native archiving, extraction, and virtual filesystem mounting for Go applications. It features **100% standard `io/fs.FS` compliance**, `context.Context` cancellation, CGO zero-allocation chunk amortization, and hardware-accelerated SIMD checksums (>40 GB/s).
 

@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 OPT_BIN = Path(
-    "/private/var/tmp/_bazel_user/bc7b818d367659311eafb4e72b48b678"
+    "/private/var/tmp/_bazel_kevintung/bc7b818d367659311eafb4e72b48b678"
     "/execroot/_main/bazel-out/darwin_arm64-opt/bin"
 )
 DYLIB_PATH = OPT_BIN / "products/ttzip/core/rust/ttzip-engine/libttzip_engine.dylib"

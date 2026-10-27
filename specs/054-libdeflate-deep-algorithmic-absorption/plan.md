@@ -29,20 +29,20 @@
 
 ## 3. Phase 0: Research Index
 
-- - R001 [SUBAGENT:research] 《硬件级 Adler-32 延迟取模与 NEON/AVX2 向量化实现》：详见 [`research.md#R001`](file://../specs/054-libdeflate-deep-algorithmic-absorption/research.md)
-- - R002 [SUBAGENT:research] 《SIMD matchfinder_rebase 向量化索引重置与短字长哈希》：详见 [`research.md#R002`](file://../specs/054-libdeflate-deep-algorithmic-absorption/research.md)
-- - R003 [SUBAGENT:research] 《64-bit 无分支位流解码与 1 次访存 Huffman 联合解码表》：详见 [`research.md#R003`](file://../specs/054-libdeflate-deep-algorithmic-absorption/research.md)
+- - R001 [SUBAGENT:research] 《硬件级 Adler-32 延迟取模与 NEON/AVX2 向量化实现》：详见 [`research.md#R001`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/research.md)
+- - R002 [SUBAGENT:research] 《SIMD matchfinder_rebase 向量化索引重置与短字长哈希》：详见 [`research.md#R002`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/research.md)
+- - R003 [SUBAGENT:research] 《64-bit 无分支位流解码与 1 次访存 Huffman 联合解码表》：详见 [`research.md#R003`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/research.md)
 
 ---
 
 ## 4. Phase 1: Design Artifacts & Contracts
 
-- **Data Model**: [`data-model.md`](file://../specs/054-libdeflate-deep-algorithmic-absorption/data-model.md)
+- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/data-model.md)
 - **Contracts** `[SUBAGENT:research]`:
-  - [`contracts/adler32_checksum_result.json`](file://../specs/054-libdeflate-deep-algorithmic-absorption/contracts/adler32_checksum_result.json)
-  - [`contracts/matchfinder_rebase_params.json`](file://../specs/054-libdeflate-deep-algorithmic-absorption/contracts/matchfinder_rebase_params.json)
-  - [`contracts/branchless_bitbuf_state.json`](file://../specs/054-libdeflate-deep-algorithmic-absorption/contracts/branchless_bitbuf_state.json)
-- **Validation Guide**: [`quickstart.md`](file://../specs/054-libdeflate-deep-algorithmic-absorption/quickstart.md)
+  - [`contracts/adler32_checksum_result.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/contracts/adler32_checksum_result.json)
+  - [`contracts/matchfinder_rebase_params.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/contracts/matchfinder_rebase_params.json)
+  - [`contracts/branchless_bitbuf_state.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/contracts/branchless_bitbuf_state.json)
+- **Validation Guide**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/054-libdeflate-deep-algorithmic-absorption/quickstart.md)
 
 ---
 
@@ -50,30 +50,30 @@
 
 ### Component 1: CTTZipBridge (C Algorithmic Core)
 
-#### [NEW] [CTTZipAdler32Neon.c](file://../Sources/CTTZipBridge/CTTZipAdler32Neon.c)
+#### [NEW] [CTTZipAdler32Neon.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipAdler32Neon.c)
 - 硬件级 Adler-32 实现，包含 5552 字节延迟取模、NEON DotProd 4 路展开与基准 NEON pairwise 累加。
 
-#### [NEW] [CTTZipChecksum.h](file://../Sources/CTTZipBridge/include/CTTZipChecksum.h)
+#### [NEW] [CTTZipChecksum.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipChecksum.h)
 - 统一导出 `ttzip_adler32_fast` 与 `ttzip_crc32_fast` 硬件加速校验和中枢接口。
 
-#### [MODIFY] [CTTZipNEONMatchFinder.h](file://../Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h)
+#### [MODIFY] [CTTZipNEONMatchFinder.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h)
 - 增加 16-bit 相对位置 `ttzip_matchfinder_rebase_neon`（`vqaddq_s16`）与 `ttzip_load_u24_unaligned` 宏定义。
 
 ---
 
 ### Component 2: TTZipCore (Swift Hardware Adapters)
 
-#### [NEW] [HardwareChecksumAdapter.swift](file://../Sources/TTZipCore/Crypto/HardwareChecksumAdapter.swift)
+#### [NEW] [HardwareChecksumAdapter.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Crypto/HardwareChecksumAdapter.swift)
 - Swift 强类型统一硬件校验和适配器，直通 `ttzip_adler32_fast` 与 `libdeflate_crc32`。
 
 ---
 
 ### Component 3: Tests & Oracle
 
-#### [NEW] [HardwareChecksumTests.swift](file://../Tests/TTZipTests/HardwareChecksumTests.swift)
+#### [NEW] [HardwareChecksumTests.swift](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/HardwareChecksumTests.swift)
 - Adler-32 与 CRC-32 吞吐微基准与 RFC 1950 黄金预言机逐比特一致性测试。
 
-#### [NEW] [FastMatchFinderTests.swift](file://../Tests/TTZipTests/FastMatchFinderTests.swift)
+#### [NEW] [FastMatchFinderTests.swift](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/FastMatchFinderTests.swift)
 - 16-bit 相对索引重置延迟（$\le 5\mu s$）与短哈希碰撞率比对测试。
 
 ---

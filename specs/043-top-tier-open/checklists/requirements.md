@@ -1,6 +1,6 @@
 # Quality Matrix Checklist: 043-top-tier-open
 
-**Feature**: [spec.md](file://../specs/043-top-tier-open/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/spec.md)
 **Created**: 2026-08-17
 
 ---

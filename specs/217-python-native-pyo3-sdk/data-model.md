@@ -59,7 +59,7 @@ build-backend = "maturin"
 name = "ttzip"
 version = "1.0.0"
 description = "High-throughput, SIMD-accelerated archive and compression engine for Python"
-authors = [{ name = "Witt Kung", email = "kevintungs@163.com" }]
+authors = [{ name = "Witt Kung", email = "witt.w.kung@gmail.com" }]
 license = { text = "BSD-3-Clause OR Apache-2.0" }
 readme = "README.md"
 requires-python = ">=3.10"

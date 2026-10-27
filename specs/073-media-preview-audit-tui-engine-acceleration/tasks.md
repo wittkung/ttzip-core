@@ -3,7 +3,7 @@
 **Feature Branch**: `073-media-preview-audit-tui-engine-acceleration`  
 **Created**: 2026-08-18  
 **Status**: Ready for Implementation  
-**Spec**: [`spec.md`](file://../specs/073-media-preview-audit-tui-engine-acceleration/spec.md) | **Plan**: [`plan.md`](file://../specs/073-media-preview-audit-tui-engine-acceleration/plan.md)
+**Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/073-media-preview-audit-tui-engine-acceleration/spec.md) | **Plan**: [`plan.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/073-media-preview-audit-tui-engine-acceleration/plan.md)
 
 ---
 

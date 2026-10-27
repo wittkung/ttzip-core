@@ -20,7 +20,7 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---
@@ -229,11 +229,11 @@ TTZip はオープンソースの理念に基づき、検証済みのハード�
 
 ## 📄 ライセンスと利用規約
 
-TTZip Core は **BSD 3-Clause License** に基づいて配布されます。
+TTZip は **TTZip Source-Available & Anti-Copycat Public License v1.0 (TTZip-SAL-1.0)** に基づいて公開されています。
 
-- 完全な条件は [LICENSE](LICENSE) を参照してください。第三者のコンポーネントは各自のライセンスに従います。
-- この配布物の第一者コードは、商用・研究・個人用途で利用できます。古い第一者ファイルのヘッダーに専有表記が残る場合も、本配布物には BSD-3-Clause が適用されます。
-- お問い合わせ: `kevintungs@163.com`
+- **開発者および個人利用は無料**: 学習、コードレビュー、研究、個人の日常利用において自由に利用可能です。
+- **無断転載・再パッケージ化の禁止**: 無料・有料を問わず、App Store や Steam などへの無断公開・転載を禁止します。
+- **商用ライセンスの問い合わせ**: `witt.w.kung@gmail.com`
 
 ---
 

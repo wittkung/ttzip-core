@@ -3,7 +3,7 @@
 **Feature Branch**: `071-cli-pipe-streaming-completion-manpage`  
 **Created**: 2026-08-17  
 **Status**: Ready for Tasks  
-**Spec Document**: [`spec.md`](file://../specs/071-cli-pipe-streaming-completion-manpage/spec.md)
+**Spec Document**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/071-cli-pipe-streaming-completion-manpage/spec.md)
 
 ---
 
@@ -39,12 +39,12 @@
 
 ## 4. Phase 1: Design Artifacts & Contracts
 
-- **Data Model**: [`data-model.md`](file://../specs/071-cli-pipe-streaming-completion-manpage/data-model.md)
+- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/071-cli-pipe-streaming-completion-manpage/data-model.md)
 - **Contracts**:
   - `contracts/stream_pipeline_config.json`
   - `contracts/shell_completion_request.json`
   - `contracts/local_ci_gate_report.json`
-- **Quickstart**: [`quickstart.md`](file://../specs/071-cli-pipe-streaming-completion-manpage/quickstart.md)
+- **Quickstart**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/071-cli-pipe-streaming-completion-manpage/quickstart.md)
 
 ---
 

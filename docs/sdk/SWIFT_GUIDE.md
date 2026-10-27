@@ -1,8 +1,8 @@
 # 🐦 TTZip Swift 6 SDK Developer Guide
 
-[![Swift 6](https://img.shields.io/badge/Swift-6.0%20Strict%20Concurrency-orange.svg)](file://$HOME/Documents/dev/products/ttzip/core/Package.swift)
-[![Platforms: macOS 14+](https://img.shields.io/badge/Platforms-macOS%2014.0%2B%20%7C%20iOS%2017.0%2B-blue.svg)](file://$HOME/Documents/dev/products/ttzip/apple/README.md)
-[![Concurrency: Sendable & Actors](https://img.shields.io/badge/Concurrency-Complete%20Actor%20Isolation-brightgreen.svg)](file://$HOME/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+[![Swift 6](https://img.shields.io/badge/Swift-6.0%20Strict%20Concurrency-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Package.swift)
+[![Platforms: macOS 14+](https://img.shields.io/badge/Platforms-macOS%2014.0%2B%20%7C%20iOS%2017.0%2B-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/apple/README.md)
+[![Concurrency: Sendable & Actors](https://img.shields.io/badge/Concurrency-Complete%20Actor%20Isolation-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
 
 The `TTZipCore` Swift package provides native Swift 6 bindings for TTZip, designed specifically for Apple platforms (macOS, iOS, visionOS). It features **Swift 6 Strict Concurrency**, actor isolation, `AsyncThrowingStream` progress pipelines, Keychain-backed password vaulting, and native Apple Silicon P-core / E-core hardware scheduling.
 

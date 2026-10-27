@@ -34,7 +34,7 @@
 
 ### 2.1 Binary Compatibility of Existing Types & Functions
 
-All existing enums, structs, and function signatures in [`ttmedia_demux.h`](file://../../infra/ttmedia/include/ttmedia_demux.h) and [`c_abi.rs`](file://../../infra/ttmedia/src/c_abi.rs) remain layout- and ABI-identical:
+All existing enums, structs, and function signatures in [`ttmedia_demux.h`](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/include/ttmedia_demux.h) and [`c_abi.rs`](file:///Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia/src/c_abi.rs) remain layout- and ABI-identical:
 
 - `TTMediaDemuxStatus`:
   - `TT_MEDIA_DEMUX_OK = 0`
@@ -407,9 +407,9 @@ V2 can immediately unit-test its metadata parser and audio/video pipeline initia
 ### 7.1 `cargo clippy` & `cargo test --test test_track_metadata_contract` & `cargo test --lib`
 ```text
 $ cargo clippy --manifest-path infra/ttmedia/Cargo.toml --lib --test test_track_metadata_contract -- -D warnings && cargo test --manifest-path infra/ttmedia/Cargo.toml --test test_track_metadata_contract -- --nocapture && cargo test --manifest-path infra/ttmedia/Cargo.toml --lib -- demux:: --nocapture
-    Checking ttmedia v0.1.0 (../../infra/ttmedia)
+    Checking ttmedia v0.1.0 (/Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.68s
-   Compiling ttmedia v0.1.0 (../../infra/ttmedia)
+   Compiling ttmedia v0.1.0 (/Users/kevintung/Documents/dev/metastudyline/source/infra/ttmedia)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.58s
      Running tests/test_track_metadata_contract.rs (infra/ttmedia/target/debug/deps/test_track_metadata_contract-ba1462c6c2a3dde5)
 

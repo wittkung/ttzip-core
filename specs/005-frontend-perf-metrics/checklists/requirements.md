@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-15
-**Feature**: [spec.md](file://../specs/005-frontend-perf-metrics/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/005-frontend-perf-metrics/spec.md)
 
 ## Content Quality
 

@@ -15,10 +15,10 @@
 - - R003 [SUBAGENT:research] 《基准测试自适应采样分级与性能门禁保障研究》: 建立 `TTZIP_RUN_BENCHMARKS` 采样分级中枢，日常模式缩减 96.8% 冗余计算，显式模式保留全量统计。
 
 ## Phase 1: Contracts & Data Models
-- [data-model.md](file://../specs/080-test-suite-acceleration-and-optimization/data-model.md)
-- [contracts/test-suite-config-schema.json](file://../specs/080-test-suite-acceleration-and-optimization/contracts/test-suite-config-schema.json)
-- [contracts/fuzz-parallel-task-schema.json](file://../specs/080-test-suite-acceleration-and-optimization/contracts/fuzz-parallel-task-schema.json)
-- [quickstart.md](file://../specs/080-test-suite-acceleration-and-optimization/quickstart.md)
+- [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/080-test-suite-acceleration-and-optimization/data-model.md)
+- [contracts/test-suite-config-schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/080-test-suite-acceleration-and-optimization/contracts/test-suite-config-schema.json)
+- [contracts/fuzz-parallel-task-schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/080-test-suite-acceleration-and-optimization/contracts/fuzz-parallel-task-schema.json)
+- [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/080-test-suite-acceleration-and-optimization/quickstart.md)
 
 ## Component Breakdown & Changes
 

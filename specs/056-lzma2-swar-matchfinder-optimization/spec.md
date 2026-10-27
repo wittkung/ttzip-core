@@ -1,7 +1,7 @@
 # Feature Specification: LZMA2 64-bit SWAR Match Finder Optimization & Zero-Regression Integration
 
 ## 1. Background & User Motivation
-TTZip 自研的 7Z Level 1 极速压缩模块（[`ttzip_lzma2_fast_encoder.c`](file://../Sources/CTTZipBridge/ttzip_lzma2_fast_encoder.c)）在稀疏全零块通过 64-Byte NEON 旁路直通合成实现了 >3,500 MB/s 的吞吐，但在非零常规负载（如文本、二进制、多媒体）下，其内部匹配查找器 [`ttzip_lzma_hc4_neon.c`](file://../Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c) 的 `ttzip_match_len_neon` 采用 128-bit 向量比对与 `vminvq_u8` 横向规约，在 Apple Silicon 多发射超标量架构下存在跨寄存器域延迟。
+TTZip 自研的 7Z Level 1 极速压缩模块（[`ttzip_lzma2_fast_encoder.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_fast_encoder.c)）在稀疏全零块通过 64-Byte NEON 旁路直通合成实现了 >3,500 MB/s 的吞吐，但在非零常规负载（如文本、二进制、多媒体）下，其内部匹配查找器 [`ttzip_lzma_hc4_neon.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c) 的 `ttzip_match_len_neon` 采用 128-bit 向量比对与 `vminvq_u8` 横向规约，在 Apple Silicon 多发射超标量架构下存在跨寄存器域延迟。
 
 通过吸收 `liblzma`（XZ Utils）与现代微架构的最优实践，将匹配长度计算重构为 **64-bit SWAR（SIMD-Within-A-Register）无符号整数减法/异或比对**，使底层字符串比对吞吐从 2.5 GB/s 跃升至 4.9 GB/s（提升 +91.8%），进一步提升 7Z Level 1 与各级 LZMA2 压缩引擎在常规数据集上的吞吐表现，并保证 100% 字节精确性与全矩阵零性能倒退。
 
@@ -31,9 +31,9 @@ TTZip 自研的 7Z Level 1 极速压缩模块（[`ttzip_lzma2_fast_encoder.c`](f
 
 ## 3. Functional Requirements
 
-* **REQ-1 (SWAR Match Length Core)**：在 [`ttzip_lzma_hc4_neon.c`](file://../Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c) 中实现 64-bit 整数 SWAR 匹配比对算法 `ttzip_match_len_swar`，使用 64 位宽 `v1 ^ v2`（或 `v1 - v2`）与 `__builtin_ctzll(diff) >> 3` 单周期定位首个不匹配字节。
+* **REQ-1 (SWAR Match Length Core)**：在 [`ttzip_lzma_hc4_neon.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma_hc4_neon.c) 中实现 64-bit 整数 SWAR 匹配比对算法 `ttzip_match_len_swar`，使用 64 位宽 `v1 ^ v2`（或 `v1 - v2`）与 `__builtin_ctzll(diff) >> 3` 单周期定位首个不匹配字节。
 * **REQ-2 (Memory Bounds & Safety)**：所有 8 字节读取均受 `len + 8 <= max_len` 上界严格保护，剩余 `< 8` 字节尾部由逐字节安全循环处理，确保零越界与零死锁。
-* **REQ-3 (Modulemap & Header Export Consistency)**：保持 [`include/ttzip_lzma_hc4_neon.h`](file://../Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h) 声明的一致性，向后兼容原有函数签名。
+* **REQ-3 (Modulemap & Header Export Consistency)**：保持 [`include/ttzip_lzma_hc4_neon.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_lzma_hc4_neon.h) 声明的一致性，向后兼容原有函数签名。
 * **REQ-4 (Zero Performance Regression Floor)**：在执行全量测试与基准测试时，满足 `GEMINI.md` 全格式性能门禁底线：
   * 7Z Level 1 极速压缩 (10MB): >= 3,200 MB/s (Debug) / >= 3,900 MB/s (Release)
   * 7Z 极速解压: >= 6,600 MB/s (Debug) / >= 7,200 MB/s (Release)

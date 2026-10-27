@@ -1,6 +1,6 @@
 # Implementation Plan: Silesia Corpus Standard Benchmark Fixtures & Regression Gates
 
-**Branch**: `049-silesia-corpus-benchmark` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/049-silesia-corpus-benchmark/spec.md)
+**Branch**: `049-silesia-corpus-benchmark` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/spec.md)
 
 **Input**: Feature specification from `specs/049-silesia-corpus-benchmark/spec.md`
 
@@ -41,17 +41,17 @@ Integrate the complete 12-file Silesia Compression Corpus (~211.95 MB) into `Tes
 
 ## Phase 0: Outline & Research
 
-- R001 [SUBAGENT:research] 《Silesia 语料库目录与校验 Manifest》：12 种典型真实场景文件清单、大小、SHA-256 校验和与静态资源打包方式。详见 [research.md](file://../specs/049-silesia-corpus-benchmark/research.md#r001-silesia-dataset-catalog-exact-file-roster--checksum-manifest)
-- R002 [SUBAGENT:research] 《基准测试执行架构与防抖动门禁》：1 次预热 + 3 次采样中位数过滤、变异系数 $CV \le 2.5\%$ 与 3.0% 硬回归门禁。详见 [research.md](file://../specs/049-silesia-corpus-benchmark/research.md#r002-benchmark-execution-architecture-warmup-protocols--zero-regression-gating)
-- R003 [SUBAGENT:research] 《零拷贝资源加载与 Swift 6.0 并发安全》：`Bundle.module` / `#filePath` 三级回退加载器、C `mmap` 与 Swift `alwaysMapped` 内存安全模型。详见 [research.md](file://../specs/049-silesia-corpus-benchmark/research.md#r003-memory-safe-zero-copy-fixture-loading--spm-file-resolution)
+- R001 [SUBAGENT:research] 《Silesia 语料库目录与校验 Manifest》：12 种典型真实场景文件清单、大小、SHA-256 校验和与静态资源打包方式。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/research.md#r001-silesia-dataset-catalog-exact-file-roster--checksum-manifest)
+- R002 [SUBAGENT:research] 《基准测试执行架构与防抖动门禁》：1 次预热 + 3 次采样中位数过滤、变异系数 $CV \le 2.5\%$ 与 3.0% 硬回归门禁。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/research.md#r002-benchmark-execution-architecture-warmup-protocols--zero-regression-gating)
+- R003 [SUBAGENT:research] 《零拷贝资源加载与 Swift 6.0 并发安全》：`Bundle.module` / `#filePath` 三级回退加载器、C `mmap` 与 Swift `alwaysMapped` 内存安全模型。详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/research.md#r003-memory-safe-zero-copy-fixture-loading--spm-file-resolution)
 
 ## Phase 1: Design & Contracts
 
-- Data Model: [data-model.md](file://../specs/049-silesia-corpus-benchmark/data-model.md)
+- Data Model: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/data-model.md)
 - Schema Contracts [SUBAGENT:research]:
-  - `contracts/silesia_manifest.schema.json`: [silesia_manifest.schema.json](file://../specs/049-silesia-corpus-benchmark/contracts/silesia_manifest.schema.json)
-  - `contracts/benchmark_report.schema.json`: [benchmark_report.schema.json](file://../specs/049-silesia-corpus-benchmark/contracts/benchmark_report.schema.json)
-- Quickstart Guide: [quickstart.md](file://../specs/049-silesia-corpus-benchmark/quickstart.md)
+  - `contracts/silesia_manifest.schema.json`: [silesia_manifest.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/contracts/silesia_manifest.schema.json)
+  - `contracts/benchmark_report.schema.json`: [benchmark_report.schema.json](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/contracts/benchmark_report.schema.json)
+- Quickstart Guide: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/049-silesia-corpus-benchmark/quickstart.md)
 
 ## Project Structure
 

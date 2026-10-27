@@ -28,8 +28,8 @@
   - *被否决方案 1 (全 C 源码 SPM 编译)*：冷启动编译耗时由秒级激增至数分钟，且难以维护多平台的 `config.h`。
   - *被否决方案 2 (systemLibrary 依赖 Homebrew)*：破坏 MAS 沙盒合规与“100% In-Process C 静态绑定”的宪法铁律。
 - **Source**:
-  - `file://../Package.swift`
-  - `file://../Sources/CTTZipBridge/include/module.modulemap`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Package.swift`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/module.modulemap`
   - [SE-0238: Package Manager Build Settings](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0238-package-manager-build-settings.md)
   - [SE-0272: Package Manager Binary Dependencies](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0272-swiftpm-binary-dependencies.md)
 
@@ -45,8 +45,8 @@
   - *被否决方案 1 (`Foundation.Data(contentsOf: .alwaysMapped)`)*：引入 Obj-C 运行时开销，释放时机受 autoreleasepool 影响不可控，且无法调用 `madvise` 调优页缓存。
   - *被否决方案 2 (Swift `~Copyable` Struct)*：单所有权无法在 `concurrentPerform` / `TaskGroup` 中跨线程安全共享读取。
 - **Source**:
-  - `file://../Sources/TTZipCore/Zip/ZipParallelExtractor.swift`
-  - `file://../Sources/TTZipCore/Zip/ZipModels.swift`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipParallelExtractor.swift`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipModels.swift`
   - [SE-0302: Sendable and @Sendable closures](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0302-sendable-code.md)
 
 ---
@@ -61,8 +61,8 @@
 - **Alternatives Considered**:
   - *被否决方案 1 (在 Sanitizer 下跑完全部 GB 级压测)*：导致 CPU 减速 3 倍、内存膨胀 3 倍，易触发 Actions 内存超限与 20 分钟超时。
 - **Source**:
-  - `file://../.github/workflows/ci-cd.yml`
-  - `file://../Tests/TTZipTests/`
+  - `file:///Users/kevintung/Documents/dev/TTZip/.github/workflows/ci-cd.yml`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/`
   - Apple Swift SPM Sanitizer 文档 (`swift test --help`)
 
 ---
@@ -76,6 +76,6 @@
 - **Alternatives Considered**:
   - *被否决方案 1 (仅在 Swift Testing 中无反馈随机变异)*：盲目变异无法触达 C 引擎深度状态机。
 - **Source**:
-  - `file://../Tests/TTZipTests/ArchiveMutationFuzzTests.swift`
-  - `file://../specs/037-libarchive-golden-oracle-and-fuzz-integration/research.md`
+  - `file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ArchiveMutationFuzzTests.swift`
+  - `file:///Users/kevintung/Documents/dev/TTZip/specs/037-libarchive-golden-oracle-and-fuzz-integration/research.md`
   - LLVM LibFuzzer 官方规范

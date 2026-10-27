@@ -2,7 +2,7 @@
 
 **Feature**: `223-rust-core-and-glue-architectural-reconstruction`  
 **Date**: 2026-08-24  
-**Spec Reference**: [`spec.md`](file://specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
+**Spec Reference**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/core/specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
 
 ---
 

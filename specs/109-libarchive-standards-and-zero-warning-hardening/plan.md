@@ -30,12 +30,12 @@
 ## 3. Phase 0 Research & Phase 1 Design Artifacts
 
 - **Phase 0 Research**:
-  - `- R001 [SUBAGENT:research] 《Libarchive C 基础库错误语义模型与 POSIX 头文件规范》`: [`research.md`](file://../specs/109-libarchive-standards-and-zero-warning-hardening/research.md)
-  - `- R002 [SUBAGENT:research] 《Swift 6.0 编译门禁与原生 XCTestObservation 进程内生命周期拦截》`: [`research.md`](file://../specs/109-libarchive-standards-and-zero-warning-hardening/research.md)
+  - `- R001 [SUBAGENT:research] 《Libarchive C 基础库错误语义模型与 POSIX 头文件规范》`: [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/109-libarchive-standards-and-zero-warning-hardening/research.md)
+  - `- R002 [SUBAGENT:research] 《Swift 6.0 编译门禁与原生 XCTestObservation 进程内生命周期拦截》`: [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/109-libarchive-standards-and-zero-warning-hardening/research.md)
 - **Phase 1 Design**:
-  - Data Model: [`data-model.md`](file://../specs/109-libarchive-standards-and-zero-warning-hardening/data-model.md)
-  - Contract Schema: [`contracts/test_report_schema.json`](file://../specs/109-libarchive-standards-and-zero-warning-hardening/contracts/test_report_schema.json)
-  - Quickstart Guide: [`quickstart.md`](file://../specs/109-libarchive-standards-and-zero-warning-hardening/quickstart.md)
+  - Data Model: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/109-libarchive-standards-and-zero-warning-hardening/data-model.md)
+  - Contract Schema: [`contracts/test_report_schema.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/109-libarchive-standards-and-zero-warning-hardening/contracts/test_report_schema.json)
+  - Quickstart Guide: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/109-libarchive-standards-and-zero-warning-hardening/quickstart.md)
 
 ---
 

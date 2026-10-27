@@ -24393,7 +24393,6 @@ extension CollisionRecord: Sendable {}
 extension ResolutionSet: Sendable {}
 extension ResolutionOverride: Sendable {}
 extension OutcomeStatus: Sendable {}
-extension SessionState: Sendable {}
 extension FailedItem: Sendable {}
 extension FailureReason: Sendable {}
 extension ItemKind: Sendable {}
@@ -24401,6 +24400,7 @@ extension ItemMeta: Sendable {}
 extension ConflictKind: Sendable {}
 extension DetectionPhase: Sendable {}
 extension CommitResult: Sendable {}
+extension SessionState: Sendable {}
 extension VfsSession: @unchecked Sendable {}
 extension VfsPagedNode: Sendable {}
 extension VfsPageResult: Sendable {}

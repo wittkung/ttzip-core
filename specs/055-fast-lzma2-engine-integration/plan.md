@@ -11,7 +11,7 @@
 ## Technical Context
 
 TTZip 当前在 7Z / XZ / TAR.XZ 压缩中采用分层设计：
-1. **Level 1**：手写 ARM64 NEON 向量化匹配查找器（[ttzip_lzma2_fast_encoder.c](file://../Sources/CTTZipBridge/ttzip_lzma2_fast_encoder.c)），吞吐达到 3,200 ~ 3,900+ MB/s。
+1. **Level 1**：手写 ARM64 NEON 向量化匹配查找器（[ttzip_lzma2_fast_encoder.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_lzma2_fast_encoder.c)），吞吐达到 3,200 ~ 3,900+ MB/s。
 2. **Level 3 ~ 9**：依赖传统 `liblzma`（BT4/HC4 匹配器），单核计算复杂且多线程扩展受限于锁竞争与字典隔离，高压缩等级下吞吐（480 ~ 620 MB/s）无法充分吃满 8~24 核 CPU 算力。
 
 引入 `conor42/fast-lzma2`（BSD 许可），通过其专有的**并行缓冲基数匹配查找器 (Parallel Buffered Radix Match-Finder)**，在 Level 3~9 下实现多核多线程近线性加速，同时保留 L1 原生 NEON 极速路径，构建自适应混合双引擎架构。
@@ -33,20 +33,20 @@ TTZip 当前在 7Z / XZ / TAR.XZ 压缩中采用分层设计：
 
 ## Phase 0: Research Index
 
-- R001 [SUBAGENT:research] 《Fast-LZMA2 In-Tree 编译与 SPM/CMake 构建集成》：详见 [research.md](file://../specs/055-fast-lzma2-engine-integration/research.md#r001-fast-lzma2-in-tree-编译与-spmcmake-构建集成)
-- R002 [SUBAGENT:research] 《C 桥接接口设计与混合双引擎路由架构》：详见 [research.md](file://../specs/055-fast-lzma2-engine-integration/research.md#r002-c-桥接接口设计与混合双引擎路由架构)
-- R003 [SUBAGENT:research] 《Apple Silicon 拓扑调度与多核内存确界控制》：详见 [research.md](file://../specs/055-fast-lzma2-engine-integration/research.md#r003-apple-silicon-拓扑调度与多核内存确界控制)
+- R001 [SUBAGENT:research] 《Fast-LZMA2 In-Tree 编译与 SPM/CMake 构建集成》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/055-fast-lzma2-engine-integration/research.md#r001-fast-lzma2-in-tree-编译与-spmcmake-构建集成)
+- R002 [SUBAGENT:research] 《C 桥接接口设计与混合双引擎路由架构》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/055-fast-lzma2-engine-integration/research.md#r002-c-桥接接口设计与混合双引擎路由架构)
+- R003 [SUBAGENT:research] 《Apple Silicon 拓扑调度与多核内存确界控制》：详见 [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/055-fast-lzma2-engine-integration/research.md#r003-apple-silicon-拓扑调度与多核内存确界控制)
 
 ---
 
 ## Phase 1: Architecture & Design Artifacts Index
 
-- **Data Model**: [data-model.md](file://../specs/055-fast-lzma2-engine-integration/data-model.md)
+- **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/055-fast-lzma2-engine-integration/data-model.md)
 - **Contract Schemas**:
   - `contracts/fl2-block-compression-contract.json` [SUBAGENT:research]
   - `contracts/fl2-stream-compression-contract.json` [SUBAGENT:research]
   - `contracts/fl2-engine-config-contract.json` [SUBAGENT:research]
-- **Verification Quickstart**: [quickstart.md](file://../specs/055-fast-lzma2-engine-integration/quickstart.md)
+- **Verification Quickstart**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/055-fast-lzma2-engine-integration/quickstart.md)
 
 ---
 
@@ -54,10 +54,10 @@ TTZip 当前在 7Z / XZ / TAR.XZ 压缩中采用分层设计：
 
 ### 1. C Bridge Layer (`Sources/CTTZipBridge/`)
 - **[NEW] `Sources/CTTZipBridge/fast-lzma2/`**: 引入 `conor42/fast-lzma2` 核心 C 源文件（`fl2_compress.c`, `radix_mf.c`, `fl2_pool.c`, `fl2_threading.c`, `lzma2_enc.c` 等）。
-- **[NEW] [ttzip_fl2_lzma2.h](file://../Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h)**: 声明 `ttzip_fl2_compress_block`、`ttzip_fl2_stream_*` 与混合路由分发接口。
-- **[NEW] [ttzip_fl2_bridge.c](file://../Sources/CTTZipBridge/ttzip_fl2_bridge.c)**: 实现 C 桥接包装层、P-Core 线程绑定、16KB 内存页对齐与 Magic 生命周期管理。
-- **[MODIFY] [module.modulemap](file://../Sources/CTTZipBridge/include/module.modulemap)**: 导出 `ttzip_fl2_lzma2.h` 头文件。
-- **[MODIFY] [Package.swift](file://../Package.swift)**: 为 `CTTZipBridge` 追加 `.headerSearchPath("fast-lzma2")` 路径。
+- **[NEW] [ttzip_fl2_lzma2.h](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_fl2_lzma2.h)**: 声明 `ttzip_fl2_compress_block`、`ttzip_fl2_stream_*` 与混合路由分发接口。
+- **[NEW] [ttzip_fl2_bridge.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_fl2_bridge.c)**: 实现 C 桥接包装层、P-Core 线程绑定、16KB 内存页对齐与 Magic 生命周期管理。
+- **[MODIFY] [module.modulemap](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/module.modulemap)**: 导出 `ttzip_fl2_lzma2.h` 头文件。
+- **[MODIFY] [Package.swift](file:///Users/kevintung/Documents/dev/TTZip/Package.swift)**: 为 `CTTZipBridge` 追加 `.headerSearchPath("fast-lzma2")` 路径。
 
 ### 2. Core Engine Layer (`Sources/TTZipCore/`)
 - **[MODIFY] `SevenZipCAdapter.swift`**: 增加针对 `ttzip_fl2_compress_block` 与 Fast-LZMA2 参数的桥接适配。

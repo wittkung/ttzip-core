@@ -1,8 +1,8 @@
 # Tasks: TTZip 密码学离线授权、Steam 商店上架与四轨分发体系 (Feature 010)
 
 - **Feature ID**: `010-cryptographic-licensing-and-multi-channel-distribution`
-- **Specification**: [`specs/010-cryptographic-licensing-and-multi-channel-distribution/spec.md`](file://$HOME/Documents/dev/products/ttzip/specs/010-cryptographic-licensing-and-multi-channel-distribution/spec.md)
-- **Implementation Plan**: [`specs/010-cryptographic-licensing-and-multi-channel-distribution/plan.md`](file://$HOME/Documents/dev/products/ttzip/specs/010-cryptographic-licensing-and-multi-channel-distribution/plan.md)
+- **Specification**: [`specs/010-cryptographic-licensing-and-multi-channel-distribution/spec.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/010-cryptographic-licensing-and-multi-channel-distribution/spec.md)
+- **Implementation Plan**: [`specs/010-cryptographic-licensing-and-multi-channel-distribution/plan.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/010-cryptographic-licensing-and-multi-channel-distribution/plan.md)
 - **Status**: `COMPLETED`
 
 ---

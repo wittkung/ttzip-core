@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-20
-**Feature**: [spec.md](file://../specs/149-cross-platform-cmake-and-c-sdk-quickstart/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/149-cross-platform-cmake-and-c-sdk-quickstart/spec.md)
 
 ## Content Quality
 

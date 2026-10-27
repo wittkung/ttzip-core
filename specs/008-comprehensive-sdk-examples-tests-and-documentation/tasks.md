@@ -1,8 +1,8 @@
 # Tasks: TTZip 全格式与高级设置深度接入示例、全套 SDK 测试用例与完整接入文档体系 (Feature 008)
 
 - **Feature ID**: `008-comprehensive-sdk-examples-tests-and-documentation`
-- **Specification**: [`specs/008-comprehensive-sdk-examples-tests-and-documentation/spec.md`](file://$HOME/Documents/dev/products/ttzip/specs/008-comprehensive-sdk-examples-tests-and-documentation/spec.md)
-- **Implementation Plan**: [`specs/008-comprehensive-sdk-examples-tests-and-documentation/plan.md`](file://$HOME/Documents/dev/products/ttzip/specs/008-comprehensive-sdk-examples-tests-and-documentation/plan.md)
+- **Specification**: [`specs/008-comprehensive-sdk-examples-tests-and-documentation/spec.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/008-comprehensive-sdk-examples-tests-and-documentation/spec.md)
+- **Implementation Plan**: [`specs/008-comprehensive-sdk-examples-tests-and-documentation/plan.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/008-comprehensive-sdk-examples-tests-and-documentation/plan.md)
 - **Status**: `COMPLETED`
 
 ---

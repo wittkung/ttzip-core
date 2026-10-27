@@ -29,11 +29,11 @@ This feature delivers:
 
 ## 4. Phase 1: Design & System Contracts
 
-- **Data Models**: Defined in [`data-model.md`](file://../specs/072-cli-packaging-homebrew-gui-integration/data-model.md) (`CLIPackageConfig`, `CLIPackageManifest`, `ArchiveInspectorState`, `ArchiveDiagnosticsCacheKey`).
+- **Data Models**: Defined in [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/data-model.md) (`CLIPackageConfig`, `CLIPackageManifest`, `ArchiveInspectorState`, `ArchiveDiagnosticsCacheKey`).
 - **Contracts**:
-  - [`contracts/release_packaging_manifest.json`](file://../specs/072-cli-packaging-homebrew-gui-integration/contracts/release_packaging_manifest.json): JSON Schema for packaging manifest.
-  - [`contracts/gui_inspector_payload.json`](file://../specs/072-cli-packaging-homebrew-gui-integration/contracts/gui_inspector_payload.json): JSON Schema for GUI diagnostic payload.
-- **Verification Guide**: [`quickstart.md`](file://../specs/072-cli-packaging-homebrew-gui-integration/quickstart.md).
+  - [`contracts/release_packaging_manifest.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/contracts/release_packaging_manifest.json): JSON Schema for packaging manifest.
+  - [`contracts/gui_inspector_payload.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/contracts/gui_inspector_payload.json): JSON Schema for GUI diagnostic payload.
+- **Verification Guide**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/072-cli-packaging-homebrew-gui-integration/quickstart.md).
 
 ---
 

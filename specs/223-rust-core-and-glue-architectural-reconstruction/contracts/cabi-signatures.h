@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 #ifndef TTZIP_RUST_GLUE_RECONSTRUCTED_H
 #define TTZIP_RUST_GLUE_RECONSTRUCTED_H

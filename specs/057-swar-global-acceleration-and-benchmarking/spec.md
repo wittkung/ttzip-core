@@ -8,17 +8,17 @@
 ## 2. Target Scope & Optimization Opportunities
 
 ### Area 1: 字符集与编码快速探测 (`ttzip_detect_encoding_fast`)
-* **目标文件**：[`Sources/CTTZipBridge/CTTZipUtils.c`](file://../Sources/CTTZipBridge/CTTZipUtils.c)
+* **目标文件**：[`Sources/CTTZipBridge/CTTZipUtils.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipUtils.c)
 * **现状**：逐字节扫描 ASCII 字符（`bytes[i] <= 0x7F`）。在绝大多数包含英文字符/路径名的归档中，逐字节循环造成大量的标量跳转与分支开销。
 * **优化方案**：引入 64-bit SWAR 掩码扫描 `(v & 0x8080808080808080ULL) == 0`，单周期批量跳过 8 字节 ASCII，大幅加速归档条目列表的字符集探测。
 
 ### Area 2: 归档容器头部魔数识别 (`ttzip_detect_format_from_header`)
-* **目标文件**：[`Sources/CTTZipBridge/ttzip_native_archive.c`](file://../Sources/CTTZipBridge/ttzip_native_archive.c)
+* **目标文件**：[`Sources/CTTZipBridge/ttzip_native_archive.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_native_archive.c)
 * **现状**：调用动态库函数 `memcmp` 比较 4~6 字节魔数（如 7z `7z\xbc\xaf\x27\x1c`、TAR `ustar`、XZ `7zXZ`）。
 * **优化方案**：利用 32-bit / 64-bit 未对齐整数直接比对，消除函数调用开销与寄存器保存恢复开销。
 
 ### Area 3: 全局共享 Match Finder (`CTTZipNEONMatchFinder.h`)
-* **目标文件**：[`Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h`](file://../Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h)
+* **目标文件**：[`Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipNEONMatchFinder.h)
 * **现状**：共享头文件中的 `ttzip_neon_match_len` 统一升级为 64-bit SWAR 实现，为所有下游组件提供 4.9 GB/s 的前缀比对能力。
 
 ---

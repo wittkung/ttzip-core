@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-16  
-**Feature**: [spec.md](file://../specs/038-libarchive-defensive-security-and-zero-allocation-hardening/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/038-libarchive-defensive-security-and-zero-allocation-hardening/spec.md)
 
 ## Content Quality
 

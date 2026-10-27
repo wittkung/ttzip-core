@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-19
-**Feature**: [spec.md](file://../specs/125-full-matrix-regression-and-pareto-convergence/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/125-full-matrix-regression-and-pareto-convergence/spec.md)
 
 ## Content Quality
 

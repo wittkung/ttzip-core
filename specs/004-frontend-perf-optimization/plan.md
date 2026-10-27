@@ -1,6 +1,6 @@
 # Implementation Plan: 前端性能深度优化 (Frontend Performance Optimization)
 
-**Branch**: `004-frontend-perf-optimization` | **Date**: 2026-08-15 | **Spec**: [spec.md](file://../specs/004-frontend-perf-optimization/spec.md)
+**Branch**: `004-frontend-perf-optimization` | **Date**: 2026-08-15 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/004-frontend-perf-optimization/spec.md)
 
 **Input**: Feature specification from `specs/004-frontend-perf-optimization/spec.md`
 

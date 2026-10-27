@@ -14,7 +14,7 @@
 
 ### Session 2026-08-17
 - **Q: fast-lzma2 代码在工程中的物理打包与集成形式？**
-  - **Decision**: 采用 In-tree C 源码编译模式，置于 [Sources/CTTZipBridge/fast-lzma2/](file://../Sources/CTTZipBridge/)，直接纳入 SPM 与 CMake 静态编译单元，保持 100% 进程内无外部动态链接依赖。
+  - **Decision**: 采用 In-tree C 源码编译模式，置于 [Sources/CTTZipBridge/fast-lzma2/](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/)，直接纳入 SPM 与 CMake 静态编译单元，保持 100% 进程内无外部动态链接依赖。
   - **Rationale**: 避免预编译二进制碎片化，确保 Clang `-O3 -flto` 与 Apple Silicon 向量化指令最佳内联。
 - **Q: 线程池在 macOS 与 Windows 平台的调度与隔离策略？**
   - **Decision**: macOS 平台下复用 FL2 内置的轻量 POSIX `pthread` 线程池或 GCD 桥接，利用 `QOS_CLASS_USER_INITIATED` 高优先级绑定；Windows 平台使用 FL2 原生 Win32 线程池。

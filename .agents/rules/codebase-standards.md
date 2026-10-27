@@ -12,7 +12,7 @@
 ```c
 // SPDX-License-Identifier: LicenseRef-TTZip-Source-Available-1.0
 //
-// Copyright (c) 2026 Witt Kung <kevintungs@163.com>
+// Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 // All rights reserved.
 //
 // TTZip: High-performance native archiving and compression engine for macOS.
@@ -23,7 +23,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LicenseRef-TTZip-Source-Available-1.0
 #
-# Copyright (c) 2026 Witt Kung <kevintungs@163.com>
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 ```
 
@@ -32,12 +32,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LicenseRef-TTZip-Source-Available-1.0
 #
-# Copyright (c) 2026 Witt Kung <kevintungs@163.com>
+# Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com>
 # All rights reserved.
 ```
 
 - **作者姓名**：`Witt Kung`
-- **联系邮箱**：`kevintungs@163.com`
+- **联系邮箱**：`witt.w.kung@gmail.com`
 
 ---
 

@@ -35,18 +35,18 @@
 - - R006 [SUBAGENT:research] 《Apple BSD LZFSE 压缩过滤器》：评估引入独立 LZFSE 流过滤器的可行性。
 - - R007 [SUBAGENT:research] 《libdeflate 与专有引擎边界界定》：评估 libdeflate 全缓冲特性与 libarchive 流式架构的冲突，界定内部保留边界。
 
-*(完整研究结论见 [`specs/031-libarchive-upstream-contributions-evaluation/research.md`](file://../specs/031-libarchive-upstream-contributions-evaluation/research.md))*
+*(完整研究结论见 [`specs/031-libarchive-upstream-contributions-evaluation/research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/031-libarchive-upstream-contributions-evaluation/research.md))*
 
 ---
 
 ## 4. Phase 1: Design Artifacts & Schemas
 
-- **Data Model**: [`specs/031-libarchive-upstream-contributions-evaluation/data-model.md`](file://../specs/031-libarchive-upstream-contributions-evaluation/data-model.md)
+- **Data Model**: [`specs/031-libarchive-upstream-contributions-evaluation/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/031-libarchive-upstream-contributions-evaluation/data-model.md)
 - **Contracts**:
   - `contracts/upstream-contribution-schema.json` [SUBAGENT:research]
   - `contracts/crypto-writer-config-schema.json` [SUBAGENT:research]
   - `contracts/preallocation-descriptor-schema.json` [SUBAGENT:research]
-- **Validation Guide**: [`specs/031-libarchive-upstream-contributions-evaluation/quickstart.md`](file://../specs/031-libarchive-upstream-contributions-evaluation/quickstart.md)
+- **Validation Guide**: [`specs/031-libarchive-upstream-contributions-evaluation/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/031-libarchive-upstream-contributions-evaluation/quickstart.md)
 
 ---
 

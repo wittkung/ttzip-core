@@ -1,1 +1,6 @@
+# Copyright 2026 MetastudyLine. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Cargo configuration for TTZip
+# Target-specific dynamic_lookup flags are managed in ttzip-python/build.rs
+# so standalone Rust test binaries link cleanly on macOS.

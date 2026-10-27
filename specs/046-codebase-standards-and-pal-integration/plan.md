@@ -46,11 +46,11 @@ graph TD
 ## 五、 改动清单与组件设计 (Component Breakdown)
 
 ### 1. 安全扫描器重构
-- `[MODIFY]` [`Sources/TTZipCore/SecurityScanner.swift`](file://../Sources/TTZipCore/SecurityScanner.swift): 接入 `PlatformPathSanitizer`。
+- `[MODIFY]` [`Sources/TTZipCore/SecurityScanner.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/SecurityScanner.swift): 接入 `PlatformPathSanitizer`。
 
 ### 2. 密码库与敏感内存物理擦除加固
-- `[MODIFY]` [`Sources/TTZipCore/PasswordVaultManager.swift`](file://../Sources/TTZipCore/PasswordVaultManager.swift): 接入 `PlatformMemory.secureZero`。
-- `[MODIFY]` [`Sources/TTZipCore/Services/ArchivePasswordStore.swift`](file://../Sources/TTZipCore/Services/ArchivePasswordStore.swift): 接入 `PlatformMemory.secureZero`。
+- `[MODIFY]` [`Sources/TTZipCore/PasswordVaultManager.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/PasswordVaultManager.swift): 接入 `PlatformMemory.secureZero`。
+- `[MODIFY]` [`Sources/TTZipCore/Services/ArchivePasswordStore.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Services/ArchivePasswordStore.swift): 接入 `PlatformMemory.secureZero`。
 
 ### 3. 硬件调度器跨平台平滑回退
-- `[MODIFY]` [`Sources/TTZipCore/AppleSiliconTuner.swift`](file://../Sources/TTZipCore/AppleSiliconTuner.swift): 接入 `PlatformOperatingSystem` 与 `PlatformHardware`。
+- `[MODIFY]` [`Sources/TTZipCore/AppleSiliconTuner.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/AppleSiliconTuner.swift): 接入 `PlatformOperatingSystem` 与 `PlatformHardware`。

@@ -68,7 +68,7 @@ compare256/native/256     3.437 ns
 
 ### Command
 ```bash
-python3 $HOME/.gemini/antigravity/brain/3ac96734-1cc6-454b-a0a2-ea64d74fac52/scratch/generate_reply.py
+python3 /Users/kevintung/.gemini/antigravity/brain/3ac96734-1cc6-454b-a0a2-ea64d74fac52/scratch/generate_reply.py
 ```
 
 ### Expected Output

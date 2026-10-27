@@ -11,8 +11,8 @@
   - *替代方案 A：强制要求构建系统探测并链接 zlib-ng / libdeflate*：否决。libarchive 秉持轻量与极小依赖原则，`archive_crc32.h` 作为内部核心头文件必须能独立工作。
   - *替代方案 B：在 x86 上直接调用 SSE4.2 `_mm_crc32_u64`*：否决。SSE4.2 指令为 Castagnoli 多项式（CRC-32C），会导致 ZIP/7z 校验和彻底错误。
 - **Source**:
-  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_crc32.h:36-121`](file://../Vendor/libarchive-upstream/libarchive/archive_crc32.h#L36-L121)
-  - TTZip: [`Sources/CTTZipBridge/CTTZipCRC32Neon.c:1-15`](file://../Sources/CTTZipBridge/CTTZipCRC32Neon.c#L1-L15), [`Sources/CTTZipBridge/CTTZipUtils.c:63-145`](file://../Sources/CTTZipBridge/CTTZipUtils.c#L63-L145)
+  - Upstream: [`Vendor/libarchive-upstream/libarchive/archive_crc32.h:36-121`](file:///Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream/libarchive/archive_crc32.h#L36-L121)
+  - TTZip: [`Sources/CTTZipBridge/CTTZipCRC32Neon.c:1-15`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipCRC32Neon.c#L1-L15), [`Sources/CTTZipBridge/CTTZipUtils.c:63-145`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipUtils.c#L63-L145)
 
 ---
 

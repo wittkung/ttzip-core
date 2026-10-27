@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-17
-**Feature**: [spec.md](file://../specs/061-zstd-match-counting-acceleration/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/061-zstd-match-counting-acceleration/spec.md)
 
 ## Content Quality
 

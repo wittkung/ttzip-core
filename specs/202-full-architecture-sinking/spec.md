@@ -4,7 +4,7 @@
 **Feature Branch**: `202-full-architecture-sinking`
 **Created**: 2026-08-22
 **Status**: Draft
-**Input**: User description: "../docs/全面下沉计划.md /speckit-specify 全面实施，完成一个标记一个"
+**Input**: User description: "/Users/kevintung/Documents/dev/TTZip/docs/全面下沉计划.md /speckit-specify 全面实施，完成一个标记一个"
 
 ---
 

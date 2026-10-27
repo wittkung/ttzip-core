@@ -3,7 +3,7 @@
 **Feature Branch**: `074-finder-integration-gui-i18n-fast-lzma2-tuning`  
 **Created**: 2026-08-18  
 **Status**: Planned  
-**Spec**: [`spec.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md) | **Research**: [`research.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/research.md)
+**Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md) | **Research**: [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/research.md)
 
 ---
 
@@ -30,11 +30,11 @@
 
 ## Phase 1: Contracts, Data Models & Quickstart
 
-- Data Model: [`data-model.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/data-model.md)
+- Data Model: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/data-model.md)
 - Contracts:
-  - [SUBAGENT:research] [`contracts/finder_action_event.json`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/contracts/finder_action_event.json)
-  - [SUBAGENT:research] [`contracts/gui_localization_state.json`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/contracts/gui_localization_state.json)
-- Quickstart Guide: [`quickstart.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/quickstart.md)
+  - [SUBAGENT:research] [`contracts/finder_action_event.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/contracts/finder_action_event.json)
+  - [SUBAGENT:research] [`contracts/gui_localization_state.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/contracts/gui_localization_state.json)
+- Quickstart Guide: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/quickstart.md)
 
 ---
 

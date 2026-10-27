@@ -15,7 +15,7 @@ resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
-authors = ["Witt Kung <kevintungs@163.com>"]
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause"
 repository = "https://github.com/wittkung/ttzip-core"
 homepage = "https://github.com/wittkung/ttzip-core"

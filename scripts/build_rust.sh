@@ -299,6 +299,9 @@ if [ -f "${FIRST_DYLIB}" ]; then
     if [ -f "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" ]; then
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/TTZipCore/Generated/ttzip_engineFFI.h"
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/TTZipEngineFFI/include/ttzip_engineFFI.h"
+        if [ -d "${REPO_ROOT}/Sources/CTTZipBridge/include" ]; then
+            copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${REPO_ROOT}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
+        fi
         copy_if_changed "${TMP_UNIFFI_DIR}/ttzip_engineFFI.h" "${SLICE_DIR}/Headers/ttzip_engineFFI.h"
     fi
     if [ -f "${REPO_ROOT}/Sources/TTZipEngineFFI/include/module.modulemap" ]; then

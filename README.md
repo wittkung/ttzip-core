@@ -20,14 +20,14 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
 </p>
-
-> **Standalone source build:** follow the [build and test guide](docs/standalone-build.md) for the tested workflow, platform scope and prerequisites. Package-manager examples and historical benchmark tables below require their own validation.
 
 ---
 
 ## 📖 Architecture & Design Documentation
+
+> **Scope and authority**: This README introduces the Core SDK. Start with the [product doc-twin index](../docs/twin/SPEC_INDEX.md) for current product architecture and cross-module contracts. The v2 whitepapers below retain historical context; they do not replace current process boundaries, VFS wiring, or acceptance records.
 
 - **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: Deep dive into the Dual-Core UniFFI microkernel, memory safety, APFS CoW rollback, and architectural testing invariants.
 - **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 完整的中文系统架构设计白皮书与工程治理规范。
@@ -72,16 +72,6 @@
 | **Legacy & Proprietary** | `.rar`, `.cbr`, `.zipx`, `.cab` | Read-Only | ✅ | ✅ | - |
 
 ---
-
-## Codex-assisted development
-
-TTZip Core is maintained by one developer and built with Codex assistance. Codex helps explore low-level implementations, investigate failures, develop regression tests and prepare changes for upstream projects. The maintainer reviews changes and validates their behavior before publication.
-
-The project aims to combine broad archive-format support, modern parallel execution and native integration for macOS. Its benchmark tooling compares speed and compression ratio to identify non-dominated configurations for measured workloads. Comparisons should retain the corpus, hardware, versions, thread counts and measurement method; a Pareto frontier is specific to those conditions.
-
-The longer-term vision is to make rigorous low-level maintenance and optimization accessible to more open-source maintainers, including solo developers, by reducing the engineering effort required for investigation, testing and cross-platform validation.
-
-For the standalone source build, see [the build and test guide](docs/standalone-build.md).
 
 ## 📈 Real Physical Hardware Benchmarks (`ttzip-bench matrix`)
 
@@ -312,12 +302,12 @@ We actively contribute verified hardware acceleration routines back to foundatio
 
 ## 📄 License & Community Model
  
-TTZip Core is released under the **BSD 3-Clause License**:
+TTZip Core is dual-licensed under the **BSD 3-Clause License** and the **Apache License (Version 2.0)**:
  
-- See [LICENSE](LICENSE) for the complete terms. Third-party components retain their respective licenses.
-- **Open Source**: First-party code in this distribution may be used for commercial, academic, and personal purposes under BSD-3-Clause. This license governs this distribution even where older first-party file headers retain proprietary wording.
-- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [its own repository](https://github.com/wittkung/ttzip-apple) (GPL-3.0-or-later).
-- Commercial Inquiries: `kevintungs@163.com`.
+- See [LICENSE-BSD](LICENSE-BSD) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
+- **100% Open Source**: All source code in `ttzip-core` is available for commercial, academic, and personal use under OSI-approved licenses.
+- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [apple/LICENSE](../apple/LICENSE) (GPL-3.0-or-later).
+- Commercial Inquiries: `witt.w.kung@gmail.com`.
  
 ---
  

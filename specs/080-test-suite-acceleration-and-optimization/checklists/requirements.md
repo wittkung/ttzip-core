@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-18
-**Feature**: [spec.md](file://../specs/080-test-suite-acceleration-and-optimization/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/080-test-suite-acceleration-and-optimization/spec.md)
 
 ## Content Quality
 

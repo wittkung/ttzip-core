@@ -1,6 +1,6 @@
 # Implementation Plan: TTZip 对标全球顶级专业归档软件全维度差距补齐与工程落地
 
-**Branch**: `082-pro-software-gap-audit` | **Date**: 2026-08-18 | **Spec**: [spec.md](file://../specs/082-pro-software-gap-audit/spec.md)
+**Branch**: `082-pro-software-gap-audit` | **Date**: 2026-08-18 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/082-pro-software-gap-audit/spec.md)
 
 ---
 

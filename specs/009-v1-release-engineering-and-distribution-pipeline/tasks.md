@@ -1,8 +1,8 @@
 # Tasks: TTZip v1.0.0 生产级发布工程与全生态自动化分发流水线 (Feature 009)
 
 - **Feature ID**: `009-v1-release-engineering-and-distribution-pipeline`
-- **Specification**: [`specs/009-v1-release-engineering-and-distribution-pipeline/spec.md`](file://$HOME/Documents/dev/products/ttzip/specs/009-v1-release-engineering-and-distribution-pipeline/spec.md)
-- **Implementation Plan**: [`specs/009-v1-release-engineering-and-distribution-pipeline/plan.md`](file://$HOME/Documents/dev/products/ttzip/specs/009-v1-release-engineering-and-distribution-pipeline/plan.md)
+- **Specification**: [`specs/009-v1-release-engineering-and-distribution-pipeline/spec.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/009-v1-release-engineering-and-distribution-pipeline/spec.md)
+- **Implementation Plan**: [`specs/009-v1-release-engineering-and-distribution-pipeline/plan.md`](file:///Users/kevintung/Documents/dev/products/ttzip/specs/009-v1-release-engineering-and-distribution-pipeline/plan.md)
 - **Status**: `COMPLETED`
 
 ---

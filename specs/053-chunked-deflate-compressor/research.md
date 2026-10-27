@@ -78,9 +78,9 @@
   - *否决理由*：TTZip 面向 Mac App Store (MAS 沙盒) 与 Direct 独立分发。采用动态库会导致额外的代码签名、@rpath 加载配置与沙盒隔离复杂性，违反项目 100% In-Process C 静态绑定的性能与安全要求。
 
 ### 4. Source (查阅来源)
-- `../Package.swift:28-48`
-- `../ACKNOWLEDGEMENTS.md:20`
-- `../Vendor/TTZipVendor.xcframework/Info.plist`
+- `/Users/kevintung/Documents/dev/TTZip/Package.swift:28-48`
+- `/Users/kevintung/Documents/dev/TTZip/ACKNOWLEDGEMENTS.md:20`
+- `/Users/kevintung/Documents/dev/TTZip/Vendor/TTZipVendor.xcframework/Info.plist`
 - `Vendor/include/libdeflate.h` 与 `Vendor/TTZipVendor.xcframework/macos-arm64/Headers/libdeflate.h`
 - GitHub `ebiggers/libdeflate` 官方仓库 `CMakeLists.txt`
 
@@ -108,12 +108,12 @@
   - *否决理由*：导致代码重复率极高、维护困难，且极易遗漏 `O_BINARY` 或 `ssize_t` 等边缘类型定义，违反 TTZip 架构整洁与防御性编程铁律。
 
 ### 4. Source (查阅来源)
-- `../Package.swift`
-- `../Sources/CTTZipBridge/include/ttzip_platform.h`
-- `../Sources/CTTZipBridge/include/ttzip_windows.h`
-- `../Sources/CTTZipBridge/include/CTTZipCommon.h`
-- `../Sources/CTTZipBridge/CTTZipStreamCoder.c`
-- `../Sources/CTTZipBridge/CTTZipExtract.c`
-- `../Sources/CTTZipBridge/CTTZipPlatformTimer.c`
+- `/Users/kevintung/Documents/dev/TTZip/Package.swift`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_platform.h`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_windows.h`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipCommon.h`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipExtract.c`
+- `/Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipPlatformTimer.c`
 - ISO/IEC 9899:2011 (C11 Standard) §6.7.3.1
 - Microsoft Learn: Thread Local Storage (TLS) Specification

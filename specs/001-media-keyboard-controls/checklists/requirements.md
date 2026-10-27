@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-25  
-**Feature**: [spec.md](file://$HOME/Documents/dev/products/ttzip/specs/001-media-keyboard-controls/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/products/ttzip/specs/001-media-keyboard-controls/spec.md)
 
 ## Content Quality
 

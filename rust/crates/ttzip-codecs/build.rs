@@ -4,28 +4,20 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
-fn find_third_party_or_vendor(repo_root: &Path) -> PathBuf {
-    println!("cargo:rerun-if-env-changed=TTZIP_THIRD_PARTY_DIR");
-    let monorepo = repo_root.join("../../..");
-    let default_directory = if repo_root.join("third_party").is_dir() {
-        repo_root.join("third_party")
-    } else if monorepo.join("MODULE.bazel").is_file() {
-        monorepo.join("third_party")
-    } else {
-        repo_root.join("third_party")
-    };
-    let directory = env::var_os("TTZIP_THIRD_PARTY_DIR")
-        .map(PathBuf::from)
-        .unwrap_or(default_directory);
-    for library in ["fast-lzma2", "lzfse"] {
-        assert!(
-            directory.join(library).is_dir(),
-            "Missing native source {library} in {}. Use a complete standalone checkout or set TTZIP_THIRD_PARTY_DIR.",
-            directory.display()
-        );
+fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
+    let mut current = Some(start_dir);
+    while let Some(dir) = current {
+        let tp = dir.join("third_party");
+        if tp.is_dir() {
+            return tp;
+        }
+        let v = dir.join("vendor");
+        if v.is_dir() {
+            return v;
+        }
+        current = dir.parent();
     }
-    println!("cargo:rerun-if-changed={}", directory.display());
-    directory
+    start_dir.join("vendor")
 }
 
 /// Compiles in-tree native C codecs (fast-lzma2, lzfse) for standalone Cargo builds.
@@ -232,11 +224,35 @@ fn main() {
     // System libraries & frameworks required on macOS
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
-        if Path::new("/opt/homebrew/lib").exists() {
-            println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
+        // Resolve native library search path hermetically without hardcoded host paths
+        if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
+            println!("cargo:rustc-link-search=native={lib_dir}");
         }
-        if Path::new("/usr/local/lib").exists() {
-            println!("cargo:rustc-link-search=native=/usr/local/lib");
+        for prefix in ["/opt/homebrew", "/usr/local"] {
+            let lib = Path::new(prefix).join("lib");
+            if lib.exists() {
+                println!("cargo:rustc-link-search=native={}", lib.display());
+            }
+            let opt_deflate = Path::new(prefix).join("opt/libdeflate/lib");
+            if opt_deflate.exists() {
+                println!("cargo:rustc-link-search=native={}", opt_deflate.display());
+            }
+        }
+        if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
+            let p = Path::new(&brew_prefix).join("lib");
+            if p.exists() {
+                println!("cargo:rustc-link-search=native={}", p.display());
+            }
+        } else if let Ok(output) = std::process::Command::new("pkg-config")
+            .args(["--variable=libdir", "libarchive"])
+            .output()
+        {
+            if output.status.success() {
+                let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !dir.is_empty() && Path::new(&dir).exists() {
+                    println!("cargo:rustc-link-search=native={dir}");
+                }
+            }
         }
         println!("cargo:rustc-link-lib=deflate");
         println!("cargo:rustc-link-lib=zstd");

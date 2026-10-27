@@ -2,7 +2,7 @@
 
 **Feature**: `005-frontend-perf-metrics`
 **Date**: 2026-08-15
-**Spec**: [spec.md](file://../specs/005-frontend-perf-metrics/spec.md) | **Plan**: [plan.md](file://../specs/005-frontend-perf-metrics/plan.md)
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/005-frontend-perf-metrics/spec.md) | **Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/005-frontend-perf-metrics/plan.md)
 
 ---
 

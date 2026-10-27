@@ -95,5 +95,5 @@
 
 - [x] **T6.1 (LOC Gate)**: Run `scripts/lint_loc_gate.sh` to ensure all new files stay $\le 800$ LOC (target $\le 350$).
 - [x] **T6.2 (Copyright Audit)**: Verify all new files carry standard proprietary header:
-  `// Copyright 2026 MetastudyLine. All rights reserved. // SPDX-License-Identifier: BSD-3-Clause`
+  `// Copyright 2026 MetastudyLine. All rights reserved. // Proprietary and confidential.`
 - [x] **T6.3 (Sandbox Verification)**: Run `sandbox-exec` against MAS profile to confirm zero unauthorized syscall violations.

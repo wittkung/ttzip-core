@@ -1,8 +1,8 @@
 # Tasks: 043-top-tier-open (TTZip 顶尖开源工程对标与架构硬化改造)
 
 **Feature Directory**: `specs/043-top-tier-open`  
-**Spec**: [spec.md](file://../specs/043-top-tier-open/spec.md)  
-**Plan**: [plan.md](file://../specs/043-top-tier-open/plan.md)  
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/spec.md)  
+**Plan**: [plan.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/plan.md)  
 **Status**: Ready for Implementation  
 
 ---

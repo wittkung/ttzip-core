@@ -36,12 +36,12 @@
 
 ## 3. Phase 1: Design Artifacts Index
 
-- **数据模型**: [`specs/169-rust-industrial-test-and-fuzz-suite/data-model.md`](file://../specs/169-rust-industrial-test-and-fuzz-suite/data-model.md)
+- **数据模型**: [`specs/169-rust-industrial-test-and-fuzz-suite/data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/169-rust-industrial-test-and-fuzz-suite/data-model.md)
 - **强类型契约**:
   - [SUBAGENT:research] `contracts/test_property_contract.json`
   - [SUBAGENT:research] `contracts/test_fuzz_contract.json`
   - [SUBAGENT:research] `contracts/test_benchmark_contract.json`
-- **快速验证指南**: [`specs/169-rust-industrial-test-and-fuzz-suite/quickstart.md`](file://../specs/169-rust-industrial-test-and-fuzz-suite/quickstart.md)
+- **快速验证指南**: [`specs/169-rust-industrial-test-and-fuzz-suite/quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/169-rust-industrial-test-and-fuzz-suite/quickstart.md)
 
 ---
 

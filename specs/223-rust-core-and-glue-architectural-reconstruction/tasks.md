@@ -1,7 +1,7 @@
 # Implementation Tasks: Rust Core & Glue Layer Architectural Reconstruction
 
 **Feature**: `223-rust-core-and-glue-architectural-reconstruction`  
-**Plan**: [`plan.md`](file://specs/223-rust-core-and-glue-architectural-reconstruction/plan.md) | **Spec**: [`spec.md`](file://specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
+**Plan**: [`plan.md`](file:///Users/kevintung/Documents/dev/TTZip/core/specs/223-rust-core-and-glue-architectural-reconstruction/plan.md) | **Spec**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/core/specs/223-rust-core-and-glue-architectural-reconstruction/spec.md)
 
 ---
 

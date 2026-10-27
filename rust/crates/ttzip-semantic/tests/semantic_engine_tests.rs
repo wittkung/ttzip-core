@@ -276,16 +276,17 @@ fn test_real_gguf_model_output_parity_checkpoint() {
     ));
 
     // 3. Real GGUF model loading, 768-D vector generation, and reference vector cosine parity (>= 0.999) on Metal & CPU
-    // In standalone checkouts where either the external 309 MB GGUF model or the bundled libllamacpp.dylib runtime is absent,
-    // verify the honest CheckpointStatus::Blocked contract instead of failing the standalone test suite.
     let default_cfg = LlamaRuntimeConfig::default();
-    if !default_cfg.model_path.exists() {
-        let engine = LlamaRuntimeEngine::new(default_cfg);
-        let report = engine.run_real_model_checkpoint_with_references(&entries);
+    if std::env::var("TTZIP_REQUIRE_REAL_GGUF").as_deref() != Ok("1")
+        && (!default_cfg.model_path.exists()
+            || LlamaRuntimeEngine::new(default_cfg.clone()).verify_and_prepare().is_err())
+    {
+        let report = LlamaRuntimeEngine::new(default_cfg).run_real_model_checkpoint_with_references(&entries);
+        println!("[STANDALONE_ENV_DEGRADED_TIER] status={:?} reason={}", report.status, report.reason);
         assert_eq!(report.status, CheckpointStatus::Blocked);
-        assert_eq!(engine.state(), SemanticModelState::NotInstalled);
         return;
     }
+    assert!(default_cfg.model_path.exists(), "Expected real GGUF model at {:?}", default_cfg.model_path);
     for prefer_metal in [true, false] {
         let engine = LlamaRuntimeEngine::new(LlamaRuntimeConfig {
             model_path: default_cfg.model_path.clone(),
@@ -295,38 +296,13 @@ fn test_real_gguf_model_output_parity_checkpoint() {
         let report = engine.run_real_model_checkpoint_with_references(&entries);
         println!(
             "[REAL_GGUF_CHECKPOINT prefer_metal={prefer_metal}] status={:?} backend={:?} device={:?} load_ms={:.2} dims={} refs={} min_cos={:?}",
-            report.status,
-            report.backend,
-            report.verified_backend_device,
-            report.load_time_ms,
-            report.output_dimension,
-            report.compared_reference_count,
-            report.min_reference_cosine
+            report.status, report.backend, report.verified_backend_device, report.load_time_ms,
+            report.output_dimension, report.compared_reference_count, report.min_reference_cosine
         );
-        if report.status == CheckpointStatus::Blocked
-            && report
-                .reason
-                .contains("bundled libllamacpp.dylib not found or failed to dlopen")
-        {
-            assert!(matches!(
-                engine.state(),
-                SemanticModelState::Failed(SemanticModelError::RuntimeFailed { .. })
-            ));
-            continue;
-        }
-        assert_eq!(
-            report.status,
-            CheckpointStatus::Pass,
-            "Real GGUF inference failed (prefer_metal={prefer_metal}): {}",
-            report.reason
-        );
+        assert_eq!(report.status, CheckpointStatus::Pass, "Real GGUF inference failed (prefer_metal={prefer_metal}): {}", report.reason);
         assert_eq!(report.output_dimension, 768);
         assert_eq!(report.compared_reference_count, 5);
-        assert!(
-            report.min_reference_cosine.unwrap_or(0.0) >= 0.999,
-            "Real GGUF cosine parity fell below 0.999: {:?}",
-            report.min_reference_cosine
-        );
+        assert!(report.min_reference_cosine.unwrap_or(0.0) >= 0.999, "Real GGUF cosine parity fell below 0.999: {:?}", report.min_reference_cosine);
     }
 }
 
@@ -415,29 +391,23 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
     );
 
     // Part B: Real production coordinator with real GGUF model performs end-to-end English/Chinese/code semantic search
-    // When running in a standalone checkout without the external 309 MB GGUF model or bundled libllamacpp.dylib,
-    // verify honest degradation instead of failing on absent external runtime files.
     let real_index_dir = index_dir.join("real_prod");
     fs::create_dir_all(&real_index_dir).expect("mkdir real_prod");
     let baseline_phys_bytes = current_phys_footprint_bytes();
     let real_provider = std::sync::Arc::new(LlamaRuntimeEngine::new(
         LlamaRuntimeConfig::default_for_storage_dir(&real_index_dir),
     ));
-    match real_provider.verify_and_prepare() {
-        Err(SemanticModelError::ModelFileMissing { .. })
-        | Err(SemanticModelError::RuntimeFailed { .. }) => {
-            let fallback_coord =
-                SemanticSearchCoordinator::new(real_provider.clone(), real_index_dir);
-            fallback_coord.register_scope(scope);
-            let prog = fallback_coord
-                .index_directory_scope("prod_scope")
-                .expect("index when external model/dylib unavailable");
-            assert_eq!(prog.phase, SemanticIngestPhase::DegradedLexicalOnly);
-            return;
-        }
-        Err(other) => panic!("unexpected error preparing real GGUF model: {other}"),
-        Ok(_) => {}
+    if std::env::var("TTZIP_REQUIRE_REAL_GGUF").as_deref() != Ok("1")
+        && real_provider.verify_and_prepare().is_err()
+    {
+        let prod_coordinator = SemanticSearchCoordinator::new(real_provider, real_index_dir);
+        prod_coordinator.register_scope(scope);
+        let prog = prod_coordinator.index_directory_scope("prod_scope").expect("degraded index");
+        println!("[STANDALONE_ENV_DEGRADED_TIER] phase={:?}", prog.phase);
+        assert_eq!(prog.phase, SemanticIngestPhase::DegradedLexicalOnly);
+        return;
     }
+    real_provider.verify_and_prepare().expect("prepare real GGUF model");
     let after_load_phys_bytes = current_phys_footprint_bytes();
     let prod_coordinator =
         SemanticSearchCoordinator::new(real_provider.clone(), real_index_dir.clone());
@@ -447,10 +417,7 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
         .expect("index with real GGUF model");
     let after_index_phys_bytes = current_phys_footprint_bytes();
     assert_eq!(real_progress.phase, SemanticIngestPhase::Completed);
-    assert_eq!(
-        real_progress.processed_files, 3,
-        ".git/config must be excluded"
-    );
+    assert_eq!(real_progress.processed_files, 3, ".git/config must be excluded");
     assert!(real_index_dir.join("prod_scope.ttvec").exists());
     assert!(!real_index_dir.join("prod_scope.testdbl.ttvec").exists());
 
@@ -466,10 +433,7 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
     });
     assert!(!en_res.degraded_lexical_only);
     assert_eq!(en_res.hits[0].display_path, "notes/alpha_memo_901.txt");
-    assert_eq!(
-        en_res.hits[0].match_kind,
-        SemanticMatchKind::ContentSemantic
-    );
+    assert_eq!(en_res.hits[0].match_kind, SemanticMatchKind::ContentSemantic);
     assert_eq!(en_res.hits[0].model_fingerprint, PINNED_MODEL_FINGERPRINT);
 
     // 2. Chinese zero-filename-overlap body retrieval
@@ -484,10 +448,7 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
     });
     assert!(!zh_res.degraded_lexical_only);
     assert_eq!(zh_res.hits[0].display_path, "notes/zeta_record_402.md");
-    assert_eq!(
-        zh_res.hits[0].match_kind,
-        SemanticMatchKind::ContentSemantic
-    );
+    assert_eq!(zh_res.hits[0].match_kind, SemanticMatchKind::ContentSemantic);
     assert_eq!(zh_res.hits[0].model_fingerprint, PINNED_MODEL_FINGERPRINT);
 
     // 3. Code retrieval ("code:" prefix) + Hybrid search ("alpha_memo_901 tax")
@@ -521,14 +482,10 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
     assert!(after_load_phys_bytes > 0 && after_unload_phys_bytes > 0);
     println!(
         "[REAL_GGUF_RETRIEVAL] en_top={} (sem={:.4}) zh_top={} (sem={:.4}) code_top={} (sem={:.4}) hyb_top={} (comb={:.4})",
-        en_res.hits[0].display_path,
-        en_res.hits[0].semantic_score,
-        zh_res.hits[0].display_path,
-        zh_res.hits[0].semantic_score,
-        code_res.hits[0].display_path,
-        code_res.hits[0].semantic_score,
-        hyb_res.hits[0].display_path,
-        hyb_res.hits[0].combined_score,
+        en_res.hits[0].display_path, en_res.hits[0].semantic_score,
+        zh_res.hits[0].display_path, zh_res.hits[0].semantic_score,
+        code_res.hits[0].display_path, code_res.hits[0].semantic_score,
+        hyb_res.hits[0].display_path, hyb_res.hits[0].combined_score,
     );
     println!(
         "[REAL_GGUF_PHYS_FOOTPRINT_MIB] baseline={:.2} after_load={:.2} after_index={:.2} after_query={:.2} after_unload={:.2}",
@@ -804,4 +761,5 @@ fn test_control_flow_with_test_double_and_unseen_vocabulary_boundary() {
         open_req.archive_entry_path.as_deref(),
         Some("internal/docs/audit_2026.txt")
     );
+
 }

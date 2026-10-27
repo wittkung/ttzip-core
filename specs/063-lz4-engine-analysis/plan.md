@@ -1,6 +1,6 @@
 # Implementation Plan: LZ4 Engine Deep Analysis and Architecture Integration
 
-**Branch**: `063-lz4-engine-analysis` | **Date**: 2026-08-17 | **Spec**: [spec.md](file://../specs/063-lz4-engine-analysis/spec.md)
+**Branch**: `063-lz4-engine-analysis` | **Date**: 2026-08-17 | **Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/spec.md)
 
 ---
 
@@ -42,9 +42,9 @@
 
 ## Phase 1: Design Artifacts
 
-- [x] **Data Model**: [data-model.md](file://../specs/063-lz4-engine-analysis/data-model.md)
-- [x] **Contract Schema**: [contracts/lz4_engine_contract.json](file://../specs/063-lz4-engine-analysis/contracts/lz4_engine_contract.json)
-- [x] **Quickstart & Verification Guide**: [quickstart.md](file://../specs/063-lz4-engine-analysis/quickstart.md)
+- [x] **Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/data-model.md)
+- [x] **Contract Schema**: [contracts/lz4_engine_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/contracts/lz4_engine_contract.json)
+- [x] **Quickstart & Verification Guide**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/063-lz4-engine-analysis/quickstart.md)
 
 ---
 

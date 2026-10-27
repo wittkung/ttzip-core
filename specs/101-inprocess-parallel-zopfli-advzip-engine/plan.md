@@ -9,16 +9,16 @@
 ## Proposed Changes
 
 ### Phase 1: In-Process C Engine & Orchestration
-1. **[NEW] [`Sources/CTTZipBridge/ttzip_zopfli_engine.c`](file://../Sources/CTTZipBridge/ttzip_zopfli_engine.c)**:
+1. **[NEW] [`Sources/CTTZipBridge/ttzip_zopfli_engine.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/ttzip_zopfli_engine.c)**:
    - Implement in-process multi-pass Zopfli & iterative block-split compressor.
-2. **[NEW] [`Sources/CTTZipBridge/include/ttzip_zopfli_engine.h`](file://../Sources/CTTZipBridge/include/ttzip_zopfli_engine.h)**:
+2. **[NEW] [`Sources/CTTZipBridge/include/ttzip_zopfli_engine.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/ttzip_zopfli_engine.h)**:
    - Expose C interface for block-level multi-pass compression.
-3. **[MODIFY] [`Sources/TTZipCore/Zip/ZipExtremeBlockWriter.swift`](file://../Sources/TTZipCore/Zip/ZipExtremeBlockWriter.swift)**:
+3. **[MODIFY] [`Sources/TTZipCore/Zip/ZipExtremeBlockWriter.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipExtremeBlockWriter.swift)**:
    - Route Level 6 (5 passes) and Level 7 (15 passes) to 18-core in-process concurrent engine.
    - Remove `/opt/homebrew/bin/pigz` and `/opt/homebrew/bin/advzip` fallback.
 
 ### Phase 2: Benchmark Expansion & Validation
-1. **[MODIFY] [`Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift`](file://../Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift)**:
+1. **[MODIFY] [`Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift`](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/ZipMultiCoreParetoFrontierPkTests.swift)**:
    - Expand `pigzLevels` to all 11 native levels: `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]`.
-2. **[MODIFY] [`docs/benchmarks/competitor_cache_zip.json`](file://../docs/benchmarks/competitor_cache_zip.json)**:
+2. **[MODIFY] [`docs/benchmarks/competitor_cache_zip.json`](file:///Users/kevintung/Documents/dev/TTZip/docs/benchmarks/competitor_cache_zip.json)**:
    - Cache all 11 pigz levels for instant execution.

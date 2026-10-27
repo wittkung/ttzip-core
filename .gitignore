@@ -15,6 +15,7 @@ xcuserdata/
 *.xcworkspace
 *.dSYM/
 Frameworks/*.dylib
+Frameworks/TTZipVendor.xcframework/
 vendor/
 upstream/
 *.a
@@ -80,6 +81,3 @@ docs/benchmarks/benchmark_report_*.md
 *.tmp
 *.log
 .system_generated/
-
-# Build native artifacts from source with scripts/build_rust.sh.
-Frameworks/TTZipVendor.xcframework/

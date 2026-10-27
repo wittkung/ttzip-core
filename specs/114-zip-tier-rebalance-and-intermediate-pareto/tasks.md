@@ -1,6 +1,6 @@
 # Tasks: ZIP 8-Tier Rebalancing & Intermediate Pareto Frontier Bridge
 
-**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file://../specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
+**Feature**: [`specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/114-zip-tier-rebalance-and-intermediate-pareto/spec.md)  
 **Status**: Ready for Implementation  
 
 ---

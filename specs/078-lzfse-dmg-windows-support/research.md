@@ -1,6 +1,6 @@
 # Technical Research & Feasibility: 078-lzfse-dmg-windows-support
 
-**Feature**: [078-lzfse-dmg-windows-support](file://../specs/078-lzfse-dmg-windows-support/spec.md)
+**Feature**: [078-lzfse-dmg-windows-support](file:///Users/kevintung/Documents/dev/TTZip/specs/078-lzfse-dmg-windows-support/spec.md)
 **Status**: Completed (Phase 0)
 **Date**: 2026-08-18
 
@@ -25,9 +25,9 @@
 
 ### Source
 - 官方仓库：`https://github.com/lzfse/lzfse` (`src/lzfse.h`, `src/lzfse_internal.h`, `src/lzfse_encode.c`, `src/lzfse_decode.c`, `src/lzfse_fse.c`, `src/lzvn_decode_base.c`, `src/lzvn_encode_base.c`)
-- 本地文件：[CTTZipBridge_LZFSE.c](file://../Sources/CTTZipBridge/CTTZipBridge_LZFSE.c) (第 29-56 行 dlopen 动态加载逻辑)
-- 本地文件：[Package.swift](file://../Package.swift) (第 32-49 行 `CTTZipBridge` target 配置)
-- 本地文件：[AccelerationInfrastructureTests.swift](file://../Tests/TTZipTests/AccelerationInfrastructureTests.swift) (第 24-47 行 LZFSE 硬件加速回归测试)
+- 本地文件：[CTTZipBridge_LZFSE.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_LZFSE.c) (第 29-56 行 dlopen 动态加载逻辑)
+- 本地文件：[Package.swift](file:///Users/kevintung/Documents/dev/TTZip/Package.swift) (第 32-49 行 `CTTZipBridge` target 配置)
+- 本地文件：[AccelerationInfrastructureTests.swift](file:///Users/kevintung/Documents/dev/TTZip/Tests/TTZipTests/AccelerationInfrastructureTests.swift) (第 24-47 行 LZFSE 硬件加速回归测试)
 
 ---
 
@@ -56,9 +56,9 @@
 - 官方标准：Apple LZFSE Reference Implementation (`https://github.com/lzfse/lzfse`)
 - 开源实现：QEMU DMG Driver LZFSE Block Implementation (`https://github.com/qemu/qemu/blob/master/block/dmg.c`)
 - 7-Zip 扩展：`https://github.com/mcmilk/7-Zip-zstd` (`CPP/7zip/Archive/DmgHandler.cpp`)
-- 本地文件：[ArchiveExtractor+Dispatch.swift](file://../Sources/TTZipCore/ArchiveExtractor+Dispatch.swift) (第 23-29 行)
-- 本地文件：[ArchiveMagicSignatureScanner.swift](file://../Sources/TTZipCore/Standards/ArchiveMagicSignatureScanner.swift) (第 24, 73-90 行 `koly` trailer 扫描)
-- 本地文件：[ArchiveFormatStandardSpec.swift](file://../Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift) (第 855-885 行 Apple UDIF 规范与 UTI)
+- 本地文件：[ArchiveExtractor+Dispatch.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/ArchiveExtractor+Dispatch.swift) (第 23-29 行)
+- 本地文件：[ArchiveMagicSignatureScanner.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Standards/ArchiveMagicSignatureScanner.swift) (第 24, 73-90 行 `koly` trailer 扫描)
+- 本地文件：[ArchiveFormatStandardSpec.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Standards/ArchiveFormatStandardSpec.swift) (第 855-885 行 Apple UDIF 规范与 UTI)
 
 ---
 
@@ -83,7 +83,7 @@
   - *否决理由*：频繁调用 `mmap` / `munmap` 会在多核系统上广播 TLB Shootdown 中断，降低多线程并发处理性能；且在 MAS 沙盒环境下，大量虚拟内存映射容易突破地址空间配额，不如固定物理缓冲区的 `read`/`write` 管道纯粹稳定。
 
 ### Source
-- 本地宪法：[.specify/memory/constitution.md](file://../.specify/memory/constitution.md) (§2.A, §2.B, §4.I)
-- 本地代码：[CTTZipBridge_LZFSE.c](file://../Sources/CTTZipBridge/CTTZipBridge_LZFSE.c) (第 62, 69, 89, 135 行旧逻辑反模式审查)
-- 本地代码：[NativeCoreArchitecture.swift](file://../Sources/TTZipCore/NativeCoreArchitecture.swift) (第 18-44 行 APFS 预分配与页对齐内存)
-- 本地代码：[MemoryPageFlyweightPool.swift](file://../Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift) (第 72-196 行)
+- 本地宪法：[.specify/memory/constitution.md](file:///Users/kevintung/Documents/dev/TTZip/.specify/memory/constitution.md) (§2.A, §2.B, §4.I)
+- 本地代码：[CTTZipBridge_LZFSE.c](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipBridge_LZFSE.c) (第 62, 69, 89, 135 行旧逻辑反模式审查)
+- 本地代码：[NativeCoreArchitecture.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/NativeCoreArchitecture.swift) (第 18-44 行 APFS 预分配与页对齐内存)
+- 本地代码：[MemoryPageFlyweightPool.swift](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Flyweights/MemoryPageFlyweightPool.swift) (第 72-196 行)

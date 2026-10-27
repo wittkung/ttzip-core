@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 
 #ifndef TTZIP_SEMANTIC_SEARCH_CABI_H
 #define TTZIP_SEMANTIC_SEARCH_CABI_H

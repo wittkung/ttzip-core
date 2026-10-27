@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning.  
 **Created**: 2026-08-18  
-**Feature**: [`spec.md`](file://../specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md)
+**Feature**: [`spec.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/074-finder-integration-gui-i18n-fast-lzma2-tuning/spec.md)
 
 ## Content Quality
 

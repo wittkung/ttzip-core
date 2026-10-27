@@ -2,7 +2,7 @@
 
 **Feature Branch**: `043-top-tier-open`  
 **Feature Directory**: `specs/043-top-tier-open`  
-**Spec**: [spec.md](file://../specs/043-top-tier-open/spec.md)  
+**Spec**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/spec.md)  
 **Created**: 2026-08-17  
 **Status**: Planned  
 
@@ -42,14 +42,14 @@
 
 ## 3. Phase 0 & Phase 1 Artifacts
 
-- **Phase 0 Research**: [research.md](file://../specs/043-top-tier-open/research.md) (全部 4 项研究结论完备)
-- **Phase 1 Data Model**: [data-model.md](file://../specs/043-top-tier-open/data-model.md)
+- **Phase 0 Research**: [research.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/research.md) (全部 4 项研究结论完备)
+- **Phase 1 Data Model**: [data-model.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/data-model.md)
 - **Phase 1 Contracts**:
-  - [spm_configuration_contract.json](file://../specs/043-top-tier-open/contracts/spm_configuration_contract.json) [SUBAGENT:research]
-  - [memory_safety_contract.json](file://../specs/043-top-tier-open/contracts/memory_safety_contract.json) [SUBAGENT:research]
-  - [ci_matrix_contract.json](file://../specs/043-top-tier-open/contracts/ci_matrix_contract.json) [SUBAGENT:research]
-  - [fuzzing_infrastructure_contract.json](file://../specs/043-top-tier-open/contracts/fuzzing_infrastructure_contract.json) [SUBAGENT:research]
-- **Phase 1 Quickstart**: [quickstart.md](file://../specs/043-top-tier-open/quickstart.md)
+  - [spm_configuration_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/contracts/spm_configuration_contract.json) [SUBAGENT:research]
+  - [memory_safety_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/contracts/memory_safety_contract.json) [SUBAGENT:research]
+  - [ci_matrix_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/contracts/ci_matrix_contract.json) [SUBAGENT:research]
+  - [fuzzing_infrastructure_contract.json](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/contracts/fuzzing_infrastructure_contract.json) [SUBAGENT:research]
+- **Phase 1 Quickstart**: [quickstart.md](file:///Users/kevintung/Documents/dev/TTZip/specs/043-top-tier-open/quickstart.md)
 
 ---
 

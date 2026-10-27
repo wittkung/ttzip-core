@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-08-21  
-**Feature**: [spec.md](file://../specs/170-rust-interactive-tui-engine/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/170-rust-interactive-tui-engine/spec.md)
 
 ## 1. Content Quality
 

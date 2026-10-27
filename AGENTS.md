@@ -167,13 +167,13 @@ swift run ttzip-bench pipeline
 ### 1. Swift / Rust / C / C++ 源码头部
 ```swift
 // Copyright 2026 MetastudyLine. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause
+// Proprietary and confidential.
 ```
 
 ### 2. Python / Shell / Bazel / Starlark 源码头部
 ```python
 # Copyright 2026 MetastudyLine. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
+# Proprietary and confidential.
 ```
 
 - **英文注释标准**: 源码内部所有注释、Docstrings、常量与错误说明统一采用专业英语书写。

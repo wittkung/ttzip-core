@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-20
-**Feature**: [spec.md](file://../specs/151-multilingual-readme-matrix/spec.md)
+**Feature**: [spec.md](file:///Users/kevintung/Documents/dev/TTZip/specs/151-multilingual-readme-matrix/spec.md)
 
 ## Content Quality
 

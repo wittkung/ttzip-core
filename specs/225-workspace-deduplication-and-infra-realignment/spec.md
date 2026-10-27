@@ -9,7 +9,7 @@
 ## 1. Executive Summary & Objective
 
 ### 1.1 Problem Statement
-The workspace root directory (`$HOME/Documents/dev/products/ttzip`) currently contains a duplicate flat file tree of the original core engine alongside the true split repositories (`core/` and `apple/`). Furthermore, `ttkit-localization` (an infrastructure SDK belonging to `dev/infra/ttkit`) was duplicated into `products/ttzip`.
+The workspace root directory (`/Users/kevintung/Documents/dev/products/ttzip`) currently contains a duplicate flat file tree of the original core engine alongside the true split repositories (`core/` and `apple/`). Furthermore, `ttkit-localization` (an infrastructure SDK belonging to `dev/infra/ttkit`) was duplicated into `products/ttzip`.
 
 ### 1.2 Target Topology
 1. **Infrastructure Decoupling**: Realign all `tt_i18n` (Cargo) and `TTLocalizationKit` (SPM) dependency paths from local `ttzip/ttkit-localization` to `../../infra/ttkit`.

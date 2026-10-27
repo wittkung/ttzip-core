@@ -9,8 +9,8 @@
 ### Command
 ```bash
 # 验证 code-review 与 upstream-contribution 规范存在且包含系统级 C 防御章节
-grep -n "跨平台防御性编程" $HOME/.agents/skills/code-review/SKILL.md
-test -f $HOME/.agents/skills/upstream-contribution/SKILL.md && echo "Upstream contribution skill exists"
+grep -n "跨平台防御性编程" /Users/kevintung/.agents/skills/code-review/SKILL.md
+test -f /Users/kevintung/.agents/skills/upstream-contribution/SKILL.md && echo "Upstream contribution skill exists"
 ```
 
 ### Expected Output
@@ -26,7 +26,7 @@ test -f $HOME/.agents/skills/upstream-contribution/SKILL.md && echo "Upstream co
 
 ### Command
 ```bash
-cd ../Vendor/libarchive-upstream
+cd /Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream
 git checkout armv8-crc32-acceleration
 # 物理断言：严格检查修改文件仅有 4 个
 git diff origin/master..HEAD --stat
@@ -53,7 +53,7 @@ mkdir -p build && cd build && cmake .. -DENABLE_ZLIB=OFF -DENABLE_TEST=ON && mak
 
 ### Command
 ```bash
-cd ../Vendor/libarchive-upstream
+cd /Users/kevintung/Documents/dev/TTZip/Vendor/libarchive-upstream
 git checkout feat/7z-aes256-decryption
 # 验证 commit 序列呈现清晰的 3 个原子提交
 git log origin/master..HEAD --oneline

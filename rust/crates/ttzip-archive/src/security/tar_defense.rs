@@ -15,7 +15,7 @@ use std::path::{Component, Path, PathBuf};
 
 use crate::archive::tar::header::TAR_BLOCK_SIZE;
 use crate::archive::tar::pax::PaxAttributes;
-use crate::security::path_sanitizer::is_windows_reserved_device_name;
+use crate::security::path_sanitizer::{is_windows_reserved_device_name, validate_archive_path_slice};
 use crate::types::TTZipStatus;
 
 /// Resolves a sanitized path strictly enclosed within `dest_root`.
@@ -25,7 +25,7 @@ use crate::types::TTZipStatus;
 /// - Strips Windows UNC prefixes (`\\?\UNC\`, `//?/UNC/`, `\\?\`, `\\.\`, `//?/`).
 /// - Strips leading Windows drive letters (e.g. `C:`, `c:`).
 /// - Strips leading slashes (`/`, `\`).
-/// - Validates relative path safety via `ttzip_types::path_security::path::validate_safe_relative_path`.
+/// - Validates relative path safety via `validate_archive_path_slice`.
 /// - Normalizes internal `..` parent traversals without allocating heap strings;
 ///   if traversal causes underflow past `dest_root`, `Err(TTZipStatus::ErrSecurityViolation)`
 ///   is returned immediately.
@@ -60,7 +60,7 @@ pub fn enclosed_tar_path(dest_root: &Path, raw_path: &str) -> Result<PathBuf, TT
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    // Fast-path: When there are no parent directory traversals ('..'), validate directly via ttkit-sys
+    // Fast-path: When there are no parent directory traversals ('..'), validate directly via path_sanitizer
     let has_traversal = trimmed.as_bytes().windows(2).any(|w| w == b"..");
     if !has_traversal {
         let normalized = if trimmed.contains('\\') {
@@ -78,7 +78,7 @@ pub fn enclosed_tar_path(dest_root: &Path, raw_path: &str) -> Result<PathBuf, TT
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        ttzip_types::path_security::path::validate_safe_relative_path(check_path)
+        validate_archive_path_slice(check_path.as_bytes())
             .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
 
         let mut target = dest_root.to_path_buf();
@@ -119,7 +119,7 @@ pub fn enclosed_tar_path(dest_root: &Path, raw_path: &str) -> Result<PathBuf, TT
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        // Reject Windows reserved device names via ttkit-sys
+        // Reject Windows reserved device names
         if is_windows_reserved_device_name(seg) {
             return Err(TTZipStatus::ErrSecurityViolation);
         }

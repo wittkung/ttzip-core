@@ -28,27 +28,27 @@
 - R002 [SUBAGENT:research] 《Swift 6 Zero-Copy Adapter Performance》: `LibdeflateCAdapter` flyweight and `bytesNoCopy` memory strategy.
 - R003 [SUBAGENT:research] 《Multi-Tier Deflate Architecture & Boundaries》: Tier 1 (libdeflate whole-buffer/chunk) vs Tier 2 (zlib-ng streaming).
 
-Detailed findings are recorded in [`research.md`](file://../specs/137-libdeflate-single-core-consolidation/research.md).
+Detailed findings are recorded in [`research.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/research.md).
 
 ## Phase 1: Design Artifacts
 
-- **Data Model**: [`data-model.md`](file://../specs/137-libdeflate-single-core-consolidation/data-model.md) defines codec request/response payloads, compression level mappings, buffer memory lifecycles, and flyweight structures.
+- **Data Model**: [`data-model.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/data-model.md) defines codec request/response payloads, compression level mappings, buffer memory lifecycles, and flyweight structures.
 - **Contracts**:
-  - [`contracts/libdeflate_codec_api.json`](file://../specs/137-libdeflate-single-core-consolidation/contracts/libdeflate_codec_api.json)
-  - [`contracts/deflate_stream_api.json`](file://../specs/137-libdeflate-single-core-consolidation/contracts/deflate_stream_api.json)
-- **Quickstart & Validation**: [`quickstart.md`](file://../specs/137-libdeflate-single-core-consolidation/quickstart.md) provides executable benchmark and regression verification scripts with diagnostic guidelines.
+  - [`contracts/libdeflate_codec_api.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/contracts/libdeflate_codec_api.json)
+  - [`contracts/deflate_stream_api.json`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/contracts/deflate_stream_api.json)
+- **Quickstart & Validation**: [`quickstart.md`](file:///Users/kevintung/Documents/dev/TTZip/specs/137-libdeflate-single-core-consolidation/quickstart.md) provides executable benchmark and regression verification scripts with diagnostic guidelines.
 
 ## Component Changes Breakdown
 
 ### 1. C Bridge Layer (`Sources/CTTZipBridge/`)
-- [`CTTZipStreamCoder.c`](file://../Sources/CTTZipBridge/CTTZipStreamCoder.c): Ensure `ttzip_libdeflate_compress` and `ttzip_libdeflate_decompress` maintain strict thread-local pooling and clamping for levels 0–12.
-- [`include/CTTZipStreamCoder.h`](file://../Sources/CTTZipBridge/include/CTTZipStreamCoder.h): Header declarations for C bridge ABI.
+- [`CTTZipStreamCoder.c`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/CTTZipStreamCoder.c): Ensure `ttzip_libdeflate_compress` and `ttzip_libdeflate_decompress` maintain strict thread-local pooling and clamping for levels 0–12.
+- [`include/CTTZipStreamCoder.h`](file:///Users/kevintung/Documents/dev/TTZip/Sources/CTTZipBridge/include/CTTZipStreamCoder.h): Header declarations for C bridge ABI.
 
 ### 2. Core Engine Layer (`Sources/TTZipCore/`)
-- [`Adapters/LibdeflateCAdapter.swift`](file://../Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift): Canonical adapter providing thread-safe, memory-flyweight-backed Swift Deflate APIs.
-- [`Zip/ZipBlockParallelCompressor.swift`](file://../Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift): Enforce direct routing to `ttzip_libdeflate_compress` across 512KB chunk slices.
-- [`Zip/ZipBlockParallelDecompressor.swift`](file://../Sources/TTZipCore/Zip/ZipBlockParallelDecompressor.swift): Enforce direct routing to `ttzip_libdeflate_decompress`.
-- [`Pipeline/DeflateStreamEngine.swift`](file://../Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift): Maintain Tier 2 streaming engine for stateful step-by-step compression.
+- [`Adapters/LibdeflateCAdapter.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Adapters/LibdeflateCAdapter.swift): Canonical adapter providing thread-safe, memory-flyweight-backed Swift Deflate APIs.
+- [`Zip/ZipBlockParallelCompressor.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipBlockParallelCompressor.swift): Enforce direct routing to `ttzip_libdeflate_compress` across 512KB chunk slices.
+- [`Zip/ZipBlockParallelDecompressor.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Zip/ZipBlockParallelDecompressor.swift): Enforce direct routing to `ttzip_libdeflate_decompress`.
+- [`Pipeline/DeflateStreamEngine.swift`](file:///Users/kevintung/Documents/dev/TTZip/Sources/TTZipCore/Pipeline/DeflateStreamEngine.swift): Maintain Tier 2 streaming engine for stateful step-by-step compression.
 
 ### 3. Architecture Documentation
-- [`ARCHITECTURE.md`](file://../ARCHITECTURE.md): Update Section 2.5 to explicitly document the dual-tier strategy, libdeflate single-core supremacy, and the consolidation rationale.
+- [`ARCHITECTURE.md`](file:///Users/kevintung/Documents/dev/TTZip/ARCHITECTURE.md): Update Section 2.5 to explicitly document the dual-tier strategy, libdeflate single-core supremacy, and the consolidation rationale.

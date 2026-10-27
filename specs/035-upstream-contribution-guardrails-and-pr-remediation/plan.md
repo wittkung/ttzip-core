@@ -51,9 +51,9 @@
 ## 5. Component Modification List
 
 ### Component 1: Global Agent Skills & Governance
-- `[MODIFY]` `$HOME/.agents/skills/code-review/SKILL.md` (注入系统级 C 跨平台防御与对抗性审查检查表)
-- `[NEW]` `$HOME/.agents/skills/upstream-contribution/SKILL.md` (创建上游开源贡献全生命周期 SOP Skill)
-- `[MODIFY]` `../GEMINI.md` (添加 upstream contribution 硬门禁规范)
+- `[MODIFY]` `/Users/kevintung/.agents/skills/code-review/SKILL.md` (注入系统级 C 跨平台防御与对抗性审查检查表)
+- `[NEW]` `/Users/kevintung/.agents/skills/upstream-contribution/SKILL.md` (创建上游开源贡献全生命周期 SOP Skill)
+- `[MODIFY]` `/Users/kevintung/Documents/dev/TTZip/GEMINI.md` (添加 upstream contribution 硬门禁规范)
 
 ### Component 2: PR #3391 (CRC32 Hardware Acceleration)
 - `[MODIFY]` `Vendor/libarchive-upstream/libarchive/test/test_archive_crc32.c` (全量接入 bitcrc32() 黄金预言机)

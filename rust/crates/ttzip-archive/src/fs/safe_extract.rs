@@ -89,7 +89,7 @@ pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Resu
 /// name (e.g. `CON`, `nul`) or with an extension (e.g. `CON.txt`, `aux.tar.gz`).
 #[inline]
 pub fn is_windows_reserved_device(comp: &str) -> bool {
-    ttzip_types::path_security::device::is_windows_reserved_device_name(comp)
+    crate::security::path_sanitizer::is_windows_reserved_device_name(comp)
 }
 
 /// Sanitizes a relative entry path and strictly validates that it does not escape `dest_dir`.

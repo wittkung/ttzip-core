@@ -138,7 +138,7 @@
 
 ### 5.1 当前工作区源码直接验证（无任何编译豁免、无源码拼接）
 
-在当前工作区 `$HOME/Documents/dev/metastudyline/source` 直接运行以下命令（未设置任何 `RUSTFLAGS` 豁免，未借用其他基线文件）：
+在当前工作区 `/Users/kevintung/Documents/dev/metastudyline/source` 直接运行以下命令（未设置任何 `RUSTFLAGS` 豁免，未借用其他基线文件）：
 
 1. **R3 两个独立专项回归测试套件**：
    - 命令：
