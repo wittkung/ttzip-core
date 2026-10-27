@@ -230,7 +230,7 @@ pub fn validate_and_normalize_zip_rel_path(raw_rel_path: &str, is_directory: boo
                     Some(val) => val,
                     None => return Err(TTZipStatus::ErrSecurityViolation),
                 };
-                if s_str.chars().all(|ch| ch == '.') {
+                if s_str.chars().all(|ch| ch == '.') || is_windows_reserved_device(s_str) {
                     return Err(TTZipStatus::ErrSecurityViolation);
                 }
                 has_normal = true;

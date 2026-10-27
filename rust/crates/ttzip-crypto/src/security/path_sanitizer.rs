@@ -107,12 +107,16 @@ pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
         None => seg,
     };
 
-    // Trim trailing spaces and dots
+    // Trim leading spaces/tabs and trailing spaces/tabs/dots on stem
+    let mut start = 0;
+    while start < stem.len() && (stem[start] == b' ' || stem[start] == b'\t') {
+        start += 1;
+    }
     let mut end = stem.len();
-    while end > 0 && (stem[end - 1] == b' ' || stem[end - 1] == b'.') {
+    while end > start && (stem[end - 1] == b' ' || stem[end - 1] == b'\t' || stem[end - 1] == b'.') {
         end -= 1;
     }
-    let trimmed = &stem[..end];
+    let trimmed = &stem[start..end];
 
     match trimmed.len() {
         3 => {
@@ -127,11 +131,20 @@ pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
             (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
                 && digit.is_ascii_digit()
         }
+        5 => {
+            let prefix = &trimmed[..3];
+            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
+                && trimmed[3] == 0xC2
+                && matches!(trimmed[4], 0xB9 | 0xB2 | 0xB3)
+        }
         6 => {
             trimmed.eq_ignore_ascii_case(b"CLOCK$")
                 || trimmed.eq_ignore_ascii_case(b"CONIN$")
         }
-        7 => trimmed.eq_ignore_ascii_case(b"CONOUT$"),
+        7 => {
+            trimmed.eq_ignore_ascii_case(b"CONOUT$")
+                || trimmed.eq_ignore_ascii_case(b"CONFIG$")
+        }
         _ => false,
     }
 }
@@ -578,5 +591,64 @@ mod tests {
             validate_archive_path_slice(b"folder/sub:stream:$DATA"),
             Err(PathSecurityError::AlternateDataStream)
         );
+    }
+
+    #[test]
+    fn test_windows_reserved_device_superscript_and_config_contract() {
+        for reserved in [
+            "COM¹",
+            "com¹.txt",
+            "COM².log",
+            "com³.tar.gz",
+            "LPT¹",
+            "lpt².txt",
+            "LPT³.doc",
+            "CONFIG$",
+            "config$.sys",
+            "sub/COM¹.txt",
+            "a\\b\\LPT².bin",
+            "nested/CONFIG$/item.txt",
+        ] {
+            assert_eq!(
+                validate_archive_path_slice(reserved.as_bytes()),
+                Err(PathSecurityError::ReservedDeviceName),
+                "expected ReservedDeviceName for {reserved}"
+            );
+            let sanitized = sanitize_path(reserved);
+            assert!(
+                sanitized.is_windows_reserved,
+                "expected sanitize_path({reserved}).is_windows_reserved == true"
+            );
+            assert!(
+                !sanitized.is_safe(),
+                "expected sanitize_path({reserved}).is_safe() == false"
+            );
+        }
+
+        for benign in [
+            "COM10.txt",
+            "LPT10.txt",
+            "COM¹0.txt",
+            "LPT²extra.txt",
+            "CONFIG.txt",
+            "CONFIG$1.txt",
+            "MYCONFIG$.txt",
+            "notes/com_1.txt",
+        ] {
+            assert_eq!(
+                validate_archive_path_slice(benign.as_bytes()),
+                Ok(()),
+                "expected Ok(()) for benign path {benign}"
+            );
+            let sanitized = sanitize_path(benign);
+            assert!(
+                !sanitized.is_windows_reserved,
+                "expected sanitize_path({benign}).is_windows_reserved == false"
+            );
+            assert!(
+                sanitized.is_safe(),
+                "expected sanitize_path({benign}).is_safe() == true"
+            );
+        }
     }
 }

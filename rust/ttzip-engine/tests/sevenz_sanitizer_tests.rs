@@ -191,3 +191,90 @@ fn test_safe_join_unicode_nfc_normalization() {
     assert!(p.starts_with(dest_root));
     assert!(p.to_string_lossy().contains("café"));
 }
+
+#[test]
+fn test_three_callers_reserved_device_superscript_and_config_regression() {
+    use ttzip_engine::fs::safe_extract::{
+        is_windows_reserved_device, sanitize_and_validate_path, validate_and_normalize_zip_rel_path,
+    };
+    use ttzip_engine::security::tar_defense::enclosed_tar_path;
+
+    let dest_root = Path::new("/var/sandbox/extract");
+
+    let reserved_paths = [
+        "COM\u{00B9}",
+        "com\u{00B9}.txt",
+        "COM\u{00B2}.log",
+        "com\u{00B3}.tar.gz",
+        "LPT\u{00B9}",
+        "lpt\u{00B2}.txt",
+        "LPT\u{00B3}.bin",
+        "CONFIG$",
+        "config$.bak",
+        "nested/COM\u{00B9}.txt",
+        "nested/LPT\u{00B2}/payload.bin",
+        "nested/CONFIG$/settings.ini",
+    ];
+
+    for rel in reserved_paths {
+        assert!(
+            safe_join(dest_root, rel).is_err(),
+            "sevenz::sanitizer::safe_join must reject '{rel}'"
+        );
+        assert_eq!(
+            sanitize_and_validate_path(dest_root, rel),
+            Err(TTZipStatus::ErrSecurityViolation),
+            "safe_extract::sanitize_and_validate_path must reject '{rel}'"
+        );
+        assert_eq!(
+            validate_and_normalize_zip_rel_path(rel, false),
+            Err(TTZipStatus::ErrSecurityViolation),
+            "safe_extract::validate_and_normalize_zip_rel_path must reject '{rel}'"
+        );
+        assert_eq!(
+            enclosed_tar_path(dest_root, rel),
+            Err(TTZipStatus::ErrSecurityViolation),
+            "tar_defense::enclosed_tar_path (fast-path) must reject '{rel}'"
+        );
+        let traversal_rel = format!("safe_dir/../{rel}");
+        assert_eq!(
+            enclosed_tar_path(dest_root, &traversal_rel),
+            Err(TTZipStatus::ErrSecurityViolation),
+            "tar_defense::enclosed_tar_path (slow-path) must reject '{traversal_rel}'"
+        );
+    }
+
+    assert!(is_windows_reserved_device("COM\u{00B9}.txt"));
+    assert!(is_windows_reserved_device("LPT\u{00B2}.txt"));
+    assert!(is_windows_reserved_device("CONFIG$"));
+
+    let benign_paths = [
+        "COM10.txt",
+        "LPT10.txt",
+        "COM\u{00B9}0.txt",
+        "LPT\u{00B2}extra.txt",
+        "CONFIG.txt",
+        "CONFIG$1.txt",
+        "MYCONFIG$.txt",
+        "nested/com_1.txt",
+    ];
+
+    for benign in benign_paths {
+        assert!(
+            safe_join(dest_root, benign).is_ok(),
+            "sevenz::sanitizer::safe_join must allow benign '{benign}'"
+        );
+        assert!(
+            sanitize_and_validate_path(dest_root, benign).is_ok(),
+            "safe_extract::sanitize_and_validate_path must allow benign '{benign}'"
+        );
+        assert!(
+            validate_and_normalize_zip_rel_path(benign, false).is_ok(),
+            "safe_extract::validate_and_normalize_zip_rel_path must allow benign '{benign}'"
+        );
+        assert!(
+            enclosed_tar_path(dest_root, benign).is_ok(),
+            "tar_defense::enclosed_tar_path must allow benign '{benign}'"
+        );
+    }
+}

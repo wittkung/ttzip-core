@@ -495,7 +495,7 @@ fn resolve_stream_encoder(
     let cstream = if level_int == 0 || total_expected == 0 {
         None
     } else {
-        Some(init_fl2_stream(level_int, options.thread_budget.max(1))?)
+        Some(init_fl2_stream(level_int.min(10), options.thread_budget.max(1))?)
     };
     Ok((cstream, password))
 }
