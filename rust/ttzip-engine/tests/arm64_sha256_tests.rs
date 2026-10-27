@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive test suite for ARM64 SHA-256 hardware acceleration,
 //! vector pipelines, dynamic dispatch, and 7z 524,288-cycle KDF.

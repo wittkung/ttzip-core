@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests for Hardware Portability, 4-Tier API Stratification, and ABI Export Guard.
 
@@ -298,8 +298,8 @@ fn test_layer4_advanced_builder_pipeline() {
 
 #[test]
 fn test_abi_export_guard_and_whitelist() {
-    assert_eq!(unsafe { ttzip_abi_version() }, 2);
-    assert!(unsafe { ttzip_abi_is_compatible(2) });
+    assert_eq!(unsafe { ttzip_abi_version() }, 3);
+    assert!(unsafe { ttzip_abi_is_compatible(3) });
     assert!(!unsafe { ttzip_abi_is_compatible(1) });
     assert!(!unsafe { ttzip_abi_is_compatible(999) });
 

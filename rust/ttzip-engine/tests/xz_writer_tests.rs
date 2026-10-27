@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration tests for XZ Container Stream Writer, Adaptive Block Encoder,
 //! BCJ/LZMA2 Filter Pipeline, multi-threaded parallel chunking, and GNU `xz` compatibility.

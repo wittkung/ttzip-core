@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe RAII wrapper and streaming context for Facebook `Zstandard` (zstd).
 //!
@@ -9,7 +9,6 @@
 pub mod cctx;
 pub mod dctx;
 pub mod dict;
-mod entropy;
 pub mod pipe;
 pub mod stream;
 pub mod types;
@@ -25,19 +24,9 @@ pub use dctx::{
     with_thread_local_zstd_dctx, zstd_decompress, zstd_get_decompressed_size, ZstdDCtx,
 };
 pub use dict::*;
-pub use entropy::{
-    fse_compress, fse_compress_bound, fse_decompress, huf0_compress1x, huf0_compress4x,
-    huf0_compress_bound, huf0_decompress1x, huf0_decompress4x,
-};
 pub use pipe::{zstd_compress_stream_pipe, zstd_decompress_stream_pipe, ZSTD_PIPE_BUFFER_SIZE};
 pub use stream::{ZstdStreamReader, ZstdStreamWriter, ZSTD_STREAM_BUFFER_SIZE};
 pub use types::{
     ZstdCParameter, ZstdConfig, ZstdDParameter, ZstdEndDirective, ZstdInBuffer, ZstdOutBuffer,
-};
-pub use crate::codecs::zstd_seekable::{
-    SeekFrameInfo, SeekTableDecoder, SeekTableEncoder, SeekTableEntry, SeekableError,
-    ZstdSeekableReader, ZstdSeekableWriter, DEFAULT_SEEKABLE_FRAME_SIZE, SEEKABLE_FOOTER_SIZE,
-    SEEKABLE_MAGIC_NUMBER, SEEK_TABLE_FLAG_CHECKSUM, SKIPPABLE_HEADER_SIZE,
-    SKIPPABLE_MAGIC_NUMBER,
 };
 

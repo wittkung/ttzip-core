@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! MS-DOS 16-bit FAT / PKZIP timestamp bidirectional conversion.
 //!
@@ -294,3 +294,95 @@ pub fn dos_to_unix_epoch_secs(date: u16, time: u16) -> i64 {
 pub fn unix_epoch_secs_to_dos(secs: i64) -> (u16, u16) {
     DosDateTime::from_unix_epoch_secs(secs).to_dos()
 }
+
+impl DosDateTime {
+    /// Constructs a `DosDateTime` from Unix epoch seconds interpreted in the local timezone.
+    ///
+    /// MS-DOS FAT / PKZIP header fields store wall-clock local calendar components.
+    /// Timestamps before `1980-01-01 00:00:00` local time are clamped to `Self::MIN`.
+    /// Timestamps after `2107-12-31 23:59:58` local time are clamped to `Self::MAX`.
+    pub fn from_local_unix_epoch_secs(secs: i64) -> Self {
+        let t = secs as libc::time_t;
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        let ptr = unsafe { libc::localtime_r(&t, &mut tm) };
+        if ptr.is_null() {
+            return Self::from_unix_epoch_secs(secs);
+        }
+        let year = tm.tm_year + 1900;
+        if year < 1980 {
+            return Self::MIN;
+        }
+        if year > 2107 {
+            return Self::MAX;
+        }
+        let year_u16 = year as u16;
+        let month = (tm.tm_mon + 1).clamp(1, 12) as u8;
+        let max_d = days_in_month(year_u16, month);
+        let day = (tm.tm_mday.max(1) as u8).min(max_d);
+        let hour = tm.tm_hour.clamp(0, 23) as u8;
+        let minute = tm.tm_min.clamp(0, 59) as u8;
+        let second = ((tm.tm_sec.clamp(0, 59) as u8) & !1).min(58);
+        Self {
+            year: year_u16,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+        }
+    }
+
+    /// Converts this local calendar `DosDateTime` into Unix epoch seconds via `libc::mktime`.
+    pub fn to_local_unix_epoch_secs(&self) -> i64 {
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        tm.tm_year = (self.year as libc::c_int) - 1900;
+        tm.tm_mon = (self.month as libc::c_int) - 1;
+        tm.tm_mday = self.day as libc::c_int;
+        tm.tm_hour = self.hour as libc::c_int;
+        tm.tm_min = self.minute as libc::c_int;
+        tm.tm_sec = self.second as libc::c_int;
+        tm.tm_isdst = -1;
+
+        let res = unsafe { libc::mktime(&mut tm) };
+        if res == -1 {
+            self.to_unix_epoch_secs()
+        } else {
+            res as i64
+        }
+    }
+}
+
+/// Converts packed MS-DOS `(time, date)` in local wall-clock time to Unix epoch seconds.
+#[inline]
+pub fn dos_to_local_unix_epoch_secs(dos_time: u16, dos_date: u16) -> i64 {
+    if dos_date == 0 {
+        return 0;
+    }
+    DosDateTime::from_dos(dos_date, dos_time)
+        .map(|dt| dt.to_local_unix_epoch_secs())
+        .unwrap_or(0)
+}
+
+/// Resolves the canonical modification timestamp (Unix epoch seconds) for a ZIP entry.
+///
+/// Priority order:
+/// 1. Extended Timestamp (`0x5455`) UTC modification time (`extra.mod_time`)
+/// 2. NTFS (`0x000a`) UTC modification time (`extra.ntfs`)
+/// 3. MS-DOS local calendar timestamp (`dos_time`, `dos_date`) converted via local timezone
+#[inline]
+pub fn resolve_zip_mtime_secs(
+    extra: &crate::zip::extra::ZipExtraFields,
+    dos_time: u16,
+    dos_date: u16,
+) -> i64 {
+    if let Some(ext_mtime) = extra.mod_time {
+        return ext_mtime as i64;
+    }
+    if let Some(ref ntfs) = extra.ntfs {
+        if ntfs.mtime_ticks > 0 {
+            return ntfs.mtime_unix_secs();
+        }
+    }
+    dos_to_local_unix_epoch_secs(dos_time, dos_date)
+}
+

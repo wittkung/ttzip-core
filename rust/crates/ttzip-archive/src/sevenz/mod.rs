@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Native 7-Zip (7z) Engine module.
 //!
@@ -10,6 +10,7 @@
 pub mod dag;
 pub mod decoder;
 pub mod encrypted_header;
+pub mod error;
 pub mod format;
 pub mod header;
 pub mod mt_writer;
@@ -19,7 +20,8 @@ pub mod time;
 pub mod varint;
 pub mod writer;
 
-pub use dag::{build_and_sort, CoderGraph, CoderNode, SevenZError};
+pub use dag::{build_and_sort, CoderGraph, CoderNode};
+pub use error::SevenZError;
 pub use encrypted_header::{
     probe_7z_password, EncodedHeaderDecoder, MAX_PACKED_HEADER_BYTES, MAX_PREALLOC_BYTES,
 };

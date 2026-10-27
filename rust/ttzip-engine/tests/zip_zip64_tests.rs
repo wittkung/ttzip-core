@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration test suite for Zip64 Dual-Threshold Promotion
 //! State Machine, LFH/CDFH Type-Safe Orchestrator, and EOCD Record/Locator.

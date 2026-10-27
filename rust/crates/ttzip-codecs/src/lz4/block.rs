@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Ultra-fast `LZ4` block compression and High Compression (`LZ4 HC`) codecs.
 //!
@@ -187,8 +187,11 @@ pub fn lz4_decompress_to_vec(
     src: &[u8],
     uncompressed_len: usize,
 ) -> Result<Vec<u8>, TTZipStatus> {
-    if src.is_empty() || uncompressed_len == 0 {
+    if uncompressed_len == 0 {
         return Ok(Vec::new());
+    }
+    if src.is_empty() {
+        return Err(TTZipStatus::ErrCorruptHeader);
     }
     let mut out = vec![0u8; uncompressed_len];
     let written = lz4_decompress(src, &mut out)?;

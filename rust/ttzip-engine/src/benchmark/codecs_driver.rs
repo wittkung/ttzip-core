@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unified Trait-driven Codec Benchmark Driver & 60-Point Orthogonal Matrix Suite.
 //!
@@ -31,10 +31,8 @@ use crate::codecs::{
         snappy_decompress, snappy_frame_decode_to_vec, snappy_frame_encode_to_vec,
     },
     zstd::{
-        fse_compress, fse_compress_bound, fse_decompress, huf0_compress1x, huf0_compress4x,
-        huf0_compress_bound, huf0_decompress1x, huf0_decompress4x, zstd_compress,
-        zstd_compress_advanced, zstd_compress_bound, zstd_decompress, ZstdConfig, ZstdDCtx,
-        ZstdDictionaryManager,
+        zstd_compress, zstd_compress_advanced, zstd_compress_bound, zstd_decompress,
+        ZstdConfig, ZstdDCtx, ZstdDictionaryManager,
     },
 };
 
@@ -243,94 +241,6 @@ impl CodecBenchmarkDriver for ZstdDictBenchmarkDriver {
         let dict = ZstdDictionaryManager::global().ensure_standard_112kb();
         let mut dst = vec![0u8; orig_len];
         let written = dict.decompress_small(compressed, &mut dst)?;
-        if written != orig_len {
-            return Err(TTZipStatus::ErrExtractionFailed);
-        }
-        Ok(dst)
-    }
-}
-
-// MARK: - 2d. FSE (Finite State Entropy / tANS) Driver
-
-/// Finite State Entropy (tANS) benchmark driver.
-pub struct FseBenchmarkDriver;
-
-impl CodecBenchmarkDriver for FseBenchmarkDriver {
-    fn algorithm_id(&self) -> &'static str {
-        "FSE"
-    }
-
-    fn available_levels(&self) -> Vec<i32> {
-        vec![1]
-    }
-
-    fn display_name(&self, _level: i32) -> String {
-        "FSE (Finite State Entropy / tANS)".to_string()
-    }
-
-    fn bench_compress(&self, src: &[u8], _level: i32) -> Result<Vec<u8>, TTZipStatus> {
-        let bound = fse_compress_bound(src.len()) + 1024;
-        let mut dst = vec![0u8; bound];
-        let written = fse_compress(src, &mut dst)?;
-        dst.truncate(written);
-        Ok(dst)
-    }
-
-    fn bench_decompress(&self, compressed: &[u8], orig_len: usize) -> Result<Vec<u8>, TTZipStatus> {
-        let mut dst = vec![0u8; orig_len];
-        let written = fse_decompress(compressed, &mut dst)?;
-        if written != orig_len {
-            return Err(TTZipStatus::ErrExtractionFailed);
-        }
-        Ok(dst)
-    }
-}
-
-// MARK: - 2e. Huff0 (4-Stream & 1-Stream Huffman) Driver
-
-/// Huff0 benchmark driver supporting 1-Stream sequential and 4-Stream parallel modes.
-pub struct Huff0BenchmarkDriver;
-
-impl CodecBenchmarkDriver for Huff0BenchmarkDriver {
-    fn algorithm_id(&self) -> &'static str {
-        "Huff0"
-    }
-
-    fn available_levels(&self) -> Vec<i32> {
-        vec![1, 4]
-    }
-
-    fn display_name(&self, level: i32) -> String {
-        if level == 1 {
-            "Huff0 1-Stream".to_string()
-        } else {
-            "Huff0 4-Stream".to_string()
-        }
-    }
-
-    fn bench_compress(&self, src: &[u8], level: i32) -> Result<Vec<u8>, TTZipStatus> {
-        let bound = huf0_compress_bound(src.len()) + 1024;
-        let mut dst = vec![0u8; bound];
-        let written = if level == 1 {
-            huf0_compress1x(src, &mut dst)?
-        } else {
-            huf0_compress4x(src, &mut dst)?
-        };
-        dst.truncate(written);
-        Ok(dst)
-    }
-
-    fn bench_decompress(&self, compressed: &[u8], orig_len: usize) -> Result<Vec<u8>, TTZipStatus> {
-        let mut dst = vec![0u8; orig_len];
-        let written = if compressed.is_empty() {
-            0
-        } else {
-            // Test 4X first, fallback to 1X if needed
-            match huf0_decompress4x(compressed, &mut dst) {
-                Ok(w) => w,
-                Err(_) => huf0_decompress1x(compressed, &mut dst)?,
-            }
-        };
         if written != orig_len {
             return Err(TTZipStatus::ErrExtractionFailed);
         }
@@ -684,8 +594,6 @@ impl MatrixCodecDriver {
                 Box::new(ZstdBenchmarkDriver),
                 Box::new(ZstdLdmBenchmarkDriver),
                 Box::new(ZstdDictBenchmarkDriver),
-                Box::new(FseBenchmarkDriver),
-                Box::new(Huff0BenchmarkDriver),
                 Box::new(Lzma2BenchmarkDriver),
                 Box::new(BrotliBenchmarkDriver),
                 Box::new(Bzip2BenchmarkDriver),
@@ -709,8 +617,6 @@ impl MatrixCodecDriver {
                 || (name_lower == "zstandard" && id_lower == "zstd")
                 || (name_lower == "zstd-ldm" && id_lower == "zstd-ldm")
                 || (name_lower == "zstd-dict" && id_lower == "zstd-dict")
-                || (name_lower == "fse" && id_lower == "fse")
-                || (name_lower == "huff0" && id_lower == "huff0")
                 || (name_lower == "ppmd" && id_lower == "ppmd")
                 || (name_lower == "bzip2" && id_lower == "bzip2")
             {
@@ -732,9 +638,6 @@ impl MatrixCodecDriver {
             configs.push(MatrixCodecConfig::new("Zstd-LDM", w, format!("Zstd LDM {}", lbl)));
         }
         for lvl in [1, 3, 6, 9] { configs.push(MatrixCodecConfig::new("Zstd-Dict", lvl, format!("Zstd Dict 112KB (L{})", lvl))); }
-        configs.push(MatrixCodecConfig::new("FSE", 1, "FSE (tANS)"));
-        configs.push(MatrixCodecConfig::new("Huff0", 1, "Huff0 1-Stream"));
-        configs.push(MatrixCodecConfig::new("Huff0", 4, "Huff0 4-Stream"));
         for lvl in 1..=9 { configs.push(MatrixCodecConfig::new("LZMA2", lvl, format!("LZMA2 L{}", lvl))); }
         for (lvl, lbl) in [(1, "Fast 1"), (3, "Fast 3"), (9, "Fast 9"), (19, "HC 9"), (22, "HC 12")] {
             configs.push(MatrixCodecConfig::new("LZ4", lvl, format!("LZ4 {}", lbl)));

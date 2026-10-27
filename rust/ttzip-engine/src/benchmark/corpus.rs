@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mathematical synthetic benchmark corpus generators aligned with zlib-ng and 7-Zip standards.
 //!

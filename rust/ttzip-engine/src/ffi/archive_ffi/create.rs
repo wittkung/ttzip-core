@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Archive creation C-ABI FFI entry implementation.
 
@@ -44,6 +44,29 @@ fn collect_entries_recursive(
     Ok(())
 }
 
+std::thread_local! {
+    static STAGED_FFI_ENCRYPT_FILE_NAMES: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+}
+
+/// C-ABI v2 unified archive creation with explicit `encrypt_file_names_mode`
+/// (`1` => `Some(true)`, `0` => `Some(false)`, `< 0` => `None`).
+#[no_mangle]
+pub unsafe extern "C" fn ttzip_rust_create_archive_v2(
+    source_paths: *const *const c_char,
+    source_count: usize,
+    destination_path: *const c_char,
+    options: *const TTZipCreateOptions,
+    encrypt_file_names_mode: i32,
+) -> TTZipStatus {
+    let encrypt_file_names = match encrypt_file_names_mode {
+        1 => Some(true),
+        0 => Some(false),
+        _ => None,
+    };
+    STAGED_FFI_ENCRYPT_FILE_NAMES.with(|slot| slot.set(encrypt_file_names));
+    ttzip_rust_create_archive(source_paths, source_count, destination_path, options)
+}
+
 /// C-ABI exported unified archive creation.
 ///
 /// Compresses `source_paths` into `destination_path` according to `options`.
@@ -55,6 +78,7 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
     options: *const TTZipCreateOptions,
 ) -> TTZipStatus {
     let result = catch_unwind(|| {
+        let encrypt_file_names = STAGED_FFI_ENCRYPT_FILE_NAMES.with(|slot| slot.take());
         if source_paths.is_null() || source_count == 0 || options.is_null() {
             return TTZipStatus::ErrInvalidParam;
         }
@@ -64,13 +88,121 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             Err(st) => return st,
         };
         let dest_p = Path::new(dest_str);
+        let opt = unsafe { &*options };
+
+        let has_non_empty_password = if opt.password.is_null() {
+            false
+        } else {
+            match unsafe { safe_cstr(opt.password) } {
+                Ok(s) if !s.is_empty() => true,
+                _ => return TTZipStatus::ErrInvalidPassword,
+            }
+        };
+        if (opt.encryption != TTZipEncryptionMethod::None || encrypt_file_names == Some(true))
+            && !has_non_empty_password
+        {
+            return TTZipStatus::ErrInvalidPassword;
+        }
+        if encrypt_file_names == Some(true) && opt.format != TTZipArchiveFormat::SevenZip {
+            return TTZipStatus::ErrUnsupportedFeature;
+        }
+
         if let Some(parent) = dest_p.parent() {
             if !parent.exists() {
                 let _ = fs::create_dir_all(parent);
             }
         }
 
-        let opt = unsafe { &*options };
+        // Collect all entries to compress first so we can validate cardinality and existence
+        let mut raw_sources: Vec<PathBuf> = Vec::with_capacity(source_count);
+        let mut entries_to_write: Vec<(PathBuf, String)> = Vec::new();
+        for i in 0..source_count {
+            let src_c = unsafe { *source_paths.add(i) };
+            let src_str = match unsafe { safe_cstr(src_c) } {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let src_path = Path::new(src_str);
+            if !src_path.exists() && fs::symlink_metadata(src_path).is_err() {
+                return TTZipStatus::ErrFileNotFound;
+            }
+            raw_sources.push(src_path.to_path_buf());
+            let base_parent = src_path.parent().unwrap_or(src_path);
+            let _ = collect_entries_recursive(base_parent, src_path, &mut entries_to_write);
+        }
+
+        if entries_to_write.is_empty() {
+            return TTZipStatus::ErrInvalidParam;
+        }
+
+        if opt.format == TTZipArchiveFormat::SevenZip && encrypt_file_names.is_some() {
+            return match crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts(
+                &entries_to_write,
+                dest_p,
+                opt,
+                0,
+                encrypt_file_names,
+            ) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(e) => e.status(),
+            };
+        }
+
+        // Delegate formats handled by native Rust / AppleArchive writers to unified::create
+        if matches!(
+            opt.format,
+            TTZipArchiveFormat::SevenZip
+                | TTZipArchiveFormat::Aar
+                | TTZipArchiveFormat::Xar
+                | TTZipArchiveFormat::Brotli
+                | TTZipArchiveFormat::TarBrotli
+                | TTZipArchiveFormat::Snappy
+        ) {
+            return match crate::archive::unified::create::create_archive(
+                &raw_sources,
+                dest_p,
+                opt,
+                0,
+            ) {
+                Ok(()) => TTZipStatus::Ok,
+                Err(st) => st,
+            };
+        }
+
+        let is_single_regular_file = entries_to_write.len() == 1
+            && fs::symlink_metadata(&entries_to_write[0].0)
+                .map(|m| m.is_file() && !m.file_type().is_symlink())
+                .unwrap_or(false);
+        let dest_lower = dest_p
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let is_tar_compound_dest = dest_lower.contains(".tar.")
+            || dest_lower.ends_with(".tgz")
+            || dest_lower.ends_with(".tbz2")
+            || dest_lower.ends_with(".tbz")
+            || dest_lower.ends_with(".txz")
+            || dest_lower.ends_with(".tzst")
+            || dest_lower.ends_with(".tlz4")
+            || dest_lower.ends_with(".tlz")
+            || dest_lower.ends_with(".tlrz");
+
+        let is_pure_stream = matches!(
+            opt.format,
+            TTZipArchiveFormat::Gzip
+                | TTZipArchiveFormat::Bzip2
+                | TTZipArchiveFormat::Xz
+                | TTZipArchiveFormat::Zstd
+                | TTZipArchiveFormat::Lz4
+                | TTZipArchiveFormat::Lzip
+                | TTZipArchiveFormat::Lrzip
+        ) && !is_tar_compound_dest;
+
+        if is_pure_stream && !is_single_regular_file {
+            return TTZipStatus::ErrInvalidParam;
+        }
+
         let a = archive_write_new();
         if a.is_null() {
             return TTZipStatus::ErrOutOfMemory;
@@ -81,45 +213,63 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto => {
                 archive_write_set_format_zip(a);
             }
-            TTZipArchiveFormat::SevenZip => {
-                if !opt.password.is_null() {
-                    return TTZipStatus::ErrCompressionFailed;
-                }
-                archive_write_set_format_7zip(a);
-            }
             TTZipArchiveFormat::Tar => {
                 archive_write_set_format_pax_restricted(a);
             }
             TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_gzip(a);
             }
             TTZipArchiveFormat::TarBz2 | TTZipArchiveFormat::Bzip2 => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_bzip2(a);
             }
             TTZipArchiveFormat::TarXz | TTZipArchiveFormat::Xz => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_xz(a);
             }
             TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_zstd(a);
             }
             TTZipArchiveFormat::TarLz4 | TTZipArchiveFormat::Lz4 => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_lz4(a);
             }
-            TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
-                // Libarchive C-ABI lacks native Brotli compression filter; reject with ErrInvalidParam
-                return TTZipStatus::ErrInvalidParam;
-            }
             TTZipArchiveFormat::TarLzip | TTZipArchiveFormat::Lzip => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_lzip(a);
             }
             TTZipArchiveFormat::TarLrzip | TTZipArchiveFormat::Lrzip => {
-                archive_write_set_format_pax_restricted(a);
+                if is_pure_stream {
+                    archive_write_set_format_raw(a);
+                } else {
+                    archive_write_set_format_pax_restricted(a);
+                }
                 archive_write_add_filter_lrzip(a);
             }
             TTZipArchiveFormat::Iso => {
@@ -128,20 +278,17 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             TTZipArchiveFormat::Cpio => {
                 archive_write_set_format_cpio_newc(a);
             }
-            TTZipArchiveFormat::Ar | TTZipArchiveFormat::Deb => {
-                archive_write_set_format_ar_svr4(a);
+            TTZipArchiveFormat::Ar => {
+                archive_write_set_format_ar_bsd(a);
             }
             TTZipArchiveFormat::Xar => {
                 archive_write_set_format_xar(a);
-            }
-            TTZipArchiveFormat::Wim => {
-                archive_write_set_format_pax_restricted(a);
             }
             TTZipArchiveFormat::Rar => {
                 return TTZipStatus::ErrInvalidParam;
             }
             _ => {
-                archive_write_set_format_zip(a);
+                return TTZipStatus::ErrUnsupportedFeature;
             }
         }
 
@@ -158,24 +305,6 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             return TTZipStatus::ErrOpenFailed;
         }
 
-        // Collect all entries to compress
-        let mut entries_to_write: Vec<(PathBuf, String)> = Vec::new();
-        for i in 0..source_count {
-            // SAFETY: i is bounded by source_count and source_paths is verified non-null
-            let src_c = unsafe { *source_paths.add(i) };
-            let src_str = match unsafe { safe_cstr(src_c) } {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            let src_path = Path::new(src_str);
-            if !src_path.exists() && fs::symlink_metadata(src_path).is_err() {
-                return TTZipStatus::ErrFileNotFound;
-            }
-
-            let base_parent = src_path.parent().unwrap_or(src_path);
-            let _ = collect_entries_recursive(base_parent, src_path, &mut entries_to_write);
-        }
-
         let mut processed_bytes: u64 = 0;
         let mut buf = match AlignedBuffer::new(64 * 1024) {
             Ok(b) => b,
@@ -187,6 +316,9 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
                 Ok(m) => m,
                 Err(_) => continue,
             };
+            if opt.format == TTZipArchiveFormat::Ar && (meta.is_dir() || meta.file_type().is_symlink()) {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
             let entry = archive_entry_new();
             if entry.is_null() {
@@ -194,7 +326,15 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             }
             let entry_guard = ArchiveEntryGuard(entry);
 
-            let rel_c_str = match CString::new(rel_name.as_str()) {
+            let entry_path_str = if opt.format == TTZipArchiveFormat::Ar {
+                Path::new(rel_name.as_str())
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(rel_name.as_str())
+            } else {
+                rel_name.as_str()
+            };
+            let rel_c_str = match CString::new(entry_path_str) {
                 Ok(c) => c,
                 Err(_) => continue,
             };

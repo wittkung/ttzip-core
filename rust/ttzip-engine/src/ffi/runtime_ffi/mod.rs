@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Runtime synchronization, lock-free ring buffer, and worker pool FFI exports.
 
@@ -52,6 +52,7 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
         TTZipStatus::ErrUnsupportedFeature => c"Unsupported Feature".as_ptr(),
         TTZipStatus::ErrBufferTooSmall => c"Buffer Too Small".as_ptr(),
         TTZipStatus::ErrPanicCaught => c"Panic Caught".as_ptr(),
+        TTZipStatus::ErrAbiMismatch => c"ABI Mismatch".as_ptr(),
     }
 
 }

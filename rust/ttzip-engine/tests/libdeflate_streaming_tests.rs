@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Exhaustive integration and differential verification suite for Safe Rust
 //! streaming [`LibdeflateReader`] and [`LibdeflateWriter`].

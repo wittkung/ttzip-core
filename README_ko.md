@@ -20,7 +20,7 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---
@@ -229,11 +229,11 @@ TTZip은 오픈소스 정신에 따라 검증된 하드웨어 가속 및 아키�
 
 ## 📄 라이선스 및 이용 약관
 
-TTZip Core는 **BSD 3-Clause License**에 따라 배포됩니다.
+TTZip은 **TTZip Source-Available & Anti-Copycat Public License v1.0 (TTZip-SAL-1.0)**에 따라 배포됩니다.
 
-- 전체 조건은 [LICENSE](LICENSE)를 참조하세요. 제3자 구성 요소에는 각 라이선스가 적용됩니다.
-- 이 배포판의 자체 코드는 상업, 연구 및 개인 용도로 사용할 수 있습니다. 이전 자체 파일 헤더에 독점 문구가 남아 있더라도 이 배포판에는 BSD-3-Clause가 적용됩니다.
-- 문의: `kevintungs@163.com`
+- **개발자 및 개인 무료 사용**: 학습, 연구, 코드 리뷰 및 개인 로컬 사용에 자유롭게 이용할 수 있습니다.
+- **재포장 및 무단 배포 금지**: 무료/유료 여부와 무관하게 App Store, Microsoft Store, Steam 등에 무단 재배포 및 업로드가 엄격히 금지됩니다.
+- **상용 라이선스 문의**: `witt.w.kung@gmail.com`
 
 ---
 

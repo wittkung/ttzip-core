@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DarwinStorageScanProgress",
+  "type": "object",
+  "required": [
+    "total_scanned_files",
+    "total_scanned_dirs",
+    "total_scanned_bytes",
+    "total_reclaimable_bytes",
+    "is_complete",
+    "current_directory_path"
+  ],
+  "properties": {
+    "total_scanned_files": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total file entries discovered so far"
+    },
+    "total_scanned_dirs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total directory containers discovered so far"
+    },
+    "total_scanned_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Accumulated physical space consumed on disk"
+    },
+    "total_reclaimable_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Accumulated reclaimable space (caches, targets, build outputs)"
+    },
+    "is_complete": {
+      "type": "boolean",
+      "description": "True when the target directory tree enumeration has finalized"
+    },
+    "current_directory_path": {
+      "type": "string",
+      "description": "Currently active directory path being traversed"
+    }
+  },
+  "additionalProperties": false
+}

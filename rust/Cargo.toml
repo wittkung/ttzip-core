@@ -9,12 +9,13 @@ members = [
     "crates/ttzip-crypto",
     "crates/ttzip-codecs",
     "crates/ttzip-archive",
+    "crates/ttzip-semantic",
 ]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
-authors = ["Witt Kung <kevintungs@163.com>"]
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause"
 repository = "https://github.com/wittkung/ttzip-core"
 homepage = "https://github.com/wittkung/ttzip-core"
@@ -48,5 +49,16 @@ opt-level = 3
 
 
 [workspace.lints.rust]
+warnings = "deny"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("gil-refs"))'] }
+
+[workspace.lints.clippy]
+missing_safety_doc = "allow"
+not_unsafe_ptr_arg_deref = "allow"
+too_many_arguments = "allow"
+only_used_in_recursion = "allow"
+collapsible_if = "allow"
+collapsible_match = "allow"
+needless_range_loop = "allow"
+should_implement_trait = "allow"
 

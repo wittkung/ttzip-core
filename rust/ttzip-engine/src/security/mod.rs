@@ -1,10 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Security, sandbox isolation, path defense, and threat scanning modules.
 
 pub use ttzip_crypto::security::acl;
-pub use ttzip_crypto::security::blake3_defense;
 pub use ttzip_crypto::security::ed25519_defense;
 pub mod license;
 pub use ttzip_crypto::security::mmap_defense;
@@ -19,7 +18,6 @@ pub use ttzip_archive::security::zip_defense;
 mod tests;
 
 pub use acl::*;
-pub use blake3_defense::*;
 pub use ed25519_defense::*;
 pub use license::*;
 pub use mmap_defense::*;

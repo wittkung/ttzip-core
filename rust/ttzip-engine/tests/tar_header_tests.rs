@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration test suite for TAR 512-byte sector geometry mapping,
 //! strongly typed entry flags, octal ASCII codecs, and GNU Base-256 big-endian binary codecs.

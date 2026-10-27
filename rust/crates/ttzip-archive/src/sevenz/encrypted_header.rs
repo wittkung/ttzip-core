@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Encrypted Header (`kEncodedHeader`, 0x17) Recursive Self-Extracting
 //! State Machine and Sub-Millisecond Fast Password Probing Engine.
@@ -122,6 +122,8 @@ impl EncodedHeaderDecoder {
         }
 
         let folder = &boot_info.folders[0];
+        let is_aes_encrypted =
+            boot_info.is_encrypted || folder.coders.iter().any(|c| c.method_id == METHOD_AES);
         let unpacked_bytes = decompress_header_folder(
             folder,
             &boot_info,
@@ -132,13 +134,142 @@ impl EncodedHeaderDecoder {
 
         let mut final_info = SevenZHeaderInfo::default();
         if !unpacked_bytes.is_empty() {
-            if unpacked_bytes[0] == K_HEADER {
-                parse_7z_header_stream(&unpacked_bytes[1..], &mut final_info)?;
+            if is_aes_encrypted && !VALID_TOP_LEVEL_NIDS.contains(&unpacked_bytes[0]) {
+                return Err(SevenZError::BadPassword);
+            }
+            let stream = if unpacked_bytes[0] == K_HEADER {
+                &unpacked_bytes[1..]
             } else {
-                parse_7z_header_stream(&unpacked_bytes, &mut final_info)?;
+                &unpacked_bytes[..]
+            };
+            parse_7z_header_stream(stream, &mut final_info).map_err(|e| {
+                if is_aes_encrypted {
+                    SevenZError::BadPassword
+                } else {
+                    SevenZError::from(e)
+                }
+            })?;
+        }
+        if is_aes_encrypted {
+            final_info.is_encrypted = true;
+        }
+
+        Ok(final_info)
+    }
+
+    /// Decodes the 7z header from any seekable reader (such as `VirtualMultiVolumeReader`),
+    /// supporting both plain `kHeader` (`0x01`) and encrypted/compressed `kEncodedHeader` (`0x17`).
+    pub fn decode_from_reader<R: Read + Seek>(
+        &self,
+        reader: &mut R,
+        password: Option<&str>,
+    ) -> Result<SevenZHeaderInfo, SevenZError> {
+        reader
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| SevenZError::CorruptHeader("Failed to seek to 7z signature header"))?;
+        let mut sig_buf = [0u8; 32];
+        reader
+            .read_exact(&mut sig_buf)
+            .map_err(|_| SevenZError::CorruptHeader("Truncated 7z signature header"))?;
+        let sig = SevenZSignatureHeader::parse(&sig_buf)?;
+        let header_start = 32u64.saturating_add(sig.next_header_offset);
+        let header_size = bounded_usize(
+            sig.next_header_size,
+            MAX_PACKED_HEADER_BYTES,
+            "next header size",
+        )?;
+        if header_size == 0 {
+            return Ok(SevenZHeaderInfo::default());
+        }
+
+        reader
+            .seek(SeekFrom::Start(header_start))
+            .map_err(|_| SevenZError::CorruptHeader("Header offset out of archive bounds"))?;
+        let mut header_bytes = vec![0u8; header_size];
+        reader
+            .read_exact(&mut header_bytes)
+            .map_err(|_| SevenZError::CorruptHeader("Truncated 7z next header stream"))?;
+
+        if sig.next_header_crc != 0 {
+            let computed_crc = crc32_fast(0, &header_bytes);
+            if computed_crc != sig.next_header_crc {
+                return Err(SevenZError::CrcMismatch {
+                    expected: sig.next_header_crc,
+                    computed: computed_crc,
+                });
             }
         }
 
+        if header_bytes[0] == K_ENCODED_HEADER {
+            self.decode_encoded_header_from_reader(&header_bytes[1..], reader, password)
+        } else {
+            let mut info = SevenZHeaderInfo {
+                payload_offset: 32,
+                payload_len: sig.next_header_offset as usize,
+                ..Default::default()
+            };
+            parse_7z_header_stream(&header_bytes, &mut info)?;
+            Ok(info)
+        }
+    }
+
+    fn decode_encoded_header_from_reader<R: Read + Seek>(
+        &self,
+        boot_stream: &[u8],
+        reader: &mut R,
+        password: Option<&str>,
+    ) -> Result<SevenZHeaderInfo, SevenZError> {
+        let mut boot_info = SevenZHeaderInfo::default();
+        parse_7z_header_stream(boot_stream, &mut boot_info)?;
+        let folder = boot_info
+            .folders
+            .first()
+            .ok_or(SevenZError::CorruptHeader("Missing folder in encoded header"))?;
+        let is_aes_encrypted =
+            boot_info.is_encrypted || folder.coders.iter().any(|c| c.method_id == METHOD_AES);
+        if folder.packed_len > MAX_PACKED_HEADER_BYTES {
+            return Err(SevenZError::CountLimitExceeded {
+                field_name: "packed header size",
+                value: folder.packed_len as u64,
+                limit: MAX_PACKED_HEADER_BYTES,
+            });
+        }
+        reader
+            .seek(SeekFrom::Start(folder.packed_offset as u64))
+            .map_err(|_| SevenZError::CorruptHeader("Packed header stream out of bounds"))?;
+        let mut raw_payload = vec![0u8; folder.packed_len];
+        reader
+            .read_exact(&mut raw_payload)
+            .map_err(|_| SevenZError::CorruptHeader("Truncated packed header stream"))?;
+
+        let unpacked_bytes = decompress_header_folder_slice(
+            folder,
+            &boot_info,
+            &raw_payload,
+            password,
+            self.max_unpack_limit,
+        )?;
+        let mut final_info = SevenZHeaderInfo::default();
+        if !unpacked_bytes.is_empty() {
+            if is_aes_encrypted && !VALID_TOP_LEVEL_NIDS.contains(&unpacked_bytes[0]) {
+                return Err(SevenZError::BadPassword);
+            }
+            let stream = if unpacked_bytes[0] == K_HEADER {
+                &unpacked_bytes[1..]
+            } else {
+                &unpacked_bytes[..]
+            };
+            parse_7z_header_stream(stream, &mut final_info).map_err(|e| {
+                if is_aes_encrypted {
+                    SevenZError::BadPassword
+                } else {
+                    SevenZError::from(e)
+                }
+            })?;
+        }
+        if is_aes_encrypted {
+            final_info.is_encrypted = true;
+        }
         Ok(final_info)
     }
 }
@@ -166,44 +297,69 @@ fn decompress_header_folder(
         return Err(SevenZError::CorruptHeader("Packed header stream out of bounds"));
     }
 
-    let raw_payload = &mapped[packed_offset..packed_offset + packed_len];
+    decompress_header_folder_slice(
+        folder,
+        info,
+        &mapped[packed_offset..packed_offset + packed_len],
+        password,
+        max_unpack_limit,
+    )
+}
+
+fn decrypt_header_folder_slice(
+    folder: &SevenZFolder,
+    info: &SevenZHeaderInfo,
+    raw_payload: &[u8],
+    password: Option<&str>,
+) -> Result<Zeroizing<Vec<u8>>, SevenZError> {
+    let pass = password.filter(|p| !p.is_empty()).ok_or(SevenZError::BadPassword)?;
+    if !raw_payload.len().is_multiple_of(16) {
+        return Err(SevenZError::CorruptHeader("AES payload length not multiple of 16"));
+    }
+
+    let key = Zeroizing::new(sha256_7z_kdf(
+        pass,
+        &info.aes_salt[..info.aes_salt_len],
+        info.aes_num_cycles_power,
+    ));
+
+    let mut dec = Zeroizing::new(vec![0u8; raw_payload.len()]);
+    aes256_cbc_decrypt(&key, &info.aes_iv, raw_payload, &mut dec)
+        .map_err(|_| SevenZError::BadPassword)?;
+
+    let aes_coder_idx = folder.coders.iter().position(|c| c.method_id == METHOD_AES);
+    let aes_unpack_sz = aes_coder_idx
+        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
+        .unwrap_or(dec.len() as u64) as usize;
+    if aes_unpack_sz < dec.len() {
+        dec.truncate(aes_unpack_sz);
+    }
+    Ok(dec)
+}
+
+fn decompress_header_folder_slice(
+    folder: &SevenZFolder,
+    info: &SevenZHeaderInfo,
+    raw_payload: &[u8],
+    password: Option<&str>,
+    max_unpack_limit: usize,
+) -> Result<Vec<u8>, SevenZError> {
     let is_aes_encrypted = info.is_encrypted || folder.coders.iter().any(|c| c.method_id == METHOD_AES);
 
     let decrypted_storage = if is_aes_encrypted {
-        let pass = password.ok_or(SevenZError::BadPassword)?;
-        if pass.is_empty() {
-            return Err(SevenZError::BadPassword);
-        }
-
-        if !raw_payload.len().is_multiple_of(16) {
-            return Err(SevenZError::CorruptHeader("AES payload length not multiple of 16"));
-        }
-
-        let key = Zeroizing::new(sha256_7z_kdf(
-            pass,
-            &info.aes_salt[..info.aes_salt_len],
-            info.aes_num_cycles_power,
-        ));
-
-        let mut dec = Zeroizing::new(vec![0u8; raw_payload.len()]);
-        aes256_cbc_decrypt(&key, &info.aes_iv, raw_payload, &mut dec)
-            .map_err(|_| SevenZError::BadPassword)?;
-        dec
+        decrypt_header_folder_slice(folder, info, raw_payload, password)?
     } else {
         Zeroizing::new(raw_payload.to_vec())
     };
 
-    let (method_id, coder_props) = folder
-        .coders
-        .iter()
-        .find(|c| c.method_id != METHOD_AES)
+    let non_aes_idx = folder.coders.iter().position(|c| c.method_id != METHOD_AES);
+    let (method_id, coder_props) = non_aes_idx
+        .and_then(|idx| folder.coders.get(idx))
         .map(|c| (c.method_id, c.properties.as_slice()))
         .unwrap_or((info.primary_method_id, info.coder_props.as_slice()));
 
-    let raw_unpack_sz = folder
-        .unpack_sizes
-        .first()
-        .copied()
+    let raw_unpack_sz = non_aes_idx
+        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
         .or_else(|| folder.unpack_sizes.last().copied())
         .unwrap_or(0);
     let expected_unpack_size = bounded_usize(raw_unpack_sz, max_unpack_limit, "header unpack size")?;
@@ -214,13 +370,7 @@ fn decompress_header_folder(
         coder_props,
         expected_unpack_size,
         max_unpack_limit,
-    ).map_err(|err| {
-        if is_aes_encrypted {
-            SevenZError::BadPassword
-        } else {
-            err
-        }
-    })?;
+    ).map_err(|err| if is_aes_encrypted { SevenZError::BadPassword } else { err })?;
 
     if let Some(expected_crc) = folder.crc {
         let computed_crc = crc32_fast(0, &unpacked);
@@ -376,7 +526,7 @@ pub fn probe_7z_password<R: Read + Seek>(
 ) -> Result<bool, SevenZError> {
     reader.seek(SeekFrom::Start(0))?;
     let mut sig_buf = [0u8; 32];
-    reader.read_exact(&mut sig_buf).map_err(|e| SevenZError::Io(e.to_string()))?;
+    reader.read_exact(&mut sig_buf)?;
 
     let sig = SevenZSignatureHeader::parse(&sig_buf)?;
     if sig.next_header_size == 0 {
@@ -384,10 +534,10 @@ pub fn probe_7z_password<R: Read + Seek>(
     }
 
     let header_size = bounded_usize(sig.next_header_size, MAX_PREALLOC_BYTES, "probe next header size")?;
-    reader.seek(SeekFrom::Start(32 + sig.next_header_offset)).map_err(|e| SevenZError::Io(e.to_string()))?;
+    reader.seek(SeekFrom::Start(32 + sig.next_header_offset))?;
 
     let mut next_header_bytes = vec![0u8; header_size];
-    reader.read_exact(&mut next_header_bytes).map_err(|e| SevenZError::Io(e.to_string()))?;
+    reader.read_exact(&mut next_header_bytes)?;
 
     if sig.next_header_crc != 0 {
         let computed = crc32_fast(0, &next_header_bytes);
@@ -437,10 +587,10 @@ pub fn probe_7z_password<R: Read + Seek>(
         return Err(SevenZError::CorruptHeader("AES packed length not multiple of 16"));
     }
 
-    reader.seek(SeekFrom::Start(folder.packed_offset as u64)).map_err(|e| SevenZError::Io(e.to_string()))?;
+    reader.seek(SeekFrom::Start(folder.packed_offset as u64))?;
 
     let mut packed_bytes = vec![0u8; packed_len];
-    reader.read_exact(&mut packed_bytes).map_err(|e| SevenZError::Io(e.to_string()))?;
+    reader.read_exact(&mut packed_bytes)?;
 
     let key = Zeroizing::new(sha256_7z_kdf(
         password,
@@ -452,13 +602,20 @@ pub fn probe_7z_password<R: Read + Seek>(
     aes256_cbc_decrypt(&key, &boot_info.aes_iv, &packed_bytes, &mut decrypted)
         .map_err(|_| SevenZError::BadPassword)?;
 
+    let aes_coder_idx = folder.coders.iter().position(|c| c.method_id == METHOD_AES);
+    let aes_unpack_sz = aes_coder_idx
+        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
+        .unwrap_or(decrypted.len() as u64) as usize;
+    if aes_unpack_sz < decrypted.len() {
+        decrypted.truncate(aes_unpack_sz);
+    }
+
     // ========================================================================
     // Defense Line 1: Codec Header / Range Assertion
     // ========================================================================
-    let primary_coder = folder
-        .coders
-        .iter()
-        .find(|c| c.method_id != METHOD_AES)
+    let non_aes_idx = folder.coders.iter().position(|c| c.method_id != METHOD_AES);
+    let primary_coder = non_aes_idx
+        .and_then(|idx| folder.coders.get(idx))
         .or_else(|| folder.coders.first());
 
     let method_id = primary_coder.map(|c| c.method_id).unwrap_or(boot_info.primary_method_id);
@@ -486,10 +643,8 @@ pub fn probe_7z_password<R: Read + Seek>(
     // ========================================================================
     // Defense Line 2: Decompression & Header NID Assertion
     // ========================================================================
-    let expected_unpack = folder
-        .unpack_sizes
-        .first()
-        .copied()
+    let expected_unpack = non_aes_idx
+        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
         .or_else(|| folder.unpack_sizes.last().copied())
         .unwrap_or(0);
     let unpack_limit = bounded_usize(expected_unpack, MAX_PREALLOC_BYTES, "probe header unpack size")?;
@@ -523,4 +678,20 @@ pub fn probe_7z_password<R: Read + Seek>(
     }
 
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fixture_encrypted_aes256_7z() {
+        let Some(p) = std::env::var_os("TTZIP_ENCRYPTED_7Z_FIXTURE").map(std::path::PathBuf::from) else {
+            return;
+        };
+        if !p.exists() { return; }
+        let data = std::fs::read(&p).unwrap();
+        let res = EncodedHeaderDecoder::default().decode(&data, Some("testpassword123"));
+        assert!(res.is_ok());
+    }
 }

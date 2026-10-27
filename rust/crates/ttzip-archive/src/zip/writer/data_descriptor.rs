@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! PKWARE Data Descriptor 16-byte / 24-byte streaming write & parse pipeline.
 //!

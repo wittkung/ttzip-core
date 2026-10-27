@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-allocation probing, SIMD-accelerated decoding, and viewport sampling engine.
 
@@ -12,7 +12,6 @@ use super::types::{
 use crate::standards::image_pipeline::{
     calculate_aspect_dimensions, decode_image_rgba, resize_rgba, DecodedImageRgba, ThumbnailFilter,
 };
-use crate::standards::metadata_probe::image as probe;
 use crate::uniffi_api::types::TTZipError;
 
 /// Detects image format, geometry, and EXIF metadata without full pixel buffer decompression.
@@ -26,188 +25,24 @@ pub fn probe_image_bytes(data: &[u8], file_name: Option<&str>) -> Result<UniFFII
     let byte_size = data.len() as u64;
 
     // 1. Try zero-copy standard header probes
-    if let Some(res) = probe::probe_png(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "PNG".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "sRGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: res.orientation,
-            frame_count: 1,
-            camera_make: res.camera_make,
-            camera_model: res.camera_model,
-            lens_model: res.lens_model,
-            iso_speed: res.iso_speed,
-            f_number: res.f_number,
-            exposure_time_secs: res.exposure_time_secs,
-            focal_length_mm: res.focal_length_mm,
-            date_time_original: res.date_time_original,
-            icc_profile_name: res.icc_profile_name,
-            byte_size,
-        });
+    if let Some((w, h, depth, alpha)) = probe_png(data) {
+        return Ok(make_image_info(w, h, "PNG", "sRGB", alpha, depth, byte_size));
     }
 
-    if let Some(res) = probe::probe_jpeg(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "JPEG".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "sRGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: res.orientation,
-            frame_count: 1,
-            camera_make: res.camera_make,
-            camera_model: res.camera_model,
-            lens_model: res.lens_model,
-            iso_speed: res.iso_speed,
-            f_number: res.f_number,
-            exposure_time_secs: res.exposure_time_secs,
-            focal_length_mm: res.focal_length_mm,
-            date_time_original: res.date_time_original,
-            icc_profile_name: res.icc_profile_name,
-            byte_size,
-        });
+    if let Some((w, h, depth, alpha)) = probe_jpeg(data) {
+        return Ok(make_image_info(w, h, "JPEG", "sRGB", alpha, depth, byte_size));
     }
 
-    if let Some(res) = probe::probe_webp(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "WebP".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "sRGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: res.orientation,
-            frame_count: 1,
-            camera_make: res.camera_make,
-            camera_model: res.camera_model,
-            lens_model: res.lens_model,
-            iso_speed: res.iso_speed,
-            f_number: res.f_number,
-            exposure_time_secs: res.exposure_time_secs,
-            focal_length_mm: res.focal_length_mm,
-            date_time_original: res.date_time_original,
-            icc_profile_name: res.icc_profile_name,
-            byte_size,
-        });
+    if let Some((w, h, depth, alpha)) = probe_webp(data) {
+        return Ok(make_image_info(w, h, "WebP", "sRGB", alpha, depth, byte_size));
     }
 
-    if let Some(res) = probe::probe_gif(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "GIF".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "Indexed Color".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: 1,
-            frame_count: 1,
-            camera_make: None,
-            camera_model: None,
-            lens_model: None,
-            iso_speed: None,
-            f_number: None,
-            exposure_time_secs: None,
-            focal_length_mm: None,
-            date_time_original: None,
-            icc_profile_name: None,
-            byte_size,
-        });
+    if let Some((w, h, depth, alpha)) = probe_gif(data) {
+        return Ok(make_image_info(w, h, "GIF", "Indexed Color", alpha, depth, byte_size));
     }
 
-    if let Some(res) = probe::probe_bmp(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "BMP".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "sRGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: 1,
-            frame_count: 1,
-            camera_make: None,
-            camera_model: None,
-            lens_model: None,
-            iso_speed: None,
-            f_number: None,
-            exposure_time_secs: None,
-            focal_length_mm: None,
-            date_time_original: None,
-            icc_profile_name: None,
-            byte_size,
-        });
-    }
-
-    if let Some(res) = probe::probe_tiff(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "TIFF".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "sRGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: res.orientation,
-            frame_count: 1,
-            camera_make: res.camera_make,
-            camera_model: res.camera_model,
-            lens_model: res.lens_model,
-            iso_speed: res.iso_speed,
-            f_number: res.f_number,
-            exposure_time_secs: res.exposure_time_secs,
-            focal_length_mm: res.focal_length_mm,
-            date_time_original: res.date_time_original,
-            icc_profile_name: res.icc_profile_name,
-            byte_size,
-        });
-    }
-
-    if let Some(res) = probe::probe_ico(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "ICO".to_string(),
-            color_space: "sRGB".to_string(),
-            has_alpha: true,
-            bit_depth: res.bit_depth,
-            orientation: 1,
-            frame_count: 1,
-            camera_make: None,
-            camera_model: None,
-            lens_model: None,
-            iso_speed: None,
-            f_number: None,
-            exposure_time_secs: None,
-            focal_length_mm: None,
-            date_time_original: None,
-            icc_profile_name: None,
-            byte_size,
-        });
-    }
-
-    if let Some(res) = probe::probe_psd(data) {
-        return Ok(UniFFIImageInfo {
-            width: res.width,
-            height: res.height,
-            format_name: "PSD".to_string(),
-            color_space: res.color_space.unwrap_or_else(|| "RGB".to_string()),
-            has_alpha: res.has_alpha,
-            bit_depth: res.bit_depth,
-            orientation: 1,
-            frame_count: 1,
-            camera_make: None,
-            camera_model: None,
-            lens_model: None,
-            iso_speed: None,
-            f_number: None,
-            exposure_time_secs: None,
-            focal_length_mm: None,
-            date_time_original: None,
-            icc_profile_name: None,
-            byte_size,
-        });
+    if let Some((w, h, depth, alpha)) = probe_bmp(data) {
+        return Ok(make_image_info(w, h, "BMP", "sRGB", alpha, depth, byte_size));
     }
 
     // 2. Magic byte / extension fallback
@@ -455,4 +290,136 @@ fn infer_format_name(data: &[u8], file_name: Option<&str>) -> String {
     }
 
     "Unknown".to_string()
+}
+
+fn make_image_info(
+    width: u32,
+    height: u32,
+    format_name: &str,
+    color_space: &str,
+    has_alpha: bool,
+    bit_depth: u32,
+    byte_size: u64,
+) -> UniFFIImageInfo {
+    UniFFIImageInfo {
+        width,
+        height,
+        format_name: format_name.to_string(),
+        color_space: color_space.to_string(),
+        has_alpha,
+        bit_depth,
+        orientation: 1,
+        frame_count: 1,
+        camera_make: None,
+        camera_model: None,
+        lens_model: None,
+        iso_speed: None,
+        f_number: None,
+        exposure_time_secs: None,
+        focal_length_mm: None,
+        date_time_original: None,
+        icc_profile_name: None,
+        byte_size,
+    }
+}
+
+fn probe_png(data: &[u8]) -> Option<(u32, u32, u32, bool)> {
+    if data.len() < 26 || !data.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return None;
+    }
+    if &data[12..16] != b"IHDR" {
+        return None;
+    }
+    let w = u32::from_be_bytes(data[16..20].try_into().ok()?);
+    let h = u32::from_be_bytes(data[20..24].try_into().ok()?);
+    let depth = data[24] as u32;
+    let color_type = data[25];
+    let has_alpha = color_type == 4 || color_type == 6;
+    Some((w, h, depth, has_alpha))
+}
+
+fn probe_jpeg(data: &[u8]) -> Option<(u32, u32, u32, bool)> {
+    if data.len() < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+        return None;
+    }
+    let mut cursor = 2;
+    while cursor + 4 <= data.len() {
+        if data[cursor] != 0xFF {
+            cursor += 1;
+            continue;
+        }
+        let marker = data[cursor + 1];
+        cursor += 2;
+        if marker == 0xC0 || marker == 0xC1 || marker == 0xC2 {
+            if cursor + 7 <= data.len() {
+                let h = u16::from_be_bytes([data[cursor + 3], data[cursor + 4]]) as u32;
+                let w = u16::from_be_bytes([data[cursor + 5], data[cursor + 6]]) as u32;
+                return Some((w, h, 24, false));
+            }
+            break;
+        }
+        if marker == 0xD9 || marker == 0xDA {
+            break;
+        }
+        if cursor + 2 <= data.len() {
+            let len = u16::from_be_bytes([data[cursor], data[cursor + 1]]) as usize;
+            if len < 2 { break; }
+            cursor += len;
+        } else {
+            break;
+        }
+    }
+    None
+}
+
+fn probe_webp(data: &[u8]) -> Option<(u32, u32, u32, bool)> {
+    if data.len() < 30 || &data[0..4] != b"RIFF" || &data[8..12] != b"WEBP" {
+        return None;
+    }
+    let chunk_tag = &data[12..16];
+    if chunk_tag == b"VP8 " && data.len() >= 30 {
+        let w = (u16::from_le_bytes([data[26], data[27]]) & 0x3FFF) as u32;
+        let h = (u16::from_le_bytes([data[28], data[29]]) & 0x3FFF) as u32;
+        return Some((w, h, 24, false));
+    }
+    if chunk_tag == b"VP8L" && data.len() >= 25 {
+        let b1 = data[21] as u32;
+        let b2 = data[22] as u32;
+        let b3 = data[23] as u32;
+        let b4 = data[24] as u32;
+        let w = 1 + (b1 | ((b2 & 0x3F) << 8));
+        let h = 1 + ((b2 >> 6) | (b3 << 2) | ((b4 & 0x0F) << 10));
+        return Some((w, h, 32, true));
+    }
+    if chunk_tag == b"VP8X" && data.len() >= 30 {
+        let flags = data[20];
+        let has_alpha = (flags & 0x10) != 0;
+        let w = 1 + (data[24] as u32 | ((data[25] as u32) << 8) | ((data[26] as u32) << 16));
+        let h = 1 + (data[27] as u32 | ((data[28] as u32) << 8) | ((data[29] as u32) << 16));
+        return Some((w, h, if has_alpha { 32 } else { 24 }, has_alpha));
+    }
+    None
+}
+
+fn probe_gif(data: &[u8]) -> Option<(u32, u32, u32, bool)> {
+    if data.len() < 10 || (!data.starts_with(b"GIF87a") && !data.starts_with(b"GIF89a")) {
+        return None;
+    }
+    let w = u16::from_le_bytes([data[6], data[7]]) as u32;
+    let h = u16::from_le_bytes([data[8], data[9]]) as u32;
+    Some((w, h, 8, true))
+}
+
+fn probe_bmp(data: &[u8]) -> Option<(u32, u32, u32, bool)> {
+    if data.len() < 26 || !data.starts_with(b"BM") {
+        return None;
+    }
+    let w = i32::from_le_bytes(data[18..22].try_into().ok()?).unsigned_abs();
+    let h = i32::from_le_bytes(data[22..26].try_into().ok()?).unsigned_abs();
+    let bpp = if data.len() >= 30 {
+        u16::from_le_bytes(data[28..30].try_into().ok()?) as u32
+    } else {
+        24
+    };
+    Some((w, h, bpp, bpp == 32))
 }

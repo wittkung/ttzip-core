@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Archive creation lifecycle submodule for Unified Orchestrator.
 
@@ -9,9 +9,10 @@ use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use crate::archive::split::{SplitVolumeWriter, VolumeNamingScheme};
-use crate::archive::unified::detect::resolve_create_format;
-use super::format_config::configure_archive_write_format;
+use crate::archive::split::SplitVolumeWriter;
+use super::format_config::{
+    configure_archive_write_format, write_brotli_target, write_snappy_target, write_zstd_target,
+};
 use crate::ffi::archive_ffi::guards::{ArchiveEntryGuard, ArchiveWriteGuard};
 use crate::ffi::archive_ffi::sys::*;
 use crate::types::{
@@ -79,15 +80,133 @@ fn is_pure_single_stream_format(fmt: TTZipArchiveFormat) -> bool {
 #[inline]
 fn should_use_raw_stream(source_paths: &[PathBuf], resolved_format: TTZipArchiveFormat) -> bool {
     source_paths.len() == 1
-        && source_paths[0].is_file()
+        && fs::symlink_metadata(&source_paths[0])
+            .map(|m| m.is_file() && !m.file_type().is_symlink())
+            .unwrap_or(false)
         && is_pure_single_stream_format(resolved_format)
 }
 
 #[inline]
 fn should_use_raw_stream_explicit(entries: &[(PathBuf, String)], resolved_format: TTZipArchiveFormat) -> bool {
     entries.len() == 1
-        && entries[0].0.is_file()
+        && fs::symlink_metadata(&entries[0].0)
+            .map(|m| m.is_file() && !m.file_type().is_symlink())
+            .unwrap_or(false)
         && is_pure_single_stream_format(resolved_format)
+}
+
+unsafe fn open_libarchive_destination(
+    a: *mut c_void,
+    destination_path: &Path,
+    resolved_format: TTZipArchiveFormat,
+    split_volume_size_bytes: u64,
+) -> Result<(), TTZipStatus> {
+    let open_rc = if split_volume_size_bytes > 0 {
+        let (base_path, scheme) =
+            CreateCommitMode::resolve_split_target(destination_path, resolved_format);
+        let split_writer = SplitVolumeWriter::new(&base_path, split_volume_size_bytes, scheme)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        let split_box = Box::into_raw(Box::new(split_writer));
+        archive_write_open2(
+            a,
+            split_box as *mut c_void,
+            None,
+            Some(split_write_cb),
+            Some(split_close_cb),
+            Some(split_free_cb),
+        )
+    } else {
+        let dest_c = CString::new(destination_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
+            .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+        archive_write_open_filename(a, dest_c.as_ptr())
+    };
+    if open_rc != 0 {
+        return Err(TTZipStatus::ErrOpenFailed);
+    }
+    Ok(())
+}
+
+pub use super::create_staging::{
+    commit_staged_archive_files_with, recover_preserved_create_backup,
+    with_staged_archive_destination, with_staged_archive_destination_detailed,
+    with_staged_archive_destination_detailed_using, with_staged_archive_destination_using,
+    CreateCommitMode, CreateStageCommitError,
+};
+
+fn validate_create_encryption_options(
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    encrypt_file_names: Option<bool>,
+) -> Result<(), TTZipStatus> {
+    let has_non_empty_password = if options.password.is_null() {
+        false
+    } else {
+        let s = unsafe { std::ffi::CStr::from_ptr(options.password) }
+            .to_str()
+            .map_err(|_| TTZipStatus::ErrInvalidPassword)?;
+        if s.is_empty() {
+            return Err(TTZipStatus::ErrInvalidPassword);
+        }
+        true
+    };
+    let wants_encryption = options.encryption != crate::types::TTZipEncryptionMethod::None
+        || encrypt_file_names == Some(true);
+    if wants_encryption && !has_non_empty_password {
+        return Err(TTZipStatus::ErrInvalidPassword);
+    }
+    if encrypt_file_names == Some(true) && resolved_format != TTZipArchiveFormat::SevenZip {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    if (wants_encryption || has_non_empty_password)
+        && !matches!(
+            resolved_format,
+            TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto | TTZipArchiveFormat::SevenZip
+        )
+    {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    Ok(())
+}
+
+/// Recursively compresses source paths into the destination archive path with detailed rollback diagnostics.
+pub fn create_archive_detailed(
+    source_paths: &[PathBuf],
+    destination_path: &Path,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+) -> Result<Vec<PathBuf>, CreateStageCommitError> {
+    if source_paths.is_empty() {
+        return Err(CreateStageCommitError::Status(TTZipStatus::ErrInvalidParam));
+    }
+    for src_path in source_paths {
+        if !src_path.exists() && fs::symlink_metadata(src_path).is_err() {
+            return Err(CreateStageCommitError::Status(TTZipStatus::ErrFileNotFound));
+        }
+    }
+
+    let resolved_format = super::format_config::effective_create_format(options.format, destination_path);
+    super::format_config::validate_creatable_format(resolved_format, false)
+        .map_err(CreateStageCommitError::Status)?;
+    validate_create_encryption_options(resolved_format, options, None)
+        .map_err(CreateStageCommitError::Status)?;
+    if is_pure_single_stream_format(resolved_format) && !should_use_raw_stream(source_paths, resolved_format) {
+        return Err(CreateStageCommitError::Status(TTZipStatus::ErrInvalidParam));
+    }
+    let commit_mode = CreateCommitMode::for_creation(
+        destination_path,
+        resolved_format,
+        split_volume_size_bytes,
+    );
+
+    with_staged_archive_destination_detailed(destination_path, commit_mode, |staged_dest| {
+        write_staged_source_archive(
+            source_paths,
+            staged_dest,
+            resolved_format,
+            options,
+            split_volume_size_bytes,
+        )
+    })
 }
 
 /// Recursively compresses source paths into the destination archive path.
@@ -97,113 +216,86 @@ pub fn create_archive(
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> Result<(), TTZipStatus> {
-    if source_paths.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
+    create_archive_detailed(
+        source_paths,
+        destination_path,
+        options,
+        split_volume_size_bytes,
+    )
+    .map(|_| ())
+    .map_err(|e| e.status())
+}
+
+fn collect_source_entries(source_paths: &[PathBuf]) -> Result<Vec<(PathBuf, String)>, TTZipStatus> {
+    let mut entries_to_write = Vec::new();
+    for src_path in source_paths {
+        let base_parent = src_path.parent().unwrap_or(src_path);
+        collect_entries_recursive(base_parent, src_path, &mut entries_to_write)
+            .map_err(|_| TTZipStatus::ErrFileNotFound)?;
     }
+    Ok(entries_to_write)
+}
 
-    if let Some(parent) = destination_path.parent() {
-        if !parent.exists() {
-            let _ = fs::create_dir_all(parent);
-        }
+fn write_staged_special_container(
+    source_paths: &[PathBuf],
+    staged_dest: &Path,
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+) -> Option<Result<(), TTZipStatus>> {
+    match resolved_format {
+        TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto => Some(
+            crate::zip::writer::create_zip_streaming_parallel_split(
+                staged_dest, source_paths, options, split_volume_size_bytes,
+            )
+            .map(|_| ()),
+        ),
+        TTZipArchiveFormat::SevenZip => Some(
+            crate::sevenz::writer::create_7z_archive_split(
+                staged_dest, source_paths, options, split_volume_size_bytes,
+            )
+            .map(|_| ()),
+        ),
+        TTZipArchiveFormat::Aar => Some(collect_source_entries(source_paths).and_then(|entries| {
+            super::format_config::write_apple_archive_entries(&entries, staged_dest, split_volume_size_bytes)
+        })),
+        TTZipArchiveFormat::Xar => Some(collect_source_entries(source_paths).and_then(|entries| {
+            super::format_config::write_xar_entries(&entries, staged_dest, options, split_volume_size_bytes)
+        })),
+        _ => None,
     }
+}
 
-    let resolved_format = resolve_create_format(options.format, destination_path);
-
-    // 1. High-Performance Streaming Multi-Core Parallel ZIP Fast Path
-    if (resolved_format == TTZipArchiveFormat::Zip || resolved_format == TTZipArchiveFormat::Auto)
-        && split_volume_size_bytes == 0
-    {
-        return crate::zip::writer::create_zip_streaming_parallel(destination_path, source_paths, options)
-            .map(|_| ());
+fn write_staged_source_archive(
+    source_paths: &[PathBuf],
+    staged_dest: &Path,
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+) -> Result<(), TTZipStatus> {
+    if let Some(res) = write_staged_special_container(
+        source_paths, staged_dest, resolved_format, options, split_volume_size_bytes,
+    ) {
+        return res;
     }
 
     let is_raw_stream = should_use_raw_stream(source_paths, resolved_format);
+    let raw_src = is_raw_stream.then(|| source_paths[0].as_path());
 
-    // 2. Pure Safe Rust High-Throughput Brotli Streaming Pipeline (0% Disk Write Amplification)
-    if resolved_format == TTZipArchiveFormat::TarBrotli || resolved_format == TTZipArchiveFormat::Brotli {
-        if split_volume_size_bytes > 0 {
-            return Err(TTZipStatus::ErrUnsupportedFeature);
-        }
-        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let q = match options.level {
-            TTZipCompressionLevel::Store => 0,
-            TTZipCompressionLevel::Fastest => 1,
-            TTZipCompressionLevel::Fast => 3,
-            TTZipCompressionLevel::Normal => 6,
-            TTZipCompressionLevel::Maximum => 9,
-            TTZipCompressionLevel::Ultra => 11,
-        };
-        let mut brotli_writer = brotli::CompressorWriter::new(out_file, 64 * 1024, q, 22);
-        if is_raw_stream {
-            let mut in_file = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-            std::io::copy(&mut in_file, &mut brotli_writer).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            brotli_writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        } else {
-            crate::archive::tar::write_tar_to_writer(source_paths, brotli_writer, options)?;
-        }
-        return Ok(());
+    if matches!(resolved_format, TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli) {
+        return write_brotli_target(staged_dest, split_volume_size_bytes, options, raw_src, |w| {
+            crate::archive::tar::write_tar_to_writer(source_paths, w, options)
+        });
     }
-
-    // 3. Pure Safe Rust High-Throughput Snappy Streaming Pipeline (0% Disk Write Amplification)
     if resolved_format == TTZipArchiveFormat::Snappy {
-        if split_volume_size_bytes > 0 {
-            return Err(TTZipStatus::ErrUnsupportedFeature);
-        }
-        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let mut snappy_encoder = snap::write::FrameEncoder::new(out_file);
-        if is_raw_stream {
-            let mut in_file = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-            std::io::copy(&mut in_file, &mut snappy_encoder).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            snappy_encoder.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        } else {
-            let mut snappy_encoder = crate::archive::tar::write_tar_to_writer(source_paths, snappy_encoder, options)?;
-            snappy_encoder.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        }
-        return Ok(());
+        return write_snappy_target(staged_dest, split_volume_size_bytes, raw_src, |w| {
+            crate::archive::tar::write_tar_to_writer(source_paths, w, options)
+        });
     }
-
-    // 4. Native Streaming High-Throughput Zstandard Multithreaded Pipeline (0% Disk Write Amplification)
-    if (resolved_format == TTZipArchiveFormat::TarZstd || resolved_format == TTZipArchiveFormat::Zstd)
-        && split_volume_size_bytes == 0
-    {
-        let out_file = File::create(destination_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let z_lvl = match options.level {
-            TTZipCompressionLevel::Store => 1,
-            TTZipCompressionLevel::Fastest => 1,
-            TTZipCompressionLevel::Fast => 3,
-            TTZipCompressionLevel::Normal => 6,
-            TTZipCompressionLevel::Maximum => 19,
-            TTZipCompressionLevel::Ultra => 22,
-        };
-        let nb_workers = if options.thread_budget > 0 {
-            options.thread_budget
-        } else {
-            std::thread::available_parallelism()
-                .map(|n| n.get() as u32)
-                .unwrap_or(4)
-        };
-        let config = crate::codecs::zstd::types::ZstdConfig {
-            level: z_lvl,
-            nb_workers,
-            enable_checksum: true,
-            ..Default::default()
-        };
-        let mut zstd_writer = crate::codecs::zstd::ZstdStreamWriter::new(out_file, &config)?;
-        if is_raw_stream {
-            let mut in_file = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-            std::io::copy(&mut in_file, &mut zstd_writer).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            zstd_writer.finish()?;
-        } else {
-            let zstd_writer = crate::archive::tar::write_tar_to_writer(source_paths, zstd_writer, options)?;
-            zstd_writer.finish()?;
-        }
-        return Ok(());
-    }
-
-    // 5. Pure Safe Rust High-Throughput 7-Zip Solid Archive Creation Pipeline
-    if resolved_format == TTZipArchiveFormat::SevenZip && split_volume_size_bytes == 0 {
-        return crate::sevenz::writer::create_7z_archive(destination_path, source_paths, options)
-            .map(|_| ());
+    if matches!(resolved_format, TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd) {
+        return write_zstd_target(staged_dest, split_volume_size_bytes, options, raw_src, |w| {
+            crate::archive::tar::write_tar_to_writer(source_paths, w, options)
+        });
     }
 
     unsafe {
@@ -212,48 +304,144 @@ pub fn create_archive(
             return Err(TTZipStatus::ErrOutOfMemory);
         }
         let _guard = ArchiveWriteGuard(a);
-
         configure_archive_write_format(a, resolved_format, options, is_raw_stream)?;
+        open_libarchive_destination(a, staged_dest, resolved_format, split_volume_size_bytes)?;
+        write_archive_entries_to_handle_fmt(a, source_paths, options, resolved_format)?;
+    }
 
-        let open_rc = if split_volume_size_bytes > 0 {
-            let is_zip = resolved_format == TTZipArchiveFormat::Zip;
-            let scheme = if is_zip {
-                VolumeNamingScheme::PkzipSpanned
-            } else {
-                VolumeNamingScheme::NumberedExtension
-            };
+    Ok(())
+}
 
-            let split_writer = SplitVolumeWriter::new(
-                destination_path,
-                split_volume_size_bytes,
-                scheme,
-            )
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-            let split_box = Box::into_raw(Box::new(split_writer));
-            archive_write_open2(
-                a,
-                split_box as *mut c_void,
-                None,
-                Some(split_write_cb),
-                Some(split_close_cb),
-                Some(split_free_cb),
-            )
-        } else {
-            let dest_c = CString::new(
-                destination_path
-                    .to_str()
-                    .ok_or(TTZipStatus::ErrInvalidParam)?,
-            )
-            .map_err(|_| TTZipStatus::ErrInvalidParam)?;
-            archive_write_open_filename(a, dest_c.as_ptr())
-        };
-
-        if open_rc != 0 {
-            return Err(TTZipStatus::ErrOpenFailed);
+/// Recursively compresses pre-filtered explicit entries into the destination archive path with optional 7z header encryption override.
+pub fn create_archive_explicit_with_files_detailed_opts(
+    entries: &[(PathBuf, String)],
+    destination_path: &Path,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    encrypt_file_names: Option<bool>,
+) -> Result<Vec<PathBuf>, CreateStageCommitError> {
+    if entries.is_empty() {
+        return Err(CreateStageCommitError::Status(TTZipStatus::ErrInvalidParam));
+    }
+    for (src_path, _) in entries {
+        if !src_path.exists() && fs::symlink_metadata(src_path).is_err() {
+            return Err(CreateStageCommitError::Status(TTZipStatus::ErrFileNotFound));
         }
+    }
 
-        write_archive_entries_to_handle(a, source_paths, options)?;
+    let resolved_format = super::format_config::effective_create_format(options.format, destination_path);
+    super::format_config::validate_creatable_format(resolved_format, true)
+        .map_err(CreateStageCommitError::Status)?;
+    validate_create_encryption_options(resolved_format, options, encrypt_file_names)
+        .map_err(CreateStageCommitError::Status)?;
+    if is_pure_single_stream_format(resolved_format) && !should_use_raw_stream_explicit(entries, resolved_format) {
+        return Err(CreateStageCommitError::Status(TTZipStatus::ErrInvalidParam));
+    }
+    let commit_mode = CreateCommitMode::for_creation(
+        destination_path,
+        resolved_format,
+        split_volume_size_bytes,
+    );
+
+    with_staged_archive_destination_detailed(destination_path, commit_mode, |staged_dest| {
+        write_staged_explicit_archive(
+            entries,
+            staged_dest,
+            resolved_format,
+            options,
+            split_volume_size_bytes,
+            encrypt_file_names,
+        )
+    })
+}
+
+/// Recursively compresses pre-filtered explicit entries into the destination archive path,
+/// returning committed volume paths or detailed rollback/backup preservation diagnostics.
+pub fn create_archive_explicit_with_files_detailed(
+    entries: &[(PathBuf, String)],
+    destination_path: &Path,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+) -> Result<Vec<PathBuf>, CreateStageCommitError> {
+    create_archive_explicit_with_files_detailed_opts(
+        entries, destination_path, options, split_volume_size_bytes, None,
+    )
+}
+
+/// Recursively compresses pre-filtered explicit entries into the destination archive path and returns committed volume paths.
+pub fn create_archive_explicit_with_files(
+    entries: &[(PathBuf, String)],
+    destination_path: &Path,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+) -> Result<Vec<PathBuf>, TTZipStatus> {
+    create_archive_explicit_with_files_detailed(
+        entries, destination_path, options, split_volume_size_bytes,
+    )
+    .map_err(|e| e.status())
+}
+
+fn write_staged_explicit_archive(
+    entries: &[(PathBuf, String)],
+    staged_dest: &Path,
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    encrypt_file_names: Option<bool>,
+) -> Result<(), TTZipStatus> {
+    if matches!(resolved_format, TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto) {
+        return crate::zip::writer::create_zip_streaming_parallel_explicit_split(
+            staged_dest, entries, options, split_volume_size_bytes,
+        )
+        .map(|_| ());
+    }
+
+    if resolved_format == TTZipArchiveFormat::SevenZip {
+        return crate::sevenz::writer::create_7z_archive_explicit_split_with_header_encryption(
+            staged_dest, entries, options, split_volume_size_bytes, encrypt_file_names,
+        )
+        .map(|_| ());
+    }
+
+    if resolved_format == TTZipArchiveFormat::Aar {
+        return super::format_config::write_apple_archive_entries(
+            entries, staged_dest, split_volume_size_bytes,
+        );
+    }
+    if resolved_format == TTZipArchiveFormat::Xar {
+        return super::format_config::write_xar_entries(
+            entries, staged_dest, options, split_volume_size_bytes,
+        );
+    }
+
+    let is_raw_stream = should_use_raw_stream_explicit(entries, resolved_format);
+    let raw_src = is_raw_stream.then(|| entries[0].0.as_path());
+
+    if matches!(resolved_format, TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli) {
+        return write_brotli_target(staged_dest, split_volume_size_bytes, options, raw_src, |w| {
+            crate::archive::tar::write_tar_entries_to_writer(entries, w, options)
+        });
+    }
+    if resolved_format == TTZipArchiveFormat::Snappy {
+        return write_snappy_target(staged_dest, split_volume_size_bytes, raw_src, |w| {
+            crate::archive::tar::write_tar_entries_to_writer(entries, w, options)
+        });
+    }
+    if matches!(resolved_format, TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd) {
+        return write_zstd_target(staged_dest, split_volume_size_bytes, options, raw_src, |w| {
+            crate::archive::tar::write_tar_entries_to_writer(entries, w, options)
+        });
+    }
+
+    unsafe {
+        let a = archive_write_new();
+        if a.is_null() {
+            return Err(TTZipStatus::ErrOutOfMemory);
+        }
+        let _guard = ArchiveWriteGuard(a);
+        configure_archive_write_format(a, resolved_format, options, is_raw_stream)?;
+        open_libarchive_destination(a, staged_dest, resolved_format, split_volume_size_bytes)?;
+        write_entries_slice_to_handle_fmt(a, entries, options, resolved_format)?;
     }
 
     Ok(())
@@ -266,81 +454,8 @@ pub fn create_archive_explicit(
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> Result<(), TTZipStatus> {
-    if entries.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-
-    if let Some(parent) = destination_path.parent() {
-        if !parent.exists() {
-            let _ = fs::create_dir_all(parent);
-        }
-    }
-
-    let resolved_format = resolve_create_format(options.format, destination_path);
-
-    // 1. High-Performance Streaming Multi-Core Parallel ZIP Fast Path
-    if (resolved_format == TTZipArchiveFormat::Zip || resolved_format == TTZipArchiveFormat::Auto)
-        && split_volume_size_bytes == 0
-    {
-        return crate::zip::writer::create_zip_streaming_parallel_explicit(destination_path, entries, options)
-            .map(|_| ());
-    }
-
-    let is_raw_stream = should_use_raw_stream_explicit(entries, resolved_format);
-
-    // 2. Pure Safe Rust High-Throughput 7-Zip Solid Archive Creation Pipeline
-    if resolved_format == TTZipArchiveFormat::SevenZip && split_volume_size_bytes == 0 {
-        return crate::sevenz::writer::create_7z_archive_explicit(destination_path, entries, options)
-            .map(|_| ());
-    }
-
-    unsafe {
-        let a = archive_write_new();
-        if a.is_null() {
-            return Err(TTZipStatus::ErrOutOfMemory);
-        }
-        let _guard = ArchiveWriteGuard(a);
-
-        configure_archive_write_format(a, resolved_format, options, is_raw_stream)?;
-
-        let open_rc = if split_volume_size_bytes > 0 {
-            let is_zip = resolved_format == TTZipArchiveFormat::Zip;
-            let scheme = if is_zip {
-                VolumeNamingScheme::PkzipSpanned
-            } else {
-                VolumeNamingScheme::NumberedExtension
-            };
-
-            let split_writer = SplitVolumeWriter::new(
-                destination_path,
-                split_volume_size_bytes,
-                scheme,
-            )
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-            let split_box = Box::into_raw(Box::new(split_writer));
-            archive_write_open2(
-                a,
-                split_box as *mut c_void,
-                None,
-                Some(split_write_cb),
-                Some(split_close_cb),
-                Some(split_free_cb),
-            )
-        } else {
-            let dest_c = CString::new(destination_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
-                .map_err(|_| TTZipStatus::ErrInvalidParam)?;
-            archive_write_open_filename(a, dest_c.as_ptr())
-        };
-
-        if open_rc != 0 {
-            return Err(TTZipStatus::ErrOpenFailed);
-        }
-
-        write_entries_slice_to_handle(a, entries, options)?;
-    }
-
-    Ok(())
+    create_archive_explicit_with_files(entries, destination_path, options, split_volume_size_bytes)
+        .map(|_| ())
 }
 
 struct CountingStreamWriter<'a> {
@@ -395,9 +510,13 @@ pub fn create_archive_to_writer<W: Write>(
     } else {
         options.format
     };
+    super::format_config::validate_creatable_format(resolved_format, false)?;
+    let is_raw_stream = should_use_raw_stream(source_paths, resolved_format);
+    if is_pure_single_stream_format(resolved_format) && !is_raw_stream {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
 
-    // 1. Pure Safe Rust High-Throughput Brotli Streaming Pipeline
-    if resolved_format == TTZipArchiveFormat::TarBrotli || resolved_format == TTZipArchiveFormat::Brotli {
+    if matches!(resolved_format, TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli) {
         let q = match options.level {
             TTZipCompressionLevel::Store => 0,
             TTZipCompressionLevel::Fastest => 1,
@@ -406,41 +525,39 @@ pub fn create_archive_to_writer<W: Write>(
             TTZipCompressionLevel::Maximum => 9,
             TTZipCompressionLevel::Ultra => 11,
         };
-        let mut counting = CountingStreamWriter {
-            writer: &mut writer,
-            bytes_written: 0,
-        };
+        let mut counting = CountingStreamWriter { writer: &mut writer, bytes_written: 0 };
         {
-            let brotli_writer = brotli::CompressorWriter::new(&mut counting, 64 * 1024, q, 22);
-            crate::archive::tar::write_tar_to_writer(source_paths, brotli_writer, options)?;
+            let mut bw = brotli::CompressorWriter::new(&mut counting, 64 * 1024, q, 22);
+            if is_raw_stream {
+                let mut src = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+                std::io::copy(&mut src, &mut bw).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            } else {
+                crate::archive::tar::write_tar_to_writer(source_paths, bw, options)?;
+            }
         }
         counting.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         return Ok(counting.bytes_written);
     }
 
-    // 2. Pure Safe Rust High-Throughput Snappy Streaming Pipeline
     if resolved_format == TTZipArchiveFormat::Snappy {
-        let mut counting = CountingStreamWriter {
-            writer: &mut writer,
-            bytes_written: 0,
-        };
+        let mut counting = CountingStreamWriter { writer: &mut writer, bytes_written: 0 };
         {
-            let snappy_encoder = snap::write::FrameEncoder::new(&mut counting);
-            let mut snappy_encoder =
-                crate::archive::tar::write_tar_to_writer(source_paths, snappy_encoder, options)?;
-            snappy_encoder
-                .flush()
-                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            let mut se = snap::write::FrameEncoder::new(&mut counting);
+            if is_raw_stream {
+                let mut src = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+                std::io::copy(&mut src, &mut se).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            } else {
+                se = crate::archive::tar::write_tar_to_writer(source_paths, se, options)?;
+            }
+            se.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         }
         counting.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         return Ok(counting.bytes_written);
     }
 
-    // 3. Native Streaming High-Throughput Zstandard Multithreaded Pipeline
-    if resolved_format == TTZipArchiveFormat::TarZstd || resolved_format == TTZipArchiveFormat::Zstd {
+    if matches!(resolved_format, TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd) {
         let z_lvl = match options.level {
-            TTZipCompressionLevel::Store => 1,
-            TTZipCompressionLevel::Fastest => 1,
+            TTZipCompressionLevel::Store | TTZipCompressionLevel::Fastest => 1,
             TTZipCompressionLevel::Fast => 3,
             TTZipCompressionLevel::Normal => 6,
             TTZipCompressionLevel::Maximum => 19,
@@ -449,9 +566,7 @@ pub fn create_archive_to_writer<W: Write>(
         let nb_workers = if options.thread_budget > 0 {
             options.thread_budget
         } else {
-            std::thread::available_parallelism()
-                .map(|n| n.get() as u32)
-                .unwrap_or(4)
+            std::thread::available_parallelism().map(|n| n.get() as u32).unwrap_or(4)
         };
         let config = crate::codecs::zstd::types::ZstdConfig {
             level: z_lvl,
@@ -459,48 +574,36 @@ pub fn create_archive_to_writer<W: Write>(
             enable_checksum: true,
             ..Default::default()
         };
-        let mut counting = CountingStreamWriter {
-            writer: &mut writer,
-            bytes_written: 0,
-        };
+        let mut counting = CountingStreamWriter { writer: &mut writer, bytes_written: 0 };
         {
-            let zstd_writer = crate::codecs::zstd::ZstdStreamWriter::new(&mut counting, &config)?;
-            let zstd_writer =
-                crate::archive::tar::write_tar_to_writer(source_paths, zstd_writer, options)?;
-            zstd_writer.finish()?;
+            let mut zw = crate::codecs::zstd::ZstdStreamWriter::new(&mut counting, &config)?;
+            if is_raw_stream {
+                let mut src = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+                std::io::copy(&mut src, &mut zw).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            } else {
+                zw = crate::archive::tar::write_tar_to_writer(source_paths, zw, options)?;
+            }
+            zw.finish()?;
         }
         counting.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         return Ok(counting.bytes_written);
     }
 
-    // 4. Pure Safe Rust TAR Streaming Pipeline
     if resolved_format == TTZipArchiveFormat::Tar {
-        let mut counting = CountingStreamWriter {
-            writer: &mut writer,
-            bytes_written: 0,
-        };
+        let mut counting = CountingStreamWriter { writer: &mut writer, bytes_written: 0 };
         crate::archive::tar::write_tar_to_writer(source_paths, &mut counting, options)?;
         counting.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
         return Ok(counting.bytes_written);
     }
 
-    // 5. Universal Libarchive Stream Writing Pipeline (Zip, 7z, TarGz, TarBz2, TarXz, etc.)
-    let mut counting = CountingStreamWriter {
-        writer: &mut writer,
-        bytes_written: 0,
-    };
-
-    let is_raw_stream = should_use_raw_stream(source_paths, resolved_format);
-
+    let mut counting = CountingStreamWriter { writer: &mut writer, bytes_written: 0 };
     unsafe {
         let a = archive_write_new();
         if a.is_null() {
             return Err(TTZipStatus::ErrOutOfMemory);
         }
         let _guard = ArchiveWriteGuard(a);
-
         configure_archive_write_format(a, resolved_format, options, is_raw_stream)?;
-
         let open_rc = archive_write_open2(
             a,
             &mut counting as *mut _ as *mut c_void,
@@ -509,25 +612,21 @@ pub fn create_archive_to_writer<W: Write>(
             None,
             None,
         );
-
         if open_rc != 0 {
             return Err(TTZipStatus::ErrOpenFailed);
         }
-
-        write_archive_entries_to_handle(a, source_paths, options)?;
-        drop(_guard);
+        write_archive_entries_to_handle_fmt(a, source_paths, options, resolved_format)?;
     }
 
     counting.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
     Ok(counting.bytes_written)
 }
 
-
-
-unsafe fn write_archive_entries_to_handle(
+unsafe fn write_archive_entries_to_handle_fmt(
     a: *mut c_void,
     source_paths: &[PathBuf],
     options: &TTZipCreateOptions,
+    format: TTZipArchiveFormat,
 ) -> Result<(), TTZipStatus> {
     let mut entries_to_write = Vec::new();
     for src_path in source_paths {
@@ -538,23 +637,94 @@ unsafe fn write_archive_entries_to_handle(
         collect_entries_recursive(base_parent, src_path, &mut entries_to_write)
             .map_err(|_| TTZipStatus::ErrFileNotFound)?;
     }
-    write_entries_slice_to_handle(a, &entries_to_write, options)
+    write_entries_slice_to_handle_fmt(a, &entries_to_write, options, format)
 }
 
-pub(crate) unsafe fn write_entries_slice_to_handle(
+unsafe fn stream_regular_file_to_libarchive(
+    a: *mut c_void,
+    abs_path: &Path,
+    rel_c: &CString,
+    options: &TTZipCreateOptions,
+    buf: &mut [u8],
+    processed_bytes: &mut u64,
+) -> Result<(), TTZipStatus> {
+    let mut file = File::open(abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    loop {
+        let n = file.read(buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        if n == 0 {
+            break;
+        }
+        if archive_write_data(a, buf.as_ptr() as *const c_void, n) < 0 {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+        *processed_bytes = processed_bytes.saturating_add(n as u64);
+        if let Some(cb) = options.progress_callback {
+            if !cb(*processed_bytes, *processed_bytes, rel_c.as_ptr(), options.user_data) {
+                return Err(TTZipStatus::Cancelled);
+            }
+        }
+    }
+    Ok(())
+}
+
+unsafe fn write_libarchive_typed_entry(
+    a: *mut c_void,
+    entry: *mut c_void,
+    abs_path: &Path,
+    meta: &fs::Metadata,
+    rel_c: &CString,
+    options: &TTZipCreateOptions,
+    buf: &mut [u8],
+    processed_bytes: &mut u64,
+) -> Result<(), TTZipStatus> {
+    let filetype = meta.file_type();
+    if filetype.is_symlink() {
+        archive_entry_set_filetype(entry, libc::S_IFLNK as u32);
+        archive_entry_set_perm(entry, 0o777 as mode_t);
+        archive_entry_set_size(entry, 0);
+        if let Ok(target) = fs::read_link(abs_path) {
+            if let Ok(target_c) = CString::new(target.to_string_lossy().as_bytes()) {
+                archive_entry_set_symlink(entry, target_c.as_ptr());
+            }
+        }
+        if archive_write_header(a, entry) != 0 {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+    } else if filetype.is_dir() {
+        archive_entry_set_filetype(entry, libc::S_IFDIR as u32);
+        archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
+        archive_entry_set_size(entry, 0);
+        if archive_write_header(a, entry) != 0 {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+    } else {
+        archive_entry_set_filetype(entry, libc::S_IFREG as u32);
+        archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
+        archive_entry_set_size(entry, meta.len() as i64);
+        if archive_write_header(a, entry) != 0 {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+        stream_regular_file_to_libarchive(a, abs_path, rel_c, options, buf, processed_bytes)?;
+    }
+    archive_write_finish_entry(a);
+    Ok(())
+}
+
+pub(crate) unsafe fn write_entries_slice_to_handle_fmt(
     a: *mut c_void,
     entries_to_write: &[(PathBuf, String)],
     options: &TTZipCreateOptions,
+    format: TTZipArchiveFormat,
 ) -> Result<(), TTZipStatus> {
-    libc::setlocale(libc::LC_ALL, b"en_US.UTF-8\0".as_ptr() as *const libc::c_char);
+    libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
     let mut processed_bytes: u64 = 0;
     let mut buf = vec![0u8; 64 * 1024];
 
     for (abs_path, rel_name) in entries_to_write {
-        let meta = match fs::symlink_metadata(abs_path) {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
+        let Ok(meta) = fs::symlink_metadata(abs_path) else { continue };
+        if format == TTZipArchiveFormat::Ar && (meta.is_dir() || meta.file_type().is_symlink()) {
+            return Err(TTZipStatus::ErrInvalidParam);
+        }
 
         let entry = archive_entry_new();
         if entry.is_null() {
@@ -562,75 +732,17 @@ pub(crate) unsafe fn write_entries_slice_to_handle(
         }
         let _entry_guard = ArchiveEntryGuard(entry);
 
-        let rel_c = match CString::new(rel_name.as_str()) {
-            Ok(c) => c,
-            Err(_) => continue,
+        let entry_path_str = if format == TTZipArchiveFormat::Ar {
+            Path::new(rel_name.as_str()).file_name().and_then(|s| s.to_str()).unwrap_or(rel_name.as_str())
+        } else {
+            rel_name.as_str()
         };
+        let Ok(rel_c) = CString::new(entry_path_str) else { continue };
 
         archive_entry_set_pathname(entry, rel_c.as_ptr());
-        archive_entry_set_mtime(
-            entry,
-            meta.modified()
-                .ok()
-                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                .map(|d| d.as_secs() as time_t)
-                .unwrap_or(0),
-            0,
-        );
-
-        let filetype = meta.file_type();
-        if filetype.is_symlink() {
-            archive_entry_set_filetype(entry, libc::S_IFLNK as u32);
-            archive_entry_set_perm(entry, 0o777 as mode_t);
-            archive_entry_set_size(entry, 0);
-            if let Ok(target) = fs::read_link(abs_path) {
-                if let Ok(target_c) = CString::new(target.to_string_lossy().as_bytes()) {
-                    archive_entry_set_symlink(entry, target_c.as_ptr());
-                }
-            }
-            archive_write_header(a, entry);
-            archive_write_finish_entry(a);
-        } else if filetype.is_dir() {
-            archive_entry_set_filetype(entry, libc::S_IFDIR as u32);
-            archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
-            archive_entry_set_size(entry, 0);
-            archive_write_header(a, entry);
-            archive_write_finish_entry(a);
-        } else {
-            let size = meta.len();
-            archive_entry_set_filetype(entry, libc::S_IFREG as u32);
-            archive_entry_set_perm(entry, (meta.permissions().mode() & 0o777) as mode_t);
-            archive_entry_set_size(entry, size as i64);
-
-            let header_rc = archive_write_header(a, entry);
-            if header_rc != 0 {
-                return Err(TTZipStatus::ErrCompressionFailed);
-            }
-
-            let mut file = File::open(abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-            loop {
-                let n = file
-                    .read(&mut buf)
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                if n == 0 {
-                    break;
-                }
-
-                let written = archive_write_data(a, buf.as_ptr() as *const c_void, n);
-                if written < 0 {
-                    return Err(TTZipStatus::ErrCompressionFailed);
-                }
-                processed_bytes = processed_bytes.saturating_add(n as u64);
-
-                // Cancellation check within 64KB chunk streaming loop for large files
-                if let Some(cb) = options.progress_callback {
-                    if !cb(processed_bytes, processed_bytes, rel_c.as_ptr(), options.user_data) {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
-            }
-            archive_write_finish_entry(a);
-        }
+        let mtime = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs() as time_t);
+        archive_entry_set_mtime(entry, mtime, 0);
+        write_libarchive_typed_entry(a, entry, abs_path, &meta, &rel_c, options, &mut buf, &mut processed_bytes)?;
 
         if let Some(cb) = options.progress_callback {
             if !cb(processed_bytes, processed_bytes, rel_c.as_ptr(), options.user_data) {
@@ -642,28 +754,32 @@ pub(crate) unsafe fn write_entries_slice_to_handle(
     Ok(())
 }
 
+/// Helper to collect files and directories using an explicit heap worklist to ensure O(1) call stack depth.
 fn collect_entries_recursive(
     root: &Path,
-    current: &Path,
+    start: &Path,
     out: &mut Vec<(PathBuf, String)>,
 ) -> std::io::Result<()> {
-    let rel_prefix = current.strip_prefix(root).unwrap_or(current);
-    let rel_str = rel_prefix.to_string_lossy().to_string();
+    let mut stack: Vec<PathBuf> = vec![start.to_path_buf()];
 
-    if !rel_str.is_empty() {
-        out.push((current.to_path_buf(), rel_str));
-    }
+    while let Some(current) = stack.pop() {
+        let rel_prefix = current.strip_prefix(root).unwrap_or(&current);
+        let rel_str = rel_prefix.to_string_lossy().to_string();
 
-    if let Ok(meta) = fs::symlink_metadata(current) {
-        if meta.is_dir() && !meta.file_type().is_symlink() {
-            for entry in fs::read_dir(current)? {
-                let entry = entry?;
-                collect_entries_recursive(root, &entry.path(), out)?;
+        if !rel_str.is_empty() {
+            out.push((current.clone(), rel_str));
+        }
+
+        if let Ok(meta) = fs::symlink_metadata(&current) {
+            if meta.is_dir() && !meta.file_type().is_symlink() {
+                let mut children = Vec::new();
+                for entry in fs::read_dir(&current)? {
+                    children.push(entry?.path());
+                }
+                children.sort_unstable_by(|a, b| b.cmp(a));
+                stack.extend(children);
             }
         }
     }
     Ok(())
 }
-
-
-

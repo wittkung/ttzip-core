@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe, high-performance LZMA2 Chunk Control Parser and 12-State HMM Stream Decoder.
 //!
@@ -10,7 +10,7 @@
 pub mod dict;
 pub mod header;
 
-pub use dict::{Lzma2Dict, LZMA2_DEFAULT_DICT_SIZE};
+pub use dict::{Lzma2Dict, Lzma2RingDict, LZMA2_DEFAULT_DICT_SIZE};
 pub use header::{
     Lzma2ChunkHeader, Lzma2DecodeError, LZMA2_MAX_PACK_CHUNK_SIZE, LZMA2_MAX_UNPACK_CHUNK_SIZE,
 };

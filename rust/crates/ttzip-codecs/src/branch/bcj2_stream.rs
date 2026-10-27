@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! BCJ2 4-Stream Zero-Deadlock Demand-Driven Streaming Arbitrator and Decoder.
 //!
@@ -475,10 +475,10 @@ impl<R0: Read, R1: Read, R2: Read, R3: Read> Bcj2StreamReader<R0, R1, R2, R3> {
             call_reader,
             jump_reader,
             rc_reader,
-            main_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
-            call_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
-            jump_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
-            rc_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
+            main_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
+            call_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
+            jump_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
+            rc_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
             main_pos: 0,
             main_len: 0,
             call_pos: 0,

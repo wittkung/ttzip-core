@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unit tests for system defense guards and invariants.
 
@@ -114,3 +114,26 @@ fn test_pipeline_preflight_flow() {
     assert!(report.is_version_upgrade_valid);
     assert!(report.is_budget_approved);
 }
+
+#[test]
+fn test_system_defense_error_display_escaping() {
+    let evil_path = "\x1b[2J\r\n/etc/evil\tpayload";
+    let err = SystemDefenseError::PathTraversalAttackDetected {
+        path: evil_path.to_string(),
+        reason: "Escaping sandbox".to_string(),
+    };
+    let formatted = err.to_string();
+    assert!(!formatted.contains('\x1b'));
+    assert!(!formatted.contains('\n'));
+    assert!(!formatted.contains('\r'));
+    assert!(!formatted.contains('\t'));
+    assert!(formatted.contains(r"\u{1b}[2J\r\n/etc/evil\tpayload"));
+
+    let seg_err = SystemDefenseError::ReservedDeviceNameDetected {
+        segment: "CON\0\x1b[31m".to_string(),
+    };
+    let seg_formatted = seg_err.to_string();
+    assert!(!seg_formatted.contains('\x1b'));
+    assert!(!seg_formatted.contains('\0'));
+}
+

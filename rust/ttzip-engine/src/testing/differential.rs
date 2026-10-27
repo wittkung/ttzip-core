@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Rayon-accelerated multi-core concurrent directory tree scanner, 5-dimension manifest
 //! comparison engine, and libarchive/system-tool Golden Oracle differential verifier.

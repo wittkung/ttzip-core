@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Memory Quota Budget Breaker, Stream Flags Validator, and Malformed Block Defense Subsystem.
 //!
@@ -225,7 +225,7 @@ impl XzDefenseGuard {
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        let last_filter = filters.last().unwrap();
+        let last_filter = filters.last().ok_or(TTZipStatus::ErrSecurityViolation)?;
         if last_filter.filter_id != FILTER_ID_LZMA2 {
             // Last filter in XZ block MUST be LZMA2
             return Err(TTZipStatus::ErrSecurityViolation);

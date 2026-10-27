@@ -138,7 +138,7 @@ typedef struct TTZipEntryMetadata {
 ### 3.1 `NOTICE` Specification
 ```
 TTZip Multiplatform Compression Engine
-Copyright (c) 2026 Witt Kung <kevintungs@163.com> and TTZip Contributors.
+Copyright (c) 2026 Witt Kung <witt.w.kung@gmail.com> and TTZip Contributors.
 All rights reserved.
 
 This product includes software developed by the TTZip Project
@@ -159,7 +159,7 @@ resolver = "2"
 
 [workspace.package]
 version = "1.0.0"
-authors = ["Witt Kung <kevintungs@163.com>"]
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause OR Apache-2.0"
 repository = "https://github.com/wittkung/ttzip"
 ```

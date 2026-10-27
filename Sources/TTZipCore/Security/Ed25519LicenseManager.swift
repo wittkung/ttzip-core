@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -7,7 +7,9 @@ import Foundation
 public final class Ed25519LicenseManager: @unchecked Sendable {
     public static let shared = Ed25519LicenseManager()
     
+    #if !MAS_BUILD
     private let userDefaultsKey = "com.ttzip.ed25519_license_key"
+    #endif
     private let lock = NSLock()
     private var _cachedState: ChannelLicenseState?
     
@@ -31,6 +33,22 @@ public final class Ed25519LicenseManager: @unchecked Sendable {
     public var isPro: Bool {
         return currentState.isPro
     }
+
+    public enum Feature: Sendable {
+        case basicExtract
+        case quickLookPreview
+        case zipCompression
+        case aes256Encryption
+        case ultraCompression
+        case volumeSplit
+        case batchProcessing
+        case commercialUse
+    }
+
+    /// Core capability check: 100% full feature availability across all editions per open-core invariants.
+    public func canUseFeature(_ feature: Feature) -> Bool {
+        return true
+    }
     
     /// Refreshes and recomputes the active license state.
     public func refreshState() {
@@ -39,7 +57,8 @@ public final class Ed25519LicenseManager: @unchecked Sendable {
         lock.unlock()
     }
     
-    /// Activates a raw Ed25519 license key. Returns true on success.
+    #if !MAS_BUILD
+    /// Activates a raw Ed25519 license key. Returns verification result on success or error.
     @discardableResult
     public func activate(licenseKey: String) -> LicenseVerificationResult {
         let result = Ed25519LicenseVerifier.verify(licenseKey: licenseKey)
@@ -64,6 +83,7 @@ public final class Ed25519LicenseManager: @unchecked Sendable {
         _cachedState = computeCurrentState()
         lock.unlock()
     }
+    #endif
     
     private func computeCurrentState() -> ChannelLicenseState {
         #if MAS_BUILD

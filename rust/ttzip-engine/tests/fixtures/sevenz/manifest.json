@@ -1,0 +1,1244 @@
+{
+  "single_empty_file.7z": {
+    "bytes": 78,
+    "sha256": "5179792f4c838f0f31b7633bdef1f0e0bde4ab5eeac7f3a1c2c02221a00a9efb",
+    "crc32": 1414733021,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA",
+      "<archive>",
+      "empty.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [],
+    "required_data_coder_ids": [],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [],
+    "method_listing": [
+      "Method = "
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "empty.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "crc32": 0
+      }
+    }
+  },
+  "two_empty_file.7z": {
+    "bytes": 86,
+    "sha256": "31206ae9b4c49f20fa3a0d67c09d5eed1c9bc767d3abc6091017c01594869d1c",
+    "crc32": 3920809784,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA",
+      "<archive>",
+      "a.txt",
+      "b.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [],
+    "required_data_coder_ids": [],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [],
+    "method_listing": [
+      "Method = ",
+      "Method = "
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "a.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "crc32": 0
+      },
+      "b.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "crc32": 0
+      }
+    }
+  },
+  "single_file_with_content_lzma.7z": {
+    "bytes": 129,
+    "sha256": "aa2ac07fef69a16bbdda8dfa14ea508ebcea1bfc3aa15c82c7e2c0eb9df0eac2",
+    "crc32": 3166235078,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA",
+      "<archive>",
+      "file.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA"
+    ],
+    "required_data_coder_ids": [
+      "0x00030101"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00030101",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "5d00100000"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA:12",
+      "Method = LZMA:12"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "file.txt": {
+        "bytes": 15,
+        "sha256": "e0ef7229e64c61596d8be928397e19fcc542ac920c4132106fb1ec2295dd73d1",
+        "crc32": 1716563733
+      }
+    }
+  },
+  "two_files_with_content_lzma.7z": {
+    "bytes": 161,
+    "sha256": "cb553eae55868a43557c0dd729e90d6c4da32d6ff3ec206581c79dcdbbf99886",
+    "crc32": 3786850073,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA",
+      "<archive>",
+      "file1.txt",
+      "file2.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA"
+    ],
+    "required_data_coder_ids": [
+      "0x00030101"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00030101",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "5d00100000"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA:12",
+      "Method = LZMA:12",
+      "Method = LZMA:12"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "file1.txt": {
+        "bytes": 17,
+        "sha256": "a9f5d2dc8c0678ef90563e95c0034b6bf52aca3f1b0efbd06603b595749b95cd",
+        "crc32": 1351995394
+      },
+      "file2.txt": {
+        "bytes": 17,
+        "sha256": "7310e4148a35b08b317ae6635ad1e3812a6380e9a00b6a0c59a1bba7ebf43047",
+        "crc32": 4018598775
+      }
+    }
+  },
+  "solid.7z": {
+    "bytes": 454,
+    "sha256": "47f42081e0f1f7313e3c8a1fff1e585bd77be22557d08f34e9810707b3d37bec",
+    "crc32": 4017031715,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA2",
+      "-ms=on",
+      "<archive>",
+      "empty.txt",
+      "test1.txt",
+      "test2.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "01"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:6k",
+      "Method = ",
+      "Method = LZMA2:6k",
+      "Method = LZMA2:6k"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "empty.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "crc32": 0
+      },
+      "test1.txt": {
+        "bytes": 3447,
+        "sha256": "460912bc162453155e99c5f5f9eb1eae146202260b623c61cc72b248f4fda3be",
+        "crc32": 1332725594
+      },
+      "test2.txt": {
+        "bytes": 2654,
+        "sha256": "35e33b236eca1fe36b5a2b17d4d9b934ed44d9dc4502bc4e97e4bec0fed5faa1",
+        "crc32": 1472684375
+      }
+    }
+  },
+  "non_solid.7z": {
+    "bytes": 696,
+    "sha256": "d2b1747a126e66566cca760fdf5d72e1604abcf73cb7200e1e89287c75f5f6ac",
+    "crc32": 1072910937,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA2",
+      "-ms=off",
+      "<archive>",
+      "empty.txt",
+      "test1.txt",
+      "test2.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "00"
+          }
+        ],
+        "bind_pairs": []
+      },
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "00"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:12",
+      "Method = ",
+      "Method = LZMA2:12",
+      "Method = LZMA2:12"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "empty.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "crc32": 0
+      },
+      "test1.txt": {
+        "bytes": 3447,
+        "sha256": "460912bc162453155e99c5f5f9eb1eae146202260b623c61cc72b248f4fda3be",
+        "crc32": 1332725594
+      },
+      "test2.txt": {
+        "bytes": 2654,
+        "sha256": "35e33b236eca1fe36b5a2b17d4d9b934ed44d9dc4502bc4e97e4bec0fed5faa1",
+        "crc32": 1472684375
+      }
+    }
+  },
+  "copy.7z": {
+    "bytes": 114,
+    "sha256": "aa55f2db683251994a5922fc5c2f8943a8ed7fe8b738c3cac4aefc58adfdaf72",
+    "crc32": 2335793938,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=Copy",
+      "<archive>",
+      "copy.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "Copy"
+    ],
+    "required_data_coder_ids": [
+      "0x00000000"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000000",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": ""
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = Copy",
+      "Method = Copy"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "copy.txt": {
+        "bytes": 20,
+        "sha256": "21871e7f85c762d76d241bac3af8fd19a478e75b503da466864e3b9c360f8d93",
+        "crc32": 436306788
+      }
+    }
+  },
+  "delta.7z": {
+    "bytes": 126,
+    "sha256": "25944a6f9e61ac7d4f3a75541d5ef180eb4782a7ebcd718ec926e75744a97200",
+    "crc32": 2046826022,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=Delta",
+      "-m1=LZMA2",
+      "<archive>",
+      "delta.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "Delta",
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000003",
+      "0x00000021"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "00"
+          },
+          {
+            "id": "0x00000003",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "00"
+          }
+        ],
+        "bind_pairs": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = Delta LZMA2:12",
+      "Method = Delta:1 LZMA2:12"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "delta.txt": {
+        "bytes": 12,
+        "sha256": "11c85195ae99540ac07f80e2905e6e39aaefc4ac94cd380f366e79ba83560566",
+        "crc32": 4244963389
+      }
+    }
+  },
+  "delta_bcj2.7z": {
+    "bytes": 2736,
+    "sha256": "7611821c11034a3cec5af92616b4101086728a52c06f53a4a8827fdcf34b64da",
+    "crc32": 1455405797,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=Delta",
+      "-m1=BCJ2",
+      "-m2=LZMA2",
+      "-m3=LZMA2",
+      "-m4=LZMA2",
+      "-mb0:1",
+      "-mb1:2",
+      "-mb1s1:3",
+      "-mb1s2:4",
+      "<archive>",
+      "code1.bin",
+      "code2.bin",
+      "wave.bin"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "Delta",
+      "BCJ2",
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000003",
+      "0x00000021",
+      "0x0303011b"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "06"
+          },
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "06"
+          },
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "06"
+          },
+          {
+            "id": "0x0303011b",
+            "inputs": 4,
+            "outputs": 1,
+            "properties": ""
+          },
+          {
+            "id": "0x00000003",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "00"
+          }
+        ],
+        "bind_pairs": [
+          [
+            5,
+            0
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            7,
+            3
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = Delta LZMA2:15 BCJ2",
+      "Method = Delta:1 BCJ2 LZMA2:15 LZMA2:15 LZMA2:15",
+      "Method = Delta:1 BCJ2 LZMA2:15 LZMA2:15 LZMA2:15",
+      "Method = Delta:1 BCJ2 LZMA2:15 LZMA2:15 LZMA2:15"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "code1.bin": {
+        "bytes": 9000,
+        "sha256": "3584ed0f961e3b5fb424d8042bcb9c856809e6e0ee8f7c698c811a026309208b",
+        "crc32": 4294413248
+      },
+      "code2.bin": {
+        "bytes": 7000,
+        "sha256": "2389038abaeff7629d63f14b34a5e5dd6d789169cd7400ed8ed877a03f9a30e4",
+        "crc32": 534055083
+      },
+      "wave.bin": {
+        "bytes": 16000,
+        "sha256": "f4891af4531d0b1de6afd85b36cc7271139e3c14f05b3b8a030cdf9fdc4c568a",
+        "crc32": 1172264907
+      }
+    }
+  },
+  "bcj2_x86.7z": {
+    "bytes": 48119,
+    "sha256": "3c3307e696e8dd01823079fb48e509110c643e05b58b0f9f557d326194979245",
+    "crc32": 527725029,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=BCJ2",
+      "-m1=LZMA2",
+      "-m2=LZMA2",
+      "-m3=LZMA2",
+      "-mb0:1",
+      "-mb0s1:2",
+      "-mb0s2:3",
+      "<archive>",
+      "synthetic"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "BCJ2",
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021",
+      "0x0303011b"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0e"
+          },
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0e"
+          },
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0e"
+          },
+          {
+            "id": "0x0303011b",
+            "inputs": 4,
+            "outputs": 1,
+            "properties": ""
+          }
+        ],
+        "bind_pairs": [
+          [
+            5,
+            0
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            3,
+            2
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:19 BCJ2",
+      "Method = ",
+      "Method = ",
+      "Method = BCJ2 LZMA2:19 LZMA2:19 LZMA2:19",
+      "Method = BCJ2 LZMA2:19 LZMA2:19 LZMA2:19",
+      "Method = BCJ2 LZMA2:19 LZMA2:19 LZMA2:19",
+      "Method = BCJ2 LZMA2:19 LZMA2:19 LZMA2:19"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "synthetic/bin/branch.bin": {
+        "bytes": 462336,
+        "sha256": "cbdfd2bc420070ad8216e5472a509c6462bc5ec834ea00ccf42f5e8266730b7d",
+        "crc32": 1696634891
+      },
+      "synthetic/a.txt": {
+        "bytes": 1,
+        "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "crc32": 3904355907
+      },
+      "synthetic/b.txt": {
+        "bytes": 1,
+        "sha256": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+        "crc32": 1908338681
+      },
+      "synthetic/c.txt": {
+        "bytes": 1,
+        "sha256": "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6",
+        "crc32": 112844655
+      }
+    }
+  },
+  "bcj_arm64.7z": {
+    "bytes": 13173,
+    "sha256": "a9eb34be2f600804059cbc8873da452bfb3e08d222988460f5bc54c9bd8a27a6",
+    "crc32": 3904065819,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=ARM64",
+      "-m1=LZMA2",
+      "<archive>",
+      "branch.bin"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "ARM64",
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x0000000a",
+      "0x00000021"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0d"
+          },
+          {
+            "id": "0x0000000a",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": ""
+          }
+        ],
+        "bind_pairs": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = ARM64 LZMA2:384k",
+      "Method = ARM64 LZMA2:384k"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "branch.bin": {
+        "bytes": 357888,
+        "sha256": "58a1159e2c7f4beab4108fce3b850382dec3c5fd06d53031319aede142ac6c79",
+        "crc32": 2226894116
+      }
+    }
+  },
+  "bcj_x86.7z": {
+    "bytes": 25383,
+    "sha256": "2dcd8a50df63638476f619bcceabef5a6284698d69b4565dae30cc9622e2b515",
+    "crc32": 3320754358,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=BCJ",
+      "-m1=LZMA2",
+      "<archive>",
+      "branch.bin"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "BCJ",
+      "LZMA2"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021",
+      "0x03030103"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0d"
+          },
+          {
+            "id": "0x03030103",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": ""
+          }
+        ],
+        "bind_pairs": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:384k BCJ",
+      "Method = BCJ LZMA2:384k"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "branch.bin": {
+        "bytes": 367104,
+        "sha256": "0c85f4a0117d1e155b25c62b7917fe137e0ab0bee208496e8a613e537bae92ea",
+        "crc32": 3065700835
+      }
+    }
+  },
+  "ppmd.7z": {
+    "bytes": 205,
+    "sha256": "e61a826a998e35239024e1cd490ca6dde5324ca3252f46ac972fe2dd8ce34a7e",
+    "crc32": 330221128,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=PPMD",
+      "<archive>",
+      "owned.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "PPMD"
+    ],
+    "required_data_coder_ids": [
+      "0x00030401"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00030401",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0600000400"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = PPMD",
+      "Method = PPMD:o6:mem18"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "owned.txt": {
+        "bytes": 11356,
+        "sha256": "5e9c7cd473ad7d5941355bb579ef54303e3fa1fabf140fc23c51582d554e2e08",
+        "crc32": 27247917
+      }
+    }
+  },
+  "bzip2_file.7z": {
+    "bytes": 178,
+    "sha256": "9afb0198aa5ad4953d2c65cc805fc3c0279800c6cd6432ed4514004d8fe3cac1",
+    "crc32": 250565750,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=BZip2",
+      "<archive>",
+      "hello.txt",
+      "foo.txt"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "BZip2"
+    ],
+    "required_data_coder_ids": [
+      "0x00040202"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x00040202",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": ""
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = BZip2",
+      "Method = BZip2",
+      "Method = BZip2"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "hello.txt": {
+        "bytes": 6,
+        "sha256": "e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317",
+        "crc32": 3711459752
+      },
+      "foo.txt": {
+        "bytes": 4,
+        "sha256": "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730",
+        "crc32": 77771753
+      }
+    }
+  },
+  "lz4.7z": {
+    "bytes": 281,
+    "sha256": "7dd52aa835016efdfd8c9b1527b8fe48a331769bd189cfe34aae0cd8ee74fe31",
+    "crc32": 2796928857,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZ4",
+      "-mmt=2",
+      "<archive>",
+      "owned.txt"
+    ],
+    "tool": "7z",
+    "tool_version": [
+      "7-Zip [64] 17.05 : Copyright (c) 1999-2021 Igor Pavlov : 2017-08-28",
+      "p7zip Version 17.05 (locale=utf8,Utf16=on,HugeFiles=on,64 bits,18 CPUs LE)"
+    ],
+    "methods": [
+      "LZ4"
+    ],
+    "required_data_coder_ids": [
+      "0x04f71104"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x04f71104",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0109030000"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZ4",
+      "Method = LZ4:v1.9,l3"
+    ],
+    "password": null,
+    "payload_verification": {
+      "container": "lz4mt-skippable",
+      "version": 4,
+      "frame_bytes": 159,
+      "decoded_bytes": 11556,
+      "independent_decoders": [
+        "python-lz4-frame-decoder",
+        "lz4-cli"
+      ]
+    },
+    "plaintext": {
+      "owned.txt": {
+        "bytes": 11556,
+        "sha256": "1a8a5ad1c4962a47fe2f3e3231079b772b8b1edb56fa7ad0a7d45e0a49af7be0",
+        "crc32": 379793058
+      }
+    }
+  },
+  "brotli.7z": {
+    "bytes": 203,
+    "sha256": "53a8512fa22d1d4152c807bf0923244dee24d41be228aac67a583a15b3c0c3df",
+    "crc32": 2214566149,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=BROTLI",
+      "<archive>",
+      "owned.txt"
+    ],
+    "tool": "7z",
+    "tool_version": [
+      "7-Zip [64] 17.05 : Copyright (c) 1999-2021 Igor Pavlov : 2017-08-28",
+      "p7zip Version 17.05 (locale=utf8,Utf16=on,HugeFiles=on,64 bits,18 CPUs LE)"
+    ],
+    "methods": [
+      "BROTLI"
+    ],
+    "required_data_coder_ids": [
+      "0x04f71102"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x04f71102",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "010003"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = BROTLI",
+      "Method = Brotli:v1.0,l3"
+    ],
+    "password": null,
+    "payload_verification": null,
+    "plaintext": {
+      "owned.txt": {
+        "bytes": 11556,
+        "sha256": "1a8a5ad1c4962a47fe2f3e3231079b772b8b1edb56fa7ad0a7d45e0a49af7be0",
+        "crc32": 379793058
+      }
+    }
+  },
+  "aes_data.7z": {
+    "bytes": 478,
+    "sha256": "566aa8be77d8a954710122851ea54160c4c77a0cac1df31deb11fa758b8a0dc3",
+    "crc32": 2112455071,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA2",
+      "-mhe=off",
+      "-powned-data-password",
+      "<archive>",
+      "owned.bin"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA2",
+      "7zAES"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021",
+      "0x06f10701"
+    ],
+    "coder_graph_scope": "main_streams",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x06f10701",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "530f6ae4c2f83e750ab2eea987716a86ced2"
+          },
+          {
+            "id": "0x00000021",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "0a"
+          }
+        ],
+        "bind_pairs": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:17 7zAES",
+      "Method = LZMA2:17 7zAES:19"
+    ],
+    "password": "owned-data-password",
+    "payload_verification": null,
+    "plaintext": {
+      "owned.bin": {
+        "bytes": 129421,
+        "sha256": "6416f7c210255f59c9e2ae4be733ecce7c32f5cf68556cc1b44f8e8bc1cad354",
+        "crc32": 119628983
+      }
+    }
+  },
+  "aes_header.7z": {
+    "bytes": 545,
+    "sha256": "8bdc9a3c30072c6a0f5065a7e0dd8baa94fd17341b55a53c67a827563d8ca8e5",
+    "crc32": 3111095345,
+    "command": [
+      "a",
+      "-t7z",
+      "-y",
+      "-mmt=1",
+      "-mtm=off",
+      "-mta=off",
+      "-mtc=off",
+      "-mhc=off",
+      "-mqs=off",
+      "-m0=LZMA2",
+      "-mhe=on",
+      "-powned-header-password",
+      "<archive>",
+      "docs"
+    ],
+    "tool": "7zz",
+    "tool_version": [
+      "7-Zip (z) 26.02 (arm64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-06-25"
+    ],
+    "methods": [
+      "LZMA2",
+      "7zAES"
+    ],
+    "required_data_coder_ids": [
+      "0x00000021",
+      "0x06f10701"
+    ],
+    "coder_graph_scope": "encoded_header",
+    "coder_folders": [
+      {
+        "coders": [
+          {
+            "id": "0x06f10701",
+            "inputs": 1,
+            "outputs": 1,
+            "properties": "530f6b68d5418864dcbe9b5ea730cfa249e7"
+          }
+        ],
+        "bind_pairs": []
+      }
+    ],
+    "method_listing": [
+      "Method = LZMA2:12 7zAES",
+      "Method = ",
+      "Method = LZMA2:12 7zAES:19",
+      "Method = LZMA2:12 7zAES:19"
+    ],
+    "password": "owned-header-password",
+    "payload_verification": null,
+    "plaintext": {
+      "docs/message.txt": {
+        "bytes": 2247,
+        "sha256": "ed83a85a8265f3392e44e6651144fa7152d18160f5bfb8202f4de63b56a41140",
+        "crc32": 1515423321
+      },
+      "docs/pattern.bin": {
+        "bytes": 1417,
+        "sha256": "23092bd4689f5efc9ca156bdc0916ffe3d5307c2fba3b2c80b76175e83bffdcd",
+        "crc32": 3958222186
+      }
+    }
+  }
+}

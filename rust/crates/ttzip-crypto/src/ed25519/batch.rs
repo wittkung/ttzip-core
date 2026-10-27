@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-throughput Ed25519 batch signature verification using 128-bit pseudo-random scalar
 //! folding and variable-time Multi-Scalar Multiplication (MSM), alongside divide-and-conquer

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! LZMA2 Corrupted Fuzzer, 6-Dimensional Fault Injection & Mutation Stress Test Suite.
 //!
@@ -528,7 +528,7 @@ fn test_lzma2_dim6_cancel_and_timeout_resilience_multi_stream_lifecycle() {
     for _ in 0..50 {
         let mut cstream = Fl2CStream::new_mt(2).expect("create mt cstream");
         cstream.init(3).expect("init cstream");
-        cstream.set_timeout(100).expect("set timeout");
+        cstream.set_timeout(Fl2CStream::DEFAULT_TIMEOUT_MS).expect("set timeout");
 
         // Feed half of the payload
         let mut in_buf = Fl2InBuffer {

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! CPIO Family Format Matrix (POSIX.1 odc, SVR4 newc, CRC, Binary BE, Binary LE).
 

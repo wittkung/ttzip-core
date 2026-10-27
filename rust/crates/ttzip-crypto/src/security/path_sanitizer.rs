@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zero-Allocation Cross-Platform Path Sanitizer & ZipSlip Defense Subsystem.
 //!
@@ -13,14 +13,6 @@
 
 use std::borrow::Cow;
 use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
-
-/// Windows DOS reserved device names.
-const WINDOWS_RESERVED_DEVICES: &[&str] = &[
-    "CON", "PRN", "AUX", "NUL",
-    "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-    "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    "CLOCK$",
-];
 
 /// Errors emitted by zero-allocation path slice validation.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -81,6 +73,7 @@ impl PathSanitizationResult {
             && !self.is_windows_reserved
             && self.stripped_ads.is_none()
             && !self.normalized_path.is_empty()
+            && validate_archive_path_slice(self.normalized_path.as_bytes()).is_ok()
     }
 }
 
@@ -88,33 +81,7 @@ impl PathSanitizationResult {
 #[inline]
 #[must_use]
 pub fn is_windows_reserved_device_name(segment: &str) -> bool {
-    if segment.is_empty() {
-        return false;
-    }
-
-    // Windows disallows filenames/directories consisting purely of dots (>= 3 dots)
-    if segment.len() >= 3 && segment.bytes().all(|b| b == b'.') {
-        return true;
-    }
-
-    let upper = segment.to_ascii_uppercase();
-    if upper.starts_with("PHYSICALDRIVE") {
-        return true;
-    }
-
-    // Win32 rule: stem before the first dot (or before extension), with trailing spaces and dots trimmed
-    let base_stem = match segment.find('.') {
-        Some(idx) => &segment[..idx],
-        None => segment,
-    };
-
-    let trimmed = base_stem.trim_end_matches([' ', '.']);
-    if trimmed.is_empty() {
-        return false;
-    }
-
-    let trimmed_upper = trimmed.to_ascii_uppercase();
-    WINDOWS_RESERVED_DEVICES.contains(&trimmed_upper.as_str())
+    is_windows_reserved_device_name_slice(segment.as_bytes())
 }
 
 /// Zero-allocation slice check for Windows DOS reserved device names.
@@ -134,18 +101,22 @@ pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
         return true;
     }
 
-    // Stem before first dot
-    let stem = match seg.iter().position(|&b| b == b'.') {
+    // Stem before first dot or colon
+    let stem = match seg.iter().position(|&b| b == b'.' || b == b':') {
         Some(idx) => &seg[..idx],
         None => seg,
     };
 
-    // Trim trailing spaces and dots
+    // Trim leading spaces/tabs and trailing spaces/tabs/dots on stem
+    let mut start = 0;
+    while start < stem.len() && (stem[start] == b' ' || stem[start] == b'\t') {
+        start += 1;
+    }
     let mut end = stem.len();
-    while end > 0 && (stem[end - 1] == b' ' || stem[end - 1] == b'.') {
+    while end > start && (stem[end - 1] == b' ' || stem[end - 1] == b'\t' || stem[end - 1] == b'.') {
         end -= 1;
     }
-    let trimmed = &stem[..end];
+    let trimmed = &stem[start..end];
 
     match trimmed.len() {
         3 => {
@@ -160,7 +131,20 @@ pub fn is_windows_reserved_device_name_slice(seg: &[u8]) -> bool {
             (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
                 && digit.is_ascii_digit()
         }
-        6 => trimmed.eq_ignore_ascii_case(b"CLOCK$"),
+        5 => {
+            let prefix = &trimmed[..3];
+            (prefix.eq_ignore_ascii_case(b"COM") || prefix.eq_ignore_ascii_case(b"LPT"))
+                && trimmed[3] == 0xC2
+                && matches!(trimmed[4], 0xB9 | 0xB2 | 0xB3)
+        }
+        6 => {
+            trimmed.eq_ignore_ascii_case(b"CLOCK$")
+                || trimmed.eq_ignore_ascii_case(b"CONIN$")
+        }
+        7 => {
+            trimmed.eq_ignore_ascii_case(b"CONOUT$")
+                || trimmed.eq_ignore_ascii_case(b"CONFIG$")
+        }
         _ => false,
     }
 }
@@ -212,18 +196,14 @@ pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> 
     }
 
     // 3. Absolute path, UNC, and drive letter detection
-    if trimmed.starts_with(b"/") || trimmed.starts_with(b"\\") {
-        return Err(PathSecurityError::AbsolutePath);
-    }
-    if trimmed.starts_with(b"//") || trimmed.starts_with(b"\\\\") {
-        return Err(PathSecurityError::AbsolutePath);
-    }
-    if trimmed.len() >= 2 && trimmed[0].is_ascii_alphabetic() && trimmed[1] == b':' {
-        return Err(PathSecurityError::AbsolutePath);
-    }
-
-    // Check Windows namespace prefixes: e.g. \\?\ or \??\
-    if trimmed.starts_with(b"\\\\?\\")
+    if trimmed.starts_with(b"/")
+        || trimmed.starts_with(b"\\")
+        || trimmed.ends_with(b"/")
+        || trimmed.ends_with(b"\\")
+        || trimmed.starts_with(b"//")
+        || trimmed.starts_with(b"\\\\")
+        || (trimmed.len() >= 2 && trimmed[0].is_ascii_alphabetic() && trimmed[1] == b':')
+        || trimmed.starts_with(b"\\\\?\\")
         || trimmed.starts_with(b"\\\\.\\")
         || trimmed.starts_with(b"\\??\\")
         || trimmed.starts_with(b"//?/")
@@ -232,63 +212,48 @@ pub fn validate_archive_path_slice(raw: &[u8]) -> Result<(), PathSecurityError> 
         return Err(PathSecurityError::AbsolutePath);
     }
 
-    // 4. Zero-allocation segment-by-segment traversal and security validation
-    let mut depth: usize = 0;
-    let mut valid_components_seen = false;
-    let mut i = 0;
-
-    while i < trimmed.len() {
-        // Skip consecutive separators
-        while i < trimmed.len() && (trimmed[i] == b'/' || trimmed[i] == b'\\') {
-            i += 1;
-        }
-        if i >= trimmed.len() {
-            break;
-        }
-
-        // Find end of current segment
-        let seg_start = i;
-        while i < trimmed.len() && trimmed[i] != b'/' && trimmed[i] != b'\\' {
-            i += 1;
-        }
-        let seg = &trimmed[seg_start..i];
-
-        if seg.is_empty() || seg == b"." {
-            continue;
-        }
-
-        // Check directory traversal
-        if seg == b".." {
-            if depth == 0 {
-                return Err(PathSecurityError::DirectoryTraversal);
-            }
-            depth -= 1;
-            continue;
-        }
-
-        // Check for URL-encoded traversal patterns (%2e%2e)
-        if contains_encoded_traversal_slice(seg) {
-            return Err(PathSecurityError::DirectoryTraversal);
-        }
-
-        // Check for NTFS Alternate Data Stream syntax
-        if seg.contains(&b':') {
-            return Err(PathSecurityError::AlternateDataStream);
-        }
-
-        // Check Windows DOS reserved device names
-        if is_windows_reserved_device_name_slice(seg) {
-            return Err(PathSecurityError::ReservedDeviceName);
-        }
-
-        valid_components_seen = true;
-        depth += 1;
-    }
-
-    if !valid_components_seen || depth == 0 {
+    // 4. URL-encoded traversal check (%2e%2e)
+    if contains_encoded_traversal_slice(trimmed) {
         return Err(PathSecurityError::DirectoryTraversal);
     }
 
+    // 5. Alternate data stream check (':')
+    if trimmed.contains(&b':') {
+        return Err(PathSecurityError::AlternateDataStream);
+    }
+
+    // 6. Zero-allocation segment-by-segment security validation
+    let mut valid_components_seen = false;
+    for seg in trimmed.split(|&b| b == b'/' || b == b'\\') {
+        if seg.is_empty() {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        if seg == b"." {
+            continue;
+        }
+        if seg == b".." {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        if is_windows_reserved_device_name_slice(seg) {
+            return Err(PathSecurityError::ReservedDeviceName);
+        }
+        if seg
+            .iter()
+            .any(|&b| b <= 0x1F || matches!(b, b'<' | b'>' | b'"' | b'|' | b'?' | b'*'))
+        {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        if seg.ends_with(b" ") || (seg.ends_with(b".") && seg != b"._.") {
+            return Err(PathSecurityError::DirectoryTraversal);
+        }
+        valid_components_seen = true;
+    }
+
+    if !valid_components_seen {
+        return Err(PathSecurityError::DirectoryTraversal);
+    }
+
+    let _ = std::str::from_utf8(trimmed).map_err(|_| PathSecurityError::DirectoryTraversal)?;
     Ok(())
 }
 
@@ -516,10 +481,6 @@ mod tests {
         assert_eq!(validate_archive_path_slice(b"a/b/c/d/e.bin"), Ok(()));
         assert_eq!(validate_archive_path_slice(b"release..notes.txt"), Ok(()));
         assert_eq!(validate_archive_path_slice(b"my folder/data.json"), Ok(()));
-
-        // Pure internal directory traversal that stays within root
-        assert_eq!(validate_archive_path_slice(b"foo/../bar"), Ok(()));
-        assert_eq!(validate_archive_path_slice(b"a/b/../c/../d"), Ok(()));
     }
 
     #[test]
@@ -559,6 +520,14 @@ mod tests {
         );
 
         // Internal traversal accompanied by escape attacks
+        assert_eq!(
+            validate_archive_path_slice(b"foo/../bar"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
+        assert_eq!(
+            validate_archive_path_slice(b"a/b/../c/../d"),
+            Err(PathSecurityError::DirectoryTraversal)
+        );
         assert_eq!(
             validate_archive_path_slice(b"foo/../../bar"),
             Err(PathSecurityError::DirectoryTraversal)
@@ -622,5 +591,64 @@ mod tests {
             validate_archive_path_slice(b"folder/sub:stream:$DATA"),
             Err(PathSecurityError::AlternateDataStream)
         );
+    }
+
+    #[test]
+    fn test_windows_reserved_device_superscript_and_config_contract() {
+        for reserved in [
+            "COM¹",
+            "com¹.txt",
+            "COM².log",
+            "com³.tar.gz",
+            "LPT¹",
+            "lpt².txt",
+            "LPT³.doc",
+            "CONFIG$",
+            "config$.sys",
+            "sub/COM¹.txt",
+            "a\\b\\LPT².bin",
+            "nested/CONFIG$/item.txt",
+        ] {
+            assert_eq!(
+                validate_archive_path_slice(reserved.as_bytes()),
+                Err(PathSecurityError::ReservedDeviceName),
+                "expected ReservedDeviceName for {reserved}"
+            );
+            let sanitized = sanitize_path(reserved);
+            assert!(
+                sanitized.is_windows_reserved,
+                "expected sanitize_path({reserved}).is_windows_reserved == true"
+            );
+            assert!(
+                !sanitized.is_safe(),
+                "expected sanitize_path({reserved}).is_safe() == false"
+            );
+        }
+
+        for benign in [
+            "COM10.txt",
+            "LPT10.txt",
+            "COM¹0.txt",
+            "LPT²extra.txt",
+            "CONFIG.txt",
+            "CONFIG$1.txt",
+            "MYCONFIG$.txt",
+            "notes/com_1.txt",
+        ] {
+            assert_eq!(
+                validate_archive_path_slice(benign.as_bytes()),
+                Ok(()),
+                "expected Ok(()) for benign path {benign}"
+            );
+            let sanitized = sanitize_path(benign);
+            assert!(
+                !sanitized.is_windows_reserved,
+                "expected sanitize_path({benign}).is_windows_reserved == false"
+            );
+            assert!(
+                sanitized.is_safe(),
+                "expected sanitize_path({benign}).is_safe() == true"
+            );
+        }
     }
 }

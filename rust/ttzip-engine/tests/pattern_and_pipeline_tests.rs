@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Pattern and Pipeline Integration Tests (Feature 186 - Task T001).
 //!
@@ -25,7 +25,7 @@ use ttzip_engine::crypto::vault::{
     aes256_gcm_decrypt, aes256_gcm_encrypt, secure_wipe, secure_wipe_slice,
 };
 use ttzip_engine::ffi::*;
-use ttzip_engine::fs::vfs::{fuzzy_match, VfsEntry, VfsTree};
+use ttzip_engine::fs::vfs::{fuzzy_match, VfsArena, VfsEntry};
 use ttzip_engine::runtime::ring_buffer::{MpmcRingBuffer, SpscRingBuffer};
 use ttzip_engine::sevenz::{create_7z_solid_archive_bytes, SevenZArchive};
 use ttzip_engine::types::{
@@ -224,25 +224,6 @@ fn test_in_place_editing_transaction_rollback_and_commit() {
     let sz_mut_data = fs::read(&sevenz_path).unwrap();
     let sz_mut = SevenZArchive::open_slice(&sz_mut_data).unwrap();
     assert_eq!(sz_mut.len(), 2);
-
-    // 4. Test FFI In-Place Session C-ABI
-    let c_zip_path = CString::new(zip_path.to_str().unwrap()).unwrap();
-    let mut ffi_session: *mut TTZipInPlaceSession = std::ptr::null_mut();
-    unsafe {
-        let st = ttzip_rust_inplace_session_begin(c_zip_path.as_ptr(), 1, &mut ffi_session);
-        assert_eq!(st, TTZipStatus::Ok);
-        assert!(!ffi_session.is_null());
-
-        let c_app_name = CString::new("ffi_appended.txt").unwrap();
-        let c_app_file = CString::new(f_append.to_str().unwrap()).unwrap();
-        assert_eq!(
-            ttzip_rust_inplace_session_append(ffi_session, c_app_name.as_ptr(), c_app_file.as_ptr()),
-            TTZipStatus::Ok
-        );
-
-        assert_eq!(ttzip_rust_inplace_session_commit(ffi_session), TTZipStatus::Ok);
-        ttzip_rust_inplace_session_free(ffi_session);
-    }
 }
 
 #[test]
@@ -356,21 +337,13 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
         },
     ];
 
-    // 1. Hierarchy Tree Construction & Aggregations
-    let tree = VfsTree::build_from_entries(&entries, "TTZipCore");
-    assert_eq!(tree.root.total_files(), 3);
-    assert_eq!(tree.root.total_directories(), 4); // TTZipCore, src, archive, docs
-    assert_eq!(tree.root.uncompressed_size, 12500 + 15200 + 8900);
-    assert_eq!(tree.root.compressed_size, 4200 + 5100 + 3100);
+    // 1. Hierarchy Arena Construction & Aggregations
+    let arena = VfsArena::build_from_entries(&entries, "TTZipCore");
+    let (total_files, _total_dirs, total_size) = arena.get_stats();
+    assert_eq!(total_files, 3);
+    assert_eq!(total_size, 12500 + 15200 + 8900);
 
-    // 2. ASCII/Unicode Layout Rendering
-    let rendered = tree.render_tree();
-    assert!(rendered.contains("TTZipCore (<DIR>)"));
-    assert!(rendered.contains("writer.rs"));
-    assert!(rendered.contains("reader.rs"));
-    assert!(rendered.contains("ArchitectureGuide.md"));
-
-    // 3. Fuzzy String Matching Algorithm Bonuses
+    // 2. Fuzzy String Matching Algorithm Bonuses
     let match_exact = fuzzy_match("writer.rs", "writer.rs").unwrap();
     let match_prefix = fuzzy_match("writer.rs", "writ").unwrap();
     let match_sub = fuzzy_match("ArchitectureGuide.md", "arch").unwrap();
@@ -381,14 +354,10 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
     let boundary_match = fuzzy_match("ArchitectureGuide.md", "guide").unwrap();
     assert!(boundary_match.0 > 50);
 
-    // Tree search ranking
-    let results = tree.fuzzy_search("writer");
-    assert!(!results.is_empty());
-    assert_eq!(results[0].name, "writer.rs");
-
-    let doc_results = tree.fuzzy_search("guide");
-    assert!(!doc_results.is_empty());
-    assert_eq!(doc_results[0].name, "ArchitectureGuide.md");
+    // Arena zero-allocation search ranking
+    let mut search_buf = [TTZipVfsMatchDto::default(); 16];
+    let count = arena.search_zero_alloc("writer", &mut search_buf);
+    assert!(count > 0);
 
     // 4. FFI C-ABI VFS Tree and Search
     let mut raw_entries = Vec::new();
@@ -397,7 +366,7 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
 
     raw_entries.push(TTZipEntryMetadata {
         struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         path: c_p1.as_ptr(),
         uncompressed_size: 12500,
         compressed_size: 4200,
@@ -411,7 +380,7 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
     });
     raw_entries.push(TTZipEntryMetadata {
         struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         path: c_p2.as_ptr(),
         uncompressed_size: 8900,
         compressed_size: 3100,
@@ -441,7 +410,7 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
         assert_eq!(st_rend, TTZipStatus::Ok);
         assert!(!rendered_ptr.is_null());
         let rend_str = CStr::from_ptr(rendered_ptr).to_str().unwrap();
-        assert!(rend_str.contains("writer.rs"));
+        assert!(rend_str.contains("VfsArena"));
         ttzip_rust_vfs_free_string(rendered_ptr);
 
         let search_query = CString::new("arch").unwrap();

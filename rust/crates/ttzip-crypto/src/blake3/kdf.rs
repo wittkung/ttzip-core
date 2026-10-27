@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! BLAKE3 Keyed Hashing (MAC) and Key Derivation Function (KDF) implementations.
 //!

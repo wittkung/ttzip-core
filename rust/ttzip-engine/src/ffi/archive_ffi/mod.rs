@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-level C-ABI / FFI archive inspection, extraction, and creation unified entries.
 //!
@@ -12,19 +12,18 @@
 mod create;
 mod extract;
 pub use ttzip_archive::sys::libarchive::guards;
-mod in_place;
 mod inspect;
 pub mod provenance;
 mod repair;
 pub mod split;
 pub use ttzip_archive::sys::libarchive::sys;
+mod staged_commit;
 mod tar;
 pub mod unified;
 mod zip;
 
 pub use create::ttzip_rust_create_archive;
 pub use extract::ttzip_rust_extract_archive;
-pub use in_place::*;
 pub use inspect::ttzip_rust_inspect_archive;
 pub use provenance::*;
 pub use repair::*;

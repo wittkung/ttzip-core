@@ -7,11 +7,11 @@ import XCTest
 final class VaultMemorySanitizationTests: XCTestCase {
     
     /// Tests that SecureBytes safely allocates, locks physical memory, and zeroes out content upon wipe.
-    func testSecureBytesAllocationAndWipe() {
+    func testSecureBytesAllocationAndWipe() throws {
         let sample = "SuperSecretPassword123!".data(using: .utf8)!
         let count = sample.count
 
-        let secure = SecureBytes(data: sample)
+        let secure = try SecureBytes(data: sample)
         XCTAssertEqual(secure.count, count)
         
         // 1. Verify data is intact before wipe
@@ -35,9 +35,9 @@ final class VaultMemorySanitizationTests: XCTestCase {
     }
 
     /// Tests that SecureBytes(utf8String:) creates locked memory without intermediary heap leaks.
-    func testSecureBytesDirectStringInitZeroHeapResidual() {
+    func testSecureBytesDirectStringInitZeroHeapResidual() throws {
         let password = "TopSecretMasterKey#2026"
-        let secure = SecureBytes(utf8String: password)
+        let secure = try SecureBytes(utf8String: password)
         XCTAssertEqual(secure.count, password.utf8.count)
 
         secure.withUnsafeBytes { buf in
@@ -53,6 +53,30 @@ final class VaultMemorySanitizationTests: XCTestCase {
         secure.withUnsafeBytes { buf in
             XCTAssertEqual(buf.count, 0)
             XCTAssertNil(buf.baseAddress)
+        }
+    }
+
+    /// Tests that SecureBytes safely throws SecureBytesError when given invalid capacities or on allocation failure.
+    func testSecureBytesAllocationFailureHandling() {
+        // Negative capacity must throw invalidSize error
+        XCTAssertThrowsError(try SecureBytes(capacity: -1)) { error in
+            guard let secError = error as? SecureBytesError, case .invalidSize = secError else {
+                XCTFail("Expected SecureBytesError.invalidSize, got \(error)")
+                return
+            }
+        }
+
+        // Overly massive capacity that overflows or exceeds system limits must throw an error
+        XCTAssertThrowsError(try SecureBytes(capacity: Int.max - 100)) { error in
+            guard let secError = error as? SecureBytesError else {
+                XCTFail("Expected SecureBytesError, got \(error)")
+                return
+            }
+            switch secError {
+            case .invalidSize, .allocationFailed:
+                // Both error cases represent clean defensive error propagation
+                break
+            }
         }
     }
 }

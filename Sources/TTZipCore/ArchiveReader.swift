@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -49,6 +49,8 @@ public final class ArchiveReader: ArchiveReading, Sendable {
             let targetInspectPath = archivePath
             
             let performInspect: (String?) throws -> [ArchiveEntry] = { pwd in
+                // This browsing path materializes UniFFI metadata, then maps it to Swift entries.
+                // Snapshot and VFS-session APIs are separate capabilities, not used by this call.
                 let items = try inspectArchiveEntries(archivePath: targetInspectPath, password: pwd)
                 var entries: [ArchiveEntry] = []
                 entries.reserveCapacity(items.count)

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Multi-Threaded Offline Solid Block Preparation and Sequential Append Pipeline.
 //!
@@ -125,9 +125,7 @@ pub fn prepare_block<R: Read>(
         }
 
         loop {
-            let bytes_read = reader
-                .read(&mut read_buf)
-                .map_err(|e| SevenZError::Io(e.to_string()))?;
+            let bytes_read = reader.read(&mut read_buf)?;
             if bytes_read == 0 {
                 break;
             }
@@ -270,9 +268,7 @@ impl<W: Write + Seek> SevenZArchiveWriter<W> {
     /// Creates a new `SevenZArchiveWriter` and reserves the 32-byte `SevenZSignatureHeader` at offset 0.
     pub fn new(mut writer: W) -> Result<Self, SevenZError> {
         let placeholder = [0u8; 32];
-        writer
-            .write_all(&placeholder)
-            .map_err(|e| SevenZError::Io(e.to_string()))?;
+        writer.write_all(&placeholder)?;
 
         Ok(Self {
             writer,
@@ -296,9 +292,7 @@ impl<W: Write + Seek> SevenZArchiveWriter<W> {
         }
 
         if !block.compressed_data.is_empty() {
-            self.writer
-                .write_all(&block.compressed_data)
-                .map_err(|e| SevenZError::Io(e.to_string()))?;
+            self.writer.write_all(&block.compressed_data)?;
         }
 
         let folder = FolderRecord {
@@ -338,9 +332,7 @@ impl<W: Write + Seek> SevenZArchiveWriter<W> {
 
         let header_bytes = build_multi_folder_7z_header(&self.folders, &self.files);
 
-        self.writer
-            .write_all(&header_bytes)
-            .map_err(|e| SevenZError::Io(e.to_string()))?;
+        self.writer.write_all(&header_bytes)?;
 
         let next_header_offset = self.current_payload_pos;
         let next_header_size = header_bytes.len() as u64;
@@ -357,17 +349,9 @@ impl<W: Write + Seek> SevenZArchiveWriter<W> {
 
         let sig_bytes = sig_header.serialize();
 
-        self.writer
-            .seek(SeekFrom::Start(0))
-            .map_err(|e| SevenZError::Io(e.to_string()))?;
-
-        self.writer
-            .write_all(&sig_bytes)
-            .map_err(|e| SevenZError::Io(e.to_string()))?;
-
-        self.writer
-            .flush()
-            .map_err(|e| SevenZError::Io(e.to_string()))?;
+        self.writer.seek(SeekFrom::Start(0))?;
+        self.writer.write_all(&sig_bytes)?;
+        self.writer.flush()?;
 
         self.is_finalized = true;
         let total_size = 32 + self.current_payload_pos + (header_bytes.len() as u64);

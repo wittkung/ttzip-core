@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe, RAII-governed single-format compression and character encoding codecs.
 
@@ -11,19 +11,15 @@ pub mod checksum {
     pub use ttzip_crypto::xxhash32::*;
 }
 
-pub(crate) mod lz_extend;
 
-pub(crate) mod utils {
-    pub(crate) use super::lz_extend::*;
-}
 
 pub mod branch;
 pub mod brotli;
 pub mod bzip2;
 pub mod chardet;
-pub mod deflate;
 pub mod fast_blocks;
 pub mod libdeflate;
+pub use libdeflate as deflate;
 pub mod lz4;
 pub mod lzfse;
 pub mod lzma;
@@ -31,9 +27,11 @@ pub mod lzma2;
 pub mod ppmd;
 pub use ppmd as ppmd_suballoc;
 pub mod snappy;
-pub mod zopfli;
 pub mod zstd;
-pub mod zstd_seekable;
+pub mod zstd_seekable {}
+pub mod registry;
+
+pub use registry::{CodecDescriptor, CodecId, CodecRegistry, CompressionCodec};
 
 
 // Safe RAII stream byte counting wrappers
@@ -172,29 +170,15 @@ pub use bzip2::{
     bzip2_inspect_header, Bzip2Compressor, Bzip2Decompressor, Bzip2HeaderInfo,
     BZIP2_PIPE_BUFFER_SIZE, BZ_EOS_BLOCK_MAGIC, BZ_MAGIC, BZ_PI_BLOCK_MAGIC,
 };
-pub use deflate::*;
+pub use libdeflate::*;
 pub use fast_blocks::*;
-pub use libdeflate::{
-    libdeflate_deflate_compress, libdeflate_deflate_decompress, libdeflate_gzip_compress,
-    libdeflate_gzip_decompress, libdeflate_validate, libdeflate_zlib_compress,
-    libdeflate_zlib_decompress, ContainerFormat,
-};
 pub use lz4::{
-    copy_small_offset, copy_small_offset_ptr, header_checksum, is_lz4_frame_magic,
-    is_lz4_legacy_magic, is_lz4_skippable_magic, lz4_compress, lz4_compress_bound,
-    lz4_compress_fast, lz4_compress_fast_rust, lz4_compress_fast_rust_to_vec, lz4_compress_hc,
-    lz4_compress_hc_to_vec, lz4_compress_to_vec, lz4_decompress, lz4_decompress_custom_to_vec,
-    lz4_decompress_inplace_buffer_size, lz4_decompress_inplace_margin, lz4_decompress_safe_custom,
-    lz4_decompress_safe_ext_dict, lz4_decompress_safe_ext_dict_partial,
-    lz4_decompress_safe_ext_dict_to_vec, lz4_decompress_safe_partial, lz4_decompress_to_vec,
-    lz4_hash4, lz4_hash4_bytes, lz4_hash5, lz4_hash5_slice, lz4_hash8, BlockIndependence,
-    BlockMaxSize, FrameDescriptor, Lz4DictCompressor, Lz4FastCompressor, Lz4FrameDecoder,
-    Lz4FrameEncoder, Lz4PreloadedDict, TableType, DEC64_TABLE, INC32_TABLE,
-    KNUTH_GOLDEN_RATIO_32, LASTLITERALS, LZ4F_MAGICNUMBER, LZ4F_MAGIC_LEGACY,
-    LZ4F_MAGIC_SKIPPABLE_END, LZ4F_MAGIC_SKIPPABLE_MASK, LZ4F_MAGIC_SKIPPABLE_START,
-    LZ4F_VERSION_1, LZ4_64K_LIMIT, LZ4_DISTANCE_MAX, LZ4_FAST_LOOP_MARGIN, LZ4_HASH_LOG,
-    LZ4_HASH_SIZE, LZ4_MAX_TOKEN_LITERAL_LEN, LZ4_MAX_TOKEN_MATCH_LEN, LZ4_MIN_MATCH, MFLIMIT,
-    MINMATCH, PRIME_5BYTES_64, PRIME_8BYTES_64,
+    is_lz4_frame_magic, is_lz4_legacy_magic, is_lz4_skippable_magic, lz4_compress,
+    lz4_compress_bound, lz4_compress_fast, lz4_compress_hc, lz4_compress_hc_to_vec,
+    lz4_compress_to_vec, lz4_decompress, lz4_decompress_to_vec, BlockIndependence,
+    BlockMaxSize, FrameDescriptor, Lz4FrameDecoder, Lz4FrameEncoder,
+    LZ4F_MAGICNUMBER, LZ4F_MAGIC_LEGACY, LZ4F_MAGIC_SKIPPABLE_END,
+    LZ4F_MAGIC_SKIPPABLE_MASK, LZ4F_MAGIC_SKIPPABLE_START, LZ4F_VERSION_1,
 };
 pub use lzfse::{
     lzfse_compress, lzfse_compress_bound, lzfse_compress_raw, lzfse_compress_stream,
@@ -225,23 +209,27 @@ pub use snappy::{
     SnappyFramedReader, SnappyFramedWriter, SnappyHashTable, SnappyTagHeader, SnappyTagType,
 };
 pub use zstd::{
-    fse_compress, fse_compress_bound, fse_decompress, huf0_compress1x, huf0_compress4x,
-    huf0_compress_bound, huf0_decompress1x, huf0_decompress4x, with_thread_local_zstd_cctx,
-    with_thread_local_zstd_dctx, zstd_compress, zstd_compress_advanced, zstd_compress_bound,
-    zstd_compress_ldm, zstd_compress_stream_pipe, zstd_compress_with_dict, zstd_decompress,
+    with_thread_local_zstd_cctx, with_thread_local_zstd_dctx, zstd_compress,
+    zstd_compress_advanced, zstd_compress_bound, zstd_compress_ldm,
+    zstd_compress_stream_pipe, zstd_compress_with_dict, zstd_decompress,
     zstd_decompress_stream_pipe, zstd_decompress_with_dict, zstd_get_decompressed_size,
-    zstd_train_dictionary, CDict, DDict, SeekFrameInfo, SeekTableDecoder, SeekTableEncoder,
-    SeekTableEntry, SeekableError, ZstdCCtx, ZstdCParameter, ZstdConfig, ZstdDCtx, ZstdDParameter,
-    ZstdDictionary, ZstdDictionaryManager, ZstdEndDirective, ZstdInBuffer, ZstdOutBuffer,
-    ZstdSeekableReader, ZstdSeekableWriter, ZstdStreamReader, ZstdStreamWriter,
-    DEFAULT_SEEKABLE_FRAME_SIZE, SEEKABLE_FOOTER_SIZE, SEEKABLE_MAGIC_NUMBER,
-    SEEK_TABLE_FLAG_CHECKSUM, SKIPPABLE_HEADER_SIZE, SKIPPABLE_MAGIC_NUMBER,
+    zstd_train_dictionary, CDict, DDict, ZstdCCtx, ZstdCParameter, ZstdConfig,
+    ZstdDCtx, ZstdDParameter, ZstdDictionary, ZstdDictionaryManager, ZstdEndDirective,
+    ZstdInBuffer, ZstdOutBuffer, ZstdStreamReader, ZstdStreamWriter,
     ZSTD_PIPE_BUFFER_SIZE, ZSTD_STANDARD_DICTIONARY_SIZE_BYTES, ZSTD_STREAM_BUFFER_SIZE,
 };
-pub use zopfli::{
-    estimate_entropy_cost, zopfli_compress, zopfli_compress_deflate, zopfli_compress_gzip,
-    zopfli_compress_zlib, BlockStats, CumulativeHistogram, ZopfliBlockSplitter, ZopfliCostModel,
-    ZopfliEncoder, ZopfliFormat, ZopfliHash, ZopfliMatchCache, ZopfliOptions,
-    ZopfliShortestPathMatcher, ZopfliSqueeze, ZopfliToken, DYNAMIC_HEADER_COST_BITS,
-    END_OF_BLOCK_SYM, MIN_BLOCK_SIZE, NUM_DIST_SYMS, NUM_LITLEN_SYMS, SPLIT_GAIN_THRESHOLD_BITS,
+
+// Compile-time static concurrency contract assertions ensuring Tier-1 thread safety & L1 cache line compactness.
+const fn assert_send_sync_static<T: Send + Sync + 'static>() {}
+const _: () = {
+    assert_send_sync_static::<brotli::BrotliError>();
+    assert_send_sync_static::<snappy::SnappyError>();
+    assert_send_sync_static::<deflate::DeflateDecompressError>();
+    assert_send_sync_static::<lzma2::Lzma2DecodeError>();
+    assert_send_sync_static::<lzma::RangeCoderError>();
+    assert!(std::mem::size_of::<brotli::BrotliError>() <= 64);
+    assert!(std::mem::size_of::<snappy::SnappyError>() <= 64);
+    assert!(std::mem::size_of::<deflate::DeflateDecompressError>() <= 64);
+    assert!(std::mem::size_of::<lzma2::Lzma2DecodeError>() <= 64);
+    assert!(std::mem::size_of::<lzma::RangeCoderError>() <= 64);
 };

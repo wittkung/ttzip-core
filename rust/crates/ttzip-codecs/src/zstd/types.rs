@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Types, parameters, buffer definitions and FFI bindings for Facebook `Zstandard` (zstd),
 //! Pre-trained Dictionaries, Long Distance Matching (LDM), and FSE/Huff0 entropy micro-kernels.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Archive streaming and libarchive adapter module.
 
@@ -15,7 +15,6 @@ pub mod tar;
 pub mod ttzip_mt_drainer;
 pub mod unified;
 pub mod wal_mutation;
-pub mod zero_vtable_dispatch;
 
 pub use builder::*;
 pub use in_place_edit::*;
@@ -24,15 +23,15 @@ pub use nested_vfs::*;
 pub use repair::*;
 pub use source::*;
 pub use split::{
-    compute_volume_path, detect_volume_chain, SplitVolumeWriter, VirtualMultiVolumeReader,
-    VolumeNamingScheme, VolumeSegment,
+    compute_volume_path, detect_volume_chain, MissingVolumeDescriptor, MissingVolumeSeverity,
+    PreFlightVolumeProber, SplitVolumeWriter, VirtualMultiVolumeReader, VolumeNamingScheme,
+    VolumePartInfo, VolumeSegment,
 };
 pub use stream_adapter::*;
 pub use tar::*;
 pub use ttzip_mt_drainer::*;
 pub use unified::*;
 pub use wal_mutation::*;
-pub use zero_vtable_dispatch::*;
 
 
 

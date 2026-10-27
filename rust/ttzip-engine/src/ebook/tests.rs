@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit test suite for TTZip E-book Microkernel.
 
@@ -121,15 +121,16 @@ fn create_test_mobi_bytes(
     rec0.extend_from_slice(&mobi_hdr);
 
     // EXTH header
-    let mut exth_records = Vec::new();
-    // tag 100: author
-    exth_records.push((100u32, author.as_bytes().to_vec()));
-    // tag 101: publisher
-    exth_records.push((101u32, publisher.as_bytes().to_vec()));
-    // tag 113: asin
-    exth_records.push((113u32, asin.as_bytes().to_vec()));
-    // tag 503: updated title
-    exth_records.push((503u32, title.as_bytes().to_vec()));
+    let mut exth_records = vec![
+        // tag 100: author
+        (100u32, author.as_bytes().to_vec()),
+        // tag 101: publisher
+        (101u32, publisher.as_bytes().to_vec()),
+        // tag 113: asin
+        (113u32, asin.as_bytes().to_vec()),
+        // tag 503: updated title
+        (503u32, title.as_bytes().to_vec()),
+    ];
     if is_kf8 {
         exth_records.push((121u32, vec![0, 0, 0, 0])); // KF8 boundary offset
     }
@@ -247,7 +248,7 @@ fn test_palmdoc_lz77_decompression_all_branches() {
     assert_eq!(res2, b"Witt");
 
     // 3. Single literals (0x09..0x7F)
-    let input3 = [b'A', b'B', b'C'];
+    let input3 = *b"ABC";
     let res3 = decompress_palmdoc_record(&input3, 4096).expect("LZ77 dec");
     assert_eq!(res3, b"ABC");
 

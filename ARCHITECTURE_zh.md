@@ -12,6 +12,8 @@
 
 ---
 
+> **历史文档 / 适用范围**：本文保留 2026 年 8 月 v2 架构背景，包含对产品及基础设施的历史描述，不是当前产品全景的规范入口。当前进程边界与 VFS 实现状态请从 [产品文档孪生索引](../docs/twin/SPEC_INDEX.md) 阅读；本文的全 Safe Rust、全 UniFFI 及性能表述不得作为当前生产接线或正式验收证据。
+
 ## 1. 系统全景与双核设计哲学
 
 TTZip 是一款专为 Apple Silicon 与现代多核计算架构打造的企业级、超高吞吐原生归档与压缩系统。系统采用严格的**双核解耦架构 (Dual-Core Architecture)**：
@@ -273,4 +275,4 @@ swift test
 
 - **TTZip Core 引擎 (`core/`)**：采用 **BSD 3-Clause** ([LICENSE-BSD](LICENSE-BSD)) 与 **Apache 2.0** ([LICENSE-APACHE](LICENSE-APACHE)) 双重开源许可。
 - **TTZip Apple 客户端 (`apple/`)**：采用 **GNU General Public License v3.0 or later** ([apple/LICENSE](../apple/LICENSE)) 开源许可。
-- **SPDX 标准**：所有源码顶部必须声明标准 SPDX 标识与作者署名：`Witt Kung <kevintungs@163.com>`。
+- **SPDX 标准**：所有源码顶部必须声明标准 SPDX 标识与作者署名：`Witt Kung <witt.w.kung@gmail.com>`。

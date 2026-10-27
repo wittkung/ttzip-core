@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Fast block compression facade re-exporting `LZ4`, Google `Snappy`, and Apple `LZFSE`/`LZVN`.
 

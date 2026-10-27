@@ -1,12 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Cross-Language Asynchronous Progress & Cancellation Bridge.
 //!
 //! Provides thread-safe rate-limited progress dispatching, ETA computation,
 //! and lock-free hierarchical cancellation tokens across FFI boundaries.
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use parking_lot::Mutex;
@@ -18,11 +18,10 @@ pub trait UniFFIProgressCallback: Send + Sync {
     fn on_progress(&self, processed_bytes: u64, total_bytes: u64, current_entry: Option<String>) -> bool;
 }
 
-/// Thread-safe lock-free hierarchical cancellation token.
+/// Thread-safe lock-free hierarchical cancellation token backed by core `ttzip_types::CancellationToken`.
 #[derive(uniffi::Object)]
 pub struct UniFFICancellationToken {
-    cancelled: AtomicBool,
-    parent: Option<Arc<UniFFICancellationToken>>,
+    inner: crate::types::CancellationToken,
 }
 
 #[uniffi::export]
@@ -31,8 +30,7 @@ impl UniFFICancellationToken {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            cancelled: AtomicBool::new(false),
-            parent: None,
+            inner: crate::types::CancellationToken::new(),
         })
     }
 
@@ -41,32 +39,30 @@ impl UniFFICancellationToken {
     /// If either the parent or the child is cancelled, the child reports cancelled.
     pub fn create_child(self: &Arc<Self>) -> Arc<UniFFICancellationToken> {
         Arc::new(UniFFICancellationToken {
-            cancelled: AtomicBool::new(false),
-            parent: Some(Arc::clone(self)),
+            inner: self.inner.child_token(),
         })
     }
 
     /// Triggers cancellation for this token (and any of its children).
     pub fn cancel(&self) {
-        self.cancelled.store(true, Ordering::Release);
+        self.inner.cancel(crate::types::CancellationReason::UserRequested);
     }
 
     /// Checks whether cancellation has been requested on this token or its ancestors.
     pub fn is_cancelled(&self) -> bool {
-        if self.cancelled.load(Ordering::Acquire) {
-            return true;
-        }
-        if let Some(ref p) = self.parent {
-            if p.is_cancelled() {
-                return true;
-            }
-        }
-        false
+        self.inner.is_cancelled()
     }
 
     /// Resets the cancellation flag back to active (false).
     pub fn reset(&self) {
-        self.cancelled.store(false, Ordering::Release);
+        self.inner.reset();
+    }
+}
+
+impl UniFFICancellationToken {
+    /// Returns a clone of the underlying core CancellationToken.
+    pub fn to_core_token(&self) -> crate::types::CancellationToken {
+        self.inner.clone()
     }
 }
 
@@ -214,7 +210,7 @@ impl UniFFIProgressReporter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::{AtomicBool, AtomicUsize};
 
     struct MockCallback {
         call_count: AtomicUsize,

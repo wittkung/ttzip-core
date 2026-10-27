@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Block payload decompression pipeline, LZMA2 stream decoding, and integrity verification.
 

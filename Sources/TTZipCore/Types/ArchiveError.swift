@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -13,6 +13,8 @@ public enum ArchiveError: Error, LocalizedError, Equatable {
     case unsupportedEncryptionMethod(archivePath: String, method: String)
     case corruptedData(archivePath: String, entryPath: String)
     case cancelled
+    case extractionStopped
+    case partialExtractionFailure(outcome: ExtractionOutcome)
     case invalidState
     case engineFailure(code: Int32, message: String)
     case openFailed

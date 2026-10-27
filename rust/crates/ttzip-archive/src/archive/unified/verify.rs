@@ -1,14 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::Arc;
 use std::time::Instant;
 use libc::c_void;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::crc32::crc32_fast;
@@ -16,6 +14,7 @@ use crate::ffi::archive_ffi::guards::ArchiveReadGuard;
 use crate::ffi::archive_ffi::sys::*;
 use crate::types::{TTZipProgressCallback, TTZipStatus};
 use crate::zip::reader::ZipArchive;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -91,55 +90,69 @@ pub fn verify_archive_stream(
         };
         let total_entries = zip.entries().len();
 
-        let verified_count = Arc::new(AtomicUsize::new(0));
-        let total_bytes = Arc::new(AtomicU64::new(0));
-        let corrupted_list = Arc::new(parking_lot::Mutex::new(Vec::new()));
+        let verified_count = AtomicUsize::new(0);
+        let total_bytes = AtomicU64::new(0);
+        let corrupted_list = parking_lot::Mutex::new(Vec::new());
         let user_data_addr = user_data as usize;
 
-        zip.entries().par_iter().enumerate().for_each(|(idx, entry)| {
-            if entry.is_directory || entry.uncompressed_size == 0 {
-                verified_count.fetch_add(1, Ordering::Relaxed);
-                return;
-            }
+        let num_threads = ttzip_types::recommended_compute_threads().min(total_entries).max(1);
+        let next_entry_idx = AtomicUsize::new(0);
+        let pool = LocalWorkStealingPool::with_threads(num_threads);
 
-            match zip.extract_entry_bytes(idx, password) {
-                Ok(bytes) => {
-                    let actual_crc = crc32_fast(0, &bytes);
-                    if entry.crc32 != 0 && actual_crc != entry.crc32 {
-                        corrupted_list.lock().push(CorruptedEntryDetail {
-                            entry_path: entry.rel_path.clone(),
-                            error_type: "crc32_mismatch".to_string(),
-                            expected_checksum: format!("{:08X}", entry.crc32),
-                            actual_checksum: format!("{:08X}", actual_crc),
-                            diagnostic_message: "Calculated CRC32 does not match ZIP local header checksum".to_string(),
-                        });
-                    } else {
-                        verified_count.fetch_add(1, Ordering::Relaxed);
-                        total_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed);
+        pool.scope(|s| {
+            for _ in 0..num_threads {
+                s.spawn(|| {
+                    loop {
+                        let idx = next_entry_idx.fetch_add(1, Ordering::Relaxed);
+                        if idx >= total_entries {
+                            break;
+                        }
+                        let entry = &zip.entries()[idx];
+                        if entry.is_directory || entry.uncompressed_size == 0 {
+                            verified_count.fetch_add(1, Ordering::Relaxed);
+                        } else {
+                            match zip.extract_entry_bytes(idx, password) {
+                                Ok(bytes) => {
+                                    let actual_crc = crc32_fast(0, &bytes);
+                                    if entry.crc32 != 0 && actual_crc != entry.crc32 {
+                                        corrupted_list.lock().push(CorruptedEntryDetail {
+                                            entry_path: entry.rel_path.clone(),
+                                            error_type: "crc32_mismatch".to_string(),
+                                            expected_checksum: format!("{:08X}", entry.crc32),
+                                            actual_checksum: format!("{:08X}", actual_crc),
+                                            diagnostic_message: "Calculated CRC32 does not match ZIP local header checksum".to_string(),
+                                        });
+                                    } else {
+                                        verified_count.fetch_add(1, Ordering::Relaxed);
+                                        total_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed);
+                                    }
+                                }
+                                Err(e) => {
+                                    let err_type = if e == TTZipStatus::ErrInvalidPassword {
+                                        "invalid_dictionary"
+                                    } else {
+                                        "header_damaged"
+                                    };
+                                    corrupted_list.lock().push(CorruptedEntryDetail {
+                                        entry_path: entry.rel_path.clone(),
+                                        error_type: err_type.to_string(),
+                                        expected_checksum: format!("{:08X}", entry.crc32),
+                                        actual_checksum: "".to_string(),
+                                        diagnostic_message: format!("Decompression failed with status: {:?}", e),
+                                    });
+                                }
+                            }
+                        }
+
+                        if let Some(cb) = progress_callback {
+                            let v = verified_count.load(Ordering::Relaxed);
+                            let c_name = CString::new(entry.rel_path.as_str()).unwrap_or_default();
+                            unsafe {
+                                cb(v as u64, total_entries as u64, c_name.as_ptr(), user_data_addr as *mut c_void);
+                            }
+                        }
                     }
-                }
-                Err(e) => {
-                    let err_type = if e == TTZipStatus::ErrInvalidPassword {
-                        "invalid_dictionary"
-                    } else {
-                        "header_damaged"
-                    };
-                    corrupted_list.lock().push(CorruptedEntryDetail {
-                        entry_path: entry.rel_path.clone(),
-                        error_type: err_type.to_string(),
-                        expected_checksum: format!("{:08X}", entry.crc32),
-                        actual_checksum: "".to_string(),
-                        diagnostic_message: format!("Decompression failed with status: {:?}", e),
-                    });
-                }
-            }
-
-            if let Some(cb) = progress_callback {
-                let v = verified_count.load(Ordering::Relaxed);
-                let c_name = CString::new(entry.rel_path.as_str()).unwrap_or_default();
-                unsafe {
-                    cb(v as u64, total_entries as u64, c_name.as_ptr(), user_data_addr as *mut c_void);
-                }
+                });
             }
         });
 

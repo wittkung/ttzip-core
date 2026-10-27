@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Corrupted TAR, PAX Extended Header, and GNU Tar Sparse/LongLink Security Test Suite.
 //!
@@ -69,10 +69,10 @@ fn make_tar_block(name: &str, size: u64, typeflag: u8, mtime: i64) -> [u8; TAR_B
 pub fn test_corrupted_pax_negative_time_real_asset() {
     let asset = load_libarchive_asset("test_read_format_tar_pax_negative_time.tar");
     assert!(
-        asset.is_some(),
+        !asset.is_empty(),
         "test_read_format_tar_pax_negative_time.tar fixture must exist"
     );
-    let bytes = asset.unwrap();
+    let bytes = asset;
 
     let tar = TarArchive::open_slice(&bytes).expect("TAR parsing must succeed for pax negative time");
     assert_eq!(tar.len(), 1);
@@ -85,17 +85,17 @@ pub fn test_corrupted_pax_negative_time_real_asset() {
 
 #[test]
 pub fn test_corrupted_pax_invalid_negative_size_real_asset() {
-    if let Some(bytes) = load_libarchive_asset("test_read_format_tar_invalid_pax_size.tar") {
-        let res = catch_unwind(AssertUnwindSafe(|| {
-            let mut scanner = TarSeekScanner::new(&bytes);
-            let _ = scanner.scan_all();
-            let _ = TarArchive::open_slice(&bytes);
-        }));
-        assert!(
-            res.is_ok(),
-            "Parsing invalid negative PAX size must never panic or underflow"
-        );
-    }
+    let bytes = load_libarchive_asset("test_read_format_tar_invalid_pax_size.tar");
+    let res = catch_unwind(AssertUnwindSafe(|| {
+        let mut scanner = TarSeekScanner::new(&bytes);
+        let _ = scanner.scan_all();
+        let _ = TarArchive::open_slice(&bytes);
+    }));
+    assert!(
+        res.is_ok(),
+        "Parsing invalid negative PAX size must never panic or underflow"
+    );
+
 }
 
 #[test]

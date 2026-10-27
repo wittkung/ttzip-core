@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 512-Byte Sector Alignment & 2x512B Zero EOF Detector for TAR Archives.
 //!

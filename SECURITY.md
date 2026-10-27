@@ -24,7 +24,7 @@ To report a vulnerability responsibly:
 1. **GitHub Security Advisory (Preferred)**:
    Submit a private report via [GitHub Security Advisories](https://github.com/wittkung/TTZip/security/advisories/new).
 2. **Email (Secondary)**:
-   Send an encrypted or direct email to the maintainer at **`kevintungs@163.com`** with the subject line:
+   Send an encrypted or direct email to the maintainer at **`witt.w.kung@gmail.com`** with the subject line:
    `[SECURITY] TTZip Vulnerability Report - <Brief Description>`
 
 ### Information to Include

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe C-ABI exports for format sniffing and standards compliance checking.
 
@@ -49,7 +49,10 @@ pub unsafe extern "C" fn ttzip_rust_detect_format_buffer(
         TTZipStatus::Ok
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|e| {
+        eprintln!("Rust FFI panic intercepted: {:?}", e);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// Detects archive format from a filesystem path.
@@ -86,7 +89,10 @@ pub unsafe extern "C" fn ttzip_rust_detect_format_file(
         }
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|e| {
+        eprintln!("Rust FFI panic intercepted: {:?}", e);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// Validates format compliance on an in-memory buffer, outputting a structured JSON report.
@@ -146,7 +152,10 @@ pub unsafe extern "C" fn ttzip_rust_check_compliance_buffer(
         }
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|e| {
+        eprintln!("Rust FFI panic intercepted: {:?}", e);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// Validates format compliance on an archive file, outputting a structured JSON report.
@@ -186,17 +195,23 @@ pub unsafe extern "C" fn ttzip_rust_check_compliance_file(
         }
     });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    result.unwrap_or_else(|e| {
+        eprintln!("Rust FFI panic intercepted: {:?}", e);
+        TTZipStatus::ErrPanicCaught
+    })
 }
 
 /// Frees a JSON report allocated by compliance checking functions.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_free_compliance_report(report_ptr: *mut c_char) {
-    let _ = std::panic::catch_unwind(|| {
+    let result = std::panic::catch_unwind(|| {
         if !report_ptr.is_null() {
             let _ = CString::from_raw(report_ptr);
         }
     });
+    if let Err(e) = result {
+        eprintln!("Rust FFI panic intercepted in ttzip_rust_free_compliance_report: {:?}", e);
+    }
 }
 
 #[cfg(test)]

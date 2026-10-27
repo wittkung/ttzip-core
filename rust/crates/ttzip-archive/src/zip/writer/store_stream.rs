@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Lock-free Store-mode multi-core parallel ZIP stream writer.
 //!
@@ -14,11 +14,11 @@ use crate::zip::extra::ZipExtraFields;
 use crate::zip::parser::{
     MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH, MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
 };
-use rayon::prelude::*;
 use std::fs::{self, OpenOptions};
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 /// Item planned for parallel store writing.
 #[derive(Debug, Clone)]
@@ -164,20 +164,11 @@ pub fn create_zip_store_parallel(
     }
 
     // 2. Multithreaded lock-free `pwrite` of Local File Headers & Data
-    let thread_budget = (options.thread_budget as usize).clamp(1, 64);
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(thread_budget)
-        .build()
-        .map_err(|_| TTZipStatus::ErrArchiveInitFailed)?;
-
     struct EntryResult {
         crc32: u32,
     }
 
-    let results: Vec<EntryResult> = pool.install(|| {
-        plan_items
-            .par_iter()
-            .map(|item| -> Result<EntryResult, TTZipStatus> {
+    let write_entry = |item: &StorePlanItem| -> Result<EntryResult, TTZipStatus> {
                 let (dos_time, dos_date) = unix_to_dos_time(item.mtime_secs);
                 let name_bytes = item.rel_path.as_bytes();
                 let use_zip64 = item.size >= 0xFFFFFFFF || item.lfh_offset >= 0xFFFFFFFF;
@@ -247,10 +238,61 @@ pub fn create_zip_store_parallel(
                     }
                 }
 
-                Ok(EntryResult { crc32 })
-            })
-            .collect::<Result<Vec<EntryResult>, TTZipStatus>>()
-    })?;
+        Ok(EntryResult { crc32 })
+    };
+
+    let total_items = plan_items.len();
+    let thread_budget = (options.thread_budget as usize).clamp(1, 64).min(total_items).max(1);
+
+    let results: Vec<EntryResult> = if thread_budget <= 1 || total_items <= 1 {
+        plan_items.iter().map(write_entry).collect::<Result<Vec<EntryResult>, TTZipStatus>>()?
+    } else {
+        let chunk_size = total_items.div_ceil(thread_budget);
+        let chunks: Vec<_> = plan_items.chunks(chunk_size).collect();
+        let num_chunks = chunks.len();
+        let chunk_results: parking_lot::Mutex<Vec<Option<Vec<EntryResult>>>> =
+            parking_lot::Mutex::new((0..num_chunks).map(|_| None).collect());
+        let first_error: parking_lot::Mutex<Option<TTZipStatus>> = parking_lot::Mutex::new(None);
+        let pool = LocalWorkStealingPool::with_threads(thread_budget);
+
+        pool.scope(|s| {
+            for (chunk_idx, chunk) in chunks.into_iter().enumerate() {
+                let write_fn = &write_entry;
+                let results_ref = &chunk_results;
+                let err_ref = &first_error;
+                s.spawn(move || {
+                    let mut local_res = Vec::with_capacity(chunk.len());
+                    for item in chunk {
+                        if err_ref.lock().is_some() {
+                            return;
+                        }
+                        match write_fn(item) {
+                            Ok(res) => local_res.push(res),
+                            Err(e) => {
+                                let mut guard = err_ref.lock();
+                                if guard.is_none() {
+                                    *guard = Some(e);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    let mut guard = results_ref.lock();
+                    guard[chunk_idx] = Some(local_res);
+                });
+            }
+        });
+
+        if let Some(err) = first_error.into_inner() {
+            return Err(err);
+        }
+
+        let mut results_vec = Vec::with_capacity(total_items);
+        for chunk_opt in chunk_results.into_inner() {
+            results_vec.extend(chunk_opt.ok_or(TTZipStatus::ErrCompressionFailed)?);
+        }
+        results_vec
+    };
 
     // 3. Write Central Directory and EOCD
     let mut cd_bytes = Vec::with_capacity(cd_size as usize + 128);

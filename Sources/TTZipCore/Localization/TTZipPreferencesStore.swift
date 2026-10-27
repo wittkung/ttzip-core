@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 #if canImport(CoreFoundation)
@@ -13,13 +13,24 @@ public enum TTZipPreferencesStore: Sendable {
     public static let byteStandardKey = "TTZip_ByteUnitStandard"
     public static let darwinNotificationName = "com.metastudyline.ttzip.languageChanged"
     
-    /// Returns the AppGroup shared `UserDefaults` suite if available, falling back to standard.
-    public static var sharedDefaults: UserDefaults {
-        UserDefaults(suiteName: appGroupID) ?? UserDefaults.standard
-    }
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var inMemoryLanguage: AppLanguage?
+    private nonisolated(unsafe) static var inMemoryByteStandard: ByteSizeStandard?
     
-    /// Reads saved language across AppGroup suite and standard defaults.
+    /// Returns the AppGroup shared `UserDefaults` suite if available, falling back to standard.
+    public nonisolated(unsafe) static let sharedDefaults: UserDefaults = {
+        UserDefaults(suiteName: appGroupID) ?? UserDefaults.standard
+    }()
+    
+    /// Reads saved language across in-memory cache, AppGroup suite, and standard defaults.
     public static func getSavedLanguage() -> AppLanguage? {
+        lock.lock()
+        if let memory = inMemoryLanguage {
+            lock.unlock()
+            return memory
+        }
+        lock.unlock()
+        
         if let raw = sharedDefaults.string(forKey: languageKey),
            let lang = AppLanguage(rawValue: raw) ?? AppLanguage.from(identifier: raw) {
             return lang
@@ -31,8 +42,12 @@ public enum TTZipPreferencesStore: Sendable {
         return nil
     }
     
-    /// Persists language selection across both AppGroup suite and standard defaults, broadcasting Darwin notification.
+    /// Persists language selection across in-memory cache, AppGroup suite, and standard defaults, broadcasting Darwin notification.
     public static func saveLanguage(_ language: AppLanguage) {
+        lock.lock()
+        inMemoryLanguage = language
+        lock.unlock()
+        
         sharedDefaults.set(language.rawValue, forKey: languageKey)
         UserDefaults.standard.set(language.rawValue, forKey: languageKey)
         
@@ -50,12 +65,23 @@ public enum TTZipPreferencesStore: Sendable {
     
     /// Reads saved byte unit standard.
     public static func getSavedByteStandard() -> ByteSizeStandard {
+        lock.lock()
+        if let memory = inMemoryByteStandard {
+            lock.unlock()
+            return memory
+        }
+        lock.unlock()
+        
         let stored = sharedDefaults.string(forKey: byteStandardKey) ?? UserDefaults.standard.string(forKey: byteStandardKey)
         return (stored == "binaryIEC") ? .binaryIEC : .metricSI
     }
     
-    /// Persists byte unit standard across AppGroup suite and standard defaults.
+    /// Persists byte unit standard across in-memory cache, AppGroup suite, and standard defaults.
     public static func saveByteStandard(_ standard: ByteSizeStandard) {
+        lock.lock()
+        inMemoryByteStandard = standard
+        lock.unlock()
+        
         let val = (standard == .binaryIEC) ? "binaryIEC" : "metricSI"
         sharedDefaults.set(val, forKey: byteStandardKey)
         UserDefaults.standard.set(val, forKey: byteStandardKey)

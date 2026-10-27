@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive zlib-ng & Modern Deflate 16-Dimensional Fault-Injection Fuzzing Suite.
 //!

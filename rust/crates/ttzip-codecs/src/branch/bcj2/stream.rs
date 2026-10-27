@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! BCJ2 4-Stream Lock-Free Micro-Buffered Streaming Arbitrator and Decoder.
 //!

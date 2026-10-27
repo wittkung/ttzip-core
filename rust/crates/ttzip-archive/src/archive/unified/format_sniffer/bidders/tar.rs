@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TAR archive format bidder with dual unsigned/signed checksum calculation
 //! and POSIX USTAR / GNU / Unix V7 disambiguation.

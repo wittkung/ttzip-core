@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration test suite for BLAKE3 7-round Quarter-Round
 //! compression function, constants, permutation schedule, and algebraic diffusion.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! `.ttplugin` manifest authentication, 3-tier Ed25519 certificate chain hierarchy
 //! (Root -> Marketplace -> Developer), and cryptographic key fingerprint computation.

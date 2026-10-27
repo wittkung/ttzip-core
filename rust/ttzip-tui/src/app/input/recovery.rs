@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Password recovery modal keyboard interaction and runner dispatch.
 
@@ -118,6 +118,7 @@ impl AppState {
                     self.recovered_password = Some(pwd.clone());
                     self.set_status(format!("Archive unlocked with password: \"{}\"", pwd));
                     self.current_mode = AppMode::Explorer;
+                    self.recovery_modal_state = None;
                 } else if is_running {
                     self.cancellation_token.cancel(CancellationReason::UserRequested);
                     if let Some(ref mut s) = self.recovery_modal_state {

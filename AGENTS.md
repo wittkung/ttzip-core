@@ -1,6 +1,6 @@
 # TTZip Project & Architecture Unified Mandate
 
-> **Core Mandate**: All interactions, reasoning cycles, and tool invocations MUST strictly adhere to the **Pi Framework Philosophy** (Minimalist Core, Surgical Edits, Append-Only Determinism, and High Signal-to-Noise Ratio) with **100% Autonomous Proactive Subagent Dispatching**, while upholding the full **TTZip Systemic Engineering Invariants**.
+> 执行流程遵循仓库 AGENTS.md 与 `~/.agents/shared-guidance.md`；以下保留模块架构与工程约束。
 >
 > **Monorepo Topology & SSOT Invariant**:
 > 本模块已正式纳入 `metastudyline/source` 单体大仓统一治理体系。
@@ -112,13 +112,14 @@ swift run ttzip-bench pipeline
 
 ## Ⅲ. 核心架构宪章与系统工程铁律
 
-1. **100% Mozilla UniFFI 跨语言标准**:
-   - Swift 6、Python、Kotlin 等所有 Tier-1 SDK 必须 100% 基于 Mozilla UniFFI Proc-Macro 自动生成安全绑定与内存屏障。
-   - 严禁手写跨语言非受管裸指针。
+1. **UniFFI 对象绑定与受约束的 VFS 快照 ABI**:
+   - Swift 6、Python、Kotlin 等 Tier-1 SDK 的对象接口与常规跨语言调用必须使用 Mozilla UniFFI Proc-Macro 生成绑定，沿用生成接口的类型、错误与对象生命周期。
+   - 现有 VFS 紧凑快照 C-ABI 是明确允许的专用数据平面边界；其布局、版本、长度、对齐和租约的拥有/借用/释放规则统一见 [02 VFS 数据平面](../docs/twin/02_vfs_data_plane.md#4-c-abi-32-字节租约双释放符号与对齐屏障)。不为符合 UniFFI 口号而删除这条既有通路。
+   - 禁止在新增业务接口中以 `Any` 或裸指针隐藏快照租约所有权；已有公开接口的缺口须先核实消费者与兼容约束，再按契约收敛，不视为本规则已经修复了实现。
    - 所有计算密集、I/O 密集、密码哈希、VFS 树形结构与原地改写逻辑统一在 Rust 内核实现。
 
-2. **Swift 6 纯表现层边界**:
-   - Swift 专职负责 SwiftUI 声明式渲染、`@Observable` 状态流管理、macOS 专有框架（QuickLook, FinderSync, Keychain, AVFoundation）及 UniFFI 强类型调用。
+2. **Swift 6 表现与控制边界**:
+   - Swift 负责 SwiftUI 声明式渲染、`@Observable` 状态流管理、应用编排、macOS 专有框架（QuickLook, FinderSync, Keychain, AVFoundation）及强类型桥接调用；VFS 快照的 ABI 适配限于专用桥接层，不把布局解析与租约释放分散到业务新接口。
 
 3. **四大系统工程铁律**:
    - **流式第一性 (Stream-First)**: 消除全量内存假设；数据流面向微缓冲与分块流式管道；单任务常驻内存 $\le 64\text{MB}$。
@@ -179,13 +180,6 @@ swift run ttzip-bench pipeline
 
 ---
 
-## Ⅴ. 交互纪律与零冗余执行原则 (Pi Operating Discipline)
+## Ⅴ. 执行与交接
 
-1. **直接行动，拒绝废话 (Act First, Speak Minimal)**:
-   - 回复只陈述事实（做了什么、看到了什么、验证了什么），彻底剥离情绪化、戏剧化修辞与自我评价。
-2. **全自动自主子 Agent 调度 (Proactive Subagent Dispatch)**:
-   - 凡涉及 $\ge 2$ 个独立文件的修改、大范围探索、测试回归，100% 自主发起 `invoke_subagent` 并行推进。
-3. **外科手术式精确替换 (`replace_file_content`)**:
-   - 严禁盲目全量覆写修改已有代码，必须通过精确子串切片替换，确保上下文唯一匹配。
-4. **物理落盘工作账本 (Master Scratchpad)**:
-   - 多步任务必须在物理账本中全量记录，步步对账核销，杜绝长上下文下的注意力衰减与掉球。
+按任务复杂度选择计划、账本与委派；使用当前客户端可用的工具。交接记录目标、文件范围、关键决定、验证结果与剩余问题，保留已有未提交改动。

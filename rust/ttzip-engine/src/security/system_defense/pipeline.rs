@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unified System Defense Pipeline (`SystemSecurityPipeline`).
 //!
@@ -16,7 +16,7 @@ use super::temp_cleanup::TempDirectoryCleanupGuard;
 use super::SystemDefenseError;
 
 /// Configuration options for the complete 6-layer system security pipeline.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SystemDefenseOptions {
     /// Sandbox jail options.
     pub sandbox: SandboxEscapingOptions,
@@ -24,16 +24,6 @@ pub struct SystemDefenseOptions {
     pub delta_budget: BinaryDeltaBudgetOptions,
     /// Path traversal options.
     pub path_traversal: PathTraversalOptions,
-}
-
-impl Default for SystemDefenseOptions {
-    fn default() -> Self {
-        Self {
-            sandbox: SandboxEscapingOptions::default(),
-            delta_budget: BinaryDeltaBudgetOptions::default(),
-            path_traversal: PathTraversalOptions::default(),
-        }
-    }
 }
 
 /// Request model for validating an incremental update package or patch stream.

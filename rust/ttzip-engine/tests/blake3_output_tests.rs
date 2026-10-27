@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration and conformance tests for BLAKE3 extensible output function (XOF),
 //! `Output` root finalizer, and `OutputReader` random seeking cursor.

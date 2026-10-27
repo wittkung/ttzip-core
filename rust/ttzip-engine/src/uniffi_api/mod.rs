@@ -1,21 +1,18 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Proc-Macro Export Layer.
 //!
 //! Provides typed, memory-safe, and Swift 6 Sendable bindings directly generated
 //! from Rust business logic without manual C-ABI pointers.
 
-pub mod ab_benchmark;
 pub mod archive;
 pub mod audio;
-pub mod audio_meta;
 pub mod benchmark;
 pub mod callback;
 pub mod codecs;
 pub mod crypto;
-pub mod deflate_dual;
-pub mod demuxer;
+pub mod defensive;
 pub mod disk_scanner;
 #[cfg(feature = "probe")]
 pub mod document;
@@ -23,36 +20,37 @@ pub mod ebook_meta;
 pub mod epub;
 pub mod error_mapping;
 pub mod extraction;
-pub mod html_meta;
+mod extraction_observer;
+pub mod extraction_session;
+mod extraction_session_types;
+pub mod fs_apfs;
 pub mod hasher_stream;
-pub mod in_place;
 #[cfg(feature = "probe")]
 pub mod image;
 pub mod image_meta;
 pub mod integrity;
 pub mod logging;
 pub mod memory;
-#[cfg(feature = "probe")]
-pub mod metadata;
 pub mod mmap_stream;
-pub mod pdf_meta;
 pub mod plugin_auth;
 pub mod preset;
-pub mod office_meta;
+pub mod semantic_search;
 pub mod smart_extract;
 pub mod standards;
-pub mod subtitles;
-pub mod syntax;
-pub mod syntax_meta;
 pub mod system_meta;
 pub mod text_encoding;
 pub mod transaction;
 pub mod types;
 pub mod vault;
 pub mod vfs;
-pub mod video_meta;
+pub mod vfs_paging;
+pub mod vfs_loader;
+pub mod vfs_search;
+pub mod vfs_session_status;
 pub mod xml_meta;
-pub mod zopfli_opt;
+
+pub use vfs_paging::*;
+pub use vfs_session_status::*;
 
 pub use system_meta::{
     uniffi_apply_delta_patch, uniffi_calculate_tree_hash, uniffi_create_delta_patch,
@@ -60,30 +58,13 @@ pub use system_meta::{
     UniFFIDeltaFormat, UniFFIDeltaPatchResult, UniFFISystemError, UniFFISystemService,
     TTZIP_DELTA_HEADER_LEN, TTZIP_DELTA_MAGIC,
 };
-pub use office_meta::*;
-pub use video_meta::{
-    extract_video_cover_from_bytes, parse_video_metadata_from_bytes, uniffi_extract_video_cover,
-    uniffi_extract_video_metadata, uniffi_probe_video_bytes, UniFFIAudioCodec, UniFFIAudioTrackInfo,
-    UniFFIChapterInfo, UniFFISubtitleTrackInfo, UniFFIVideoCodec, UniFFIVideoError,
-    UniFFIVideoFormat, UniFFIVideoMetadata, UniFFIVideoService, UniFFIVideoTrackInfo,
-};
 
-pub use ab_benchmark::*;
 pub use archive::*;
 pub use audio::*;
-pub use audio_meta::{
-    decode_stream_packets_from_bytes, extract_metadata_from_bytes, generate_waveform_from_bytes,
-    probe_stream_info_from_bytes, uniffi_decode_audio_stream, uniffi_extract_audio_metadata,
-    uniffi_generate_audio_waveform, uniffi_probe_audio_bytes, UniFFIAudioCoverArt,
-    UniFFIAudioError, UniFFIAudioMetadata, UniFFIAudioPacket, UniFFIAudioService,
-    UniFFIAudioStreamInfo, UniFFIAudioWaveform,
-};
 pub use benchmark::*;
 pub use callback::*;
 pub use codecs::*;
 pub use crypto::*;
-pub use deflate_dual::*;
-pub use demuxer::*;
 pub use disk_scanner::*;
 #[cfg(feature = "probe")]
 pub use document::*;
@@ -97,33 +78,27 @@ pub use ebook_meta::{
 pub use epub::*;
 pub use error_mapping::*;
 pub use extraction::*;
-pub use html_meta::*;
+pub use extraction_session::*;
+pub use fs_apfs::*;
 pub use hasher_stream::*;
-pub use in_place::*;
 #[cfg(feature = "probe")]
 pub use image::*;
 pub use image_meta::*;
 pub use integrity::*;
 pub use logging::*;
 pub use memory::*;
-#[cfg(feature = "probe")]
-pub use metadata::*;
 pub use mmap_stream::*;
-pub use pdf_meta::*;
 pub use plugin_auth::*;
 pub use preset::*;
+pub use semantic_search::*;
 pub use smart_extract::*;
 pub use standards::*;
-pub use subtitles::*;
-pub use syntax::*;
-pub use syntax_meta::*;
 pub use text_encoding::*;
 pub use transaction::*;
 pub use types::*;
 pub use vault::*;
 pub use vfs::*;
 pub use xml_meta::*;
-pub use zopfli_opt::*;
 pub use crate::archive::nested_vfs::VirtualFileStream;
 pub use crate::security::license::*;
 

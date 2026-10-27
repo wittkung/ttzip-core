@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 def reverse_byte(v):
     return sum(1 << (7 - bit) for bit in range(8) if (v & (1 << bit)) != 0)

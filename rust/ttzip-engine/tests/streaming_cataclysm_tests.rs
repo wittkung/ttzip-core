@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Streaming State-Machine Cataclysm & Single-Byte Torture Validation Suite (Task 12.3).
 //!
@@ -16,7 +16,7 @@ use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 
-use ttzip_engine::codecs::brotli::stream::{
+use ttzip_engine::codecs::brotli::{
     BrotliCompressorWriter, BrotliConfig, BrotliDecompressorReader,
 };
 use ttzip_engine::codecs::bzip2::{
@@ -25,9 +25,7 @@ use ttzip_engine::codecs::bzip2::{
 use ttzip_engine::codecs::lz4::{
     lz4_compress_to_vec, lz4_decompress_to_vec,
 };
-use ttzip_engine::codecs::snappy::frame::{
-    snappy_frame_encode_to_vec,
-};
+use ttzip_engine::codecs::snappy::snappy_frame_encode_to_vec;
 use ttzip_engine::codecs::zstd::stream::{
     ZstdStreamReader, ZstdStreamWriter,
 };

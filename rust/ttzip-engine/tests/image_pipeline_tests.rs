@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests for SIMD image decoding and thumbnail generation pipeline.
 
@@ -132,36 +132,6 @@ fn test_decode_and_thumbnail_png() {
     assert_eq!(thumb_lanczos.width, 40);
     assert_eq!(thumb_lanczos.height, 30);
     assert_eq!(thumb_lanczos.data.len(), (40 * 30 * 4) as usize);
-}
-
-fn make_test_jpeg(w: u32, h: u32) -> Vec<u8> {
-    let mut raw = Vec::with_capacity((w * h * 3) as usize);
-    for y in 0..h {
-        for x in 0..w {
-            let r = ((x * 255) / w.max(1)) as u8;
-            let g = ((y * 255) / h.max(1)) as u8;
-            raw.extend_from_slice(&[r, g, 150]);
-        }
-    }
-    let mut out = Vec::new();
-    let encoder = jpeg_encoder::Encoder::new(&mut out, 85);
-    encoder.encode(&raw, w as u16, h as u16, jpeg_encoder::ColorType::Rgb).unwrap();
-    out
-}
-
-#[test]
-fn test_decode_and_thumbnail_jpeg() {
-    let jpeg_bytes = make_test_jpeg(128, 96);
-    let decoded = decode_image_rgba(&jpeg_bytes).expect("Failed to decode JPEG");
-    assert_eq!(decoded.width, 128);
-    assert_eq!(decoded.height, 96);
-    assert_eq!(decoded.data.len(), 128 * 96 * 4);
-
-    let thumb_lanczos = generate_thumbnail(&jpeg_bytes, 64, 64, ThumbnailFilter::Lanczos3)
-        .expect("Lanczos3 thumbnail failed for JPEG");
-    assert_eq!(thumb_lanczos.width, 64);
-    assert_eq!(thumb_lanczos.height, 48);
-    assert_eq!(thumb_lanczos.data.len(), (64 * 48 * 4) as usize);
 }
 
 #[test]

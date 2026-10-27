@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Secure Password Vault engine with Zeroize Compiler Fence and AES-256-GCM.
 //!

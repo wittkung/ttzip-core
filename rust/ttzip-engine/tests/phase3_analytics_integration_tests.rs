@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::ffi::CStr;
 use ttzip_engine::ffi::analytics_ffi::{
@@ -48,7 +48,7 @@ fn test_analytics_ffi_recommend_all_scenarios() {
     ] {
         let mut raw = TTZipRecommendationResult {
             struct_size: std::mem::size_of::<TTZipRecommendationResult>() as u32,
-            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
             scenario: 0,
             measured_entropy: 0.0,
             trial_compressibility_ratio: 0.0,

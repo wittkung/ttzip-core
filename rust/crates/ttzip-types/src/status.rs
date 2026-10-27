@@ -1,12 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Core status codes, error models, and thread-local diagnostic channels.
 
 use std::cell::RefCell;
 use libc::c_char;
 
-use super::options::TTZIP_ABI_VERSION_2;
+use super::options::TTZIP_ABI_VERSION_3;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -30,6 +30,7 @@ pub enum TTZipStatus {
     ErrBufferTooSmall = -14,
     ErrSolidBudgetExceeded = -24,
     ErrSecurityViolation = -30,
+    ErrAbiMismatch = -40,
     ErrPanicCaught = -99,
 }
 
@@ -77,6 +78,7 @@ impl TTZipStatus {
             TTZipStatus::ErrBufferTooSmall => "Buffer capacity too small",
             TTZipStatus::ErrSolidBudgetExceeded => "7z solid decompression budget exceeded",
             TTZipStatus::ErrSecurityViolation => "Security boundary violation (e.g. path traversal)",
+            TTZipStatus::ErrAbiMismatch => "ABI version mismatch",
             TTZipStatus::ErrPanicCaught => "Internal panic caught at FFI boundary",
         }
     }
@@ -103,6 +105,21 @@ impl core::fmt::Display for TTZipStatus {
 
 impl std::error::Error for TTZipStatus {}
 
+impl From<TTZipStatus> for std::io::Error {
+    #[inline]
+    fn from(status: TTZipStatus) -> Self {
+        let kind = match status {
+            TTZipStatus::ErrFileNotFound => std::io::ErrorKind::NotFound,
+            TTZipStatus::ErrInvalidParam => std::io::ErrorKind::InvalidInput,
+            TTZipStatus::ErrOutOfMemory => std::io::ErrorKind::OutOfMemory,
+            TTZipStatus::ErrSecurityViolation => std::io::ErrorKind::PermissionDenied,
+            TTZipStatus::ErrUnsupportedFeature => std::io::ErrorKind::Unsupported,
+            _ => std::io::ErrorKind::InvalidData,
+        };
+        std::io::Error::new(kind, status)
+    }
+}
+
 /// Thread-safe explicit diagnostic error descriptor envelope.
 ///
 /// Allocated on failure across C-ABI 2.0 boundaries; must be released
@@ -123,7 +140,7 @@ impl TTZipError {
     pub fn new(status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64, system_errno: i32) -> Self {
         let mut err = Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             status_code: status as i32,
             system_errno,
             byte_offset: offset,
@@ -153,7 +170,7 @@ impl TTZipError {
 
     #[inline]
     pub fn is_valid(&self) -> bool {
-        self.struct_size as usize == std::mem::size_of::<Self>() && self.abi_version == TTZIP_ABI_VERSION_2
+        self.struct_size as usize == std::mem::size_of::<Self>() && self.abi_version == TTZIP_ABI_VERSION_3
     }
 }
 
@@ -192,7 +209,7 @@ impl TTZipErrorInfo {
     pub const fn empty() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             status: TTZipStatus::Ok,
             error_code: 0,
             message: [0; 512],
@@ -203,7 +220,7 @@ impl TTZipErrorInfo {
 
     pub fn populate(&mut self, status: TTZipStatus, msg: &str, entry: Option<&str>, offset: u64) {
         self.struct_size = std::mem::size_of::<Self>() as u32;
-        self.abi_version = TTZIP_ABI_VERSION_2;
+        self.abi_version = TTZIP_ABI_VERSION_3;
         self.status = status;
         self.error_code = status as i32;
         self.offset = offset;
@@ -301,7 +318,7 @@ pub unsafe extern "C" fn ttzip_rust_get_last_error_info(out_error: *mut TTZipErr
             false
         } else {
             (*out_error).struct_size = std::mem::size_of::<TTZipErrorInfo>() as u32;
-            (*out_error).abi_version = TTZIP_ABI_VERSION_2;
+            (*out_error).abi_version = TTZIP_ABI_VERSION_3;
             (*out_error).status = err.status;
             (*out_error).error_code = err.status as i32;
             (*out_error).offset = err.offset;

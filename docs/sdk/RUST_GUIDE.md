@@ -37,6 +37,13 @@ tempfile = "3.10"
 
 Create archives using the streaming parallel engine with APFS preallocation:
 
+For streaming ZIP creation, a thread budget of `0` preserves automatic CPU-topology
+selection. Explicit budgets use at most `min(requested, 64, batch entries)` workers;
+`1` compresses sequentially on the calling thread without spawning batch workers.
+Empty and single-entry batches do not spawn workers. The legacy low-level batch
+functions retain automatic selection for source compatibility. This contract does
+not change codec levels, entry ordering, progress, or cancellation behavior.
+
 ```rust
 use std::path::PathBuf;
 use ttzip_engine::{

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -310,17 +310,20 @@ public struct TTZipArchive: Sendable, Identifiable {
     }
 
     /// Extracts a single entry from the archive.
+    @discardableResult
     public func extractEntry(
         _ entryPath: String,
         to destinationDir: String,
         password: String? = nil
-    ) async throws {
+    ) async throws -> ExtractionOutcome {
         let effectivePassword = password ?? defaultPassword
-        try await TTZipEngineFacade.shared.extractSingleEntry(
+        // Headless SDK call with no UI to prompt: Keep Both never overwrites data already at the destination.
+        return try await TTZipEngineFacade.shared.extractSingleEntry(
             archivePath: path,
             entryPath: entryPath,
             destinationDir: destinationDir,
-            password: effectivePassword
+            password: effectivePassword,
+            handling: .policy(.keepBoth)
         )
     }
 

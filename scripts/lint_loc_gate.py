@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 """
 TTZip Single-File Line Count (LOC) Defense Gate
@@ -13,10 +13,10 @@ import os
 from pathlib import Path
 
 MAX_LOC_THRESHOLD = 800
-SOURCE_DIRS = ["Sources", "rust"]
+SOURCE_DIRS = ["Sources", "rust", "src"]
 SOURCE_EXTENSIONS = {".swift", ".rs", ".c", ".h", ".cpp", ".hpp", ".m"}
 IGNORED_DIRS = {"target", "target_sdk", ".build", "Vendor", ".git", "DerivedData", "Generated", "mpv"}
-IGNORED_FILENAMES = {"ttzip_engineFFI.h"}
+IGNORED_FILENAMES = {"ttzip_engineFFI.h", "ttzip_app_coreFFI.h"}
 
 # Terminal colors
 C_RESET = "\033[0m"

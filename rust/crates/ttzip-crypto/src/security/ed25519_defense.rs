@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Ed25519 6-Layer Defense-in-Depth Security Guards & Compliance Subsystem (RFC 8032, ZIP 215).
 //!
@@ -220,12 +220,14 @@ impl SubgroupAttackGuard {
     #[must_use]
     pub fn is_small_subgroup_point(point: &[u8; 32]) -> bool {
         for known_small in &SMALL_SUBGROUP_POINTS {
-            if crate::security::blake3_defense::constant_time_eq_32(point, known_small) {
+            if constant_time_eq_32(point, known_small) {
                 return true;
             }
         }
         false
     }
+
+
 
     /// Verifies that a point does not belong to any small subgroup and has valid point encoding.
     pub fn verify_canonical_point(point: &[u8; 32]) -> Result<(), Ed25519DefenseError> {
@@ -647,3 +649,27 @@ pub fn guarded_sign_ed25519(
     let guarded_key = GuardedSigningKey::from_slice(secret_key)?;
     guarded_key.sign(message)
 }
+
+/// Constant-time equality comparison between two 32-byte slices.
+#[inline]
+pub fn constant_time_eq_32(a: &[u8; 32], b: &[u8; 32]) -> bool {
+    let mut diff: u8 = 0;
+    for i in 0..32 {
+        diff |= a[i] ^ b[i];
+    }
+    std::hint::black_box(diff) == 0
+}
+
+/// Constant-time slice comparison to prevent timing attacks.
+#[inline]
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff: u8 = 0;
+    for (&x, &y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    std::hint::black_box(diff) == 0
+}
+

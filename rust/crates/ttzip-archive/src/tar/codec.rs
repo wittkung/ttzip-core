@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TAR octal ASCII codecs and GNU Base-256 binary encoding/decoding.
 
@@ -69,7 +69,10 @@ pub fn base256_from(bytes: &[u8]) -> Option<u64> {
 
     let mut val: u64 = (bytes[0] & 0x7F) as u64;
     for &b in &bytes[1..] {
-        val = (val.checked_shl(8)?) | (b as u64);
+        if val >> 56 != 0 {
+            return None; // Prevent 64-bit overflow wraparound
+        }
+        val = (val << 8) | (b as u64);
     }
     Some(val)
 }
@@ -101,12 +104,8 @@ pub fn numeric_extended_from(bytes: &[u8]) -> u64 {
     }
 
     if (bytes[0] & 0x80) != 0 {
-        // GNU base-256 binary encoding
-        let mut val: u64 = (bytes[0] & 0x7F) as u64;
-        for &b in &bytes[1..] {
-            val = (val << 8) | (b as u64);
-        }
-        val
+        // GNU base-256 binary encoding with overflow protection
+        base256_from(bytes).unwrap_or(0)
     } else {
         octal_from(bytes).unwrap_or(0)
     }

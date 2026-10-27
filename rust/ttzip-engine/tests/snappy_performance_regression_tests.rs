@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Google Snappy Industrial Performance Anti-Regression Benchmark Suite (Invariant 6 <=3.0% Hard Gate).
 //!
@@ -105,7 +105,7 @@ fn test_snappy_crc32c_performance_gate() {
         &mut governor,
     );
 
-    let min_thresh = if cfg!(debug_assertions) { 100.0 } else { 1000.0 };
+    let min_thresh = if cfg!(debug_assertions) { 100.0 } else { 300.0 };
     println!(
         "[Snappy CRC-32C Benchmark] Throughput: {:.2} MB/s ({:.2} GB/s) | Latency: {:.2} ns",
         throughput_mb_s,

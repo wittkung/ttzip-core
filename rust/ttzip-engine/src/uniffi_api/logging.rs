@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Structured Logging Export Layer.
 //!
@@ -12,7 +12,6 @@ use crate::uniffi_api::types::TTZipError;
 use libc::{c_char, c_void};
 use parking_lot::RwLock;
 use std::ffi::CStr;
-use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 
 /// Host logging callback interface invoked when the microkernel emits a record.
@@ -58,9 +57,7 @@ unsafe extern "C" fn uniffi_log_forwarder_c(
         let line_num = if line >= 0 { line as u32 } else { 0 };
         let lvl = level as u32;
 
-        let _ = catch_unwind(AssertUnwindSafe(|| {
-            cb.log(lvl, target, msg, file_path, line_num);
-        }));
+        cb.log(lvl, target, msg, file_path, line_num);
     }
 }
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests for ZipCrypto, Reed-Solomon FEC, and Self-Healing Recovery Records.
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! CLI Argument Parsing & JSON Contract DTO definitions.
 
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug, Clone)]
 #[command(
     name = "ttzip",
-    author = "Witt Kung <kevintungs@163.com>",
+    author = "Witt Kung <witt.w.kung@gmail.com>",
     version = "1.0.0",
     about = "TTZip: High-performance native archiving and terminal TUI engine for macOS",
     long_about = "TTZip provides an ultra-fast interactive TUI archive explorer and a standalone zero-dependency CLI engine for ZIP, 7z, TAR, Snappy, and Brotli archives on macOS."
@@ -86,6 +86,10 @@ pub enum Commands {
         /// Exclude glob patterns (e.g. "*.log", ".git/*")
         #[arg(short = 'x', long = "exclude")]
         exclude: Vec<String>,
+
+        /// Conflict resolution policy when destination items exist (keep-both, replace, skip, stop; default: keep-both)
+        #[arg(long = "on-conflict", default_value = "keep-both", value_name = "keep-both|replace|skip|stop")]
+        on_conflict: String,
     },
 
     /// Create a new archive from source files/directories (aliases: c, create)

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Exhaustive test suite for XZ CRC32, CRC64 ECMA-182, and SHA-256 checksum engine.
 

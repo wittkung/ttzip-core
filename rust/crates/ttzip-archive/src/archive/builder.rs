@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Pure, idiomatic Safe Rust SDK 2.0 builders and readers for archive creation,
 //! extraction, and inspection without raw C pointers.
@@ -65,7 +65,56 @@ impl ArchiveEntryInfo {
             detected_encoding,
         }
     }
+
+    /// Creates a new `ArchiveEntryInfo` with canonical defaults.
+    pub fn new(path: impl Into<String>, uncompressed_size: u64) -> Self {
+        let p: String = path.into();
+        let is_dir = p.ends_with('/');
+        Self {
+            path: p,
+            uncompressed_size,
+            compressed_size: 0,
+            crc32: 0,
+            mtime_epoch_secs: 0,
+            mode: if is_dir { 0o040755 } else { 0o100644 },
+            is_directory: is_dir,
+            is_encrypted: false,
+            compression_method: 0,
+            detected_encoding: None,
+        }
+    }
+
+    /// Returns `true` if this archive entry is encrypted.
+    #[inline]
+    #[must_use]
+    pub const fn is_encrypted(&self) -> bool {
+        self.is_encrypted
+    }
+
+    /// Returns `true` if this archive entry represents a directory.
+    #[inline]
+    #[must_use]
+    pub const fn is_directory(&self) -> bool {
+        self.is_directory
+    }
+
+    /// Returns `true` if this entry requires solid decompression context.
+    #[inline]
+    #[must_use]
+    pub const fn is_solid(&self) -> bool {
+        false
+    }
+
+    /// Returns `true` if this entry supports single-pass linear streaming extraction.
+    #[inline]
+    #[must_use]
+    pub const fn supports_streaming(&self) -> bool {
+        true
+    }
 }
+
+/// Canonical type alias for `ArchiveEntryInfo`.
+pub type ArchiveEntry = ArchiveEntryInfo;
 
 pub type ProgressClosure = Box<dyn FnMut(u64, u64, &str) -> bool + Send>;
 
@@ -224,7 +273,7 @@ impl ArchiveBuilder {
 
         let options = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             format: self.format,
             level: self.level,
             encryption: self.encryption,
@@ -288,7 +337,7 @@ pub struct ExtractBuilder {
     destination_path: Option<PathBuf>,
     password: Option<String>,
     thread_budget: u32,
-    overwrite_existing: bool,
+    collision_policy: u8,
     preserve_permissions: bool,
     dry_run: bool,
     progress_callback: Option<ProgressClosure>,
@@ -308,7 +357,7 @@ impl ExtractBuilder {
             destination_path: None,
             password: None,
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,
@@ -339,9 +388,19 @@ impl ExtractBuilder {
         self
     }
 
-    /// Configures whether existing files should be overwritten.
+    /// Configures the collision policy.
+    pub fn collision_policy(mut self, policy: u8) -> Self {
+        self.collision_policy = policy;
+        self
+    }
+
+    /// Legacy overwrite config (maps to collision policy).
     pub fn overwrite(mut self, overwrite: bool) -> Self {
-        self.overwrite_existing = overwrite;
+        self.collision_policy = if overwrite {
+            crate::types::TTZIP_COLLISION_POLICY_REPLACE
+        } else {
+            crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH
+        };
         self
     }
 
@@ -404,18 +463,43 @@ impl ExtractBuilder {
 
         let options = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: dest_c.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
             password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
             thread_budget: self.thread_budget,
-            overwrite_existing: self.overwrite_existing,
+            collision_policy: self.collision_policy,
             preserve_permissions: self.preserve_permissions,
             dry_run: self.dry_run,
             progress_callback: if has_cb { Some(progress_shim) } else { None },
             user_data,
         };
 
-        let result = extract_archive_with_metrics(arch, destination_path.as_ref(), &options);
+        if self.dry_run {
+            let staging = crate::fs::collision::staging::StagingRoot(destination_path.as_ref().to_path_buf());
+            let result = extract_archive_with_metrics(arch, &staging, &options);
+            self.progress_callback = cb_ptr;
+            return result;
+        }
+
+        let session = crate::fs::collision::session::ExtractionSession::new(destination_path.as_ref());
+        let staged = session.stage().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+
+        let result = extract_archive_with_metrics(arch, &staged.staging().payload_dir(), &options);
+        
+        if result.is_ok() {
+            let action = match self.collision_policy {
+                crate::types::TTZIP_COLLISION_POLICY_REPLACE => crate::fs::collision::CollisionAction::Replace,
+                crate::types::TTZIP_COLLISION_POLICY_SKIP => crate::fs::collision::CollisionAction::Skip,
+                _ => crate::fs::collision::CollisionAction::KeepBoth,
+            };
+            let resolution_set = crate::fs::collision::ResolutionSet::from_action(action);
+            
+            if staged.commit(&crate::fs::collision::fs_ops::LibcFsOps, &resolution_set).is_err() {
+                self.progress_callback = cb_ptr;
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+        }
+
         self.progress_callback = cb_ptr;
         result
     }

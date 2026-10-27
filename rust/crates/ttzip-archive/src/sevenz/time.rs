@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Windows NT FILETIME (100ns intervals since 1601-01-01 UTC) and SystemTime conversions.
 //!

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Archive container format detection, unified entry info, byte size formatting,
 //! Snappy/Brotli codec parsing, and transparent multi-volume chain detection.
@@ -56,7 +56,7 @@ impl VirtualMultiVolumeSeekView {
     /// Obtains a new reader handle positioned at virtual offset 0.
     pub fn open_reader(&self) -> std::io::Result<VirtualMultiVolumeReader> {
         let guard = self.reader.lock().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "VirtualMultiVolumeReader mutex poisoned")
+            std::io::Error::other("VirtualMultiVolumeReader mutex poisoned")
         })?;
         VirtualMultiVolumeReader::from_volumes(guard.volume_paths())
     }
@@ -521,5 +521,134 @@ pub fn parse_archive_entries(
             "Unsupported or unrecognized archive format for: {}",
             path.display()
         )),
+    }
+}
+
+/// Sanitizes a string for safe terminal output, defending against ANSI escape injection (CWE-150),
+/// terminal control codes, OSC 8 hyperlinks, cursor manipulations, and invisible/bidi characters.
+pub fn sanitize_terminal_display(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let chars: Vec<char> = input.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        let ch = chars[i];
+        if ch == '\x1b' {
+            // ANSI Escape Sequence start
+            i += 1;
+            if i >= len {
+                break;
+            }
+            match chars[i] {
+                '[' => {
+                    // CSI: ESC [ Parameter* Intermediate* Final
+                    i += 1;
+                    // Parameter bytes: 0x30..=0x3F ('0'..='?' / '0'..='9', ';', etc.)
+                    while i < len && matches!(chars[i], '\x30'..='\x3F') {
+                        i += 1;
+                    }
+                    // Intermediate bytes: 0x20..=0x2F (' '..='/')
+                    while i < len && matches!(chars[i], '\x20'..='\x2F') {
+                        i += 1;
+                    }
+                    // Final byte: 0x40..=0x7E ('@'..='~')
+                    if i < len && matches!(chars[i], '\x40'..='\x7E') {
+                        i += 1;
+                    }
+                }
+                ']' => {
+                    // OSC: ESC ] ... (terminated by BEL '\x07' or ST '\x1b\\')
+                    i += 1;
+                    while i < len {
+                        if chars[i] == '\x07' {
+                            i += 1;
+                            break;
+                        }
+                        if chars[i] == '\x1b' && i + 1 < len && chars[i + 1] == '\\' {
+                            i += 2;
+                            break;
+                        }
+                        i += 1;
+                    }
+                }
+                'P' | '_' | '^' | 'X' => {
+                    // DCS / APC / PM / SOS: ESC ... (terminated by BEL or ST)
+                    i += 1;
+                    while i < len {
+                        if chars[i] == '\x07' {
+                            i += 1;
+                            break;
+                        }
+                        if chars[i] == '\x1b' && i + 1 < len && chars[i + 1] == '\\' {
+                            i += 2;
+                            break;
+                        }
+                        i += 1;
+                    }
+                }
+                '(' | ')' | '*' | '+' => {
+                    // Charset designation: ESC ( C
+                    i += 2;
+                }
+                _ => {
+                    // 2-byte escape: skip the byte after ESC
+                    i += 1;
+                }
+            }
+        } else if ch == '\x07' {
+            // Stray BEL character
+            i += 1;
+        } else if ch == '\r' || ch == '\n' || ch == '\t' {
+            match ch {
+                '\r' => out.push_str("\\r"),
+                '\n' => out.push_str("\\n"),
+                '\t' => out.push_str("\\t"),
+                _ => unreachable!(),
+            }
+            i += 1;
+        } else if ch.is_ascii_control() {
+            out.push_str(&format!("\\x{:02x}", ch as u32));
+            i += 1;
+        } else if matches!(ch, '\u{200B}'..='\u{200D}' | '\u{FEFF}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}') {
+            // Filter invisible zero-width and Bidi override characters
+            i += 1;
+        } else {
+            out.push(ch);
+            i += 1;
+        }
+    }
+
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_terminal_display_ansi_csi_and_clear_screen() {
+        assert_eq!(sanitize_terminal_display("\x1b[2Jhello"), "hello");
+        assert_eq!(sanitize_terminal_display("safe\x1b[31;1m_red\x1b[0m_end"), "safe_red_end");
+        assert_eq!(sanitize_terminal_display("\x1b[?1049hsecret"), "secret");
+        assert_eq!(sanitize_terminal_display("\x1b[2K\rline"), "\\rline");
+    }
+
+    #[test]
+    fn test_sanitize_terminal_display_osc8_and_control_chars() {
+        // OSC 8 hyperlink with BEL terminator
+        let osc_bel = "\x1b]8;;http://evil.com\x07Click\x1b]8;;\x07";
+        assert_eq!(sanitize_terminal_display(osc_bel), "Click");
+
+        // OSC 8 hyperlink with ST terminator
+        let osc_st = "\x1b]8;;http://evil.com\x1b\\Click\x1b]8;;\x1b\\";
+        assert_eq!(sanitize_terminal_display(osc_st), "Click");
+
+        // Control characters and invisible zero-width / bidi characters
+        assert_eq!(sanitize_terminal_display("foo\0bar"), "foo\\x00bar");
+        assert_eq!(sanitize_terminal_display("a\r\nb\tc"), "a\\r\\nb\\tc");
+        assert_eq!(sanitize_terminal_display("bidi\u{202E}txt.exe"), "biditxt.exe");
+        assert_eq!(sanitize_terminal_display("zero\u{200B}width"), "zerowidth");
+        assert_eq!(sanitize_terminal_display("clean/path/to/file.txt"), "clean/path/to/file.txt");
     }
 }

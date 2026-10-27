@@ -1,15 +1,15 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Memory Allocation Bounded Count & Safe Path Sanitization Defense Layer.
 //!
 //! Provides proactive defense against memory exhaustion (OOM) via malicious header count declarations
 //! and directory traversal escape attacks (Zip-Slip, NTFS ADS, Windows reserved devices).
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use super::dag::SevenZError;
-use crate::security::path_sanitizer::{is_windows_reserved_device_name, normalize_to_nfc};
+use crate::security::path_sanitizer::{normalize_to_nfc, validate_archive_path_slice};
 
 /// Default upper limit for the number of files/entries in a 7z archive.
 pub const DEFAULT_MAX_FILES_LIMIT: usize = 2_000_000;
@@ -50,96 +50,56 @@ pub fn bounded_usize(value: u64, max_limit: usize, field_name: &'static str) -> 
 /// enforcing strict Zip-Slip defense and cross-platform path normalization.
 ///
 /// # Security Invariants
-/// 1. Normalizes all backslashes `\` to forward slashes `/`.
-/// 2. Normalizes Unicode strings to NFC form.
-/// 3. Rejects empty paths, paths with null bytes (`\0`), root `/` or `\` prefixes,
-///    UNC prefixes (`//`, `\\`), and Windows drive letters (e.g. `C:`, `D:`).
-/// 4. Stack-evaluates all path segments and strictly intercepts directory traversal attempts
-///    (`..`) that escape above the destination root.
-/// 5. Intercepts NTFS Alternate Data Streams (ADS) and Windows DOS reserved device names.
+/// 1. Normalizes Unicode strings to NFC form.
+/// 2. Converts all backslashes `\` to forward slashes `/`.
+/// 3. Validates path safety via `validate_archive_path_slice`.
+/// 4. Rejects traversal attempts (`..`), absolute paths, Windows drive letters,
+///    NTFS Alternate Data Streams (ADS), and Windows reserved device names.
 pub fn safe_join(dest_root: &Path, entry_path: &str) -> Result<PathBuf, SevenZError> {
     if entry_path.trim().is_empty() {
         return Err(SevenZError::InsecurePath("empty entry path".to_string()));
     }
 
-    if entry_path.contains('\0') {
-        return Err(SevenZError::InsecurePath(format!(
-            "entry path contains null byte: {:?}",
-            entry_path
-        )));
-    }
-
-    // Check Windows drive letter prefix (e.g. C:, D:)
-    let raw_bytes = entry_path.as_bytes();
-    if raw_bytes.len() >= 2
-        && raw_bytes[0].is_ascii_alphabetic()
-        && raw_bytes[1] == b':'
-    {
-        return Err(SevenZError::InsecurePath(format!(
-            "absolute drive letter path is forbidden: {}",
-            entry_path
-        )));
-    }
-
-    // Check absolute path or UNC path prefix
-    if entry_path.starts_with('/') || entry_path.starts_with('\\') {
-        return Err(SevenZError::InsecurePath(format!(
-            "absolute or UNC path is forbidden: {}",
-            entry_path
-        )));
-    }
-
-    // Unicode NFC normalization
+    // 1. Unicode NFC normalization
     let normalized_nfc = normalize_to_nfc(entry_path);
 
-    // Segment-by-segment stack traversal validation
-    let mut segment_stack: Vec<&str> = Vec::with_capacity(8);
+    // 2. Unify backslashes to forward slashes
+    let normalized = if normalized_nfc.contains('\\') {
+        std::borrow::Cow::Owned(normalized_nfc.replace('\\', "/"))
+    } else {
+        normalized_nfc
+    };
 
-    for seg in normalized_nfc.split(['/', '\\']) {
-        if seg.is_empty() || seg == "." {
-            continue;
-        }
-
-        if seg == ".." {
-            if segment_stack.pop().is_none() {
-                return Err(SevenZError::InsecurePath(format!(
-                    "Zip-Slip directory traversal escape detected in '{}'",
-                    entry_path
-                )));
-            }
-            continue;
-        }
-
-        // NTFS Alternate Data Stream check
-        if seg.contains(':') {
-            return Err(SevenZError::InsecurePath(format!(
-                "NTFS Alternate Data Stream detected in segment '{}' of '{}'",
-                seg, entry_path
-            )));
-        }
-
-        // Windows reserved device names check
-        if is_windows_reserved_device_name(seg) {
-            return Err(SevenZError::InsecurePath(format!(
-                "Windows reserved device name detected in segment '{}' of '{}'",
-                seg, entry_path
-            )));
-        }
-
-        segment_stack.push(seg);
+    // 3. Trim trailing slashes for directory paths and strip leading "./" prefixes
+    let mut check_path = normalized.trim_end_matches('/');
+    while let Some(stripped) = check_path.strip_prefix("./") {
+        check_path = stripped;
     }
 
-    if segment_stack.is_empty() {
+    if check_path.is_empty() {
         return Err(SevenZError::InsecurePath(format!(
-            "entry path resolved to empty root relative target: '{}'",
-            entry_path
+            "entry path resolved to empty root relative target: '{entry_path}'"
         )));
     }
 
-    let mut target_path = dest_root.to_path_buf();
-    for seg in segment_stack {
-        target_path.push(seg);
+    // 4. Zero-allocation security validation via path_sanitizer
+    validate_archive_path_slice(check_path.as_bytes()).map_err(|e| {
+        SevenZError::InsecurePath(format!("{e}: '{entry_path}'"))
+    })?;
+
+    // 5. Cleanly join normalized components onto destination root
+    let mut target = dest_root.to_path_buf();
+    for comp in Path::new(check_path).components() {
+        if let Component::Normal(c) = comp {
+            target.push(c);
+        }
     }
 
-    Ok(target_path)
+    if target == dest_root {
+        return Err(SevenZError::InsecurePath(format!(
+            "entry path resolved to empty root relative target: '{entry_path}'"
+        )));
+    }
+
+    Ok(target)
 }

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -17,6 +17,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
     public let destinationDir: String
     public let password: String?
     public let autoVaultUnlock: Bool
+    public let handling: CollisionHandling
     public let progress: (@Sendable (ArchiveProgress) -> Void)?
     
     private let engineFacade: TTZipEngineFacading
@@ -34,6 +35,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
+        handling: CollisionHandling = .policy(.keepBoth),
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
         engineFacade: TTZipEngineFacading
     ) {
@@ -42,6 +44,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
         self.destinationDir = destinationDir
         self.password = password
         self.autoVaultUnlock = autoVaultUnlock
+        self.handling = handling
         self.progress = progress
         self.engineFacade = engineFacade
         
@@ -86,6 +89,7 @@ public final class ExtractCommand: ArchiveCommandProtocol, @unchecked Sendable {
                     destinationDir: destinationDir,
                     password: password,
                     autoVaultUnlock: autoVaultUnlock,
+                    handling: handling,
                     progress: progress
                 )
             } catch {

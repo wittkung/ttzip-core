@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe, high-throughput streaming decompressor for DEFLATE, Zlib, and Gzip streams.
 //!
@@ -196,7 +196,7 @@ impl<R: Read> LibdeflateReader<R> {
                 Ok(n) => {
                     self.in_limit += n;
                 }
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
             }
         }

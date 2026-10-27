@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ZIP archive writer data types, DOS timestamp conversion, and item collection.
 
@@ -18,7 +18,7 @@ pub struct ZipInputItem {
 }
 
 /// Compressed item result ready for binary layout.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ZipCompressedItem {
     pub rel_path: String,
     pub uncompressed_size: u64,
@@ -43,46 +43,11 @@ pub struct ZipCreateReport {
     pub duration_ms: u64,
 }
 
-/// Converts Unix epoch seconds to DOS time (time: u16, date: u16).
+/// Converts Unix epoch seconds to packed MS-DOS `(dos_time, dos_date)` in local calendar time.
+#[inline]
 pub fn unix_to_dos_time(epoch_secs: u32) -> (u16, u16) {
-    // Simple DOS timestamp conversion
-    let days_since_1970 = (epoch_secs / 86400) as i64;
-    let secs_of_day = epoch_secs % 86400;
-
-    let hour = (secs_of_day / 3600) as u16;
-    let min = ((secs_of_day % 3600) / 60) as u16;
-    let sec = ((secs_of_day % 60) / 2) as u16;
-    let dos_time = (hour << 11) | (min << 5) | sec;
-
-    // Approximate year/month/day
-    let mut year = 1970;
-    let mut days_left = days_since_1970;
-    loop {
-        let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-        let days_in_year = if leap { 366 } else { 365 };
-        if days_left < days_in_year {
-            break;
-        }
-        days_left -= days_in_year;
-        year += 1;
-    }
-
-    let month_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-    let mut month = 1u16;
-    for &d in &month_days {
-        let dim = if month == 2 && leap { d + 1 } else { d };
-        if days_left < dim as i64 {
-            break;
-        }
-        days_left -= dim as i64;
-        month += 1;
-    }
-    let day = (days_left + 1) as u16;
-    let dos_year = (year.max(1980) - 1980).clamp(0, 127) as u16;
-    let dos_date = (dos_year << 9) | (month << 5) | day;
-
-    (dos_time, dos_date)
+    let dt = crate::zip::datetime::DosDateTime::from_local_unix_epoch_secs(epoch_secs as i64);
+    (dt.dos_time(), dt.dos_date())
 }
 
 /// Recursively collects files and directories into `ZipInputItem` list.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-performance 7-Zip Solid Stream selective extraction engine with O(1) index jump tables
 //! and 4MB micro-buffer sliding window early-exit decompression.
@@ -11,6 +11,8 @@ use super::payload::decode_7z_folder_streaming;
 use crate::crypto::crc32::crc32_fast;
 use crate::sevenz::header::SevenZHeaderInfo;
 use crate::types::TTZipStatus;
+use ttzip_types::options::ProgressAtomicSheet;
+
 
 /// 4MB sliding-window micro-buffer chunk size for 7z solid stream decompression.
 pub const SOLID_MICRO_BUFFER_CHUNK_SIZE: usize = 4 * 1024 * 1024;
@@ -73,12 +75,12 @@ impl SolidFolderIndex {
     pub fn build(info: &SevenZHeaderInfo) -> Self {
         let num_files = info.files.len();
         let mut entries = Vec::with_capacity(num_files);
-        let mut path_map = HashMap::with_capacity(num_files * 2);
+        let mut path_map = HashMap::with_capacity(num_files);
 
         let mut folders: Vec<SolidFolderTable> = Vec::with_capacity(info.folders.len().max(1));
         if !info.folders.is_empty() {
             for (f_idx, f) in info.folders.iter().enumerate() {
-                let total_uncomp = f.unpack_sizes.last().copied().unwrap_or(0);
+                let total_uncomp = super::payload::folder_final_unpack_size(f);
                 folders.push(SolidFolderTable {
                     folder_index: f_idx,
                     stream_prefix_sums: vec![0],
@@ -151,22 +153,17 @@ impl SolidFolderIndex {
                     0
                 };
 
-                let sz = if global_stream_idx < info.stream_sizes.len() {
-                    info.stream_sizes[global_stream_idx]
-                } else if cur_folder_idx < info.folders.len() {
-                    info.folders[cur_folder_idx]
-                        .unpack_sizes
-                        .last()
-                        .copied()
-                        .unwrap_or(0)
-                        .saturating_sub(current_folder_offset)
-                } else {
-                    0
-                };
+                let sz = super::payload::resolve_folder_stream_size(
+                    info,
+                    cur_folder_idx,
+                    global_stream_idx,
+                    streams_in_cur_folder,
+                    current_folder_offset,
+                );
 
                 let crc = info.stream_crcs.get(global_stream_idx).copied();
                 let offset_start = current_folder_offset;
-                let offset_end = current_folder_offset + sz;
+                let offset_end = current_folder_offset.saturating_add(sz);
 
                 if folder_idx < folders.len() {
                     let ft = &mut folders[folder_idx];
@@ -195,11 +192,23 @@ impl SolidFolderIndex {
                 global_stream_idx += 1;
             }
 
-            // Populate path map
+            // Populate path map with zero redundant heap allocations for canonical paths
+            let raw_path = f.rel_path.as_str();
+            let trimmed = raw_path.trim_start_matches('/');
+            let needs_slash_norm = trimmed.contains('\\');
+            let has_leading_slash = trimmed.len() != raw_path.len();
+
             path_map.insert(f.rel_path.clone(), file_idx);
-            let normalized = f.rel_path.replace('\\', "/");
-            let normalized_trimmed = normalized.trim_start_matches('/').to_string();
-            path_map.insert(normalized_trimmed, file_idx);
+            if needs_slash_norm || has_leading_slash {
+                let normalized = if needs_slash_norm {
+                    trimmed.replace('\\', "/")
+                } else {
+                    trimmed.to_string()
+                };
+                if normalized != *raw_path {
+                    path_map.insert(normalized, file_idx);
+                }
+            }
         }
 
         // Ensure each folder table has updated total uncompressed size from prefix sums if 0
@@ -228,17 +237,33 @@ impl SolidFolderIndex {
         if let Some(&idx) = self.path_map.get(path) {
             return self.entries.get(idx);
         }
-        let normalized = path.replace('\\', "/");
-        let normalized_trimmed = normalized.trim_start_matches('/');
-        if let Some(&idx) = self.path_map.get(normalized_trimmed) {
-            return self.entries.get(idx);
+        let trimmed = path.trim_start_matches('/');
+        if trimmed != path {
+            if let Some(&idx) = self.path_map.get(trimmed) {
+                return self.entries.get(idx);
+            }
         }
+        if trimmed.contains('\\') {
+            let normalized = trimmed.replace('\\', "/");
+            if let Some(&idx) = self.path_map.get(normalized.as_str()) {
+                return self.entries.get(idx);
+            }
+        }
+        let normalized_trimmed = if trimmed.contains('\\') {
+            trimmed.replace('\\', "/")
+        } else {
+            trimmed.to_string()
+        };
         self.entries.iter().find(|e| {
-            let e_norm = e.rel_path.replace('\\', "/");
+            let e_norm = if e.rel_path.contains('\\') {
+                e.rel_path.replace('\\', "/")
+            } else {
+                e.rel_path.clone()
+            };
             let e_norm_trimmed = e_norm.trim_start_matches('/');
             e_norm_trimmed == normalized_trimmed
                 || e.rel_path == path
-                || e_norm_trimmed.ends_with(normalized_trimmed)
+                || e_norm_trimmed.ends_with(&normalized_trimmed)
                 || normalized_trimmed.ends_with(e_norm_trimmed)
         })
     }
@@ -315,6 +340,7 @@ pub struct SolidEarlyExitExtractor<'a> {
     folder_index: &'a SolidFolderIndex,
     thread_budget: u32,
     max_preceding_budget_bytes: u64,
+    sheet: Option<&'a ProgressAtomicSheet>,
 }
 
 impl<'a> SolidEarlyExitExtractor<'a> {
@@ -330,7 +356,14 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             folder_index,
             thread_budget: 1,
             max_preceding_budget_bytes: 0,
+            sheet: None,
         }
+    }
+
+    /// Attaches an atomic progress sheet for non-blocking cancellation and progress tracking.
+    pub fn with_atomic_sheet(mut self, sheet: &'a ProgressAtomicSheet) -> Self {
+        self.sheet = Some(sheet);
+        self
     }
 
     /// Sets decompression thread parallelism budget (defaults to 1).
@@ -344,6 +377,7 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         self.max_preceding_budget_bytes = max_bytes;
         self
     }
+
 
     /// Extracts entry into an in-memory buffer (`Vec<u8>`) with early exit and CRC32 verification.
     pub fn extract_to_vec(
@@ -416,11 +450,19 @@ impl<'a> SolidEarlyExitExtractor<'a> {
 
         let folder_idx = loc.folder_index.ok_or(TTZipStatus::ErrCorruptHeader)?;
         let target_start = loc.offset_start;
-        let target_end = loc.offset_end;
         let target_len = loc.uncompressed_size;
+        let target_end = target_start
+            .checked_add(target_len)
+            .ok_or(TTZipStatus::ErrCorruptHeader)?;
 
         if self.max_preceding_budget_bytes > 0 && target_start > self.max_preceding_budget_bytes {
             return Err(TTZipStatus::ErrSolidBudgetExceeded);
+        }
+
+        if let Some(sheet) = self.sheet {
+            if sheet.is_cancelled() {
+                return Err(TTZipStatus::Cancelled);
+            }
         }
 
         let folder_total = self.folder_index.folder_total_size(folder_idx).unwrap_or(target_end);
@@ -439,11 +481,19 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             password,
             self.thread_budget,
             |chunk| -> Result<(), TTZipStatus> {
+                if let Some(sheet) = self.sheet {
+                    if sheet.is_cancelled() {
+                        return Err(TTZipStatus::Cancelled);
+                    }
+                }
+
                 let chunk_start = current_offset;
                 let chunk_len = chunk.len() as u64;
-                let chunk_end = chunk_start + chunk_len;
-                current_offset += chunk_len;
-                decompressed_total += chunk_len;
+                let chunk_end = chunk_start
+                    .checked_add(chunk_len)
+                    .ok_or(TTZipStatus::ErrCorruptHeader)?;
+                current_offset = chunk_end;
+                decompressed_total = decompressed_total.saturating_add(chunk_len);
 
                 // 1. Preceding range [0, target_start): micro-buffer sliding discard
                 if chunk_end <= target_start {
@@ -463,6 +513,9 @@ impl<'a> SolidEarlyExitExtractor<'a> {
                         sink(target_slice)?;
                         running_crc = crc32_fast(running_crc, target_slice);
                         extracted_bytes += target_slice.len() as u64;
+                        if let Some(sheet) = self.sheet {
+                            sheet.add_processed(target_slice.len() as u64);
+                        }
                     }
                 }
 
@@ -481,31 +534,25 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             Err(e) => return Err(e),
         }
 
-        if extracted_bytes != target_len {
-            return Err(TTZipStatus::ErrExtractionFailed);
-        }
-
         let crc_matched = match loc.crc {
-            Some(exp) => {
-                if exp == 0 && extracted_bytes == 0 {
-                    true
-                } else {
-                    running_crc == exp
-                }
-            }
+            Some(exp) => running_crc == exp,
             None => true,
         };
 
-        if !crc_matched {
-            if self.header_info.is_encrypted {
-                return Err(TTZipStatus::ErrInvalidPassword);
+        if extracted_bytes != target_len || !crc_matched {
+            return Err(if self.header_info.is_encrypted {
+                TTZipStatus::ErrInvalidPassword
             } else {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
+                TTZipStatus::ErrCorruptHeader
+            });
         }
 
         let early_exit_triggered =
             early_exit_signal_sent || (target_end < folder_total && decompressed_total < folder_total);
+
+        if let Some(sheet) = self.sheet {
+            sheet.mark_finished();
+        }
 
         Ok(SolidExtractionStats {
             folder_index: folder_idx,
@@ -521,6 +568,7 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         })
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -540,54 +588,56 @@ mod tests {
 
     #[test]
     fn test_solid_folder_index_multi_stream_offsets_and_lookup() {
-        let mut info = SevenZHeaderInfo::default();
-        info.folders = vec![SevenZFolder {
-            coders: vec![SevenZCoder {
-                method_id: 0x21,
-                num_in_streams: 1,
-                num_out_streams: 1,
-                properties: vec![0x10],
+        let info = SevenZHeaderInfo {
+            folders: vec![SevenZFolder {
+                coders: vec![SevenZCoder {
+                    method_id: 0x21,
+                    num_in_streams: 1,
+                    num_out_streams: 1,
+                    properties: vec![0x10],
+                }],
+                bind_pairs: Vec::new(),
+                packed_streams: Vec::new(),
+                unpack_sizes: vec![1000],
+                crc: Some(0x12345678),
+                num_unpack_streams: 3,
+                packed_offset: 32,
+                packed_len: 400,
             }],
-            bind_pairs: Vec::new(),
-            packed_streams: Vec::new(),
-            unpack_sizes: vec![1000],
-            crc: Some(0x12345678),
-            num_unpack_streams: 3,
-            packed_offset: 32,
-            packed_len: 400,
-        }];
-        info.stream_sizes = vec![200, 300, 500];
-        info.stream_crcs = vec![0xAAAA, 0xBBBB, 0xCCCC];
-        info.files = vec![
-            SevenZFileMeta {
-                rel_path: "folder/dir".to_string(),
-                is_directory: true,
-                is_empty_stream: false,
-                mtime_epoch_secs: None,
-                mode: 0,
-            },
-            SevenZFileMeta {
-                rel_path: "folder/a.txt".to_string(),
-                is_directory: false,
-                is_empty_stream: false,
-                mtime_epoch_secs: None,
-                mode: 0,
-            },
-            SevenZFileMeta {
-                rel_path: "folder/b.txt".to_string(),
-                is_directory: false,
-                is_empty_stream: false,
-                mtime_epoch_secs: None,
-                mode: 0,
-            },
-            SevenZFileMeta {
-                rel_path: "c.txt".to_string(),
-                is_directory: false,
-                is_empty_stream: false,
-                mtime_epoch_secs: None,
-                mode: 0,
-            },
-        ];
+            stream_sizes: vec![200, 300, 500],
+            stream_crcs: vec![0xAAAA, 0xBBBB, 0xCCCC],
+            files: vec![
+                SevenZFileMeta {
+                    rel_path: "folder/dir".to_string(),
+                    is_directory: true,
+                    is_empty_stream: false,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+                SevenZFileMeta {
+                    rel_path: "folder/a.txt".to_string(),
+                    is_directory: false,
+                    is_empty_stream: false,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+                SevenZFileMeta {
+                    rel_path: "folder/b.txt".to_string(),
+                    is_directory: false,
+                    is_empty_stream: false,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+                SevenZFileMeta {
+                    rel_path: "c.txt".to_string(),
+                    is_directory: false,
+                    is_empty_stream: false,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+            ],
+            ..Default::default()
+        };
 
         let index = SolidFolderIndex::build(&info);
         assert_eq!(index.file_count(), 4);
@@ -636,5 +686,85 @@ mod tests {
         assert_eq!(index.folder_stream_range(0, 2), Some((500, 1000)));
         assert_eq!(index.folder_stream_range(0, 3), None);
     }
+
+    #[test]
+    fn test_solid_folder_index_backslash_and_slash_normalization() {
+        let info = SevenZHeaderInfo {
+            folders: Vec::new(),
+            stream_sizes: Vec::new(),
+            stream_crcs: Vec::new(),
+            files: vec![
+                SevenZFileMeta {
+                    rel_path: r"nested\deep\file.txt".to_string(),
+                    is_directory: false,
+                    is_empty_stream: true,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+                SevenZFileMeta {
+                    rel_path: "/root/level.bin".to_string(),
+                    is_directory: false,
+                    is_empty_stream: true,
+                    mtime_epoch_secs: None,
+                    mode: 0,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let index = SolidFolderIndex::build(&info);
+        // Lookup by raw path
+        assert_eq!(index.lookup_by_path(r"nested\deep\file.txt").map(|e| e.file_index), Some(0));
+        // Lookup by normalized path
+        assert_eq!(index.lookup_by_path("nested/deep/file.txt").map(|e| e.file_index), Some(0));
+
+        // Lookup by raw leading slash
+        assert_eq!(index.lookup_by_path("/root/level.bin").map(|e| e.file_index), Some(1));
+        // Lookup by trimmed slash
+        assert_eq!(index.lookup_by_path("root/level.bin").map(|e| e.file_index), Some(1));
+    }
+
+    #[test]
+    fn test_solid_early_exit_cancellation() {
+        let payload = vec![0x11u8; 1024];
+        let folder = SevenZFolder {
+            coders: vec![SevenZCoder {
+                method_id: crate::sevenz::format::METHOD_COPY,
+                properties: Vec::new(),
+                num_in_streams: 1,
+                num_out_streams: 1,
+            }],
+            bind_pairs: Vec::new(),
+            packed_streams: Vec::new(),
+            unpack_sizes: vec![1024],
+            crc: None,
+            num_unpack_streams: 1,
+            packed_offset: 0,
+            packed_len: 1024,
+        };
+        let info = SevenZHeaderInfo {
+            folders: vec![folder],
+            stream_sizes: vec![1024],
+            stream_crcs: vec![0],
+            files: vec![SevenZFileMeta {
+                rel_path: "item.bin".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                mtime_epoch_secs: None,
+                mode: 0,
+            }],
+            payload_offset: 0,
+            payload_len: 1024,
+            ..Default::default()
+        };
+        let index = SolidFolderIndex::build(&info);
+        let sheet = ProgressAtomicSheet::with_total(1024);
+        sheet.cancel();
+
+        let extractor = SolidEarlyExitExtractor::new(&payload, &info, &index).with_atomic_sheet(&sheet);
+        let res = extractor.extract_to_vec(0, None);
+        assert_eq!(res.err(), Some(TTZipStatus::Cancelled));
+    }
 }
+
 

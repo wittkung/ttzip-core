@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware NEON-accelerated ZIP/TAR damaged stream TOC reconstruction and corrupt archive self-healing engine.
 

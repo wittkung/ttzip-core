@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Cross-Language Lossless Error Mapping Subsystem.
 //!
@@ -133,6 +133,18 @@ impl From<ApiTTZipError> for UniFFIError {
             ApiTTZipError::Cancelled => Self::IoError {
                 message: "Operation was cancelled by caller".to_string(),
             },
+            ApiTTZipError::InvalidSessionState { expected, actual } => Self::IoError {
+                message: format!("Invalid session state: expected {expected}, actual {actual:?}"),
+            },
+            ApiTTZipError::InvalidResolution { detail } => Self::IoError {
+                message: format!("Invalid resolution: {detail}"),
+            },
+            ApiTTZipError::DestinationUnavailable { errno } => Self::IoError {
+                message: format!("Destination unavailable (errno {errno})"),
+            },
+            ApiTTZipError::InvalidArgument { message } => Self::IoError {
+                message: format!("Invalid argument: {message}"),
+            },
             ApiTTZipError::OutOfMemory { details } => Self::OutOfMemory { message: details },
             ApiTTZipError::DecompressionBombDetected { reason } => Self::PermissionDenied {
                 path: format!("Decompression bomb: {reason}"),
@@ -206,7 +218,7 @@ impl From<ZipEngineError> for UniFFIError {
                 message: format!("Invalid Central Directory boundary: offset {offset}, size {size}, file_len {file_len}"),
                 offset,
             },
-            ZipEngineError::Io(msg) => Self::IoError { message: msg },
+            ZipEngineError::Io(err) => Self::IoError { message: err.to_string() },
             ZipEngineError::Status(status) => status.into(),
         }
     }

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware-accelerated Branch/Call/Jump (BCJ) architecture instruction filters for XZ streams.
 //!

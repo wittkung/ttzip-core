@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Background asynchronous extraction task execution.
 
@@ -81,23 +81,23 @@ impl AppState {
                 None
             };
 
-            let zip_index_map: std::collections::HashMap<&str, usize> = if let Some(ref archive) = zip_archive {
+            let zip_index_map: std::collections::HashMap<String, usize> = if let Some(ref archive) = zip_archive {
                 archive
                     .entries()
                     .iter()
                     .enumerate()
-                    .map(|(idx, e)| (e.rel_path.as_str(), idx))
+                    .map(|(idx, e)| (e.rel_path.clone(), idx))
                     .collect()
             } else {
                 std::collections::HashMap::new()
             };
 
-            let sevenz_index_map: std::collections::HashMap<&str, usize> = if let Some(ref archive) = sevenz_archive {
+            let sevenz_index_map: std::collections::HashMap<String, usize> = if let Some(ref archive) = sevenz_archive {
                 archive
                     .files()
                     .iter()
                     .enumerate()
-                    .map(|(idx, f)| (f.rel_path.as_str(), idx))
+                    .map(|(idx, f)| (f.rel_path.clone(), idx))
                     .collect()
             } else {
                 std::collections::HashMap::new()
@@ -106,7 +106,7 @@ impl AppState {
             // Calculate total size using O(1) index map
             if let Some(ref archive) = zip_archive {
                 for path in &selected_paths {
-                    if let Some(&idx) = zip_index_map.get(path.as_str()) {
+                    if let Some(&idx) = zip_index_map.get(path) {
                         total_bytes += archive.entries()[idx].uncompressed_size;
                     }
                 }
@@ -154,7 +154,7 @@ impl AppState {
 
                 let (file_data, uncomp_size) = if is_zip {
                     let archive = zip_archive.as_ref().unwrap();
-                    let idx = match zip_index_map.get(rel_path.as_str()) {
+                    let idx = match zip_index_map.get(rel_path) {
                         Some(&i) => i,
                         None => {
                             let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
@@ -177,7 +177,7 @@ impl AppState {
                     };
                     (bytes, expected_size)
                 } else if let Some(ref archive) = sevenz_archive {
-                    let idx = match sevenz_index_map.get(rel_path.as_str()) {
+                    let idx = match sevenz_index_map.get(rel_path) {
                         Some(&i) => i,
                         None => {
                             let _ = event_sender.send(AppEvent::TaskCompleted(Err(format!(
@@ -230,7 +230,7 @@ impl AppState {
 
                 let snap = ProgressSnapshot {
                     task_title: format!("Extracting {} entries", total_entries),
-                    current_entry_name: rel_path.clone(),
+                    current_entry_name: rel_path.to_string(),
                     processed_bytes,
                     total_bytes,
                     processed_entries: proc_count + 1,

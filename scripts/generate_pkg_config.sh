@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-PREFIX="${1:-/usr/local}"
+PREFIX="${1:-${TTZIP_PREFIX:-/usr/local}}"
 VERSION="${2:-1.0.0}"
 OUTPUT_FILE="${3:-${REPO_ROOT}/ttzip.pc}"
 LIBDIR="${4:-}"

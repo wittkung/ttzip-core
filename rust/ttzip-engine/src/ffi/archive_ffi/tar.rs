@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! C-ABI FFI entries for Pure Rust TAR scanning and zero-copy entry extraction.
 
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn ttzip_rust_tar_scan_entries(
 
             let meta = TTZipEntryMetadata {
                 struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_2,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
                 path: c_path.as_ptr(),
                 uncompressed_size: entry.size,
                 compressed_size: entry.size,

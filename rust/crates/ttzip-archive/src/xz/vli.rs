@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-performance, branchless XZ Variable-Length Integer (VLI) Codec
 //! and 64-bit `VLI_MAX` overflow circuit breaker.

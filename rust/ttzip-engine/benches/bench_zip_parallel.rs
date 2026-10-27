@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Criterion micro-benchmarks for multi-threaded parallel ZIP compression and extraction.
 //!
@@ -125,11 +125,11 @@ fn bench_zip_parallel_extraction(c: &mut Criterion) {
 
                 let options = TTZipExtractOptions {
                     struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-                    abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+                    abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
                     destination_path: std::ptr::null(),
                     password: std::ptr::null(),
                     thread_budget: th,
-                    overwrite_existing: true,
+                    collision_policy: 0,
                     preserve_permissions: false,
                     dry_run: false,
                     progress_callback: None,

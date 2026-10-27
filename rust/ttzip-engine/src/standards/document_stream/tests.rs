@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use super::*;
 use crate::zip::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
@@ -137,34 +137,32 @@ fn test_epub_streaming_parser() {
 
 #[test]
 fn test_pdf_streaming_parser() {
-    use lopdf::{dictionary, Document, Object, Stream};
+    let pdf_bytes = b"%PDF-1.7\n\
+1 0 obj\n\
+<< /Type /Catalog /Pages 2 0 R >>\n\
+endobj\n\
+2 0 obj\n\
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n\
+endobj\n\
+3 0 obj\n\
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R >>\n\
+endobj\n\
+4 0 obj\n\
+<< /Length 64 >>\n\
+stream\n\
+BT /F1 24 Tf 100 700 Td (Pure Rust PDF Stream Parsing) Tj ET\n\
+endstream\n\
+endobj\n\
+5 0 obj\n\
+<< /Title (TTZip PDF Architecture) /Author (Witt Kung) /Subject (In-Memory PDF Parsing) /Creator (TTZip Engine v1.0) >>\n\
+endobj\n\
+trailer\n\
+<< /Root 1 0 R /Info 5 0 R >>\n\
+startxref\n\
+450\n\
+%%EOF\n";
 
-    let mut doc = Document::with_version("1.7");
-    let pages_id = doc.new_object_id();
-    let font_id = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica" });
-    let resources_id = doc.add_object(dictionary! { "Font" => dictionary! { "F1" => font_id } });
-    let content = Stream::new(dictionary! {}, b"BT /F1 24 Tf 100 700 Td (Pure Rust PDF Stream Parsing) Tj ET".to_vec());
-    let content_id = doc.add_object(content);
-    let page_id = doc.add_object(dictionary! {
-        "Type" => "Page", "Parent" => pages_id, "Contents" => content_id, "Resources" => resources_id,
-        "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
-    });
-    doc.objects.insert(pages_id, Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => vec![page_id.into()], "Count" => 1 }));
-    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
-    doc.trailer.set("Root", catalog_id);
-
-    let info_id = doc.add_object(dictionary! {
-        "Title" => Object::string_literal("TTZip PDF Architecture"),
-        "Author" => Object::string_literal("Witt Kung"),
-        "Subject" => Object::string_literal("In-Memory PDF Parsing"),
-        "Creator" => Object::string_literal("TTZip Engine v1.0"),
-    });
-    doc.trailer.set("Info", info_id);
-
-    let mut pdf_bytes = Vec::new();
-    doc.save_to(&mut pdf_bytes).unwrap();
-
-    let info = parse_pdf_from_memory(&pdf_bytes, Some(5)).expect("Failed to parse PDF");
+    let info = parse_pdf_from_memory(pdf_bytes, Some(5)).expect("Failed to parse PDF");
     assert_eq!(info.format_version, "PDF-1.7");
     assert_eq!(info.page_count, 1);
     assert_eq!(info.title.as_deref(), Some("TTZip PDF Architecture"));
@@ -180,24 +178,10 @@ fn test_pdf_streaming_parser() {
 
 #[test]
 fn test_pdf_utf16_be_metadata() {
-    use lopdf::{dictionary, Document, Object};
-
-    let mut doc = Document::with_version("1.7");
-    let pages_id = doc.new_object_id();
-    doc.objects.insert(pages_id, Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => Vec::<Object>::new(), "Count" => 0 }));
-    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
-    doc.trailer.set("Root", catalog_id);
-
-    // UTF-16BE bytes for "文档标题" (0x6587, 0x6863, 0x6807, 0x9898)
-    let utf16_title_bytes = vec![0xFE, 0xFF, 0x65, 0x87, 0x68, 0x63, 0x68, 0x07, 0x98, 0x98];
-    let info_id = doc.add_object(dictionary! {
-        "Title" => Object::String(utf16_title_bytes, lopdf::StringFormat::Literal),
-        "Author" => Object::string_literal("Tung"),
-    });
-    doc.trailer.set("Info", info_id);
-
     let mut pdf_bytes = Vec::new();
-    doc.save_to(&mut pdf_bytes).unwrap();
+    pdf_bytes.extend_from_slice(b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Count 1 >>\nendobj\n3 0 obj\n<< /Title (");
+    pdf_bytes.extend_from_slice(&[0xFE, 0xFF, 0x65, 0x87, 0x68, 0x63, 0x68, 0x07, 0x98, 0x98]);
+    pdf_bytes.extend_from_slice(b") /Author (Tung) >>\nendobj\ntrailer\n<< /Root 1 0 R /Info 3 0 R >>\n%%EOF\n");
 
     let info = parse_pdf_from_memory(&pdf_bytes, None).expect("Parse UTF-16 PDF failed");
     assert_eq!(info.title.as_deref(), Some("文档标题"));

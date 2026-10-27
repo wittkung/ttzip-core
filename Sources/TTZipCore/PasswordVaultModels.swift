@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 import LocalAuthentication
@@ -275,8 +275,28 @@ public final class ArchivePasswordStore: @unchecked Sendable {
     public func setPassword(_ pwd: String, for path: String) {
         lock.lock()
         defer { lock.unlock() }
+        setPasswordLocked(pwd, normalizedPath: normalize(path))
+    }
+
+    /// Publishes a newly verified credential only if no other owner changed this path.
+    /// The comparison and the existing LRU update share one lock; no suspension is allowed.
+    /// `nil` means absent and is distinct from an explicitly stored empty string.
+    @discardableResult
+    public func setPassword(
+        _ pwd: String,
+        for path: String,
+        ifCurrentPasswordIs expected: String?
+    ) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         let normPath = normalize(path)
-        
+        guard passwords[normPath] == expected else { return false }
+        setPasswordLocked(pwd, normalizedPath: normPath)
+        return true
+    }
+
+    /// Requires `lock` to be held by the caller.
+    private func setPasswordLocked(_ pwd: String, normalizedPath normPath: String) {
         if passwords[normPath] != nil {
             var old = passwords[normPath] ?? ""
             eraseSensitiveString(&old)

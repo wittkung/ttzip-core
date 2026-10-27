@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Libarchive raw C-ABI external symbols declarations.
 
@@ -55,6 +55,7 @@ extern "C" {
     pub fn archive_read_free(a: *mut c_void) -> c_int;
 
     pub fn archive_entry_pathname(e: *mut c_void) -> *const c_char;
+    pub fn archive_entry_pathname_utf8(e: *mut c_void) -> *const c_char;
     pub fn archive_entry_size(e: *mut c_void) -> i64;
     pub fn archive_entry_filetype(e: *mut c_void) -> mode_t;
     pub fn archive_entry_mode(e: *mut c_void) -> mode_t;

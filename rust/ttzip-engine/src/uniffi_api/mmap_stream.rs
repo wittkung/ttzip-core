@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Memory-Mapped (Mmap) Zero-Copy Data Stream & Kernel Advice Scaffolding.
 
@@ -207,6 +207,14 @@ impl UniFFIMmapReader {
     /// Returns `true` if the mapped file is 0 bytes.
     pub fn is_empty(&self) -> bool {
         self.file_size == 0
+    }
+
+    /// Returns the raw virtual memory address of the mapped file buffer, or 0 if unmapped or empty.
+    pub fn memory_address(&self) -> u64 {
+        self.mapping
+            .as_ref()
+            .map(|m| m.ptr as usize as u64)
+            .unwrap_or(0)
     }
 
 

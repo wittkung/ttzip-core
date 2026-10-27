@@ -1,11 +1,17 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Header and EncodedHeader Zero-Copy Binary Metadata Stream Parser.
 
 use super::models::{SevenZCoder, SevenZFileMeta, SevenZFolder, SevenZHeaderInfo};
 use crate::sevenz::format::*;
 use crate::types::TTZipStatus;
+
+/// Upper bound for the in/out stream count of a single coder.
+///
+/// Real 7z coders use at most four input streams (BCJ2); the bound keeps a malformed header
+/// from inflating the coder index space into an unbounded allocation.
+const MAX_CODER_STREAMS: u64 = 64;
 
 /// Helper function to parse 7z Header structures from a byte buffer.
 pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Result<(), TTZipStatus> {
@@ -28,7 +34,8 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
             if (num_pack_streams as usize) > hlen {
                 return Err(TTZipStatus::ErrCorruptHeader);
             }
-            out_info.payload_offset = 32usize.saturating_add(pack_pos as usize);
+            let pack_pos_usize = usize::try_from(pack_pos).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+            out_info.payload_offset = 32usize.checked_add(pack_pos_usize).ok_or(TTZipStatus::ErrCorruptHeader)?;
             let mut total_pack_size = 0u64;
 
             while hpos < hlen {
@@ -42,7 +49,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         let (sz, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                         hpos += rd;
                         out_info.pack_sizes.push(sz);
-                        total_pack_size = total_pack_size.saturating_add(sz);
+                        total_pack_size = total_pack_size.checked_add(sz).ok_or(TTZipStatus::ErrCorruptHeader)?;
                     }
                 } else if ptag == K_CRC {
                     if hpos >= hlen {
@@ -66,7 +73,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                     }
                 }
             }
-            out_info.payload_len = total_pack_size as usize;
+            out_info.payload_len = usize::try_from(total_pack_size).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
         } else if tag == K_UNPACK_INFO {
             while hpos < hlen {
                 let utag = hp[hpos];
@@ -128,6 +135,12 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                                     hpos += rd;
                                     let (outs, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                                     hpos += rd;
+                                    // A coder stream count drives the bind-pair index space and the
+                                    // pack stream mapping, so a malformed header must not be able
+                                    // to inflate it into an unbounded allocation or scan.
+                                    if ins > MAX_CODER_STREAMS || outs > MAX_CODER_STREAMS {
+                                        return Err(TTZipStatus::ErrCorruptHeader);
+                                    }
                                     in_streams = ins;
                                     out_streams = outs;
                                 }
@@ -353,7 +366,7 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         for _ in 0..num_explicit {
                             let (sval, rd) = read_varint(&hp[hpos..]).ok_or(TTZipStatus::ErrCorruptHeader)?;
                             hpos += rd;
-                            explicit_sum += sval;
+                            explicit_sum = explicit_sum.checked_add(sval).ok_or(TTZipStatus::ErrCorruptHeader)?;
                             streams.push(sval);
                         }
                         if num_streams > 0 {
@@ -465,6 +478,20 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         }
                     }
                     hpos = prop_end;
+                } else if ftag == K_EMPTY_FILE {
+                    let mut empty_idx = 0usize;
+                    for file in out_info.files.iter_mut().take(num_files) {
+                        if file.is_empty_stream {
+                            let byte_idx = empty_idx / 8;
+                            let bit_idx = 7 - (empty_idx % 8);
+                            if byte_idx < prop_size {
+                                let is_empty_file = ((hp[hpos + byte_idx] >> bit_idx) & 1) != 0;
+                                file.is_directory = !is_empty_file;
+                            }
+                            empty_idx += 1;
+                        }
+                    }
+                    hpos = prop_end;
                 } else if ftag == K_NAME {
                     if hpos >= prop_end {
                         return Err(TTZipStatus::ErrCorruptHeader);
@@ -497,27 +524,90 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
                         out_info.files[f].rel_path = utf8_name;
                     }
                     hpos = prop_end;
+                } else if ftag == K_MTIME {
+                    if hpos < prop_end {
+                        let all_defined = hp[hpos];
+                        hpos += 1;
+                        let mut defined = vec![true; num_files];
+                        if all_defined == 0 {
+                            let mask_bytes = num_files.div_ceil(8);
+                            if hpos + mask_bytes <= prop_end {
+                                for i in 0..num_files {
+                                    let b = hp[hpos + (i / 8)];
+                                    defined[i] = ((b >> (7 - (i % 8))) & 1) != 0;
+                                }
+                                hpos += mask_bytes;
+                            }
+                        }
+                        if hpos < prop_end {
+                            let external = hp[hpos];
+                            hpos += 1;
+                            if external == 0 {
+                                for (f, &is_def) in defined.iter().enumerate() {
+                                    if !is_def {
+                                        continue;
+                                    }
+                                    if hpos + 8 <= prop_end {
+                                        let mut t_bytes = [0u8; 8];
+                                        t_bytes.copy_from_slice(&hp[hpos..hpos + 8]);
+                                        hpos += 8;
+                                        let nt = crate::sevenz::time::NtTime(u64::from_le_bytes(t_bytes));
+                                        let sys_time = nt.to_system_time();
+                                        let secs = match sys_time.duration_since(std::time::UNIX_EPOCH) {
+                                            Ok(dur) => dur.as_secs() as i64,
+                                            Err(err) => -(err.duration().as_secs() as i64),
+                                        };
+                                        out_info.files[f].mtime_epoch_secs = Some(secs);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    hpos = prop_end;
                 } else if ftag == K_WIN_ATTRIBUTES {
                     if hpos < prop_end {
                         let all_defined = hp[hpos];
                         hpos += 1;
-                        if all_defined == 1 && hpos < prop_end {
+                        let mut defined = vec![true; num_files];
+                        if all_defined == 0 {
+                            let mask_bytes = num_files.div_ceil(8);
+                            if hpos + mask_bytes <= prop_end {
+                                for i in 0..num_files {
+                                    let b = hp[hpos + (i / 8)];
+                                    defined[i] = ((b >> (7 - (i % 8))) & 1) != 0;
+                                }
+                                hpos += mask_bytes;
+                            }
+                        }
+                        if hpos < prop_end {
                             let external = hp[hpos];
                             hpos += 1;
                             if external == 0 {
-                                for f in 0..num_files {
+                                for (f, &is_def) in defined.iter().enumerate() {
+                                    if !is_def {
+                                        continue;
+                                    }
                                     if hpos + 4 <= prop_end {
                                         let attr_bytes: [u8; 4] = [hp[hpos], hp[hpos + 1], hp[hpos + 2], hp[hpos + 3]];
                                         let attr = u32::from_le_bytes(attr_bytes);
                                         hpos += 4;
-                                        if (attr & 0x10) != 0 {
-                                            out_info.files[f].is_directory = true;
-                                        }
-                                        out_info.files[f].mode = if out_info.files[f].is_directory {
-                                            0o755
+                                        let posix_mode = (attr >> 16) & 0xFFFF;
+                                        let file_type = posix_mode & 0o170000;
+                                        if file_type == 0o120000 || (file_type == 0 && (attr & 0x400) != 0) {
+                                            out_info.files[f].is_directory = false;
+                                            out_info.files[f].mode = if posix_mode != 0 { posix_mode } else { 0o120777 };
                                         } else {
-                                            0o644
-                                        };
+                                            if (attr & 0x10) != 0 || file_type == 0o040000 {
+                                                out_info.files[f].is_directory = true;
+                                            }
+                                            out_info.files[f].mode = if posix_mode != 0 {
+                                                posix_mode
+                                            } else if out_info.files[f].is_directory {
+                                                0o755
+                                            } else {
+                                                0o644
+                                            };
+                                        }
                                     }
                                 }
                             }
@@ -548,22 +638,41 @@ pub fn parse_7z_header_stream(hp: &[u8], out_info: &mut SevenZHeaderInfo) -> Res
             out_info.stream_sizes.push(sz);
         }
     }
+    if out_info.stream_crcs.is_empty()
+        && !out_info.folders.is_empty()
+        && out_info.folders.iter().all(|f| f.num_unpack_streams <= 1 && f.crc.is_some())
+    {
+        for folder in &out_info.folders {
+            if let Some(c) = folder.crc {
+                out_info.stream_crcs.push(c);
+            }
+        }
+    }
 
     // Map packed offsets and lengths to folders
     let mut cur_pack_offset = out_info.payload_offset;
     let mut pack_idx = 0usize;
     let num_folders = out_info.folders.len();
     for folder in &mut out_info.folders {
+        // A folder owns one packed stream per unbound coder input stream; a folder with a
+        // multi-input coder (such as BCJ2) owns several consecutive pack streams. The count is
+        // bounded by the pack sizes that are actually present so a malformed header cannot turn
+        // this into an unbounded scan.
+        let remaining_packs = out_info.pack_sizes.len().saturating_sub(pack_idx);
+        let num_pack_streams = folder.pack_stream_count().min(remaining_packs).max(1);
         let mut folder_pack_len = 0usize;
-        if pack_idx < out_info.pack_sizes.len() {
-            folder_pack_len = out_info.pack_sizes[pack_idx] as usize;
-            pack_idx += 1;
-        } else if num_folders == 1 {
+        for _ in 0..num_pack_streams {
+            if let Some(&pack_size) = out_info.pack_sizes.get(pack_idx) {
+                folder_pack_len = folder_pack_len.saturating_add(pack_size as usize);
+                pack_idx += 1;
+            }
+        }
+        if folder_pack_len == 0 && num_folders == 1 {
             folder_pack_len = out_info.payload_len;
         }
         folder.packed_offset = cur_pack_offset;
         folder.packed_len = folder_pack_len;
-        cur_pack_offset += folder_pack_len;
+        cur_pack_offset = cur_pack_offset.saturating_add(folder_pack_len);
     }
 
     Ok(())

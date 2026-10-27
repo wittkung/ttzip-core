@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Binary Delta Memory Budget & Resource Circuit Breaker Guard (`BinaryDeltaMemoryBudgetGuard`).
 //!
@@ -136,8 +136,7 @@ impl BinaryDeltaMemoryBudgetGuard {
         }
 
         // For non-zero patch sizes, evaluate expansion multiplier
-        if patch_size > 0 {
-            let ratio = uncompressed_size / patch_size;
+        if let Some(ratio) = uncompressed_size.checked_div(patch_size) {
             if ratio > self.options.max_expansion_ratio {
                 return Err(SystemDefenseError::DeltaExpansionRatioExceeded {
                     ratio,

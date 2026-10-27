@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Self-healing in-memory and streaming in-place repair engine for damaged archives.
 
@@ -34,6 +34,10 @@ pub fn repair_archive_data(archive_data: &mut [u8]) -> Result<bool, TTZipStatus>
     let slice_size = info.slice_size;
     let total_rec_size = archive_data.len() - payload_len;
     let rec_offset = payload_len;
+
+    if k == 0 || m == 0 || k + m > 256 || slice_size == 0 || slice_size > 64 * 1024 * 1024 {
+        return Ok(false);
+    }
 
     if total_rec_size < 54 + (k * 4) {
         return Ok(false);
@@ -151,6 +155,10 @@ pub fn repair_archive_file_streaming(file_path: &Path) -> Result<bool, TTZipStat
     let k = info.data_slices_count;
     let m = info.parity_slices_count;
     let slice_size = info.slice_size;
+
+    if k == 0 || m == 0 || k + m > 256 || slice_size == 0 || slice_size > 64 * 1024 * 1024 {
+        return Ok(false);
+    }
 
     // 1. Read Expected Data CRCs table
     let rec_offset = payload_len;

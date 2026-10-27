@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI Character Encoding & Filename Remediation Scaffolding.
 //!
@@ -290,7 +290,7 @@ fn detect_encoding_internal(data: &[u8]) -> UniFFIDetectedEncoding {
 
     let (detected_name, conf) = detect_charset_with_confidence(data);
     let sample_slice = if data.len() > 128 { &data[..128] } else { data };
-    let encoding = lookup_encoding(&detected_name);
+    let encoding = lookup_encoding(detected_name);
     let (cow, _, had_errors) = encoding.decode(sample_slice);
 
     UniFFIDetectedEncoding {

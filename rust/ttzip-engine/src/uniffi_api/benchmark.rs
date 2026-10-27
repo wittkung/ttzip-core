@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI High-Performance Benchmark, MIPS Rating, Pareto Analysis, and Matrix Gate Suite.
 //!
@@ -438,7 +438,7 @@ pub fn ttzip_bench_generate_corpus(
     corpus_id: String,
     size_bytes: u64,
 ) -> Result<Vec<u8>, TTZipError> {
-    crate::benchmark::ab_engine::CorpusRegistry::global()
+    crate::benchmark::CorpusRegistry::global()
         .generate(&corpus_id, size_bytes as usize)
         .map_err(|st| match st {
             crate::types::TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound { path: corpus_id },
@@ -449,13 +449,12 @@ pub fn ttzip_bench_generate_corpus(
 /// Lists all available standard and registered benchmark corpus identifiers and aliases.
 #[uniffi::export]
 pub fn ttzip_bench_list_corpus_ids() -> Vec<String> {
-    crate::benchmark::ab_engine::CorpusRegistry::global().list_ids()
+    crate::benchmark::CorpusRegistry::global().list_ids()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::uniffi_api::*;
     use tempfile::tempdir;
 
     #[test]
@@ -513,29 +512,5 @@ mod tests {
         let missing = ttzip_bench_generate_corpus("unknown_invalid_corpus".to_string(), 1024);
         assert!(missing.is_err());
 
-        // Test Phase 3 Declarative A/B Orchestrator & Multimodal Exporter UniFFI exports
-        let ab_cfg = UniFFIAbOrchestratorConfig {
-            warmup_rounds: 3, measurement_rounds: 10, max_allowed_regression: 3.0,
-            p_value_threshold: 0.05, hampel_filter: true, hampel_k: 3.0, target_rse_pct: 2.0,
-        };
-
-        let ab_res = ttzip_bench_run_ab_benchmark(
-            "crypto/crc32/digest".to_string(), "synthetic:zipf_text".to_string(), 262144, Some(ab_cfg.clone()),
-        );
-        assert!(ab_res.is_ok());
-
-        let report_json = serde_json::to_string(&crate::benchmark::ab_engine::AbEngineOrchestrator::new()
-            .run_ab_benchmark("crypto/crc32/digest", "synthetic:zipf_text", 262144, &ab_cfg.clone().into())
-            .unwrap()).unwrap();
-
-        assert!(ttzip_bench_render_ab_ascii(report_json.clone(), false).unwrap().contains("TTZip Declarative A/B Performance Suite"));
-        assert!(ttzip_bench_render_ab_markdown(report_json.clone()).unwrap().contains("🚀 TTZip Declarative A/B Benchmark Report"));
-        assert!(ttzip_bench_render_ab_json(report_json.clone()).unwrap().contains("\"schema_version\": \"1.0.0\""));
-
-        let snap_json = ttzip_bench_create_baseline_snapshot(report_json, false).unwrap();
-        let comp_res = ttzip_bench_compare_against_baseline(
-            "crypto/crc32/digest".to_string(), "synthetic:zipf_text".to_string(), 262144, snap_json, Some(ab_cfg),
-        );
-        assert!(comp_res.is_ok());
     }
 }

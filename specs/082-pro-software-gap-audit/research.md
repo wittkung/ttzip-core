@@ -150,7 +150,7 @@
 2. **Dual-Tier 双层监听**：同时监听父目录 FD 与文件 FD，父目录 FD 永不脱钩捕获 `NOTE_WRITE`/`NOTE_RENAME`，当编辑器执行原子 Safe-Save (write-to-temp + rename) 覆盖原文件并释放旧 Inode 时，自动捕获并重挂载新 Inode 的 File FD。
 3. **150ms 防抖哈希快照**：防抖触发后先比对 `st_mtime` 和 `st_size`，再计算物理哈希，仅当内容实际发生改变时才触发回写。
 4. **归档级串行锁与 APFS 影子原子替换**：基于 Actor 进行串行调度，打包进影子文件后通过 `FileManager.default.replaceItemAt`（底层 `renamex_np` / `RENAME_SWAP`）实现掉电安全的原子级替换。
-5. **多层生命周期清理**：关闭会话时销毁临时目录，窗口关闭时拦截未保存会话，App 启动时由 `TempDirectoryCleanUpManager` 回收异常遗留文件。
+5. **资源归属与生命周期清理**：操作通过自身的 defer/lease 生命周期清理其持有的精确临时路径，窗口关闭时拦截未保存会话。App 启动不再扫描共享临时目录；`TempDirectoryCleanUpManager` 仅保留为无操作的兼容接口。崩溃遗留资源的自动回收尚未实现，不能根据目录名称推断归属或另一会话是否已结束。
 
 #### 【Rationale：选择理由】
 1. **彻底攻克 Inode 脱钩死穴**：通过监听私有父目录 FD，在外部编辑器（如 VSCode / TextEdit）进行原子 Safe-Save 替换 Inode 时，依然 100% 捕获变更，并在事件触发后重新挂载新 Inode 的 File FD。
@@ -170,7 +170,7 @@
 - `Sources/TTZipCore/FileWatcherEngine.swift`（Dual-Tier FD 监听与防抖实现）
 - `Sources/TTZipCore/InPlaceEdit/InPlaceArchiveMutationEngine.swift`（会话管理与影子原子替换 `replaceItemAt`）
 - `Sources/TTZipCore/InPlaceEdit/InPlaceEditSession.swift`（会话状态机定义）
-- `Sources/TTZipCore/Utilities/TempDirectoryCleanUpManager.swift`（临时目录扫描与回收）
+- `Sources/TTZipCore/ToolchainInstaller.swift`（退役清理器的无操作兼容接口）
 - Apple Developer: `DispatchSource.makeFileSystemObjectSource(fileDescriptor:eventMask:queue:)` & `kqueue(2)` / `EVFILT_VNODE`
 - Apple Developer: `NSWorkspace.shared.open(_:configuration:completionHandler:)`
 

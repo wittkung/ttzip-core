@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Exhaustive 0..=12 All-Levels Matrix Benchmark Suite for DEFLATE Microkernel.
 //! Covers all 13 individual compression levels (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)

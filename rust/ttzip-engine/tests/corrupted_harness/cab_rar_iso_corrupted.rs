@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Corrupted CAB, RAR5, and ISO 9660 / Rock Ridge State Machine Anomaly Test Suite.
 //!
@@ -11,10 +11,11 @@
 //! 5. ISO zisofs and Joliet UTF-16BE integer overflow defenses.
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::uudecode::{load_libarchive_asset, write_temp_archive};
 use ttzip_engine::archive::unified::UnifiedArchiveOrchestrator;
+use ttzip_engine::testing::TEST_CORRUPTED_SAFETY_TIMEOUT;
 use ttzip_engine::types::TTZipExtractOptions;
 
 /// 37-byte malformed RAR5 archive triggering block header failure loop.
@@ -45,12 +46,12 @@ pub fn test_corrupted_rar5_block_hdr_fail_loop_zero_deadlock() {
     let options = TTZipExtractOptions::default();
 
     let start_time = Instant::now();
-    let res = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
+    let res = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
     let elapsed = start_time.elapsed();
 
     // Must never spin forever; must finish within 100ms
     assert!(
-        elapsed < Duration::from_millis(500),
+        elapsed < TEST_CORRUPTED_SAFETY_TIMEOUT,
         "RAR5 malformed block header must terminate immediately without spinning (took {:?})",
         elapsed
     );
@@ -68,31 +69,31 @@ pub fn test_corrupted_rar5_bad_filter_recovery_or_clean_failure() {
 
     let start_time = Instant::now();
     let res = catch_unwind(AssertUnwindSafe(|| {
-        let _ = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
+        let _ = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
     }));
     let elapsed = start_time.elapsed();
 
     assert!(res.is_ok(), "RAR5 bad filter must never panic");
     assert!(
-        elapsed < Duration::from_millis(500),
+        elapsed < TEST_CORRUPTED_SAFETY_TIMEOUT,
         "Execution must be instantaneous without deadlock"
     );
 }
 
 #[test]
 pub fn test_corrupted_rar5_bad_tables_asset() {
-    if let Some(bytes) = load_libarchive_asset("test_read_format_rar5_bad_tables.rar") {
-        let (_tmp, path) = write_temp_archive("rar5_bad_tables.rar", &bytes);
-        let dest = tempfile::tempdir().unwrap();
-        let options = TTZipExtractOptions::default();
+    let bytes = load_libarchive_asset("test_read_format_rar5_bad_tables.rar");
+    let (_tmp, path) = write_temp_archive("rar5_bad_tables.rar", &bytes);
+    let dest = tempfile::tempdir().unwrap();
+    let options = TTZipExtractOptions::default();
 
-        let start = Instant::now();
-        let res = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
-        let elapsed = start.elapsed();
+    let start = Instant::now();
+    let res = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
+    let elapsed = start.elapsed();
 
-        assert!(elapsed < Duration::from_millis(500), "Zero deadlock invariant");
-        assert!(res.is_err(), "Oversubscribed Huffman table must be rejected");
-    }
+    assert!(elapsed < TEST_CORRUPTED_SAFETY_TIMEOUT, "Zero deadlock invariant");
+    assert!(res.is_err(), "Oversubscribed Huffman table must be rejected");
+
 }
 
 #[test]
@@ -104,41 +105,41 @@ pub fn test_corrupted_cab_lzx_invalid_history_and_oob() {
     ];
 
     for fixture in &cab_fixtures {
-        if let Some(bytes) = load_libarchive_asset(fixture) {
-            let (_tmp, path) = write_temp_archive(fixture, &bytes);
-            let dest = tempfile::tempdir().unwrap();
-            let options = TTZipExtractOptions::default();
+        let bytes = load_libarchive_asset(fixture);
+        let (_tmp, path) = write_temp_archive(fixture, &bytes);
+        let dest = tempfile::tempdir().unwrap();
+        let options = TTZipExtractOptions::default();
 
-            let start = Instant::now();
-            let res = catch_unwind(AssertUnwindSafe(|| {
-                let _ = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
-            }));
-            let elapsed = start.elapsed();
+        let start = Instant::now();
+        let res = catch_unwind(AssertUnwindSafe(|| {
+            let _ = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
+        }));
+        let elapsed = start.elapsed();
 
-            assert!(res.is_ok(), "CAB corrupted fixture '{}' must not panic", fixture);
-            assert!(
-                elapsed < Duration::from_millis(500),
-                "CAB parsing must terminate with zero deadlock"
-            );
-        }
+        assert!(res.is_ok(), "CAB corrupted fixture '{}' must not panic", fixture);
+        assert!(
+            elapsed < TEST_CORRUPTED_SAFETY_TIMEOUT,
+            "CAB parsing must terminate with zero deadlock"
+        );
+
     }
 }
 
 #[test]
 pub fn test_corrupted_iso_rockridge_ce_loop_zero_deadlock() {
     let iso_fixtures = [
-        "test_read_format_iso_rockridge_zf_overflow.iso.Z",
-        "test_read_format_iso_zisofs_overflow.iso.Z",
+        "test_read_format_iso_rockridge_zf_overflow.iso",
+        "test_read_format_iso_zisofs_overflow.iso",
         "test_read_format_iso_joliet_utf16be_overflow.iso",
         "test_read_format_iso_rockridge_ce_loop.iso.Z",
     ];
 
     for fixture in &iso_fixtures {
-        if let Some(bytes) = load_libarchive_asset(fixture) {
-            let (_tmp, path) = write_temp_archive(fixture, &bytes);
-            let detect = UnifiedArchiveOrchestrator::detect_format(&path);
-            assert!(detect.is_ok(), "ISO corrupted fixture '{}' format detection must succeed", fixture);
-            let _ = UnifiedArchiveOrchestrator::sniff_format(&bytes);
-        }
+        let bytes = load_libarchive_asset(fixture);
+        let (_tmp, path) = write_temp_archive(fixture, &bytes);
+        let detect = UnifiedArchiveOrchestrator::detect_format(&path);
+        assert!(detect.is_ok(), "ISO corrupted fixture '{}' format detection must succeed", fixture);
+        let _ = UnifiedArchiveOrchestrator::sniff_format(&bytes);
+
     }
 }

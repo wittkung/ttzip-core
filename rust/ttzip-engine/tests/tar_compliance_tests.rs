@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive compliance and differential test suite for TAR archive formats.
 //!
@@ -367,7 +367,7 @@ fn test_23_compliance_duplicate_file_conflict_detection() {
 
     let archive = TarArchive::open_slice(ARCHIVE_READING_FILES).expect("Open archive");
     let options = TTZipExtractOptions {
-        overwrite_existing: true,
+        collision_policy: 0,
         ..Default::default()
     };
     archive.extract_all(dir.path(), &options).expect("Overwrite true must succeed");

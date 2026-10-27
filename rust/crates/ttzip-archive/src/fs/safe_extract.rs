@@ -1,14 +1,65 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe extraction pipeline with ZipSlip path traversal defense and two-stage
 //! bottom-up POSIX permission and timestamp restoration.
 
+pub use super::dir_jail::DirJail;
 use crate::types::TTZipStatus;
-use std::ffi::CString;
+use std::borrow::Cow;
 use std::fs::{self, File};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
+use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
+
+/// Maps Windows backslashes `\` to POSIX forward slashes `/` in-place within a mutable byte slice.
+///
+/// Because both `\` (`0x5C`) and `/` (`0x2F`) are 1-byte ASCII characters, this transformation
+/// strictly preserves length and UTF-8 validity with zero heap allocations.
+#[inline]
+pub fn normalize_slashes_in_place(bytes: &mut [u8]) {
+    for b in bytes.iter_mut() {
+        if *b == b'\\' {
+            *b = b'/';
+        }
+    }
+}
+
+/// Maps Windows backslashes `\` to POSIX forward slashes `/` in-place within a mutable string buffer.
+#[inline]
+pub fn normalize_slashes_in_place_str(s: &mut str) {
+    // SAFETY: Replacing ASCII byte 0x5C with ASCII byte 0x2F strictly preserves UTF-8 invariants.
+    unsafe {
+        normalize_slashes_in_place(s.as_bytes_mut());
+    }
+}
+
+/// Normalizes Windows backslashes `\` to POSIX forward slashes `/`.
+///
+/// Returns `Cow::Borrowed` with zero allocations when no backslashes are present,
+/// or an in-place mutated `Cow::Owned` string when backslashes are encountered.
+#[inline]
+pub fn normalize_slashes(path: &str) -> Cow<'_, str> {
+    if !path.as_bytes().contains(&b'\\') {
+        Cow::Borrowed(path)
+    } else {
+        let mut owned = path.to_string();
+        normalize_slashes_in_place_str(&mut owned);
+        Cow::Owned(owned)
+    }
+}
+
+/// Normalizes a path string to Unicode Canonical Composition (NFC) form.
+///
+/// Employs a zero-allocation fast-path for pure ASCII or pre-normalized inputs.
+#[inline]
+pub fn normalize_to_nfc(path: &str) -> Cow<'_, str> {
+    if path.is_ascii() || is_nfc_quick(path.chars()) == IsNormalized::Yes {
+        Cow::Borrowed(path)
+    } else {
+        Cow::Owned(path.nfc().collect::<String>())
+    }
+}
 
 /// Strictly validates that no intermediate ancestor directory between dest_dir and target is a symlink.
 pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Result<(), TTZipStatus> {
@@ -34,67 +85,97 @@ pub fn validate_no_intermediate_symlinks(dest_dir: &Path, target: &Path) -> Resu
     Ok(())
 }
 
+/// Checks if a path component is a Windows reserved device name, either as a standalone
+/// name (e.g. `CON`, `nul`) or with an extension (e.g. `CON.txt`, `aux.tar.gz`).
+#[inline]
+pub fn is_windows_reserved_device(comp: &str) -> bool {
+    crate::security::path_sanitizer::is_windows_reserved_device_name(comp)
+}
+
 /// Sanitizes a relative entry path and strictly validates that it does not escape `dest_dir`.
 ///
 /// Defends against:
 /// 1. Path traversal (`..`, `../..`, `/..`)
-/// 2. Absolute root paths (`/etc/passwd`, `\Windows\System32`, `C:\`)
-/// 3. Embedded null bytes (`\0`)
+/// 2. Absolute root paths (`/etc/passwd`), UNC paths (`//share`, `\\share`), and drive letters (`C:`)
+/// 3. Backslashes (`\`) and Windows illegal characters (`< > : " | ? *`)
+/// 4. Embedded null bytes and ASCII control characters (`0x00..=0x1F`)
+/// 5. Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM0-9`, `LPT0-9`, `CLOCK$`, `CONIN$`, `CONOUT$`)
+/// 6. NTFS Alternate Data Streams (`:`)
+/// 7. Win32 normalization trailing space/dot truncation (`foo `, `foo.`) and leading space (` foo`)
+/// 8. Path total length upper bound (<= 4096 bytes)
+/// 9. Unicode normalization desynchronization via canonical NFC formatting
 pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Result<PathBuf, TTZipStatus> {
-    if raw_entry_path.starts_with('/')
-        || raw_entry_path.starts_with('\\')
-        || raw_entry_path.contains('\0')
-        || raw_entry_path.contains("://")
-    {
+    let raw_bytes = raw_entry_path.as_bytes();
+    let len = raw_bytes.len();
+
+    // 1. Length bounds (1..=4096 bytes)
+    if len == 0 || len > 4096 {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    // Reject Windows drive letters (e.g. "C:", "D:") and UNC paths
-    if raw_entry_path.len() >= 2 {
-        let bytes = raw_entry_path.as_bytes();
-        if bytes[1] == b':' && bytes[0].is_ascii_alphabetic() {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-        if raw_entry_path.starts_with(r"\\") || raw_entry_path.starts_with("//") {
+    // 2. Reject root slash, UNC paths (// or \\), or scheme delimiters (://)
+    if raw_bytes[0] == b'/' || raw_entry_path.starts_with("//") || raw_entry_path.contains("://") {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // 3. Reject Windows drive letter prefix (e.g. "C:", "D:")
+    if len >= 2 && raw_bytes[0].is_ascii_alphabetic() && raw_bytes[1] == b':' {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // 4. Pure byte scan: reject control characters (0x00..=0x1F), backslashes ('\'),
+    // and Windows illegal characters (< > : " | ? *)
+    for &b in raw_bytes {
+        if b <= 0x1F || b == b'\\' || matches!(b, b'<' | b'>' | b':' | b'"' | b'|' | b'?' | b'*') {
             return Err(TTZipStatus::ErrSecurityViolation);
         }
     }
 
+    // 5. Canonical Unicode NFC normalization
+    let nfc_normalized = normalize_to_nfc(raw_entry_path);
+    let normalized_path = nfc_normalized.as_ref();
+    if normalized_path.len() > 4096 {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // 6. Component-level structural and Win32 normalization validation
     let mut target = dest_dir.to_path_buf();
     let mut has_normal_components = false;
 
-    macro_rules! process_components {
-        ($path:expr) => {
-            for comp in $path.components() {
-                match comp {
-                    Component::Normal(c) => {
-                        let s = match c.to_str() {
-                            Some(s) => s,
-                            None => return Err(TTZipStatus::ErrSecurityViolation),
-                        };
-                        if s.chars().all(|ch| ch == '.') {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
-                        if s.len() >= 2 && s.as_bytes()[1] == b':' && s.as_bytes()[0].is_ascii_alphabetic() {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
-                        target.push(s);
-                        has_normal_components = true;
-                    }
-                    Component::CurDir => {}
-                    Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                }
-            }
-        };
-    }
+    for comp in Path::new(normalized_path).components() {
+        match comp {
+            Component::Normal(c) => {
+                let s = match c.to_str() {
+                    Some(s) => s,
+                    None => return Err(TTZipStatus::ErrSecurityViolation),
+                };
 
-    if raw_entry_path.contains('\\') {
-        let normalized_slashes = raw_entry_path.replace('\\', "/");
-        process_components!(Path::new(&normalized_slashes));
-    } else {
-        process_components!(Path::new(raw_entry_path));
+                // Win32 normalization trailing truncation & leading space defense:
+                // Components must not start with space, and must not end with space or dot (except AppleDouble root ._.).
+                if s.starts_with(' ') || s.ends_with(' ') || (s.ends_with('.') && s != "._.") {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+
+                // Reject multi-dot components ("..", "...", etc.)
+                if s.chars().all(|ch| ch == '.') {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+
+                // Defense against NTFS Alternate Data Streams (ADS) and Windows reserved devices
+                if s.contains(':') || is_windows_reserved_device(s) {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+
+                target.push(s);
+                has_normal_components = true;
+            }
+            Component::CurDir => {
+                // Standalone '.' relative component is safe to skip
+            }
+            Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+        }
     }
 
     if !has_normal_components || !target.starts_with(dest_dir) {
@@ -102,6 +183,74 @@ pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Resu
     }
 
     Ok(target)
+}
+
+/// Validates and normalizes an archive entry relative path for ZIP archive creation.
+///
+/// Strictly conforms to PKWARE APPNOTE.TXT Section 4.4.17.1:
+/// - Maps Windows backslashes `\` to POSIX forward slashes `/`.
+/// - Prohibits leading slashes, drive letters, and parent directory traversal (`..`).
+/// - Prohibits embedded null bytes (`\0`) and control characters (`0x00..=0x1F`).
+/// - Prohibits NTFS Alternate Data Streams (`:`).
+/// - Enforces maximum length bounds (<= 4096 bytes).
+/// - Appends trailing `/` for directories if absent.
+pub fn validate_and_normalize_zip_rel_path(raw_rel_path: &str, is_directory: bool) -> Result<String, TTZipStatus> {
+    if raw_rel_path.is_empty() || raw_rel_path.len() > 4096 || raw_rel_path.contains('\0') {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // In-place slash normalization: convert Windows '\' to POSIX '/'
+    let mut normalized = raw_rel_path.to_string();
+    normalize_slashes_in_place_str(&mut normalized);
+
+    // Reject absolute paths, UNC prefixes, or scheme delimiters
+    if normalized.starts_with('/') || normalized.starts_with("//") || normalized.contains("://") {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // Reject Windows drive letters (e.g. "C:")
+    let bytes = normalized.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    // Reject NTFS alternate data streams or control characters
+    for &b in bytes {
+        if b <= 0x1F || b == b':' {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+    }
+
+    // Component-level structural and traversal validation
+    let mut has_normal = false;
+    for comp in Path::new(&normalized).components() {
+        match comp {
+            Component::Normal(s) => {
+                let s_str = match s.to_str() {
+                    Some(val) => val,
+                    None => return Err(TTZipStatus::ErrSecurityViolation),
+                };
+                if s_str.chars().all(|ch| ch == '.') || is_windows_reserved_device(s_str) {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+                has_normal = true;
+            }
+            Component::CurDir => {}
+            Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+        }
+    }
+
+    if !has_normal {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    if is_directory && !normalized.ends_with('/') {
+        normalized.push('/');
+    }
+
+    Ok(normalized)
 }
 
 /// Metadata record for deferred application after archive extraction completes.
@@ -113,6 +262,7 @@ pub struct DeferredEntryMetadata {
     pub mtime_nanos: u32,
     pub is_directory: bool,
     pub is_symlink: bool,
+    pub expected_identity: Option<(u64, u64)>,
 }
 
 impl DeferredEntryMetadata {
@@ -127,6 +277,7 @@ impl DeferredEntryMetadata {
 pub struct SafeExtractEngine {
     pub dest_root: PathBuf,
     deferred_entries: Vec<DeferredEntryMetadata>,
+    preexisting_dirs: std::collections::HashSet<PathBuf>,
 }
 
 impl SafeExtractEngine {
@@ -134,18 +285,23 @@ impl SafeExtractEngine {
         Self {
             dest_root: PathBuf::new(),
             deferred_entries: Vec::new(),
+            preexisting_dirs: std::collections::HashSet::new(),
         }
     }
 
     pub fn for_root(dest_root: impl Into<PathBuf>) -> Self {
+        let root = dest_root.into();
+        let preexisting_dirs = snapshot_existing_dirs(&root);
         Self {
-            dest_root: dest_root.into(),
+            dest_root: root,
             deferred_entries: Vec::new(),
+            preexisting_dirs,
         }
     }
 
     pub fn set_dest_root(&mut self, dest_root: impl Into<PathBuf>) {
         self.dest_root = dest_root.into();
+        self.preexisting_dirs = snapshot_existing_dirs(&self.dest_root);
     }
 
     /// Registers an entry for deferred metadata application.
@@ -177,6 +333,7 @@ impl SafeExtractEngine {
             mtime_nanos,
             is_directory,
             is_symlink,
+            expected_identity: None,
         });
     }
 
@@ -187,19 +344,18 @@ impl SafeExtractEngine {
 
     /// Creates directory hierarchy with temporary restricted `0700` POSIX permissions.
     pub fn create_dir_all_secure(&mut self, path: &Path, mode: u32, mtime_secs: i64) -> std::io::Result<()> {
-        let root = if !self.dest_root.as_os_str().is_empty() && path.starts_with(&self.dest_root) {
-            &self.dest_root
+        if !self.dest_root.as_os_str().is_empty() && path.starts_with(&self.dest_root) {
+            create_dir_in_dir_nofollow(&self.dest_root, path).map_err(std::io::Error::from)?;
         } else {
-            path.parent().unwrap_or(path)
-        };
-        validate_no_intermediate_symlinks(root, path)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
+            let root = path.parent().unwrap_or(path);
+            validate_no_intermediate_symlinks(root, path)
+                .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
 
-        let mut builder = fs::DirBuilder::new();
-        builder.recursive(true);
-        builder.mode(0o700); // Stage 1: Temporary restricted permissions
-
-        builder.create(path)?;
+            let mut builder = fs::DirBuilder::new();
+            builder.recursive(true);
+            builder.mode(0o700);
+            builder.create(path)?;
+        }
 
         self.deferred_entries.push(DeferredEntryMetadata {
             path: path.to_path_buf(),
@@ -208,6 +364,7 @@ impl SafeExtractEngine {
             mtime_nanos: 0,
             is_directory: true,
             is_symlink: false,
+            expected_identity: None,
         });
 
         Ok(())
@@ -219,41 +376,35 @@ impl SafeExtractEngine {
         path: &Path,
         mode: u32,
         mtime_secs: i64,
-        overwrite_existing: bool,
+        collision_policy: bool,
     ) -> std::io::Result<File> {
-        let root = if !self.dest_root.as_os_str().is_empty() && path.starts_with(&self.dest_root) {
-            &self.dest_root
+        let file = if !self.dest_root.as_os_str().is_empty() && path.starts_with(&self.dest_root) {
+            let jail = DirJail::open(&self.dest_root).map_err(std::io::Error::from)?;
+            let comps = jail.resolve_path_components(path).map_err(std::io::Error::from)?;
+            jail.open_file_components(&comps, 0o600, collision_policy)
+                .map_err(std::io::Error::from)?
         } else {
-            path.parent().unwrap_or(path)
-        };
-        validate_no_intermediate_symlinks(root, path)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
+            let root = path.parent().unwrap_or(path);
+            validate_no_intermediate_symlinks(root, path)
+                .map_err(|_| std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Symlink in parent path"))?;
 
-        // Explicitly sever pre-existing symlinks to defend against symlink overwrite / TOCTOU
-        if let Ok(meta) = fs::symlink_metadata(path) {
-            if meta.file_type().is_symlink() {
-                if overwrite_existing {
-                    fs::remove_file(path)?;
-                } else {
-                    return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "Target is a symlink"));
+            if let Ok(meta) = fs::symlink_metadata(path) {
+                if meta.file_type().is_symlink() || meta.file_type().is_dir() {
+                    return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Target is a symlink or directory"));
                 }
             }
-        }
 
-        let mut options = fs::OpenOptions::new();
-        options.write(true).create(true);
-
-        if overwrite_existing {
-            options.truncate(true);
-        } else {
-            options.create_new(true);
-        }
-
-        // Apply O_NOFOLLOW | O_CLOEXEC to ensure we never follow symlinks during file creation
-        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
-        options.mode(0o600); // Stage 1: Temporary restricted user-only mode
-
-        let file = options.open(path)?;
+            let mut options = fs::OpenOptions::new();
+            options.write(true).create(true);
+            if collision_policy {
+                options.truncate(true);
+            } else {
+                options.create_new(true);
+            }
+            options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+            options.mode(0o600);
+            options.open(path)?
+        };
 
         self.deferred_entries.push(DeferredEntryMetadata {
             path: path.to_path_buf(),
@@ -262,10 +413,20 @@ impl SafeExtractEngine {
             mtime_nanos: 0,
             is_directory: false,
             is_symlink: false,
+            expected_identity: None,
         });
 
         Ok(file)
     }
+
+    /// Default post-extraction POSIX permission for implicit parent directories
+    /// (ancestor directories created on demand when an archive omits explicit directory headers)
+    /// and explicit directory entries whose header omits POSIX mode bits (`mode == 0`).
+    pub const DEFAULT_IMPLICIT_DIR_MODE: u32 = 0o755;
+
+    /// Default post-extraction POSIX permission for newly extracted regular files when
+    /// `preserve_permissions == false` (owner-writable, non-executable, non-world-writable).
+    pub const DEFAULT_REGULAR_FILE_MODE: u32 = 0o644;
 
     /// Stage 2: Post-extraction deferred metadata application in Bottom-Up order.
     ///
@@ -273,21 +434,46 @@ impl SafeExtractEngine {
     /// to prevent changing parent permissions (e.g. to read-only 0555) before child
     /// entries have their metadata and timestamps applied.
     pub fn apply_deferred_metadata(&mut self, preserve_permissions: bool) -> Result<(), TTZipStatus> {
-        // Separate files and directories
-        let mut files = Vec::new();
-        let mut dirs = Vec::new();
+        let drained: Vec<DeferredEntryMetadata> = self.deferred_entries.drain(..).collect();
+        let (mut files, mut dirs) = super::staged_metadata::dedup_last_entry_wins(drained);
+        let mut implicit_dirs = self.collect_implicit_parent_dirs(&files, &dirs);
+        let creation_mode_mask =
+            super::staged_metadata::probe_creation_mode_mask_for_path(&self.dest_root);
 
-        for entry in self.deferred_entries.drain(..) {
-            if entry.is_directory {
-                dirs.push(entry);
-            } else {
-                files.push(entry);
-            }
+        if !self.dest_root.as_os_str().is_empty() {
+            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut files)
+                .map_err(|e| e.status)?;
+            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut dirs)
+                .map_err(|e| e.status)?;
+            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut implicit_dirs)
+                .map_err(|e| e.status)?;
         }
 
-        // 1. Apply file metadata first
+        if super::staged_metadata::is_transactional_staging_payload(&self.dest_root) {
+            super::staged_metadata::store_staged_metadata_plan(
+                super::staged_metadata::StagedMetadataPlan {
+                    staging_payload_root: self.dest_root.clone(),
+                    preserve_permissions,
+                    creation_mode_mask,
+                    files,
+                    explicit_dirs: dirs,
+                    implicit_dirs,
+                },
+            );
+            return Ok(());
+        }
+
+        dirs.extend(implicit_dirs);
+
+        // 1. Apply file metadata first via DirJail FD traversal
         for file in files {
-            Self::apply_single_entry_metadata(&file, preserve_permissions)?;
+            super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
+                &self.dest_root,
+                &file,
+                preserve_permissions,
+                creation_mode_mask,
+            )
+            .map_err(|e| e.status)?;
         }
 
         // 2. Sort directories Bottom-Up (descending depth, deepest child first)
@@ -299,71 +485,71 @@ impl SafeExtractEngine {
             depth_b.cmp(depth_a).then_with(|| dir_b.path.cmp(&dir_a.path))
         });
 
-        // 3. Apply directory metadata in bottom-up sequence
+        // 3. Apply directory metadata in bottom-up sequence via DirJail FD traversal
         for (_, dir) in decorated_dirs {
-            Self::apply_single_entry_metadata(&dir, preserve_permissions)?;
+            super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
+                &self.dest_root,
+                &dir,
+                preserve_permissions,
+                creation_mode_mask,
+            )
+            .map_err(|e| e.status)?;
+            self.preexisting_dirs.insert(dir.path);
         }
 
         Ok(())
     }
 
-    fn apply_single_entry_metadata(entry: &DeferredEntryMetadata, preserve_permissions: bool) -> Result<(), TTZipStatus> {
-        let path_str = match entry.path.to_str() {
-            Some(s) => s,
-            None => return Err(TTZipStatus::ErrInvalidParam),
-        };
+    fn collect_implicit_parent_dirs(
+        &self,
+        files: &[DeferredEntryMetadata],
+        explicit_dirs: &[DeferredEntryMetadata],
+    ) -> Vec<DeferredEntryMetadata> {
+        if self.dest_root.as_os_str().is_empty() {
+            return Vec::new();
+        }
+        let explicit_paths: std::collections::HashSet<&Path> =
+            explicit_dirs.iter().map(|d| d.path.as_path()).collect();
+        let mut seen_implicit = std::collections::HashSet::new();
+        let mut implicit_dirs = Vec::new();
 
-        let c_path = match CString::new(path_str) {
-            Ok(c) => c,
-            Err(_) => return Err(TTZipStatus::ErrInvalidParam),
-        };
-
-        unsafe {
-            // Check using lstat to verify entry is NOT an unexpected symlink (TOCTOU defense)
-            let mut st: libc::stat = std::mem::zeroed();
-            if libc::lstat(c_path.as_ptr(), &mut st) != 0 {
-                return Err(TTZipStatus::ErrFileNotFound);
-            }
-
-            let is_actual_symlink = (st.st_mode & libc::S_IFMT) == libc::S_IFLNK;
-            if !entry.is_symlink && is_actual_symlink {
-                return Err(TTZipStatus::ErrSecurityViolation);
-            }
-
-            // Apply POSIX permissions if requested and not a symlink, physically stripping SUID/SGID and world-writable bits
-            if preserve_permissions && !is_actual_symlink && entry.mode != 0 {
-                let target_mode = ((entry.mode & 0o0777) & !0o002) as libc::mode_t;
-                if libc::chmod(c_path.as_ptr(), target_mode) != 0 {
-                    return Err(TTZipStatus::ErrExtractionFailed);
+        for entry in files.iter().chain(explicit_dirs.iter()) {
+            let mut cur = entry.path.parent();
+            while let Some(parent) = cur {
+                if parent == self.dest_root || !parent.starts_with(&self.dest_root) {
+                    break;
                 }
-            }
-
-            // Apply modified timestamp (mtime)
-            if entry.mtime_epoch_secs > 0 {
-                let times = [
-                    libc::timespec {
-                        tv_sec: entry.mtime_epoch_secs as libc::time_t,
-                        tv_nsec: entry.mtime_nanos as libc::c_long,
-                    },
-                    libc::timespec {
-                        tv_sec: entry.mtime_epoch_secs as libc::time_t,
-                        tv_nsec: entry.mtime_nanos as libc::c_long,
-                    },
-                ];
-                libc::utimensat(libc::AT_FDCWD, c_path.as_ptr(), times.as_ptr(), libc::AT_SYMLINK_NOFOLLOW);
+                if !explicit_paths.contains(parent)
+                    && !self.preexisting_dirs.contains(parent)
+                    && seen_implicit.insert(parent.to_path_buf())
+                {
+                    implicit_dirs.push(DeferredEntryMetadata {
+                        path: parent.to_path_buf(),
+                        mode: 0,
+                        mtime_epoch_secs: 0,
+                        mtime_nanos: 0,
+                        is_directory: true,
+                        is_symlink: false,
+                        expected_identity: None,
+                    });
+                }
+                cur = parent.parent();
             }
         }
 
-        Ok(())
+        implicit_dirs
     }
 }
 
 /// Securely creates/opens an extracted file with `O_NOFOLLOW | O_CLOEXEC`,
-/// explicitly severing any pre-existing symlink at the destination path before creation.
+/// rejecting any pre-existing symlink or directory at the destination path.
 pub fn open_extracted_file_strictly_nofollow(path: &Path) -> std::io::Result<File> {
     if let Ok(meta) = fs::symlink_metadata(path) {
-        if meta.file_type().is_symlink() {
-            fs::remove_file(path)?;
+        if meta.file_type().is_symlink() || meta.file_type().is_dir() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "Target is a symlink or directory",
+            ));
         }
     }
 
@@ -374,146 +560,73 @@ pub fn open_extracted_file_strictly_nofollow(path: &Path) -> std::io::Result<Fil
     options.open(path)
 }
 
-/// Securely creates/opens an extracted file within `dest_dir`, first validating that no intermediate
-/// ancestor is a symlink, and then using `O_NOFOLLOW | O_CLOEXEC` to prevent symlink traversal.
+/// Securely creates/opens an extracted file within `dest_dir` via step-by-step `DirJail` resolution.
 pub fn open_extracted_file_in_dir_nofollow(dest_dir: &Path, safe_path: &Path) -> Result<File, TTZipStatus> {
-    validate_no_intermediate_symlinks(dest_dir, safe_path)?;
-    open_extracted_file_strictly_nofollow(safe_path).map_err(|_| TTZipStatus::ErrExtractionFailed)
+    let jail = DirJail::open(dest_dir)?;
+    let comps = jail.resolve_path_components(safe_path)?;
+    jail.open_file_components(&comps, 0o600, true)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use std::os::unix::fs::PermissionsExt;
-    use tempfile::tempdir;
-
-    #[test]
-    fn test_zipslip_traversal_rejection() {
-        let tmp = tempdir().unwrap();
-        let dest = tmp.path();
-
-        assert_eq!(
-            sanitize_and_validate_path(dest, "../../etc/passwd"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "/etc/shadow"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "a/../../etc/passwd"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "../foo"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "a/../../bar"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "foo/.."),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "foo/../bar"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, ".."),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "."),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "..\\foo"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "foo\\..\\bar"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "C:\\Windows\\System32"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "\\\\evil_server\\share"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
-        assert_eq!(
-            sanitize_and_validate_path(dest, "valid_file.txt\0payload"),
-            Err(TTZipStatus::ErrSecurityViolation)
-        );
+/// Securely creates a directory hierarchy within `dest_dir` via step-by-step `DirJail` resolution.
+pub fn create_dir_in_dir_nofollow(dest_dir: &Path, safe_path: &Path) -> Result<(), TTZipStatus> {
+    let jail = DirJail::open(dest_dir)?;
+    if safe_path == dest_dir {
+        return Ok(());
     }
-
-    #[test]
-    fn test_valid_path_sanitization() {
-        let tmp = tempdir().unwrap();
-        let dest = tmp.path();
-        let valid = sanitize_and_validate_path(dest, "folder/subfolder/file.txt").unwrap();
-        assert_eq!(valid, dest.join("folder/subfolder/file.txt"));
-
-        let dotted = sanitize_and_validate_path(dest, "./dir/./nested/./test.dat").unwrap();
-        assert_eq!(dotted, dest.join("dir/nested/test.dat"));
-
-        // Consecutive dots within legitimate file and directory names must be permitted
-        let multi_dot = sanitize_and_validate_path(dest, "archive..v1.0.tar").unwrap();
-        assert_eq!(multi_dot, dest.join("archive..v1.0.tar"));
-
-        let multi_dot_nested = sanitize_and_validate_path(dest, "release..dir/nested..file.ext").unwrap();
-        assert_eq!(multi_dot_nested, dest.join("release..dir/nested..file.ext"));
-
-        let complex_dots = sanitize_and_validate_path(dest, "pkg/version..1.0..final.tar.gz").unwrap();
-        assert_eq!(complex_dots, dest.join("pkg/version..1.0..final.tar.gz"));
-    }
-
-    #[test]
-    fn test_two_stage_extraction_and_bottom_up_metadata() {
-        let tmp_dir = tempdir().unwrap();
-        let temp_dir = tmp_dir.path();
-
-        let mut engine = SafeExtractEngine::new();
-
-        let sub_dir = temp_dir.join("level1/level2");
-        engine.create_dir_all_secure(&sub_dir, 0o755, 1700000000).unwrap();
-
-        let file_path = sub_dir.join("sample.txt");
-        let mut f = engine.create_file_secure(&file_path, 0o644, 1700000000, true).unwrap();
-        f.write_all(b"Safe extraction content").unwrap();
-        drop(f);
-
-        // Verify stage 1 temporary permissions
-        let file_meta = fs::metadata(&file_path).unwrap();
-        assert_eq!(file_meta.permissions().mode() & 0o777, 0o600);
-
-        // Stage 2: Apply deferred metadata bottom-up
-        engine.apply_deferred_metadata(true).unwrap();
-
-        // Verify stage 2 final permissions applied
-        let final_file_meta = fs::metadata(&file_path).unwrap();
-        assert_eq!(final_file_meta.permissions().mode() & 0o777, 0o644);
-
-        let final_dir_meta = fs::metadata(&sub_dir).unwrap();
-        assert_eq!(final_dir_meta.permissions().mode() & 0o777, 0o755);
-    }
-
-    #[test]
-    fn test_open_extracted_file_in_dir_nofollow_intermediate_symlink() {
-        let tmp = tempdir().unwrap();
-        let dest = tmp.path();
-        let outside = tempdir().unwrap();
-
-        // Create an intermediate symlink directory pointing outside dest
-        let symlink_dir = dest.join("symdir");
-        std::os::unix::fs::symlink(outside.path(), &symlink_dir).unwrap();
-
-        let target_file = symlink_dir.join("evil.txt");
-        let res = open_extracted_file_in_dir_nofollow(dest, &target_file);
-        assert_eq!(res.err(), Some(TTZipStatus::ErrSecurityViolation));
-    }
+    let comps = jail.resolve_path_components(safe_path)?;
+    jail.create_dir_all_components(&comps)
 }
+
+/// Securely validates and creates a symlink within `dest_dir` via `DirJail` (`symlinkat` + chained symlink defense).
+pub fn create_symlink_in_dir_nofollow(
+    dest_dir: &Path,
+    safe_path: &Path,
+    link_target: &str,
+) -> Result<(), TTZipStatus> {
+    let jail = DirJail::open(dest_dir)?;
+    let comps = jail.resolve_path_components(safe_path)?;
+    jail.create_symlink_components(&comps, link_target)
+}
+
+/// Securely validates and creates a hardlink within `dest_dir` via `DirJail` (`linkat` without following symlinks).
+pub fn create_hardlink_in_dir_nofollow(
+    dest_dir: &Path,
+    dst_safe_path: &Path,
+    src_safe_path: &Path,
+) -> Result<(), TTZipStatus> {
+    let jail = DirJail::open(dest_dir)?;
+    let dst_comps = jail.resolve_path_components(dst_safe_path)?;
+    let src_comps = jail.resolve_path_components(src_safe_path)?;
+    jail.create_hardlink_components(&dst_comps, &src_comps)
+}
+
+fn snapshot_existing_dirs(root: &Path) -> std::collections::HashSet<PathBuf> {
+    let mut set = std::collections::HashSet::new();
+    if root.as_os_str().is_empty() {
+        return set;
+    }
+    let Ok(meta) = fs::symlink_metadata(root) else {
+        return set;
+    };
+    if !meta.file_type().is_dir() || meta.file_type().is_symlink() {
+        return set;
+    }
+
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Ok(em) = fs::symlink_metadata(&path) {
+                if em.file_type().is_dir() && !em.file_type().is_symlink() {
+                    set.insert(path.clone());
+                    stack.push(path);
+                }
+            }
+        }
+    }
+    set
+}
+

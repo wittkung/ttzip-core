@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Coder BindPairs Directed Acyclic Graph (DAG) Engine.
 //!
@@ -9,7 +9,7 @@
 
 use std::collections::VecDeque;
 
-pub use ttzip_types::SevenZError;
+pub use super::error::SevenZError;
 
 
 /// Represents an individual Coder node inside a 7z Folder decompression DAG.

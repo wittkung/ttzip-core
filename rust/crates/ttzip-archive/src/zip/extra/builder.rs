@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Serializers for Local File Header (LFH) and Central Directory File Header (CDFH) Extra Fields.
 

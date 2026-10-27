@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! UUDecode parser and corrupted archive fixture loader for libarchive test assets.
 
@@ -76,56 +76,82 @@ pub fn uudecode(input: &[u8]) -> Option<Vec<u8>> {
     }
 }
 
-/// Locates the vendor libarchive test asset directory.
-pub fn find_vendor_libarchive_dir() -> Option<PathBuf> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let mut candidates = vec![
-        manifest_dir.join("../../../vendor/libarchive/libarchive/test"),
-        manifest_dir.join("../../vendor/libarchive/libarchive/test"),
-        manifest_dir.join("../vendor/libarchive/libarchive/test"),
-        manifest_dir.join("vendor/libarchive/libarchive/test"),
-        manifest_dir.join("../../../../../../products/ttzip/vendor/libarchive/libarchive/test"),
-        manifest_dir.join("../../../../../../products/ttzip/core/upstream/libarchive/pr-3388-7z-aes/libarchive/test"),
-    ];
-
-    if let Ok(home) = std::env::var("HOME") {
-        let h = PathBuf::from(home);
-        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3388-7z-aes/libarchive/test"));
-        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3391-crc32/libarchive/test"));
-        candidates.push(h.join(".cache/metastudyline/upstream-workspaces/upstream/libarchive/pr-3393-preallocate/libarchive/test"));
-        candidates.push(h.join("Documents/dev/products/ttzip/vendor/libarchive/libarchive/test"));
-    }
-
-    for candidate in &candidates {
-        if candidate.exists() {
-            return candidate.canonicalize().ok().or_else(|| Some(candidate.clone()));
-        }
-    }
-
-    None
+/// Required fixture corpus selected once before parallel tests begin reading it.
+/// Managed runs use only the BUILD-provided runfiles root; a manual upstream root
+/// must be explicitly requested and is never reported as owned acceptance evidence.
+pub struct FixtureCorpus {
+    pub root: PathBuf,
+    pub managed: bool,
+    pub filenames: Vec<String>,
 }
 
-/// Locates and loads a reference test asset from libarchive vendor test directory.
-pub fn load_libarchive_asset(filename: &str) -> Option<Vec<u8>> {
-    let base_vendor = find_vendor_libarchive_dir()?;
-
-    let direct_path = base_vendor.join(filename);
-    if direct_path.exists() {
-        if let Ok(bytes) = fs::read(&direct_path) {
-            return Some(bytes);
+pub fn fixture_corpus() -> &'static FixtureCorpus {
+    static CORPUS: std::sync::OnceLock<FixtureCorpus> = std::sync::OnceLock::new();
+    CORPUS.get_or_init(|| {
+        if let Some(root) = std::env::var_os("TTZIP_MANUAL_LIBARCHIVE_FIXTURE_DIR") {
+            let root = PathBuf::from(root);
+            assert!(root.is_dir(), "explicit manual fixture directory is missing: {}", root.display());
+            eprintln!("MANUAL libarchive fixture source: {} (not managed acceptance)", root.display());
+            return FixtureCorpus { root, managed: false, filenames: Vec::new() };
         }
-    }
-
-    let uu_path = base_vendor.join(format!("{}.uu", filename));
-    if uu_path.exists() {
-        if let Ok(bytes) = fs::read(&uu_path) {
-            if let Some(dec) = uudecode(&bytes) {
-                return Some(dec);
+        let root = if let Some(dir) = std::env::var_os("TTZIP_LIBARCHIVE_FIXTURE_DIR") {
+            PathBuf::from(dir)
+        } else {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let mut found = None;
+            let mut cur = Some(manifest_dir.as_path());
+            while let Some(d) = cur {
+                let candidate = d.join("third_party/testdata/libarchive-corrupted");
+                if candidate.join("manifest.json").is_file() {
+                    found = Some(candidate);
+                    break;
+                }
+                cur = d.parent();
             }
+            found.expect("BUILD must provide TTZIP_LIBARCHIVE_FIXTURE_DIR or repository third_party/testdata/libarchive-corrupted; personal HOME/compile directories are never probed")
+        };
+        let data = fs::read(root.join("manifest.json")).expect("required managed fixture manifest");
+        let manifest: serde_json::Value = serde_json::from_slice(&data).expect("fixture manifest JSON");
+        assert_eq!(manifest["pinned_commit"], "03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3");
+        assert_eq!(manifest["official_repository"], "https://github.com/libarchive/libarchive");
+        let entries = manifest["fixtures"].as_array().expect("required fixture list");
+        assert_eq!(entries.len(), 26, "all 26 named corpus assets are required");
+        let mut filenames = Vec::new();
+        for entry in entries {
+            let filename = format!("{}.uu", entry["owned_name"].as_str().expect("fixture name"));
+            assert_eq!(PathBuf::from(&filename).components().count(), 1);
+            let bytes = fs::read(root.join(&filename)).unwrap_or_else(|e|
+                panic!("required owned fixture {filename} is missing: {e}"));
+            use sha2::{Digest, Sha256};
+            assert_eq!(hex::encode(Sha256::digest(&bytes)),
+                entry["raw_sha256"].as_str().expect("fixture SHA256"),
+                "owned fixture identity differs: {filename}");
+            filenames.push(filename);
+        }
+        filenames.sort();
+        filenames.dedup();
+        assert_eq!(filenames.len(), 26, "owned fixture list must be unique");
+        eprintln!("MANAGED libarchive fixture source: {} pin=03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3 count=26", root.display());
+        FixtureCorpus { root, managed: true, filenames }
+    })
+}
+
+/// Every requested corpus asset is mandatory. Missing/invalid assets fail instead
+/// of silently skipping a specialized test or reducing the corpus sweep.
+pub fn load_libarchive_asset(filename: &str) -> Vec<u8> {
+    let corpus = fixture_corpus();
+    let uu_name = format!("{filename}.uu");
+    if corpus.managed {
+        assert!(corpus.filenames.contains(&uu_name), "fixture outside owned manifest: {filename}");
+    } else {
+        let direct = corpus.root.join(filename);
+        if direct.is_file() {
+            return fs::read(direct).expect("read explicit manual fixture");
         }
     }
-
-    None
+    let bytes = fs::read(corpus.root.join(&uu_name))
+        .unwrap_or_else(|e| panic!("required fixture {uu_name} is missing: {e}"));
+    uudecode(&bytes).unwrap_or_else(|| panic!("required fixture {uu_name} is not UU encoded"))
 }
 
 /// Writes byte payload to temporary directory and returns handle with full path.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! MOBI and AZW3 Palm Database (PDB) format parser, PalmDOC LZ77 decompressor, and EXTH metadata engine.
 //!

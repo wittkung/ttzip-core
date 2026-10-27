@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Format compliance checkers for modern container and compression standards:
 //! XAR, LZFSE, Snappy, LZ4, Unix AR, RAR, and CAB.

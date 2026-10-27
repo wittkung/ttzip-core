@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! XZ Container Stream Writer, Adaptive Block Encoder, and BCJ/LZMA2 Filter Pipeline.
 //!
@@ -17,10 +17,12 @@ use crate::xz::checksum::{XzChecksumEngine, XzChecksumType};
 use crate::xz::header::{XzStreamFlags, XzStreamFooter, XzStreamHeader};
 use crate::xz::index::{XzBlockRecord, XzStreamIndex};
 use crate::xz::types::{XzCheckType, XzError};
-use rayon::prelude::*;
 use std::io::{self, Write};
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 use crate::xz::bcj::{BcjArm, BcjArm64, BcjRiscv, BcjX86, BranchFilter};
+
+type XzBlockResult = Result<(Vec<u8>, XzBlockRecord), XzError>;
 
 /// Supported Branch Conversion (BCJ) architecture filters for XZ containers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -378,7 +380,7 @@ impl<W: Write> XzParallelStreamWriter<W> {
     }
 
 
-    /// Compresses a large uncompressed buffer using Rayon parallel block chunking,
+    /// Compresses a large uncompressed buffer using scoped parallel block chunking,
     /// writing the completed blocks in strict sequential order.
     pub fn write_parallel(&mut self, data: &[u8]) -> io::Result<()> {
         if data.is_empty() {
@@ -387,14 +389,54 @@ impl<W: Write> XzParallelStreamWriter<W> {
 
         let chunk_size = self.options.block_size;
         let chunks: Vec<&[u8]> = data.chunks(chunk_size).collect();
+        let total = chunks.len();
 
-        let encoded_blocks: Result<Vec<(Vec<u8>, XzBlockRecord)>, XzError> = chunks
-            .into_par_iter()
-            .map(|chunk| XzBlockEncoder::encode_block(chunk, &self.options))
-            .collect();
+        let encoded_blocks: Result<Vec<(Vec<u8>, XzBlockRecord)>, XzError> = if total == 1 {
+            let res = XzBlockEncoder::encode_block(chunks[0], &self.options);
+            res.map(|b| vec![b])
+        } else {
+            let num_threads = ttzip_types::recommended_compute_threads().min(total).max(1);
+            if num_threads <= 1 {
+                chunks
+                    .into_iter()
+                    .map(|chunk| XzBlockEncoder::encode_block(chunk, &self.options))
+                    .collect()
+            } else {
+                let mut buckets: Vec<Vec<(usize, &[u8])>> = (0..num_threads).map(|_| Vec::new()).collect();
+                for (idx, chunk) in chunks.into_iter().enumerate() {
+                    buckets[idx % num_threads].push((idx, chunk));
+                }
 
-        let blocks =
-            encoded_blocks.map_err(|e| io::Error::other(e.to_string()))?;
+                let result_slots: parking_lot::Mutex<Vec<Option<XzBlockResult>>> =
+                    parking_lot::Mutex::new((0..total).map(|_| None).collect());
+                let pool = LocalWorkStealingPool::with_threads(num_threads);
+
+                pool.scope(|s| {
+                    for bucket in buckets {
+                        let opts = &self.options;
+                        let slots_ref = &result_slots;
+                        s.spawn(move || {
+                            let bucket_done: Vec<_> = bucket
+                                .into_iter()
+                                .map(|(idx, chunk)| (idx, XzBlockEncoder::encode_block(chunk, opts)))
+                                .collect();
+                            let mut guard = slots_ref.lock();
+                            for (idx, res) in bucket_done {
+                                guard[idx] = Some(res);
+                            }
+                        });
+                    }
+                });
+
+                result_slots
+                    .into_inner()
+                    .into_iter()
+                    .map(|opt| opt.expect("All chunks must be processed"))
+                    .collect()
+            }
+        };
+
+        let blocks = encoded_blocks.map_err(|e| io::Error::other(e.to_string()))?;
 
         for (block_bytes, record) in blocks {
             self.writer.write_all(&block_bytes)?;

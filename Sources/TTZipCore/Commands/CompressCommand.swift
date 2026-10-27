@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -19,7 +19,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
     public let advancedOptions: ArchiveAdvancedOptions?
     public let progress: (@Sendable (ArchiveProgress) -> Void)?
     
-    private let engineFacade: TTZipEngineFacading
+    private let archiveWriter: ArchiveWriting
     private let lock = NSLock()
     
     private var createdArtifacts: [String] = []
@@ -38,7 +38,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
         filterOptions: ArchiveFilterOptions = ArchiveFilterOptions(),
         advancedOptions: ArchiveAdvancedOptions? = nil,
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
-        engineFacade: TTZipEngineFacading
+        archiveWriter: ArchiveWriting = ArchiveWriter()
     ) {
         self.commandId = commandId
         self.inputs = inputs
@@ -50,10 +50,40 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
         self.filterOptions = filterOptions
         self.advancedOptions = advancedOptions
         self.progress = progress
-        self.engineFacade = engineFacade
+        self.archiveWriter = archiveWriter
         
         let targetName = (outputPath as NSString).lastPathComponent
         self.description = description ?? "Compress files to [\(targetName)] (\(format.rawValue.uppercased()))"
+    }
+
+    public convenience init(
+        commandId: String = UUID().uuidString,
+        description: String? = nil,
+        inputs: [String],
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        password: String? = nil,
+        splitSize: Int64? = nil,
+        filterOptions: ArchiveFilterOptions = ArchiveFilterOptions(),
+        advancedOptions: ArchiveAdvancedOptions? = nil,
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        engineFacade: TTZipEngineFacading?
+    ) {
+        self.init(
+            commandId: commandId,
+            description: description,
+            inputs: inputs,
+            outputPath: outputPath,
+            format: format,
+            level: level,
+            password: password,
+            splitSize: splitSize,
+            filterOptions: filterOptions,
+            advancedOptions: advancedOptions,
+            progress: progress,
+            archiveWriter: ArchiveWriter()
+        )
     }
     
     deinit {
@@ -93,32 +123,31 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
             }
         }
         
-        let result = try await {
-            do {
-                return try await engineFacade.quickCompress(
-                    inputs: inputs,
-                    outputPath: outputPath,
-                    format: format,
-                    level: level,
-                    password: password,
-                    splitSize: splitSize,
-                    filterOptions: filterOptions,
-                    advancedOptions: advancedOptions,
-                    progress: progress
-                )
-            } catch {
-                // Atomic rollback: clean up corrupted incomplete output files and restore originals losslessly from backup.
-                for (originalPath, backupPath) in backupDict {
-                    if fm.fileExists(atPath: originalPath) {
-                        try? fm.removeItem(atPath: originalPath)
-                    }
-                    if fm.fileExists(atPath: backupPath) {
-                        try? fm.moveItem(atPath: backupPath, toPath: originalPath)
-                    }
+        do {
+            let writeRequest = ArchiveWriteRequest(
+                outputPath: outputPath,
+                format: format,
+                level: level,
+                inputPaths: inputs,
+                options: filterOptions,
+                splitVolumeSizeBytes: splitSize,
+                password: password,
+                advancedOptions: advancedOptions ?? .defaultOptions,
+                progressHandler: progress
+            )
+            try await archiveWriter.createArchive(writeRequest)
+        } catch {
+            // Atomic rollback: clean up corrupted incomplete output files and restore originals losslessly from backup.
+            for (originalPath, backupPath) in backupDict {
+                if fm.fileExists(atPath: originalPath) {
+                    try? fm.removeItem(atPath: originalPath)
                 }
-                throw error
+                if fm.fileExists(atPath: backupPath) {
+                    try? fm.moveItem(atPath: backupPath, toPath: originalPath)
+                }
             }
-        }()
+            throw error
+        }
         
         let endTime = CFAbsoluteTimeGetCurrent()
         let duration = endTime - startTime
@@ -152,6 +181,25 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
         if fm.fileExists(atPath: noIndexFilePath) {
             try? fm.removeItem(atPath: noIndexFilePath)
         }
+
+        var totalOrigBytes: Int64 = 0
+        for p in inputs {
+            if let attr = try? fm.attributesOfItem(atPath: p) {
+                if (attr[.type] as? FileAttributeType) == .typeDirectory {
+                    let component = ArchiveComponentTreeBuilder.buildTree(fromDiskPath: p)
+                    totalOrigBytes += component.sizeBytes
+                } else {
+                    totalOrigBytes += (attr[.size] as? Int64) ?? 0
+                }
+            }
+        }
+
+        var totalCompressedBytes: Int64 = 0
+        for artifact in sortedArtifacts {
+            if let attr = try? fm.attributesOfItem(atPath: artifact) {
+                totalCompressedBytes += (attr[.size] as? Int64) ?? 0
+            }
+        }
         
         return CommandResult(
             commandId: commandId,
@@ -160,7 +208,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
             artifactsCreated: sortedArtifacts,
             backupPaths: backupDict,
             executionDuration: duration,
-            metadata: ["compressedSize": "\(result.compressedBytes)", "originalSize": "\(result.originalBytes)"]
+            metadata: ["compressedSize": "\(totalCompressedBytes)", "originalSize": "\(totalOrigBytes)"]
         )
     }
     

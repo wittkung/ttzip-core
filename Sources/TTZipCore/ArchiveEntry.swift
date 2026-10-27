@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -21,6 +21,11 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
     public let isDataEncrypted: Bool
     public let isMetadataEncrypted: Bool
     public let encryptionMethod: String?
+
+    // Optional Extended Archive Entry Metadata (value-carried across Node / Component boundaries)
+    public let posixPermissions: UInt32?
+    public let compressedSize: Int64?
+    public let crc32: UInt32?
     
     // Computed Attributes (Zero Lock)
     @inlinable
@@ -53,7 +58,10 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
         isEncrypted: Bool = false,
         isDataEncrypted: Bool = false,
         isMetadataEncrypted: Bool = false,
-        encryptionMethod: String? = nil
+        encryptionMethod: String? = nil,
+        posixPermissions: UInt32? = nil,
+        compressedSize: Int64? = nil,
+        crc32: UInt32? = nil
     ) {
         self.path = path
         let trimmed = (path.hasSuffix("/") && path.count > 1) ? String(path.dropLast()) : path
@@ -71,5 +79,8 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
         self.isDataEncrypted = isDataEncrypted || (isEncrypted && !isMetadataEncrypted)
         self.isMetadataEncrypted = isMetadataEncrypted
         self.encryptionMethod = encryptionMethod
+        self.posixPermissions = posixPermissions
+        self.compressedSize = compressedSize
+        self.crc32 = crc32
     }
 }

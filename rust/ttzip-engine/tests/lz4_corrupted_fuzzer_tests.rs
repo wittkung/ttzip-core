@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! LZ4 Corrupted Fuzzer, 32-bit Address Overflow Torture & Mutation Injection Test Suite.
 //!

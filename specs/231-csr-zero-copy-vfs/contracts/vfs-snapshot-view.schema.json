@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTWorkspaceVfsViewContract",
+  "description": "Contract schema for C-ABI / UniFFI TTWorkspaceVfsView memory mapping descriptor",
+  "type": "object",
+  "required": [
+    "node_count",
+    "string_arena_size",
+    "root_node_id",
+    "generation",
+    "node_size_bytes",
+    "page_aligned_total_bytes"
+  ],
+  "properties": {
+    "node_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of 64-byte CSR entry nodes"
+    },
+    "string_arena_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total byte size of the contiguous string arena"
+    },
+    "root_node_id": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index of the root node (0 for synthetic root)"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing snapshot generation"
+    },
+    "node_size_bytes": {
+      "type": "integer",
+      "enum": [64],
+      "description": "Exact byte size of each entry node (must be 64)"
+    },
+    "page_aligned_total_bytes": {
+      "type": "integer",
+      "minimum": 16384,
+      "description": "Total memory size rounded up to 16KB page boundary"
+    },
+    "flags": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Capability flags (read-only, cow, in-process)"
+    }
+  },
+  "additionalProperties": false
+}

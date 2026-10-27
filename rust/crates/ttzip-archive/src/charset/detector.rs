@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hybrid Charset Sniffing Engine combining SIMD ASCII validation, strict UTF-8 parsing,
 //! Coding State Machine (CSM) pruning, and 2-byte CJK Bigram frequency statistics.

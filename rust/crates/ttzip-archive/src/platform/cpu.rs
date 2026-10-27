@@ -1,10 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! CPU architecture sniffing, SIMD feature detection, and dynamic P/E-core topology.
 
 use crate::types::TTZipStatus;
-use std::panic::catch_unwind;
 use std::sync::OnceLock;
 
 /// C-compatible raw CPU capabilities descriptor.
@@ -29,7 +28,7 @@ impl Default for TTZipCpuCapsRaw {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             logical_cores: 1,
             physical_page_size: 4096,
             p_cores: 1,
@@ -164,28 +163,25 @@ fn sysctl_u32(name: &str) -> Option<u32> {
 /// C-ABI: Retrieves hardware capabilities.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_rust_cpu_get_capabilities(out_caps: *mut TTZipCpuCapsRaw) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if out_caps.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-        let caps = CpuCapabilities::get();
-        *out_caps = TTZipCpuCapsRaw {
-            struct_size: std::mem::size_of::<TTZipCpuCapsRaw>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
-            logical_cores: caps.logical_cores,
-            physical_page_size: caps.physical_page_size,
-            p_cores: caps.p_cores,
-            e_cores: caps.e_cores,
-            has_arm_neon: caps.has_arm_neon,
-            has_arm_crypto: caps.has_arm_crypto,
-            has_aes_ni: caps.has_aes_ni,
-            has_avx2: caps.has_avx2,
-            has_avx512: caps.has_avx512,
-            has_hardware_crc32: caps.has_hardware_crc32,
-        };
-        TTZipStatus::Ok
-    });
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    if out_caps.is_null() {
+        return TTZipStatus::ErrInvalidParam;
+    }
+    let caps = CpuCapabilities::get();
+    *out_caps = TTZipCpuCapsRaw {
+        struct_size: std::mem::size_of::<TTZipCpuCapsRaw>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_3,
+        logical_cores: caps.logical_cores,
+        physical_page_size: caps.physical_page_size,
+        p_cores: caps.p_cores,
+        e_cores: caps.e_cores,
+        has_arm_neon: caps.has_arm_neon,
+        has_arm_crypto: caps.has_arm_crypto,
+        has_aes_ni: caps.has_aes_ni,
+        has_avx2: caps.has_avx2,
+        has_avx512: caps.has_avx512,
+        has_hardware_crc32: caps.has_hardware_crc32,
+    };
+    TTZipStatus::Ok
 }
 
 /// C-ABI: Retrieves P-core, E-core, and total core topology counts.
@@ -195,48 +191,15 @@ pub unsafe extern "C" fn ttzip_rust_cpu_get_topology(
     out_e_cores: *mut u32,
     out_total_cores: *mut u32,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        let caps = CpuCapabilities::get();
-        if !out_p_cores.is_null() {
-            *out_p_cores = caps.p_cores;
-        }
-        if !out_e_cores.is_null() {
-            *out_e_cores = caps.e_cores;
-        }
-        if !out_total_cores.is_null() {
-            *out_total_cores = caps.logical_cores;
-        }
-        TTZipStatus::Ok
-    });
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
-}
-
-static ENGINE_THREAD_POOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
-
-/// Persistent topology-aware Rayon thread pool matching Apple Silicon hardware cores.
-pub struct EngineThreadPool;
-
-impl EngineThreadPool {
-    /// Returns the shared global Rayon thread pool.
-    pub fn global() -> &'static rayon::ThreadPool {
-        ENGINE_THREAD_POOL.get_or_init(|| {
-            let caps = CpuCapabilities::get();
-            let thread_count = caps.p_cores.max(1) as usize;
-            rayon::ThreadPoolBuilder::new()
-                .thread_name(|i| format!("ttzip-worker-{}", i))
-                .num_threads(thread_count)
-                .build()
-                .unwrap_or_else(|_| {
-                    rayon::ThreadPoolBuilder::new()
-                        .thread_name(|_| "ttzip-fallback-0".to_string())
-                        .num_threads(1)
-                        .build()
-                        .or_else(|_| rayon::ThreadPoolBuilder::new().build())
-                        .unwrap_or_else(|e| {
-                            eprintln!("Fatal error: failed to initialize Rayon thread pool: {:?}", e);
-                            std::process::abort();
-                        })
-                })
-        })
+    let caps = CpuCapabilities::get();
+    if !out_p_cores.is_null() {
+        *out_p_cores = caps.p_cores;
     }
+    if !out_e_cores.is_null() {
+        *out_e_cores = caps.e_cores;
+    }
+    if !out_total_cores.is_null() {
+        *out_total_cores = caps.logical_cores;
+    }
+    TTZipStatus::Ok
 }

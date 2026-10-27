@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Libarchive Operator Matrix Single-Byte Streaming & Network Pipe Cataclysm Torture Suite (Task 16.11).
 //!

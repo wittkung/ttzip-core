@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! AArch64 Microarchitecture Optimization Cores Benchmark Suite.
 //!
@@ -27,7 +27,7 @@ use ttzip_crypto::zipcrypto::{
     decrypt_byte_key, decrypt_stream_fast, update_keys, ZipCryptoBatch4, ZipCryptoKeys,
 };
 
-use ttzip_codecs::snappy::crc::{crc32c, scalar::crc32c_slice8};
+use ttzip_codecs::snappy::{crc32c, crc32c_update};
 
 use ttzip_archive::zip::scanner::find_eocd_candidates_scalar;
 use ttzip_archive::zip::{find_eocd_candidate_offsets, EOCD_MIN_SIZE};
@@ -224,7 +224,7 @@ fn bench_snappy_crc32c_pipeline(size: usize) -> (CoreBenchResult, CoreBenchResul
     for _ in 0..WARMUP_ROUNDS {
         #[cfg(target_arch = "aarch64")]
         unsafe { black_box(crc32c_serial_hw(0, &data)); }
-        black_box(crc32c_slice8(0, &data));
+        black_box(crc32c_update(0, &data));
         black_box(crc32c(&data));
     }
 
@@ -239,7 +239,7 @@ fn bench_snappy_crc32c_pipeline(size: usize) -> (CoreBenchResult, CoreBenchResul
 
     let t1 = Instant::now();
     for _ in 0..BENCH_ROUNDS {
-        black_box(crc32c_slice8(0, &data));
+        black_box(crc32c_update(0, &data));
     }
     let dur_slice8 = t1.elapsed() / (BENCH_ROUNDS as u32);
     let slice8_sec = dur_slice8.as_secs_f64();

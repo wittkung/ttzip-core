@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ARM (32-bit Little-Endian) BCJ Hardware Instruction Filter (Filter ID `0x07`).
 //!

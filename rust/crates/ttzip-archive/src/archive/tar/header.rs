@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! POSIX ustar and GNU TAR 512-byte header representation, dual-mode checksums,
 //! octal and base-256 binary encoding and decoding.

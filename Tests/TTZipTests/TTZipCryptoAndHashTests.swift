@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
 @testable import TTZipCore
@@ -182,7 +182,7 @@ final class TTZipCryptoAndHashTests: XCTestCase {
 
     func testVaultSecurityDirectZeroizedRawKeys() throws {
         let keyBytes = [UInt8](repeating: 0x77, count: 32)
-        let key = SecureBytes(bytes: keyBytes)
+        let key = try SecureBytes(bytes: keyBytes)
         let nonce = Data(repeating: 0x12, count: 12)
         let aad = "CustomAAD".data(using: .utf8)!
 

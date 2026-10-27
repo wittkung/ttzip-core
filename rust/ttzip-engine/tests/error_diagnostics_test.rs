@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #![allow(deprecated)]
 
@@ -9,7 +9,7 @@ use ttzip_engine::ffi::{
     ttzip_free_string, ttzip_rust_clear_last_error, ttzip_rust_get_last_error_info,
     ttzip_rust_get_last_error_message_owned, ttzip_rust_last_error_message,
 };
-use ttzip_engine::types::{set_last_error, TTZipErrorInfo, TTZipStatus, TTZIP_ABI_VERSION_2};
+use ttzip_engine::types::{set_last_error, TTZipErrorInfo, TTZipStatus, TTZIP_ABI_VERSION_3};
 
 #[test]
 fn test_error_diagnostics_thread_local() {
@@ -34,7 +34,7 @@ fn test_error_diagnostics_thread_local() {
     // 3. Thread-safe out-pointer error info
     let mut err_info = TTZipErrorInfo {
         struct_size: std::mem::size_of::<TTZipErrorInfo>() as u32,
-        abi_version: TTZIP_ABI_VERSION_2,
+        abi_version: TTZIP_ABI_VERSION_3,
         status: TTZipStatus::Ok,
         error_code: 0,
         message: [0; 512],

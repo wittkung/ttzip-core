@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tests for compression level tiers, dictionary scaling, and store mode bypass in Rust core.
 
@@ -23,7 +23,7 @@ fn test_store_mode_zero_compression_roundtrip() {
     // 1. Create ZIP with Level 0 (Store)
     let create_opts = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Store,
         encryption: TTZipEncryptionMethod::None,
@@ -47,21 +47,18 @@ fn test_store_mode_zero_compression_roundtrip() {
     fs::create_dir_all(&extract_dir).expect("create extract dir");
     let extract_opts = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 0,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: None,
         user_data: std::ptr::null_mut(),
     };
 
-    let ext_status = UnifiedArchiveOrchestrator::extract_archive(
-        &zip_output,
-        &extract_dir,
-        &extract_opts,
+    let ext_status = UnifiedArchiveOrchestrator::extract_archive(&zip_output, &ttzip_engine::fs::collision::staging::StagingRoot(extract_dir.clone()), &extract_opts,
     );
     assert!(ext_status.is_ok(), "ZIP extraction must succeed");
 

@@ -1,9 +1,15 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
-//! Virtual Filesystem (VFS) decompression caching and buffer management.
+//! Universal Virtual Filesystem (VFS) abstraction, CoW cloning, and sparse file drivers.
 
 pub mod cache_pool;
+pub mod cow;
+pub mod sparse;
+pub mod traits;
 
 pub use cache_pool::*;
-pub use crate::codecs::zstd_seekable::*;
+pub use cow::*;
+pub use sparse::*;
+pub use traits::*;
+pub use crate::fs::vfs::*;

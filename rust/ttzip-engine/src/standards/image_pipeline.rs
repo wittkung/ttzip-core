@@ -1,14 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
-//! SIMD-accelerated image decoding and high-quality thumbnail generation pipeline.
+//! Pure Safe Rust image decoding and high-quality thumbnail generation pipeline.
 
-use std::io::Cursor;
-use zune_core::colorspace::ColorSpace;
-use zune_core::options::DecoderOptions;
-use zune_image::core_filters::colorspace::ColorspaceConv;
-use zune_image::image::Image;
-use zune_image::traits::OperationsTrait;
+use std::io::{Cursor, Read};
+use flate2::read::ZlibDecoder;
 
 /// Unified decoded RGBA8 image container.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,55 +46,268 @@ pub fn decode_image_rgba(data: &[u8]) -> Result<DecodedImageRgba, ImagePipelineE
     if is_webp_header(data) {
         return decode_webp_rgba(data);
     }
-    match decode_with_zune(data) {
-        Ok(img) => Ok(img),
-        Err(e) => {
-            if is_webp_header(data) || data.starts_with(b"RIFF") {
-                decode_webp_rgba(data)
-            } else {
-                Err(e)
-            }
-        }
+    if is_png_header(data) {
+        return decode_png_rgba(data);
     }
+    if is_bmp_header(data) {
+        return decode_bmp_rgba(data);
+    }
+    Err(ImagePipelineError::DecodeFailed("Unsupported or unrecognized image format".into()))
 }
 
+#[inline]
 fn is_webp_header(data: &[u8]) -> bool {
     data.len() >= 12 && data.starts_with(b"RIFF") && &data[8..12] == b"WEBP"
 }
 
-fn decode_with_zune(data: &[u8]) -> Result<DecodedImageRgba, ImagePipelineError> {
-    let mut img = Image::read(data, DecoderOptions::default())
-        .map_err(|e| ImagePipelineError::DecodeFailed(format!("{e:?}")))?;
+#[inline]
+fn is_png_header(data: &[u8]) -> bool {
+    data.len() >= 8 && data.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A])
+}
 
-    if img.colorspace() != ColorSpace::RGBA {
-        ColorspaceConv::new(ColorSpace::RGBA)
-            .execute(&mut img)
-            .map_err(|e| ImagePipelineError::ConversionFailed(format!("{e:?}")))?;
+#[inline]
+fn is_bmp_header(data: &[u8]) -> bool {
+    data.len() >= 26 && data.starts_with(b"BM")
+}
+
+fn decode_bmp_rgba(data: &[u8]) -> Result<DecodedImageRgba, ImagePipelineError> {
+    if data.len() < 54 {
+        return Err(ImagePipelineError::DecodeFailed("BMP payload smaller than standard header".into()));
+    }
+    let pixel_offset = u32::from_le_bytes(
+        data[10..14].try_into().map_err(|_| ImagePipelineError::DecodeFailed("Invalid BMP offset".into()))?,
+    ) as usize;
+
+    let width = i32::from_le_bytes(
+        data[18..22].try_into().map_err(|_| ImagePipelineError::DecodeFailed("Invalid BMP width".into()))?,
+    );
+    let height = i32::from_le_bytes(
+        data[22..26].try_into().map_err(|_| ImagePipelineError::DecodeFailed("Invalid BMP height".into()))?,
+    );
+    let bpp = u16::from_le_bytes(
+        data[28..30].try_into().map_err(|_| ImagePipelineError::DecodeFailed("Invalid BMP bpp".into()))?,
+    );
+
+    if width <= 0 || height == 0 {
+        return Err(ImagePipelineError::DecodeFailed("Invalid BMP dimensions".into()));
+    }
+    let w = width as usize;
+    let h = height.unsigned_abs() as usize;
+    let is_top_down = height < 0;
+
+    if bpp != 24 && bpp != 32 {
+        return Err(ImagePipelineError::DecodeFailed(format!("Unsupported BMP bit depth: {bpp}")));
     }
 
-    let (w, h) = img.dimensions();
-    if w == 0 || h == 0 {
-        return Err(ImagePipelineError::DecodeFailed("Zero dimension image".into()));
-    }
+    let bytes_per_pixel = (bpp / 8) as usize;
+    let row_stride = (w * bytes_per_pixel).div_ceil(4) * 4;
+    let mut out = vec![0u8; w * h * 4];
 
-    let frames = img.flatten_to_u8();
-    let raw = frames.into_iter().next().ok_or_else(|| {
-        ImagePipelineError::DecodeFailed("Missing decoded image frame".into())
-    })?;
+    for row in 0..h {
+        let src_row = if is_top_down { row } else { h - 1 - row };
+        let row_start = pixel_offset + src_row * row_stride;
+        if row_start + w * bytes_per_pixel > data.len() {
+            return Err(ImagePipelineError::DecodeFailed("Unexpected EOF reading BMP scanline".into()));
+        }
+        let src_slice = &data[row_start..row_start + w * bytes_per_pixel];
+        let dst_row_start = row * w * 4;
 
-    let expected_len = w * h * 4;
-    if raw.len() < expected_len {
-        return Err(ImagePipelineError::DecodeFailed(format!(
-            "Incomplete frame buffer: got {} bytes, expected {expected_len}",
-            raw.len()
-        )));
+        if bpp == 24 {
+            for col in 0..w {
+                let s_idx = col * 3;
+                let d_idx = dst_row_start + col * 4;
+                out[d_idx] = src_slice[s_idx + 2];     // R
+                out[d_idx + 1] = src_slice[s_idx + 1]; // G
+                out[d_idx + 2] = src_slice[s_idx];     // B
+                out[d_idx + 3] = 255;                  // A
+            }
+        } else {
+            for col in 0..w {
+                let s_idx = col * 4;
+                let d_idx = dst_row_start + col * 4;
+                out[d_idx] = src_slice[s_idx + 2];     // R
+                out[d_idx + 1] = src_slice[s_idx + 1]; // G
+                out[d_idx + 2] = src_slice[s_idx];     // B
+                out[d_idx + 3] = src_slice[s_idx + 3]; // A
+            }
+        }
     }
 
     Ok(DecodedImageRgba {
         width: w as u32,
         height: h as u32,
-        data: if raw.len() == expected_len { raw } else { raw[..expected_len].to_vec() },
+        data: out,
     })
+}
+
+fn decode_png_rgba(data: &[u8]) -> Result<DecodedImageRgba, ImagePipelineError> {
+    let mut cursor = 8;
+    let mut width = 0u32;
+    let mut height = 0u32;
+    let mut color_type = 6u8; // default to RGBA
+    let mut idat_combined = Vec::new();
+
+    while cursor + 8 <= data.len() {
+        let length = u32::from_be_bytes(data[cursor..cursor + 4].try_into().unwrap()) as usize;
+        let chunk_type = &data[cursor + 4..cursor + 8];
+        cursor += 8;
+
+        if cursor + length > data.len() {
+            return Err(ImagePipelineError::DecodeFailed("Truncated PNG chunk".into()));
+        }
+        let chunk_data = &data[cursor..cursor + length];
+        cursor += length + 4; // skip data + CRC
+
+        match chunk_type {
+            b"IHDR" => {
+                if chunk_data.len() < 13 {
+                    return Err(ImagePipelineError::DecodeFailed("Invalid IHDR chunk length".into()));
+                }
+                width = u32::from_be_bytes(chunk_data[0..4].try_into().unwrap());
+                height = u32::from_be_bytes(chunk_data[4..8].try_into().unwrap());
+                let bit_depth = chunk_data[8];
+                color_type = chunk_data[9];
+                if bit_depth != 8 {
+                    return Err(ImagePipelineError::DecodeFailed(format!("Unsupported PNG bit depth: {bit_depth}")));
+                }
+            }
+            b"IDAT" => {
+                idat_combined.extend_from_slice(chunk_data);
+            }
+            b"IEND" => break,
+            _ => {}
+        }
+    }
+
+    if width == 0 || height == 0 {
+        return Err(ImagePipelineError::DecodeFailed("Zero dimension PNG".into()));
+    }
+
+    let bpp: usize = match color_type {
+        0 => 1, // Grayscale
+        2 => 3, // RGB
+        6 => 4, // RGBA
+        _ => return Err(ImagePipelineError::DecodeFailed(format!("Unsupported PNG color type: {color_type}"))),
+    };
+
+    let mut decoder = ZlibDecoder::new(&idat_combined[..]);
+    let mut decompressed = Vec::new();
+    decoder.read_to_end(&mut decompressed).map_err(|e| {
+        ImagePipelineError::DecodeFailed(format!("PNG zlib decompression failed: {e}"))
+    })?;
+
+    let w = width as usize;
+    let h = height as usize;
+    let scanline_stride = w * bpp;
+    let expected_len = h * (1 + scanline_stride);
+    if decompressed.len() < expected_len {
+        return Err(ImagePipelineError::DecodeFailed(format!(
+            "Incomplete PNG stream: expected {expected_len} bytes, got {}",
+            decompressed.len()
+        )));
+    }
+
+    let mut out = vec![0u8; w * h * 4];
+    let mut prev_row = vec![0u8; scanline_stride];
+    let mut curr_row = vec![0u8; scanline_stride];
+
+    for row in 0..h {
+        let offset = row * (1 + scanline_stride);
+        let filter_type = decompressed[offset];
+        let raw_line = &decompressed[offset + 1..offset + 1 + scanline_stride];
+
+        unfilter_scanline(filter_type, raw_line, &prev_row, &mut curr_row, bpp);
+
+        let dst_row_offset = row * w * 4;
+        match color_type {
+            6 => {
+                out[dst_row_offset..dst_row_offset + w * 4].copy_from_slice(&curr_row);
+            }
+            2 => {
+                for col in 0..w {
+                    let s = col * 3;
+                    let d = dst_row_offset + col * 4;
+                    out[d] = curr_row[s];
+                    out[d + 1] = curr_row[s + 1];
+                    out[d + 2] = curr_row[s + 2];
+                    out[d + 3] = 255;
+                }
+            }
+            0 => {
+                for col in 0..w {
+                    let s = col;
+                    let d = dst_row_offset + col * 4;
+                    let v = curr_row[s];
+                    out[d] = v;
+                    out[d + 1] = v;
+                    out[d + 2] = v;
+                    out[d + 3] = 255;
+                }
+            }
+            _ => unreachable!(),
+        }
+
+        prev_row.copy_from_slice(&curr_row);
+    }
+
+    Ok(DecodedImageRgba {
+        width,
+        height,
+        data: out,
+    })
+}
+
+fn unfilter_scanline(filter_type: u8, raw: &[u8], prev: &[u8], curr: &mut [u8], bpp: usize) {
+    match filter_type {
+        0 => curr.copy_from_slice(raw),
+        1 => {
+            for i in 0..raw.len() {
+                let left = if i >= bpp { curr[i - bpp] } else { 0 };
+                curr[i] = raw[i].wrapping_add(left);
+            }
+        }
+        2 => {
+            for i in 0..raw.len() {
+                let up = prev[i];
+                curr[i] = raw[i].wrapping_add(up);
+            }
+        }
+        3 => {
+            for i in 0..raw.len() {
+                let left = if i >= bpp { curr[i - bpp] as u16 } else { 0 };
+                let up = prev[i] as u16;
+                let avg = ((left + up) / 2) as u8;
+                curr[i] = raw[i].wrapping_add(avg);
+            }
+        }
+        4 => {
+            for i in 0..raw.len() {
+                let left = if i >= bpp { curr[i - bpp] } else { 0 };
+                let up = prev[i];
+                let up_left = if i >= bpp { prev[i - bpp] } else { 0 };
+                curr[i] = raw[i].wrapping_add(paeth_predictor(left, up, up_left));
+            }
+        }
+        _ => curr.copy_from_slice(raw),
+    }
+}
+
+#[inline]
+fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
+    let a_i = a as i32;
+    let b_i = b as i32;
+    let c_i = c as i32;
+    let p = a_i + b_i - c_i;
+    let pa = (p - a_i).abs();
+    let pb = (p - b_i).abs();
+    let pc = (p - c_i).abs();
+    if pa <= pb && pa <= pc {
+        a
+    } else if pb <= pc {
+        b
+    } else {
+        c
+    }
 }
 
 fn decode_webp_rgba(data: &[u8]) -> Result<DecodedImageRgba, ImagePipelineError> {

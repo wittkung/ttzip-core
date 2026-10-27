@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TAR header checksum calculation, dual-mode signed/unsigned verification,
 //! and fault-tolerant parser state machine.

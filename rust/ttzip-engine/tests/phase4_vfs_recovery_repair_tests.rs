@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Phase 4 Integration Tests: VFS LZ4 Cache Pool, In-Memory Password Recovery & Archive Self-Healing Repair.
 
@@ -10,7 +10,7 @@ use ttzip_engine::crypto::sha1::winzip_aes256_derive_keys;
 use ttzip_engine::crypto::zipcrypto::ZipCryptoKeys;
 use ttzip_engine::ffi::archive_ffi::*;
 use ttzip_engine::ffi::crypto_ffi::*;
-use ttzip_engine::ffi::vfs_ffi::*;
+use ttzip_engine::ffi::vfs_cache_ffi::*;
 use ttzip_engine::types::TTZipStatus;
 use ttzip_engine::zip::writer::{assemble_zip_archive, ZipCompressedItem};
 

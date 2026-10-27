@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive integration and concurrency verification test suite for the BLAKE3
 //! multi-threaded divide-and-conquer parallel tree hasher (`ParallelTreeHasher`).

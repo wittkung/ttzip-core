@@ -1,11 +1,11 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Data transfer objects (DTOs), entry metadata, and zero-copy buffer views.
 
 use libc::c_char;
 
-use super::options::TTZIP_ABI_VERSION_2;
+use super::options::TTZIP_ABI_VERSION_3;
 
 /// Zero-copy read-only contiguous byte buffer slice descriptor.
 #[repr(C)]
@@ -127,7 +127,7 @@ impl Default for TTZipEntryMetadata {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             path: std::ptr::null(),
             uncompressed_size: 0,
             compressed_size: 0,
@@ -155,6 +155,54 @@ pub struct TTZipEntryDetail {
     pub is_encrypted: bool,
     pub compression_method: String,
     pub detected_encoding: Option<String>,
+}
+
+impl TTZipEntryDetail {
+    /// Creates a new `TTZipEntryDetail` with standard default attributes.
+    pub fn new(path: impl Into<String>, uncompressed_size: u64) -> Self {
+        let p: String = path.into();
+        let is_dir = p.ends_with('/');
+        Self {
+            path: p,
+            uncompressed_size,
+            compressed_size: 0,
+            crc32: 0,
+            mtime_epoch_secs: 0,
+            mode: if is_dir { 0o040755 } else { 0o100644 },
+            is_directory: is_dir,
+            is_encrypted: false,
+            compression_method: "Store".to_string(),
+            detected_encoding: None,
+        }
+    }
+
+    /// Returns `true` if this entry is encrypted.
+    #[inline]
+    #[must_use]
+    pub const fn is_encrypted(&self) -> bool {
+        self.is_encrypted
+    }
+
+    /// Returns `true` if this entry represents a directory.
+    #[inline]
+    #[must_use]
+    pub const fn is_directory(&self) -> bool {
+        self.is_directory
+    }
+
+    /// Returns `true` if this entry requires solid decompression context.
+    #[inline]
+    #[must_use]
+    pub const fn is_solid(&self) -> bool {
+        false
+    }
+
+    /// Returns `true` if this entry supports streaming extraction.
+    #[inline]
+    #[must_use]
+    pub const fn supports_streaming(&self) -> bool {
+        true
+    }
 }
 
 /// Zero-copy C-ABI packed array representing batch entries for FFI transfer.

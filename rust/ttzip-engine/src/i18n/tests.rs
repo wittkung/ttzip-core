@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use crate::i18n::catalog::AppLanguage;
 use crate::i18n::catalogs;
@@ -10,7 +10,7 @@ use std::collections::HashSet;
 #[test]
 fn test_all_catalogs_have_equal_keys_and_no_missing_entries() {
     let en_keys: HashSet<&str> = catalogs::en::STRINGS.iter().map(|&(k, _)| k).collect();
-    assert_eq!(en_keys.len(), 432, "English catalog should have exactly 432 keys");
+    assert_eq!(en_keys.len(), 597, "English catalog should have exactly 597 keys");
 
     for window in catalogs::en::STRINGS.windows(2) {
         assert!(

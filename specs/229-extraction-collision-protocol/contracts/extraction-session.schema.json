@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://metastudyline.internal/ttzip/contracts/229/extraction-session.schema.json",
+  "title": "TTZip Extraction Session wire records (UniFFI)",
+  "description": "Records and enums crossing the Rust/Swift boundary for the extraction name-collision protocol. Field names are the Rust snake_case names; UniFFI maps them to lowerCamelCase in Swift.",
+  "definitions": {
+    "ItemKind": {
+      "type": "string",
+      "enum": ["File", "Directory", "Symlink"]
+    },
+    "ConflictKind": {
+      "type": "string",
+      "enum": ["SameType", "TypeMismatch"]
+    },
+    "DetectionPhase": {
+      "type": "string",
+      "enum": ["Preflight", "PostStage", "CommitRecheck"]
+    },
+    "CollisionAction": {
+      "type": "string",
+      "enum": ["Replace", "KeepBoth", "Skip"]
+    },
+    "CollisionPolicy": {
+      "type": "string",
+      "enum": ["Ask", "KeepBoth", "Replace", "Skip", "Stop"]
+    },
+    "OutcomeStatus": {
+      "type": "string",
+      "enum": ["Completed", "CompletedWithFailures", "Stopped"]
+    },
+    "FailureReason": {
+      "type": "string",
+      "enum": ["PermissionDenied", "NotSupportedByVolume", "NameTooLong", "Io"]
+    },
+    "SessionState": {
+      "type": "string",
+      "enum": ["Created", "AwaitingDecision", "Staging", "Staged", "Committing", "Completed", "Aborted", "Failed"]
+    },
+    "ItemMeta": {
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "#/definitions/ItemKind" },
+        "size": { "type": "integer", "minimum": 0 },
+        "mtime_unix_ns": { "type": "integer" }
+      },
+      "required": ["kind", "size", "mtime_unix_ns"],
+      "additionalProperties": false
+    },
+    "CollisionRecord": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "relative_path": { "type": "string", "minLength": 1 },
+        "existing_name": { "type": "string", "minLength": 1 },
+        "kind": { "$ref": "#/definitions/ConflictKind" },
+        "existing": { "$ref": "#/definitions/ItemMeta" },
+        "incoming": { "$ref": "#/definitions/ItemMeta" }
+      },
+      "required": ["id", "relative_path", "existing_name", "kind", "existing", "incoming"],
+      "additionalProperties": false
+    },
+    "ConflictSummary": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "same_type": { "type": "integer", "minimum": 0 },
+        "type_mismatch": { "type": "integer", "minimum": 0 },
+        "phase": { "$ref": "#/definitions/DetectionPhase" }
+      },
+      "required": ["total", "same_type", "type_mismatch", "phase"],
+      "additionalProperties": false
+    },
+    "ConflictPage": {
+      "type": "object",
+      "properties": {
+        "offset": { "type": "integer", "minimum": 0 },
+        "records": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": { "$ref": "#/definitions/CollisionRecord" }
+        }
+      },
+      "required": ["offset", "records"],
+      "additionalProperties": false
+    },
+    "ResolutionOverride": {
+      "type": "object",
+      "properties": {
+        "conflict_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "action": { "$ref": "#/definitions/CollisionAction" }
+      },
+      "required": ["conflict_id", "action"],
+      "additionalProperties": false
+    },
+    "ResolutionSet": {
+      "type": "object",
+      "properties": {
+        "default_action": {
+          "oneOf": [
+            { "$ref": "#/definitions/CollisionAction" },
+            { "type": "null" }
+          ]
+        },
+        "overrides": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ResolutionOverride" }
+        }
+      },
+      "required": ["default_action", "overrides"],
+      "additionalProperties": false
+    },
+    "ExtractionRequest": {
+      "type": "object",
+      "properties": {
+        "archive_path": { "type": "string", "minLength": 1 },
+        "destination_root": { "type": "string", "minLength": 1 },
+        "password": { "type": ["string", "null"] },
+        "entry_filter": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "root_at_common_parent": { "type": "boolean" },
+        "policy": { "$ref": "#/definitions/CollisionPolicy" }
+      },
+      "required": ["archive_path", "destination_root", "password", "entry_filter", "root_at_common_parent", "policy"],
+      "additionalProperties": false
+    },
+    "StageReport": {
+      "type": "object",
+      "properties": {
+        "staged_items": { "type": "integer", "minimum": 0 },
+        "staged_bytes": { "type": "integer", "minimum": 0 },
+        "conflicts": { "$ref": "#/definitions/ConflictSummary" }
+      },
+      "required": ["staged_items", "staged_bytes", "conflicts"],
+      "additionalProperties": false
+    },
+    "FailedItem": {
+      "type": "object",
+      "properties": {
+        "relative_path": { "type": "string", "minLength": 1 },
+        "reason": { "$ref": "#/definitions/FailureReason" },
+        "errno": { "type": "integer" }
+      },
+      "required": ["relative_path", "reason", "errno"],
+      "additionalProperties": false
+    },
+    "ExtractionOutcome": {
+      "type": "object",
+      "properties": {
+        "status": { "$ref": "#/definitions/OutcomeStatus" },
+        "extracted": { "type": "integer", "minimum": 0 },
+        "replaced": { "type": "integer", "minimum": 0 },
+        "kept_both": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "failed": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/FailedItem" }
+        }
+      },
+      "required": ["status", "extracted", "replaced", "kept_both", "skipped", "failed"],
+      "additionalProperties": false
+    },
+    "CommitResult": {
+      "description": "Tagged union returned by ExtractionSession.commit: either the final outcome, or new uncovered conflicts found by the commit-time recheck.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "tag": { "const": "Finished" },
+            "outcome": { "$ref": "#/definitions/ExtractionOutcome" }
+          },
+          "required": ["tag", "outcome"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tag": { "const": "NeedsDecision" },
+            "summary": { "$ref": "#/definitions/ConflictSummary" }
+          },
+          "required": ["tag", "summary"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

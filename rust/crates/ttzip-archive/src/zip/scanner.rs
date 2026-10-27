@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-Performance Reverse Sliding Window EOCD Scanner & SFX Preamble Resolver.
 //!
@@ -52,7 +52,8 @@ pub struct CentralDirectoryEndInfo {
 }
 
 /// Error classifications during ZIP scanning and parsing.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+/// Error classifications during ZIP scanning and parsing.
+#[derive(Debug, thiserror::Error)]
 pub enum ZipEngineError {
     #[error("Archive size ({actual} bytes) is smaller than minimum EOCD size ({required} bytes)")]
     FileTooSmall { required: usize, actual: usize },
@@ -70,17 +71,120 @@ pub enum ZipEngineError {
     InvalidCentralDirectoryBoundary { offset: u64, size: u64, file_len: u64 },
 
     #[error("I/O error during scanning: {0}")]
-    Io(String),
+    Io(#[from] std::io::Error),
 
     #[error("Status error: {0}")]
     Status(crate::types::TTZipStatus),
 }
 
-impl From<std::io::Error> for ZipEngineError {
-    fn from(err: std::io::Error) -> Self {
-        Self::Io(err.to_string())
+impl ZipEngineError {
+    /// Returns a zero-allocation iterator over the causal chain of errors.
+    #[inline]
+    #[must_use]
+    pub fn chain(&self) -> crate::types::ErrorChain<'_> {
+        crate::types::ErrorChain::empty()
+    }
+
+    /// Downcasts by reference to a specific error type along the causal source chain.
+    #[inline]
+    #[must_use]
+    pub fn downcast_ref<T: std::error::Error + 'static>(&self) -> Option<&T> {
+        let mut current: Option<&(dyn std::error::Error + 'static)> = Some(self);
+        while let Some(err) = current {
+            if let Some(target) = err.downcast_ref::<T>() {
+                return Some(target);
+            }
+            current = err.source();
+        }
+        None
+    }
+
+    /// Returns true if this error or any error in its causal chain matches the target type `T`.
+    #[inline]
+    #[must_use]
+    pub fn is<T: std::error::Error + 'static>(&self) -> bool {
+        self.downcast_ref::<T>().is_some()
+    }
+
+    /// Navigates the causal chain to locate the bottom-most root cause.
+    #[inline]
+    #[must_use]
+    pub fn root_cause(&self) -> &(dyn std::error::Error + 'static) {
+        let mut current: &(dyn std::error::Error + 'static) = self;
+        while let Some(cause) = current.source() {
+            current = cause;
+        }
+        current
+    }
+
+    /// Borrows the underlying standard I/O error if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn as_io_error(&self) -> Option<&std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Mutably borrows the underlying standard I/O error if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn as_io_error_mut(&mut self) -> Option<&mut std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Extracts the underlying standard I/O error by value if this failure was caused by I/O.
+    #[inline]
+    #[must_use]
+    pub fn into_io_error(self) -> Option<std::io::Error> {
+        match self {
+            Self::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this error was caused by an underlying I/O failure.
+    #[inline]
+    #[must_use]
+    pub fn is_io(&self) -> bool {
+        self.as_io_error().is_some()
     }
 }
+
+impl Clone for ZipEngineError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::FileTooSmall { required, actual } => Self::FileTooSmall { required: *required, actual: *actual },
+            Self::EocdNotFound => Self::EocdNotFound,
+            Self::InvalidCommentLength { declared, available } => Self::InvalidCommentLength { declared: *declared, available: *available },
+            Self::CorruptedHeader(s) => Self::CorruptedHeader(s.clone()),
+            Self::InvalidCentralDirectoryBoundary { offset, size, file_len } => Self::InvalidCentralDirectoryBoundary { offset: *offset, size: *size, file_len: *file_len },
+            Self::Io(err) => Self::Io(std::io::Error::new(err.kind(), err.to_string())),
+            Self::Status(st) => Self::Status(*st),
+        }
+    }
+}
+
+impl PartialEq for ZipEngineError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::FileTooSmall { required: r1, actual: a1 }, Self::FileTooSmall { required: r2, actual: a2 }) => r1 == r2 && a1 == a2,
+            (Self::EocdNotFound, Self::EocdNotFound) => true,
+            (Self::InvalidCommentLength { declared: d1, available: a1 }, Self::InvalidCommentLength { declared: d2, available: a2 }) => d1 == d2 && a1 == a2,
+            (Self::CorruptedHeader(s1), Self::CorruptedHeader(s2)) => s1 == s2,
+            (Self::InvalidCentralDirectoryBoundary { offset: o1, size: s1, file_len: f1 }, Self::InvalidCentralDirectoryBoundary { offset: o2, size: s2, file_len: f2 }) => o1 == o2 && s1 == s2 && f1 == f2,
+            (Self::Io(e1), Self::Io(e2)) => e1.kind() == e2.kind() && e1.to_string() == e2.to_string(),
+            (Self::Status(s1), Self::Status(s2)) => s1 == s2,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ZipEngineError {}
 
 impl From<crate::types::TTZipStatus> for ZipEngineError {
     fn from(status: crate::types::TTZipStatus) -> Self {
@@ -100,6 +204,22 @@ impl From<ZipEngineError> for crate::types::TTZipStatus {
             }
             ZipEngineError::Io(_) => crate::types::TTZipStatus::ErrOpenFailed,
             ZipEngineError::Status(s) => s,
+        }
+    }
+}
+
+impl From<ZipEngineError> for std::io::Error {
+    fn from(err: ZipEngineError) -> Self {
+        match err {
+            ZipEngineError::Io(io_err) => io_err,
+            ZipEngineError::Status(status) => std::io::Error::from(status),
+            err @ (ZipEngineError::FileTooSmall { .. }
+            | ZipEngineError::EocdNotFound
+            | ZipEngineError::InvalidCommentLength { .. }
+            | ZipEngineError::CorruptedHeader(_)
+            | ZipEngineError::InvalidCentralDirectoryBoundary { .. }) => {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+            }
         }
     }
 }
@@ -549,136 +669,6 @@ impl EocdScanner {
 // MARK: - Unit Tests
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn run_differential(window: &[u8], max_pos: usize) {
-        let mut scalar = Vec::new();
-        find_eocd_candidates_scalar(window, max_pos, &mut scalar);
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            let mut neon = Vec::new();
-            unsafe {
-                find_eocd_candidates_neon(window, max_pos, &mut neon);
-            }
-            assert_eq!(
-                neon, scalar,
-                "NEON scanner output deviated from scalar reference for window len {} at max_pos {}",
-                window.len(),
-                max_pos
-            );
-        }
-
-        let unified = find_eocd_candidate_offsets(window);
-        if window.len() >= EOCD_MIN_SIZE && max_pos == window.len() - EOCD_MIN_SIZE {
-            assert_eq!(unified, scalar);
-        }
-    }
-
-    #[test]
-    fn test_eocd_empty_and_sub_minimum_window() {
-        assert!(find_eocd_candidate_offsets(&[]).is_empty());
-        assert!(find_eocd_candidate_offsets(&[b'P', b'K', 0x05, 0x06]).is_empty());
-        assert!(find_eocd_candidate_offsets(&vec![0u8; 21]).is_empty());
-    }
-
-    #[test]
-    fn test_differential_all_single_offsets() {
-        for buf_len in [25, 36, 37, 48, 64, 128, 256] {
-            let max_pos = buf_len - EOCD_MIN_SIZE;
-            for target_pos in 0..=max_pos {
-                let mut buf = vec![0xAA; buf_len];
-                buf[target_pos..target_pos + 4].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-                run_differential(&buf, max_pos);
-            }
-        }
-    }
-
-    #[test]
-    fn test_differential_multiple_and_consecutive_signatures() {
-        let mut buf = vec![0x55; 160];
-        let max_pos = buf.len() - EOCD_MIN_SIZE;
-
-        for &pos in &[0, 4, 8, 12, 15, 16, 20, 31, 32, 45, 60, 90, 100] {
-            if pos <= max_pos {
-                buf[pos..pos + 4].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-            }
-        }
-        run_differential(&buf, max_pos);
-    }
-
-    #[test]
-    fn test_differential_high_entropy_and_p_noise() {
-        let mut buf = Vec::with_capacity(1024);
-        for i in 0..1024 {
-            match i % 4 {
-                0 => buf.push(b'P'),
-                1 => buf.push(b'K'),
-                2 => buf.push(0x05),
-                _ => buf.push(0x07),
-            }
-        }
-        let max_pos = buf.len() - EOCD_MIN_SIZE;
-        run_differential(&buf, max_pos);
-
-        buf[33..37].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-        run_differential(&buf, max_pos);
-    }
-
-    #[test]
-    fn test_differential_large_65kb_comment_window() {
-        let mut lcg = 0x12345678u64;
-        let mut buf = vec![0u8; MAX_EOCD_SEARCH_WINDOW];
-        for b in buf.iter_mut() {
-            lcg = lcg.wrapping_mul(6364136223846793005).wrapping_add(1);
-            *b = (lcg >> 32) as u8;
-        }
-
-        let max_pos = buf.len() - EOCD_MIN_SIZE;
-        buf[0..4].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-        buf[15..19].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-        buf[512..516].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-        buf[max_pos - 1..max_pos + 3].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-        buf[max_pos..max_pos + 4].copy_from_slice(&MAGIC_EOCD.to_le_bytes());
-
-        run_differential(&buf, max_pos);
-    }
-
-    #[test]
-    fn test_scan_slice_and_reader_roundtrip() {
-        let cdfh_offset = 0usize;
-        let mut zip_data = Vec::new();
-
-        // CDFH (Central Directory File Header, 46 bytes min)
-        zip_data.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
-        zip_data.extend_from_slice(&[0u8; 42]);
-
-        let cd_size = (zip_data.len() - cdfh_offset) as u32;
-        let comment = b"hello";
-
-        // EOCD (22 bytes + comment)
-        zip_data.extend_from_slice(&MAGIC_EOCD.to_le_bytes());
-        zip_data.extend_from_slice(&0u16.to_le_bytes());
-        zip_data.extend_from_slice(&0u16.to_le_bytes());
-        zip_data.extend_from_slice(&1u16.to_le_bytes());
-        zip_data.extend_from_slice(&1u16.to_le_bytes());
-        zip_data.extend_from_slice(&cd_size.to_le_bytes());
-        zip_data.extend_from_slice(&(cdfh_offset as u32).to_le_bytes());
-        zip_data.extend_from_slice(&(comment.len() as u16).to_le_bytes());
-        zip_data.extend_from_slice(comment);
-
-        let slice_info = EocdScanner::scan_slice(&zip_data).expect("slice scan failed");
-        assert_eq!(slice_info.eocd_offset, 46);
-        assert_eq!(slice_info.total_entries, 1);
-        assert_eq!(slice_info.cd_size, cd_size as u64);
-        assert_eq!(slice_info.cd_offset, cdfh_offset as u64);
-        assert_eq!(slice_info.comment, comment);
-
-        let mut cursor = std::io::Cursor::new(&zip_data);
-        let stream_info = EocdScanner::scan(&mut cursor, zip_data.len() as u64)
-            .expect("stream scan failed");
-        assert_eq!(stream_info, slice_info);
-    }
-}
+#[path = "scanner_tests.rs"]
+mod tests;
 

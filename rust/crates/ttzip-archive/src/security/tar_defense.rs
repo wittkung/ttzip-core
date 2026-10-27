@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tar-Slip Sandbox Path Defense, Link Escape Interception, and Extraction Quota Guard.
 //!
@@ -15,19 +15,20 @@ use std::path::{Component, Path, PathBuf};
 
 use crate::archive::tar::header::TAR_BLOCK_SIZE;
 use crate::archive::tar::pax::PaxAttributes;
-use crate::security::path_sanitizer::is_windows_reserved_device_name;
+use crate::security::path_sanitizer::{is_windows_reserved_device_name, validate_archive_path_slice};
 use crate::types::TTZipStatus;
 
 /// Resolves a sanitized path strictly enclosed within `dest_root`.
 ///
-/// Depth-aware path stack tracking is performed:
+/// Depth-aware path tracking and validation is performed:
 /// - Rejects null bytes (`\0`) and URI schemes (e.g. `://`).
 /// - Strips Windows UNC prefixes (`\\?\UNC\`, `//?/UNC/`, `\\?\`, `\\.\`, `//?/`).
 /// - Strips leading Windows drive letters (e.g. `C:`, `c:`).
 /// - Strips leading slashes (`/`, `\`).
-/// - Neutralizes inner `.` segments.
-/// - Validates parent directory `..` traversals; if a `..` causes the stack to underflow
-///   past `dest_root`, `Err(TTZipStatus::ErrSecurityViolation)` is returned immediately.
+/// - Validates relative path safety via `validate_archive_path_slice`.
+/// - Normalizes internal `..` parent traversals without allocating heap strings;
+///   if traversal causes underflow past `dest_root`, `Err(TTZipStatus::ErrSecurityViolation)`
+///   is returned immediately.
 /// - Rejects embedded Windows drive colons or Windows device reserved stems.
 ///
 /// # Errors
@@ -59,7 +60,44 @@ pub fn enclosed_tar_path(dest_root: &Path, raw_path: &str) -> Result<PathBuf, TT
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    let mut stack: Vec<String> = Vec::with_capacity(8);
+    // Fast-path: When there are no parent directory traversals ('..'), validate directly via path_sanitizer
+    let has_traversal = trimmed.as_bytes().windows(2).any(|w| w == b"..");
+    if !has_traversal {
+        let normalized = if trimmed.contains('\\') {
+            std::borrow::Cow::Owned(trimmed.replace('\\', "/"))
+        } else {
+            std::borrow::Cow::Borrowed(trimmed)
+        };
+
+        let mut check_path = normalized.trim_end_matches('/');
+        while let Some(stripped) = check_path.strip_prefix("./") {
+            check_path = stripped;
+        }
+
+        if check_path.is_empty() {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+
+        validate_archive_path_slice(check_path.as_bytes())
+            .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+
+        let mut target = dest_root.to_path_buf();
+        for comp in Path::new(check_path).components() {
+            if let Component::Normal(c) = comp {
+                target.push(c);
+            }
+        }
+
+        if !target.starts_with(dest_root) || target == dest_root {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+
+        return Ok(target);
+    }
+
+    // Slow-path for paths containing '..':
+    // Use borrowed &str slice stack to resolve internal traversals with ZERO heap String allocations.
+    let mut stack: Vec<&str> = Vec::with_capacity(8);
 
     for seg in trimmed.split(['/', '\\']) {
         if seg.is_empty() || seg == "." {
@@ -81,12 +119,12 @@ pub fn enclosed_tar_path(dest_root: &Path, raw_path: &str) -> Result<PathBuf, TT
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        // Reject Windows reserved device names (CON, PRN, AUX, NUL, COM1..9, LPT1..9)
+        // Reject Windows reserved device names
         if is_windows_reserved_device_name(seg) {
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        stack.push(seg.to_string());
+        stack.push(seg);
     }
 
     if stack.is_empty() {
@@ -155,12 +193,28 @@ pub fn validate_symlink_escape(
         }
     }
 
+    let check_stack_no_symlink = |st: &[String]| -> Result<(), TTZipStatus> {
+        let mut cur = dest_root.to_path_buf();
+        for seg in st {
+            cur.push(seg);
+            if let Ok(meta) = fs::symlink_metadata(&cur) {
+                if meta.file_type().is_symlink() {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+            }
+        }
+        Ok(())
+    };
+
+    check_stack_no_symlink(&stack)?;
+
     for comp in symlink_target.split(['/', '\\']) {
         if comp.is_empty() || comp == "." {
             continue;
         }
 
         if comp == ".." {
+            check_stack_no_symlink(&stack)?;
             if stack.is_empty() {
                 // Stack underflow: symlink target escapes above dest_root
                 return Err(TTZipStatus::ErrSecurityViolation);
@@ -168,7 +222,12 @@ pub fn validate_symlink_escape(
             stack.pop();
         } else {
             stack.push(comp.to_string());
+            check_stack_no_symlink(&stack)?;
         }
+    }
+
+    if stack.is_empty() {
+        return Err(TTZipStatus::ErrSecurityViolation);
     }
 
     let mut resolved = dest_root.to_path_buf();
@@ -176,7 +235,7 @@ pub fn validate_symlink_escape(
         resolved.push(seg);
     }
 
-    if !resolved.starts_with(dest_root) {
+    if !resolved.starts_with(dest_root) || resolved == dest_root {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 

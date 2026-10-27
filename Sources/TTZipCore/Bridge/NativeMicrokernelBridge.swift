@@ -1,8 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
-import CTTZipBridge
+#if canImport(Darwin)
+import Darwin
+#endif
 
 public enum TTZipFileKind: UInt32, Sendable {
     case unknown = 0
@@ -105,7 +107,7 @@ public enum NativeMicrokernelBridge {
         }
     }
 
-    /// Clones a source file to destination using Rust APFS Copy-on-Write (CoW) zero-copy clone,
+    /// Clones a source file to destination using Darwin APFS Copy-on-Write (CoW) zero-copy clone,
     /// falling back to standard physical copy if APFS clone is unsupported on the underlying volume.
     @discardableResult
     public static func apfsCloneOrCopy(
@@ -116,25 +118,62 @@ public enum NativeMicrokernelBridge {
         guard FileManager.default.fileExists(atPath: sourcePath) else {
             return false
         }
-        return sourcePath.withCString { cSrc in
+        #if canImport(Darwin)
+        if overwrite && FileManager.default.fileExists(atPath: destinationPath) {
+            try? FileManager.default.removeItem(atPath: destinationPath)
+        }
+        let cloneStatus = sourcePath.withCString { cSrc in
             destinationPath.withCString { cDst in
-                ttzip_rust_apfs_clone_file(cSrc, cDst, overwrite) == 0
+                clonefile(cSrc, cDst, 0)
             }
+        }
+        if cloneStatus == 0 {
+            return true
+        }
+        #endif
+
+        do {
+            if overwrite && FileManager.default.fileExists(atPath: destinationPath) {
+                try? FileManager.default.removeItem(atPath: destinationPath)
+            }
+            try FileManager.default.copyItem(atPath: sourcePath, toPath: destinationPath)
+            return true
+        } catch {
+            return false
         }
     }
 
-    /// Clones file descriptor range using macOS kernel and Rust microkernel zero-copy clone.
+    /// Clones file descriptor range using macOS kernel copyfile clone.
     @discardableResult
     public static func cloneRange(sourceFd: Int32, destinationFd: Int32) -> Bool {
         guard sourceFd >= 0, destinationFd >= 0 else { return false }
-        return ttzip_rust_apfs_clone_range(sourceFd, destinationFd) == 0
+        #if canImport(Darwin)
+        return fcopyfile(sourceFd, destinationFd, nil, copyfile_flags_t(COPYFILE_DATA | COPYFILE_CLONE)) == 0
+        #else
+        return false
+        #endif
     }
 
-    /// Preallocates contiguous physical extent space on APFS filesystems via Rust microkernel.
+    /// Preallocates contiguous physical extent space on APFS filesystems.
     @discardableResult
     public static func apfsPreallocate(fd: Int32, targetSize: Int64) -> Bool {
         guard fd >= 0, targetSize > 0 else { return false }
-        return ttzip_rust_apfs_preallocate(fd, targetSize) == 0
+        #if canImport(Darwin)
+        var store = fstore_t(
+            fst_flags: UInt32(F_ALLOCATECONTIG | F_ALLOCATEALL),
+            fst_posmode: Int32(F_PEOFPOSMODE),
+            fst_offset: 0,
+            fst_length: off_t(targetSize),
+            fst_bytesalloc: 0
+        )
+        if fcntl(fd, F_PREALLOCATE, &store) == -1 {
+            store.fst_flags = UInt32(F_ALLOCATEALL)
+            _ = fcntl(fd, F_PREALLOCATE, &store)
+        }
+        return ftruncate(fd, off_t(targetSize)) == 0
+        #else
+        return ftruncate(fd, off_t(targetSize)) == 0
+        #endif
     }
 
     /// Checks whether the filesystem containing the given path is formatted as APFS.

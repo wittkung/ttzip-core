@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Pure Safe Rust TAR Engine (POSIX ustar, GNU TAR, POSIX.1-2001 PAX).
 //!
@@ -28,5 +28,5 @@ pub use header::{
 pub use pax::{build_pax_payload, format_pax_record, parse_pax_data, parse_pax_timestamp, PaxAttributes};
 pub use reader::{TarArchive, TarExtractReport};
 pub use scanner::{TarEntry, TarSeekScanner};
-pub use writer::{split_ustar_path, write_tar_to_writer, TarWriter};
+pub use writer::{split_ustar_path, write_tar_entries_to_writer, write_tar_to_writer, TarWriter};
 

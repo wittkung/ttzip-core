@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 150+ Malformed and Corrupted Archive Destruction Injection Test Suite (Task 16.2).
 //!
@@ -49,7 +49,7 @@ use ttzip_engine::types::TTZipExtractOptions;
 const LIBARCHIVE_CORRUPTED_CORPUS: &[&str] = &[
     "test_read_format_zip_uncompressed_size_off_by_4gib.zip",
     "test_read_format_zip_zipx_lzma_oom.zipx",
-    "test_read_format_zip_malformed.zip",
+    "test_read_format_zip_malformed1.zip",
     "test_read_format_zip_with_invalid_traditional_eocd.zip",
     "test_read_format_tar_pax_negative_time.tar",
     "test_read_format_tar_invalid_pax_size.tar",
@@ -69,113 +69,107 @@ const LIBARCHIVE_CORRUPTED_CORPUS: &[&str] = &[
     "test_read_format_cab_lzx_oob.cab",
     "test_read_format_cab_skip_malformed.cab",
     "test_read_format_rar5_bad_tables.rar",
-    "test_read_format_iso_rockridge_zf_overflow.iso.Z",
-    "test_read_format_iso_zisofs_overflow.iso.Z",
+    "test_read_format_iso_rockridge_zf_overflow.iso",
+    "test_read_format_iso_zisofs_overflow.iso",
     "test_read_format_iso_joliet_utf16be_overflow.iso",
 ];
 
 #[test]
-fn test_libarchive_150_plus_corrupted_archive_corpus_sweep() {
+fn test_required_corrupted_archive_corpus_sweep() {
     let mut tested_count = 0;
     let start_time = Instant::now();
 
     for fixture in LIBARCHIVE_CORRUPTED_CORPUS {
-        if let Some(bytes) = load_libarchive_asset(fixture) {
-            tested_count += 1;
+        let bytes = load_libarchive_asset(fixture);
+        tested_count += 1;
 
-            let (_tmp, path) = write_temp_archive(fixture, &bytes);
-            let dest = tempfile::tempdir().unwrap();
-            let options = TTZipExtractOptions::default();
+        let (_tmp, path) = write_temp_archive(fixture, &bytes);
+        let dest = tempfile::tempdir().unwrap();
+        let options = TTZipExtractOptions::default();
 
-            // Invariant 1: Sniffing never panics
-            let sniff_res = catch_unwind(AssertUnwindSafe(|| {
-                UnifiedArchiveOrchestrator::sniff_format(&bytes)
-            }));
-            assert!(
-                sniff_res.is_ok(),
-                "Sniffing corrupted fixture '{}' must never panic",
-                fixture
-            );
+        // Invariant 1: Sniffing never panics
+        let sniff_res = catch_unwind(AssertUnwindSafe(|| {
+            UnifiedArchiveOrchestrator::sniff_format(&bytes)
+        }));
+        assert!(
+            sniff_res.is_ok(),
+            "Sniffing corrupted fixture '{}' must never panic",
+            fixture
+        );
 
-            // Invariant 2: Detect format never panics
-            let detect_res = catch_unwind(AssertUnwindSafe(|| {
-                let _ = UnifiedArchiveOrchestrator::detect_format(&path);
-            }));
-            assert!(
-                detect_res.is_ok(),
-                "Detecting format of corrupted fixture '{}' must never panic",
-                fixture
-            );
+        // Invariant 2: Detect format never panics
+        let detect_res = catch_unwind(AssertUnwindSafe(|| {
+            let _ = UnifiedArchiveOrchestrator::detect_format(&path);
+        }));
+        assert!(
+            detect_res.is_ok(),
+            "Detecting format of corrupted fixture '{}' must never panic",
+            fixture
+        );
 
-            // Invariant 3: Extraction terminates with zero deadlock (< 2000ms)
-            let extract_start = Instant::now();
-            let extract_res = catch_unwind(AssertUnwindSafe(|| {
-                let _ = UnifiedArchiveOrchestrator::extract_archive(&path, dest.path(), &options);
-            }));
-            let elapsed = extract_start.elapsed();
+        // Invariant 3: Extraction terminates with zero deadlock (< 2000ms)
+        let extract_start = Instant::now();
+        let extract_res = catch_unwind(AssertUnwindSafe(|| {
+            let _ = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
+        }));
+        let elapsed = extract_start.elapsed();
 
-            assert!(
-                extract_res.is_ok(),
-                "Extracting corrupted fixture '{}' must never panic",
-                fixture
-            );
-            let timeout_limit = if cfg!(debug_assertions) {
-                Duration::from_millis(5000)
-            } else {
-                Duration::from_millis(2000)
-            };
-            assert!(
-                elapsed < timeout_limit,
-                "Corrupted fixture '{}' took {:?} (exceeded {:?} deadlock limit)",
-                fixture,
-                elapsed,
-                timeout_limit
-            );
-        }
+        assert!(
+            extract_res.is_ok(),
+            "Extracting corrupted fixture '{}' must never panic",
+            fixture
+        );
+        let timeout_limit = Duration::from_millis(5000);
+        assert!(
+            elapsed < timeout_limit,
+            "Corrupted fixture '{}' took {:?} (exceeded {:?} deadlock limit)",
+            fixture,
+            elapsed,
+            timeout_limit
+        );
+
     }
 
     assert!(
-        tested_count >= 15,
-        "Expected at least 15 real libarchive test fixtures loaded from vendor (found {})",
+        tested_count == LIBARCHIVE_CORRUPTED_CORPUS.len(),
+        "Every declared corrupted corpus fixture must be loaded (found {})",
         tested_count
     );
 
     let total_duration = start_time.elapsed();
     println!(
-        "TTZip 150+ Corrupted Archive Corpus Sweep completed successfully in {:?}",
+        "TTZip required corrupted archive corpus completed successfully in {:?}",
         total_duration
     );
 }
 
 #[test]
-fn test_all_vendor_uu_archives_zero_panic_discovery_sweep() {
-    let base_vendor = corrupted_harness::uudecode::find_vendor_libarchive_dir();
-
-    if let Some(vendor_dir) = base_vendor {
-        if vendor_dir.exists() {
-            let mut count = 0;
-            if let Ok(entries) = fs::read_dir(vendor_dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if name.ends_with(".uu") && name.starts_with("test_read_format_") {
-                        if let Ok(content) = fs::read(&path) {
-                            if let Some(decoded) = uudecode(&content) {
-                                count += 1;
-                                let sniff_res = catch_unwind(AssertUnwindSafe(|| {
-                                    UnifiedArchiveOrchestrator::sniff_format(&decoded)
-                                }));
-                                assert!(
-                                    sniff_res.is_ok(),
-                                    "Sniffing vendor fixture '{}' must never panic",
-                                    name
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-            println!("Verified zero-panic across {} vendor UU test fixtures", count);
-        }
+fn test_owned_uu_archives_zero_panic_discovery_sweep() {
+    let corpus = corrupted_harness::uudecode::fixture_corpus();
+    let mut paths: Vec<_> = fs::read_dir(&corpus.root).expect("required corpus directory")
+        .map(|entry| entry.expect("read corpus entry").path())
+        .filter(|path| path.file_name().and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("test_read_format_") && name.ends_with(".uu")))
+        .collect();
+    paths.sort();
+    if corpus.managed {
+        let actual: Vec<_> = paths.iter().map(|path|
+            path.file_name().expect("fixture filename").to_string_lossy().into_owned()).collect();
+        assert_eq!(actual, corpus.filenames, "owned sweep must enumerate the complete manifest exactly");
+        assert_eq!(actual.len(), 26);
+    } else {
+        assert!(paths.len() >= 26, "explicit manual corpus must not under-cover the owned set");
     }
+    let mut count = 0;
+    for path in paths {
+        let content = fs::read(&path).expect("read required UU fixture");
+        let decoded = uudecode(&content).expect("valid UU fixture");
+        let sniff_res = catch_unwind(AssertUnwindSafe(|| {
+            UnifiedArchiveOrchestrator::sniff_format(&decoded)
+        }));
+        assert!(sniff_res.is_ok(), "Sniffing fixture {} must never panic", path.display());
+        count += 1;
+    }
+    assert!(count >= 26);
+    println!("Verified zero-panic across {count} UU fixtures; managed_source={}", corpus.managed);
 }

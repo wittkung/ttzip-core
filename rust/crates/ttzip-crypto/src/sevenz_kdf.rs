@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Hardware-accelerated 7z AES-256 Key Derivation Function (KDF) and Sensitive Memory Zeroization.
 //!
@@ -13,7 +13,14 @@ use std::sync::LazyLock;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::sha256::HardwareSha256;
-use ttzip_types::SevenZError;
+
+/// Errors that can occur during 7z AES key derivation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum SevenZKdfError {
+    /// AES-256 KDF cycles power exceeds maximum security threshold (DoS / CPU exhaustion defense).
+    #[error("7z AES-256 KDF cycles power exceeds maximum security threshold (max 24)")]
+    CryptoExhaustion,
+}
 
 /// Maximum allowed AES KDF cycle power (2^24 iterations) for DoS defense.
 pub const MAX_AES_CYCLES_POWER: u8 = 24;
@@ -221,13 +228,13 @@ pub fn password_to_utf16le(password: &str) -> Vec<u8> {
 ///
 /// # Returns
 /// - `Ok(DerivedKey)` containing 32-byte key and 16-byte IV on success.
-/// - `Err(SevenZError::CryptoExhaustion)` if `cycles_power > MAX_AES_CYCLES_POWER` (24) and not `0x3F`.
+/// - `Err(SevenZKdfError::CryptoExhaustion)` if `cycles_power > MAX_AES_CYCLES_POWER` (24) and not `0x3F`.
 pub fn derive_7z_aes_key(
     password_utf16le: &[u8],
     salt: &[u8],
     cycles_power: u8,
     raw_iv: &[u8],
-) -> Result<DerivedKey, SevenZError> {
+) -> Result<DerivedKey, SevenZKdfError> {
     // 1. Resolve 16-byte initialization vector (zero-padded)
     let mut iv = [0u8; 16];
     let copy_iv_len = raw_iv.len().min(16);
@@ -247,7 +254,7 @@ pub fn derive_7z_aes_key(
 
     // 3. Security threshold check for DoS / CPU exhaustion prevention
     if cycles_power > MAX_AES_CYCLES_POWER {
-        return Err(SevenZError::CryptoExhaustion);
+        return Err(SevenZKdfError::CryptoExhaustion);
     }
 
     // 4. Fast LRU singleton cache lookup

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Text Encoding Detection and Zero-Allocation Transcoding Performance Benchmark Suite (Invariant 6 <=3.0% Hard Gate).
 //!

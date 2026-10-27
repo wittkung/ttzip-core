@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Data models for 7z Header metadata.
 
@@ -33,6 +33,23 @@ pub struct SevenZFolder {
     pub num_unpack_streams: usize,
     pub packed_offset: usize,
     pub packed_len: usize,
+}
+
+impl SevenZFolder {
+    /// Number of packed streams this folder consumes from the archive pack area.
+    ///
+    /// Every coder input stream that no bind pair consumes is read straight from the pack area,
+    /// so a folder owns `total_in_streams - bind_pairs` packed streams. A folder with a
+    /// multi-input coder (such as BCJ2) therefore owns more than one packed stream, and its
+    /// packed length is the sum of all of them.
+    #[must_use]
+    pub fn pack_stream_count(&self) -> usize {
+        let total_in = self.coders.iter().fold(0usize, |acc, coder| {
+            acc.saturating_add(coder.num_in_streams as usize)
+        });
+        let num_bind_pairs = self.coders.len().saturating_sub(1);
+        total_in.saturating_sub(num_bind_pairs)
+    }
 }
 
 /// Complete parsed 7z Header information.

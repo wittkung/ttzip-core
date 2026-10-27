@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! TTZip Standalone Native CLI & Interactive TUI Application Entry Point.
 
@@ -7,10 +7,10 @@ use clap::{CommandFactory, Parser};
 use std::io::IsTerminal;
 use ttzip_tui::cli::{
     execute_bench, execute_cat, execute_check, execute_comment, execute_completions,
-    execute_convert, execute_create, execute_delete, execute_diff, execute_doctor, execute_extract,
-    execute_hash, execute_info, execute_join, execute_list, execute_lock, execute_mcp,
-    execute_recover, execute_repair, execute_split, execute_tree, execute_update,
-    run_interactive_tui, Cli, CliExtractParams, Commands,
+    execute_convert, execute_create, execute_delete, execute_diff, execute_doctor,
+    execute_extract_with_policy, execute_hash, execute_info, execute_join, execute_list,
+    execute_lock, execute_mcp, execute_recover, execute_repair, execute_split, execute_tree,
+    execute_update, run_interactive_tui, Cli, CliExtractParams, Commands,
 };
 
 fn main() {
@@ -33,16 +33,20 @@ fn main() {
             dry_run,
             include,
             exclude,
-        }) => execute_extract(CliExtractParams {
-            archive_path: &archive,
-            output_dir: output.as_deref(),
-            password: password.as_deref(),
-            threads,
-            verbose,
-            dry_run,
-            include: &include,
-            exclude: &exclude,
-        })
+            on_conflict,
+        }) => execute_extract_with_policy(
+            CliExtractParams {
+                archive_path: &archive,
+                output_dir: output.as_deref(),
+                password: password.as_deref(),
+                threads,
+                verbose,
+                dry_run,
+                include: &include,
+                exclude: &exclude,
+            },
+            Some(&on_conflict),
+        )
         .map_err(|e| e.into()),
         Some(Commands::Create {
             archive,

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::os::raw::c_char;
 use crate::types::{get_execution_provenance, TTZipEngineTag, TTZipExecutionProvenance};

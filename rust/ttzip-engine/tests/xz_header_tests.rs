@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration test suite for XZ Stream Header, Stream Footer,
 //! Stream Flags, 12-byte fixed memory geometry, and error resilience.

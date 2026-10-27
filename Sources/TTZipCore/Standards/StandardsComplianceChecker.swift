@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -178,35 +178,6 @@ public struct ParsedZipExtraFields: Sendable, Equatable {
         default:
             return false
         }
-    }
-}
-
-/// Deprecated compatibility stub for ZipExtraFieldParser.
-/// Handwritten TLV raw-pointer parsing has been removed in favor of microkernel standards compliance checks.
-@available(*, deprecated, message: "Manual TLV raw pointer parsing has been retired in favor of microkernel compliance auditing.")
-public enum ZipExtraFieldParser {
-    @inlinable
-    public static func parse(
-        extraData: UnsafeRawBufferPointer,
-        standardFilename: String? = nil
-    ) -> ParsedZipExtraFields {
-        return ParsedZipExtraFields()
-    }
-
-    @inlinable
-    public static func parse(
-        extraData: Data,
-        standardFilename: String? = nil
-    ) -> ParsedZipExtraFields {
-        return ParsedZipExtraFields()
-    }
-
-    @inlinable
-    public static func parse(
-        extraData: [UInt8],
-        standardFilename: String? = nil
-    ) -> ParsedZipExtraFields {
-        return ParsedZipExtraFields()
     }
 }
 

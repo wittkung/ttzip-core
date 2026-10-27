@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! x86 (IA-32 and x86-64) BCJ Hardware Instruction Filter (Filter ID `0x04`).
 //!

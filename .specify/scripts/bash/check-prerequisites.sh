@@ -1,11 +1,34 @@
 #!/usr/bin/env bash
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
+
+
+# Consolidated prerequisite checking script
+#
+# This script provides unified prerequisite checking for Spec-Driven Development workflow.
+# It replaces the functionality previously spread across multiple scripts.
+#
+# Usage: ./check-prerequisites.sh [OPTIONS]
+#
+# OPTIONS:
+#   --json              Output in JSON format
+#   --require-spec      Require spec.md to exist (for analysis phase)
+#   --require-tasks     Require tasks.md to exist (for implementation phase)
+#   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
+#   --paths-only        Only output path variables (no validation)
+#   --template NAME     Include composed template content in JSON output
+#   --help, -h          Show help message
+#
+# OUTPUTS:
+#   JSON mode: {"FEATURE_DIR":"...", "AVAILABLE_DOCS":["..."]}
+#   Text mode: FEATURE_DIR:... \n AVAILABLE_DOCS: \n ✓/✗ file.md
+#   Paths only: REPO_ROOT: ... \n BRANCH: ... \n FEATURE_DIR: ... etc.
 
 set -e
 
 # Parse command line arguments
 JSON_MODE=false
+REQUIRE_SPEC=false
 REQUIRE_TASKS=false
 INCLUDE_TASKS=false
 PATHS_ONLY=false
@@ -15,6 +38,9 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --json)
             JSON_MODE=true
+            ;;
+        --require-spec)
+            REQUIRE_SPEC=true
             ;;
         --require-tasks)
             REQUIRE_TASKS=true
@@ -41,6 +67,7 @@ Consolidated prerequisite checking for Spec-Driven Development workflow.
 
 OPTIONS:
   --json              Output in JSON format
+  --require-spec      Require spec.md to exist (for analysis phase)
   --require-tasks     Require tasks.md to exist (for implementation phase)
   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
   --paths-only        Only output path variables (no prerequisite validation)
@@ -121,6 +148,13 @@ fi
 if [[ ! -f "$IMPL_PLAN" ]]; then
     echo "ERROR: plan.md not found in $FEATURE_DIR" >&2
     echo "Run /speckit-plan first to create the implementation plan." >&2
+    exit 1
+fi
+
+# Check for spec.md if required
+if $REQUIRE_SPEC && [[ ! -f "$FEATURE_SPEC" ]]; then
+    echo "ERROR: spec.md not found in $FEATURE_DIR" >&2
+    echo "Run /speckit-specify first to create the feature specification." >&2
     exit 1
 fi
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Kernel execution provenance, engine tagging, and hardware utilization telemetries.
 
@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use libc::c_char;
 use serde::{Deserialize, Serialize};
 
-use super::options::TTZIP_ABI_VERSION_2;
+use super::options::TTZIP_ABI_VERSION_3;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,7 +44,7 @@ impl Default for TTZipExecutionProvenance {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: TTZIP_ABI_VERSION_2,
+            abi_version: TTZIP_ABI_VERSION_3,
             engine_tag: TTZipEngineTag::Unknown,
             thread_count: 1,
             uncompressed_bytes: 0,
@@ -59,7 +59,7 @@ impl Default for TTZipExecutionProvenance {
 thread_local! {
     static LAST_PROVENANCE: RefCell<TTZipExecutionProvenance> = const { RefCell::new(TTZipExecutionProvenance {
         struct_size: std::mem::size_of::<TTZipExecutionProvenance>() as u32,
-        abi_version: TTZIP_ABI_VERSION_2,
+        abi_version: TTZIP_ABI_VERSION_3,
         engine_tag: TTZipEngineTag::Unknown,
         thread_count: 1,
         uncompressed_bytes: 0,

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! 7-Zip Seek Table and Entry Location indexing for O(1) random-access queries.
 
@@ -94,7 +94,7 @@ impl SevenZSeekIndex {
                     uncompressed_size: sz,
                     crc,
                 });
-                current_folder_offset += sz;
+                current_folder_offset = current_folder_offset.saturating_add(sz);
                 streams_in_cur_folder += 1;
                 global_stream_idx += 1;
             }

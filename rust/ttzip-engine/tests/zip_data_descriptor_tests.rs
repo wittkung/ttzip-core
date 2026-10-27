@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Integration tests for PKWARE Data Descriptor 16B/24B streaming pipeline,
 //! Bit 3 injection, unseekable stream writer, and ZipCrypto check byte linkage.
@@ -10,7 +10,7 @@ use tempfile::tempdir;
 use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
-    TTZIP_ABI_VERSION_2,
+    TTZIP_ABI_VERSION_3,
 };
 use ttzip_engine::zip::reader::ZipArchive;
 use ttzip_engine::zip::writer::{
@@ -208,7 +208,7 @@ fn test_streaming_archive_creation_with_data_descriptors_roundtrip() {
 
     let options = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: TTZIP_ABI_VERSION_2,
+        abi_version: TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,

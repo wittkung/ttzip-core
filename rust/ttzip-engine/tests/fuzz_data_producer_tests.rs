@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Fuzz Data Producer & Multi-Format Fuzz Matrix Integration Tests (Task 12.2).
 //!

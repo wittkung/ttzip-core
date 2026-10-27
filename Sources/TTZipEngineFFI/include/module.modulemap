@@ -1,0 +1,4 @@
+module TTZipEngineFFI [system] {
+    header "ttzip_engineFFI.h"
+    export *
+}

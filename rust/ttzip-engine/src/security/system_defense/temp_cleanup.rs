@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Temporary Directory Cleanup & Workspace Isolation Guard (`TempDirectoryCleanupGuard`).
 //!
@@ -95,10 +95,10 @@ impl TempDirectoryCleanupGuard {
         };
 
         let time_low = rng();
-        let time_mid = (rng() as u16) & 0xffff;
+        let time_mid = rng() as u16;
         let time_hi_and_version = ((rng() as u16) & 0x0fff) | 0x4000;
         let clock_seq_hi_and_reserved = ((rng() as u16) & 0x3fff) | 0x8000;
-        let node_hi = (rng() as u16) & 0xffff;
+        let node_hi = rng() as u16;
         let node_lo = rng();
 
         format!(

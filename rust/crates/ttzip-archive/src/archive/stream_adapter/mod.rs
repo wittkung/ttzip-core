@@ -1,22 +1,28 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Stream adapter bridging `std::io::{Read, Write, Seek}` to `libarchive` C callbacks.
 //!
 //! Enforces:
 //! 1. Memory bound: $\le 64\text{MB}$ RSS resident memory limit with micro-buffering (64KB - 2MB).
-//! 2. Panic safety: FFI exception barriers via `std::panic::catch_unwind` on all trampoline entry points.
+//! 2. Error safety: Strict deterministic Result and C-ABI code return without unwind landing pads.
 //! 3. Pinned callback state (`Pin<Box<StreamReaderState<R>>>`) ensuring stable raw pointers.
 
+mod container_bridge;
 pub mod read;
 pub mod seek;
+mod sevenz_selected;
+mod single_stream;
 pub mod write;
+mod xar_wim_bridge;
 
 #[cfg(test)]
 mod tests;
 
+pub use container_bridge::*;
 pub use read::*;
 pub use seek::*;
+pub use single_stream::*;
 pub use write::*;
 
 /// Libarchive status constants.

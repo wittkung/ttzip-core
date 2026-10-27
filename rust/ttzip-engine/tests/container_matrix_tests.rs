@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Container Format Matrix Integration Tests (Feature 186 - Task T002).
 //!
@@ -144,7 +144,7 @@ fn test_container_creation_and_extraction_matrix() {
 
         let create_opt = TTZipCreateOptions {
             struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+            abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
             format: fmt,
             level: TTZipCompressionLevel::Normal,
             encryption: TTZipEncryptionMethod::None,
@@ -161,18 +161,18 @@ fn test_container_creation_and_extraction_matrix() {
 
             let extract_opt = TTZipExtractOptions {
                 struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-                abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+                abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
                 destination_path: std::ptr::null(),
                 password: std::ptr::null(),
                 thread_budget: 2,
-                overwrite_existing: true,
+                collision_policy: 0,
                 preserve_permissions: true,
                 dry_run: false,
                 progress_callback: None,
                 user_data: std::ptr::null_mut(),
             };
 
-            UnifiedArchiveOrchestrator::extract_archive(&arch_path, &out_dir, &extract_opt)
+            UnifiedArchiveOrchestrator::extract_archive(&arch_path, &ttzip_engine::fs::collision::staging::StagingRoot(out_dir.clone()), &extract_opt)
                 .expect("Unified extract archive failed");
 
             // Verify extracted files
@@ -198,7 +198,7 @@ fn test_container_creation_and_extraction_matrix() {
 
     let ar_create_opt = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Ar,
         level: TTZipCompressionLevel::Normal,
         encryption: TTZipEncryptionMethod::None,
@@ -214,17 +214,17 @@ fn test_container_creation_and_extraction_matrix() {
 
     let ar_extract_opt = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 2,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: None,
         user_data: std::ptr::null_mut(),
     };
-    UnifiedArchiveOrchestrator::extract_archive(&ar_path, &ar_out, &ar_extract_opt)
+    UnifiedArchiveOrchestrator::extract_archive(&ar_path, &ttzip_engine::fs::collision::staging::StagingRoot(ar_out.clone()), &ar_extract_opt)
         .expect("AR extraction failed");
     assert!(ar_out.join("module1.o").exists());
     assert!(ar_out.join("module2.o").exists());
@@ -373,7 +373,7 @@ fn test_multivolume_split_and_merge_matrix() {
     let u_dest_zip = dir.path().join("split_archive.zip");
     let create_opt = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Store,
         encryption: TTZipEncryptionMethod::None,
@@ -394,18 +394,18 @@ fn test_multivolume_split_and_merge_matrix() {
     let u_out_dir = dir.path().join("u_extracted");
     let extract_opt = TTZipExtractOptions {
         struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         destination_path: std::ptr::null(),
         password: std::ptr::null(),
         thread_budget: 2,
-        overwrite_existing: true,
+        collision_policy: 0,
         preserve_permissions: true,
         dry_run: false,
         progress_callback: None,
         user_data: std::ptr::null_mut(),
     };
 
-    UnifiedArchiveOrchestrator::extract_archive(&u_dest_zip, &u_out_dir, &extract_opt)
+    UnifiedArchiveOrchestrator::extract_archive(&u_dest_zip, &ttzip_engine::fs::collision::staging::StagingRoot(u_out_dir.clone()), &extract_opt)
         .expect("Extract split volume archive failed");
 
     assert_eq!(fs::read(u_out_dir.join("u_src/heavy.bin")).unwrap(), uncompressible);

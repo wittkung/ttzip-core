@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TTMediaWorkerContract",
+  "description": "JSON schema validating IPC request and response packets between TTZip host and ttmedia-worker",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": ["open", "read_packet", "seek", "close", "sleep_state"]
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "openParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filePath": {
+          "type": "string"
+        },
+        "targetTracks": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": ["filePath"]
+    },
+    "seekParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targetTimestamp": {
+          "type": "number",
+          "minimum": 0
+        },
+        "accurate": {
+          "type": "boolean"
+        }
+      },
+      "required": ["targetTimestamp"]
+    },
+    "packetResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "streamIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["video", "audio", "subtitle"]
+        },
+        "pts": {
+          "type": "integer"
+        },
+        "dts": {
+          "type": "integer"
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timescale": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "isKeyframe": {
+          "type": "boolean"
+        },
+        "doNotDisplay": {
+          "type": "boolean"
+        },
+        "payloadSizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        }
+      },
+      "required": ["streamIndex", "mediaType", "pts", "dts", "duration", "timescale", "isKeyframe", "doNotDisplay", "payloadSizeBytes"]
+    }
+  },
+  "required": ["command", "sessionId"]
+}

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! WinZip AES-128/192/256 Authenticated Encryption & AE-1/AE-2 State Machine.
 //!

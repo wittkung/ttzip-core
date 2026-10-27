@@ -1,60 +1,59 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
-/// Character encoding detection and filename sanitization interface.
-public enum CharsetDetector {
-    /// Detects charset encoding name (e.g. GB18030, UTF-8, Shift-JIS) from raw byte sequence.
-    @available(*, deprecated, message: "Use Rust microkernel detectedEncoding from TTZipEntryMetadata instead.")
-    public static func detectCharset(data: Data) -> String {
-        if data.isEmpty { return "UTF-8" }
-        if String(data: data, encoding: .utf8) != nil {
-            return "UTF-8"
-        }
-        let gb18030Encoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
-        if String(data: data, encoding: gb18030Encoding) != nil {
-            return "GB18030"
-        }
-        let shiftJISEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.shiftJIS.rawValue)))
-        if String(data: data, encoding: shiftJISEncoding) != nil {
-            return "Shift-JIS"
-        }
-        let big5Encoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.big5.rawValue)))
-        if String(data: data, encoding: big5Encoding) != nil {
-            return "Big5"
-        }
-        if String(data: data, encoding: .windowsCP1252) != nil {
-            return "Windows-1252"
-        }
-        return "ISO-8859-1"
-    }
-    
-    /// Sanitizes raw filename byte sequences into valid Unicode Swift String.
-    public static func sanitizeFilename(bytes: Data) -> String {
-        if let utf8 = String(data: bytes, encoding: .utf8) {
-            return utf8
-        }
-        let gb18030Encoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
-        if let gb = String(data: bytes, encoding: gb18030Encoding) {
-            return gb
-        }
-        let shiftJISEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.shiftJIS.rawValue)))
-        if let sjis = String(data: bytes, encoding: shiftJISEncoding) {
-            return sjis
-        }
-        return String(decoding: bytes, as: UTF8.self)
-    }
-    
-    /// Clears charset detection caching structures.
-    public static func clearCache() {}
+// MARK: - In-Place Edit Session Models
+
+/// Lifecycle states for an in-place archive editing session.
+public enum InPlaceEditState: String, Sendable, Codable {
+    case active
+    case saving
+    case syncing
+    case completed
+    case failed
 }
 
-// MARK: - File Watcher
+/// In-place editing session data model for tracking live temporary files.
+public struct InPlaceEditSession: Sendable, Identifiable, Equatable {
+    public var id: String { sessionId }
+    public let sessionId: String
+    public let archivePath: String
+    public let entryPath: String
+    public let stagedFilePath: String
+    public let stagedDirectoryPath: String
+    public var state: InPlaceEditState
+    public var initialHash: String
+    public var lastKnownMtime: Double
+    public var hasUnsavedChanges: Bool
+    public var errorMessage: String?
 
-//
-//
+    public init(
+        sessionId: String = UUID().uuidString,
+        archivePath: String,
+        entryPath: String,
+        stagedFilePath: String,
+        stagedDirectoryPath: String,
+        state: InPlaceEditState = .active,
+        initialHash: String = "",
+        lastKnownMtime: Double = Date().timeIntervalSince1970,
+        hasUnsavedChanges: Bool = false,
+        errorMessage: String? = nil
+    ) {
+        self.sessionId = sessionId
+        self.archivePath = archivePath
+        self.entryPath = entryPath
+        self.stagedFilePath = stagedFilePath
+        self.stagedDirectoryPath = stagedDirectoryPath
+        self.state = state
+        self.initialHash = initialHash
+        self.lastKnownMtime = lastKnownMtime
+        self.hasUnsavedChanges = hasUnsavedChanges
+        self.errorMessage = errorMessage
+    }
+}
 
+// MARK: - File Watcher Engine
 
 /// In-archive live file editing and filesystem change observer engine.
 ///
@@ -63,7 +62,7 @@ public enum CharsetDetector {
 /// (TextEdit, VS Code, Xcode, Vim) without losing tracking.
 public final class FileWatcherEngine: @unchecked Sendable {
     public static let shared = FileWatcherEngine()
-    
+
     private struct ActiveWatchSession {
         let dirSource: DispatchSourceFileSystemObject?
         let dirFd: Int32?
@@ -78,13 +77,13 @@ public final class FileWatcherEngine: @unchecked Sendable {
         var lastKnownHash: String?
         var lastKnownMtime: Double
     }
-    
+
     private var activeSessions: [String: ActiveWatchSession] = [:]
     private let lock = NSLock()
     private let watchQueue = DispatchQueue(label: "com.ttzip.filewatcher", qos: .default)
-    
+
     private init() {}
-    
+
     /// Starts watching an active in-place editing session.
     public func watchEditingSession(
         session: InPlaceEditSession,
@@ -92,18 +91,18 @@ public final class FileWatcherEngine: @unchecked Sendable {
     ) {
         lock.lock()
         defer { lock.unlock() }
-        
+
         let sessionKey = session.sessionId
         if let existing = activeSessions.removeValue(forKey: sessionKey) {
             existing.debounceItem?.cancel()
             existing.dirSource?.cancel()
             existing.fileSource?.cancel()
         }
-        
+
         let dirPath = session.stagedDirectoryPath
         let filePath = session.stagedFilePath
         let fileName = (filePath as NSString).lastPathComponent
-        
+
         // 1. Directory Source (captures atomic renames and file additions/deletions)
         let dirFd = open(dirPath, O_EVTONLY)
         let dirSource: DispatchSourceFileSystemObject?
@@ -124,7 +123,7 @@ public final class FileWatcherEngine: @unchecked Sendable {
         } else {
             dirSource = nil
         }
-        
+
         // 2. Direct File Source (captures in-place stream writes)
         let fileFd = open(filePath, O_EVTONLY)
         let fileSource: DispatchSourceFileSystemObject?
@@ -145,7 +144,7 @@ public final class FileWatcherEngine: @unchecked Sendable {
         } else {
             fileSource = nil
         }
-        
+
         let watchSession = ActiveWatchSession(
             dirSource: dirSource,
             dirFd: dirFd >= 0 ? dirFd : nil,
@@ -160,10 +159,10 @@ public final class FileWatcherEngine: @unchecked Sendable {
             lastKnownHash: session.initialHash,
             lastKnownMtime: session.lastKnownMtime
         )
-        
+
         activeSessions[sessionKey] = watchSession
     }
-    
+
     /// Legacy compatibility wrapper: watches a single file path for modifications.
     public func watchFileForChanges(
         filePath: String,
@@ -180,12 +179,12 @@ public final class FileWatcherEngine: @unchecked Sendable {
             initialHash: HashCalculator.calculateSHA256(filePath: filePath) ?? "",
             lastKnownMtime: Self.getFileMtime(path: filePath)
         )
-        
+
         watchEditingSession(session: session) { updatedSession in
             onFileModified(updatedSession.stagedFilePath, updatedSession.archivePath)
         }
     }
-    
+
     private func handleFileSystemEvent(
         sessionKey: String,
         onFileModified: @escaping @Sendable (InPlaceEditSession) -> Void
@@ -195,24 +194,24 @@ public final class FileWatcherEngine: @unchecked Sendable {
             lock.unlock()
             return
         }
-        
+
         watchSession.debounceItem?.cancel()
-        
+
         let dirPath = watchSession.directoryPath
         let filePath = watchSession.filePath
         let archivePath = watchSession.targetArchivePath
         let entryPath = watchSession.entryPath
         let baselineHash = watchSession.lastKnownHash
-        
+
         let debounceItem = DispatchWorkItem { [weak self] in
             guard let self = self else { return }
-            
+
             var st = stat()
             guard stat(filePath, &st) == 0 else { return }
             let currentMtime = Double(st.st_mtimespec.tv_sec)
-            
+
             guard let currentHash = HashCalculator.calculateSHA256(filePath: filePath) else { return }
-            
+
             if currentHash != baselineHash {
                 self.lock.lock()
                 if var sessionToUpdate = self.activeSessions[sessionKey] {
@@ -221,7 +220,7 @@ public final class FileWatcherEngine: @unchecked Sendable {
                     self.activeSessions[sessionKey] = sessionToUpdate
                 }
                 self.lock.unlock()
-                
+
                 let updatedModel = InPlaceEditSession(
                     sessionId: sessionKey,
                     archivePath: archivePath,
@@ -234,40 +233,39 @@ public final class FileWatcherEngine: @unchecked Sendable {
                     hasUnsavedChanges: true,
                     errorMessage: nil
                 )
-                
+
                 onFileModified(updatedModel)
             }
         }
-        
+
         watchSession.debounceItem = debounceItem
         activeSessions[sessionKey] = watchSession
         lock.unlock()
-        
-        // 100ms debounce for rapid physical change notification
+
         watchQueue.asyncAfter(deadline: .now() + .milliseconds(100), execute: debounceItem)
     }
-    
+
     /// Stops watching a specific session ID.
     public func stopWatching(sessionKey: String) {
         lock.lock()
         defer { lock.unlock() }
-        
+
         if let session = activeSessions.removeValue(forKey: sessionKey) {
             session.debounceItem?.cancel()
             session.dirSource?.cancel()
             session.fileSource?.cancel()
         }
     }
-    
+
     /// Stops watching by file path string.
     public func stopWatching(filePath: String) {
         lock.lock()
         defer { lock.unlock() }
-        
+
         let matchingKeys = activeSessions.filter { _, session in
             session.filePath == filePath
         }.map(\.key)
-        
+
         for key in matchingKeys {
             if let session = activeSessions.removeValue(forKey: key) {
                 session.debounceItem?.cancel()
@@ -276,175 +274,30 @@ public final class FileWatcherEngine: @unchecked Sendable {
             }
         }
     }
-    
+
     /// Cancels all active dispatch sources and closes file descriptors.
     public func stopAllWatching() {
         lock.lock()
         let sessions = Array(activeSessions.values)
         activeSessions.removeAll()
         lock.unlock()
-        
+
         for session in sessions {
             session.debounceItem?.cancel()
             session.dirSource?.cancel()
             session.fileSource?.cancel()
         }
     }
-    
+
     public func reset() {
         stopAllWatching()
     }
-    
+
     private static func getFileMtime(path: String) -> Double {
         var st = stat()
         if stat(path, &st) == 0 {
             return Double(st.st_mtimespec.tv_sec)
         }
         return Date().timeIntervalSince1970
-    }
-}
-
-// MARK: - License Manager
-
-//
-//
-
-
-/// Licensing manager and Pro feature gatekeeper.
-public final class LicenseManager: @unchecked Sendable {
-    public static let shared = LicenseManager()
-    
-    public enum LicenseType: String, Codable, Sendable {
-        case free = "Community Edition"
-        case proPersonal = "TTZip Pro (Personal)"
-        case proBusiness = "TTZip Pro (Business)"
-    }
-    
-    public struct LicenseInfo: Codable, Sendable {
-        public let licenseKey: String
-        public let type: LicenseType
-        public let registeredTo: String
-        public let activationDate: Date
-        public let isExpired: Bool
-    }
-    
-    private init() {}
-    
-    /// Loads stored license record from preferences.
-    public func loadLicense() {
-        Ed25519LicenseManager.shared.refreshState()
-    }
-    
-    /// Activates a license key using Ed25519 cryptographic verification.
-    public func activate(key: String, registeredTo: String = "Valued Customer") -> Bool {
-        let res = Ed25519LicenseManager.shared.activate(licenseKey: key)
-        if case .valid = res {
-            return true
-        }
-        return false
-    }
-    
-    /// Deactivates and resets license status back to Community Edition.
-    public func deactivate() {
-        Ed25519LicenseManager.shared.deactivate()
-    }
-    
-    /// Current active license tier.
-    public var currentType: LicenseType {
-        let state = Ed25519LicenseManager.shared.currentState
-        switch state {
-        case .community:
-            return .free
-        case .directPro(let payload):
-            return payload.tier == .proBusiness ? .proBusiness : .proPersonal
-        case .masPro, .steamPro:
-            return .proPersonal
-        }
-    }
-    
-    /// Whether Pro tier features / badge are active.
-    public var isPro: Bool {
-        return Ed25519LicenseManager.shared.isPro
-    }
-    
-    /// Core capability check: 100% full feature availability in all editions.
-    public func canUseFeature(_ feature: ProFeature) -> Bool {
-        return true
-    }
-    
-    public enum ProFeature: Sendable {
-        case basicExtract
-        case quickLookPreview
-        case zipCompression
-        case aes256Encryption
-        case ultraCompression
-        case volumeSplit
-        case batchProcessing
-        case commercialUse
-    }
-}
-
-// MARK: - Prototype Copyable
-
-//
-//
-
-
-
-
-// MARK: - Architecture Matrix
-
-//
-//
-
-
-/// Unified native C acceleration facade for Apple Silicon memory and I/O primitives.
-public final class NativeCoreArchitecture: @unchecked Sendable {
-    public static let shared = NativeCoreArchitecture()
-    private init() {}
-    
-    /// Triggers APFS file extent physical pre-allocation to prevent fragmentation.
-    @discardableResult
-    public func preallocateFileExtent(fileDescriptor: Int32, targetSizeBytes: Int64) -> Bool {
-        guard fileDescriptor >= 0, targetSizeBytes > 0 else { return false }
-        var fstore = fstore_t(
-            fst_flags: UInt32(F_ALLOCATECONTIG | F_ALLOCATEALL),
-            fst_posmode: F_PEOFPOSMODE,
-            fst_offset: 0,
-            fst_length: targetSizeBytes,
-            fst_bytesalloc: 0
-        )
-        if fcntl(fileDescriptor, F_PREALLOCATE, &fstore) != -1 { return true }
-        fstore.fst_flags = UInt32(F_ALLOCATEALL)
-        return fcntl(fileDescriptor, F_PREALLOCATE, &fstore) != -1
-    }
-    
-    /// Computes CRC32 checksum.
-    public func computeFastCRC32(buffer: UnsafeRawPointer, length: Int) -> UInt32 {
-        guard length > 0 else { return 0 }
-        return HardwareChecksumAdapter.crc32(ptr: buffer.assumingMemoryBound(to: UInt8.self), count: length)
-    }
-    
-    /// Allocates memory aligned to Apple Silicon 16KB physical page boundaries.
-    public func allocateAlignedPageBuffer(capacity: Int) -> UnsafeMutableRawPointer? {
-        return CUnsafeBufferAdapter.allocateAlignedBuffer(capacity: capacity)
-    }
-
-    public static func allocateAlignedPageBuffer(capacity: Int) -> UnsafeMutableRawPointer? {
-        return CUnsafeBufferAdapter.allocateAlignedBuffer(capacity: capacity)
-    }
-
-    /// Deallocates page-aligned buffer ensuring paired memory management.
-    public func deallocateAlignedPageBuffer(_ pointer: UnsafeMutableRawPointer) {
-        CUnsafeBufferAdapter.deallocateAlignedBuffer(pointer)
-    }
-
-    public static func deallocateAlignedPageBuffer(_ pointer: UnsafeMutableRawPointer) {
-        CUnsafeBufferAdapter.deallocateAlignedBuffer(pointer)
-    }
-    
-    /// Spawns a high-priority POSIX process using `SubprocessExecutor`.
-    public func spawnProcessFast(binaryPath: String, arguments: [String], workingDirectory: String? = nil) -> Int32 {
-        return (try? SubprocessExecutor.shared.executeProcess(executablePath: binaryPath, arguments: arguments, currentDirectory: workingDirectory)) ?? -1
     }
 }

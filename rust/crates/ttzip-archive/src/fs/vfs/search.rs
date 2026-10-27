@@ -1,22 +1,30 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! High-performance fuzzy string matching and scoring algorithms for VFS trees.
 
-use super::node::VfsNode;
+use serde::{Deserialize, Serialize};
 
 /// Result of a fuzzy query match against a VFS node.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VfsSearchResult {
     pub name: String,
     pub path: String,
+    #[serde(rename = "relativePath")]
+    pub relative_path: String,
+    #[serde(rename = "isDirectory")]
     pub is_directory: bool,
+    #[serde(skip)]
+    pub is_dir: bool,
     pub uncompressed_size: u64,
     pub compressed_size: u64,
     pub crc32: u32,
     pub is_encrypted: bool,
     pub score: i64,
     pub match_indices: Vec<usize>,
+    #[serde(default)]
+    pub entry_idx: Option<usize>,
 }
 
 #[inline]
@@ -56,7 +64,6 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
         None => return Some((0, Vec::new())),
     };
 
-    // Small stack buffer to defer heap allocation until a match is confirmed
     let mut stack_indices = [0usize; 64];
     let mut matched_count = 0usize;
     let mut heap_indices: Option<Vec<usize>> = None;
@@ -81,22 +88,20 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
 
             let mut char_score = 10i64;
             if tc == current_pat_char {
-                char_score += 5; // Exact case match
+                char_score += 5;
             }
 
-            // Word boundary bonus
             if t_idx == 0 || prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
                 char_score += 30;
             } else if prev_c.is_lowercase() && tc.is_uppercase() {
-                char_score += 25; // CamelCase boundary
+                char_score += 25;
             }
 
-            // Consecutive match bonus
             if let Some(prev) = prev_matched_idx {
                 if t_idx == prev + 1 {
                     char_score += 20;
                 } else {
-                    char_score -= (t_idx.saturating_sub(prev + 1)) as i64; // Distance penalty
+                    char_score -= (t_idx.saturating_sub(prev + 1)) as i64;
                 }
             }
 
@@ -106,7 +111,6 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
             match pat_chars.next() {
                 Some(next_c) => current_pat_char = next_c,
                 None => {
-                    // Pattern completely matched!
                     if target.eq_ignore_ascii_case(pat) {
                         score += 500;
                     } else if starts_with_ignore_case(target, pat) {
@@ -124,51 +128,6 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
     }
 
     None
-}
-
-/// Recursively searches nodes in hierarchy and returns sorted matching items.
-pub fn fuzzy_search_tree(root_node: &VfsNode, query: &str) -> Vec<VfsSearchResult> {
-    let mut results = Vec::new();
-    fn traverse(node: &VfsNode, query: &str, out: &mut Vec<VfsSearchResult>) {
-        let name_match = fuzzy_match(&node.name, query);
-        let path_match = fuzzy_match(&node.path, query);
-
-        if let Some((score, indices)) = name_match {
-            out.push(VfsSearchResult {
-                name: node.name.clone(),
-                path: node.path.clone(),
-                is_directory: node.is_directory,
-                uncompressed_size: node.uncompressed_size,
-                compressed_size: node.compressed_size,
-                crc32: node.crc32,
-                is_encrypted: node.is_encrypted,
-                score: score + 100, // Boost filename matches
-                match_indices: indices,
-            });
-        } else if let Some((score, indices)) = path_match {
-            out.push(VfsSearchResult {
-                name: node.name.clone(),
-                path: node.path.clone(),
-                is_directory: node.is_directory,
-                uncompressed_size: node.uncompressed_size,
-                compressed_size: node.compressed_size,
-                crc32: node.crc32,
-                is_encrypted: node.is_encrypted,
-                score,
-                match_indices: indices,
-            });
-        }
-
-        for child in &node.children {
-            traverse(child, query, out);
-        }
-    }
-
-    for child in &root_node.children {
-        traverse(child, query, &mut results);
-    }
-    results.sort_by_key(|b| std::cmp::Reverse(b.score));
-    results
 }
 
 /// Zero-allocation fuzzy matching returning purely the match score without heap allocations.
@@ -250,7 +209,7 @@ impl Default for TTZipVfsMatchDto {
     fn default() -> Self {
         Self {
             struct_size: std::mem::size_of::<Self>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             name: std::ptr::null(),
             name_len: 0,
             path: std::ptr::null(),
@@ -265,70 +224,54 @@ impl Default for TTZipVfsMatchDto {
     }
 }
 
-/// Zero-allocation recursive VFS search populating a caller-provided fixed buffer slice.
-pub fn search_vfs_tree_zero_alloc(
-    root: &VfsNode,
-    query: &str,
-    out_results: &mut [TTZipVfsMatchDto],
-) -> usize {
-    let mut matched_count = 0usize;
-    let capacity = out_results.len();
+use super::arena::{VfsCompactArena, VFS_FLAG_IS_DIR, VFS_FLAG_IS_ENCRYPTED};
 
-    fn traverse(
-        node: &VfsNode,
-        query: &str,
-        out_results: &mut [TTZipVfsMatchDto],
-        matched_count: &mut usize,
-        capacity: usize,
-    ) {
-        if let Some(score) = fuzzy_match_zero_alloc(&node.name, query) {
-            if *matched_count < capacity {
-                out_results[*matched_count] = TTZipVfsMatchDto {
-                    struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
-                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                    name: node.name.as_ptr() as *const _,
-                    name_len: node.name.len(),
-                    path: node.path.as_ptr() as *const _,
-                    path_len: node.path.len(),
-                    uncompressed_size: node.uncompressed_size,
-                    compressed_size: node.compressed_size,
-                    crc32: node.crc32,
-                    score: score + 100,
-                    is_directory: node.is_directory,
-                    is_encrypted: node.is_encrypted,
-                };
-                *matched_count += 1;
-            }
-        } else if let Some(score) = fuzzy_match_zero_alloc(&node.path, query) {
-            if *matched_count < capacity {
-                out_results[*matched_count] = TTZipVfsMatchDto {
-                    struct_size: std::mem::size_of::<TTZipVfsMatchDto>() as u32,
-                    abi_version: crate::types::TTZIP_ABI_VERSION_2,
-                    name: node.name.as_ptr() as *const _,
-                    name_len: node.name.len(),
-                    path: node.path.as_ptr() as *const _,
-                    path_len: node.path.len(),
-                    uncompressed_size: node.uncompressed_size,
-                    compressed_size: node.compressed_size,
-                    crc32: node.crc32,
-                    score,
-                    is_directory: node.is_directory,
-                    is_encrypted: node.is_encrypted,
-                };
-                *matched_count += 1;
-            }
+impl VfsCompactArena {
+    /// Performs fuzzy search across all arena nodes and returns sorted results by match score.
+    pub fn fuzzy_search(&self, query: &str) -> Vec<VfsSearchResult> {
+        let trimmed = query.trim();
+        if trimmed.is_empty() || self.total_nodes <= 1 {
+            return Vec::new();
         }
 
-        for child in &node.children {
-            traverse(child, query, out_results, matched_count, capacity);
+        let mut results = Vec::new();
+        for i in 1..self.total_nodes {
+            let name = self.node_name(i as u32);
+            let full_path = self.node_full_path(i as u32);
+            let name_match = fuzzy_match(name, trimmed);
+            let path_match = fuzzy_match(&full_path, trimmed);
+
+            let (score, indices) = if let Some((s, idxs)) = name_match {
+                (s + 100, idxs)
+            } else if let Some((s, idxs)) = path_match {
+                (s, idxs)
+            } else {
+                continue;
+            };
+
+            let is_dir = (self.node_attributes[i] & VFS_FLAG_IS_DIR) != 0;
+            let is_enc = (self.node_attributes[i] & VFS_FLAG_IS_ENCRYPTED) != 0;
+            let entry_idx = self.entry_index(i as u32);
+
+            results.push(VfsSearchResult {
+                name: name.to_string(),
+                path: full_path.clone(),
+                relative_path: full_path,
+                is_directory: is_dir,
+                is_dir,
+                uncompressed_size: self.uncompressed_sizes[i],
+                compressed_size: self.compressed_sizes[i],
+                crc32: self.crc32s[i],
+                is_encrypted: is_enc,
+                score,
+                match_indices: indices,
+                entry_idx,
+            });
         }
-    }
 
-    for child in &root.children {
-        traverse(child, query, out_results, &mut matched_count, capacity);
+        results.sort_by_key(|b| std::cmp::Reverse(b.score));
+        results
     }
-
-    matched_count
 }
 
 #[cfg(test)]

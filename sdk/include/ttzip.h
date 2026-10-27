@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef TTZIP_H
 #define TTZIP_H
@@ -12,6 +12,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// MARK: - ABI Version & Collision Policy
+
+#define TTZIP_ABI_VERSION_3 3u
+#define TTZIP_ABI_VERSION   TTZIP_ABI_VERSION_3
+
+typedef enum TTZipCollisionPolicy {
+    TTZIP_COLLISION_POLICY_KEEP_BOTH = 0,
+    TTZIP_COLLISION_POLICY_REPLACE = 1,
+    TTZIP_COLLISION_POLICY_SKIP = 2,
+    TTZIP_COLLISION_POLICY_STOP = 3
+} TTZipCollisionPolicy;
 
 // MARK: - Status Codes
 
@@ -31,25 +43,88 @@ typedef enum TTZipStatus {
     TTZIP_STATUS_ERR_INVALID_PASSWORD = -10,
     TTZIP_STATUS_ERR_EXTRACTION_FAILED = -11,
     TTZIP_STATUS_ERR_COMPRESSION_FAILED = -12,
+    TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE = -13,
+    TTZIP_STATUS_ERR_BUFFER_TOO_SMALL = -14,
+    TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED = -24,
     TTZIP_STATUS_ERR_SECURITY_VIOLATION = -30,
+    TTZIP_STATUS_ERR_ABI_MISMATCH = -40,
     TTZIP_STATUS_ERR_PANIC_CAUGHT = -99
 } TTZipStatus;
 
 // MARK: - Formats, Levels & Methods
 
 typedef enum TTZipArchiveFormat {
-    TTZIP_ARCHIVE_FORMAT_AUTO = 0,
-    TTZIP_ARCHIVE_FORMAT_ZIP = 1,
-    TTZIP_ARCHIVE_FORMAT_SEVEN_ZIP = 2,
-    TTZIP_ARCHIVE_FORMAT_TAR = 3,
-    TTZIP_ARCHIVE_FORMAT_TAR_GZ = 4,
-    TTZIP_ARCHIVE_FORMAT_TAR_BZ2 = 5,
-    TTZIP_ARCHIVE_FORMAT_TAR_XZ = 6,
-    TTZIP_ARCHIVE_FORMAT_TAR_ZSTD = 7,
-    TTZIP_ARCHIVE_FORMAT_DMG = 8,
-    TTZIP_ARCHIVE_FORMAT_LZFSE = 9,
-    TTZIP_ARCHIVE_FORMAT_SNAPPY = 10,
-    TTZIP_ARCHIVE_FORMAT_UNKNOWN = 99
+    TTZIP_ARCHIVE_FORMAT_UNKNOWN = 0,
+    TTZIP_ARCHIVE_FORMAT_SEVEN_ZIP = 1,
+    TTZIP_ARCHIVE_FORMAT_ZIP = 2,
+    TTZIP_ARCHIVE_FORMAT_ZIP64 = 3,
+    TTZIP_ARCHIVE_FORMAT_TAR = 4,
+    TTZIP_ARCHIVE_FORMAT_RAR4 = 5,
+    TTZIP_ARCHIVE_FORMAT_RAR5 = 6,
+    TTZIP_ARCHIVE_FORMAT_CAB = 7,
+    TTZIP_ARCHIVE_FORMAT_WIM = 8,
+    TTZIP_ARCHIVE_FORMAT_ISO = 9,
+    TTZIP_ARCHIVE_FORMAT_UDF = 10,
+    TTZIP_ARCHIVE_FORMAT_DMG = 11,
+    TTZIP_ARCHIVE_FORMAT_ARJ = 12,
+    TTZIP_ARCHIVE_FORMAT_LZH = 13,
+    TTZIP_ARCHIVE_FORMAT_CPIO = 14,
+    TTZIP_ARCHIVE_FORMAT_CHM = 15,
+    TTZIP_ARCHIVE_FORMAT_NSIS = 16,
+    TTZIP_ARCHIVE_FORMAT_MSI = 17,
+    TTZIP_ARCHIVE_FORMAT_GZIP = 18,
+    TTZIP_ARCHIVE_FORMAT_BZIP2 = 19,
+    TTZIP_ARCHIVE_FORMAT_XZ = 20,
+    TTZIP_ARCHIVE_FORMAT_ZSTD = 21,
+    TTZIP_ARCHIVE_FORMAT_LZ4 = 22,
+    TTZIP_ARCHIVE_FORMAT_SNAPPY = 23,
+    TTZIP_ARCHIVE_FORMAT_LZFSE = 24,
+    TTZIP_ARCHIVE_FORMAT_BROTLI = 25,
+    TTZIP_ARCHIVE_FORMAT_LZIP = 26,
+    TTZIP_ARCHIVE_FORMAT_LRZIP = 27,
+    TTZIP_ARCHIVE_FORMAT_MSLZ = 28,
+    TTZIP_ARCHIVE_FORMAT_APFS = 29,
+    TTZIP_ARCHIVE_FORMAT_HFS_PLUS = 30,
+    TTZIP_ARCHIVE_FORMAT_VHD = 31,
+    TTZIP_ARCHIVE_FORMAT_VHDX = 32,
+    TTZIP_ARCHIVE_FORMAT_VMDK = 33,
+    TTZIP_ARCHIVE_FORMAT_QCOW2 = 34,
+    TTZIP_ARCHIVE_FORMAT_EXT2 = 35,
+    TTZIP_ARCHIVE_FORMAT_EXT3 = 36,
+    TTZIP_ARCHIVE_FORMAT_EXT4 = 37,
+    TTZIP_ARCHIVE_FORMAT_FAT = 38,
+    TTZIP_ARCHIVE_FORMAT_NTFS = 39,
+    TTZIP_ARCHIVE_FORMAT_SQUASHFS = 40,
+    TTZIP_ARCHIVE_FORMAT_CRAMFS = 41,
+    TTZIP_ARCHIVE_FORMAT_AAR = 42,
+    TTZIP_ARCHIVE_FORMAT_DEB = 43,
+    TTZIP_ARCHIVE_FORMAT_RPM = 44,
+    TTZIP_ARCHIVE_FORMAT_XAR = 45,
+    TTZIP_ARCHIVE_FORMAT_AR = 46,
+    TTZIP_ARCHIVE_FORMAT_PE_EXE = 47,
+    TTZIP_ARCHIVE_FORMAT_ELF = 48,
+    TTZIP_ARCHIVE_FORMAT_MACHO = 49,
+    TTZIP_ARCHIVE_FORMAT_SWF = 50,
+    TTZIP_ARCHIVE_FORMAT_FLAC = 51,
+    TTZIP_ARCHIVE_FORMAT_DCX = 52,
+    TTZIP_ARCHIVE_FORMAT_ARC = 53,
+    TTZIP_ARCHIVE_FORMAT_ZOO = 54,
+    TTZIP_ARCHIVE_FORMAT_PAK = 55,
+    TTZIP_ARCHIVE_FORMAT_MUB = 56,
+    TTZIP_ARCHIVE_FORMAT_WARC = 57,
+    TTZIP_ARCHIVE_FORMAT_MTREE = 58,
+    TTZIP_ARCHIVE_FORMAT_RAW = 59,
+    TTZIP_ARCHIVE_FORMAT_EMPTY = 60,
+    TTZIP_ARCHIVE_FORMAT_AUTO = 61,
+    TTZIP_ARCHIVE_FORMAT_RAR = 62,
+    TTZIP_ARCHIVE_FORMAT_TAR_GZ = 63,
+    TTZIP_ARCHIVE_FORMAT_TAR_BZ2 = 64,
+    TTZIP_ARCHIVE_FORMAT_TAR_XZ = 65,
+    TTZIP_ARCHIVE_FORMAT_TAR_ZSTD = 66,
+    TTZIP_ARCHIVE_FORMAT_TAR_LZ4 = 67,
+    TTZIP_ARCHIVE_FORMAT_TAR_BROTLI = 68,
+    TTZIP_ARCHIVE_FORMAT_TAR_LZIP = 69,
+    TTZIP_ARCHIVE_FORMAT_TAR_LRZIP = 70
 } TTZipArchiveFormat;
 
 typedef enum TTZipCompressionLevel {
@@ -128,7 +203,7 @@ typedef struct TTZipExtractOptions {
     const char *destination_path;
     const char *password;
     uint32_t thread_budget;
-    bool overwrite_existing;
+    uint8_t collision_policy;
     bool preserve_permissions;
     bool dry_run;
     TTZipProgressCallback progress_callback;
@@ -149,6 +224,8 @@ typedef struct TTZipCreateOptions {
 } TTZipCreateOptions;
 
 typedef struct TTZipErrorInfo {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipStatus status;
     int32_t error_code;
     char message[512];
@@ -172,9 +249,13 @@ typedef struct TTZipCpuCapsRaw {
 // MARK: - Rust C-ABI Export Prototypes
 
 const char *ttzip_rust_version(void);
+uint32_t ttzip_abi_version(void);
+bool ttzip_abi_is_compatible(uint32_t requested_version);
 TTZipStatus ttzip_rust_init(void);
 const char *ttzip_rust_status_string(TTZipStatus status);
 const char *ttzip_rust_last_error_message(void);
+bool ttzip_rust_get_last_error_info(TTZipErrorInfo *out_error);
+char *ttzip_rust_get_last_error_message_owned(void);
 void ttzip_rust_clear_last_error(void);
 bool ttzip_rust_is_hardware_accelerated(void);
 uint32_t ttzip_rust_crc32(uint32_t crc, const uint8_t *data, size_t len);
@@ -188,6 +269,36 @@ TTZipStatus ttzip_rust_create_archive(
     const TTZipCreateOptions *options
 );
 
+/*
+ * Extraction result contract (spec 229 FR-022 / FR-023), shared by
+ * ttzip_rust_extract_archive, ttzip_rust_archive_extract_unified,
+ * ttzip_rust_archive_extract_unified_v2 and ttzip_rust_archive_extract_selected:
+ *
+ *   - Entries are decoded into a private staging directory inside the destination and then
+ *     committed according to TTZipExtractOptions.collision_policy
+ *     (0 = Keep Both, 1 = Replace, 2 = Skip, 3 = Stop).
+ *   - TTZIP_STATUS_OK                    every staged item was committed (Skip decisions count as
+ *                                        resolved, not as failures).
+ *   - TTZIP_STATUS_CANCELLED             policy Stop found a destination conflict, or a progress
+ *                                        callback returned false; the destination is unchanged.
+ *   - TTZIP_STATUS_ERR_EXTRACTION_FAILED at least one item could not be committed (other items may
+ *                                        already be in place), or the commit could not start.
+ *   - Decode / integrity / password errors keep their own status; nothing is committed.
+ *   - Items that do not conflict, and Keep Both names, are placed only via an atomic exclusive
+ *     kernel primitive (RENAME_EXCL, or linkat for regular files); an existing file or
+ *     directory (even if empty) is never replaced unless policy Replace covers it. When no
+ *     atomic exclusive primitive is supported by the destination volume, the item fails with
+ *     ENOTSUP (TTZIP_STATUS_ERR_EXTRACTION_FAILED) without modifying the destination or staged
+ *     source.
+ *   - ttzip_rust_archive_extract_selected: *out_extracted_count is zeroed on entry; after a commit
+ *     it holds the number of destination placements actually performed (a directory moved as a
+ *     whole counts once); with dry_run it holds the number of matched entries.
+ *   - ttzip_rust_archive_extract_unified_v2: *out_extracted_bytes is 0 unless the result is
+ *     TTZIP_STATUS_OK; *out_error (792-byte ABI v3 TTZipErrorInfo) is initialized on entry
+ *     (struct_size = sizeof(TTZipErrorInfo), abi_version = TTZIP_ABI_VERSION_3, status = OK)
+ *     and populated with status, error_code, message, entry_path, and offset on any non-OK
+ *     return.
+ */
 TTZipStatus ttzip_rust_extract_archive(
     const char *archive_path,
     const char *destination_path,
@@ -333,6 +444,40 @@ int32_t ttzip_rust_zipcrypto_encrypt(const uint8_t *password, size_t password_le
 
 // MARK: - Inline C SDK Wrappers
 
+static inline void ttzip_error_info_init(TTZipErrorInfo *info) {
+    if (!info) {
+        return;
+    }
+    memset(info, 0, sizeof(*info));
+    info->struct_size = (uint32_t)sizeof(TTZipErrorInfo);
+    info->abi_version = TTZIP_ABI_VERSION_3;
+    info->status = TTZIP_STATUS_OK;
+}
+
+static inline void ttzip_extract_options_init(TTZipExtractOptions *options) {
+    if (!options) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = (uint32_t)sizeof(TTZipExtractOptions);
+    options->abi_version = TTZIP_ABI_VERSION_3;
+    options->collision_policy = TTZIP_COLLISION_POLICY_KEEP_BOTH;
+    options->preserve_permissions = true;
+}
+
+static inline void ttzip_create_options_init(TTZipCreateOptions *options) {
+    if (!options) {
+        return;
+    }
+    memset(options, 0, sizeof(*options));
+    options->struct_size = (uint32_t)sizeof(TTZipCreateOptions);
+    options->abi_version = TTZIP_ABI_VERSION_3;
+    options->format = TTZIP_ARCHIVE_FORMAT_ZIP;
+    options->level = TTZIP_COMPRESSION_LEVEL_NORMAL;
+    options->encryption = TTZIP_ENCRYPTION_NONE;
+    options->solid_block_size_mb = 64;
+}
+
 static inline const char *ttzip_version(void) {
     return ttzip_rust_version();
 }
@@ -359,13 +504,13 @@ static inline TTZipStatus ttzip_create_archive(
     if (options) {
         opt_copy = *options;
     } else {
-        memset(&opt_copy, 0, sizeof(opt_copy));
+        ttzip_create_options_init(&opt_copy);
     }
     if (opt_copy.struct_size == 0) {
         opt_copy.struct_size = (uint32_t)sizeof(TTZipCreateOptions);
     }
     if (opt_copy.abi_version == 0) {
-        opt_copy.abi_version = 2;
+        opt_copy.abi_version = TTZIP_ABI_VERSION_3;
     }
     return ttzip_rust_create_archive(source_paths, source_count, destination_path, &opt_copy);
 }
@@ -379,13 +524,13 @@ static inline TTZipStatus ttzip_extract_archive(
     if (options) {
         opt_copy = *options;
     } else {
-        memset(&opt_copy, 0, sizeof(opt_copy));
+        ttzip_extract_options_init(&opt_copy);
     }
     if (opt_copy.struct_size == 0) {
         opt_copy.struct_size = (uint32_t)sizeof(TTZipExtractOptions);
     }
     if (opt_copy.abi_version == 0) {
-        opt_copy.abi_version = 2;
+        opt_copy.abi_version = TTZIP_ABI_VERSION_3;
     }
     if (destination_path) {
         opt_copy.destination_path = destination_path;
@@ -420,7 +565,11 @@ static inline const char *ttzip_status_string(TTZipStatus status) {
         case TTZIP_STATUS_ERR_INVALID_PASSWORD: return "Invalid Password / Authentication Failed";
         case TTZIP_STATUS_ERR_EXTRACTION_FAILED: return "Extraction Failed";
         case TTZIP_STATUS_ERR_COMPRESSION_FAILED: return "Compression Failed";
+        case TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE: return "Unsupported Feature";
+        case TTZIP_STATUS_ERR_BUFFER_TOO_SMALL: return "Buffer Too Small";
+        case TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED: return "Solid Decompression Budget Exceeded";
         case TTZIP_STATUS_ERR_SECURITY_VIOLATION: return "Security Violation";
+        case TTZIP_STATUS_ERR_ABI_MISMATCH: return "ABI Version Mismatch";
         case TTZIP_STATUS_ERR_PANIC_CAUGHT: return "Panic Caught";
         default: return "Unknown Error";
     }

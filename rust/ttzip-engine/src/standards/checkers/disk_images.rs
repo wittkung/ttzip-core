@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Disk image format compliance checkers: Apple UDIF DMG and ISO 9660.
 
@@ -32,31 +32,51 @@ pub fn check_dmg_compliance(buffer: &[u8]) -> ComplianceReport {
     }
 
     // 2. Validate version (must be 4) and header size (must be 512)
-    let version = u32::from_be_bytes(trailer[4..8].try_into().unwrap());
-    let header_size = u32::from_be_bytes(trailer[8..12].try_into().unwrap());
+    let version = trailer
+        .get(4..8)
+        .and_then(|s| s.try_into().ok())
+        .map(u32::from_be_bytes);
+    let header_size = trailer
+        .get(8..12)
+        .and_then(|s| s.try_into().ok())
+        .map(u32::from_be_bytes);
 
-    if version != 4 {
-        let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "1.2", "Trailer Version");
-        report.add_warning(citation, format!("Unusual UDIF trailer version: {}", version), Some(trailer_start as u64 + 4));
+    if let Some(v) = version {
+        report.add_metadata("version", v.to_string());
+        if v != 4 {
+            let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "1.2", "Trailer Version");
+            report.add_warning(citation, format!("Unusual UDIF trailer version: {}", v), Some(trailer_start as u64 + 4));
+        }
     }
 
-    if header_size == 512 {
-        report.add_validated_header("Apple DMG: UDIF Trailer Header Version and Size");
-    } else {
-        let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "1.3", "Header Size Field");
-        report.add_warning(citation, format!("Non-standard UDIF header size field: {} (expected 512)", header_size), Some(trailer_start as u64 + 8));
+    if let Some(sz) = header_size {
+        if sz == 512 {
+            report.add_validated_header("Apple DMG: UDIF Trailer Header Version and Size");
+        } else {
+            let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "1.3", "Header Size Field");
+            report.add_warning(citation, format!("Non-standard UDIF header size field: {} (expected 512)", sz), Some(trailer_start as u64 + 8));
+        }
     }
 
-    let xml_offset = u64::from_be_bytes(trailer[216..224].try_into().unwrap());
-    let xml_length = u64::from_be_bytes(trailer[224..232].try_into().unwrap());
+    let xml_offset = trailer
+        .get(216..224)
+        .and_then(|s| s.try_into().ok())
+        .map(u64::from_be_bytes);
+    let xml_length = trailer
+        .get(224..232)
+        .and_then(|s| s.try_into().ok())
+        .map(u64::from_be_bytes);
 
-    report.add_metadata("version", version.to_string());
-    report.add_metadata("xml_offset", xml_offset.to_string());
-    report.add_metadata("xml_length", xml_length.to_string());
+    if let Some(offset) = xml_offset {
+        report.add_metadata("xml_offset", offset.to_string());
+        if offset > buffer.len() as u64 {
+            let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "2.1", "XML Plist Offset");
+            report.add_warning(citation, "XML plist offset points outside provided buffer boundary", Some(trailer_start as u64 + 216));
+        }
+    }
 
-    if xml_offset > buffer.len() as u64 {
-        let citation = StandardCitation::new(ComplianceStandard::AppleDmgUdif, "2.1", "XML Plist Offset");
-        report.add_warning(citation, "XML plist offset points outside provided buffer boundary", Some(trailer_start as u64 + 216));
+    if let Some(len) = xml_length {
+        report.add_metadata("xml_length", len.to_string());
     }
 
     report

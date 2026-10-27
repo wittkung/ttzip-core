@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Dynamic library symbol export hard isolation, ABI barrier, and panic protection.
 //!
@@ -12,7 +12,7 @@ use std::ffi::CStr;
 use std::panic::{catch_unwind, UnwindSafe};
 use libc::c_char;
 
-use crate::types::{set_last_error, TTZIP_ABI_VERSION_2, TTZipStatus};
+use crate::types::{set_last_error, TTZIP_ABI_VERSION_3, TTZipStatus};
 
 /// Authoritative canonical whitelist of exported C-ABI symbols in libttzip.
 pub const TTZIP_EXPORTED_SYMBOLS: &[&str] = &[
@@ -148,13 +148,13 @@ where
 /// Returns the active C-ABI version identifier.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_abi_version() -> u32 {
-    TTZIP_ABI_VERSION_2
+    TTZIP_ABI_VERSION_3
 }
 
 /// Validates whether a client requested ABI version is backwards-compatible.
 #[no_mangle]
 pub unsafe extern "C" fn ttzip_abi_is_compatible(requested_version: u32) -> bool {
-    requested_version == TTZIP_ABI_VERSION_2
+    requested_version == TTZIP_ABI_VERSION_3
 }
 
 /// Returns the total count of officially registered public C-ABI exported symbols.

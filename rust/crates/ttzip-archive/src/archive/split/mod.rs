@@ -1,13 +1,17 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Multi-volume split container and virtual continuous reader module.
 
+mod prober;
 mod reader;
 mod writer;
 
+pub use prober::{
+    MissingVolumeDescriptor, MissingVolumeSeverity, PreFlightVolumeProber, VolumePartInfo,
+};
 pub use reader::{detect_volume_chain, VirtualMultiVolumeReader, VolumeSegment};
-pub use writer::{compute_volume_path, SplitVolumeWriter};
+pub use writer::{compute_volume_path, SevenZOutputTarget, SplitVolumeWriter, StreamOutputTarget};
 
 /// Naming convention for multi-volume archive segments.
 #[repr(C)]

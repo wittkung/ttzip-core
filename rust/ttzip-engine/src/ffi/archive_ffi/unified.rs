@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unified C-ABI FFI Archive Interface.
 //!
@@ -88,6 +88,10 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
 }
 
 /// C-ABI unified archive extraction endpoint v2 with direct bytes count & structured error envelope.
+///
+/// Result contract (spec 229 FR-023): `Ok` only for a complete commit; `Cancelled` for policy
+/// Stop with conflicts (destination unchanged); `ErrExtractionFailed` when any item failed to
+/// commit. `out_extracted_bytes` is `0` unless the result is `Ok`.
 #[no_mangle]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
@@ -99,6 +103,9 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
 ) -> TTZipStatus {
     if !out_error.is_null() {
         *out_error = crate::types::TTZipErrorInfo::empty();
+    }
+    if !out_extracted_bytes.is_null() {
+        *out_extracted_bytes = 0;
     }
 
     let result = catch_unwind(|| {
@@ -140,11 +147,11 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
 
         let default_opt = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: dest_c,
             password: std::ptr::null(),
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,
@@ -157,13 +164,29 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
             &default_opt
         };
 
-        match UnifiedArchiveOrchestrator::extract_archive_with_metrics(archive_p, dest_p, opt_ref) {
-            Ok(bytes) => {
-                if !out_extracted_bytes.is_null() {
-                    *out_extracted_bytes = bytes;
-                }
-                TTZipStatus::Ok
+        if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
+            crate::types::write_error_info(out_error, TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
+            crate::types::set_last_error(TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
+            return TTZipStatus::ErrAbiMismatch;
+        }
+        if opt_ref.collision_policy > 3 {
+            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
+            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
+            return TTZipStatus::ErrInvalidParam;
+        }
+
+        let session = ttzip_archive::fs::collision::session::ExtractionSession::new(dest_p);
+        let staged = match session.stage() {
+            Ok(s) => s,
+            Err(_) => {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
+                crate::types::set_last_error(TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
+                return TTZipStatus::ErrExtractionFailed;
             }
+        };
+
+        match UnifiedArchiveOrchestrator::extract_archive_with_metrics(archive_p, &staged.staging().payload_dir(), opt_ref) {
+            Ok(bytes) => finish_unified_commit(staged, opt_ref, bytes, dest_p, out_extracted_bytes, out_error),
             Err(status) => {
                 crate::types::write_error_info(out_error, status, status.as_str(), archive_p.to_str(), 0);
                 crate::types::set_last_error(status, status.as_str(), archive_p.to_str(), 0);
@@ -177,6 +200,40 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
         crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
         TTZipStatus::ErrPanicCaught
     })
+}
+
+/// Commits a staged v2 extraction (FR-023): bytes are reported only for a complete commit; any
+/// other result is recorded in `out_error` and the thread-local last error.
+unsafe fn finish_unified_commit(
+    staged: ttzip_archive::fs::collision::ExtractionSession<ttzip_archive::fs::collision::Staged>,
+    opt_ref: &TTZipExtractOptions,
+    bytes: u64,
+    dest_p: &Path,
+    out_extracted_bytes: *mut u64,
+    out_error: *mut crate::types::TTZipErrorInfo,
+) -> TTZipStatus {
+    if opt_ref.dry_run {
+        if !out_extracted_bytes.is_null() {
+            *out_extracted_bytes = bytes;
+        }
+        return TTZipStatus::Ok;
+    }
+    let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
+    if report.status == TTZipStatus::Ok {
+        if !out_extracted_bytes.is_null() {
+            *out_extracted_bytes = bytes;
+        }
+        return report.status;
+    }
+    let message = if report.status == TTZipStatus::Cancelled {
+        "Extraction stopped: destination conflicts under Stop policy; destination unchanged"
+    } else {
+        "Extraction committed incompletely or the commit failed"
+    };
+    let entry_path = report.first_failed_path.as_deref().or_else(|| dest_p.to_str());
+    crate::types::write_error_info(out_error, report.status, message, entry_path, 0);
+    crate::types::set_last_error(report.status, message, entry_path, 0);
+    report.status
 }
 
 /// C-ABI unified archive inspection endpoint.
@@ -315,6 +372,11 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
 }
 
 /// C-ABI batch selective extraction endpoint (Single-pass O(N) stream scan).
+///
+/// Result contract (spec 229 FR-023): `Ok` only for a complete commit; `Cancelled` for policy
+/// Stop with conflicts; `ErrExtractionFailed` when any item failed to commit.
+/// `out_extracted_count` is set on every return: the number of destination placements actually
+/// committed (`0` unless a commit ran; the partial count on `ErrExtractionFailed`).
 #[no_mangle]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
@@ -325,6 +387,9 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
     options: *const TTZipExtractOptions,
     out_extracted_count: *mut usize,
 ) -> TTZipStatus {
+    if !out_extracted_count.is_null() {
+        *out_extracted_count = 0;
+    }
     let result = catch_unwind(|| {
         if archive_path.is_null()
             || target_paths.is_null()
@@ -355,11 +420,11 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
 
         let default_opt = TTZipExtractOptions {
             struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_2,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
             destination_path: destination_dir,
             password: std::ptr::null(),
             thread_budget: 0,
-            overwrite_existing: true,
+            collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
             preserve_permissions: true,
             dry_run: false,
             progress_callback: None,
@@ -372,20 +437,40 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
             &default_opt
         };
 
-        match crate::archive::unified::extract_single::extract_selected_entries(
+        if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
+            return TTZipStatus::ErrAbiMismatch;
+        }
+        if opt_ref.collision_policy > 3 {
+            return TTZipStatus::ErrInvalidParam;
+        }
+
+        let session = ttzip_archive::fs::collision::session::ExtractionSession::new(Path::new(dest_str));
+        let staged = match session.stage() {
+            Ok(s) => s,
+            Err(_) => return TTZipStatus::ErrExtractionFailed,
+        };
+
+        let matched = match crate::archive::unified::extract_single::extract_selected_entries(
             Path::new(arch_str),
-            &targets,
-            Path::new(dest_str),
+            &crate::archive::unified::EntrySelection::new(&targets, false),
+            &staged.staging().payload_dir(),
             opt_ref,
         ) {
-            Ok(count) => {
-                if !out_extracted_count.is_null() {
-                    *out_extracted_count = count;
-                }
-                TTZipStatus::Ok
-            }
-            Err(status) => status,
+            Ok(count) => count,
+            Err(status) => return status,
+        };
+
+        // Dry run: nothing is committed; report the entries that would be extracted.
+        let (status, count) = if opt_ref.dry_run {
+            (TTZipStatus::Ok, matched)
+        } else {
+            let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
+            (report.status, report.committed_items)
+        };
+        if !out_extracted_count.is_null() {
+            *out_extracted_count = count;
         }
+        status
     });
 
     result.unwrap_or(TTZipStatus::ErrPanicCaught)

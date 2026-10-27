@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Ultra-fast hardware-accelerated and L1D-optimized Adler-32 and CRC-32 checksum engine.
 //!

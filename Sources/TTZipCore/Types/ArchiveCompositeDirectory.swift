@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -49,6 +49,9 @@ public struct ArchiveLeafFile: ArchiveComponentProtocol, Identifiable, Equatable
     public let modificationDate: Date?
     public let compressedSizeBytes: Int64?
     public let crc32: UInt32?
+    public let posixPermissions: UInt32?
+    public let isEncrypted: Bool?
+    public let detectedEncoding: String?
 
     public init(
         name: String,
@@ -57,15 +60,21 @@ public struct ArchiveLeafFile: ArchiveComponentProtocol, Identifiable, Equatable
         entry: ArchiveEntry? = nil,
         modificationDate: Date? = nil,
         compressedSizeBytes: Int64? = nil,
-        crc32: UInt32? = nil
+        crc32: UInt32? = nil,
+        posixPermissions: UInt32? = nil,
+        isEncrypted: Bool? = nil,
+        detectedEncoding: String? = nil
     ) {
         self.name = name
         self.path = path
         self.sizeBytes = sizeBytes
         self.entry = entry
-        self.modificationDate = modificationDate
-        self.compressedSizeBytes = compressedSizeBytes
-        self.crc32 = crc32
+        self.modificationDate = modificationDate ?? entry?.modificationDate
+        self.compressedSizeBytes = compressedSizeBytes ?? entry?.compressedSize
+        self.crc32 = crc32 ?? entry?.crc32
+        self.posixPermissions = posixPermissions ?? entry?.posixPermissions
+        self.isEncrypted = isEncrypted ?? entry?.isEncrypted
+        self.detectedEncoding = detectedEncoding ?? entry?.detectedEncoding
     }
 
     public func getChildren() -> [ArchiveComponentProtocol] {
@@ -87,6 +96,11 @@ public struct ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifiable,
     public var isDirectory: Bool { true }
     public let entry: ArchiveEntry?
     public let modificationDate: Date?
+    public let compressedSizeBytes: Int64?
+    public let crc32: UInt32?
+    public let posixPermissions: UInt32?
+    public let isEncrypted: Bool?
+    public let detectedEncoding: String?
 
     private var subdirectories: [String: ArchiveCompositeDirectory] = [:]
     private var leafFiles: [String: ArchiveLeafFile] = [:]
@@ -97,12 +111,22 @@ public struct ArchiveCompositeDirectory: ArchiveComponentProtocol, Identifiable,
         path: String,
         entry: ArchiveEntry? = nil,
         modificationDate: Date? = nil,
+        compressedSizeBytes: Int64? = nil,
+        crc32: UInt32? = nil,
+        posixPermissions: UInt32? = nil,
+        isEncrypted: Bool? = nil,
+        detectedEncoding: String? = nil,
         children: [ArchiveComponentProtocol] = []
     ) {
         self.name = name
         self.path = path
         self.entry = entry
-        self.modificationDate = modificationDate
+        self.modificationDate = modificationDate ?? entry?.modificationDate
+        self.compressedSizeBytes = compressedSizeBytes ?? entry?.compressedSize
+        self.crc32 = crc32 ?? entry?.crc32
+        self.posixPermissions = posixPermissions ?? entry?.posixPermissions
+        self.isEncrypted = isEncrypted ?? entry?.isEncrypted
+        self.detectedEncoding = detectedEncoding ?? entry?.detectedEncoding
         for child in children {
             addDirect(component: child)
         }

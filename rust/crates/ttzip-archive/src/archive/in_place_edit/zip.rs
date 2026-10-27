@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ZIP in-place atomic archive mutation engine with zero recompression of untouched entries.
 //!
@@ -191,22 +191,34 @@ pub fn in_place_edit_zip(
     Ok(())
 }
 
-fn write_lfh<W: Write>(writer: &mut W, cd: &InPlaceCdMeta) -> Result<usize, TTZipStatus> {
-    let (dos_date, dos_time) = unix_to_dos_time(cd.mtime_epoch_secs);
-    let name_bytes = cd.rel_path.as_bytes();
-
-    let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF || cd.compressed_size >= 0xFFFF_FFFF;
-    let mut extra_fields = Vec::new();
-    if is_zip64 {
-        extra_fields.extend_from_slice(&ZipExtraFields::build_zip64_extra(
+fn build_in_place_extra_fields(
+    cd: &InPlaceCdMeta,
+    is_zip64: bool,
+    include_lfh_offset: bool,
+) -> Vec<u8> {
+    let mut extra_fields = if is_zip64 {
+        ZipExtraFields::build_zip64_extra(
             Some(cd.uncompressed_size),
             Some(cd.compressed_size),
-            None,
-        ));
-    }
+            include_lfh_offset.then_some(cd.lfh_offset),
+        )
+    } else {
+        Vec::new()
+    };
     if cd.is_encrypted && cd.compression_method == 99 {
         extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
     }
+    extra_fields.extend_from_slice(&ZipExtraFields::build_extended_timestamp(
+        cd.mtime_epoch_secs,
+    ));
+    extra_fields
+}
+
+fn write_lfh<W: Write>(writer: &mut W, cd: &InPlaceCdMeta) -> Result<usize, TTZipStatus> {
+    let (dos_time, dos_date) = unix_to_dos_time(cd.mtime_epoch_secs);
+    let name_bytes = cd.rel_path.as_bytes();
+    let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF || cd.compressed_size >= 0xFFFF_FFFF;
+    let extra_fields = build_in_place_extra_fields(cd, is_zip64, false);
 
     let flag = if cd.is_encrypted { 0x0801u16 } else { 0x0800u16 };
     let mut header = Vec::with_capacity(30 + name_bytes.len() + extra_fields.len());
@@ -252,26 +264,12 @@ fn write_lfh<W: Write>(writer: &mut W, cd: &InPlaceCdMeta) -> Result<usize, TTZi
 }
 
 fn write_cdfh<W: Write>(writer: &mut W, cd: &InPlaceCdMeta) -> Result<usize, TTZipStatus> {
-    let (dos_date, dos_time) = unix_to_dos_time(cd.mtime_epoch_secs);
+    let (dos_time, dos_date) = unix_to_dos_time(cd.mtime_epoch_secs);
     let name_bytes = cd.rel_path.as_bytes();
-
     let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF
         || cd.compressed_size >= 0xFFFF_FFFF
         || cd.lfh_offset >= 0xFFFF_FFFF;
-
-    let mut extra_fields = if is_zip64 {
-        ZipExtraFields::build_zip64_extra(
-            Some(cd.uncompressed_size),
-            Some(cd.compressed_size),
-            Some(cd.lfh_offset),
-        )
-    } else {
-        Vec::new()
-    };
-
-    if cd.is_encrypted && cd.compression_method == 99 {
-        extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
-    }
+    let extra_fields = build_in_place_extra_fields(cd, is_zip64, true);
 
     let flag = if cd.is_encrypted { 0x0801u16 } else { 0x0800u16 };
     let mut buf = Vec::with_capacity(46 + name_bytes.len() + extra_fields.len());

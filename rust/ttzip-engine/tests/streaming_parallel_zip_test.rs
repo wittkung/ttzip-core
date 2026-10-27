@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 use std::fs;
 use tempfile::tempdir;
@@ -22,7 +22,7 @@ fn test_streaming_parallel_zip_creation_and_inspection() {
 
     let options = TTZipCreateOptions {
         struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
-        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_2,
+        abi_version: ttzip_engine::types::TTZIP_ABI_VERSION_3,
         format: TTZipArchiveFormat::Zip,
         level: TTZipCompressionLevel::Fast,
         encryption: TTZipEncryptionMethod::None,

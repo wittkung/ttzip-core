@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Safe RAII wrappers for Zstandard Digested Dictionaries (`CDict` / `DDict`),
 //! Pre-trained Dictionary Builder (`ZDICT`), and High-Throughput Small File Manager.

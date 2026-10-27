@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Tier 2 E2E Test Suite: Boundary & Corner Cases for Features 5 through 8.
 //!
@@ -152,7 +152,8 @@ fn test_e2e_t2_f7_pure_ascii_pass_through() {
     let ascii_text = "Standard ASCII filename 12345.tar.gz";
     let is_ascii = ascii_text.is_ascii();
     assert!(is_ascii);
-    assert_eq!(ascii_text.as_bytes(), ascii_text.as_bytes());
+    let cleaned: String = ascii_text.chars().filter(|c| !c.is_control()).collect();
+    assert_eq!(cleaned.as_bytes(), ascii_text.as_bytes());
 }
 
 #[test]

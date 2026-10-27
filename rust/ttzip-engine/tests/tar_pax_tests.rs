@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive test suite for POSIX.1-2001 PAX extended header parsing, formatting,
 //! self-consistent variable-length encoding, nanosecond timestamps, and GHSA-3cv2-h65g-fgmm security isolation.

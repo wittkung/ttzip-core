@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Systematic Cauchy Reed-Solomon Erasure Coding and Matrix Inversion over $\text{GF}(2^8)$.
 

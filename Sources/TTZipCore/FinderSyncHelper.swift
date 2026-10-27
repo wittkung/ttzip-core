@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -35,7 +35,7 @@ public final class FinderSyncHelper: @unchecked Sendable {
     public static let supportedArchiveExtensions: Set<String> = [
         "zip", "zipx", "cbz", "7z", "cb7", "tar", "gz", "tgz", "bz2", "tbz2", "tbz",
         "xz", "txz", "zst", "tzst", "lz4", "br", "lz", "lzip", "lrz", "lrzip",
-        "aar", "applearchive", "sz", "snappy", "wim", "dmg", "iso", "rar", "cbr", "cab", "001"
+        "aar", "applearchive", "sz", "snappy", "wim", "dmg", "iso", "rar", "cbr", "cab", "001", "z01"
     ]
     
     /// Returns dynamic context menu items based on selected file URLs and target language.

@@ -1,14 +1,12 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
-//! Unified Virtual File System (VFS) tree module.
+//! Unified Virtual File System (VFS) arena module.
 
 pub mod arena;
-pub mod node;
 pub mod search;
-pub mod tree;
+pub mod view;
 
 pub use arena::*;
-pub use node::*;
 pub use search::*;
-pub use tree::*;
+pub use view::*;

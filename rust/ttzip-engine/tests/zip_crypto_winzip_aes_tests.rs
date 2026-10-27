@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive unit and integration tests for WinZip AES-128/192/256 authenticated encryption,
 //! PBKDF2-HMAC-SHA1 1000-round key derivation, AES-CTR stream cipher, and AE-1/AE-2 state machine.

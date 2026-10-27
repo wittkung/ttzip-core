@@ -1,11 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Libarchive Seek and Skip C-ABI trampolines and seekable reader state methods.
 
 use super::{ARCHIVE_FATAL, StreamReaderState};
 use std::io::{Read, Seek, SeekFrom};
-use std::panic::catch_unwind;
 
 impl<R: Read + Seek> StreamReaderState<R> {
     /// Skips forward by `request` bytes using the underlying seeker.
@@ -36,14 +35,11 @@ pub unsafe extern "C" fn archive_skip_callback_trampoline<R: Read + Seek>(
     client_data: *mut libc::c_void,
     request: i64,
 ) -> i64 {
-    let result = catch_unwind(|| {
-        if client_data.is_null() {
-            return ARCHIVE_FATAL as i64;
-        }
-        let state = &mut *(client_data as *mut StreamReaderState<R>);
-        state.skip(request).unwrap_or_default()
-    });
-    result.unwrap_or(0)
+    if client_data.is_null() {
+        return ARCHIVE_FATAL as i64;
+    }
+    let state = &mut *(client_data as *mut StreamReaderState<R>);
+    state.skip(request).unwrap_or_default()
 }
 
 /// C-ABI seek callback trampoline for `libarchive`.
@@ -53,31 +49,28 @@ pub unsafe extern "C" fn archive_seek_callback_trampoline<R: Read + Seek>(
     offset: i64,
     whence: libc::c_int,
 ) -> i64 {
-    let result = catch_unwind(|| {
-        if client_data.is_null() {
-            return ARCHIVE_FATAL as i64;
-        }
-        let state = &mut *(client_data as *mut StreamReaderState<R>);
-        let seek_from = match whence {
-            libc::SEEK_SET => {
-                if offset < 0 {
-                    return ARCHIVE_FATAL as i64;
-                }
-                SeekFrom::Start(offset as u64)
+    if client_data.is_null() {
+        return ARCHIVE_FATAL as i64;
+    }
+    let state = &mut *(client_data as *mut StreamReaderState<R>);
+    let seek_from = match whence {
+        libc::SEEK_SET => {
+            if offset < 0 {
+                return ARCHIVE_FATAL as i64;
             }
-            libc::SEEK_CUR => SeekFrom::Current(offset),
-            libc::SEEK_END => SeekFrom::End(offset),
-            _ => return ARCHIVE_FATAL as i64,
-        };
+            SeekFrom::Start(offset as u64)
+        }
+        libc::SEEK_CUR => SeekFrom::Current(offset),
+        libc::SEEK_END => SeekFrom::End(offset),
+        _ => return ARCHIVE_FATAL as i64,
+    };
 
-        match state.seek(seek_from) {
-            Ok(new_pos) => new_pos as i64,
-            Err(e) => {
-                state.has_error = true;
-                state.last_error_msg = Some(e.to_string());
-                ARCHIVE_FATAL as i64
-            }
+    match state.seek(seek_from) {
+        Ok(new_pos) => new_pos as i64,
+        Err(e) => {
+            state.has_error = true;
+            state.last_error_msg = Some(e.to_string());
+            ARCHIVE_FATAL as i64
         }
-    });
-    result.unwrap_or(ARCHIVE_FATAL as i64)
+    }
 }

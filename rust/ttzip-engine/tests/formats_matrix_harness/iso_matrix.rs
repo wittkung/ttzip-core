@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! ISO 9660 & UDF Optical Disc Image Format Matrix (Level 1/2/3, Rockridge, Joliet UTF-16BE).
 

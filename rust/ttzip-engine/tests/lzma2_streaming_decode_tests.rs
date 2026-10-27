@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Comprehensive test suite for LZMA2 Chunk Control Parsing, 12-State HMM Decoding,
 //! and Streaming Dictionary Decompression.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
 import Foundation
@@ -192,6 +192,52 @@ final class ActorConcurrencyTests: XCTestCase {
             XCTAssertTrue(error is CancellationError)
         }
         XCTAssertTrue(cancelHandle.isCancelled)
+    }
+
+    func testNativeComputeDispatcherWorkerPoolSize() {
+        let poolSize = NativeComputeDispatcher.defaultWorkerPoolSize()
+        XCTAssertGreaterThanOrEqual(poolSize, 2, "Worker pool size must be at least 2")
+        XCTAssertLessThanOrEqual(poolSize, 16, "Worker pool size must not exceed 16")
+        
+        let customDispatcher = NativeComputeDispatcher(maxConcurrency: 8)
+        XCTAssertEqual(customDispatcher.maxConcurrency, 8)
+    }
+
+    func testNativeComputeDispatcherDispatchIO() async throws {
+        let dispatcher = NativeComputeDispatcher.shared
+        let result = try await dispatcher.dispatchIO {
+            return "io_payload_verified"
+        }
+        XCTAssertEqual(result, "io_payload_verified")
+    }
+
+    func testNativeComputeDispatcherDispatchHighPriority() async throws {
+        let dispatcher = NativeComputeDispatcher.shared
+        let result = try await dispatcher.dispatchHighPriority {
+            return 9999
+        }
+        XCTAssertEqual(result, 9999)
+    }
+
+    func testNativeComputeDispatcherLoadBalancedPool() async throws {
+        let dispatcher = NativeComputeDispatcher.shared
+        let taskCount = 12
+        
+        try await withThrowingTaskGroup(of: Int.self) { group in
+            for i in 0..<taskCount {
+                group.addTask {
+                    try await dispatcher.dispatchCompute(qos: .userInitiated) {
+                        return i * i
+                    }
+                }
+            }
+            
+            var results: [Int] = []
+            for try await val in group {
+                results.append(val)
+            }
+            XCTAssertEqual(results.count, taskCount)
+        }
     }
 
     // MARK: - 5. ProgressStreamBridge High-Concurrency Lock-Free Streaming & Cancellation

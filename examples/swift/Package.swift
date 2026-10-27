@@ -1,6 +1,6 @@
 // swift-tools-version: 6.0
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import PackageDescription
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! In-place incremental archive mutation engine powered by `.ttzip.wal` Write-Ahead
 //! Logging, Piece Tree virtual byte interval remapping, and macOS APFS CoW atomic swap.
@@ -27,6 +27,28 @@ pub enum PieceSource {
     Original { offset: u64, len: u64 },
     WalPayload { wal_offset: u64, len: u64 },
     Inline(Vec<u8>),
+}
+
+impl PieceSource {
+    /// Slices this piece source by taking a sub-range from byte offset `skip` of length `take_len`.
+    #[must_use]
+    pub fn slice(&self, skip: u64, take_len: u64) -> Self {
+        match self {
+            Self::Original { offset, .. } => Self::Original {
+                offset: offset.saturating_add(skip),
+                len: take_len,
+            },
+            Self::WalPayload { wal_offset, .. } => Self::WalPayload {
+                wal_offset: wal_offset.saturating_add(skip),
+                len: take_len,
+            },
+            Self::Inline(bytes) => {
+                let start = (skip as usize).min(bytes.len());
+                let end = (start.saturating_add(take_len as usize)).min(bytes.len());
+                Self::Inline(bytes[start..end].to_vec())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,26 +91,36 @@ impl PieceTree {
 
             if p_start < v_offset {
                 let left_len = v_offset - p_start;
-                if let PieceSource::Original { offset, .. } = piece.source {
-                    new_pieces.push(Piece { source: PieceSource::Original { offset, len: left_len }, len: left_len });
-                }
+                let left_source = piece.source.slice(0, left_len);
+                new_pieces.push(Piece {
+                    source: left_source,
+                    len: left_len,
+                });
             }
 
             if !inserted {
-                new_pieces.push(Piece { source: new_source.clone(), len: new_len });
+                new_pieces.push(Piece {
+                    source: new_source.clone(),
+                    len: new_len,
+                });
                 inserted = true;
             }
 
             if p_end > replace_end {
                 let right_len = p_end - replace_end;
                 let skip = replace_end - p_start;
-                if let PieceSource::Original { offset, .. } = piece.source {
-                    new_pieces.push(Piece { source: PieceSource::Original { offset: offset + skip, len: right_len }, len: right_len });
-                }
+                let right_source = piece.source.slice(skip, right_len);
+                new_pieces.push(Piece {
+                    source: right_source,
+                    len: right_len,
+                });
             }
         }
         if !inserted {
-            new_pieces.push(Piece { source: new_source, len: new_len });
+            new_pieces.push(Piece {
+                source: new_source,
+                len: new_len,
+            });
         }
         self.pieces = new_pieces;
     }
@@ -324,4 +356,78 @@ pub fn inspect_wal_status(archive_path: &Path) -> Result<Option<WalMutationSumma
         total_pieces: 1,
         is_staged: true,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_piece_source_slice_variants() {
+        let orig = PieceSource::Original { offset: 100, len: 50 };
+        assert_eq!(orig.slice(10, 20), PieceSource::Original { offset: 110, len: 20 });
+
+        let wal = PieceSource::WalPayload { wal_offset: 500, len: 40 };
+        assert_eq!(wal.slice(15, 25), PieceSource::WalPayload { wal_offset: 515, len: 25 });
+
+        let inline = PieceSource::Inline(b"0123456789".to_vec());
+        assert_eq!(inline.slice(3, 4), PieceSource::Inline(b"3456".to_vec()));
+    }
+
+    #[test]
+    fn test_replace_range_on_wal_payload_no_silent_truncation() {
+        let mut pt = PieceTree::new(100);
+        // Step 1: replace 20..60 with a 40-byte WalPayload
+        pt.replace_range(
+            20,
+            40,
+            PieceSource::WalPayload { wal_offset: 1000, len: 40 },
+            40,
+        );
+        assert_eq!(pt.pieces.len(), 3);
+        assert_eq!(pt.total_length(), 100);
+
+        // Step 2: replace 30..40 (inside the WalPayload) with an Inline piece
+        pt.replace_range(
+            30,
+            10,
+            PieceSource::Inline(vec![0xAA, 0xBB, 0xCC]),
+            3,
+        );
+
+        // Crucial invariant: WalPayload must be split into left and right slices,
+        // preventing silent truncation of the remaining WalPayload data.
+        assert_eq!(pt.pieces.len(), 5);
+        assert_eq!(pt.pieces[0], Piece { source: PieceSource::Original { offset: 0, len: 20 }, len: 20 });
+        assert_eq!(pt.pieces[1], Piece { source: PieceSource::WalPayload { wal_offset: 1000, len: 10 }, len: 10 });
+        assert_eq!(pt.pieces[2], Piece { source: PieceSource::Inline(vec![0xAA, 0xBB, 0xCC]), len: 3 });
+        assert_eq!(pt.pieces[3], Piece { source: PieceSource::WalPayload { wal_offset: 1020, len: 20 }, len: 20 });
+        assert_eq!(pt.pieces[4], Piece { source: PieceSource::Original { offset: 60, len: 40 }, len: 40 });
+        assert_eq!(pt.total_length(), 20 + 10 + 3 + 20 + 40);
+    }
+
+    #[test]
+    fn test_replace_range_on_inline_payload_slice() {
+        let mut pt = PieceTree::new(50);
+        pt.replace_range(
+            10,
+            30,
+            PieceSource::Inline(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ1234".to_vec()),
+            30,
+        );
+        assert_eq!(pt.pieces.len(), 3);
+
+        // Sub-replace within the inline payload
+        pt.replace_range(
+            15,
+            10,
+            PieceSource::Inline(b"___".to_vec()),
+            3,
+        );
+
+        assert_eq!(pt.pieces.len(), 5);
+        assert_eq!(pt.pieces[1], Piece { source: PieceSource::Inline(b"ABCDE".to_vec()), len: 5 });
+        assert_eq!(pt.pieces[2], Piece { source: PieceSource::Inline(b"___".to_vec()), len: 3 });
+        assert_eq!(pt.pieces[3], Piece { source: PieceSource::Inline(b"PQRSTUVWXYZ1234".to_vec()), len: 15 });
+    }
 }

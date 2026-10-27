@@ -250,4 +250,114 @@ final class AdversarialIntegrityTests: XCTestCase {
         let extSz = getxattr(externalFile, "com.apple.quarantine", nil, 0, 0, XATTR_NOFOLLOW)
         XCTAssertEqual(extSz, -1, "External target file must not be tainted by quarantine propagation")
     }
+
+    /// Verifies that both direct parent symlinks (`dir_link -> ..`) and chained symlinks (`a/b -> ..`, `a/c -> b/..`)
+    /// are rejected without overwriting `harmless_marker.txt` outside `destinationDir`, and quarantined archives
+    /// never silently downgrade on security errors.
+    func testSymlinkParentAndChainedEscapePreservesOutsideMarkerAndRefusesFallback() async throws {
+        let outsideMarker = tempDir.appendingPathComponent("harmless_marker.txt")
+        try "SAFE_ORIGINAL_CONTENT".write(to: outsideMarker, atomically: true, encoding: .utf8)
+
+        let destinationDir = tempDir.appendingPathComponent("sandbox_dest")
+        try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
+
+        let directAttackZip = tempDir.appendingPathComponent("direct_symlink_attack.zip")
+        try createSyntheticMultiEntryZip(entries: [
+            (name: "dir_link", content: "..", unixMode: 0o120777),
+            (name: "dir_link/harmless_marker.txt", content: "PWNED_DIRECT", unixMode: 0o100644)
+        ]).write(to: directAttackZip)
+
+        let chainedAttackZip = tempDir.appendingPathComponent("chained_symlink_attack.zip")
+        try createSyntheticMultiEntryZip(entries: [
+            (name: "a/b", content: "..", unixMode: 0o120777),
+            (name: "a/c", content: "b/..", unixMode: 0o120777),
+            (name: "a/c/harmless_marker.txt", content: "PWNED_CHAINED", unixMode: 0o100644)
+        ]).write(to: chainedAttackZip)
+
+        // Tag chainedAttackZip with com.apple.quarantine to exercise quarantined extraction refusal-to-downgrade path
+        let qValue = "0083;65432100;Safari;ABCDEF-1234".utf8CString
+        _ = qValue.withUnsafeBufferPointer { ptr in
+            setxattr(chainedAttackZip.path, "com.apple.quarantine", ptr.baseAddress!, ptr.count, 0, XATTR_NOFOLLOW)
+        }
+
+        let extractor = ArchiveExtractor()
+        for attackArchive in [directAttackZip, chainedAttackZip] {
+            var didThrow = false
+            do {
+                try await extractor.extract(
+                    archivePath: attackArchive.path,
+                    destinationDir: destinationDir.path
+                )
+            } catch {
+                didThrow = true
+            }
+            XCTAssertTrue(didThrow, "Extractor must reject symlink escape archive \(attackArchive.lastPathComponent)")
+            let markerContent = try String(contentsOf: outsideMarker, encoding: .utf8)
+            XCTAssertEqual(markerContent, "SAFE_ORIGINAL_CONTENT")
+        }
+    }
+
+    private func createSyntheticMultiEntryZip(
+        entries: [(name: String, content: String, unixMode: UInt32)]
+    ) -> Data {
+        var data = Data()
+        var cd = Data()
+
+        for entry in entries {
+            let lfhOffset = UInt32(data.count)
+            let nameBytes = Array(entry.name.utf8)
+            let contentBytes = Array(entry.content.utf8)
+
+            var crc: UInt32 = 0xFFFF_FFFF
+            for byte in contentBytes {
+                var tableEntry = (crc ^ UInt32(byte)) & 0xFF
+                for _ in 0..<8 {
+                    tableEntry = (tableEntry & 1 != 0) ? (tableEntry >> 1) ^ 0xEDB88320 : (tableEntry >> 1)
+                }
+                crc = (crc >> 8) ^ tableEntry
+            }
+            crc = ~crc
+
+            var crcLE = crc.littleEndian
+            var sizeLE = UInt32(contentBytes.count).littleEndian
+            var nameLenLE = UInt16(nameBytes.count).littleEndian
+
+            data.append(contentsOf: [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+            withUnsafeBytes(of: &crcLE) { data.append(contentsOf: $0) }
+            withUnsafeBytes(of: &sizeLE) { data.append(contentsOf: $0) }
+            withUnsafeBytes(of: &sizeLE) { data.append(contentsOf: $0) }
+            withUnsafeBytes(of: &nameLenLE) { data.append(contentsOf: $0) }
+            data.append(contentsOf: [0x00, 0x00])
+            data.append(contentsOf: nameBytes)
+            data.append(contentsOf: contentBytes)
+
+            cd.append(contentsOf: [0x50, 0x4B, 0x01, 0x02, 0x14, 0x03, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+            withUnsafeBytes(of: &crcLE) { cd.append(contentsOf: $0) }
+            withUnsafeBytes(of: &sizeLE) { cd.append(contentsOf: $0) }
+            withUnsafeBytes(of: &sizeLE) { cd.append(contentsOf: $0) }
+            withUnsafeBytes(of: &nameLenLE) { cd.append(contentsOf: $0) }
+            cd.append(contentsOf: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+            var extAttrLE = (entry.unixMode << 16).littleEndian
+            withUnsafeBytes(of: &extAttrLE) { cd.append(contentsOf: $0) }
+            var lfhOffsetLE = lfhOffset.littleEndian
+            withUnsafeBytes(of: &lfhOffsetLE) { cd.append(contentsOf: $0) }
+            cd.append(contentsOf: nameBytes)
+        }
+
+        let cdOffset = UInt32(data.count)
+        let cdSize = UInt32(cd.count)
+        data.append(cd)
+
+        var countLE = UInt16(entries.count).littleEndian
+        var cdSizeLE = cdSize.littleEndian
+        var cdOffsetLE = cdOffset.littleEndian
+        data.append(contentsOf: [0x50, 0x4B, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00])
+        withUnsafeBytes(of: &countLE) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &countLE) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &cdSizeLE) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &cdOffsetLE) { data.append(contentsOf: $0) }
+        data.append(contentsOf: [0x00, 0x00])
+        return data
+    }
 }
+

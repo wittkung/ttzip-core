@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! POSIX TAR in-place atomic archive mutation engine with 512-byte aligned block overwrites and appends.
 

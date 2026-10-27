@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! macOS 32-byte Finder Information structure (16-byte FInfo + 16-byte FXInfo).
 

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
 
@@ -27,6 +27,12 @@ extension ArchiveError {
                 return .passwordRequired
             case RustTTZipStatusCode.errOutOfMemory.rawValue:
                 return .engineFailure(code: -501, message: "Out of memory: memory allocation failed in microkernel")
+            case RustTTZipStatusCode.errExtractionFailed.rawValue:
+                return .engineFailure(code: -11, message: "Archive extraction failed in microkernel")
+            case RustTTZipStatusCode.errCompressionFailed.rawValue:
+                return .engineFailure(code: -12, message: "Archive compression failed in microkernel")
+            case RustTTZipStatusCode.errUnsupportedFeature.rawValue:
+                return .engineFailure(code: -13, message: "Unsupported feature or format configuration")
             case -21:
                 return .invalidFormat
             case -23:
@@ -45,6 +51,14 @@ extension ArchiveError {
             return .engineFailure(code: -501, message: "Out of memory: \(details)")
         case let .DecompressionBombDetected(reason):
             return .engineFailure(code: -403, message: "Decompression bomb detected: \(reason)")
+        case let .InvalidSessionState(expected, actual):
+            return .engineFailure(code: -400, message: "Invalid session state: expected \(expected), actual \(actual)")
+        case let .InvalidResolution(detail):
+            return .engineFailure(code: -400, message: "Invalid resolution: \(detail)")
+        case let .DestinationUnavailable(errno):
+            return .engineFailure(code: errno, message: "Destination unavailable (errno \(errno))")
+        case let .InvalidArgument(message):
+            return .engineFailure(code: -400, message: "Invalid argument: \(message)")
         case let .ChecksumMismatch(expected, actual):
             return .corruptedData(
                 archivePath: "checksum",

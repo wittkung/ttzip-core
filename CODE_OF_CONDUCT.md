@@ -48,7 +48,7 @@ This Code of Conduct applies within all community spaces (including GitHub Issue
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project team:
 
-- **Email**: **`kevintungs@163.com`**
+- **Email**: **`witt.w.kung@gmail.com`**
 - **Confidential Channel**: [GitHub Security Advisories](https://github.com/wittkung/TTZip/security/advisories/new) (for sensitive reports)
 
 All complaints will be reviewed and investigated promptly and fairly. All community leaders are obligated to respect the privacy and security of the reporter of any incident.

@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Zstandard 4MB In / 4MB Out bounded streaming compression and decompression pipelines.
 //!

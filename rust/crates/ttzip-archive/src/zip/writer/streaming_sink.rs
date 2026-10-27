@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Bounded-memory streaming sinks, spilled payload management, and Central Directory serialization.
 
@@ -134,6 +134,7 @@ impl Write for BoundedSink {
             ));
             let mut file = OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .read(true)
                 .open(&temp_path)?;
@@ -180,7 +181,7 @@ pub struct CentralDirectoryMeta {
 }
 
 pub fn build_cdfh_bytes(cd: &CentralDirectoryMeta) -> Vec<u8> {
-    let (dos_date, dos_time) = unix_to_dos_time(cd.mtime_secs);
+    let (dos_time, dos_date) = unix_to_dos_time(cd.mtime_secs);
     let name_bytes = cd.rel_path.as_bytes();
 
     let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF
@@ -200,6 +201,7 @@ pub fn build_cdfh_bytes(cd: &CentralDirectoryMeta) -> Vec<u8> {
     if cd.is_encrypted && cd.compression_method == 99 {
         extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
     }
+    extra_fields.extend_from_slice(&ZipExtraFields::build_extended_timestamp(cd.mtime_secs));
 
     let flag = if cd.is_directory {
         0x0800u16
@@ -297,3 +299,174 @@ pub fn build_eocd(entries_count: u16, cd_size: u32, cd_offset: u32) -> Vec<u8> {
     buf.extend_from_slice(&0u16.to_le_bytes());
     buf
 }
+
+/// Unified output sink for single-file (`pwrite`) or single-pass split-volume (`SplitVolumeWriter`) ZIP streams.
+pub enum ZipOutputSink {
+    Single {
+        file: File,
+        current_offset: u64,
+        abort_guard: Option<crate::fs::FileAbortGuard>,
+    },
+    Split {
+        writer: crate::archive::split::SplitVolumeWriter,
+        committed: bool,
+    },
+}
+
+impl ZipOutputSink {
+    /// Opens a single-file or split-volume ZIP output sink.
+    pub fn open(
+        dest_path: &Path,
+        split_volume_size_bytes: u64,
+        prealloc_hint: u64,
+    ) -> Result<Self, TTZipStatus> {
+        if let Some(parent) = dest_path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            let _ = fs::create_dir_all(parent);
+        }
+        if split_volume_size_bytes > 0 {
+            let (base_path, scheme) =
+                if dest_path.extension().and_then(|e| e.to_str()) == Some("001") {
+                    (
+                        dest_path.with_extension(""),
+                        crate::archive::split::VolumeNamingScheme::NumberedExtension,
+                    )
+                } else {
+                    (
+                        dest_path.to_path_buf(),
+                        crate::archive::split::VolumeNamingScheme::PkzipSpanned,
+                    )
+                };
+            let writer = crate::archive::split::SplitVolumeWriter::new(
+                &base_path,
+                split_volume_size_bytes,
+                scheme,
+            )
+            .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+            Ok(Self::Split {
+                writer,
+                committed: false,
+            })
+        } else {
+            let abort_guard = crate::fs::FileAbortGuard::new(dest_path);
+            let file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(dest_path)
+                .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+            if prealloc_hint > 0 {
+                use std::os::unix::io::AsRawFd;
+                let _ = crate::fs::apfs::apfs_preallocate(file.as_raw_fd(), prealloc_hint as i64);
+            }
+            Ok(Self::Single {
+                file,
+                current_offset: 0,
+                abort_guard: Some(abort_guard),
+            })
+        }
+    }
+
+    /// Current virtual offset across the output stream.
+    #[inline]
+    pub fn current_offset(&self) -> u64 {
+        match self {
+            Self::Single { current_offset, .. } => *current_offset,
+            Self::Split { writer, .. } => writer.total_bytes(),
+        }
+    }
+
+    /// Appends a slice of bytes sequentially to the output sink.
+    pub fn write_bytes(&mut self, buf: &[u8]) -> Result<(), TTZipStatus> {
+        if buf.is_empty() {
+            return Ok(());
+        }
+        match self {
+            Self::Single {
+                file,
+                current_offset,
+                ..
+            } => {
+                file.write_all_at(buf, *current_offset)
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                *current_offset += buf.len() as u64;
+                Ok(())
+            }
+            Self::Split { writer, .. } => writer
+                .write_all(buf)
+                .map_err(|_| TTZipStatus::ErrCompressionFailed),
+        }
+    }
+
+    /// Streams an `EntryPayload` sequentially into the output sink.
+    pub fn write_payload(&mut self, payload: &EntryPayload) -> Result<(), TTZipStatus> {
+        match self {
+            Self::Single {
+                file,
+                current_offset,
+                ..
+            } => {
+                if !payload.is_empty() {
+                    payload.write_to_file_at(file, *current_offset)?;
+                    *current_offset += payload.len();
+                }
+                Ok(())
+            }
+            Self::Split { writer, .. } => match payload {
+                EntryPayload::Memory(v) => writer
+                    .write_all(v)
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed),
+                EntryPayload::Spill(spill) => stream_file_to_writer(&spill.path, writer),
+                EntryPayload::OriginalFile { path, .. } => stream_file_to_writer(path, writer),
+            },
+        }
+    }
+
+    /// Commits the output sink and returns the final total compressed byte count.
+    pub fn commit(mut self) -> Result<u64, TTZipStatus> {
+        match &mut self {
+            Self::Single {
+                current_offset,
+                abort_guard,
+                ..
+            } => {
+                if let Some(guard) = abort_guard.take() {
+                    guard.commit();
+                }
+                Ok(*current_offset)
+            }
+            Self::Split { writer, committed } => {
+                let total = writer.total_bytes();
+                writer
+                    .close()
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                *committed = true;
+                Ok(total)
+            }
+        }
+    }
+}
+
+impl Drop for ZipOutputSink {
+    fn drop(&mut self) {
+        if let Self::Split { writer, committed } = self {
+            if !*committed {
+                writer.cancel_and_cleanup();
+            }
+        }
+    }
+}
+
+fn stream_file_to_writer<W: Write>(src: &Path, dst: &mut W) -> Result<(), TTZipStatus> {
+    let mut f = File::open(src).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    let mut buf = [0u8; STREAM_CHUNK_SIZE];
+    loop {
+        let n = f.read(&mut buf).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        if n == 0 {
+            break;
+        }
+        dst.write_all(&buf[..n])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    }
+    Ok(())
+}
+

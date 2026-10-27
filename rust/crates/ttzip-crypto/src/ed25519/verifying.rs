@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Ed25519 signature verification, compressed point decoding, canonical scalar validation,
 //! and RFC 8032 / Zip215 strict constant-time checks.

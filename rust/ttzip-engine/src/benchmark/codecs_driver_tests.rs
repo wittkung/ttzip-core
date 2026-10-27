@@ -1,27 +1,27 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Unit and integration test suite for MatrixCodecDriver and all codec benchmark drivers.
 
 use super::*;
 
 #[test]
-fn test_all_13_drivers_registered_and_identified() {
+fn test_all_11_drivers_registered_and_identified() {
     let drivers = MatrixCodecDriver::drivers();
-    assert_eq!(drivers.len(), 13);
+    assert_eq!(drivers.len(), 11);
 
     let ids: Vec<&str> = drivers.iter().map(|d| d.algorithm_id()).collect();
     assert_eq!(
         ids,
         vec![
-            "Deflate", "Zstd", "Zstd-LDM", "Zstd-Dict", "FSE", "Huff0",
+            "Deflate", "Zstd", "Zstd-LDM", "Zstd-Dict",
             "LZMA2", "Brotli", "Bzip2", "Snappy", "LZ4", "LZFSE", "PPMd"
         ]
     );
 }
 
 #[test]
-fn test_all_13_drivers_roundtrip() {
+fn test_all_11_drivers_roundtrip() {
     let mut payload = Vec::with_capacity(4096);
     for _ in 0..64 {
         payload.extend_from_slice(b"TTZip 2026 High-Performance Multi-Codec Architecture Verification Payload! ");

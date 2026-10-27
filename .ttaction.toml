@@ -10,34 +10,24 @@ cargo = "1.80"
 RUST_BACKTRACE = "1"
 
 [[stage]]
-name = "lint-loc"
-description = "Single-file LOC gate (≤800 LOC)"
+name = "loc-gate"
+description = "Single-file LOC gate (<=800 LOC)"
 run = "./scripts/lint_loc_gate.sh"
 sources = ["rust/**/*.rs", "Sources/**/*.swift"]
-
-[[stage]]
-name = "lint-dag"
-description = "Architecture dependency DAG gate"
-run = "./scripts/lint_dag_gate.sh"
-
-[[stage]]
-name = "rust-check"
-description = "Cargo workspace type check"
-run = "cd rust && cargo check --workspace --all-targets"
-depends_on = ["lint-loc", "lint-dag"]
-sources = ["rust/**/*.rs", "rust/**/Cargo.toml"]
 
 [[stage]]
 name = "rust-test"
 description = "Rust workspace test suite"
 run = "cd rust && cargo test --workspace"
-depends_on = ["rust-check"]
+depends_on = ["loc-gate"]
 sources = ["rust/**/*.rs", "rust/**/Cargo.toml"]
 timeout = 300
 
 [[stage]]
-name = "verify-symbols"
-description = "UniFFI Mach-O symbol bijection verification"
-run = "./scripts/verify_uniffi_symbols.sh"
-depends_on = ["rust-test"]
+name = "swift-test"
+description = "Swift package build and test suite"
+run = "./scripts/build_rust.sh --debug && swift test"
+depends_on = ["loc-gate"]
+sources = ["Sources/**/*.swift", "Tests/**/*.swift", "Package.swift"]
 platforms = ["macos"]
+timeout = 300

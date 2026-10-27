@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 MetastudyLine. All rights reserved.
-# Proprietary and confidential.
+# SPDX-License-Identifier: BSD-3-Clause
 
 """
 Security Gate Report Aggregator and JSON Serializer.

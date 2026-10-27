@@ -51,8 +51,8 @@ We gratefully acknowledge the authors and maintainers of these projects for thei
 ---
 
 ## Fast-LZMA2 (fl2)
-- **SPDX Identifier**: `BSD-2-Clause`
-- **License Type**: BSD 2-Clause License & Public Domain
+- **SPDX Identifier**: `BSD-3-Clause`
+- **License Type**: BSD 3-Clause License & Public Domain
 - **Copyright**: Copyright (c) 2018-present, Fast-LZMA2 contributors and Igor Pavlov
 - **Upstream Repository**: [https://github.com/IgorCode/fast-lzma2](https://github.com/IgorCode/fast-lzma2)
 - **Description**: Parallel and accelerated LZMA2 compression engine.

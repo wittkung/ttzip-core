@@ -1,0 +1,26 @@
+# Copyright 2026 MetastudyLine. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+
+[package]
+name = "ttzip-semantic"
+version = "0.1.0"
+edition = "2021"
+authors = ["Witt Kung <witt.w.kung@gmail.com>"]
+license = "BSD-3-Clause"
+description = "TTZip EmbeddingGemma 2 GGUF & llama.cpp Semantic Indexing and Hybrid Search Engine"
+
+[dependencies]
+blake3 = "1.5"
+libc = "0.2"
+parking_lot = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+thiserror = "2.0"
+ttzip-types = { path = "../ttzip-types" }
+
+[build-dependencies]
+cc = "1.0"
+
+[dev-dependencies]
+tempfile = "3.17"

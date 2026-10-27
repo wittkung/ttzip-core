@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! Dead-Store Elimination immune memory sanitization, RAII SecureBuffer, and aligned allocations.
 

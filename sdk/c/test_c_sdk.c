@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,28 @@
 #include <assert.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <ftw.h>
+#include <limits.h>
 #include "../include/ttzip.h"
+
+static int remove_entry_cb(
+    const char *fpath,
+    const struct stat *sb,
+    int typeflag,
+    struct FTW *ftwbuf
+) {
+    (void)sb;
+    (void)typeflag;
+    (void)ftwbuf;
+    return remove(fpath);
+}
+
+static void remove_sandbox_tree(const char *sandbox_dir) {
+    if (!sandbox_dir || sandbox_dir[0] == '\0') {
+        return;
+    }
+    (void)nftw(sandbox_dir, remove_entry_cb, 64, FTW_DEPTH | FTW_PHYS);
+}
 
 typedef struct {
     size_t count;
@@ -35,6 +56,7 @@ typedef struct {
 } ProgressData;
 
 static bool progress_collector(uint64_t processed_bytes, uint64_t total_bytes, const char *current_entry, void *user_data) {
+    (void)current_entry;
     if (!user_data) return true;
     ProgressData *data = (ProgressData *)user_data;
     data->call_count++;
@@ -94,9 +116,18 @@ int main(void) {
     assert(c64 != 0);
     printf("  [PASS] C SDK SIMD Checksums CRC-32 (0x%08X) & CRC-64 (0x%016llX)\n", c32, (unsigned long long)c64);
 
+    // Create self-owned unique temporary sandbox directory (never touch shared /tmp paths)
+    char sandbox_template[] = "/tmp/ttzip_c_sdk_XXXXXX";
+    char *sandbox_dir = mkdtemp(sandbox_template);
+    assert(sandbox_dir != NULL);
+
     // 4. Archive Creation with Progress Callback
-    const char *tmp_file1 = "/tmp/ttzip_c_file1.txt";
-    const char *tmp_file2 = "/tmp/ttzip_c_file2.log";
+    char tmp_file1[PATH_MAX];
+    char tmp_file2[PATH_MAX];
+    char archive_path[PATH_MAX];
+    snprintf(tmp_file1, sizeof(tmp_file1), "%s/ttzip_c_file1.txt", sandbox_dir);
+    snprintf(tmp_file2, sizeof(tmp_file2), "%s/ttzip_c_file2.log", sandbox_dir);
+    snprintf(archive_path, sizeof(archive_path), "%s/ttzip_c_test_archive.zip", sandbox_dir);
     const char *content1 = "C11 Native SDK Test File 1 Content\n";
     const char *content2 = "C11 Native SDK Test File 2 Log Content Line\n";
 
@@ -104,13 +135,10 @@ int main(void) {
     create_test_file(tmp_file2, content2);
 
     const char *sources[] = { tmp_file1, tmp_file2 };
-    const char *archive_path = "/tmp/ttzip_c_test_archive.zip";
 
     ProgressData prog_data = { 0, 0, 0 };
     TTZipCreateOptions create_opts;
-    memset(&create_opts, 0, sizeof(create_opts));
-    create_opts.struct_size = sizeof(TTZipCreateOptions);
-    create_opts.abi_version = 2;
+    ttzip_create_options_init(&create_opts);
     create_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
     create_opts.level = TTZIP_COMPRESSION_LEVEL_NORMAL;
     create_opts.progress_callback = progress_collector;
@@ -133,13 +161,12 @@ int main(void) {
            inspect_data.count, (unsigned long long)inspect_data.total_uncompressed);
 
     // 6. Archive Extraction
-    const char *extract_dir = "/tmp/ttzip_c_extracted_dir";
+    char extract_dir[PATH_MAX];
+    snprintf(extract_dir, sizeof(extract_dir), "%s/ttzip_c_extracted_dir", sandbox_dir);
     TTZipExtractOptions extract_opts;
-    memset(&extract_opts, 0, sizeof(extract_opts));
-    extract_opts.struct_size = sizeof(TTZipExtractOptions);
-    extract_opts.abi_version = 2;
+    ttzip_extract_options_init(&extract_opts);
     extract_opts.destination_path = extract_dir;
-    extract_opts.overwrite_existing = true;
+    extract_opts.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     extract_opts.preserve_permissions = true;
 
     st = ttzip_extract_archive(archive_path, extract_dir, &extract_opts);
@@ -148,7 +175,7 @@ int main(void) {
     }
     assert(st == TTZIP_STATUS_OK);
 
-    char extracted_path1[512];
+    char extracted_path1[PATH_MAX];
     snprintf(extracted_path1, sizeof(extracted_path1), "%s/ttzip_c_file1.txt", extract_dir);
     char *read_back1 = read_test_file(extracted_path1);
     assert(read_back1 != NULL);
@@ -167,12 +194,10 @@ int main(void) {
         TTZIP_COMPRESSION_LEVEL_ULTRA
     };
     for (int i = 0; i < 6; i++) {
-        char lvl_archive[256];
-        snprintf(lvl_archive, sizeof(lvl_archive), "/tmp/ttzip_c_lvl_%d.zip", i);
+        char lvl_archive[PATH_MAX];
+        snprintf(lvl_archive, sizeof(lvl_archive), "%s/ttzip_c_lvl_%d.zip", sandbox_dir, i);
         TTZipCreateOptions lvl_opts;
-        memset(&lvl_opts, 0, sizeof(lvl_opts));
-        lvl_opts.struct_size = sizeof(TTZipCreateOptions);
-        lvl_opts.abi_version = 2;
+        ttzip_create_options_init(&lvl_opts);
         lvl_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
         lvl_opts.level = levels[i];
         lvl_opts.thread_budget = 1;
@@ -283,16 +308,17 @@ int main(void) {
     printf("  [PASS] C SDK hardware hashes (XXH3, BLAKE3, SHA256, MD5, SHA1, ChaCha20-Poly1305) OK\n");
 
     // 9. Password-Protected Archive (AES-256)
-    const char *pwd_archive = "/tmp/ttzip_c_encrypted.zip";
-    const char *pwd_extract_valid = "/tmp/ttzip_c_pwd_valid";
-    const char *pwd_extract_invalid = "/tmp/ttzip_c_pwd_invalid";
+    char pwd_archive[PATH_MAX];
+    char pwd_extract_valid[PATH_MAX];
+    char pwd_extract_invalid[PATH_MAX];
+    snprintf(pwd_archive, sizeof(pwd_archive), "%s/ttzip_c_encrypted.zip", sandbox_dir);
+    snprintf(pwd_extract_valid, sizeof(pwd_extract_valid), "%s/ttzip_c_pwd_valid", sandbox_dir);
+    snprintf(pwd_extract_invalid, sizeof(pwd_extract_invalid), "%s/ttzip_c_pwd_invalid", sandbox_dir);
     const char *secret_pass = "TTZipSecretKey2026!";
     const char *wrong_pass = "WrongSecretPass!";
 
     TTZipCreateOptions pwd_create_opts;
-    memset(&pwd_create_opts, 0, sizeof(pwd_create_opts));
-    pwd_create_opts.struct_size = sizeof(TTZipCreateOptions);
-    pwd_create_opts.abi_version = 2;
+    ttzip_create_options_init(&pwd_create_opts);
     pwd_create_opts.format = TTZIP_ARCHIVE_FORMAT_ZIP;
     pwd_create_opts.level = TTZIP_COMPRESSION_LEVEL_NORMAL;
     pwd_create_opts.encryption = TTZIP_ENCRYPTION_AES256;
@@ -303,23 +329,19 @@ int main(void) {
 
     // Extract with correct password
     TTZipExtractOptions pwd_ext_valid;
-    memset(&pwd_ext_valid, 0, sizeof(pwd_ext_valid));
-    pwd_ext_valid.struct_size = sizeof(TTZipExtractOptions);
-    pwd_ext_valid.abi_version = 2;
+    ttzip_extract_options_init(&pwd_ext_valid);
     pwd_ext_valid.destination_path = pwd_extract_valid;
     pwd_ext_valid.password = secret_pass;
-    pwd_ext_valid.overwrite_existing = true;
+    pwd_ext_valid.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     st = ttzip_extract_archive(pwd_archive, pwd_extract_valid, &pwd_ext_valid);
     assert(st == TTZIP_STATUS_OK);
 
     // Extract with wrong password
     TTZipExtractOptions pwd_ext_invalid;
-    memset(&pwd_ext_invalid, 0, sizeof(pwd_ext_invalid));
-    pwd_ext_invalid.struct_size = sizeof(TTZipExtractOptions);
-    pwd_ext_invalid.abi_version = 2;
+    ttzip_extract_options_init(&pwd_ext_invalid);
     pwd_ext_invalid.destination_path = pwd_extract_invalid;
     pwd_ext_invalid.password = wrong_pass;
-    pwd_ext_invalid.overwrite_existing = true;
+    pwd_ext_invalid.collision_policy = TTZIP_COLLISION_POLICY_REPLACE;
     st = ttzip_extract_archive(pwd_archive, pwd_extract_invalid, &pwd_ext_invalid);
     assert(st != TTZIP_STATUS_OK);
 
@@ -332,11 +354,8 @@ int main(void) {
     assert(strcmp(ttzip_status_string(TTZIP_STATUS_ERR_SECURITY_VIOLATION), "Security Violation") == 0);
     printf("  [PASS] C SDK ttzip_status_string() error mappings OK\n");
 
-    // Cleanup
-    unlink(tmp_file1);
-    unlink(tmp_file2);
-    unlink(archive_path);
-    unlink(extracted_path1);
+    // Cleanup self-owned sandbox directory
+    remove_sandbox_tree(sandbox_dir);
 
     printf("✅ All C11 C-ABI validation tests passed successfully!\n");
     return 0;

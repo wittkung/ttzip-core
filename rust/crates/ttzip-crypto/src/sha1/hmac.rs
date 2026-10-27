@@ -1,5 +1,5 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
-// Proprietary and confidential.
+// SPDX-License-Identifier: BSD-3-Clause
 
 //! HMAC-SHA1 and PBKDF2-HMAC-SHA1 routines (RFC 2104 / RFC 2898 / RFC 6070).
 
