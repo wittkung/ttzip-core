@@ -50,6 +50,28 @@ fn load_declared_reference_fixture() -> Vec<ReferenceVectorEntry> {
     entries
 }
 
+/// Resolves the test runtime configuration without reading user home directory
+/// data when running in the default standalone no-model lane (`TTZIP_REQUIRE_REAL_GGUF != "1"`).
+/// When `TTZIP_REQUIRE_REAL_GGUF == "1"`, resolves `TTZIP_REAL_GGUF_MODEL_PATH` if
+/// explicitly provided, or falls back to `LlamaRuntimeConfig::default_for_storage_dir`.
+fn resolve_test_gguf_config(sandbox_storage_dir: &std::path::Path) -> LlamaRuntimeConfig {
+    if std::env::var("TTZIP_REQUIRE_REAL_GGUF").as_deref() == Ok("1") {
+        if let Ok(explicit_path) = std::env::var("TTZIP_REAL_GGUF_MODEL_PATH") {
+            return LlamaRuntimeConfig {
+                model_path: PathBuf::from(explicit_path),
+                ..LlamaRuntimeConfig::default()
+            };
+        }
+        return LlamaRuntimeConfig::default_for_storage_dir(sandbox_storage_dir);
+    }
+    LlamaRuntimeConfig {
+        model_path: sandbox_storage_dir
+            .join("models")
+            .join("embeddinggemma-2-Q8_0.gguf"),
+        ..LlamaRuntimeConfig::default()
+    }
+}
+
 /// Returns `true` only when the test is running in the standalone no-model lane
 /// (`TTZIP_REQUIRE_REAL_GGUF != "1"`) AND `err` is strictly an absent external
 /// model file (`ModelFileMissing`) or an absent unmounted `libllamacpp.dylib`
@@ -62,7 +84,9 @@ fn is_standalone_missing_external_runtime_or_model(err: &SemanticModelError) -> 
     match err {
         SemanticModelError::ModelFileMissing { .. } => true,
         SemanticModelError::RuntimeFailed { reason } => {
-            reason == "bundled libllamacpp.dylib not found" || reason.contains("dlopen failed for")
+            reason == "bundled libllamacpp.dylib not found"
+                || reason == "bundled libllamacpp.dylib not found or failed to dlopen"
+                || reason.contains("dlopen failed for")
         }
         _ => false,
     }
@@ -280,6 +304,16 @@ fn test_real_gguf_model_output_parity_checkpoint() {
     let err = verify_gguf_model_file(&corrupt_path, PINNED_GGUF_SIZE_BYTES, PINNED_GGUF_SHA256)
         .expect_err("must reject wrong size");
     assert!(matches!(err, SemanticModelError::SizeMismatch { .. }));
+    assert!(!is_standalone_missing_external_runtime_or_model(&err));
+    let corrupt_engine_err = LlamaRuntimeEngine::new(LlamaRuntimeConfig {
+        model_path: corrupt_path,
+        ..LlamaRuntimeConfig::default()
+    })
+    .verify_and_prepare()
+    .expect_err("corrupt model must fail verify_and_prepare");
+    assert!(!is_standalone_missing_external_runtime_or_model(
+        &corrupt_engine_err
+    ));
 
     let bad_magic_path = tmp.path().join("bad_magic.gguf");
     fs::write(&bad_magic_path, b"NOT_GGUF").expect("write bad magic");
@@ -289,9 +323,10 @@ fn test_real_gguf_model_output_parity_checkpoint() {
         err_magic,
         SemanticModelError::InvalidGgufMagic { .. }
     ));
+    assert!(!is_standalone_missing_external_runtime_or_model(&err_magic));
 
     // 3. Real GGUF model loading, 768-D vector generation, and reference vector cosine parity (>= 0.999) on Metal & CPU
-    let default_cfg = LlamaRuntimeConfig::default();
+    let default_cfg = resolve_test_gguf_config(tmp.path());
     let probe_engine = LlamaRuntimeEngine::new(default_cfg.clone());
     if let Err(ref prep_err) = probe_engine.verify_and_prepare() {
         if is_standalone_missing_external_runtime_or_model(prep_err) {
@@ -433,9 +468,9 @@ fn test_production_coordinator_never_uses_test_double_and_degrades_honestly() {
     let real_index_dir = index_dir.join("real_prod");
     fs::create_dir_all(&real_index_dir).expect("mkdir real_prod");
     let baseline_phys_bytes = current_phys_footprint_bytes();
-    let real_provider = std::sync::Arc::new(LlamaRuntimeEngine::new(
-        LlamaRuntimeConfig::default_for_storage_dir(&real_index_dir),
-    ));
+    let real_provider = std::sync::Arc::new(LlamaRuntimeEngine::new(resolve_test_gguf_config(
+        &real_index_dir,
+    )));
     if let Err(ref prep_err) = real_provider.verify_and_prepare() {
         if is_standalone_missing_external_runtime_or_model(prep_err) {
             let prod_coordinator = SemanticSearchCoordinator::new(real_provider, real_index_dir);
