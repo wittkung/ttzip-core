@@ -186,6 +186,65 @@ fn compile_native_codecs(repo_root: &Path) {
     build.compile("ttzip_native_codecs");
 }
 
+fn configure_vendor_static_libraries(repo_root: &Path) {
+    let vendor_lib_dir = repo_root.join("Vendor").join("lib");
+    if !vendor_lib_dir.exists() {
+        return;
+    }
+    println!("cargo:rustc-link-search=native={}", vendor_lib_dir.display());
+    for lib in ["archive", "deflate", "zstd", "lzma", "lz4", "uchardet", "z", "b2"] {
+        println!("cargo:rustc-link-lib=static={lib}");
+    }
+}
+
+fn configure_macos_system_libraries() {
+    if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
+        println!("cargo:rustc-link-search=native={lib_dir}");
+    }
+    for prefix in ["/opt/homebrew", "/usr/local"] {
+        let lib = Path::new(prefix).join("lib");
+        if lib.exists() {
+            println!("cargo:rustc-link-search=native={}", lib.display());
+        }
+        let opt_deflate = Path::new(prefix).join("opt/libdeflate/lib");
+        if opt_deflate.exists() {
+            println!("cargo:rustc-link-search=native={}", opt_deflate.display());
+        }
+    }
+    if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
+        let p = Path::new(&brew_prefix).join("lib");
+        if p.exists() {
+            println!("cargo:rustc-link-search=native={}", p.display());
+        }
+    } else if let Ok(output) = std::process::Command::new("pkg-config")
+        .args(["--variable=libdir", "libarchive"])
+        .output()
+    {
+        if output.status.success() {
+            let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !dir.is_empty() && Path::new(&dir).exists() {
+                println!("cargo:rustc-link-search=native={dir}");
+            }
+        }
+    }
+    for lib in [
+        "deflate",
+        "zstd",
+        "lz4",
+        "archive",
+        "bz2",
+        "lzma",
+        "iconv",
+        "xml2",
+        "expat",
+        "c++",
+        "compression",
+    ] {
+        println!("cargo:rustc-link-lib={lib}");
+    }
+    println!("cargo:rustc-link-lib=framework=Security");
+}
+
 fn main() {
     // In Bazel 8 (Bzlmod) hermetic builds, C codecs and native archives are managed
     // strictly via Bzlmod cc_library targets (@libdeflate, @lz4, @zstd, //third_party/*).
@@ -203,68 +262,13 @@ fn main() {
         .and_then(|p| p.parent())
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest_dir.clone());
-    let vendor_dir = repo_root.join("Vendor");
-    let vendor_lib_dir = vendor_dir.join("lib");
-    if vendor_lib_dir.exists() {
-        println!("cargo:rustc-link-search=native={}", vendor_lib_dir.display());
-        println!("cargo:rustc-link-lib=static=archive");
-        println!("cargo:rustc-link-lib=static=deflate");
-        println!("cargo:rustc-link-lib=static=zstd");
-        println!("cargo:rustc-link-lib=static=lzma");
-        println!("cargo:rustc-link-lib=static=lz4");
-        println!("cargo:rustc-link-lib=static=uchardet");
-        println!("cargo:rustc-link-lib=static=z");
-        println!("cargo:rustc-link-lib=static=b2");
-    }
 
-    // Compile and link in-tree native codecs (fast-lzma2, lzfse, snappy, etc.)
+    configure_vendor_static_libraries(&repo_root);
     compile_native_codecs(&repo_root);
 
-    // System libraries & frameworks required on macOS
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
-        // Resolve native library search path hermetically without hardcoded host paths
-        if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
-            println!("cargo:rustc-link-search=native={lib_dir}");
-        }
-        for prefix in ["/opt/homebrew", "/usr/local"] {
-            let lib = Path::new(prefix).join("lib");
-            if lib.exists() {
-                println!("cargo:rustc-link-search=native={}", lib.display());
-            }
-            let opt_deflate = Path::new(prefix).join("opt/libdeflate/lib");
-            if opt_deflate.exists() {
-                println!("cargo:rustc-link-search=native={}", opt_deflate.display());
-            }
-        }
-        if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
-            let p = Path::new(&brew_prefix).join("lib");
-            if p.exists() {
-                println!("cargo:rustc-link-search=native={}", p.display());
-            }
-        } else if let Ok(output) = std::process::Command::new("pkg-config")
-            .args(["--variable=libdir", "libarchive"])
-            .output()
-        {
-            if output.status.success() {
-                let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !dir.is_empty() && Path::new(&dir).exists() {
-                    println!("cargo:rustc-link-search=native={dir}");
-                }
-            }
-        }
-        println!("cargo:rustc-link-lib=deflate");
-        println!("cargo:rustc-link-lib=zstd");
-        println!("cargo:rustc-link-lib=lz4");
-        println!("cargo:rustc-link-lib=archive");
-        println!("cargo:rustc-link-lib=bz2");
-        println!("cargo:rustc-link-lib=lzma");
-        println!("cargo:rustc-link-lib=iconv");
-        println!("cargo:rustc-link-lib=xml2");
-        println!("cargo:rustc-link-lib=expat");
-        println!("cargo:rustc-link-lib=c++");
-        println!("cargo:rustc-link-lib=compression");
-        println!("cargo:rustc-link-lib=framework=Security");
+        configure_macos_system_libraries();
     }
 
     println!("cargo:rerun-if-changed=build.rs");

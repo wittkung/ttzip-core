@@ -39,6 +39,8 @@ cmake_install.cmake
 *.o
 *.class
 bin/
+!rust/ttzip-engine/tests/fixtures/**/
+!rust/ttzip-engine/tests/fixtures/**
 
 # Python / PyO3 Build Artifacts
 *.so
@@ -57,6 +59,9 @@ sdk/**/bin/
 !sdk/dart/bin/*.dart
 sdk/**/test_*
 sdk/**/asan_*
+!sdk/**/*.c
+!sdk/**/*.cpp
+!sdk/**/*.h
 sdk/**/interop_cli
 sdk/**/*.dSYM/
 *.dSYM
