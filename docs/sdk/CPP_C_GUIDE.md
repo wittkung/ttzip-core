@@ -1,8 +1,8 @@
 # ⚡️ TTZip C++20 & C11 Developer Guide
 
-[![C++20](https://img.shields.io/badge/C%2B%2B-20%20RAII%20SDK-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.hpp)
-[![C11](https://img.shields.io/badge/C-11%20Canonical%20ABI%202.0-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip.h)
-[![Standards: SEI CERT C](https://img.shields.io/badge/Standard-SEI%20CERT%20C%20Compliant-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+![C++20](https://img.shields.io/badge/C%2B%2B-20%20RAII%20SDK-blue.svg)
+![C11](https://img.shields.io/badge/C-11%20Canonical%20ABI%202.0-brightgreen.svg)
+[![Standards: SEI CERT C](https://img.shields.io/badge/Standard-SEI%20CERT%20C%20Compliant-purple.svg)](../../ARCHITECTURE.md)
 
 The TTZip C++ and C SDK provides high-performance, memory-safe native bindings for systems programming. It includes the **C++20 Modern Header-Only RAII SDK** (`ttzip.hpp`) utilizing `std::expected` and `std::span`, as well as the standardized **C11 ABI 2.0 Contract Header** (`ttzip.h`).
 
@@ -21,12 +21,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. Include TTZip headers
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/core/Sources/CTTZipBridge/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")
 
 # 2. Link against static or dynamic TTZip native library
 add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/core/rust/target/release/libttzip_engine.a"
+    "${CMAKE_CURRENT_SOURCE_DIR}/rust/ttzip-engine/target/release/libttzip_engine.a"
     archive bz2 z lzma
 )
 

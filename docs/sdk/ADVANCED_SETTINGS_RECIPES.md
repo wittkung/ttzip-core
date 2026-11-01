@@ -1,8 +1,8 @@
 # 🛠 TTZip Advanced Settings & Enterprise Recipes
 
-[![C-ABI: 2.0](https://img.shields.io/badge/ABI-C--ABI%202.0-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip_rust_glue.h)
-[![Crypto: AES-256 GCM / CTR](https://img.shields.io/badge/Crypto-AES--256%20%2F%20KDF%20SHA--256-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip_rust_glue.h#L181)
-[![Resilience: Reed-Solomon ECC](https://img.shields.io/badge/Resilience-Reed--Solomon%20GF(2%5E8)%20ECC-purple.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Sources/CTTZipBridge/include/ttzip_rust_glue.h#L194)
+![C-ABI: 2.0](https://img.shields.io/badge/ABI-C--ABI%202.0-brightgreen.svg)
+![Crypto: AES-256 GCM / CTR](https://img.shields.io/badge/Crypto-AES--256%20%2F%20KDF%20SHA--256-blue.svg)
+![Resilience: Reed-Solomon ECC](https://img.shields.io/badge/Resilience-Reed--Solomon%20GF(2%5E8)%20ECC-purple.svg)
 
 This cookbook provides production-grade code recipes for mission-critical enterprise workflows in TTZip: strong AES-256 encryption, Reed-Solomon error correction records, solid block tuning, in-memory virtual filesystem caching, and cooperative cancellation tokens.
 
@@ -85,7 +85,7 @@ To protect archives stored on unreliable physical media (optical discs, tape, cl
 ### 2.1 Appending a 10% Recovery Record (C-ABI 2.0 / C11)
 
 ```c
-#include "ttzip_rust_glue.h"
+#include "ttzip.h"
 #include <stdio.h>
 
 void protect_archive_with_ecc(const char *archive_path) {

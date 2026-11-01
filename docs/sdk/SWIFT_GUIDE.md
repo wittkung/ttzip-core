@@ -1,8 +1,8 @@
 # 🐦 TTZip Swift 6 SDK Developer Guide
 
-[![Swift 6](https://img.shields.io/badge/Swift-6.0%20Strict%20Concurrency-orange.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/Package.swift)
-[![Platforms: macOS 14+](https://img.shields.io/badge/Platforms-macOS%2014.0%2B%20%7C%20iOS%2017.0%2B-blue.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/apple/README.md)
-[![Concurrency: Sendable & Actors](https://img.shields.io/badge/Concurrency-Complete%20Actor%20Isolation-brightgreen.svg)](file:///Users/kevintung/Documents/dev/products/ttzip/core/ARCHITECTURE.md)
+[![Swift 6](https://img.shields.io/badge/Swift-6.0%20Strict%20Concurrency-orange.svg)](../../Package.swift)
+![Platforms: macOS 14+](https://img.shields.io/badge/Platforms-macOS%2014.0%2B%20%7C%20iOS%2017.0%2B-blue.svg)
+[![Concurrency: Sendable & Actors](https://img.shields.io/badge/Concurrency-Complete%20Actor%20Isolation-brightgreen.svg)](../../ARCHITECTURE.md)
 
 The `TTZipCore` Swift package provides native Swift 6 bindings for TTZip, designed specifically for Apple platforms (macOS, iOS, visionOS). It features **Swift 6 Strict Concurrency**, actor isolation, `AsyncThrowingStream` progress pipelines, Keychain-backed password vaulting, and native Apple Silicon P-core / E-core hardware scheduling.
 
@@ -20,14 +20,13 @@ let package = Package(
     name: "MyArchiveUtility",
     platforms: [.macOS(.v14), .iOS(.v17)],
     dependencies: [
-        .package(path: "core") // Or remote git repository URL
+        .package(path: "ttzip-core") // Or .package(url: "https://github.com/wittkung/ttzip-core.git", from: "0.1.0")
     ],
     targets: [
         .target(
             name: "MyArchiveUtility",
             dependencies: [
-                .product(name: "TTZipCore", package: "core"),
-                .product(name: "CTTZipBridge", package: "core")
+                .product(name: "TTZipCore", package: "ttzip-core")
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
@@ -114,11 +113,12 @@ import Foundation
 import TTZipCore
 
 func createBackupArchive() async throws {
+    let home = FileManager.default.homeDirectoryForCurrentUser
     let sourceURLs = [
-        URL(fileURLWithPath: "/Users/dev/Documents/Projects"),
-        URL(fileURLWithPath: "/Users/dev/Documents/Notes.md")
+        home.appendingPathComponent("Documents/Projects"),
+        home.appendingPathComponent("Documents/Notes.md")
     ]
-    let destinationURL = URL(fileURLWithPath: "/Users/dev/Desktop/Backup_2026.zip")
+    let destinationURL = home.appendingPathComponent("Desktop/Backup_2026.zip")
 
     let writer = ArchiveWriter()
     try await writer.compress(
@@ -171,7 +171,8 @@ import TTZipCore
 
 func storeAndRetrieveArchiveKey() async throws {
     let vault = PasswordVaultManager.shared
-    let archivePath = "/Users/dev/Secure/Financials.7z"
+    let archivePath = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Secure/Financials.7z").path
     let userSecret = "SuperSecretPassword123!"
 
     // 1. Save password to Keychain with Hardware Key Wrapping
