@@ -13,7 +13,7 @@ pub const BZIP2_PIPE_BUFFER_SIZE: usize = 64 * 1024;
 
 // MARK: - Native C libbz2 FFI Bindings
 
-extern "C" {
+unsafe extern "C" {
     fn BZ2_bzBuffToBuffCompress(
         dest: *mut libc::c_char,
         destLen: *mut libc::c_uint,

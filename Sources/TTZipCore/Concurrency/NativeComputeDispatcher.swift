@@ -29,143 +29,138 @@ public enum ExecutionQoSProfile: Sendable {
     }
 }
 
-/// Thread-safe cooperative async semaphore for strictly bounding concurrent native compute tasks.
-public final class AsyncSemaphore: @unchecked Sendable {
-    private struct State {
-        var value: Int
-        var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
-        var waiterOrder: [UUID] = []
+/// Defines whether the caller unbinds early upon cooperative cancellation (pure query)
+/// or waits for the underlying worker closure and its cleanup to finish (side-effecting work).
+/// In both modes, semaphore permits and worker pool loads remain held until the worker exits.
+public enum CancellationCompletionPolicy: Sendable {
+    case waitForWorkerCompletion
+    case detachCallerOnCancel
+}
+
+/// Single-arbitration state machine governing permit/load handoff between the dispatch entry
+/// and the worker queue block. Guarantees that permits and worker loads are released
+/// at most once and never while the worker block is still queued or executing.
+private final class DispatchOwnershipArbitrator: @unchecked Sendable {
+    private enum Phase {
+        case acquiredNotEnqueued
+        case enqueuedOrRunning
+        case released
     }
-    
-    private let state: OSAllocatedUnfairLock<State>
-    
-    public init(value: Int) {
-        self.state = OSAllocatedUnfairLock(initialState: State(value: max(1, value)))
+
+    private let phase = OSAllocatedUnfairLock<Phase>(initialState: .acquiredNotEnqueued)
+    private let onRelease: @Sendable () -> Void
+
+    init(onRelease: @escaping @Sendable () -> Void) {
+        self.onRelease = onRelease
     }
-    
-    /// Acquires a concurrency token, cooperatively suspending if all tokens are occupied.
-    public func wait() async throws {
-        try Task.checkCancellation()
-        
-        let waiterId = UUID()
-        let immediateAcquired: Bool = state.withLock { s in
-            if s.value > 0 {
-                s.value -= 1
-                return true
-            }
-            return false
-        }
-        
-        if immediateAcquired {
-            return
-        }
-        
-        let acquired = await withTaskCancellationHandler {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-                state.withLock { s in
-                    if s.value > 0 {
-                        s.value -= 1
-                        continuation.resume(returning: true)
-                    } else {
-                        s.waiters[waiterId] = continuation
-                        s.waiterOrder.append(waiterId)
-                    }
-                }
-            }
-        } onCancel: {
-            let cont: CheckedContinuation<Bool, Never>? = state.withLock { s in
-                s.waiterOrder.removeAll { $0 == waiterId }
-                return s.waiters.removeValue(forKey: waiterId)
-            }
-            cont?.resume(returning: false)
-        }
-        
-        if !acquired {
-            throw CancellationError()
-        }
-        
-        if Task.isCancelled {
-            signal()
-            throw CancellationError()
+
+    /// Transitions ownership from the caller entry to the queued worker block.
+    /// Returns `true` if the worker block now owns release responsibility.
+    func markEnqueued() -> Bool {
+        phase.withLock { current in
+            guard current == .acquiredNotEnqueued else { return false }
+            current = .enqueuedOrRunning
+            return true
         }
     }
-    
-    /// Releases a concurrency token and transfers it to the next waiting task.
-    public func signal() {
-        let toResume: CheckedContinuation<Bool, Never>? = state.withLock { s in
-            while !s.waiterOrder.isEmpty {
-                let nextId = s.waiterOrder.removeFirst()
-                if let cont = s.waiters.removeValue(forKey: nextId) {
-                    return cont
-                }
-            }
-            s.value += 1
-            return nil
+
+    /// Releases permit and worker load if and only if the work was never enqueued.
+    func releaseIfNotEnqueued() {
+        let shouldRelease = phase.withLock { current -> Bool in
+            guard current == .acquiredNotEnqueued else { return false }
+            current = .released
+            return true
         }
-        toResume?.resume(returning: true)
+        if shouldRelease {
+            onRelease()
+        }
+    }
+
+    /// Releases permit and worker load from the worker block upon completion or skip.
+    func releaseFromWorker() {
+        let shouldRelease = phase.withLock { current -> Bool in
+            guard current != .released else { return false }
+            current = .released
+            return true
+        }
+        if shouldRelease {
+            onRelease()
+        }
     }
 }
 
-/// Thread-safe one-shot continuation resumption coordinator preventing double-resume
-/// while guaranteeing instantaneous continuation resumption upon cooperative task cancellation.
+/// Thread-safe one-shot continuation resumption coordinator preventing double-resume.
 final class ComputeResumptionCoordinator<T: Sendable>: @unchecked Sendable {
     private enum State {
         case idle
         case attached(CheckedContinuation<T, Error>)
+        case pendingResult(Result<T, Error>)
         case completed
     }
 
     private let state = OSAllocatedUnfairLock<State>(initialState: .idle)
 
     func attach(_ continuation: CheckedContinuation<T, Error>) {
-        let contToCancel: CheckedContinuation<T, Error>? = state.withLock { s in
+        let immediateResult: Result<T, Error>? = state.withLock { s in
             switch s {
             case .idle:
                 s = .attached(continuation)
                 return nil
+            case .pendingResult(let res):
+                s = .completed
+                return res
             case .completed:
-                return continuation
+                return .failure(CancellationError())
             case .attached:
                 return nil
             }
         }
-        contToCancel?.resume(throwing: CancellationError())
+        if let immediateResult {
+            continuation.resume(with: immediateResult)
+        }
+    }
+
+    var hasResult: Bool {
+        state.withLock { state in
+            switch state {
+            case .pendingResult, .completed: return true
+            case .idle, .attached: return false
+            }
+        }
     }
 
     func cancel() {
-        let contToResume: CheckedContinuation<T, Error>? = state.withLock { s in
-            switch s {
-            case .idle:
-                s = .completed
-                return nil
-            case .attached(let continuation):
-                s = .completed
-                return continuation
-            case .completed:
-                return nil
-            }
-        }
-        contToResume?.resume(throwing: CancellationError())
+        resume(throwing: CancellationError())
     }
 
     func resume(returning value: T) {
         let contToResume: CheckedContinuation<T, Error>? = state.withLock { s in
-            if case let .attached(continuation) = s {
+            switch s {
+            case .idle:
+                s = .pendingResult(.success(value))
+                return nil
+            case .attached(let continuation):
                 s = .completed
                 return continuation
+            case .pendingResult, .completed:
+                return nil
             }
-            return nil
         }
         contToResume?.resume(returning: value)
     }
 
     func resume(throwing error: Error) {
         let contToResume: CheckedContinuation<T, Error>? = state.withLock { s in
-            if case let .attached(continuation) = s {
+            switch s {
+            case .idle:
+                s = .pendingResult(.failure(error))
+                return nil
+            case .attached(let continuation):
                 s = .completed
                 return continuation
+            case .pendingResult, .completed:
+                return nil
             }
-            return nil
         }
         contToResume?.resume(throwing: error)
     }
@@ -220,10 +215,27 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         acquireLeastLoadedWorker().queue
     }
     
-    public init(maxConcurrency: Int = NativeComputeDispatcher.defaultWorkerPoolSize()) {
+    private let onResourcesReleased: (@Sendable () -> Void)?
+    private let onCancellationHandled: (@Sendable (Bool) -> Void)?
+    private let beforeEnqueue: (@Sendable () throws -> Void)?
+
+    public convenience init(maxConcurrency: Int = NativeComputeDispatcher.defaultWorkerPoolSize()) {
+        self.init(maxConcurrency: maxConcurrency, waiterHooks: .init())
+    }
+
+    package init(
+        maxConcurrency: Int,
+        waiterHooks: AsyncSemaphore.WaiterHooks,
+        onResourcesReleased: (@Sendable () -> Void)? = nil,
+        onCancellationHandled: (@Sendable (Bool) -> Void)? = nil,
+        beforeEnqueue: (@Sendable () throws -> Void)? = nil
+    ) {
         let boundedSize = min(16, max(2, maxConcurrency))
         self.maxConcurrency = boundedSize
-        self.semaphore = AsyncSemaphore(value: boundedSize)
+        self.semaphore = AsyncSemaphore(value: boundedSize, waiterHooks: waiterHooks)
+        self.onResourcesReleased = onResourcesReleased
+        self.onCancellationHandled = onCancellationHandled
+        self.beforeEnqueue = beforeEnqueue
         
         self.workerQueues = (0..<boundedSize).map { index in
             DispatchQueue(
@@ -280,6 +292,14 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
             }
         }
     }
+
+    package var currentActiveLoads: [Int] {
+        poolState.withLock { $0.activeLoads }
+    }
+
+    package var currentAvailablePermits: Int {
+        semaphore.currentAvailablePermits
+    }
     
     // MARK: - Compute Dispatch (CPU-bound)
     
@@ -289,6 +309,7 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     public func dispatchCompute<T: Sendable>(
         qos: ExecutionQoSProfile = .userInitiated,
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ isCancelled: OSAllocatedUnfairLock<Bool>) throws -> T
     ) async throws -> T {
         try Task.checkCancellation()
@@ -298,49 +319,37 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
         let isCancelledFlag = OSAllocatedUnfairLock(initialState: false)
         let coordinator = ComputeResumptionCoordinator<T>()
-        let semaphoreSignalled = OSAllocatedUnfairLock(initialState: false)
-
-        let releaseSemaphore: @Sendable () -> Void = { [weak semaphore] in
-            let shouldSignal = semaphoreSignalled.withLock { signalled in
-                if !signalled {
-                    signalled = true
-                    return true
-                }
-                return false
-            }
-            if shouldSignal {
-                semaphore?.signal()
-            }
-        }
-
         let (workerIndex, targetQueue) = acquireLeastLoadedWorker()
-        let workerReleased = OSAllocatedUnfairLock(initialState: false)
-        let releaseWorkerLoad: @Sendable () -> Void = { [weak self] in
-            let shouldRelease = workerReleased.withLock { released in
-                if !released {
-                    released = true
-                    return true
-                }
-                return false
-            }
-            if shouldRelease {
-                self?.releaseWorker(at: workerIndex)
-            }
+
+        let arbitrator = DispatchOwnershipArbitrator { [weak self, weak semaphore] in
+            self?.releaseWorker(at: workerIndex)
+            semaphore?.signal()
+            self?.onResourcesReleased?()
+        }
+        defer {
+            arbitrator.releaseIfNotEnqueued()
         }
 
-        defer {
-            releaseWorkerLoad()
-            releaseSemaphore()
+        if let hook = beforeEnqueue {
+            try hook()
+        }
+        if Task.isCancelled || effectiveHandle.isCancelled {
+            effectiveHandle.cancel()
+            throw CancellationError()
         }
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 coordinator.attach(continuation)
 
+                guard arbitrator.markEnqueued() else {
+                    coordinator.cancel()
+                    return
+                }
+
                 targetQueue.async(qos: qos.dispatchQoS) {
                     defer {
-                        releaseWorkerLoad()
-                        releaseSemaphore()
+                        arbitrator.releaseFromWorker()
                     }
                     if effectiveHandle.isCancelled || isCancelledFlag.withLock({ $0 }) {
                         coordinator.cancel()
@@ -357,7 +366,10 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         } onCancel: {
             isCancelledFlag.withLock { $0 = true }
             effectiveHandle.cancel()
-            coordinator.cancel()
+            if cancellationPolicy == .detachCallerOnCancel {
+                coordinator.cancel()
+            }
+            onCancellationHandled?(coordinator.hasResult)
         }
     }
 
@@ -365,10 +377,15 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     public func dispatchCompute<T: Sendable>(
         qos: ExecutionQoSProfile = .userInitiated,
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ token: CancellationToken) throws -> T
     ) async throws -> T {
         let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
-        return try await dispatchCompute(qos: qos, cancellationHandle: effectiveHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        return try await dispatchCompute(
+            qos: qos,
+            cancellationHandle: effectiveHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work(effectiveHandle.uniffiToken)
         }
     }
@@ -377,9 +394,14 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     public func dispatchCompute<T: Sendable>(
         qos: ExecutionQoSProfile = .userInitiated,
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable () throws -> T
     ) async throws -> T {
-        try await dispatchCompute(qos: qos, cancellationHandle: cancellationHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        try await dispatchCompute(
+            qos: qos,
+            cancellationHandle: cancellationHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work()
         }
     }
@@ -390,6 +412,7 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     /// completely isolated from CPU-bound compute workers to prevent thread contention.
     public func dispatchIO<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ isCancelled: OSAllocatedUnfairLock<Bool>) throws -> T
     ) async throws -> T {
         try Task.checkCancellation()
@@ -418,17 +441,23 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         } onCancel: {
             isCancelledFlag.withLock { $0 = true }
             effectiveHandle.cancel()
-            coordinator.cancel()
+            if cancellationPolicy == .detachCallerOnCancel {
+                coordinator.cancel()
+            }
         }
     }
 
     /// Dispatches disk-bound I/O workload with direct UniFFI CancellationToken.
     public func dispatchIO<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ token: CancellationToken) throws -> T
     ) async throws -> T {
         let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
-        return try await dispatchIO(cancellationHandle: effectiveHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        return try await dispatchIO(
+            cancellationHandle: effectiveHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work(effectiveHandle.uniffiToken)
         }
     }
@@ -436,9 +465,13 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     /// Dispatches disk-bound I/O workload with standard 0-argument closure.
     public func dispatchIO<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable () throws -> T
     ) async throws -> T {
-        try await dispatchIO(cancellationHandle: cancellationHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        try await dispatchIO(
+            cancellationHandle: cancellationHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work()
         }
     }
@@ -449,6 +482,7 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     /// prioritizing UI-facing inspection, archive header decoding, and password verification.
     public func dispatchHighPriority<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ isCancelled: OSAllocatedUnfairLock<Bool>) throws -> T
     ) async throws -> T {
         try Task.checkCancellation()
@@ -477,17 +511,23 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
         } onCancel: {
             isCancelledFlag.withLock { $0 = true }
             effectiveHandle.cancel()
-            coordinator.cancel()
+            if cancellationPolicy == .detachCallerOnCancel {
+                coordinator.cancel()
+            }
         }
     }
 
     /// Dispatches high-priority workload with direct UniFFI CancellationToken.
     public func dispatchHighPriority<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable (_ token: CancellationToken) throws -> T
     ) async throws -> T {
         let effectiveHandle = cancellationHandle ?? TaskExecutionHandle()
-        return try await dispatchHighPriority(cancellationHandle: effectiveHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        return try await dispatchHighPriority(
+            cancellationHandle: effectiveHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work(effectiveHandle.uniffiToken)
         }
     }
@@ -495,9 +535,13 @@ public final class NativeComputeDispatcher: @unchecked Sendable {
     /// Dispatches high-priority workload with standard 0-argument closure.
     public func dispatchHighPriority<T: Sendable>(
         cancellationHandle: TaskExecutionHandle? = nil,
+        cancellationPolicy: CancellationCompletionPolicy = .detachCallerOnCancel,
         _ work: @escaping @Sendable () throws -> T
     ) async throws -> T {
-        try await dispatchHighPriority(cancellationHandle: cancellationHandle) { (_: OSAllocatedUnfairLock<Bool>) in
+        try await dispatchHighPriority(
+            cancellationHandle: cancellationHandle,
+            cancellationPolicy: cancellationPolicy
+        ) { (_: OSAllocatedUnfairLock<Bool>) in
             try work()
         }
     }

@@ -10,7 +10,7 @@ use crate::ffi::helpers::safe_slice;
 ///
 /// # Safety
 /// If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_crc32(crc: u32, data: *const u8, len: usize) -> u32 {
     match unsafe { safe_slice(data, len) } {
         Ok(slice) => crc32::crc32_fast(crc, slice),
@@ -22,7 +22,7 @@ pub unsafe extern "C" fn ttzip_rust_crc32(crc: u32, data: *const u8, len: usize)
 ///
 /// # Safety
 /// If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_adler32(adler: u32, data: *const u8, len: usize) -> u32 {
     if data.is_null() && len == 0 {
         return 1;
@@ -37,7 +37,7 @@ pub unsafe extern "C" fn ttzip_rust_adler32(adler: u32, data: *const u8, len: us
 ///
 /// # Safety
 /// If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_crc64(seed: u64, data: *const u8, len: usize) -> u64 {
     match unsafe { safe_slice(data, len) } {
         Ok(slice) => crate::crypto::crc64::crc64(slice, seed),
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn ttzip_rust_crc64(seed: u64, data: *const u8, len: usize
 ///
 /// # Safety
 /// If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_xxh3_64(data: *const u8, len: usize, seed: u64) -> u64 {
     match unsafe { safe_slice(data, len) } {
         Ok(slice) => crate::crypto::xxh3::xxh3_64_with_seed(slice, seed),
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn ttzip_rust_xxh3_64(data: *const u8, len: usize, seed: u
 /// # Safety
 /// - `out_16_bytes` must point to at least 16 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_xxh3_128(
     data: *const u8,
     len: usize,
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn ttzip_rust_xxh3_128(
 /// # Safety
 /// - `out_32_bytes` must point to at least 32 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_blake3(
     data: *const u8,
     len: usize,
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn ttzip_rust_blake3(
 /// - `key_32_bytes` must point to 32 readable bytes.
 /// - `out_32_bytes` must point to at least 32 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_blake3_keyed(
     key_32_bytes: *const u8,
     data: *const u8,
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn ttzip_rust_blake3_keyed(
 /// # Safety
 /// - `out_16_bytes` must point to at least 16 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_md5(
     data: *const u8,
     len: usize,
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn ttzip_rust_md5(
 /// # Safety
 /// - `out_20_bytes` must point to at least 20 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_sha1(
     data: *const u8,
     len: usize,
@@ -196,7 +196,7 @@ pub unsafe extern "C" fn ttzip_rust_sha1(
 /// # Safety
 /// - `out_32_bytes` must point to at least 32 writable bytes.
 /// - If `data` is not null and `len > 0`, `data` must point to at least `len` valid readable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_sha256(
     data: *const u8,
     len: usize,

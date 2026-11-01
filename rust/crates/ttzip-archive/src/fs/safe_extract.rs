@@ -434,7 +434,7 @@ impl SafeExtractEngine {
     /// to prevent changing parent permissions (e.g. to read-only 0555) before child
     /// entries have their metadata and timestamps applied.
     pub fn apply_deferred_metadata(&mut self, preserve_permissions: bool) -> Result<(), TTZipStatus> {
-        let drained: Vec<DeferredEntryMetadata> = self.deferred_entries.drain(..).collect();
+        let drained: Vec<DeferredEntryMetadata> = std::mem::take(&mut self.deferred_entries);
         let (mut files, mut dirs) = super::staged_metadata::dedup_last_entry_wins(drained);
         let mut implicit_dirs = self.collect_implicit_parent_dirs(&files, &dirs);
         let creation_mode_mask =

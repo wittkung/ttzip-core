@@ -10,7 +10,7 @@
 //! 4. Broken UTF-8 Byte Sequences & Heuristic Mojibake Remediation Fuzzing
 //! 5. Oversized Filenames, Path Traversal, Null Bytes & Reserved Device Interception
 //! 6. High Concurrency Multi-Threaded Stress Verification (Zero Data Races)
-//! 7. Zero Disk Leak in `/tmp` & Darwin Mach RSS Memory Cap ($\Delta RSS \le 64\text{MB}$)
+//! 7. Zero Disk Leak in the Owned Temporary Namespace & Darwin Mach RSS Memory Cap ($\Delta RSS \le 64\text{MB}$)
 
 use std::fs;
 use std::sync::{Arc, Mutex};
@@ -301,17 +301,55 @@ fn test_adversarial_high_concurrency_stress() {
 }
 
 // ============================================================================
-// 7. Zero Disk Leak in `/tmp` & Darwin Mach RSS Memory Cap ($\le 64\text{MB}$)
+// 7. Zero Disk Leak in the Owned Temporary Namespace & Darwin Mach RSS Memory Cap ($\le 64\text{MB}$)
 // ============================================================================
 
 #[test]
 fn test_adversarial_zero_tmp_leak_and_rss_memory_bound() {
+    const TMP_ROOT_ENV: &str = "TTZIP_ADVERSARIAL_TMP_ROOT";
+    if let Some(tmp_root) = std::env::var_os(TMP_ROOT_ENV) {
+        let tmp_path = std::path::PathBuf::from(tmp_root);
+        assert_eq!(std::env::temp_dir(), tmp_path);
+        run_adversarial_zero_tmp_leak_and_rss_memory_bound(&tmp_path);
+        fs::write(tmp_path.join("workflow-complete"), b"").expect("record completed workflow");
+        return;
+    }
+
+    // Environment overrides belong to the child, never the parallel test harness.
+    let tmp_root = tempfile::tempdir().expect("create owned temporary namespace");
+    let output = std::process::Command::new(std::env::current_exe().expect("test executable"))
+        .args([
+            "--exact",
+            "test_adversarial_zero_tmp_leak_and_rss_memory_bound",
+            "--test-threads=1",
+            "--nocapture",
+        ])
+        .env(TMP_ROOT_ENV, tmp_root.path())
+        .env("TMPDIR", tmp_root.path())
+        .env("TMP", tmp_root.path())
+        .env("TEMP", tmp_root.path())
+        .output()
+        .expect("run workflow in owned temporary namespace");
+    assert!(
+        output.status.success(),
+        "Isolated workflow failed ({}):\n{}\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(tmp_root.path().join("workflow-complete").is_file(), "Child must execute the exact workflow");
+    tmp_root.close().expect("remove owned temporary namespace");
+}
+
+fn run_adversarial_zero_tmp_leak_and_rss_memory_bound(tmp_path: &std::path::Path) {
     let _lock = ADVERSARIAL_TEST_MUTEX.lock().unwrap();
-    let tmp_path = std::path::Path::new("/tmp");
-    let initial_tmp_entries = if tmp_path.exists() {
-        fs::read_dir(tmp_path).map(|r| r.count()).unwrap_or(0)
-    } else {
-        0
+    let initial_tmp_entries = {
+        let mut entries = 0usize;
+        for entry in fs::read_dir(tmp_path).expect("read owned temporary namespace before workflow") {
+            let _ = entry.expect("read initial temporary entry");
+            entries += 1;
+        }
+        entries
     };
 
     let baseline_rss = get_current_rss_bytes();
@@ -348,17 +386,18 @@ fn test_adversarial_zero_tmp_leak_and_rss_memory_bound() {
         max_allowed_delta
     );
 
-    // Verify zero orphaned temporary files in /tmp created by this test
-    let final_tmp_entries = if tmp_path.exists() {
-        fs::read_dir(tmp_path).map(|r| r.count()).unwrap_or(0)
-    } else {
-        0
+    let final_tmp_entries = {
+        let mut entries = 0usize;
+        for entry in fs::read_dir(tmp_path).expect("read owned temporary namespace after workflow") {
+            let _ = entry.expect("read final temporary entry");
+            entries += 1;
+        }
+        entries
     };
 
-    // Any temporary workspaces used by TTZip are strictly RAII-isolated in memory or clean drop
     assert!(
-        final_tmp_entries <= initial_tmp_entries + 2, // Allow for concurrent OS-level transient sockets
-        "Detected potential /tmp leak: before={}, after={}",
+        final_tmp_entries <= initial_tmp_entries + 2,
+        "Detected potential owned temporary namespace leak: before={}, after={}",
         initial_tmp_entries,
         final_tmp_entries
     );

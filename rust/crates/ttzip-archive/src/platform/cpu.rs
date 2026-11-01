@@ -161,45 +161,49 @@ fn sysctl_u32(name: &str) -> Option<u32> {
 }
 
 /// C-ABI: Retrieves hardware capabilities.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_cpu_get_capabilities(out_caps: *mut TTZipCpuCapsRaw) -> TTZipStatus {
-    if out_caps.is_null() {
-        return TTZipStatus::ErrInvalidParam;
+    unsafe {
+        if out_caps.is_null() {
+            return TTZipStatus::ErrInvalidParam;
+        }
+        let caps = CpuCapabilities::get();
+        *out_caps = TTZipCpuCapsRaw {
+            struct_size: std::mem::size_of::<TTZipCpuCapsRaw>() as u32,
+            abi_version: crate::types::TTZIP_ABI_VERSION_3,
+            logical_cores: caps.logical_cores,
+            physical_page_size: caps.physical_page_size,
+            p_cores: caps.p_cores,
+            e_cores: caps.e_cores,
+            has_arm_neon: caps.has_arm_neon,
+            has_arm_crypto: caps.has_arm_crypto,
+            has_aes_ni: caps.has_aes_ni,
+            has_avx2: caps.has_avx2,
+            has_avx512: caps.has_avx512,
+            has_hardware_crc32: caps.has_hardware_crc32,
+        };
+        TTZipStatus::Ok
     }
-    let caps = CpuCapabilities::get();
-    *out_caps = TTZipCpuCapsRaw {
-        struct_size: std::mem::size_of::<TTZipCpuCapsRaw>() as u32,
-        abi_version: crate::types::TTZIP_ABI_VERSION_3,
-        logical_cores: caps.logical_cores,
-        physical_page_size: caps.physical_page_size,
-        p_cores: caps.p_cores,
-        e_cores: caps.e_cores,
-        has_arm_neon: caps.has_arm_neon,
-        has_arm_crypto: caps.has_arm_crypto,
-        has_aes_ni: caps.has_aes_ni,
-        has_avx2: caps.has_avx2,
-        has_avx512: caps.has_avx512,
-        has_hardware_crc32: caps.has_hardware_crc32,
-    };
-    TTZipStatus::Ok
 }
 
 /// C-ABI: Retrieves P-core, E-core, and total core topology counts.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_cpu_get_topology(
     out_p_cores: *mut u32,
     out_e_cores: *mut u32,
     out_total_cores: *mut u32,
 ) -> TTZipStatus {
-    let caps = CpuCapabilities::get();
-    if !out_p_cores.is_null() {
-        *out_p_cores = caps.p_cores;
+    unsafe {
+        let caps = CpuCapabilities::get();
+        if !out_p_cores.is_null() {
+            *out_p_cores = caps.p_cores;
+        }
+        if !out_e_cores.is_null() {
+            *out_e_cores = caps.e_cores;
+        }
+        if !out_total_cores.is_null() {
+            *out_total_cores = caps.logical_cores;
+        }
+        TTZipStatus::Ok
     }
-    if !out_e_cores.is_null() {
-        *out_e_cores = caps.e_cores;
-    }
-    if !out_total_cores.is_null() {
-        *out_total_cores = caps.logical_cores;
-    }
-    TTZipStatus::Ok
 }

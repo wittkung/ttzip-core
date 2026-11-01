@@ -80,15 +80,17 @@ pub fn aes256_encrypt_block_ct(ctx: &Aes256Context, input: &[u8; 16], output: &m
 #[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn aes256_encrypt_block_aarch64(ctx: &Aes256Context, input: &[u8; 16], output: &mut [u8; 16]) {
-    use core::arch::aarch64::*;
-    let mut b = vld1q_u8(input.as_ptr());
-    for r in 0..13 {
-        b = vaesmcq_u8(vaeseq_u8(b, vld1q_u8(ctx.round_keys_enc[r].as_ptr())));
+    unsafe {
+        use core::arch::aarch64::*;
+        let mut b = vld1q_u8(input.as_ptr());
+        for r in 0..13 {
+            b = vaesmcq_u8(vaeseq_u8(b, vld1q_u8(ctx.round_keys_enc[r].as_ptr())));
+        }
+        let rk13 = vld1q_u8(ctx.round_keys_enc[13].as_ptr());
+        let rk14 = vld1q_u8(ctx.round_keys_enc[14].as_ptr());
+        b = veorq_u8(vaeseq_u8(b, rk13), rk14);
+        vst1q_u8(output.as_mut_ptr(), b);
     }
-    let rk13 = vld1q_u8(ctx.round_keys_enc[13].as_ptr());
-    let rk14 = vld1q_u8(ctx.round_keys_enc[14].as_ptr());
-    b = veorq_u8(vaeseq_u8(b, rk13), rk14);
-    vst1q_u8(output.as_mut_ptr(), b);
 }
 
 #[cfg(target_arch = "x86_64")]

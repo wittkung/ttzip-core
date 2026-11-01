@@ -14,13 +14,13 @@ use std::panic::catch_unwind;
 use crate::types::TTZipStatus;
 
 /// Returns current semantic engine and runtime version string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_version() -> *const c_char {
     c"1.0.0-rust-engine".as_ptr()
 }
 
 /// Initializes TTZip Rust runtime and subsystem states.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_init() -> TTZipStatus {
     let result = catch_unwind(|| {
         TTZipStatus::Ok
@@ -29,7 +29,7 @@ pub extern "C" fn ttzip_rust_init() -> TTZipStatus {
 }
 
 /// Converts a TTZipStatus code to a human-readable English string description.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char {
     match status {
         TTZipStatus::Ok => c"OK".as_ptr(),
@@ -58,7 +58,7 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
 }
 
 /// Returns true if hardware acceleration (ARM64 NEON / Crypto extensions) is active.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_is_hardware_accelerated() -> bool {
     #[cfg(target_arch = "aarch64")]
     {

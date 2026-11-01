@@ -15,7 +15,7 @@ use super::sniffer::{detect_format_buffer, detect_format_file};
 use crate::types::TTZipStatus;
 
 /// Detects archive format from an in-memory byte buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_detect_format_buffer(
     buf: *const u8,
     len: usize,
@@ -24,79 +24,83 @@ pub unsafe extern "C" fn ttzip_rust_detect_format_buffer(
     out_is_sfx: *mut bool,
     out_sfx_offset: *mut usize,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if buf.is_null() || len == 0 || out_format.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if buf.is_null() || len == 0 || out_format.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let slice = slice::from_raw_parts(buf, len);
-        let hint_str = if !filename_hint.is_null() {
-            CStr::from_ptr(filename_hint).to_str().ok()
-        } else {
-            None
-        };
+            let slice = slice::from_raw_parts(buf, len);
+            let hint_str = if !filename_hint.is_null() {
+                CStr::from_ptr(filename_hint).to_str().ok()
+            } else {
+                None
+            };
 
-        let sniff = detect_format_buffer(slice, hint_str);
+            let sniff = detect_format_buffer(slice, hint_str);
 
-        *out_format = sniff.format as i32;
-        if !out_is_sfx.is_null() {
-            *out_is_sfx = sniff.is_sfx;
-        }
-        if !out_sfx_offset.is_null() {
-            *out_sfx_offset = sniff.sfx_offset;
-        }
+            *out_format = sniff.format as i32;
+            if !out_is_sfx.is_null() {
+                *out_is_sfx = sniff.is_sfx;
+            }
+            if !out_sfx_offset.is_null() {
+                *out_sfx_offset = sniff.sfx_offset;
+            }
 
-        TTZipStatus::Ok
-    });
+            TTZipStatus::Ok
+        });
 
-    result.unwrap_or_else(|e| {
-        eprintln!("Rust FFI panic intercepted: {:?}", e);
-        TTZipStatus::ErrPanicCaught
-    })
+        result.unwrap_or_else(|e| {
+            eprintln!("Rust FFI panic intercepted: {:?}", e);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// Detects archive format from a filesystem path.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_detect_format_file(
     file_path: *const c_char,
     out_format: *mut i32,
     out_is_sfx: *mut bool,
     out_sfx_offset: *mut usize,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if file_path.is_null() || out_format.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let c_str = CStr::from_ptr(file_path);
-        let path_str = match c_str.to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-
-        match detect_format_file(Path::new(path_str)) {
-            Ok(sniff) => {
-                *out_format = sniff.format as i32;
-                if !out_is_sfx.is_null() {
-                    *out_is_sfx = sniff.is_sfx;
-                }
-                if !out_sfx_offset.is_null() {
-                    *out_sfx_offset = sniff.sfx_offset;
-                }
-                TTZipStatus::Ok
+    unsafe {
+        let result = catch_unwind(|| {
+            if file_path.is_null() || out_format.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(_) => TTZipStatus::ErrFileNotFound,
-        }
-    });
 
-    result.unwrap_or_else(|e| {
-        eprintln!("Rust FFI panic intercepted: {:?}", e);
-        TTZipStatus::ErrPanicCaught
-    })
+            let c_str = CStr::from_ptr(file_path);
+            let path_str = match c_str.to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+
+            match detect_format_file(Path::new(path_str)) {
+                Ok(sniff) => {
+                    *out_format = sniff.format as i32;
+                    if !out_is_sfx.is_null() {
+                        *out_is_sfx = sniff.is_sfx;
+                    }
+                    if !out_sfx_offset.is_null() {
+                        *out_sfx_offset = sniff.sfx_offset;
+                    }
+                    TTZipStatus::Ok
+                }
+                Err(_) => TTZipStatus::ErrFileNotFound,
+            }
+        });
+
+        result.unwrap_or_else(|e| {
+            eprintln!("Rust FFI panic intercepted: {:?}", e);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// Validates format compliance on an in-memory buffer, outputting a structured JSON report.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_check_compliance_buffer(
     buf: *const u8,
     len: usize,
@@ -104,113 +108,119 @@ pub unsafe extern "C" fn ttzip_rust_check_compliance_buffer(
     out_report_json: *mut *mut c_char,
     out_is_compliant: *mut bool,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if buf.is_null() || len == 0 || out_report_json.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let slice = slice::from_raw_parts(buf, len);
-        let format = match format_hint {
-            1 => DetectedFormat::Zip,
-            2 => DetectedFormat::SevenZip,
-            3 => DetectedFormat::Tar,
-            4 => DetectedFormat::Gzip,
-            5 => DetectedFormat::Bzip2,
-            6 => DetectedFormat::Xz,
-            7 => DetectedFormat::Zstd,
-            8 => DetectedFormat::Rar,
-            9 => DetectedFormat::Cab,
-            10 => DetectedFormat::Iso,
-            11 => DetectedFormat::Dmg,
-            12 => DetectedFormat::Xar,
-            13 => DetectedFormat::Lzh,
-            14 => DetectedFormat::Ar,
-            15 => DetectedFormat::Lzfse,
-            16 => DetectedFormat::Snappy,
-            17 => DetectedFormat::Lz4,
-            18 => DetectedFormat::Lzip,
-            19 => DetectedFormat::Lrzip,
-            20 => DetectedFormat::Brotli,
-            21 => DetectedFormat::Aar,
-            22 => DetectedFormat::Wim,
-            _ => DetectedFormat::Unknown,
-        };
-
-        let report = check_compliance_buffer(format, slice);
-
-        if !out_is_compliant.is_null() {
-            *out_is_compliant = report.is_compliant;
-        }
-
-        let json_str = report.to_json();
-        match CString::new(json_str) {
-            Ok(c_string) => {
-                *out_report_json = c_string.into_raw();
-                TTZipStatus::Ok
+    unsafe {
+        let result = catch_unwind(|| {
+            if buf.is_null() || len == 0 || out_report_json.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(_) => TTZipStatus::ErrOutOfMemory,
-        }
-    });
 
-    result.unwrap_or_else(|e| {
-        eprintln!("Rust FFI panic intercepted: {:?}", e);
-        TTZipStatus::ErrPanicCaught
-    })
+            let slice = slice::from_raw_parts(buf, len);
+            let format = match format_hint {
+                1 => DetectedFormat::Zip,
+                2 => DetectedFormat::SevenZip,
+                3 => DetectedFormat::Tar,
+                4 => DetectedFormat::Gzip,
+                5 => DetectedFormat::Bzip2,
+                6 => DetectedFormat::Xz,
+                7 => DetectedFormat::Zstd,
+                8 => DetectedFormat::Rar,
+                9 => DetectedFormat::Cab,
+                10 => DetectedFormat::Iso,
+                11 => DetectedFormat::Dmg,
+                12 => DetectedFormat::Xar,
+                13 => DetectedFormat::Lzh,
+                14 => DetectedFormat::Ar,
+                15 => DetectedFormat::Lzfse,
+                16 => DetectedFormat::Snappy,
+                17 => DetectedFormat::Lz4,
+                18 => DetectedFormat::Lzip,
+                19 => DetectedFormat::Lrzip,
+                20 => DetectedFormat::Brotli,
+                21 => DetectedFormat::Aar,
+                22 => DetectedFormat::Wim,
+                _ => DetectedFormat::Unknown,
+            };
+
+            let report = check_compliance_buffer(format, slice);
+
+            if !out_is_compliant.is_null() {
+                *out_is_compliant = report.is_compliant;
+            }
+
+            let json_str = report.to_json();
+            match CString::new(json_str) {
+                Ok(c_string) => {
+                    *out_report_json = c_string.into_raw();
+                    TTZipStatus::Ok
+                }
+                Err(_) => TTZipStatus::ErrOutOfMemory,
+            }
+        });
+
+        result.unwrap_or_else(|e| {
+            eprintln!("Rust FFI panic intercepted: {:?}", e);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// Validates format compliance on an archive file, outputting a structured JSON report.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_check_compliance_file(
     file_path: *const c_char,
     out_report_json: *mut *mut c_char,
     out_is_compliant: *mut bool,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if file_path.is_null() || out_report_json.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let c_str = CStr::from_ptr(file_path);
-        let path_str = match c_str.to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-
-        match check_compliance_file(Path::new(path_str)) {
-            Ok(report) => {
-                if !out_is_compliant.is_null() {
-                    *out_is_compliant = report.is_compliant;
-                }
-
-                let json_str = report.to_json();
-                match CString::new(json_str) {
-                    Ok(c_string) => {
-                        *out_report_json = c_string.into_raw();
-                        TTZipStatus::Ok
-                    }
-                    Err(_) => TTZipStatus::ErrOutOfMemory,
-                }
+    unsafe {
+        let result = catch_unwind(|| {
+            if file_path.is_null() || out_report_json.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(_) => TTZipStatus::ErrFileNotFound,
-        }
-    });
 
-    result.unwrap_or_else(|e| {
-        eprintln!("Rust FFI panic intercepted: {:?}", e);
-        TTZipStatus::ErrPanicCaught
-    })
+            let c_str = CStr::from_ptr(file_path);
+            let path_str = match c_str.to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+
+            match check_compliance_file(Path::new(path_str)) {
+                Ok(report) => {
+                    if !out_is_compliant.is_null() {
+                        *out_is_compliant = report.is_compliant;
+                    }
+
+                    let json_str = report.to_json();
+                    match CString::new(json_str) {
+                        Ok(c_string) => {
+                            *out_report_json = c_string.into_raw();
+                            TTZipStatus::Ok
+                        }
+                        Err(_) => TTZipStatus::ErrOutOfMemory,
+                    }
+                }
+                Err(_) => TTZipStatus::ErrFileNotFound,
+            }
+        });
+
+        result.unwrap_or_else(|e| {
+            eprintln!("Rust FFI panic intercepted: {:?}", e);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// Frees a JSON report allocated by compliance checking functions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_free_compliance_report(report_ptr: *mut c_char) {
-    let result = std::panic::catch_unwind(|| {
-        if !report_ptr.is_null() {
-            let _ = CString::from_raw(report_ptr);
+    unsafe {
+        let result = std::panic::catch_unwind(|| {
+            if !report_ptr.is_null() {
+                let _ = CString::from_raw(report_ptr);
+            }
+        });
+        if let Err(e) = result {
+            eprintln!("Rust FFI panic intercepted in ttzip_rust_free_compliance_report: {:?}", e);
         }
-    });
-    if let Err(e) = result {
-        eprintln!("Rust FFI panic intercepted in ttzip_rust_free_compliance_report: {:?}", e);
     }
 }
 

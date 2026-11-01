@@ -76,7 +76,7 @@ impl From<MIPSResult> for TTZipMIPSBenchmarkResult {
 pub type TTZipParetoPointRaw = ParetoPointRaw;
 
 /// Executes a standardized 7-Zip aligned MIPS hardware benchmark pass.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_bench_run_mips(
     dictionary_size_mb: u32,
     thread_count: u32,
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn ttzip_rust_bench_run_mips(
 }
 
 /// Calculates 2D Pareto frontier and Upper Convex Hull on codec points in-place.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_calculate_pareto_frontier(
     points: *mut TTZipParetoCodecPointRaw,
     count: usize,
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn ttzip_rust_calculate_pareto_frontier(
 }
 
 /// Computes multi-tier Pareto ranks and 2D Upper Convex Hull on ParetoPointRaw in-place.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_bench_compute_pareto_frontier(
     points: *mut TTZipParetoPointRaw,
     count: usize,
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn ttzip_rust_bench_compute_pareto_frontier(
 }
 
 /// Returns elapsed nanoseconds since an arbitrary monotonic baseline.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bench_monotonic_nanos() -> u64 {
     lazy_static_or_instant()
 }
@@ -160,13 +160,13 @@ fn lazy_static_or_instant() -> u64 {
 }
 
 /// Computes throughput in MB/s from byte count and elapsed seconds.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bench_calc_throughput_mbs(bytes: usize, elapsed_secs: f64) -> f64 {
     MonotonicStopwatch::calc_throughput_mbs(bytes, elapsed_secs)
 }
 
 /// Executes standard 50-point Matrix Gate pass. Returns 0 on success, non-zero on error.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bench_run_gate() -> i32 {
     let result = catch_unwind(|| {
         match BenchmarkMatrixRunner::run_gate() {
@@ -179,7 +179,7 @@ pub extern "C" fn ttzip_rust_bench_run_gate() -> i32 {
 }
 
 /// Executes matrix benchmark for specified corpus and writes JSON string into buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_bench_run_matrix(
     corpus_type: i32,
     out_json: *mut c_char,
@@ -212,7 +212,7 @@ pub unsafe extern "C" fn ttzip_rust_bench_run_matrix(
 }
 
 /// Executes 100-point enterprise full-scenario benchmark matrix and writes JSON string into buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_bench_run_scenario_matrix(
     out_json: *mut c_char,
     max_len: usize,
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn ttzip_rust_bench_run_scenario_matrix(
 
 /// Generates SVG vector scatter plot with Fritsch-Carlson Pareto spline.
 /// Caller must free returned string via `ttzip_rust_bench_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bench_generate_svg_pareto(
     corpus_type: i32,
     width: u32,
@@ -266,7 +266,7 @@ pub extern "C" fn ttzip_rust_bench_generate_svg_pareto(
 
 /// Generates standalone interactive HTML dashboard for matrix benchmark.
 /// Caller must free returned string via `ttzip_rust_bench_free_string`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bench_generate_html_dashboard(corpus_type: i32) -> *mut c_char {
     let result = catch_unwind(|| {
         let ct = BenchmarkCorpusType::from_i32(corpus_type);
@@ -283,14 +283,16 @@ pub extern "C" fn ttzip_rust_bench_generate_html_dashboard(corpus_type: i32) -> 
 }
 
 /// Frees a C-string allocated by benchmark generators.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_bench_free_string(ptr: *mut c_char) {
-    let _ = std::panic::catch_unwind(|| {
-        if !ptr.is_null() {
-            drop(std::ffi::CString::from_raw(ptr));
-        }
-    });
+    unsafe {
+        let _ = std::panic::catch_unwind(|| {
+            if !ptr.is_null() {
+                drop(std::ffi::CString::from_raw(ptr));
+            }
+        });
+    }
 }
 
 #[cfg(test)]

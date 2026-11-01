@@ -4,7 +4,7 @@
 //! Request-ID isolated hybrid semantic search coordinator, incremental scope indexer,
 //! and cooperative cancellation manager.
 
-use crate::chunker::{classify_content_tier, is_excluded_relative_path, ContentSupportTier};
+use crate::chunker::is_excluded_relative_path;
 use crate::index::{IndexLoadOutcome, PersistentScopeIndex};
 use crate::llama_ffi::{LlamaRuntimeConfig, LlamaRuntimeEngine};
 use crate::model::{
@@ -18,12 +18,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::UNIX_EPOCH;
 
+mod directory;
 mod ingest;
-use ingest::FileIngestInput;
 
 pub use crate::scoring::{DeterministicEmbeddingProvider, EmbeddingProvider as _};
 
@@ -133,11 +133,19 @@ pub struct SemanticOpenRequest {
     pub line_number: Option<u32>,
 }
 
-struct ManagedScope {
-    descriptor: SemanticScopeDescriptor,
-    index: PersistentScopeIndex,
-    progress: SemanticIndexProgress,
-    cancel_flag: Arc<AtomicBool>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct ScopeRunIdentity {
+    pub auth_epoch: u64,
+    pub run_token: u64,
+}
+
+pub(super) struct ManagedScope {
+    pub descriptor: SemanticScopeDescriptor,
+    pub index: PersistentScopeIndex,
+    pub progress: SemanticIndexProgress,
+    pub cancel_flag: Arc<AtomicBool>,
+    pub auth_epoch: u64,
+    pub active_run_token: u64,
 }
 
 /// Thread-safe coordinator managing authorized scopes, persistent `.ttvec` v2 indices,
@@ -148,6 +156,7 @@ pub struct SemanticSearchCoordinator {
     scopes: RwLock<BTreeMap<String, ManagedScope>>,
     latest_window_request: RwLock<BTreeMap<String, u64>>,
     cancelled_requests: RwLock<HashSet<u64>>,
+    next_sequence: AtomicU64,
 }
 
 impl SemanticSearchCoordinator {
@@ -159,6 +168,7 @@ impl SemanticSearchCoordinator {
             scopes: RwLock::new(BTreeMap::new()),
             latest_window_request: RwLock::new(BTreeMap::new()),
             cancelled_requests: RwLock::new(HashSet::new()),
+            next_sequence: AtomicU64::new(1),
         }
     }
 
@@ -181,11 +191,16 @@ impl SemanticSearchCoordinator {
         self.provider.model_state()
     }
 
+    /// Explicitly prepares the model runtime. Status inspection never performs this work.
+    pub fn prepare_model_runtime(&self) -> SemanticModelState {
+        self.provider.prepare()
+    }
+
     pub fn set_provider(&mut self, provider: Arc<dyn EmbeddingProvider>) {
         self.provider = provider;
     }
 
-    fn scope_paths(&self, scope_id: &str) -> (PathBuf, PathBuf) {
+    pub(super) fn scope_paths(&self, scope_id: &str) -> (PathBuf, PathBuf) {
         let safe_name: String = scope_id
             .chars()
             .map(|c| {
@@ -234,7 +249,11 @@ impl SemanticSearchCoordinator {
             error_message: None,
         };
 
+        let auth_epoch = self.next_sequence.fetch_add(1, Ordering::SeqCst);
         let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        if let Some(prev) = guard.get(&descriptor.scope_id) {
+            prev.cancel_flag.store(true, Ordering::SeqCst);
+        }
         guard.insert(
             descriptor.scope_id.clone(),
             ManagedScope {
@@ -242,6 +261,8 @@ impl SemanticSearchCoordinator {
                 index,
                 progress,
                 cancel_flag: Arc::new(AtomicBool::new(false)),
+                auth_epoch,
+                active_run_token: 0,
             },
         );
         outcome
@@ -253,6 +274,7 @@ impl SemanticSearchCoordinator {
             let mut guard = self.scopes.write().expect("scopes lock poisoned");
             if let Some(mut managed) = guard.remove(scope_id) {
                 managed.cancel_flag.store(true, Ordering::SeqCst);
+                managed.active_run_token = 0;
                 managed.index.clear();
                 true
             } else {
@@ -270,6 +292,7 @@ impl SemanticSearchCoordinator {
         let mut guard = self.scopes.write().expect("scopes lock poisoned");
         if let Some(managed) = guard.get_mut(scope_id) {
             managed.cancel_flag.store(true, Ordering::SeqCst);
+            managed.active_run_token = 0;
             managed.progress.phase = SemanticIngestPhase::Cancelled;
         }
     }
@@ -292,70 +315,42 @@ impl SemanticSearchCoordinator {
         &self,
         scope_id: &str,
     ) -> Result<SemanticIndexProgress, SemanticModelError> {
-        let (root_path, cancel_flag, is_authorized) = {
-            let mut guard = self.scopes.write().expect("scopes lock poisoned");
-            let Some(managed) = guard.get_mut(scope_id) else {
-                return Err(SemanticModelError::RuntimeFailed {
-                    reason: format!("Unknown scope_id: {}", scope_id),
-                });
-            };
-            managed.cancel_flag.store(false, Ordering::SeqCst);
-            managed.progress.phase = SemanticIngestPhase::Scanning;
-            (
-                PathBuf::from(&managed.descriptor.root_path),
-                Arc::clone(&managed.cancel_flag),
-                managed.descriptor.is_authorized,
-            )
-        };
-
-        if !is_authorized {
-            return Err(SemanticModelError::RuntimeFailed {
-                reason: format!("Scope {} is not authorized", scope_id),
-            });
-        }
+        let (root_path, run_identity, cancel_flag) = self.prepare_directory_scope_scan(scope_id)?;
 
         let mut discovered_files = Vec::new();
-        collect_authorized_files(&root_path, &root_path, &mut discovered_files, &cancel_flag);
-
-        let mut events = Vec::new();
-        let mut seen_rel_paths = HashSet::new();
-        for (rel_path, full_path, file_size, mtime_ns) in discovered_files {
-            if cancel_flag.load(Ordering::SeqCst) {
-                break;
-            }
-            seen_rel_paths.insert(rel_path.clone());
-            let tier = classify_content_tier(&rel_path, file_size, false);
-            if tier == ContentSupportTier::Excluded {
-                continue;
-            }
-            let bytes = match tier {
-                ContentSupportTier::Tier2PlainText | ContentSupportTier::Tier2SourceCode => {
-                    fs::read(&full_path).unwrap_or_default()
-                }
-                ContentSupportTier::Tier1PathOnly | ContentSupportTier::Excluded => Vec::new(),
-            };
-            events.push(SemanticFileEvent::CreatedOrModified {
-                relative_path: rel_path,
-                archive_entry_path: None,
-                bytes,
-                mtime_ns,
-            });
+        let mut had_directory_read_error = false;
+        collect_authorized_files(
+            &root_path,
+            &root_path,
+            &mut discovered_files,
+            &cancel_flag,
+            &mut had_directory_read_error,
+        );
+        if !self.is_run_still_active(scope_id, run_identity, &cancel_flag) {
+            return Ok(self.cancelled_progress_snapshot(scope_id, run_identity));
+        }
+        if had_directory_read_error {
+            return self.fail_directory_scope_scan(scope_id, &root_path, run_identity);
         }
 
-        {
-            let guard = self.scopes.read().expect("scopes lock poisoned");
-            if let Some(managed) = guard.get(scope_id) {
-                for existing in managed.index.files() {
-                    if !seen_rel_paths.contains(&existing.relative_path) {
-                        events.push(SemanticFileEvent::Removed {
-                            relative_path: existing.relative_path.clone(),
-                        });
-                    }
-                }
-            }
-        }
+        let had_stream_read_error = AtomicBool::new(false);
+        let events = self.directory_file_event_stream(
+            scope_id,
+            discovered_files,
+            &cancel_flag,
+            &had_stream_read_error,
+            had_directory_read_error,
+        );
 
-        self.apply_file_events(scope_id, &events)
+        let event_count = events.remaining_event_count();
+        self.apply_ingest_event_iter_for_run(
+            scope_id,
+            events,
+            event_count,
+            run_identity,
+            &cancel_flag,
+            Some((&root_path, &had_stream_read_error)),
+        )
     }
 
     /// Applies incremental file creation, modification, or deletion events to a scope index
@@ -365,97 +360,36 @@ impl SemanticSearchCoordinator {
         scope_id: &str,
         events: &[SemanticFileEvent],
     ) -> Result<SemanticIndexProgress, SemanticModelError> {
-        let cancel_flag = {
+        let (run_identity, cancel_flag) = {
             let mut guard = self.scopes.write().expect("scopes lock poisoned");
             let Some(managed) = guard.get_mut(scope_id) else {
                 return Err(SemanticModelError::RuntimeFailed {
                     reason: format!("Unknown scope_id: {}", scope_id),
                 });
             };
-            managed.progress.phase = SemanticIngestPhase::ChunkingAndEmbedding;
-            managed.progress.total_files = events.len() as u32;
-            managed.progress.processed_files = 0;
-            Arc::clone(&managed.cancel_flag)
+            managed.cancel_flag.store(true, Ordering::SeqCst);
+            let new_cancel = Arc::new(AtomicBool::new(false));
+            managed.cancel_flag = Arc::clone(&new_cancel);
+            let run_token = self.next_sequence.fetch_add(1, Ordering::SeqCst);
+            managed.active_run_token = run_token;
+            (
+                ScopeRunIdentity {
+                    auth_epoch: managed.auth_epoch,
+                    run_token,
+                },
+                new_cancel,
+            )
         };
-
-        let model_ready = matches!(self.provider.model_state(), SemanticModelState::Ready(_));
-
-        for (idx, event) in events.iter().enumerate() {
-            if cancel_flag.load(Ordering::SeqCst) {
-                let mut guard = self.scopes.write().expect("scopes lock poisoned");
-                if let Some(managed) = guard.get_mut(scope_id) {
-                    managed.progress.phase = SemanticIngestPhase::Cancelled;
-                    return Ok(managed.progress.clone());
-                }
-            }
-
-            match event {
-                SemanticFileEvent::Removed { relative_path } => {
-                    let mut guard = self.scopes.write().expect("scopes lock poisoned");
-                    if let Some(managed) = guard.get_mut(scope_id) {
-                        managed.index.remove_file(relative_path);
-                        managed.progress.processed_files = (idx + 1) as u32;
-                        managed.progress.indexed_segments = managed.index.segments().len() as u32;
-                        managed.progress.index_generation = managed.index.index_generation;
-                    }
-                }
-                SemanticFileEvent::CreatedOrModified {
-                    relative_path,
-                    archive_entry_path,
-                    bytes,
-                    mtime_ns,
-                } => {
-                    if !model_ready {
-                        continue;
-                    }
-                    self.ingest_single_file(
-                        scope_id,
-                        idx,
-                        FileIngestInput {
-                            relative_path,
-                            archive_entry_path: archive_entry_path.clone(),
-                            bytes,
-                            mtime_ns: *mtime_ns,
-                        },
-                        &cancel_flag,
-                    )?;
-                }
-            }
-        }
-
-        self.finalize_ingest_commit(scope_id, &cancel_flag, model_ready)
+        self.apply_file_events_for_run(scope_id, events, run_identity, &cancel_flag)
     }
 
-    fn finalize_ingest_commit(
-        &self,
-        scope_id: &str,
-        cancel_flag: &AtomicBool,
-        model_ready: bool,
-    ) -> Result<SemanticIndexProgress, SemanticModelError> {
-        let (ttvec_path, ttidx_path) = self.scope_paths(scope_id);
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
-        let Some(managed) = guard.get_mut(scope_id) else {
-            return Err(SemanticModelError::RuntimeFailed {
-                reason: format!("Unknown scope_id: {}", scope_id),
-            });
-        };
-        if cancel_flag.load(Ordering::SeqCst) {
-            managed.progress.phase = SemanticIngestPhase::Cancelled;
-            return Ok(managed.progress.clone());
+    fn prepare_query_embedding(&self, query: &str, is_code: bool) -> Option<[i8; 128]> {
+        if !matches!(self.provider.prepare(), SemanticModelState::Ready(_)) {
+            return None;
         }
-        if !model_ready {
-            managed.progress.phase = SemanticIngestPhase::DegradedLexicalOnly;
-            return Ok(managed.progress.clone());
-        }
-        managed.progress.phase = SemanticIngestPhase::Committing;
-        managed
-            .index
-            .save_to_disk(&ttvec_path, &ttidx_path)
-            .map_err(|reason| SemanticModelError::RuntimeFailed { reason })?;
-        managed.progress.phase = SemanticIngestPhase::Completed;
-        managed.progress.indexed_segments = managed.index.segments().len() as u32;
-        managed.progress.index_generation = managed.index.index_generation;
-        Ok(managed.progress.clone())
+        let embedding = self.provider.encode_query(query, is_code).ok()?;
+        validate_non_zero_int8_vector(&embedding).ok()?;
+        Some(embedding)
     }
 
     /// Explicitly cancels a specific search `request_id`.
@@ -507,10 +441,7 @@ impl SemanticSearchCoordinator {
             return empty_search_response(request, false, false);
         }
 
-        let query_vec_opt = match self.provider.encode_query(clean_query, is_code_query) {
-            Ok(vec_i8) if validate_non_zero_int8_vector(&vec_i8).is_ok() => Some(vec_i8),
-            _ => None,
-        };
+        let query_vec_opt = self.prepare_query_embedding(clean_query, is_code_query);
         let degraded_lexical_only = query_vec_opt.is_none();
 
         let scopes_guard = self.scopes.read().expect("scopes lock poisoned");
@@ -610,8 +541,15 @@ fn score_lexical_only_scope(
     let root = Path::new(&managed.descriptor.root_path);
     let mut files_on_disk = Vec::new();
     let dummy_cancel = AtomicBool::new(false);
+    let mut dummy_read_error = false;
     if root.exists() {
-        collect_authorized_files(root, root, &mut files_on_disk, &dummy_cancel);
+        collect_authorized_files(
+            root,
+            root,
+            &mut files_on_disk,
+            &dummy_cancel,
+            &mut dummy_read_error,
+        );
     }
     for (rel_path, _, _, _) in files_on_disk {
         let lex = compute_lexical_score(clean_query, &rel_path, "");
@@ -645,19 +583,28 @@ fn compute_scope_fingerprint(scope_id: &str, root_path: &str) -> u64 {
     u64::from_le_bytes(bytes.as_bytes()[0..8].try_into().unwrap_or([0u8; 8]))
 }
 
-fn collect_authorized_files(
+pub(super) fn collect_authorized_files(
     root: &Path,
     current: &Path,
     out: &mut Vec<(String, PathBuf, u64, i64)>,
     cancel_flag: &AtomicBool,
+    had_directory_read_error: &mut bool,
 ) {
     if cancel_flag.load(Ordering::SeqCst) {
         return;
     }
     let Ok(entries) = fs::read_dir(current) else {
+        *had_directory_read_error = true;
         return;
     };
-    let mut sorted_entries: Vec<_> = entries.filter_map(Result::ok).collect();
+    let mut sorted_entries = Vec::new();
+    for entry_res in entries {
+        let Ok(entry) = entry_res else {
+            *had_directory_read_error = true;
+            return;
+        };
+        sorted_entries.push(entry);
+    }
     sorted_entries.sort_by_key(|e| e.file_name());
 
     for entry in sorted_entries {
@@ -673,23 +620,50 @@ fn collect_authorized_files(
             continue;
         }
         let Ok(ft) = entry.file_type() else {
-            continue;
+            *had_directory_read_error = true;
+            return;
         };
         if ft.is_symlink() {
             continue;
         }
         if ft.is_dir() {
-            collect_authorized_files(root, &path, out, cancel_flag);
-        } else if ft.is_file() {
-            if let Ok(meta) = entry.metadata() {
-                let mtime_ns = meta
-                    .modified()
-                    .ok()
-                    .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                    .map(|d| d.as_nanos() as i64)
-                    .unwrap_or(0);
-                out.push((rel_str, path, meta.len(), mtime_ns));
+            collect_authorized_files(
+                root,
+                &path,
+                out,
+                cancel_flag,
+                had_directory_read_error,
+            );
+            if *had_directory_read_error {
+                return;
             }
+        } else if ft.is_file() {
+            let Ok(meta) = entry.metadata() else {
+                *had_directory_read_error = true;
+                return;
+            };
+            if is_dataless_metadata(&meta) {
+                continue;
+            }
+            let mtime_ns = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_nanos() as i64)
+                .unwrap_or(0);
+            out.push((rel_str, path, meta.len(), mtime_ns));
         }
     }
+}
+
+#[cfg(target_os = "macos")]
+fn is_dataless_metadata(meta: &fs::Metadata) -> bool {
+    use std::os::macos::fs::MetadataExt;
+    const SF_DATALESS_FLAG: u32 = 0x4000_0000;
+    (meta.st_flags() & SF_DATALESS_FLAG) != 0
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_dataless_metadata(_meta: &fs::Metadata) -> bool {
+    false
 }

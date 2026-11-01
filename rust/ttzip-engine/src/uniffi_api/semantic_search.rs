@@ -358,6 +358,11 @@ impl UniFFISemanticSearchEngine {
         self.coordinator.model_state().into()
     }
 
+    /// Explicit native runtime preparation, separate from the non-loading state getter.
+    pub fn prepare_model_runtime(&self) -> UniFFISemanticModelState {
+        self.coordinator.prepare_model_runtime().into()
+    }
+
     pub fn register_scope(&self, descriptor: UniFFISemanticScopeDescriptor) -> bool {
         matches!(
             self.coordinator.register_scope(descriptor.into()),

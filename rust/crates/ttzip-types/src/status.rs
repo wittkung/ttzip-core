@@ -187,10 +187,12 @@ pub unsafe fn set_out_error(
     offset: u64,
     system_errno: i32,
 ) {
-    if !out_error.is_null() {
-        *out_error = TTZipError::allocate(status, msg, entry, offset, system_errno);
+    unsafe {
+        if !out_error.is_null() {
+            *out_error = TTZipError::allocate(status, msg, entry, offset, system_errno);
+        }
+        set_last_error(status, msg, entry, offset);
     }
-    set_last_error(status, msg, entry, offset);
 }
 
 #[repr(C)]
@@ -254,8 +256,10 @@ pub unsafe fn write_error_info(
     entry: Option<&str>,
     offset: u64,
 ) {
-    if !out_error.is_null() {
-        (*out_error).populate(status, msg, entry, offset);
+    unsafe {
+        if !out_error.is_null() {
+            (*out_error).populate(status, msg, entry, offset);
+        }
     }
 }
 
@@ -307,30 +311,32 @@ pub fn set_last_error(status: TTZipStatus, msg: &str, entry: Option<&str>, offse
 /// # Safety
 /// If non-null, `out_error` must be a valid, properly aligned, and writable pointer
 /// to a `TTZipErrorInfo` buffer of at least `size_of::<TTZipErrorInfo>()` bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_get_last_error_info(out_error: *mut TTZipErrorInfo) -> bool {
-    if out_error.is_null() {
-        return false;
-    }
-    LAST_ERROR.with(|cell| {
-        let err = cell.borrow();
-        if err.status == TTZipStatus::Ok && err.message[0] == 0 {
-            false
-        } else {
-            (*out_error).struct_size = std::mem::size_of::<TTZipErrorInfo>() as u32;
-            (*out_error).abi_version = TTZIP_ABI_VERSION_3;
-            (*out_error).status = err.status;
-            (*out_error).error_code = err.status as i32;
-            (*out_error).offset = err.offset;
-            for (dst, &src) in (*out_error).message.iter_mut().zip(&err.message) {
-                *dst = src as c_char;
-            }
-            for (dst, &src) in (*out_error).entry_path.iter_mut().zip(&err.entry_path) {
-                *dst = src as c_char;
-            }
-            true
+    unsafe {
+        if out_error.is_null() {
+            return false;
         }
-    })
+        LAST_ERROR.with(|cell| {
+            let err = cell.borrow();
+            if err.status == TTZipStatus::Ok && err.message[0] == 0 {
+                false
+            } else {
+                (*out_error).struct_size = std::mem::size_of::<TTZipErrorInfo>() as u32;
+                (*out_error).abi_version = TTZIP_ABI_VERSION_3;
+                (*out_error).status = err.status;
+                (*out_error).error_code = err.status as i32;
+                (*out_error).offset = err.offset;
+                for (dst, &src) in (*out_error).message.iter_mut().zip(&err.message) {
+                    *dst = src as c_char;
+                }
+                for (dst, &src) in (*out_error).entry_path.iter_mut().zip(&err.entry_path) {
+                    *dst = src as c_char;
+                }
+                true
+            }
+        })
+    }
 }
 
 /// Returns a heap-allocated, owned C-string copy of the last error message.
@@ -339,7 +345,7 @@ pub unsafe extern "C" fn ttzip_rust_get_last_error_info(out_error: *mut TTZipErr
 /// # Safety
 /// The returned pointer is owned by the caller and must be deallocated using `ttzip_free`
 /// or `CString::from_raw` to prevent memory leaks.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_get_last_error_message_owned() -> *mut c_char {
     LAST_ERROR.with(|cell| {
         let err = cell.borrow();

@@ -5,6 +5,51 @@ import Foundation
 import Security
 import LocalAuthentication
 
+public enum VaultBiometricUnlockResult: Sendable, Equatable {
+    case unlocked
+    case unavailable
+    case cancelled
+    case keyMissing
+    case keyAccessFailed
+    case invalidKey
+    case vaultUnreadable
+}
+
+public enum VaultPasswordUnlockResult: Sendable, Equatable {
+    case unlocked
+    case invalidPassword
+    case configurationMissing
+    case vaultUnreadable
+    case cancelled
+}
+
+public enum VaultResetError: Error, Sendable {
+    case emptyPassword
+    case vaultUnlocked
+    case originalFilesMissing
+    case newVaultNotSaved(backupDirectory: URL)
+}
+
+public enum VaultEntrySaveResult: Sendable, Equatable {
+    case saved(UUID)
+    case locked
+    case duplicateID
+    case writeFailed
+}
+
+public enum VaultEntryDeleteResult: Sendable, Equatable {
+    case removed
+    case notFound
+    case locked
+    case writeFailed
+}
+
+public enum ArchiveVaultCredentialError: Error, Sendable, Equatable {
+    case locked
+    case invalidIdentity
+    case writeFailed
+}
+
 public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Sendable {
     public static let shared = PasswordVaultManager()
     
@@ -64,14 +109,16 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     
     public static let vaultDidChangeNotification = Notification.Name("PasswordVaultDidChangeNotification")
     
-    private func notifyChange() {
+    func notifyChange() {
         Task { @MainActor in
             NotificationCenter.default.post(name: PasswordVaultManager.vaultDidChangeNotification, object: nil)
         }
     }
 
     public var isMasterPasswordSet: Bool {
-        vaultLock.withLock { masterVerifierHash != nil }
+        vaultLock.withLock {
+            masterVerifierHash != nil || FileManager.default.fileExists(atPath: vaultFileURL.path)
+        }
     }
     
     /// Automatically attempts candidate passwords when encountering encrypted archives (defaults to true).
@@ -100,6 +147,10 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     
     /// Initializes master password for initial setup using SecureBytes and Secure Enclave wrapped keys.
     public func setMasterPassword(_ pwd: String) {
+        setMasterPassword(pwd, saveBiometricKey: true)
+    }
+
+    private func setMasterPassword(_ pwd: String, saveBiometricKey: Bool) {
         vaultLock.withLock {
             var saltBytes = [UInt8](repeating: 0, count: 32)
             guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
@@ -126,11 +177,13 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
             
             saveConfigLocked()
             saveVaultLocked()
-            saveBiometricVaultKey(vaultKey: vaultKey)
+            if saveBiometricKey {
+                saveBiometricVaultKey(vaultKey: vaultKey)
+            }
         }
         notifyChange()
     }
-    
+
     /// Resets vault state for fresh initialization.
     public func resetToFirstRunState() {
         vaultLock.withLock {
@@ -155,82 +208,64 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     
     /// Unlocks vault using provided master password string.
     public func unlockVault(with pwd: String) -> Bool {
-        let success: Bool = vaultLock.withLock {
-            guard let salt = masterPasswordSalt ?? generateAndSaveSaltLocked() else {
-                return false
-            }
+        unlockVaultResult(with: pwd) == .unlocked
+    }
+
+    public func unlockVaultResult(with pwd: String) -> VaultPasswordUnlockResult {
+        let result: VaultPasswordUnlockResult = vaultLock.withLock {
+            guard let salt = masterPasswordSalt, let expectedVerifier = masterVerifierHash else { return .configurationMissing }
             guard let keyBytes = deriveSymmetricKeyBytesV4(pwd, salt: salt, iterations: Self.defaultV4Iterations) else {
-                return false
+                return .vaultUnreadable
             }
             guard let vaultKey = try? SecureBytes(data: Data(keyBytes)) else {
                 TTLogger.error("Failed to allocate vaultKey SecureBytes during unlockVault")
-                return false
+                return .vaultUnreadable
             }
             let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
             
-            if let expectedVerifier = masterVerifierHash {
-                guard verifier == expectedVerifier else {
-                    vaultKey.wipeAndFree()
-                    return false
-                }
-            } else {
-                masterVerifierHash = verifier
-                saveConfigLocked()
+            guard verifier == expectedVerifier else {
+                vaultKey.wipeAndFree()
+                return .invalidPassword
             }
             
             guard let masterSecret = try? SecureBytes(utf8String: pwd) else {
                 vaultKey.wipeAndFree()
                 TTLogger.error("Failed to allocate masterSecret SecureBytes during unlockVault")
-                return false
+                return .vaultUnreadable
             }
+            guard let loadedEntries = loadVaultLocked(vaultKey: vaultKey) else {
+                masterSecret.wipeAndFree()
+                vaultKey.wipeAndFree()
+                return .vaultUnreadable
+            }
+            if withUnsafeCurrentTask(body: { $0?.isCancelled ?? false }) {
+                masterSecret.wipeAndFree()
+                vaultKey.wipeAndFree()
+                return .cancelled
+            }
+            self.entries = loadedEntries
             self.activeMasterSecret = masterSecret
             self.activeDerivedVaultKey = vaultKey
             self._isUnlocked = true
-            
             saveBiometricVaultKey(vaultKey: vaultKey)
-            loadVaultLocked(vaultKey: vaultKey)
-            return true
+            return .unlocked
         }
-        if success {
+        if result == .unlocked {
             notifyChange()
         }
-        return success
+        return result
     }
 
     /// Unlocks vault via hardware-backed Biometric Authentication (Touch ID / Secure Enclave)
     /// by retrieving the wrapped derived VaultKey from Keychain with AccessControl.
     public func unlockWithBiometrics() -> Bool {
-        let success: Bool = vaultLock.withLock {
-            if _isUnlocked && activeDerivedVaultKey != nil {
-                return true
-            }
-            guard let vaultKeyData = loadBiometricVaultKey(), vaultKeyData.count == 32 else {
-                return false
-            }
-            guard let vaultKey = try? SecureBytes(data: vaultKeyData) else {
-                TTLogger.error("Failed to allocate vaultKey SecureBytes during unlockWithBiometrics")
-                return false
-            }
-            
-            if let expectedVerifier = masterVerifierHash, let salt = masterPasswordSalt {
-                let verifier = computeVerifierHash(vaultKey: vaultKey, salt: salt)
-                guard verifier == expectedVerifier else {
-                    vaultKey.wipeAndFree()
-                    return false
-                }
-            }
-            
-            self.activeDerivedVaultKey = vaultKey
-            self._isUnlocked = true
-            loadVaultLocked(vaultKey: vaultKey)
-            return true
-        }
-        if success {
-            notifyChange()
-        }
-        return success
+        unlockWithBiometricsResult() == .unlocked
     }
-    
+
+    public func unlockWithBiometricsResult() -> VaultBiometricUnlockResult {
+        unlockWithBiometricsResult(readKey: loadBiometricVaultKey)
+    }
+
     /// Locks vault and securely scrubs active password and key buffers from memory using volatile barriers.
     public func lockVault() {
         vaultLock.withLock {
@@ -244,10 +279,6 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         notifyChange()
     }
     
-    public func resetMasterPassword(newMasterPassword: String) {
-        setMasterPassword(newMasterPassword)
-    }
-    
     public func recoverBackupVault(withOriginalMasterPassword: String) -> Bool {
         return unlockVault(with: withOriginalMasterPassword)
     }
@@ -255,20 +286,28 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
     public func getEntries() -> [PasswordVaultEntry] {
         vaultLock.withLock {
             guard _isUnlocked else { return [] }
-            return entries
+            return entries.filter { $0.archiveScope == nil }
         }
     }
-    
+
     public static var isCLIProcess: Bool {
-        let procName = ProcessInfo.processInfo.processName.lowercased()
+        isCLIProcess(
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            processName: ProcessInfo.processInfo.processName,
+            arguments: CommandLine.arguments
+        )
+    }
+
+    static func isCLIProcess(bundleIdentifier: String?, processName: String, arguments: [String]) -> Bool {
+        if bundleIdentifier == "com.metastudyline.ttzip" || bundleIdentifier == "com.ttzip.app" {
+            return false
+        }
+        let procName = processName.lowercased()
         if procName.contains("cli") || procName.contains("bench") || procName.contains("swift") || procName.contains("xctest") {
             return true
         }
-        if CommandLine.arguments.contains(where: { $0.contains("bench") || $0.contains("test") || $0.contains("cli") }) {
+        if arguments.contains(where: { $0.contains("bench") || $0.contains("test") || $0.contains("cli") }) {
             return true
-        }
-        if let bundleId = Bundle.main.bundleIdentifier, bundleId.contains("com.ttzip.app") {
-            return false
         }
         return true
     }
@@ -289,38 +328,7 @@ public final class PasswordVaultManager: PasswordVaultManaging, @unchecked Senda
         return result
     }
     
-    public func addEntry(id: UUID = UUID(), label: String, password: String, category: String = "General") {
-        vaultLock.withLock {
-            guard _isUnlocked else { return }
-            let finalLabel = label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Password" : label.trimmingCharacters(in: .whitespacesAndNewlines)
-            let finalCategory = category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "General" : category.trimmingCharacters(in: .whitespacesAndNewlines)
-            let newEntry = PasswordVaultEntry(id: id, label: finalLabel, password: password, category: finalCategory)
-            entries.append(newEntry)
-            saveVaultLocked()
-        }
-        notifyChange()
-    }
-    
-    public func removeEntry(id: UUID) {
-        vaultLock.withLock {
-            guard _isUnlocked else { return }
-            entries.removeAll { $0.id == id }
-            saveVaultLocked()
-        }
-        notifyChange()
-    }
-    
-    public func recordUsage(id: UUID) {
-        vaultLock.withLock {
-            guard _isUnlocked else { return }
-            if let idx = entries.firstIndex(where: { $0.id == id }) {
-                entries[idx].useCount += 1
-                entries[idx].lastUsedAt = Date()
-                saveVaultLocked()
-            }
-        }
-        notifyChange()
-    }
+
 }
 
 // MARK: - Crypto v4 (PBKDF2-SHA256 600k rounds + Rust AES-256-GCM)
@@ -343,17 +351,6 @@ extension PasswordVaultManager {
             let keyData = Data(bytes: kBase, count: 32)
             return vaultComputeVerifier(key: keyData, salt: salt)
         }
-    }
-    
-    private func generateAndSaveSaltLocked() -> Data? {
-        var saltBytes = [UInt8](repeating: 0, count: 32)
-        guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
-            return nil
-        }
-        let salt = Data(saltBytes)
-        self.masterPasswordSalt = salt
-        saveConfigLocked()
-        return salt
     }
     
     func encryptDataV4WithKey(_ data: Data, vaultKey: SecureBytes) -> Data? {
@@ -418,21 +415,12 @@ extension PasswordVaultManager {
         }
     }
     
-    func loadVaultLocked(vaultKey: SecureBytes) {
-        if FileManager.default.fileExists(atPath: vaultFileURL.path) {
-            do {
-                let encryptedData = try Data(contentsOf: vaultFileURL)
-                if let rawJSON = decryptDataV4WithKey(encryptedData, vaultKey: vaultKey) {
-                    let decoder = JSONDecoder()
-                    let decoded = try decoder.decode([PasswordVaultEntry].self, from: rawJSON)
-                    setEntriesInternal(decoded)
-                    return
-                }
-            } catch {
-                // v4 decrypt failed
-            }
+    func loadVaultLocked(vaultKey: SecureBytes) -> [PasswordVaultEntry]? {
+        guard let encryptedData = try? Data(contentsOf: vaultFileURL),
+              let rawJSON = decryptDataV4WithKey(encryptedData, vaultKey: vaultKey) else {
+            return nil
         }
-        setEntriesInternal([])
+        return try? JSONDecoder().decode([PasswordVaultEntry].self, from: rawJSON)
     }
     
     func saveVaultLocked() {
@@ -449,13 +437,46 @@ extension PasswordVaultManager {
             TTLogger.error("Failed to encrypt vault: \(error.localizedDescription)")
         }
     }
+
+    func persistMutationLocked(previousEntries: [PasswordVaultEntry]) -> Bool {
+        guard let vaultKey = activeDerivedVaultKey,
+              let oldCiphertext = try? Data(contentsOf: vaultFileURL),
+              let oldPayload = decryptDataV4WithKey(oldCiphertext, vaultKey: vaultKey),
+              let diskEntries = try? JSONDecoder().decode([PasswordVaultEntry].self, from: oldPayload),
+              diskEntries == previousEntries,
+              let newPayload = try? JSONEncoder().encode(entries),
+              let newCiphertext = encryptDataV4WithKey(newPayload, vaultKey: vaultKey) else {
+            return false
+        }
+        do {
+            try newCiphertext.write(to: vaultFileURL, options: .atomic)
+            guard loadVaultLocked(vaultKey: vaultKey) == entries else {
+                try oldCiphertext.write(to: vaultFileURL, options: .atomic)
+                return false
+            }
+            return true
+        } catch {
+            TTLogger.error("Unable to persist vault entry mutation: \(error.localizedDescription)")
+            return false
+        }
+    }
 }
 
 // MARK: - Hardware-Backed Biometric Keychain Storage (SecAccessControl)
 
 extension PasswordVaultManager {
-    
-    private var biometricAccountKey: String { "TTZipVaultDerivedKey_Biometric" }
+
+    enum BiometricKeyRead {
+        case success(Data)
+        case missing
+        case cancelled
+        case unavailable
+        case failure(OSStatus)
+    }
+
+    private var biometricAccountKey: String { "TTZipVaultDerivedKey_Biometric_v2" }
+    private var legacyBiometricAccountKey: String { "TTZipVaultDerivedKey_Biometric" }
+    private var biometricService: String { "com.ttzip.app.vault.biometric" }
     
     func saveBiometricVaultKey(vaultKey: SecureBytes) {
         if PasswordVaultManager.isCLIProcess { return }
@@ -464,7 +485,7 @@ extension PasswordVaultManager {
         guard let accessControl = SecAccessControlCreateWithFlags(
             kCFAllocatorDefault,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            [.biometryCurrentSet, .userPresence],
+            .biometryCurrentSet,
             &accessError
         ) else {
             accessError?.release()
@@ -477,27 +498,57 @@ extension PasswordVaultManager {
             
             let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: "com.ttzip.app.vault.biometric",
+                kSecAttrService as String: biometricService,
+                kSecAttrAccount as String: biometricAccountKey
+            ]
+            let add: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: biometricService,
                 kSecAttrAccount as String: biometricAccountKey,
                 kSecAttrAccessControl as String: accessControl,
                 kSecValueData as String: keyData
             ]
-            
-            SecItemDelete(query as CFDictionary)
-            SecItemAdd(query as CFDictionary, nil)
+            let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: keyData] as CFDictionary)
+            if updateStatus == errSecSuccess { return }
+            if updateStatus != errSecItemNotFound && updateStatus != errSecAuthFailed {
+                TTLogger.error("Unable to update biometric vault key (status: \(updateStatus))")
+                return
+            }
+            if updateStatus == errSecAuthFailed {
+                let deleteStatus = SecItemDelete(query as CFDictionary)
+                guard deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound else {
+                    TTLogger.error("Unable to replace invalid biometric vault key (status: \(deleteStatus))")
+                    return
+                }
+            }
+            var addStatus = SecItemAdd(add as CFDictionary, nil)
+            if addStatus == errSecDuplicateItem && updateStatus == errSecItemNotFound {
+                let deleteStatus = SecItemDelete(query as CFDictionary)
+                if deleteStatus == errSecSuccess {
+                    addStatus = SecItemAdd(add as CFDictionary, nil)
+                } else {
+                    TTLogger.error("Unable to replace duplicate biometric vault key (status: \(deleteStatus))")
+                    return
+                }
+            }
+            if addStatus != errSecSuccess {
+                TTLogger.error("Unable to store biometric vault key (status: \(addStatus))")
+            }
         }
     }
-    
-    func loadBiometricVaultKey() -> Data? {
-        if PasswordVaultManager.isCLIProcess { return nil }
-        
+
+    func loadBiometricVaultKey() -> BiometricKeyRead {
+        if PasswordVaultManager.isCLIProcess { return .unavailable }
         let context = LAContext()
         context.localizedReason = TTZipLocalizationManager.shared.string(for: L10n.Vault.biometricReason)
-        
+        return readBiometricVaultKey(account: biometricAccountKey, context: context)
+    }
+
+    private func readBiometricVaultKey(account: String, context: LAContext) -> BiometricKeyRead {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.ttzip.app.vault.biometric",
-            kSecAttrAccount as String: biometricAccountKey,
+            kSecAttrService as String: biometricService,
+            kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecUseAuthenticationContext as String: context
@@ -506,19 +557,30 @@ extension PasswordVaultManager {
         var dataTypeRef: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
         if status == errSecSuccess, let data = dataTypeRef as? Data {
-            return data
+            return .success(data)
         }
-        return nil
+        switch status {
+        case errSecItemNotFound: return .missing
+        case errSecUserCanceled: return .cancelled
+        case errSecInteractionNotAllowed, errSecAuthFailed: return .unavailable
+        default: return .failure(status)
+        }
     }
     
     func deleteBiometricVaultKey() {
         if PasswordVaultManager.isCLIProcess { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "com.ttzip.app.vault.biometric",
+            kSecAttrService as String: biometricService,
             kSecAttrAccount as String: biometricAccountKey
         ]
         SecItemDelete(query as CFDictionary)
+        let legacyQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: biometricService,
+            kSecAttrAccount as String: legacyBiometricAccountKey
+        ]
+        SecItemDelete(legacyQuery as CFDictionary)
     }
     
     func deleteFromKeychain(account: String) {

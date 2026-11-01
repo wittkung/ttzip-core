@@ -282,21 +282,25 @@ mod tests {
     fn test_cancellation_probe_propagation() {
         let sheet = Arc::new(ProgressAtomicSheet::new());
         let sheet_clone = Arc::clone(&sheet);
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
 
         let handle = thread::spawn(move || {
             let mut iterations = 0u64;
             while !sheet_clone.is_cancelled() {
                 iterations += 1;
+                if iterations == 1 {
+                    started_tx.send(()).expect("Worker start receiver dropped");
+                }
                 std::hint::spin_loop();
             }
             iterations
         });
 
-        // Give the worker thread a moment to enter the spin loop.
-        thread::sleep(Duration::from_millis(2));
+        let started = started_rx.recv_timeout(Duration::from_secs(10));
         sheet.cancel();
 
         let iterations = handle.join().expect("Worker thread panicked");
+        started.expect("Worker did not enter the cancellation loop");
         assert!(iterations > 0);
         assert!(sheet.is_cancelled());
         assert!(sheet.read_snapshot().is_cancelled);

@@ -4,7 +4,7 @@
 [package]
 name = "ttzip-semantic"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause"
 description = "TTZip EmbeddingGemma 2 GGUF & llama.cpp Semantic Indexing and Hybrid Search Engine"

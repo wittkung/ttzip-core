@@ -36,7 +36,7 @@ fn encode_zstd(data: &[u8]) -> Vec<u8> {
     out
 }
 
-extern "C" {
+unsafe extern "C" {
     fn lzma_easy_buffer_encode(
         preset: u32,
         check: u32,

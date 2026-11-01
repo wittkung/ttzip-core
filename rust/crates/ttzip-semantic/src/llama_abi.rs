@@ -67,7 +67,7 @@ pub enum AbiHeaderStatus {
     UnboundToUpstreamHeader,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn ttzip_llama_get_compiled_abi_layout(out_snapshot: *mut TtzipLlamaAbiLayoutSnapshot);
 
     pub fn ttzip_llama_session_create(

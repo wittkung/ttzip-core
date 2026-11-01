@@ -123,6 +123,7 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
             }
         }
         
+        var operationOutcome: ExtractionOutcome?
         do {
             let writeRequest = ArchiveWriteRequest(
                 outputPath: outputPath,
@@ -135,7 +136,12 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
                 advancedOptions: advancedOptions ?? .defaultOptions,
                 progressHandler: progress
             )
-            try await archiveWriter.createArchive(writeRequest)
+            if let defaultWriter = archiveWriter as? ArchiveWriter {
+                let report = try await defaultWriter.createArchiveWithOutcome(writeRequest)
+                operationOutcome = report.outcome
+            } else {
+                try await archiveWriter.createArchive(writeRequest)
+            }
         } catch {
             // Atomic rollback: clean up corrupted incomplete output files and restore originals losslessly from backup.
             for (originalPath, backupPath) in backupDict {
@@ -201,14 +207,29 @@ public final class CompressCommand: ArchiveCommandProtocol, @unchecked Sendable 
             }
         }
         
+        var metadata: [String: String] = [
+            "compressedSize": "\(totalCompressedBytes)",
+            "originalSize": "\(totalOrigBytes)"
+        ]
+        let resultMessage: String
+        if let outcome = operationOutcome, outcome.status == .completedWithFailures {
+            metadata["outcomeStatus"] = "completedWithFailures"
+            metadata["cleanupFailureCount"] = "\(outcome.failed.count)"
+            metadata["cleanupFailedPaths"] = outcome.failed.map(\.relativePath).joined(separator: ", ")
+            resultMessage = "Archive compression completed in \(String(format: "%.2f", duration))s with \(outcome.failed.count) post-commit cleanup warning(s)"
+        } else {
+            metadata["outcomeStatus"] = "completed"
+            resultMessage = "Archive compression completed in \(String(format: "%.2f", duration))s"
+        }
+
         return CommandResult(
             commandId: commandId,
             success: true,
-            message: "Archive compression completed in \(String(format: "%.2f", duration))s",
+            message: resultMessage,
             artifactsCreated: sortedArtifacts,
             backupPaths: backupDict,
             executionDuration: duration,
-            metadata: ["compressedSize": "\(totalCompressedBytes)", "originalSize": "\(totalOrigBytes)"]
+            metadata: metadata
         )
     }
     

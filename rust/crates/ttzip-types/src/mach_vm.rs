@@ -69,7 +69,7 @@ mod sys {
     pub const MAP_MEM_VM_SHARE: VmProt = 0x00040000;
     pub const MAP_MEM_VM_COPY: VmProt = 0x00020000;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn mach_task_self() -> MachPort;
 
         pub fn mach_vm_allocate(

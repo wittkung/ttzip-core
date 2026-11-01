@@ -82,11 +82,13 @@ pub fn record_execution_provenance(prov: TTZipExecutionProvenance) {
 /// The `out` pointer must either be null or point to a valid, properly aligned,
 /// and writable `TTZipExecutionProvenance` memory buffer.
 pub unsafe fn get_execution_provenance(out: *mut TTZipExecutionProvenance) -> bool {
-    if out.is_null() {
-        return false;
+    unsafe {
+        if out.is_null() {
+            return false;
+        }
+        LAST_PROVENANCE.with(|cell| {
+            *out = *cell.borrow();
+        });
+        true
     }
-    LAST_PROVENANCE.with(|cell| {
-        *out = *cell.borrow();
-    });
-    true
 }

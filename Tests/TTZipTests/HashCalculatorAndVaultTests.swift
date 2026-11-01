@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import XCTest
+import Security
 @testable import TTZipCore
+#if canImport(TTZipCoreCrypto)
+@testable import TTZipCoreCrypto
+#endif
 
 final class HashCalculatorAndVaultTests: XCTestCase {
     
@@ -144,8 +148,7 @@ final class HashCalculatorAndVaultTests: XCTestCase {
         XCTAssertEqual(manager.getEntries().count, 0)
         
         // 4. Unlock with wrong password should fail
-        let wrongUnlock = manager.unlockVault(with: "WrongPassword")
-        XCTAssertFalse(wrongUnlock)
+        XCTAssertEqual(manager.unlockVaultResult(with: "WrongPassword"), .invalidPassword)
         XCTAssertFalse(manager.isUnlocked)
         
         // 5. Unlock with correct password should succeed and restore entries
@@ -163,5 +166,148 @@ final class HashCalculatorAndVaultTests: XCTestCase {
         XCTAssertFalse(manager.isUnlocked)
         XCTAssertFalse(manager.isMasterPasswordSet)
         XCTAssertEqual(manager.getEntries().count, 0)
+    }
+
+    func testUnreadableVaultNeverEntersUnlockedStateOrReplacesCiphertext() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("damaged_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("damaged_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("damaged_backup.enc")
+        )
+        let password = "TaskOwnedMasterPassword@2026"
+        manager.setMasterPassword(password)
+        XCTAssertTrue(manager.isUnlocked)
+        manager.lockVault()
+
+        let damagedCiphertext = Data("damaged test vault".utf8)
+        try damagedCiphertext.write(to: vaultURL, options: .atomic)
+        XCTAssertEqual(manager.unlockVaultResult(with: password), .vaultUnreadable)
+        XCTAssertFalse(manager.isUnlocked)
+        XCTAssertTrue(manager.getEntries().isEmpty)
+        XCTAssertEqual(try Data(contentsOf: vaultURL), damagedCiphertext)
+        XCTAssertNotEqual(manager.unlockWithBiometricsResult(), .unlocked)
+        XCTAssertFalse(manager.isUnlocked)
+    }
+
+    func testMissingConfigDoesNotInitializeOverExistingVault() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("existing_vault.enc")
+        let configURL = tempDirectory.appendingPathComponent("existing_config.json")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: configURL,
+            backupURL: tempDirectory.appendingPathComponent("existing_backup.enc")
+        )
+        manager.setMasterPassword("TaskOwnedMasterPassword@2026")
+        manager.lockVault()
+        let ciphertext = try Data(contentsOf: vaultURL)
+        try FileManager.default.removeItem(at: configURL)
+
+        let reopened = PasswordVaultManager(vaultURL: vaultURL, configURL: configURL)
+        XCTAssertTrue(reopened.isMasterPasswordSet)
+        XCTAssertEqual(reopened.unlockVaultResult(with: "TaskOwnedMasterPassword@2026"), .configurationMissing)
+        XCTAssertFalse(reopened.isUnlocked)
+        XCTAssertEqual(try Data(contentsOf: vaultURL), ciphertext)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: configURL.path))
+    }
+
+    func testResetPreservesEncryptedOriginalBeforeCreatingEmptyVault() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("reset_vault.enc")
+        let configURL = tempDirectory.appendingPathComponent("reset_config.json")
+        let manager = PasswordVaultManager(vaultURL: vaultURL, configURL: configURL)
+        manager.setMasterPassword("OldTaskOwnedMaster@2026")
+        manager.addEntry(label: "old entry", password: "task-owned-secret")
+        let oldEntries = manager.getEntries()
+        manager.lockVault()
+        manager.vaultLock.withLock { manager.entries = oldEntries }
+        let oldVault = try Data(contentsOf: vaultURL)
+        let oldConfig = try Data(contentsOf: configURL)
+
+        let backup = try manager.resetMasterPasswordPreservingEncryptedBackup("NewTaskOwnedMaster@2026")
+        XCTAssertEqual(try Data(contentsOf: backup.appendingPathComponent(vaultURL.lastPathComponent)), oldVault)
+        XCTAssertEqual(try Data(contentsOf: backup.appendingPathComponent(configURL.lastPathComponent)), oldConfig)
+        XCTAssertTrue(manager.isUnlocked)
+        XCTAssertTrue(manager.getEntries().isEmpty)
+
+        manager.lockVault()
+        XCTAssertEqual(manager.unlockVaultResult(with: "OldTaskOwnedMaster@2026"), .invalidPassword)
+        XCTAssertEqual(manager.unlockVaultResult(with: "NewTaskOwnedMaster@2026"), .unlocked)
+        XCTAssertTrue(manager.getEntries().isEmpty)
+    }
+
+    func testVerifiedEntryMutationsReportPersistenceAndLeaveMemoryUnchangedOnFailure() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("verified_entries.enc")
+        let configURL = tempDirectory.appendingPathComponent("verified_entries.json")
+        let manager = PasswordVaultManager(vaultURL: vaultURL, configURL: configURL)
+        let id = UUID()
+        XCTAssertEqual(manager.addEntryVerified(id: id, label: "archive", password: "task-owned-secret"), .locked)
+        manager.setMasterPassword("TaskOwnedMaster@2026")
+        XCTAssertEqual(manager.addEntryVerified(id: id, label: "archive", password: "task-owned-secret"), .saved(id))
+        XCTAssertEqual(manager.addEntryVerified(id: id, label: "archive", password: "task-owned-secret"), .duplicateID)
+        XCTAssertEqual(manager.removeEntryVerified(id: UUID()), .notFound)
+        let secondID = UUID()
+        XCTAssertEqual(manager.addEntryVerified(id: secondID, label: "second", password: "task-owned-secret-2"), .saved(secondID))
+        XCTAssertEqual(manager.removeEntryVerified(id: secondID), .removed)
+        manager.lockVault()
+        XCTAssertEqual(manager.unlockVaultResult(with: "TaskOwnedMaster@2026"), .unlocked)
+        XCTAssertEqual(manager.getEntries().map(\.id), [id])
+
+        let externallyChangedCiphertext = Data("external change for test".utf8)
+        try externallyChangedCiphertext.write(to: vaultURL, options: .atomic)
+        XCTAssertEqual(manager.removeEntryVerified(id: id), .writeFailed)
+        XCTAssertEqual(manager.getEntries().map(\.id), [id])
+        XCTAssertEqual(try Data(contentsOf: vaultURL), externallyChangedCiphertext)
+        let useCount = manager.getEntries()[0].useCount
+        manager.recordUsage(id: id)
+        XCTAssertEqual(manager.getEntries()[0].useCount, useCount)
+        XCTAssertEqual(try Data(contentsOf: vaultURL), externallyChangedCiphertext)
+    }
+
+    func testBiometricKeyReadAndVaultDecryptionAreSeparateGates() throws {
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess)
+        XCTAssertFalse(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip",
+            processName: "TTZip",
+            arguments: ["/tmp/test-build/TTZip.app/Contents/MacOS/TTZip"]
+        ))
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "org.example.TTZipTests",
+            processName: "TTZipTests",
+            arguments: ["/tmp/TTZipTests.xctest"]
+        ))
+        let vaultURL = tempDirectory.appendingPathComponent("biometric_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("biometric_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("biometric_backup.enc")
+        )
+        manager.setMasterPassword("TaskOwnedMasterPassword@2026")
+        manager.addEntry(label: "test archive", password: "task-owned-secret")
+        let keyData = try XCTUnwrap(manager.activeDerivedVaultKey).withUnsafeBytes { Data($0) }
+        manager.lockVault()
+
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .missing }, .keyMissing)
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .cancelled }, .cancelled)
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .unavailable }, .unavailable)
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .failure(errSecAuthFailed) }, .keyAccessFailed)
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .success(Data(repeating: 0, count: 32)) }, .invalidKey)
+        XCTAssertFalse(manager.isUnlocked)
+
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .success(keyData) }, .unlocked)
+        XCTAssertTrue(manager.isUnlocked)
+        XCTAssertEqual(manager.getEntries().count, 1)
+        var repeatedRead = false
+        XCTAssertEqual(manager.unlockWithBiometricsResult {
+            repeatedRead = true
+            return .missing
+        }, .unlocked)
+        XCTAssertFalse(repeatedRead)
+        manager.lockVault()
+
+        let damagedCiphertext = Data("damaged biometric test vault".utf8)
+        try damagedCiphertext.write(to: vaultURL, options: .atomic)
+        XCTAssertEqual(manager.unlockWithBiometricsResult { .success(keyData) }, .vaultUnreadable)
+        XCTAssertFalse(manager.isUnlocked)
+        XCTAssertEqual(try Data(contentsOf: vaultURL), damagedCiphertext)
     }
 }

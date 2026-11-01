@@ -234,7 +234,7 @@ impl SafeMmapSlice {
     #[must_use]
     pub fn as_memmap(&self) -> Option<&memmap2::Mmap> {
         match &self.storage {
-            MmapStorage::Memmap(ref m) => Some(m),
+            MmapStorage::Memmap(m) => Some(m),
             _ => None,
         }
     }

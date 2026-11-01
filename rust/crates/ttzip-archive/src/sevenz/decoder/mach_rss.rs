@@ -22,7 +22,7 @@ const MACH_TASK_BASIC_INFO_COUNT: u32 =
     (std::mem::size_of::<MachTaskBasicInfo>() / std::mem::size_of::<i32>()) as u32;
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn mach_task_self() -> u32;
     fn task_info(
         target_task: u32,

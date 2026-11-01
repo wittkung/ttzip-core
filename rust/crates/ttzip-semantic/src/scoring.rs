@@ -13,7 +13,13 @@ use crate::{SemanticMatchKind, SemanticScopeDescriptor, SemanticSearchHit};
 use std::collections::BTreeMap;
 
 pub trait EmbeddingProvider: Send + Sync {
+    /// Reads published state without loading or preparing the runtime.
     fn model_state(&self) -> SemanticModelState;
+    /// Explicit operation boundary for providers that lazily prepare native resources.
+    /// In-memory providers retain their existing state without any preparation work.
+    fn prepare(&self) -> SemanticModelState {
+        self.model_state()
+    }
     fn model_fingerprint(&self) -> u64;
     fn encode_query(
         &self,

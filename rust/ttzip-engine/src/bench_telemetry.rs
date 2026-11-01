@@ -36,7 +36,7 @@ mod darwin_abi {
 
     pub const MACH_TASK_BASIC_INFO: u32 = 20;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn mach_task_self() -> libc::mach_port_t;
         pub fn task_info(
             target_task: libc::mach_port_t,

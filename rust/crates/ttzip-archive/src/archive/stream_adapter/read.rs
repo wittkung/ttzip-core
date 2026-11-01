@@ -110,16 +110,18 @@ pub unsafe extern "C" fn archive_read_callback_trampoline<R: Read>(
     client_data: *mut libc::c_void,
     buffer: *mut *const libc::c_void,
 ) -> libc::ssize_t {
-    if client_data.is_null() || buffer.is_null() {
-        return ARCHIVE_FATAL as libc::ssize_t;
-    }
-    let state = &mut *(client_data as *mut StreamReaderState<R>);
-    match state.read_chunk() {
-        Ok((ptr, len)) => {
-            *buffer = ptr as *const libc::c_void;
-            len as libc::ssize_t
+    unsafe {
+        if client_data.is_null() || buffer.is_null() {
+            return ARCHIVE_FATAL as libc::ssize_t;
         }
-        Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+        let state = &mut *(client_data as *mut StreamReaderState<R>);
+        match state.read_chunk() {
+            Ok((ptr, len)) => {
+                *buffer = ptr as *const libc::c_void;
+                len as libc::ssize_t
+            }
+            Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+        }
     }
 }
 
@@ -143,7 +145,7 @@ pub unsafe extern "C" fn archive_close_callback_trampoline(
 // External Libarchive Read C-ABI declarations
 // ---------------------------------------------------------------------------
 
-extern "C" {
+unsafe extern "C" {
     pub fn archive_read_new() -> *mut libc::c_void;
     pub fn archive_read_support_format_all(a: *mut libc::c_void) -> libc::c_int;
     pub fn archive_read_support_format_raw(a: *mut libc::c_void) -> libc::c_int;

@@ -35,7 +35,7 @@ fn test_archive_corpus_generator_prng_determinism() {
 
 #[test]
 fn test_extreme_zip_zero_length_and_oversized_extra() {
-    let mut gen = ArchiveCorpusGenerator::new(0xCAFE_BABE_0000_0001);
+    let mut r#gen = ArchiveCorpusGenerator::new(0xCAFE_BABE_0000_0001);
     let config = ZipSynthesisConfig {
         num_entries: 2,
         variants: vec![
@@ -48,7 +48,7 @@ fn test_extreme_zip_zero_length_and_oversized_extra() {
         payload_len: 256,
     };
 
-    let archive = gen.generate_extreme_zip(&config);
+    let archive = r#gen.generate_extreme_zip(&config);
     assert_eq!(archive.kind, ArchiveContainerKind::Zip);
     assert!(!archive.data.is_empty());
 
@@ -70,9 +70,9 @@ fn test_extreme_zip_zero_length_and_oversized_extra() {
 
 #[test]
 fn test_zip64_boundary_crossing_synthesis() {
-    let mut gen = ArchiveCorpusGenerator::new(0x9999_8888_7777_6666);
+    let mut r#gen = ArchiveCorpusGenerator::new(0x9999_8888_7777_6666);
     let virtual_4gb_plus = (1u64 << 32) + 1024;
-    let archive = gen.generate_zip64_boundary_archive(virtual_4gb_plus);
+    let archive = r#gen.generate_zip64_boundary_archive(virtual_4gb_plus);
 
     assert_eq!(archive.kind, ArchiveContainerKind::Zip);
     let eocd = find_eocd(&archive.data).expect("Zip64 EOCD must be recognized");
@@ -88,8 +88,8 @@ fn test_zip64_boundary_crossing_synthesis() {
 
 #[test]
 fn test_degenerate_dynamic_huffman_zip() {
-    let mut gen = ArchiveCorpusGenerator::new(0x5555_AAAA_3333_CCCC);
-    let archive = gen.generate_degenerate_huffman_zip(16);
+    let mut r#gen = ArchiveCorpusGenerator::new(0x5555_AAAA_3333_CCCC);
+    let archive = r#gen.generate_degenerate_huffman_zip(16);
 
     assert_eq!(archive.kind, ArchiveContainerKind::Zip);
     let eocd = find_eocd(&archive.data).expect("EOCD must be valid");
@@ -100,9 +100,9 @@ fn test_degenerate_dynamic_huffman_zip() {
 
 #[test]
 fn test_sevenz_bcj2_4stream_synthesis() {
-    let mut gen = ArchiveCorpusGenerator::new(0x7777_7777_7777_7777);
+    let mut r#gen = ArchiveCorpusGenerator::new(0x7777_7777_7777_7777);
     let dummy_payload = vec![0x90; 256];
-    let archive = gen.generate_bcj2_4stream_7z(&dummy_payload);
+    let archive = r#gen.generate_bcj2_4stream_7z(&dummy_payload);
 
     assert_eq!(archive.kind, ArchiveContainerKind::SevenZ);
     assert!(archive.data.len() > 32);
@@ -128,7 +128,7 @@ fn test_sevenz_bcj2_4stream_synthesis() {
 
 #[test]
 fn test_sevenz_empty_streams_and_extreme_repeats() {
-    let mut gen = ArchiveCorpusGenerator::new(0x1122_3344_5566_7788);
+    let mut r#gen = ArchiveCorpusGenerator::new(0x1122_3344_5566_7788);
     let config = SevenZSynthesisConfig {
         num_files: 4,
         variants: vec![
@@ -140,7 +140,7 @@ fn test_sevenz_empty_streams_and_extreme_repeats() {
         num_unpack_streams: 1,
     };
 
-    let archive = gen.generate_extreme_7z(&config);
+    let archive = r#gen.generate_extreme_7z(&config);
     let sig = SevenZSignatureHeader::parse(&archive.data).expect("7z Sig");
     let header_start = (32 + sig.next_header_offset) as usize;
     let header_end = header_start + (sig.next_header_size as usize);
@@ -155,8 +155,8 @@ fn test_sevenz_empty_streams_and_extreme_repeats() {
 
 #[test]
 fn test_corpus_matrix_generation_diversity() {
-    let mut gen = ArchiveCorpusGenerator::new(0xA1B2_C3D4_E5F6_0718);
-    let matrix = gen.generate_corpus_matrix(12);
+    let mut r#gen = ArchiveCorpusGenerator::new(0xA1B2_C3D4_E5F6_0718);
+    let matrix = r#gen.generate_corpus_matrix(12);
 
     assert_eq!(matrix.len(), 12);
     let mut zip_count = 0;

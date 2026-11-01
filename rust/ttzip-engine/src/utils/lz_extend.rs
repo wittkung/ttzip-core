@@ -51,114 +51,116 @@ pub unsafe fn lz_extend_raw(
     start_len: usize,
     max_len: usize,
 ) -> usize {
-    if start_len >= max_len {
-        return max_len;
-    }
+    unsafe {
+        if start_len >= max_len {
+            return max_len;
+        }
 
-    let mut len = start_len;
+        let mut len = start_len;
 
-    // Fast-check first byte to immediately exit on mismatch (0 ns overhead)
-    if *src_ptr.add(len) != *match_ptr.add(len) {
-        return len;
-    }
+        // Fast-check first byte to immediately exit on mismatch (0 ns overhead)
+        if *src_ptr.add(len) != *match_ptr.add(len) {
+            return len;
+        }
 
-    #[cfg(target_arch = "aarch64")]
-    {
-        // Stage 1: Check initial 16 bytes using 64-bit scalar loads
-        if max_len - len >= 8 {
-            let s0 = (src_ptr.add(len) as *const u64).read_unaligned();
-            let m0 = (match_ptr.add(len) as *const u64).read_unaligned();
-            let diff0 = s0 ^ m0;
-            if diff0 != 0 {
-                return len + first_diff_byte64(diff0);
-            }
-            len += 8;
-
+        #[cfg(target_arch = "aarch64")]
+        {
+            // Stage 1: Check initial 16 bytes using 64-bit scalar loads
             if max_len - len >= 8 {
-                let s1 = (src_ptr.add(len) as *const u64).read_unaligned();
-                let m1 = (match_ptr.add(len) as *const u64).read_unaligned();
-                let diff1 = s1 ^ m1;
-                if diff1 != 0 {
-                    return len + first_diff_byte64(diff1);
+                let s0 = (src_ptr.add(len) as *const u64).read_unaligned();
+                let m0 = (match_ptr.add(len) as *const u64).read_unaligned();
+                let diff0 = s0 ^ m0;
+                if diff0 != 0 {
+                    return len + first_diff_byte64(diff0);
                 }
                 len += 8;
+
+                if max_len - len >= 8 {
+                    let s1 = (src_ptr.add(len) as *const u64).read_unaligned();
+                    let m1 = (match_ptr.add(len) as *const u64).read_unaligned();
+                    let diff1 = s1 ^ m1;
+                    if diff1 != 0 {
+                        return len + first_diff_byte64(diff1);
+                    }
+                    len += 8;
+                }
             }
-        }
 
-        // Stage 2 & 3: AArch64 NEON UMAXV vector reduction for long matches
-        while max_len - len >= 32 {
-            let a0 = vld1q_u8(src_ptr.add(len));
-            let b0 = vld1q_u8(match_ptr.add(len));
-            let a1 = vld1q_u8(src_ptr.add(len + 16));
-            let b1 = vld1q_u8(match_ptr.add(len + 16));
+            // Stage 2 & 3: AArch64 NEON UMAXV vector reduction for long matches
+            while max_len - len >= 32 {
+                let a0 = vld1q_u8(src_ptr.add(len));
+                let b0 = vld1q_u8(match_ptr.add(len));
+                let a1 = vld1q_u8(src_ptr.add(len + 16));
+                let b1 = vld1q_u8(match_ptr.add(len + 16));
 
-            let cmp0 = veorq_u8(a0, b0);
-            let cmp1 = veorq_u8(a1, b1);
-            let any_diff = vorrq_u8(cmp0, cmp1);
+                let cmp0 = veorq_u8(a0, b0);
+                let cmp1 = veorq_u8(a1, b1);
+                let any_diff = vorrq_u8(cmp0, cmp1);
 
-            // Single ARM64 UMAXV instruction checks all 32 bytes!
-            if vmaxvq_u8(any_diff) == 0 {
+                // Single ARM64 UMAXV instruction checks all 32 bytes!
+                if vmaxvq_u8(any_diff) == 0 {
+                    len += 32;
+                    continue;
+                }
+
+                let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 0);
+                if lane0 != 0 {
+                    return len + first_diff_byte64(lane0);
+                }
+                let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 1);
+                if lane1 != 0 {
+                    return len + 8 + first_diff_byte64(lane1);
+                }
+                let lane2 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 0);
+                if lane2 != 0 {
+                    return len + 16 + first_diff_byte64(lane2);
+                }
+                let lane3 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 1);
+                if lane3 != 0 {
+                    return len + 24 + first_diff_byte64(lane3);
+                }
                 len += 32;
-                continue;
             }
 
-            let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 0);
-            if lane0 != 0 {
-                return len + first_diff_byte64(lane0);
-            }
-            let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp0), 1);
-            if lane1 != 0 {
-                return len + 8 + first_diff_byte64(lane1);
-            }
-            let lane2 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 0);
-            if lane2 != 0 {
-                return len + 16 + first_diff_byte64(lane2);
-            }
-            let lane3 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp1), 1);
-            if lane3 != 0 {
-                return len + 24 + first_diff_byte64(lane3);
-            }
-            len += 32;
-        }
-
-        if max_len - len >= 16 {
-            let a = vld1q_u8(src_ptr.add(len));
-            let b = vld1q_u8(match_ptr.add(len));
-            let cmp = veorq_u8(a, b);
-            let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 0);
-            if lane0 != 0 {
-                return len + first_diff_byte64(lane0);
-            }
-            let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 1);
-            if lane1 != 0 {
-                return len + 8 + first_diff_byte64(lane1);
-            }
-            len += 16;
-        }
-    }
-
-    #[cfg(not(target_arch = "aarch64"))]
-    {
-        if max_len >= 8 {
-            let limit = max_len - 8;
-            while len <= limit {
-                let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
-                let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
-                let diff = s ^ m;
-                if diff != 0 {
-                    return len + first_diff_byte64(diff);
+            if max_len - len >= 16 {
+                let a = vld1q_u8(src_ptr.add(len));
+                let b = vld1q_u8(match_ptr.add(len));
+                let cmp = veorq_u8(a, b);
+                let lane0 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 0);
+                if lane0 != 0 {
+                    return len + first_diff_byte64(lane0);
                 }
-                len += 8;
+                let lane1 = vgetq_lane_u64(vreinterpretq_u64_u8(cmp), 1);
+                if lane1 != 0 {
+                    return len + 8 + first_diff_byte64(lane1);
+                }
+                len += 16;
             }
         }
-    }
 
-    // Scalar tail loop for remaining 0..7 bytes
-    while len < max_len && *src_ptr.add(len) == *match_ptr.add(len) {
-        len += 1;
-    }
+        #[cfg(not(target_arch = "aarch64"))]
+        {
+            if max_len >= 8 {
+                let limit = max_len - 8;
+                while len <= limit {
+                    let s = (src_ptr.add(len) as *const u64).read_unaligned().to_le();
+                    let m = (match_ptr.add(len) as *const u64).read_unaligned().to_le();
+                    let diff = s ^ m;
+                    if diff != 0 {
+                        return len + first_diff_byte64(diff);
+                    }
+                    len += 8;
+                }
+            }
+        }
 
-    len
+        // Scalar tail loop for remaining 0..7 bytes
+        while len < max_len && *src_ptr.add(len) == *match_ptr.add(len) {
+            len += 1;
+        }
+
+        len
+    }
 }
 
 #[cfg(test)]

@@ -23,32 +23,34 @@ pub fn find_next_pk_signature(data: &[u8], start: usize) -> Option<usize> {
 
 #[cfg(target_arch = "aarch64")]
 unsafe fn find_next_pk_neon(data: &[u8], start: usize) -> Option<usize> {
-    use core::arch::aarch64::*;
-    let target = vdupq_n_u8(b'P');
-    let mut i = start;
-    let len = data.len();
+    unsafe {
+        use core::arch::aarch64::*;
+        let target = vdupq_n_u8(b'P');
+        let mut i = start;
+        let len = data.len();
 
-    while i + 16 <= len {
-        let chunk = vld1q_u8(data.as_ptr().add(i));
-        let cmp = vceqq_u8(chunk, target);
-        let max_val = vmaxvq_u8(cmp);
-        if max_val != 0 {
-            for j in 0..16 {
-                let idx = i + j;
-                if idx + 4 <= len
-                    && data[idx] == b'P'
-                    && data[idx + 1] == b'K'
-                    && data[idx + 2] == 0x03
-                    && data[idx + 3] == 0x04
-                {
-                    return Some(idx);
+        while i + 16 <= len {
+            let chunk = vld1q_u8(data.as_ptr().add(i));
+            let cmp = vceqq_u8(chunk, target);
+            let max_val = vmaxvq_u8(cmp);
+            if max_val != 0 {
+                for j in 0..16 {
+                    let idx = i + j;
+                    if idx + 4 <= len
+                        && data[idx] == b'P'
+                        && data[idx + 1] == b'K'
+                        && data[idx + 2] == 0x03
+                        && data[idx + 3] == 0x04
+                    {
+                        return Some(idx);
+                    }
                 }
             }
+            i += 16;
         }
-        i += 16;
-    }
 
-    find_next_pk_scalar(data, i)
+        find_next_pk_scalar(data, i)
+    }
 }
 
 #[inline]

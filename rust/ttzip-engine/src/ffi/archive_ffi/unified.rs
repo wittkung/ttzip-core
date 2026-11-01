@@ -16,7 +16,7 @@ use std::panic::catch_unwind;
 use std::path::{Path, PathBuf};
 
 /// C-ABI unified archive creation endpoint.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_create_unified(
     source_paths: *const *const c_char,
@@ -25,58 +25,60 @@ pub unsafe extern "C" fn ttzip_rust_archive_create_unified(
     options: *const TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if source_paths.is_null()
-            || source_count == 0
-            || destination_path.is_null()
-            || options.is_null()
-        {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let dest_str = match CStr::from_ptr(destination_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dest_path = Path::new(dest_str);
-
-        let mut paths = Vec::with_capacity(source_count);
-        for i in 0..source_count {
-            let src_c = *source_paths.add(i);
-            if src_c.is_null() {
-                continue;
+    unsafe {
+        let result = catch_unwind(|| {
+            if source_paths.is_null()
+                || source_count == 0
+                || destination_path.is_null()
+                || options.is_null()
+            {
+                return TTZipStatus::ErrInvalidParam;
             }
-            if let Ok(src_str) = CStr::from_ptr(src_c).to_str() {
-                paths.push(PathBuf::from(src_str));
+
+            let dest_str = match CStr::from_ptr(destination_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dest_path = Path::new(dest_str);
+
+            let mut paths = Vec::with_capacity(source_count);
+            for i in 0..source_count {
+                let src_c = *source_paths.add(i);
+                if src_c.is_null() {
+                    continue;
+                }
+                if let Ok(src_str) = CStr::from_ptr(src_c).to_str() {
+                    paths.push(PathBuf::from(src_str));
+                }
             }
-        }
 
-        if paths.is_empty() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        match UnifiedArchiveOrchestrator::create_archive(
-            &paths,
-            dest_path,
-            &*options,
-            split_volume_size_bytes,
-        ) {
-            Ok(()) => TTZipStatus::Ok,
-            Err(status) => {
-                crate::types::set_last_error(status, status.as_str(), dest_path.to_str(), 0);
-                status
+            if paths.is_empty() {
+                return TTZipStatus::ErrInvalidParam;
             }
-        }
-    });
 
-    result.unwrap_or_else(|_| {
-        crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive creation FFI boundary", None, 0);
-        TTZipStatus::ErrPanicCaught
-    })
+            match UnifiedArchiveOrchestrator::create_archive(
+                &paths,
+                dest_path,
+                &*options,
+                split_volume_size_bytes,
+            ) {
+                Ok(()) => TTZipStatus::Ok,
+                Err(status) => {
+                    crate::types::set_last_error(status, status.as_str(), dest_path.to_str(), 0);
+                    status
+                }
+            }
+        });
+
+        result.unwrap_or_else(|_| {
+            crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive creation FFI boundary", None, 0);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// C-ABI unified archive extraction endpoint.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(deprecated)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
@@ -84,7 +86,9 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
     destination_path: *const c_char,
     options: *const TTZipExtractOptions,
 ) -> TTZipStatus {
-    ttzip_rust_archive_extract_unified_v2(archive_path, destination_path, options, std::ptr::null_mut(), std::ptr::null_mut())
+    unsafe {
+        ttzip_rust_archive_extract_unified_v2(archive_path, destination_path, options, std::ptr::null_mut(), std::ptr::null_mut())
+    }
 }
 
 /// C-ABI unified archive extraction endpoint v2 with direct bytes count & structured error envelope.
@@ -92,7 +96,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified(
 /// Result contract (spec 229 FR-023): `Ok` only for a complete commit; `Cancelled` for policy
 /// Stop with conflicts (destination unchanged); `ErrExtractionFailed` when any item failed to
 /// commit. `out_extracted_bytes` is `0` unless the result is `Ok`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
     archive_path: *const c_char,
@@ -101,105 +105,107 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_unified_v2(
     out_extracted_bytes: *mut u64,
     out_error: *mut crate::types::TTZipErrorInfo,
 ) -> TTZipStatus {
-    if !out_error.is_null() {
-        *out_error = crate::types::TTZipErrorInfo::empty();
-    }
-    if !out_extracted_bytes.is_null() {
-        *out_extracted_bytes = 0;
-    }
-
-    let result = catch_unwind(|| {
-        if archive_path.is_null() {
-            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
-            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
-            return TTZipStatus::ErrInvalidParam;
+    unsafe {
+        if !out_error.is_null() {
+            *out_error = crate::types::TTZipErrorInfo::empty();
+        }
+        if !out_extracted_bytes.is_null() {
+            *out_extracted_bytes = 0;
         }
 
-        let dest_c = if !destination_path.is_null() {
-            destination_path
-        } else if !options.is_null() && !(*options).destination_path.is_null() {
-            (*options).destination_path
-        } else {
-            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
-            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
-            return TTZipStatus::ErrInvalidParam;
-        };
-
-        let archive_str = match CStr::from_ptr(archive_path).to_str() {
-            Ok(s) => s,
-            Err(_) => {
-                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
-                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
+        let result = catch_unwind(|| {
+            if archive_path.is_null() {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
+                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Archive path pointer is null", None, 0);
                 return TTZipStatus::ErrInvalidParam;
             }
-        };
-        let dest_str = match CStr::from_ptr(dest_c).to_str() {
-            Ok(s) => s,
-            Err(_) => {
-                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
-                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
+
+            let dest_c = if !destination_path.is_null() {
+                destination_path
+            } else if !options.is_null() && !(*options).destination_path.is_null() {
+                (*options).destination_path
+            } else {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
+                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Destination path pointer is null", None, 0);
+                return TTZipStatus::ErrInvalidParam;
+            };
+
+            let archive_str = match CStr::from_ptr(archive_path).to_str() {
+                Ok(s) => s,
+                Err(_) => {
+                    crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
+                    crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in archive path", None, 0);
+                    return TTZipStatus::ErrInvalidParam;
+                }
+            };
+            let dest_str = match CStr::from_ptr(dest_c).to_str() {
+                Ok(s) => s,
+                Err(_) => {
+                    crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
+                    crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid UTF-8 in destination path", None, 0);
+                    return TTZipStatus::ErrInvalidParam;
+                }
+            };
+
+            let archive_p = Path::new(archive_str);
+            let dest_p = Path::new(dest_str);
+
+            let default_opt = TTZipExtractOptions {
+                struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
+                destination_path: dest_c,
+                password: std::ptr::null(),
+                thread_budget: 0,
+                collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
+                preserve_permissions: true,
+                dry_run: false,
+                progress_callback: None,
+                user_data: std::ptr::null_mut(),
+            };
+
+            let opt_ref = if !options.is_null() {
+                &*options
+            } else {
+                &default_opt
+            };
+
+            if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
+                crate::types::set_last_error(TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
+                return TTZipStatus::ErrAbiMismatch;
+            }
+            if opt_ref.collision_policy > 3 {
+                crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
+                crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
                 return TTZipStatus::ErrInvalidParam;
             }
-        };
 
-        let archive_p = Path::new(archive_str);
-        let dest_p = Path::new(dest_str);
+            let session = ttzip_archive::fs::collision::session::ExtractionSession::new(dest_p);
+            let staged = match session.stage() {
+                Ok(s) => s,
+                Err(_) => {
+                    crate::types::write_error_info(out_error, TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
+                    crate::types::set_last_error(TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
+                    return TTZipStatus::ErrExtractionFailed;
+                }
+            };
 
-        let default_opt = TTZipExtractOptions {
-            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_3,
-            destination_path: dest_c,
-            password: std::ptr::null(),
-            thread_budget: 0,
-            collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
-            preserve_permissions: true,
-            dry_run: false,
-            progress_callback: None,
-            user_data: std::ptr::null_mut(),
-        };
-
-        let opt_ref = if !options.is_null() {
-            &*options
-        } else {
-            &default_opt
-        };
-
-        if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
-            crate::types::write_error_info(out_error, TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
-            crate::types::set_last_error(TTZipStatus::ErrAbiMismatch, "ABI version mismatch (expected ABI version 3)", None, 0);
-            return TTZipStatus::ErrAbiMismatch;
-        }
-        if opt_ref.collision_policy > 3 {
-            crate::types::write_error_info(out_error, TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
-            crate::types::set_last_error(TTZipStatus::ErrInvalidParam, "Invalid collision policy (expected 0..=3)", None, 0);
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let session = ttzip_archive::fs::collision::session::ExtractionSession::new(dest_p);
-        let staged = match session.stage() {
-            Ok(s) => s,
-            Err(_) => {
-                crate::types::write_error_info(out_error, TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
-                crate::types::set_last_error(TTZipStatus::ErrExtractionFailed, "Failed to create staging area", None, 0);
-                return TTZipStatus::ErrExtractionFailed;
+            match UnifiedArchiveOrchestrator::extract_archive_with_metrics(archive_p, &staged.staging().payload_dir(), opt_ref) {
+                Ok(bytes) => finish_unified_commit(staged, opt_ref, bytes, dest_p, out_extracted_bytes, out_error),
+                Err(status) => {
+                    crate::types::write_error_info(out_error, status, status.as_str(), archive_p.to_str(), 0);
+                    crate::types::set_last_error(status, status.as_str(), archive_p.to_str(), 0);
+                    status
+                }
             }
-        };
+        });
 
-        match UnifiedArchiveOrchestrator::extract_archive_with_metrics(archive_p, &staged.staging().payload_dir(), opt_ref) {
-            Ok(bytes) => finish_unified_commit(staged, opt_ref, bytes, dest_p, out_extracted_bytes, out_error),
-            Err(status) => {
-                crate::types::write_error_info(out_error, status, status.as_str(), archive_p.to_str(), 0);
-                crate::types::set_last_error(status, status.as_str(), archive_p.to_str(), 0);
-                status
-            }
-        }
-    });
-
-    result.unwrap_or_else(|_| {
-        crate::types::write_error_info(out_error, TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
-        crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
-        TTZipStatus::ErrPanicCaught
-    })
+        result.unwrap_or_else(|_| {
+            crate::types::write_error_info(out_error, TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
+            crate::types::set_last_error(TTZipStatus::ErrPanicCaught, "Panic caught in archive extraction FFI boundary", None, 0);
+            TTZipStatus::ErrPanicCaught
+        })
+    }
 }
 
 /// Commits a staged v2 extraction (FR-023): bytes are reported only for a complete commit; any
@@ -212,32 +218,34 @@ unsafe fn finish_unified_commit(
     out_extracted_bytes: *mut u64,
     out_error: *mut crate::types::TTZipErrorInfo,
 ) -> TTZipStatus {
-    if opt_ref.dry_run {
-        if !out_extracted_bytes.is_null() {
-            *out_extracted_bytes = bytes;
+    unsafe {
+        if opt_ref.dry_run {
+            if !out_extracted_bytes.is_null() {
+                *out_extracted_bytes = bytes;
+            }
+            return TTZipStatus::Ok;
         }
-        return TTZipStatus::Ok;
-    }
-    let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
-    if report.status == TTZipStatus::Ok {
-        if !out_extracted_bytes.is_null() {
-            *out_extracted_bytes = bytes;
+        let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
+        if report.status == TTZipStatus::Ok {
+            if !out_extracted_bytes.is_null() {
+                *out_extracted_bytes = bytes;
+            }
+            return report.status;
         }
-        return report.status;
+        let message = if report.status == TTZipStatus::Cancelled {
+            "Extraction stopped: destination conflicts under Stop policy; destination unchanged"
+        } else {
+            "Extraction committed incompletely or the commit failed"
+        };
+        let entry_path = report.first_failed_path.as_deref().or_else(|| dest_p.to_str());
+        crate::types::write_error_info(out_error, report.status, message, entry_path, 0);
+        crate::types::set_last_error(report.status, message, entry_path, 0);
+        report.status
     }
-    let message = if report.status == TTZipStatus::Cancelled {
-        "Extraction stopped: destination conflicts under Stop policy; destination unchanged"
-    } else {
-        "Extraction committed incompletely or the commit failed"
-    };
-    let entry_path = report.first_failed_path.as_deref().or_else(|| dest_p.to_str());
-    crate::types::write_error_info(out_error, report.status, message, entry_path, 0);
-    crate::types::set_last_error(report.status, message, entry_path, 0);
-    report.status
 }
 
 /// C-ABI unified archive inspection endpoint.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_inspect_unified(
     archive_path: *const c_char,
@@ -246,79 +254,83 @@ pub unsafe extern "C" fn ttzip_rust_archive_inspect_unified(
     callback: TTZipInspectCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if archive_path.is_null() || callback.is_none() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if archive_path.is_null() || callback.is_none() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let arch_str = match CStr::from_ptr(archive_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let arch_p = Path::new(arch_str);
+            let arch_str = match CStr::from_ptr(archive_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let arch_p = Path::new(arch_str);
 
-        let pwd_opt = if !password.is_null() {
-            CStr::from_ptr(password).to_str().ok()
-        } else {
-            None
-        };
+            let pwd_opt = if !password.is_null() {
+                CStr::from_ptr(password).to_str().ok()
+            } else {
+                None
+            };
 
-        match UnifiedArchiveOrchestrator::inspect_archive(
-            arch_p,
-            pwd_opt,
-            detect_encoding,
-            callback,
-            user_data,
-        ) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(status) => status,
-        }
-    });
+            match UnifiedArchiveOrchestrator::inspect_archive(
+                arch_p,
+                pwd_opt,
+                detect_encoding,
+                callback,
+                user_data,
+            ) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(status) => status,
+            }
+        });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI unified archive repair endpoint.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_repair_unified(
     damaged_path: *const c_char,
     repaired_path: *const c_char,
     out_salvaged_count: *mut usize,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if damaged_path.is_null() || repaired_path.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let damaged_str = match CStr::from_ptr(damaged_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let repaired_str = match CStr::from_ptr(repaired_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-
-        match UnifiedArchiveOrchestrator::repair_archive(
-            Path::new(damaged_str),
-            Path::new(repaired_str),
-        ) {
-            Ok(count) => {
-                if !out_salvaged_count.is_null() {
-                    *out_salvaged_count = count;
-                }
-                TTZipStatus::Ok
+    unsafe {
+        let result = catch_unwind(|| {
+            if damaged_path.is_null() || repaired_path.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(status) => status,
-        }
-    });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let damaged_str = match CStr::from_ptr(damaged_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let repaired_str = match CStr::from_ptr(repaired_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+
+            match UnifiedArchiveOrchestrator::repair_archive(
+                Path::new(damaged_str),
+                Path::new(repaired_str),
+            ) {
+                Ok(count) => {
+                    if !out_salvaged_count.is_null() {
+                        *out_salvaged_count = count;
+                    }
+                    TTZipStatus::Ok
+                }
+                Err(status) => status,
+            }
+        });
+
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI single entry in-memory extraction endpoint (zero disk I/O).
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
     archive_path: *const c_char,
@@ -329,46 +341,48 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
     buffer_capacity: usize,
     out_extracted_len: *mut usize,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if archive_path.is_null() || out_extracted_len.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let arch_str = match CStr::from_ptr(archive_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-
-        let entry_str = if !entry_path.is_null() {
-            CStr::from_ptr(entry_path).to_str().ok()
-        } else {
-            None
-        };
-
-        let pwd_str = if !password.is_null() {
-            CStr::from_ptr(password).to_str().ok()
-        } else {
-            None
-        };
-
-        match crate::archive::unified::extract_single::extract_single_entry_memory(
-            Path::new(arch_str),
-            entry_str,
-            entry_index,
-            pwd_str,
-        ) {
-            Ok(data) => {
-                *out_extracted_len = data.len();
-                if !out_buffer.is_null() && buffer_capacity >= data.len() {
-                    std::ptr::copy_nonoverlapping(data.as_ptr(), out_buffer, data.len());
-                }
-                TTZipStatus::Ok
+    unsafe {
+        let result = catch_unwind(|| {
+            if archive_path.is_null() || out_extracted_len.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(status) => status,
-        }
-    });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let arch_str = match CStr::from_ptr(archive_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+
+            let entry_str = if !entry_path.is_null() {
+                CStr::from_ptr(entry_path).to_str().ok()
+            } else {
+                None
+            };
+
+            let pwd_str = if !password.is_null() {
+                CStr::from_ptr(password).to_str().ok()
+            } else {
+                None
+            };
+
+            match crate::archive::unified::extract_single::extract_single_entry_memory(
+                Path::new(arch_str),
+                entry_str,
+                entry_index,
+                pwd_str,
+            ) {
+                Ok(data) => {
+                    *out_extracted_len = data.len();
+                    if !out_buffer.is_null() && buffer_capacity >= data.len() {
+                        std::ptr::copy_nonoverlapping(data.as_ptr(), out_buffer, data.len());
+                    }
+                    TTZipStatus::Ok
+                }
+                Err(status) => status,
+            }
+        });
+
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI batch selective extraction endpoint (Single-pass O(N) stream scan).
@@ -377,7 +391,7 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_single_entry_memory(
 /// Stop with conflicts; `ErrExtractionFailed` when any item failed to commit.
 /// `out_extracted_count` is set on every return: the number of destination placements actually
 /// committed (`0` unless a commit ran; the partial count on `ErrExtractionFailed`).
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
     archive_path: *const c_char,
@@ -387,97 +401,99 @@ pub unsafe extern "C" fn ttzip_rust_archive_extract_selected(
     options: *const TTZipExtractOptions,
     out_extracted_count: *mut usize,
 ) -> TTZipStatus {
-    if !out_extracted_count.is_null() {
-        *out_extracted_count = 0;
-    }
-    let result = catch_unwind(|| {
-        if archive_path.is_null()
-            || target_paths.is_null()
-            || target_count == 0
-            || destination_dir.is_null()
-        {
-            return TTZipStatus::ErrInvalidParam;
+    unsafe {
+        if !out_extracted_count.is_null() {
+            *out_extracted_count = 0;
         }
+        let result = catch_unwind(|| {
+            if archive_path.is_null()
+                || target_paths.is_null()
+                || target_count == 0
+                || destination_dir.is_null()
+            {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let arch_str = match CStr::from_ptr(archive_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dest_str = match CStr::from_ptr(destination_dir).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
+            let arch_str = match CStr::from_ptr(archive_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dest_str = match CStr::from_ptr(destination_dir).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
 
-        let mut targets = Vec::with_capacity(target_count);
-        for i in 0..target_count {
-            let t_c = *target_paths.add(i);
-            if !t_c.is_null() {
-                if let Ok(t_s) = CStr::from_ptr(t_c).to_str() {
-                    targets.push(t_s.to_string());
+            let mut targets = Vec::with_capacity(target_count);
+            for i in 0..target_count {
+                let t_c = *target_paths.add(i);
+                if !t_c.is_null() {
+                    if let Ok(t_s) = CStr::from_ptr(t_c).to_str() {
+                        targets.push(t_s.to_string());
+                    }
                 }
             }
-        }
 
-        let default_opt = TTZipExtractOptions {
-            struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_3,
-            destination_path: destination_dir,
-            password: std::ptr::null(),
-            thread_budget: 0,
-            collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
-            preserve_permissions: true,
-            dry_run: false,
-            progress_callback: None,
-            user_data: std::ptr::null_mut(),
-        };
+            let default_opt = TTZipExtractOptions {
+                struct_size: std::mem::size_of::<TTZipExtractOptions>() as u32,
+                abi_version: crate::types::TTZIP_ABI_VERSION_3,
+                destination_path: destination_dir,
+                password: std::ptr::null(),
+                thread_budget: 0,
+                collision_policy: crate::types::TTZIP_COLLISION_POLICY_KEEP_BOTH,
+                preserve_permissions: true,
+                dry_run: false,
+                progress_callback: None,
+                user_data: std::ptr::null_mut(),
+            };
 
-        let opt_ref = if !options.is_null() {
-            &*options
-        } else {
-            &default_opt
-        };
+            let opt_ref = if !options.is_null() {
+                &*options
+            } else {
+                &default_opt
+            };
 
-        if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
-            return TTZipStatus::ErrAbiMismatch;
-        }
-        if opt_ref.collision_policy > 3 {
-            return TTZipStatus::ErrInvalidParam;
-        }
+            if opt_ref.abi_version != crate::types::TTZIP_ABI_VERSION_3 {
+                return TTZipStatus::ErrAbiMismatch;
+            }
+            if opt_ref.collision_policy > 3 {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let session = ttzip_archive::fs::collision::session::ExtractionSession::new(Path::new(dest_str));
-        let staged = match session.stage() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrExtractionFailed,
-        };
+            let session = ttzip_archive::fs::collision::session::ExtractionSession::new(Path::new(dest_str));
+            let staged = match session.stage() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrExtractionFailed,
+            };
 
-        let matched = match crate::archive::unified::extract_single::extract_selected_entries(
-            Path::new(arch_str),
-            &crate::archive::unified::EntrySelection::new(&targets, false),
-            &staged.staging().payload_dir(),
-            opt_ref,
-        ) {
-            Ok(count) => count,
-            Err(status) => return status,
-        };
+            let matched = match crate::archive::unified::extract_single::extract_selected_entries(
+                Path::new(arch_str),
+                &crate::archive::unified::EntrySelection::new(&targets, false),
+                &staged.staging().payload_dir(),
+                opt_ref,
+            ) {
+                Ok(count) => count,
+                Err(status) => return status,
+            };
 
-        // Dry run: nothing is committed; report the entries that would be extracted.
-        let (status, count) = if opt_ref.dry_run {
-            (TTZipStatus::Ok, matched)
-        } else {
-            let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
-            (report.status, report.committed_items)
-        };
-        if !out_extracted_count.is_null() {
-            *out_extracted_count = count;
-        }
-        status
-    });
+            // Dry run: nothing is committed; report the entries that would be extracted.
+            let (status, count) = if opt_ref.dry_run {
+                (TTZipStatus::Ok, matched)
+            } else {
+                let report = super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy);
+                (report.status, report.committed_items)
+            };
+            if !out_extracted_count.is_null() {
+                *out_extracted_count = count;
+            }
+            status
+        });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI stream-discarding archive integrity verification endpoint.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_archive_verify_stream(
     archive_path: *const c_char,
@@ -486,58 +502,62 @@ pub unsafe extern "C" fn ttzip_rust_archive_verify_stream(
     user_data: *mut c_void,
     out_report_json: *mut *mut c_char,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if archive_path.is_null() || out_report_json.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let arch_str = match CStr::from_ptr(archive_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-
-        let pwd_str = if !password.is_null() {
-            CStr::from_ptr(password).to_str().ok()
-        } else {
-            None
-        };
-
-        match crate::archive::unified::verify::verify_archive_stream(
-            Path::new(arch_str),
-            pwd_str,
-            progress_callback,
-            user_data,
-        ) {
-            Ok(report) => {
-                let json_str = match serde_json::to_string(&report) {
-                    Ok(s) => s,
-                    Err(_) => return TTZipStatus::ErrOutOfMemory,
-                };
-                let c_json = match std::ffi::CString::new(json_str) {
-                    Ok(c) => c,
-                    Err(_) => return TTZipStatus::ErrOutOfMemory,
-                };
-                *out_report_json = c_json.into_raw();
-                TTZipStatus::Ok
+    unsafe {
+        let result = catch_unwind(|| {
+            if archive_path.is_null() || out_report_json.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(status) => status,
-        }
-    });
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let arch_str = match CStr::from_ptr(archive_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+
+            let pwd_str = if !password.is_null() {
+                CStr::from_ptr(password).to_str().ok()
+            } else {
+                None
+            };
+
+            match crate::archive::unified::verify::verify_archive_stream(
+                Path::new(arch_str),
+                pwd_str,
+                progress_callback,
+                user_data,
+            ) {
+                Ok(report) => {
+                    let json_str = match serde_json::to_string(&report) {
+                        Ok(s) => s,
+                        Err(_) => return TTZipStatus::ErrOutOfMemory,
+                    };
+                    let c_json = match std::ffi::CString::new(json_str) {
+                        Ok(c) => c,
+                        Err(_) => return TTZipStatus::ErrOutOfMemory,
+                    };
+                    *out_report_json = c_json.into_raw();
+                    TTZipStatus::Ok
+                }
+                Err(status) => status,
+            }
+        });
+
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI unified string deallocator for strings allocated by Rust FFI.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub unsafe extern "C" fn ttzip_rust_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        drop(std::ffi::CString::from_raw(ptr));
+    unsafe {
+        if !ptr.is_null() {
+            drop(std::ffi::CString::from_raw(ptr));
+        }
     }
 }
 
 /// Returns thread-local diagnostic error message or NULL if previous operation succeeded.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(deprecated)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
@@ -545,7 +565,7 @@ pub extern "C" fn ttzip_rust_last_error_message() -> *const c_char {
 }
 
 /// Clears thread-local diagnostic error message.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(note = "Use UniFFI bindings instead")]
 pub extern "C" fn ttzip_rust_clear_last_error() {
     crate::types::clear_last_error();

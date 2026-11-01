@@ -155,7 +155,7 @@ fn get_brotli_testdata(name: &str) -> Vec<u8> {
 }
 
 macro_rules! require_fixture {
-    ($name:expr) => {
+    ($name:expr_2021) => {
         get_brotli_testdata($name)
     };
 }

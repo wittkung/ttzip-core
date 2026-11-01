@@ -170,6 +170,8 @@ extension ArchiveError {
         case .partialExtractionFailure(let outcome):
             let firstPath = outcome.failed.first?.relativePath ?? ""
             return "Extraction completed with \(outcome.failed.count) failed item(s)\(firstPath.isEmpty ? "" : " (\(firstPath))")"
+        case .createTransactionIncomplete(let report):
+            return report.summaryMessage
         case .invalidState:
             return manager.string(for: L10n.Common.error, language: targetLang)
         case .engineFailure(let code, let message):

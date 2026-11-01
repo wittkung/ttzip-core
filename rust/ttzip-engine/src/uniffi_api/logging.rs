@@ -30,34 +30,36 @@ unsafe extern "C" fn uniffi_log_forwarder_c(
     line: i32,
     _user_data: *mut c_void,
 ) {
-    let callback = {
-        let guard = UNIFFI_LOG_SINK.read();
-        guard.clone()
-    };
-
-    if let Some(cb) = callback {
-        let target = if !target_module.is_null() {
-            CStr::from_ptr(target_module).to_string_lossy().into_owned()
-        } else {
-            String::new()
+    unsafe {
+        let callback = {
+            let guard = UNIFFI_LOG_SINK.read();
+            guard.clone()
         };
 
-        let msg = if !message.is_null() {
-            CStr::from_ptr(message).to_string_lossy().into_owned()
-        } else {
-            String::new()
-        };
+        if let Some(cb) = callback {
+            let target = if !target_module.is_null() {
+                CStr::from_ptr(target_module).to_string_lossy().into_owned()
+            } else {
+                String::new()
+            };
 
-        let file_path = if !file.is_null() {
-            CStr::from_ptr(file).to_string_lossy().into_owned()
-        } else {
-            String::new()
-        };
+            let msg = if !message.is_null() {
+                CStr::from_ptr(message).to_string_lossy().into_owned()
+            } else {
+                String::new()
+            };
 
-        let line_num = if line >= 0 { line as u32 } else { 0 };
-        let lvl = level as u32;
+            let file_path = if !file.is_null() {
+                CStr::from_ptr(file).to_string_lossy().into_owned()
+            } else {
+                String::new()
+            };
 
-        cb.log(lvl, target, msg, file_path, line_num);
+            let line_num = if line >= 0 { line as u32 } else { 0 };
+            let lvl = level as u32;
+
+            cb.log(lvl, target, msg, file_path, line_num);
+        }
     }
 }
 

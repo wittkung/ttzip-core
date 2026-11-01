@@ -297,6 +297,12 @@ pub fn snappy_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatu
 }
 
 pub fn snappy_decompress_raw(src: &[u8]) -> Result<Vec<u8>, TTZipStatus> {
+    let uncompressed_len = snap::raw::decompress_len(src)
+        .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+    // Snappy copies emit at most 64 bytes per 3 encoded bytes; literals consume their payload.
+    if uncompressed_len > src.len().saturating_mul(32) {
+        return Err(TTZipStatus::ErrExtractionFailed);
+    }
     let mut decoder = snap::raw::Decoder::new();
     decoder.decompress_vec(src).map_err(|_| TTZipStatus::ErrExtractionFailed)
 }
@@ -313,8 +319,7 @@ pub fn raw_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, SnappyError> 
 
 #[inline]
 pub fn raw_decompress_to_vec(src: &[u8]) -> Result<Vec<u8>, SnappyError> {
-    let mut decoder = snap::raw::Decoder::new();
-    decoder.decompress_vec(src).map_err(|_| SnappyError::DecompressionFailed)
+    snappy_decompress_raw(src).map_err(|_| SnappyError::DecompressionFailed)
 }
 
 #[inline]

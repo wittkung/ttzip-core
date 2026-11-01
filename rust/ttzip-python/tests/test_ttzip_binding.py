@@ -29,6 +29,21 @@ class TestTTZipPythonBinding(unittest.TestCase):
         decompressed = _ttzip.decompress_buffer(compressed, "deflate")
         self.assertEqual(bytes(decompressed), data)
 
+    def test_bytearray_and_decompress_into_safety(self):
+        import _ttzip
+
+        raw = b"Mutable bytearray and memoryview safety verification " * 16
+        compressed = _ttzip.compress_buffer(bytearray(raw), "deflate", 6)
+        self.assertEqual(
+            _ttzip.decompress_buffer(memoryview(compressed), "deflate"),
+            raw,
+        )
+
+        dst = bytearray(len(raw))
+        written = _ttzip.decompress_into(bytearray(compressed), dst, "deflate")
+        self.assertEqual(written, len(raw))
+        self.assertEqual(bytes(dst), raw)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,7 @@ use super::data_descriptor::build_data_descriptor;
 use super::parallel_batch::*;
 use super::streaming_sink::*;
 use super::types::ZipCreateReport;
+use crate::archive::unified::create_transaction::CreateTransactionContext;
 use crate::types::{TTZipCompressionLevel, TTZipCreateOptions, TTZipStatus};
 use std::path::{Path, PathBuf};
 use ttzip_types::options::ProgressAtomicSheet;
@@ -30,6 +31,30 @@ pub fn create_zip_streaming_parallel(
     create_zip_streaming_parallel_with_sheet(dest_path, source_paths, options, None)
 }
 
+/// Creates a single-file or split-volume ZIP archive bound to `CreateTransactionContext`.
+pub fn create_zip_streaming_parallel_split_in_txn(
+    dest_path: &Path,
+    source_paths: &[PathBuf],
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Result<ZipCreateReport, TTZipStatus> {
+    let start_time = std::time::Instant::now();
+    let plan_items = collect_source_plan_items(source_paths)?;
+    if plan_items.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+    compress_and_write_plan_items_in_txn(
+        dest_path,
+        plan_items,
+        options,
+        split_volume_size_bytes,
+        start_time,
+        None,
+        txn_ctx,
+    )
+}
+
 /// Creates a single-file or split-volume ZIP archive using the multi-core streaming parallel engine.
 pub fn create_zip_streaming_parallel_split(
     dest_path: &Path,
@@ -37,17 +62,11 @@ pub fn create_zip_streaming_parallel_split(
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> Result<ZipCreateReport, TTZipStatus> {
-    let start_time = std::time::Instant::now();
-    let plan_items = collect_source_plan_items(source_paths)?;
-    if plan_items.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-    compress_and_write_plan_items(
+    create_zip_streaming_parallel_split_in_txn(
         dest_path,
-        plan_items,
+        source_paths,
         options,
         split_volume_size_bytes,
-        start_time,
         None,
     )
 }
@@ -64,7 +83,7 @@ pub fn create_zip_streaming_parallel_with_sheet(
     if plan_items.is_empty() {
         return Err(TTZipStatus::ErrInvalidParam);
     }
-    compress_and_write_plan_items(dest_path, plan_items, options, 0, start_time, sheet)
+    compress_and_write_plan_items_in_txn(dest_path, plan_items, options, 0, start_time, sheet, None)
 }
 
 /// Creates a ZIP archive from explicitly planned entries using the streaming parallel engine.
@@ -76,6 +95,30 @@ pub fn create_zip_streaming_parallel_explicit(
     create_zip_streaming_parallel_explicit_with_sheet(dest_path, planned_entries, options, None)
 }
 
+/// Creates a single-file or split-volume ZIP archive from explicitly planned entries bound to `CreateTransactionContext`.
+pub fn create_zip_streaming_parallel_explicit_split_in_txn(
+    dest_path: &Path,
+    planned_entries: &[(PathBuf, String)],
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Result<ZipCreateReport, TTZipStatus> {
+    let start_time = std::time::Instant::now();
+    let plan_items = build_explicit_plan_items(planned_entries)?;
+    if plan_items.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+    compress_and_write_plan_items_in_txn(
+        dest_path,
+        plan_items,
+        options,
+        split_volume_size_bytes,
+        start_time,
+        None,
+        txn_ctx,
+    )
+}
+
 /// Creates a single-file or split-volume ZIP archive from explicitly planned entries.
 pub fn create_zip_streaming_parallel_explicit_split(
     dest_path: &Path,
@@ -83,17 +126,11 @@ pub fn create_zip_streaming_parallel_explicit_split(
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> Result<ZipCreateReport, TTZipStatus> {
-    let start_time = std::time::Instant::now();
-    let plan_items = build_explicit_plan_items(planned_entries)?;
-    if plan_items.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-    compress_and_write_plan_items(
+    create_zip_streaming_parallel_explicit_split_in_txn(
         dest_path,
-        plan_items,
+        planned_entries,
         options,
         split_volume_size_bytes,
-        start_time,
         None,
     )
 }
@@ -110,7 +147,7 @@ pub fn create_zip_streaming_parallel_explicit_with_sheet(
     if plan_items.is_empty() {
         return Err(TTZipStatus::ErrInvalidParam);
     }
-    compress_and_write_plan_items(dest_path, plan_items, options, 0, start_time, sheet)
+    compress_and_write_plan_items_in_txn(dest_path, plan_items, options, 0, start_time, sheet, None)
 }
 
 fn resolve_compression_level_num(level: TTZipCompressionLevel) -> i32 {
@@ -193,31 +230,15 @@ fn write_central_directory_tail_to_sink(
     sink.write_bytes(&eocd)
 }
 
-fn compress_and_write_plan_items(
-    dest_path: &Path,
+fn run_parallel_zip_batches_to_sink(
+    sink: &mut ZipOutputSink,
     plan_items: Vec<CompressionPlanItem>,
     options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
+    level_num: i32,
+    total_uncompressed: u64,
     start_time: std::time::Instant,
-    sheet: Option<&ProgressAtomicSheet>,
-) -> Result<ZipCreateReport, TTZipStatus> {
-    let level_num = resolve_compression_level_num(options.level);
-    let total_uncompressed: u64 = plan_items.iter().map(|i| i.uncompressed_size).sum();
-    let prealloc_hint = if total_uncompressed > 0 {
-        if level_num == 0 {
-            total_uncompressed + (plan_items.len() as u64 * 128)
-        } else {
-            (total_uncompressed / 2).max(65536) + (plan_items.len() as u64 * 128)
-        }
-    } else {
-        0
-    };
-    let mut sink = ZipOutputSink::open(dest_path, split_volume_size_bytes, prealloc_hint)?;
-
-    let local_sheet = ProgressAtomicSheet::with_total(total_uncompressed);
-    let active_sheet = sheet.unwrap_or(&local_sheet);
-    active_sheet.set_total(total_uncompressed);
-
+    active_sheet: &ProgressAtomicSheet,
+) -> Result<Vec<CentralDirectoryMeta>, TTZipStatus> {
     let progress_cb = options.progress_callback;
     let user_data_usize = options.user_data as usize;
     let password_str = if !options.password.is_null() {
@@ -230,7 +251,6 @@ fn compress_and_write_plan_items(
 
     let mut cd_entries: Vec<CentralDirectoryMeta> = Vec::with_capacity(plan_items.len());
     let mut plan_items_iter = plan_items.into_iter().peekable();
-
     loop {
         if active_sheet.is_cancelled() {
             return Err(TTZipStatus::Cancelled);
@@ -255,7 +275,7 @@ fn compress_and_write_plan_items(
             if active_sheet.is_cancelled() {
                 return Err(TTZipStatus::Cancelled);
             }
-            let meta = write_compressed_entry_to_sink(&mut sink, result?)?;
+            let meta = write_compressed_entry_to_sink(sink, result?)?;
             let current_processed = active_sheet.read_snapshot().processed_bytes;
             let elapsed_secs = start_time.elapsed().as_secs_f64();
             let instant_bps = if elapsed_secs > 0.001 {
@@ -282,8 +302,59 @@ fn compress_and_write_plan_items(
             cd_entries.push(meta);
         }
     }
+    write_central_directory_tail_to_sink(sink, &cd_entries, total_uncompressed)?;
+    Ok(cd_entries)
+}
 
-    write_central_directory_tail_to_sink(&mut sink, &cd_entries, total_uncompressed)?;
+fn compress_and_write_plan_items_in_txn(
+    dest_path: &Path,
+    plan_items: Vec<CompressionPlanItem>,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    start_time: std::time::Instant,
+    sheet: Option<&ProgressAtomicSheet>,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Result<ZipCreateReport, TTZipStatus> {
+    let level_num = resolve_compression_level_num(options.level);
+    let total_uncompressed: u64 = plan_items.iter().map(|i| i.uncompressed_size).sum();
+    let prealloc_hint = if total_uncompressed > 0 {
+        if level_num == 0 {
+            total_uncompressed + (plan_items.len() as u64 * 128)
+        } else {
+            (total_uncompressed / 2).max(65536) + (plan_items.len() as u64 * 128)
+        }
+    } else {
+        0
+    };
+    let mut sink =
+        ZipOutputSink::open_in_txn(dest_path, split_volume_size_bytes, prealloc_hint, txn_ctx)?;
+
+    let local_sheet = ProgressAtomicSheet::with_total(total_uncompressed);
+    let active_sheet = sheet.unwrap_or(&local_sheet);
+    active_sheet.set_total(total_uncompressed);
+
+    let cd_entries = match run_parallel_zip_batches_to_sink(
+        &mut sink,
+        plan_items,
+        options,
+        level_num,
+        total_uncompressed,
+        start_time,
+        active_sheet,
+    ) {
+        Ok(entries) => entries,
+        Err(status) => {
+            if let Err(cleanup_err) = sink.abort_in_txn(status) {
+                crate::archive::unified::create_staging::record_inner_stage_cleanup_error_with_status(
+                    dest_path,
+                    status,
+                    &cleanup_err,
+                );
+                return Err(TTZipStatus::ErrCompressionFailed);
+            }
+            return Err(status);
+        }
+    };
     let final_compressed_bytes = sink.commit()?;
     let elapsed_nanos = start_time.elapsed().as_nanos() as u64;
     let prov = crate::types::TTZipExecutionProvenance {

@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="logo/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
+  <img src="docs/assets/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
 </p>
 
 <p align="center">
@@ -20,14 +20,14 @@
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20严格并发-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/向量%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---
 
 ## 📖 架构设计与工程规范文档
 
-> **范围与权威关系**：本 README 是 Core SDK 入口。当前产品全景与跨模块契约以 [产品文档孪生索引](../docs/twin/SPEC_INDEX.md) 为入口；下列 v2 白皮书保留历史架构背景，不替代当前进程拓扑、VFS 接线或正式验收记录。
+> **范围与权威关系**：本 README 是 Core SDK 入口。下列白皮书承载本仓库当前的产品全景与跨模块契约，不替代当前进程拓扑、VFS 接线或正式验收记录。
 
 - **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 详述双核 UniFFI 微内核、内存安全模型、APFS CoW 事务回滚、VFS 零分配搜索与四大架构不变量。
 - **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: 英文版系统全景架构与工程规范白皮书。
@@ -36,7 +36,7 @@
 
 ## 🌟 核心技术亮点与架构设计
 
-- **🚀 双核微内核架构 (Swift 6 + Safe Rust 微内核)**：内存安全的高吞吐 Rust 原生引擎 (`rust/ttzip-engine` 编译为 `TTZipVendor.xcframework`)，通过零开销标准化 C-ABI & UniFFI (`CTTZipBridge`) 进行跨语言桥接，由 Swift 6 完全并发域编排 (`TTZipCore`) 驱动，呈现于 POSIX 命令行 (`ttzip`)、性能基准套件 (`ttzip-bench`) 与原生桌面应用 (`apple/TTZipApp`)。
+- **🚀 双核微内核架构 (Swift 6 + Safe Rust 微内核)**：内存安全的高吞吐 Rust 原生引擎 (`rust/ttzip-engine` 编译为 `TTZipVendor.xcframework`)，通过零开销标准化 C-ABI & UniFFI (`CTTZipBridge`) 进行跨语言桥接，由 Swift 6 完全并发域编排 (`TTZipCore`) 驱动，呈现于 POSIX 命令行 (`ttzip`)、性能基准套件 (`ttzip-bench`) 与原生桌面应用 ([`wittkung/ttzip-apple`](https://github.com/wittkung/ttzip-apple))。
 - **⚡️ 63+ GB/s 硬件双指令集 (Dual-ISA) 向量加速**：
   - **63,232 MB/s (63.2 GB/s) CRC32**：ARM64 硬件多项式乘法 (`vmull_p64` / `__crc32d`) 与 x86_64 PCLMULQDQ 宽折叠加速。
   - **36,017 MB/s (36.0 GB/s) CRC64**：Dual-ISA 向量化 ECMA-182 校验。
@@ -238,11 +238,11 @@ TTZip 秉持开源回馈精神，积极将验证过的硬件加速与架构优�
 
 ## 📄 开源许可证与社区准则
 
-TTZip Core 遵循 **BSD 3-Clause** 与 **Apache 2.0** 双重开源协议：
+TTZip Core 遵循 **BSD 3-Clause** 开源协议：
 
-- 详见 [LICENSE-BSD](LICENSE-BSD) 与 [LICENSE-APACHE](LICENSE-APACHE)。
+- 详见 [LICENSE](LICENSE)。
 - **100% 开源自由**：`ttzip-core` 所有源码完全开放用于商业、学术研究与个人使用。
-- **桌面客户端开源协议**：macOS 原生桌面客户端（`ttzip-apple`）遵循 [apple/LICENSE](../apple/LICENSE)（GPL-3.0-or-later）。
+- **桌面客户端开源协议**：macOS 原生桌面客户端独立发布于 [`wittkung/ttzip-apple`](https://github.com/wittkung/ttzip-apple)，遵循 MIT OR Apache-2.0 双重开源协议。
 - 商业授权咨询：`witt.w.kung@gmail.com`。
 
 ---

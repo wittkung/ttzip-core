@@ -35,6 +35,9 @@ public enum LocalModelLocaleKey: String, LocaleKeyProtocol, CaseIterable, Sendab
     case statusVerifying = "settings.local_models.status.verifying"
     case statusAvailable = "settings.local_models.status.available"
     case statusFailed = "settings.local_models.status.failed"
+    case statusDisabling = "settings.local_models.status.disabling"
+    case statusInstalledDisabled = "settings.local_models.status.installed_disabled"
+    case statusInstalledReadyOnDemand = "settings.local_models.status.installed_ready_on_demand"
 
     // MARK: - 5. Action Buttons & Progress Feedback
     case actionDownload = "settings.local_models.action.download"
@@ -197,6 +200,21 @@ public enum LocalModelLocaleKey: String, LocaleKeyProtocol, CaseIterable, Sendab
             "Unavailable / Failed",
             "不可用 / 失败",
             "不可用 / 失敗"
+        ),
+        .statusDisabling: TranslationTriple(
+            "Disabling…",
+            "正在停用…",
+            "正在停用…"
+        ),
+        .statusInstalledDisabled: TranslationTriple(
+            "Installed · Disabled",
+            "已安装 · 未启用",
+            "已安裝 · 未啟用"
+        ),
+        .statusInstalledReadyOnDemand: TranslationTriple(
+            "Installed · Ready on Demand",
+            "已安装 · 待按需加载",
+            "已安裝 · 待按需載入"
         ),
         .actionDownload: TranslationTriple(
             "Download Model",

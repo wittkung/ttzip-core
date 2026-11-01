@@ -85,25 +85,29 @@ fn decode_wav_samples(data: &[u8]) -> Option<Vec<f32>> {
             }
         }
         (1, 16) => {
-            for chunk in raw.chunks_exact(2) {
+            let (pairs, _) = raw.as_chunks::<2>();
+            for chunk in pairs {
                 let val = i16::from_le_bytes([chunk[0], chunk[1]]);
                 samples.push(val as f32 / 32768.0);
             }
         }
         (1, 24) => {
-            for chunk in raw.chunks_exact(3) {
+            let (triples, _) = raw.as_chunks::<3>();
+            for chunk in triples {
                 let val = (chunk[0] as i32) | ((chunk[1] as i32) << 8) | (((chunk[2] as i8) as i32) << 16);
                 samples.push(val as f32 / 8388608.0);
             }
         }
         (1, 32) => {
-            for chunk in raw.chunks_exact(4) {
+            let (quads, _) = raw.as_chunks::<4>();
+            for chunk in quads {
                 let val = i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 samples.push(val as f32 / 2147483648.0);
             }
         }
         (3, 32) => {
-            for chunk in raw.chunks_exact(4) {
+            let (quads, _) = raw.as_chunks::<4>();
+            for chunk in quads {
                 let val = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 samples.push(val);
             }

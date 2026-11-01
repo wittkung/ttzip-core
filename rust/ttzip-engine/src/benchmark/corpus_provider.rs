@@ -561,14 +561,14 @@ impl CorpusRegistry {
 
     /// Returns a sorted list of all unique registered corpus IDs and aliases.
     pub fn list_ids(&self) -> Vec<String> {
-        if let Ok(guard) = self.providers.read() {
+        match self.providers.read() { Ok(guard) => {
             let mut ids: Vec<String> = guard.keys().cloned().collect();
             ids.sort();
             ids.dedup();
             ids
-        } else {
+        } _ => {
             Vec::new()
-        }
+        }}
     }
 
     /// Returns the total number of registered IDs and aliases.

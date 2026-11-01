@@ -301,81 +301,83 @@ pub fn find_eocd_candidates_scalar(window: &[u8], max_pos: usize, out: &mut Vec<
 
 #[cfg(target_arch = "aarch64")]
 unsafe fn find_eocd_candidates_neon(window: &[u8], max_pos: usize, out: &mut Vec<usize>) {
-    use core::arch::aarch64::*;
+    unsafe {
+        use core::arch::aarch64::*;
 
-    // Vector constant containing 4 lanes of MAGIC_EOCD (0x06054B50, 'PK\x05\x06').
-    let target = vdupq_n_u32(MAGIC_EOCD);
-    let mut pos = max_pos as isize;
+        // Vector constant containing 4 lanes of MAGIC_EOCD (0x06054B50, 'PK\x05\x06').
+        let target = vdupq_n_u32(MAGIC_EOCD);
+        let mut pos = max_pos as isize;
 
-    // Fast vector loop: scan 16 candidate offsets per iteration.
-    // Each iteration examines candidate offsets [start ..= pos], where start = pos - 15.
-    // To read the full 4-byte signature at candidate offset `pos`, bytes up to `pos + 3`
-    // (i.e. start + 18) are accessed. Unaligned 128-bit loads at ptr+0..3 are safe because
-    // pos <= max_pos guarantees pos + 4 <= window.len().
-    while pos >= 15 {
-        let start = (pos - 15) as usize;
-        let ptr = window.as_ptr().add(start);
+        // Fast vector loop: scan 16 candidate offsets per iteration.
+        // Each iteration examines candidate offsets [start ..= pos], where start = pos - 15.
+        // To read the full 4-byte signature at candidate offset `pos`, bytes up to `pos + 3`
+        // (i.e. start + 18) are accessed. Unaligned 128-bit loads at ptr+0..3 are safe because
+        // pos <= max_pos guarantees pos + 4 <= window.len().
+        while pos >= 15 {
+            let start = (pos - 15) as usize;
+            let ptr = window.as_ptr().add(start);
 
-        // Load 4 overlapping 128-bit windows shifted by 0, 1, 2, 3 bytes.
-        // Each vector contains 4 candidate offsets with stride 4:
-        //   w0: offsets start + [0, 4, 8, 12]
-        //   w1: offsets start + [1, 5, 9, 13]
-        //   w2: offsets start + [2, 6, 10, 14]
-        //   w3: offsets start + [3, 7, 11, 15]
-        let w0 = vreinterpretq_u32_u8(vld1q_u8(ptr));
-        let w1 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(1)));
-        let w2 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(2)));
-        let w3 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(3)));
+            // Load 4 overlapping 128-bit windows shifted by 0, 1, 2, 3 bytes.
+            // Each vector contains 4 candidate offsets with stride 4:
+            //   w0: offsets start + [0, 4, 8, 12]
+            //   w1: offsets start + [1, 5, 9, 13]
+            //   w2: offsets start + [2, 6, 10, 14]
+            //   w3: offsets start + [3, 7, 11, 15]
+            let w0 = vreinterpretq_u32_u8(vld1q_u8(ptr));
+            let w1 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(1)));
+            let w2 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(2)));
+            let w3 = vreinterpretq_u32_u8(vld1q_u8(ptr.add(3)));
 
-        // Compare all 16 candidate positions against MAGIC_EOCD in parallel.
-        let cmp0 = vceqq_u32(w0, target);
-        let cmp1 = vceqq_u32(w1, target);
-        let cmp2 = vceqq_u32(w2, target);
-        let cmp3 = vceqq_u32(w3, target);
+            // Compare all 16 candidate positions against MAGIC_EOCD in parallel.
+            let cmp0 = vceqq_u32(w0, target);
+            let cmp1 = vceqq_u32(w1, target);
+            let cmp2 = vceqq_u32(w2, target);
+            let cmp3 = vceqq_u32(w3, target);
 
-        // Aggregate match mask across all 4 vector lanes.
-        let any_match = vorrq_u32(vorrq_u32(cmp0, cmp1), vorrq_u32(cmp2, cmp3));
+            // Aggregate match mask across all 4 vector lanes.
+            let any_match = vorrq_u32(vorrq_u32(cmp0, cmp1), vorrq_u32(cmp2, cmp3));
 
-        // In high-entropy or normal comment streams, any_match is 0 for 99.999% of chunks.
-        // The branch predictor achieves near-100% accuracy, avoiding pipeline flushes.
-        if vmaxvq_u32(any_match) != 0 {
-            let mut arr0 = [0u32; 4];
-            let mut arr1 = [0u32; 4];
-            let mut arr2 = [0u32; 4];
-            let mut arr3 = [0u32; 4];
-            vst1q_u32(arr0.as_mut_ptr(), cmp0);
-            vst1q_u32(arr1.as_mut_ptr(), cmp1);
-            vst1q_u32(arr2.as_mut_ptr(), cmp2);
-            vst1q_u32(arr3.as_mut_ptr(), cmp3);
+            // In high-entropy or normal comment streams, any_match is 0 for 99.999% of chunks.
+            // The branch predictor achieves near-100% accuracy, avoiding pipeline flushes.
+            if vmaxvq_u32(any_match) != 0 {
+                let mut arr0 = [0u32; 4];
+                let mut arr1 = [0u32; 4];
+                let mut arr2 = [0u32; 4];
+                let mut arr3 = [0u32; 4];
+                vst1q_u32(arr0.as_mut_ptr(), cmp0);
+                vst1q_u32(arr1.as_mut_ptr(), cmp1);
+                vst1q_u32(arr2.as_mut_ptr(), cmp2);
+                vst1q_u32(arr3.as_mut_ptr(), cmp3);
 
-            // Record candidates in strictly descending order (high to low).
-            for lane in (0..4).rev() {
-                let off_base = start + (lane * 4);
-                if arr3[lane] != 0 {
-                    out.push(off_base + 3);
-                }
-                if arr2[lane] != 0 {
-                    out.push(off_base + 2);
-                }
-                if arr1[lane] != 0 {
-                    out.push(off_base + 1);
-                }
-                if arr0[lane] != 0 {
-                    out.push(off_base);
+                // Record candidates in strictly descending order (high to low).
+                for lane in (0..4).rev() {
+                    let off_base = start + (lane * 4);
+                    if arr3[lane] != 0 {
+                        out.push(off_base + 3);
+                    }
+                    if arr2[lane] != 0 {
+                        out.push(off_base + 2);
+                    }
+                    if arr1[lane] != 0 {
+                        out.push(off_base + 1);
+                    }
+                    if arr0[lane] != 0 {
+                        out.push(off_base);
+                    }
                 }
             }
+
+            pos -= 16;
         }
 
-        pos -= 16;
-    }
-
-    // Scalar tail loop for remaining offsets (0 to 14 candidate positions).
-    while pos >= 0 {
-        let p = pos as usize;
-        if p + 4 <= window.len() && read_u32_le(window, p) == MAGIC_EOCD {
-            out.push(p);
+        // Scalar tail loop for remaining offsets (0 to 14 candidate positions).
+        while pos >= 0 {
+            let p = pos as usize;
+            if p + 4 <= window.len() && read_u32_le(window, p) == MAGIC_EOCD {
+                out.push(p);
+            }
+            pos -= 1;
         }
-        pos -= 1;
     }
 }
 

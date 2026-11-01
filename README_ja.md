@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="logo/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
+  <img src="docs/assets/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
 </p>
 
 <p align="center">
@@ -15,12 +15,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wittkung/TTZip"><img src="https://img.shields.io/badge/Architecture-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
+  <a href="https://github.com/wittkung/ttzip-core"><img src="https://img.shields.io/badge/Architecture-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B%20%7C%20Cargo-dea584?style=flat-square&logo=rust" alt="Rust Cargo" /></a>
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---

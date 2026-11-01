@@ -29,12 +29,11 @@ impl SplitMix64 {
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        let mut chunks = dest.chunks_exact_mut(8);
-        for chunk in &mut chunks {
+        let (chunks, rem) = dest.as_chunks_mut::<8>();
+        for chunk in chunks.iter_mut() {
             let val = self.next_u64();
             chunk.copy_from_slice(&val.to_le_bytes());
         }
-        let rem = chunks.into_remainder();
         if !rem.is_empty() {
             let val = self.next_u64();
             let bytes = val.to_le_bytes();

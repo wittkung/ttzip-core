@@ -17,7 +17,7 @@ use std::panic::catch_unwind;
 use std::path::Path;
 
 /// Validates entry path against destination directory to prevent ZipSlip traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_validate_path(
     dest_dir: *const c_char,
     entry_path: *const c_char,
@@ -57,7 +57,7 @@ pub unsafe extern "C" fn ttzip_rust_validate_path(
 }
 
 /// Preallocates contiguous physical extent space on APFS filesystems.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_apfs_preallocate(fd: i32, target_size: i64) -> i32 {
     catch_unwind(|| match apfs_preallocate(fd, target_size) {
         Ok(()) => 0,
@@ -66,7 +66,7 @@ pub extern "C" fn ttzip_rust_apfs_preallocate(fd: i32, target_size: i64) -> i32 
 }
 
 /// Clones a file using APFS Copy-on-Write (CoW).
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_apfs_clone_file(src: *const c_char, dst: *const c_char, overwrite: bool) -> i32 {
     catch_unwind(|| {
         let src_s = match unsafe { safe_cstr(src) } { Ok(s) => s, Err(_) => return -1 };
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn ttzip_rust_apfs_clone_file(src: *const c_char, dst: *co
 }
 
 /// Clones file descriptor range via APFS `fcopyfile`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_apfs_clone_range(in_fd: i32, out_fd: i32) -> i32 {
     catch_unwind(|| match apfs_fcopyfile_clone(in_fd, out_fd) {
         Ok(()) => 0,
@@ -88,7 +88,7 @@ pub extern "C" fn ttzip_rust_apfs_clone_range(in_fd: i32, out_fd: i32) -> i32 {
 }
 
 /// Returns true if the path points to a macOS junk metadata artifact.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_is_mac_junk(path: *const c_char) -> bool {
     catch_unwind(|| {
         let s = match unsafe { safe_cstr(path) } { Ok(s) => s, Err(_) => return false };
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn ttzip_rust_is_mac_junk(path: *const c_char) -> bool {
 }
 
 /// Fast file or directory removal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_remove_path_fast(path: *const c_char) -> i32 {
     catch_unwind(|| {
         let s = match unsafe { safe_cstr(path) } { Ok(s) => s, Err(_) => return -1 };
@@ -164,7 +164,7 @@ impl Default for TTZipScanConfigRaw {
 }
 
 /// Recursively scans a filesystem directory in parallel with Rayon.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_scan_directory_parallel(
     root_path: *const c_char,
     config: *const TTZipScanConfigRaw,
@@ -222,7 +222,7 @@ pub struct TTZipVfsTreeHandle {
 }
 
 /// Constructs a unified VFS tree from C-ABI entry metadata array.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_build(
     entries: *const TTZipEntryMetadata,
     count: usize,
@@ -260,7 +260,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_build(
 }
 
 /// Constructs a unified VFS tree and arena from a zero-copy packed entry array in O(N) time.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_build_packed(
     packed: *const crate::types::TTZipPackedEntryArray,
     root_name: *const c_char,
@@ -279,7 +279,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_tree_build_packed(
 }
 
 /// Retrieves windowed children slice for a directory node in O(1) memory.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
     handle: *const TTZipVfsTreeHandle,
     dir_node_id: u32,
@@ -313,7 +313,7 @@ pub unsafe extern "C" fn ttzip_rust_vfs_get_children(
 }
 
 /// Renders ASCII/Unicode hierarchical tree into an allocated C-string buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_render(
     handle: *const TTZipVfsTreeHandle,
     out_rendered: *mut *mut c_char,
@@ -369,7 +369,7 @@ pub type TTZipVfsSearchCallback =
     Option<unsafe extern "C" fn(result: *const TTZipVfsSearchResultRaw, user_data: *mut c_void) -> bool>;
 
 /// Performs fast fuzzy search against VFS tree and invokes callback for each match.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
     handle: *const TTZipVfsTreeHandle,
     query: *const c_char,
@@ -429,41 +429,47 @@ pub unsafe extern "C" fn ttzip_rust_vfs_fuzzy_search(
 }
 
 /// Frees a VFS tree handle.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(since = "2.0.0", note = "Use ttzip_free(handle, TTZipMemoryKind::VfsTree) instead")]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_free(handle: *mut TTZipVfsTreeHandle) {
-    let _ = catch_unwind(|| { if !handle.is_null() { drop(Box::from_raw(handle)); } });
+    unsafe {
+        let _ = catch_unwind(|| { if !handle.is_null() { drop(Box::from_raw(handle)); } });
+    }
 }
 
 /// Frees an allocated C-string buffer returned by VFS functions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[deprecated(since = "2.0.0", note = "Use ttzip_free(ptr, TTZipMemoryKind::String) instead")]
 pub unsafe extern "C" fn ttzip_rust_vfs_free_string(ptr: *mut c_char) {
-    let _ = catch_unwind(|| { if !ptr.is_null() { drop(CString::from_raw(ptr)); } });
+    unsafe {
+        let _ = catch_unwind(|| { if !ptr.is_null() { drop(CString::from_raw(ptr)); } });
+    }
 }
 
 /// Retrieves aggregated VFS tree statistics.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_tree_get_stats(
     handle: *const TTZipVfsTreeHandle,
     out_total_files: *mut u64,
     out_total_dirs: *mut u64,
     out_total_size: *mut u64,
 ) {
-    let _ = catch_unwind(|| {
-        if handle.is_null() { return; }
-        let h = unsafe { &*handle };
-        let (f, d, s) = h.arena.get_stats();
-        if !out_total_files.is_null() { *out_total_files = f; }
-        if !out_total_dirs.is_null() { *out_total_dirs = d; }
-        if !out_total_size.is_null() { *out_total_size = s; }
-    });
+    unsafe {
+        let _ = catch_unwind(|| {
+            if handle.is_null() { return; }
+            let h = &*handle;
+            let (f, d, s) = h.arena.get_stats();
+            if !out_total_files.is_null() { *out_total_files = f; }
+            if !out_total_dirs.is_null() { *out_total_dirs = d; }
+            if !out_total_size.is_null() { *out_total_size = s; }
+        });
+    }
 }
 
 pub use crate::fs::vfs::search::TTZipVfsMatchDto;
 
 /// Performs zero-heap-allocation fuzzy search into caller-allocated buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vfs_search_zero_alloc(
     handle: *const TTZipVfsTreeHandle,
     query: *const c_char,

@@ -16,67 +16,69 @@ use std::path::Path;
 ///
 /// Scans all Central Directory entries (standard ZIP and Zip64) and invokes `callback`
 /// with metadata for each entry. Returning `false` from `callback` halts traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zip_scan_entries(
     archive_path: *const c_char,
     callback: TTZipInspectCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        let cb = match callback {
-            Some(f) => f,
-            None => return TTZipStatus::ErrInvalidParam,
-        };
-
-        let path_str = match unsafe { safe_cstr(archive_path) } {
-            Ok(s) => s,
-            Err(st) => return st,
-        };
-
-        let p = Path::new(path_str);
-        if !p.exists() {
-            return TTZipStatus::ErrFileNotFound;
-        }
-
-        let data = match fs::read(p) {
-            Ok(d) => d,
-            Err(_) => return TTZipStatus::ErrOpenFailed,
-        };
-
-        let archive = match ZipArchive::open_slice(&data) {
-            Ok(a) => a,
-            Err(e) => return e,
-        };
-
-        for entry in archive.entries() {
-            let c_path = match CString::new(entry.rel_path.as_str()) {
-                Ok(c) => c,
-                Err(_) => continue,
+    unsafe {
+        let result = catch_unwind(|| {
+            let cb = match callback {
+                Some(f) => f,
+                None => return TTZipStatus::ErrInvalidParam,
             };
 
-            let meta = TTZipEntryMetadata {
-                struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
-                abi_version: crate::types::TTZIP_ABI_VERSION_3,
-                path: c_path.as_ptr(),
-                uncompressed_size: entry.uncompressed_size,
-                compressed_size: entry.compressed_size,
-                crc32: entry.crc32,
-                mtime_epoch_secs: entry.mtime_epoch_secs,
-                mode: entry.mode,
-                is_directory: entry.is_directory,
-                is_encrypted: entry.is_encrypted,
-                compression_method: entry.actual_method,
-                detected_encoding: std::ptr::null(),
+            let path_str = match safe_cstr(archive_path) {
+                Ok(s) => s,
+                Err(st) => return st,
             };
 
-            let should_continue = cb(&meta, user_data);
-            if !should_continue {
-                break;
+            let p = Path::new(path_str);
+            if !p.exists() {
+                return TTZipStatus::ErrFileNotFound;
             }
-        }
 
-        TTZipStatus::Ok
-    });
+            let data = match fs::read(p) {
+                Ok(d) => d,
+                Err(_) => return TTZipStatus::ErrOpenFailed,
+            };
 
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let archive = match ZipArchive::open_slice(&data) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
+
+            for entry in archive.entries() {
+                let c_path = match CString::new(entry.rel_path.as_str()) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+
+                let meta = TTZipEntryMetadata {
+                    struct_size: std::mem::size_of::<TTZipEntryMetadata>() as u32,
+                    abi_version: crate::types::TTZIP_ABI_VERSION_3,
+                    path: c_path.as_ptr(),
+                    uncompressed_size: entry.uncompressed_size,
+                    compressed_size: entry.compressed_size,
+                    crc32: entry.crc32,
+                    mtime_epoch_secs: entry.mtime_epoch_secs,
+                    mode: entry.mode,
+                    is_directory: entry.is_directory,
+                    is_encrypted: entry.is_encrypted,
+                    compression_method: entry.actual_method,
+                    detected_encoding: std::ptr::null(),
+                };
+
+                let should_continue = cb(&meta, user_data);
+                if !should_continue {
+                    break;
+                }
+            }
+
+            TTZipStatus::Ok
+        });
+
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }

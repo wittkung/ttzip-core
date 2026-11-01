@@ -45,7 +45,6 @@ pub use crc32::{crc32, crc32_combine, crc32_fast};
 pub use crc64::{crc64, crc64_fast};
 pub use ed25519::*;
 pub use md5::{md5, FastMd5};
-pub use password_recovery::*;
 pub use recovery::*;
 pub use rs_fec::{
     cauchy, gf8, recovery_record, ReedSolomonEngine, RecoveryRecordInfo,

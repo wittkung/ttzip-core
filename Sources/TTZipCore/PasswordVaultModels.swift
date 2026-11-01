@@ -4,6 +4,17 @@
 import Foundation
 import LocalAuthentication
 
+/// Binds a remembered password to one archive and one verified file generation.
+public struct ArchiveVaultScope: Codable, Equatable, Sendable {
+    public let logicalKey: String
+    public let contentKey: String
+
+    public init(logicalKey: String, contentKey: String) {
+        self.logicalKey = logicalKey
+        self.contentKey = contentKey
+    }
+}
+
 /// Value type representing a secure credential entry within the password vault.
 public struct PasswordVaultEntry: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
@@ -13,6 +24,7 @@ public struct PasswordVaultEntry: Identifiable, Codable, Equatable, Sendable {
     public var createdAt: Date
     public var useCount: Int
     public var lastUsedAt: Date?
+    public var archiveScope: ArchiveVaultScope?
     
     public init(
         id: UUID = UUID(),
@@ -21,7 +33,8 @@ public struct PasswordVaultEntry: Identifiable, Codable, Equatable, Sendable {
         category: String = "General",
         createdAt: Date = Date(),
         useCount: Int = 0,
-        lastUsedAt: Date? = nil
+        lastUsedAt: Date? = nil,
+        archiveScope: ArchiveVaultScope? = nil
     ) {
         self.id = id
         self.label = label
@@ -30,6 +43,7 @@ public struct PasswordVaultEntry: Identifiable, Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.useCount = useCount
         self.lastUsedAt = lastUsedAt
+        self.archiveScope = archiveScope
     }
 }
 
@@ -330,6 +344,27 @@ public final class ArchivePasswordStore: @unchecked Sendable {
     
     public func clearPassword(for path: String) {
         removePassword(for: path)
+    }
+
+    /// Removes all process-cache aliases of one numbered logical archive, including volume paths.
+    public func removePasswords(forLogicalArchiveAt sourcePath: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        let logicalPath = logicalArchivePath(normalize(sourcePath))
+        for cachedPath in Array(passwords.keys) where logicalArchivePath(cachedPath) == logicalPath {
+            if var password = passwords.removeValue(forKey: cachedPath) {
+                eraseSensitiveString(&password)
+            }
+            lruOrder.removeAll { $0 == cachedPath }
+        }
+    }
+
+    private func logicalArchivePath(_ path: String) -> String {
+        let canonical = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        guard let suffix = canonical.range(of: #"\.\d{3}$"#, options: .regularExpression) else {
+            return canonical
+        }
+        return String(canonical[..<suffix.lowerBound]) + ".001"
     }
     
     public func clearAll() {

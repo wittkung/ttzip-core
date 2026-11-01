@@ -72,19 +72,21 @@ pub unsafe extern "C" fn archive_write_callback_trampoline<W: Write>(
     buffer: *const libc::c_void,
     length: libc::size_t,
 ) -> libc::ssize_t {
-    if client_data.is_null() || (buffer.is_null() && length > 0) {
-        return ARCHIVE_FATAL as libc::ssize_t;
-    }
-    let state = &mut *(client_data as *mut StreamWriterState<W>);
-    let slice = if length > 0 {
-        std::slice::from_raw_parts(buffer as *const u8, length)
-    } else {
-        &[]
-    };
+    unsafe {
+        if client_data.is_null() || (buffer.is_null() && length > 0) {
+            return ARCHIVE_FATAL as libc::ssize_t;
+        }
+        let state = &mut *(client_data as *mut StreamWriterState<W>);
+        let slice = if length > 0 {
+            std::slice::from_raw_parts(buffer as *const u8, length)
+        } else {
+            &[]
+        };
 
-    match state.write_chunk(slice) {
-        Ok(n) => n as libc::ssize_t,
-        Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+        match state.write_chunk(slice) {
+            Ok(n) => n as libc::ssize_t,
+            Err(_) => ARCHIVE_FATAL as libc::ssize_t,
+        }
     }
 }
 
@@ -92,9 +94,13 @@ pub unsafe extern "C" fn archive_write_callback_trampoline<W: Write>(
 // External Libarchive Write C-ABI declarations
 // ---------------------------------------------------------------------------
 
-extern "C" {
+unsafe extern "C" {
     pub fn archive_write_new() -> *mut libc::c_void;
     pub fn archive_write_set_format_zip(a: *mut libc::c_void) -> libc::c_int;
+    pub fn archive_write_set_bytes_in_last_block(
+        a: *mut libc::c_void,
+        bytes: libc::c_int,
+    ) -> libc::c_int;
     pub fn archive_write_open2(
         a: *mut libc::c_void,
         client_data: *mut libc::c_void,
@@ -134,6 +140,10 @@ impl<W: Write + 'static> ArchiveStreamWriter<W> {
                 return Err(TTZipStatus::ErrOutOfMemory);
             }
             archive_write_set_format_zip(a);
+            if archive_write_set_bytes_in_last_block(a, 1) != ARCHIVE_OK {
+                archive_write_free(a);
+                return Err(TTZipStatus::ErrCompressionFailed);
+            }
 
             let state_raw: *mut StreamWriterState<W> = Pin::get_unchecked_mut(state.as_mut());
             let ret = archive_write_open2(

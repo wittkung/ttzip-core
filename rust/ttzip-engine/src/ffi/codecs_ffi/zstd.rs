@@ -17,7 +17,7 @@ use std::path::Path;
 
 // MARK: - Zstandard C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zstd_compress(
     src: *const u8,
     src_len: size_t,
@@ -50,7 +50,7 @@ pub extern "C" fn ttzip_rust_zstd_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zstd_compress_advanced(
     src: *const u8,
     src_len: size_t,
@@ -103,7 +103,7 @@ pub extern "C" fn ttzip_rust_zstd_compress_advanced(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zstd_decompress(
     src: *const u8,
     src_len: size_t,
@@ -135,12 +135,12 @@ pub extern "C" fn ttzip_rust_zstd_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zstd_compress_bound(src_len: size_t) -> size_t {
     zstd_compress_bound(src_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zstd_get_decompressed_size(src: *const u8, src_len: size_t) -> u64 {
     match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => zstd_get_decompressed_size(slice).unwrap_or(0),
@@ -148,7 +148,7 @@ pub extern "C" fn ttzip_rust_zstd_get_decompressed_size(src: *const u8, src_len:
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zstd_compress_file_stream(
     src_path: *const c_char,
     dst_path: *const c_char,
@@ -161,138 +161,142 @@ pub unsafe extern "C" fn ttzip_rust_zstd_compress_file_stream(
     progress_callback: TTZipProgressCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if src_path.is_null() || dst_path.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if src_path.is_null() || dst_path.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let src_str = match CStr::from_ptr(src_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dst_str = match CStr::from_ptr(dst_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
+            let src_str = match CStr::from_ptr(src_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dst_str = match CStr::from_ptr(dst_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
 
-        let src_p = Path::new(src_str);
-        if !src_p.exists() {
-            return TTZipStatus::ErrFileNotFound;
-        }
-        let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
+            let src_p = Path::new(src_str);
+            if !src_p.exists() {
+                return TTZipStatus::ErrFileNotFound;
+            }
+            let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
 
-        let dst_p = Path::new(dst_str);
-        if let Some(parent) = dst_p.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
+            let dst_p = Path::new(dst_str);
+            if let Some(parent) = dst_p.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
 
-        let mut src_file = match File::open(src_p) {
-            Ok(f) => f,
-            Err(_) => return TTZipStatus::ErrOpenFailed,
-        };
+            let mut src_file = match File::open(src_p) {
+                Ok(f) => f,
+                Err(_) => return TTZipStatus::ErrOpenFailed,
+            };
 
-        let mut dst_file = match File::create(dst_p) {
-            Ok(f) => f,
-            Err(_) => return TTZipStatus::ErrOpenFailed,
-        };
+            let mut dst_file = match File::create(dst_p) {
+                Ok(f) => f,
+                Err(_) => return TTZipStatus::ErrOpenFailed,
+            };
 
-        let config = ZstdConfig {
-            level,
-            nb_workers,
-            job_size_mb,
-            overlap_log,
-            window_log,
-            enable_ldm,
-            enable_checksum: true,
-            ldm_hash_log: 0,
-            ldm_min_match: 0,
-            ldm_bucket_size_log: 0,
-            ldm_hash_rate_log: 0,
-        };
+            let config = ZstdConfig {
+                level,
+                nb_workers,
+                job_size_mb,
+                overlap_log,
+                window_log,
+                enable_ldm,
+                enable_checksum: true,
+                ldm_hash_log: 0,
+                ldm_min_match: 0,
+                ldm_bucket_size_log: 0,
+                ldm_hash_rate_log: 0,
+            };
 
 
-        let cb_wrapper = progress_callback.map(|cb| {
-            let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
-            move |processed_bytes: u64, _written: u64| -> bool {
-                cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+            let cb_wrapper = progress_callback.map(|cb| {
+                let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
+                move |processed_bytes: u64, _written: u64| -> bool {
+                    cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+                }
+            });
+
+            let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
+                Some(w) => Some(w),
+                None => None,
+            };
+
+            match zstd_compress_stream_pipe(&mut src_file, &mut dst_file, &config, cb_ref) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(status) => status,
             }
         });
 
-        let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
-            Some(w) => Some(w),
-            None => None,
-        };
-
-        match zstd_compress_stream_pipe(&mut src_file, &mut dst_file, &config, cb_ref) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(status) => status,
-        }
-    });
-
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zstd_decompress_file_stream(
     src_path: *const c_char,
     dst_path: *const c_char,
     progress_callback: TTZipProgressCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if src_path.is_null() || dst_path.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if src_path.is_null() || dst_path.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let src_str = match CStr::from_ptr(src_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dst_str = match CStr::from_ptr(dst_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
+            let src_str = match CStr::from_ptr(src_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dst_str = match CStr::from_ptr(dst_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
 
-        let src_p = Path::new(src_str);
-        if !src_p.exists() {
-            return TTZipStatus::ErrFileNotFound;
-        }
-        let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
+            let src_p = Path::new(src_str);
+            if !src_p.exists() {
+                return TTZipStatus::ErrFileNotFound;
+            }
+            let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
 
-        let dst_p = Path::new(dst_str);
-        if let Some(parent) = dst_p.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
+            let dst_p = Path::new(dst_str);
+            if let Some(parent) = dst_p.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
 
-        let mut src_file = match File::open(src_p) {
-            Ok(f) => f,
-            Err(_) => return TTZipStatus::ErrOpenFailed,
-        };
+            let mut src_file = match File::open(src_p) {
+                Ok(f) => f,
+                Err(_) => return TTZipStatus::ErrOpenFailed,
+            };
 
-        let mut dst_file = match File::create(dst_p) {
-            Ok(f) => f,
-            Err(_) => return TTZipStatus::ErrOpenFailed,
-        };
+            let mut dst_file = match File::create(dst_p) {
+                Ok(f) => f,
+                Err(_) => return TTZipStatus::ErrOpenFailed,
+            };
 
-        let cb_wrapper = progress_callback.map(|cb| {
-            let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
-            move |processed_bytes: u64, _written: u64| -> bool {
-                cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+            let cb_wrapper = progress_callback.map(|cb| {
+                let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
+                move |processed_bytes: u64, _written: u64| -> bool {
+                    cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+                }
+            });
+
+            let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
+                Some(w) => Some(w),
+                None => None,
+            };
+
+            match zstd_decompress_stream_pipe(&mut src_file, &mut dst_file, cb_ref) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(status) => status,
             }
         });
 
-        let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
-            Some(w) => Some(w),
-            None => None,
-        };
-
-        match zstd_decompress_stream_pipe(&mut src_file, &mut dst_file, cb_ref) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(status) => status,
-        }
-    });
-
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 // MARK: - Zstandard Dictionary C-ABI
@@ -304,7 +308,7 @@ pub unsafe extern "C" fn ttzip_rust_zstd_decompress_file_stream(
 /// - `sample_lens` must point to an array of `sample_count` sizes.
 /// - `out_dict` must point to at least `dict_capacity` writable bytes.
 /// - `out_dict_len` must point to a writable `size_t`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zstd_train_dict(
     sample_ptrs: *const *const u8,
     sample_lens: *const size_t,
@@ -358,7 +362,7 @@ pub unsafe extern "C" fn ttzip_rust_zstd_train_dict(
 /// - `dst` must point to `dst_capacity` writable bytes.
 /// - `dict` must point to `dict_len` readable dictionary bytes.
 /// - `out_len` must point to a writable `size_t`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zstd_dict_compress(
     src: *const u8,
     src_len: size_t,
@@ -410,7 +414,7 @@ pub unsafe extern "C" fn ttzip_rust_zstd_dict_compress(
 /// - `dst` must point to `dst_capacity` writable bytes.
 /// - `dict` must point to `dict_len` readable dictionary bytes.
 /// - `out_len` must point to a writable `size_t`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zstd_dict_decompress(
     src: *const u8,
     src_len: size_t,

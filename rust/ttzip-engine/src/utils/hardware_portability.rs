@@ -203,8 +203,10 @@ pub fn write_unaligned_be64(dst: &mut [u8], value: u64) {
 /// Caller must ensure `ptr` is valid for reads of at least 8 bytes.
 #[inline(always)]
 pub unsafe fn read_unaligned_le64_unchecked(ptr: *const u8) -> u64 {
-    let raw = std::ptr::read_unaligned(ptr as *const [u8; 8]);
-    u64::from_le_bytes(raw)
+    unsafe {
+        let raw = std::ptr::read_unaligned(ptr as *const [u8; 8]);
+        u64::from_le_bytes(raw)
+    }
 }
 
 /// Writes a 64-bit little-endian integer to a raw pointer without bounds checks.
@@ -213,7 +215,9 @@ pub unsafe fn read_unaligned_le64_unchecked(ptr: *const u8) -> u64 {
 /// Caller must ensure `ptr` is valid for writes of at least 8 bytes.
 #[inline(always)]
 pub unsafe fn write_unaligned_le64_unchecked(ptr: *mut u8, value: u64) {
-    std::ptr::write_unaligned(ptr as *mut [u8; 8], value.to_le_bytes());
+    unsafe {
+        std::ptr::write_unaligned(ptr as *mut [u8; 8], value.to_le_bytes());
+    }
 }
 
 // =============================================================================

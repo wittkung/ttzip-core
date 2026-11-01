@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "ttzip": {
-      "command": "ttzip",
-      "args": ["mcp"]
-    }
-  }
-}

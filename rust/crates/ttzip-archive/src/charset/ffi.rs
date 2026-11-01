@@ -9,7 +9,7 @@ use crate::types::TTZipStatus;
 use libc::{c_char, size_t};
 
 /// Detects character set encoding for given raw byte sequence and outputs null-terminated name.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_detect_charset(
     data: *const u8,
     data_len: size_t,
@@ -48,7 +48,7 @@ pub extern "C" fn ttzip_rust_detect_charset(
 }
 
 /// Sanitizes raw filename byte sequence into valid UTF-8 null-terminated string.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_sanitize_filename(
     data: *const u8,
     data_len: size_t,

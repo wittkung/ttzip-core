@@ -242,14 +242,16 @@ impl<'a> ForeignBorrowedBytes<'a> {
     /// The caller must ensure `ptr` is valid, non-null, properly aligned, and points to
     /// `len` readable bytes that remain valid for lifetime `'a`.
     pub unsafe fn from_raw_parts(ptr: *const u8, len: usize) -> Option<Self> {
-        if ptr.is_null() && len > 0 {
-            return None;
+        unsafe {
+            if ptr.is_null() && len > 0 {
+                return None;
+            }
+            if len == 0 {
+                return Some(Self { data: &[] });
+            }
+            let data = std::slice::from_raw_parts(ptr, len);
+            Some(Self { data })
         }
-        if len == 0 {
-            return Some(Self { data: &[] });
-        }
-        let data = std::slice::from_raw_parts(ptr, len);
-        Some(Self { data })
     }
 
     #[inline]

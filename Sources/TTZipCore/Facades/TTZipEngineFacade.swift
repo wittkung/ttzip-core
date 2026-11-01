@@ -242,7 +242,8 @@ extension TTZipEngineFacade {
             originalBytes: baseResult.originalBytes,
             compressedBytes: resolvedSize,
             durationSeconds: baseResult.durationSeconds,
-            throughputMBs: baseResult.throughputMBs
+            throughputMBs: baseResult.throughputMBs,
+            outcome: baseResult.outcome
         )
     }
 }
@@ -257,6 +258,24 @@ extension TTZipEngineFacade {
         destinationDir: String,
         password: String? = nil,
         autoVaultUnlock: Bool = true,
+        handling: CollisionHandling = .policy(.keepBoth),
+        progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
+    ) async throws -> ExtractResult {
+        try await quickExtract(
+            archivePath: archivePath, destinationDir: destinationDir,
+            password: password, autoVaultUnlock: autoVaultUnlock,
+            cachePasswordOnSuccess: true, handling: handling,
+            progress: progress, token: token
+        )
+    }
+
+    public func quickExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String? = nil,
+        autoVaultUnlock: Bool = true,
+        cachePasswordOnSuccess: Bool,
         handling: CollisionHandling = .policy(.keepBoth),
         progress: (@Sendable (ArchiveProgress) -> Void)? = nil,
         token: CancellationToken? = nil
@@ -303,9 +322,6 @@ extension TTZipEngineFacade {
                     progress: combinedProgress,
                     token: token
                 )
-                if token?.isCancelled() == true || Task.isCancelled {
-                    throw ArchiveError.cancelled
-                }
                 switch outcome.status {
                 case .stopped:
                     throw ArchiveError.extractionStopped
@@ -315,7 +331,7 @@ extension TTZipEngineFacade {
                     break
                 }
                 let elapsed = max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
-                if let pwd = candidate {
+                if cachePasswordOnSuccess, let pwd = candidate {
                     ArchivePasswordStore.shared.setPassword(pwd, for: archivePath)
                 }
                 return ExtractResult(
@@ -327,19 +343,28 @@ extension TTZipEngineFacade {
                     outcome: outcome
                 )
             } catch {
-                if token?.isCancelled() == true || Task.isCancelled {
-                    throw ArchiveError.cancelled
-                }
                 if let archiveErr = error as? ArchiveError {
+                    if archiveErr == .cancelled {
+                        throw archiveErr
+                    }
                     if !archiveErr.isPasswordRelated {
                         throw archiveErr
+                    }
+                    if token?.isCancelled() == true || Task.isCancelled {
+                        throw ArchiveError.cancelled
                     }
                     lastError = archiveErr
                     continue
                 }
                 let archiveErr = ArchiveError.from(error: error)
+                if archiveErr == .cancelled {
+                    throw archiveErr
+                }
                 if !archiveErr.isPasswordRelated {
                     throw archiveErr
+                }
+                if token?.isCancelled() == true || Task.isCancelled {
+                    throw ArchiveError.cancelled
                 }
                 lastError = archiveErr
             }

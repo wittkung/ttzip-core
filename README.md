@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="logo/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
+  <img src="docs/assets/AppIcon.png" alt="TTZip Logo" width="128" height="128" />
 </p>
 
 <p align="center">
@@ -16,28 +16,27 @@
 
 <p align="center">
   <a href="https://github.com/wittkung/ttzip-core"><img src="https://img.shields.io/badge/Architecture-Swift%206%20%2B%20Safe%20Rust-blue?style=flat-square" alt="Architecture" /></a>
-  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B%20%7C%20Cargo-dea584?style=flat-square&logo=rust" alt="Rust Cargo" /></a>
+  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-2024%20%7C%201.85%2B-dea584?style=flat-square&logo=rust" alt="Rust Cargo" /></a>
   <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-6.0%20Strict-orange?style=flat-square&logo=swift" alt="Swift 6.0" /></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/macOS-14.0%2B%20(Sonoma)-blue?style=flat-square&logo=apple" alt="macOS 14+" /></a>
   <a href="https://en.wikipedia.org/wiki/Apple_silicon"><img src="https://img.shields.io/badge/Vector%20ISA-ARM64%20NEON%20%2B%20x86__64%20AVX2-purple?style=flat-square" alt="Hardware Vector" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause%20%7C%20Apache--2.0-blue.svg?style=flat-square" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg?style=flat-square" alt="License" /></a>
 </p>
 
 ---
 
 ## 📖 Architecture & Design Documentation
 
-> **Scope and authority**: This README introduces the Core SDK. Start with the [product doc-twin index](../docs/twin/SPEC_INDEX.md) for current product architecture and cross-module contracts. The v2 whitepapers below retain historical context; they do not replace current process boundaries, VFS wiring, or acceptance records.
+> **Scope and authority**: This README introduces the Core SDK. The whitepapers below carry the current product architecture and cross-module contracts for this repository; they do not replace current process boundaries, VFS wiring, or acceptance records.
 
 - **[System Architecture Whitepaper (English)](ARCHITECTURE.md)**: Deep dive into the Dual-Core UniFFI microkernel, memory safety, APFS CoW rollback, and architectural testing invariants.
 - **[系统架构与工程规范白皮书 (简体中文)](ARCHITECTURE_zh.md)**: 完整的中文系统架构设计白皮书与工程治理规范。
-- **[Android Device Management & VFS Pipeline Guide](../docs/android_device_management.md)**: Native macOS driver-free MTP 1.1 / ADB SYNC dual-mode communication, Scoped Storage penetration, and Stream-First archive pipeline.
 
 ---
 
 ## 🌟 Key Highlights & Architectural Principles
 
-- **🚀 Dual-Core Architecture (Swift 6 + Safe Rust Microkernel)**: High-throughput, memory-safe Rust native engine (`rust/ttzip-engine` compiled into `TTZipVendor.xcframework`), bridged via a standardized zero-overhead C-ABI & UniFFI (`CTTZipBridge`), orchestrated by Swift 6 complete concurrency (`TTZipCore`), and presented via POSIX CLI (`ttzip`), telemetry benchmark suite (`ttzip-bench`), and native desktop applications (`apple/TTZipApp`).
+- **🚀 Dual-Core Architecture (Swift 6 + Safe Rust Microkernel)**: High-throughput, memory-safe Rust native engine (`rust/ttzip-engine` compiled into `TTZipVendor.xcframework`), bridged via a standardized zero-overhead C-ABI & UniFFI (`CTTZipBridge`), orchestrated by Swift 6 complete concurrency (`TTZipCore`), and presented via POSIX CLI (`ttzip`), telemetry benchmark suite (`ttzip-bench`), and native desktop applications ([`wittkung/ttzip-apple`](https://github.com/wittkung/ttzip-apple)).
 - **⚡️ 63+ GB/s Hardware Vector Dual-ISA Acceleration**:
   - **63,232 MB/s (63.2 GB/s) CRC32**: Hardware polynomial multiplication (`vmull_p64` / `__crc32d` on ARM64, `_mm_clmulepi64_si128` on x86_64).
   - **36,017 MB/s (36.0 GB/s) CRC64**: Dual-ISA wide-folded polynomial reduction (ECMA-182).
@@ -302,11 +301,11 @@ We actively contribute verified hardware acceleration routines back to foundatio
 
 ## 📄 License & Community Model
  
-TTZip Core is dual-licensed under the **BSD 3-Clause License** and the **Apache License (Version 2.0)**:
- 
-- See [LICENSE-BSD](LICENSE-BSD) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
-- **100% Open Source**: All source code in `ttzip-core` is available for commercial, academic, and personal use under OSI-approved licenses.
-- **Desktop Application Licensing**: For the macOS desktop application (`ttzip-apple`), see [apple/LICENSE](../apple/LICENSE) (GPL-3.0-or-later).
+TTZip Core is licensed under the **BSD 3-Clause License**:
+
+- See [LICENSE](LICENSE) for the complete terms.
+- **100% Open Source**: All source code in `ttzip-core` is available for commercial, academic, and personal use under an OSI-approved license.
+- **Desktop Application Licensing**: The macOS desktop application ships separately from [`wittkung/ttzip-apple`](https://github.com/wittkung/ttzip-apple) under the MIT OR Apache-2.0 dual license.
 - Commercial Inquiries: `witt.w.kung@gmail.com`.
  
 ---

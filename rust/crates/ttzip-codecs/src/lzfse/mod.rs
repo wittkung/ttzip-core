@@ -14,7 +14,7 @@ pub const DEFAULT_LZVN_THRESHOLD: usize = 4096;
 
 // MARK: - Native C LZFSE & LZVN Bindings
 
-extern "C" {
+unsafe extern "C" {
     fn lzfse_encode_scratch_size() -> libc::size_t;
     fn lzfse_encode_buffer(
         dst_buffer: *mut u8,

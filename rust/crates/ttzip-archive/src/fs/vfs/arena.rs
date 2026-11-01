@@ -29,12 +29,12 @@ impl Hasher for FxHasher {
             0x9e37_79b9
         };
         let mut hash = self.hash;
-        let mut chunks = bytes.chunks_exact(std::mem::size_of::<usize>());
-        for chunk in chunks.by_ref() {
-            let word = usize::from_ne_bytes(chunk.try_into().unwrap());
+        let (chunks, remainder) = bytes.as_chunks::<{ std::mem::size_of::<usize>() }>();
+        for chunk in chunks {
+            let word = usize::from_ne_bytes(*chunk);
             hash = (hash.rotate_left(5) ^ word).wrapping_mul(K);
         }
-        for &byte in chunks.remainder() {
+        for &byte in remainder {
             hash = (hash.rotate_left(5) ^ (byte as usize)).wrapping_mul(K);
         }
         self.hash = hash;

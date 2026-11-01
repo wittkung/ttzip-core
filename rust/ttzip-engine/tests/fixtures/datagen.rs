@@ -110,12 +110,11 @@ impl RdgRng {
     /// Fills destination buffer with uniform pseudo-random bytes.
     #[inline]
     pub fn fill_bytes(&mut self, dst: &mut [u8]) {
-        let mut chunks = dst.chunks_exact_mut(4);
-        for chunk in chunks.by_ref() {
+        let (chunks, remainder) = dst.as_chunks_mut::<4>();
+        for chunk in chunks.iter_mut() {
             let val = self.next_u32().to_le_bytes();
             chunk.copy_from_slice(&val);
         }
-        let remainder = chunks.into_remainder();
         if !remainder.is_empty() {
             let val = self.next_u32().to_le_bytes();
             remainder.copy_from_slice(&val[..remainder.len()]);

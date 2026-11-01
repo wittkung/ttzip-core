@@ -46,7 +46,7 @@ fn read_fixture(name: &str) -> Vec<u8> {
 }
 
 macro_rules! require_fixture {
-    ($name:expr) => { read_fixture($name) };
+    ($name:expr_2021) => { read_fixture($name) };
 }
 
 fn assert_owned_plaintexts(reader: &SevenZReader<'_>, fixture: &str, password: Option<&str>) {

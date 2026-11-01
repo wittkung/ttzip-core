@@ -16,7 +16,7 @@ use std::ffi::CStr;
 use std::panic::catch_unwind;
 use std::path::Path;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_compress(
     src: *const u8,
     src_len: size_t,
@@ -48,7 +48,7 @@ pub extern "C" fn ttzip_rust_snappy_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_decompress(
     src: *const u8,
     src_len: size_t,
@@ -80,12 +80,12 @@ pub extern "C" fn ttzip_rust_snappy_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_max_compressed_length(src_len: size_t) -> size_t {
     snappy_compress_bound(src_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_uncompressed_length(
     src: *const u8,
     src_len: size_t,
@@ -110,7 +110,7 @@ pub extern "C" fn ttzip_rust_snappy_uncompressed_length(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_validate(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(in_slice) => snappy_validate(in_slice),
@@ -118,7 +118,7 @@ pub extern "C" fn ttzip_rust_snappy_validate(src: *const u8, src_len: size_t) ->
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_validate_bounded(
     src: *const u8,
     src_len: size_t,
@@ -130,7 +130,7 @@ pub extern "C" fn ttzip_rust_snappy_validate_bounded(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_validate_raw(
     src: *const u8,
     src_len: size_t,
@@ -142,7 +142,7 @@ pub extern "C" fn ttzip_rust_snappy_validate_raw(
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_frame_validate(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(in_slice) => snappy_frame_validate(in_slice),
@@ -150,7 +150,7 @@ pub extern "C" fn ttzip_rust_snappy_frame_validate(src: *const u8, src_len: size
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_validate_framed(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(in_slice) => snappy_frame_validate(in_slice),
@@ -158,7 +158,7 @@ pub extern "C" fn ttzip_rust_snappy_validate_framed(src: *const u8, src_len: siz
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_frame_encode(
     src: *const u8,
     src_len: size_t,
@@ -190,7 +190,7 @@ pub extern "C" fn ttzip_rust_snappy_frame_encode(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_frame_decode(
     src: *const u8,
     src_len: size_t,
@@ -222,12 +222,12 @@ pub extern "C" fn ttzip_rust_snappy_frame_decode(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_frame_max_encoded_length(src_len: size_t) -> size_t {
     snappy_frame_max_encoded_length(src_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_snappy_is_framed(src: *const u8, src_len: size_t) -> bool {
     match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => is_framed_snappy(slice),
@@ -235,98 +235,102 @@ pub extern "C" fn ttzip_rust_snappy_is_framed(src: *const u8, src_len: size_t) -
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_snappy_compress_file_stream(
     src_path: *const c_char,
     dst_path: *const c_char,
     progress_callback: TTZipProgressCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if src_path.is_null() || dst_path.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if src_path.is_null() || dst_path.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let src_str = match CStr::from_ptr(src_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dst_str = match CStr::from_ptr(dst_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
+            let src_str = match CStr::from_ptr(src_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dst_str = match CStr::from_ptr(dst_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
 
-        let src_p = Path::new(src_str);
-        if !src_p.exists() {
-            return TTZipStatus::ErrFileNotFound;
-        }
-        let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
+            let src_p = Path::new(src_str);
+            if !src_p.exists() {
+                return TTZipStatus::ErrFileNotFound;
+            }
+            let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
 
-        let cb_wrapper = progress_callback.map(|cb| {
-            let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
-            move |processed_bytes: u64, _written: u64| -> bool {
-                cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+            let cb_wrapper = progress_callback.map(|cb| {
+                let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
+                move |processed_bytes: u64, _written: u64| -> bool {
+                    cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+                }
+            });
+
+            let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
+                Some(w) => Some(w),
+                None => None,
+            };
+
+            match snappy_compress_file(src_p, Path::new(dst_str), cb_ref) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(status) => status,
             }
         });
 
-        let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
-            Some(w) => Some(w),
-            None => None,
-        };
-
-        match snappy_compress_file(src_p, Path::new(dst_str), cb_ref) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(status) => status,
-        }
-    });
-
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_snappy_decompress_file_stream(
     src_path: *const c_char,
     dst_path: *const c_char,
     progress_callback: TTZipProgressCallback,
     user_data: *mut c_void,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if src_path.is_null() || dst_path.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
+    unsafe {
+        let result = catch_unwind(|| {
+            if src_path.is_null() || dst_path.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
 
-        let src_str = match CStr::from_ptr(src_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let dst_str = match CStr::from_ptr(dst_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
+            let src_str = match CStr::from_ptr(src_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let dst_str = match CStr::from_ptr(dst_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
 
-        let src_p = Path::new(src_str);
-        if !src_p.exists() {
-            return TTZipStatus::ErrFileNotFound;
-        }
-        let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
+            let src_p = Path::new(src_str);
+            if !src_p.exists() {
+                return TTZipStatus::ErrFileNotFound;
+            }
+            let total_size = src_p.metadata().map(|m| m.len()).unwrap_or(0);
 
-        let cb_wrapper = progress_callback.map(|cb| {
-            let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
-            move |processed_bytes: u64, _written: u64| -> bool {
-                cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+            let cb_wrapper = progress_callback.map(|cb| {
+                let src_cstr = std::ffi::CString::new(src_str).unwrap_or_default();
+                move |processed_bytes: u64, _written: u64| -> bool {
+                    cb(processed_bytes, total_size, src_cstr.as_ptr(), user_data)
+                }
+            });
+
+            let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
+                Some(w) => Some(w),
+                None => None,
+            };
+
+            match snappy_decompress_file(src_p, Path::new(dst_str), cb_ref) {
+                Ok(_) => TTZipStatus::Ok,
+                Err(status) => status,
             }
         });
 
-        let cb_ref: Option<&dyn Fn(u64, u64) -> bool> = match &cb_wrapper {
-            Some(w) => Some(w),
-            None => None,
-        };
-
-        match snappy_decompress_file(src_p, Path::new(dst_str), cb_ref) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(status) => status,
-        }
-    });
-
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }

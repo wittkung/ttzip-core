@@ -3,8 +3,8 @@ name = "ttzip-core"
 description = "Cross-platform archiving & compression micro-kernel"
 
 [project.min_tools]
-rustc = "1.80"
-cargo = "1.80"
+rustc = "1.85"
+cargo = "1.85"
 
 [env]
 RUST_BACKTRACE = "1"

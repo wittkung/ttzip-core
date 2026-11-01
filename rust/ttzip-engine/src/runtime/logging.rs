@@ -359,12 +359,14 @@ mod tests {
         _line: i32,
         _user_data: *mut c_void,
     ) {
-        let target_str = std::ffi::CStr::from_ptr(target).to_str().unwrap();
-        if target_str == "test::module" {
-            LOG_CALL_COUNT.fetch_add(1, Ordering::SeqCst);
-            assert_eq!(level, TTZipLogLevel::Warning);
-            let msg_str = std::ffi::CStr::from_ptr(msg).to_str().unwrap();
-            assert_eq!(msg_str, "Disk space low warning");
+        unsafe {
+            let target_str = std::ffi::CStr::from_ptr(target).to_str().unwrap();
+            if target_str == "test::module" {
+                LOG_CALL_COUNT.fetch_add(1, Ordering::SeqCst);
+                assert_eq!(level, TTZipLogLevel::Warning);
+                let msg_str = std::ffi::CStr::from_ptr(msg).to_str().unwrap();
+                assert_eq!(msg_str, "Disk space low warning");
+            }
         }
     }
 
@@ -398,13 +400,15 @@ mod tests {
         _line: i32,
         _user_data: *mut c_void,
     ) {
-        if target.is_null() || msg.is_null() {
-            return;
-        }
-        let target_str = std::ffi::CStr::from_ptr(target).to_str().unwrap_or("");
-        let msg_str = std::ffi::CStr::from_ptr(msg).to_str().unwrap_or("");
-        if target_str.contains("tracing_test") || msg_str.contains("tracing test event") || msg_str.contains("test_span") {
-            TRACING_EVENT_COUNT.fetch_add(1, Ordering::SeqCst);
+        unsafe {
+            if target.is_null() || msg.is_null() {
+                return;
+            }
+            let target_str = std::ffi::CStr::from_ptr(target).to_str().unwrap_or("");
+            let msg_str = std::ffi::CStr::from_ptr(msg).to_str().unwrap_or("");
+            if target_str.contains("tracing_test") || msg_str.contains("tracing test event") || msg_str.contains("test_span") {
+                TRACING_EVENT_COUNT.fetch_add(1, Ordering::SeqCst);
+            }
         }
     }
 

@@ -419,11 +419,13 @@ fn test_vfs_tree_rendering_and_fuzzy_search() {
             result: *const TTZipVfsSearchResultRaw,
             user_data: *mut libc::c_void,
         ) -> bool {
-            if !result.is_null() {
-                let cnt = &mut *(user_data as *mut usize);
-                *cnt += 1;
+            unsafe {
+                if !result.is_null() {
+                    let cnt = &mut *(user_data as *mut usize);
+                    *cnt += 1;
+                }
+                true
             }
-            true
         }
 
         let st_search = ttzip_rust_vfs_fuzzy_search(

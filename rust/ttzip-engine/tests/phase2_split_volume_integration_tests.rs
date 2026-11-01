@@ -17,11 +17,13 @@ unsafe extern "C" fn test_progress_cb(
     _entry: *const c_char,
     user_data: *mut c_void,
 ) -> bool {
-    if !user_data.is_null() {
-        let counter = &mut *(user_data as *mut usize);
-        *counter += 1;
+    unsafe {
+        if !user_data.is_null() {
+            let counter = &mut *(user_data as *mut usize);
+            *counter += 1;
+        }
+        true
     }
-    true
 }
 
 #[test]

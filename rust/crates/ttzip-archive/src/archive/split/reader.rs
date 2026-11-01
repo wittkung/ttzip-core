@@ -291,7 +291,7 @@ impl Read for VirtualMultiVolumeReader {
                 }
             }
 
-            let (_, ref mut file) = self.active_file.as_mut().unwrap();
+            let (_, file) = self.active_file.as_mut().unwrap();
             let bytes_read = file.read(&mut buf[total_read..total_read + to_read])?;
             if bytes_read == 0 {
                 break;

@@ -49,7 +49,7 @@ pub fn test_corrupted_rar5_block_hdr_fail_loop_zero_deadlock() {
     let res = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
     let elapsed = start_time.elapsed();
 
-    // Must never spin forever; must finish within 100ms
+    // Malformed input must terminate within the corrupted-input safety deadline.
     assert!(
         elapsed < TEST_CORRUPTED_SAFETY_TIMEOUT,
         "RAR5 malformed block header must terminate immediately without spinning (took {:?})",

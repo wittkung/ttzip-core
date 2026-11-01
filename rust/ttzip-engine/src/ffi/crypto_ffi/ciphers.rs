@@ -15,7 +15,7 @@ use std::panic::catch_unwind;
 /// - `key` must point to 32 bytes of valid readable memory.
 /// - `src` must point to `len` bytes of valid readable memory.
 /// - `dst` must point to `len` bytes of valid writable memory.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_aes256_ctr(
     key: *const u8,
     initial_counter: u64,
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn ttzip_rust_aes256_ctr(
 /// - `iv` must point to 16 bytes of valid readable memory.
 /// - `src` must point to `len` bytes of valid readable memory (`len % 16 == 0`).
 /// - `dst` must point to `len` bytes of valid writable memory.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_aes256_cbc_encrypt(
     key: *const u8,
     iv: *const u8,
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn ttzip_rust_aes256_cbc_encrypt(
 /// - `iv` must point to 16 bytes of valid readable memory.
 /// - `src` must point to `len` bytes of valid readable memory (`len % 16 == 0`).
 /// - `dst` must point to `len` bytes of valid writable memory.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_aes256_cbc_decrypt(
     key: *const u8,
     iv: *const u8,
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn ttzip_rust_aes256_cbc_decrypt(
 /// - `password` must be a valid null-terminated C-string.
 /// - If `salt_len > 0`, `salt` must point to `salt_len` readable bytes.
 /// - `out_key` must point to 32 writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_7z_kdf_sha256(
     password: *const libc::c_char,
     salt: *const u8,
@@ -183,7 +183,7 @@ pub unsafe extern "C" fn ttzip_rust_7z_kdf_sha256(
 /// # Safety
 /// - `password` must be a valid null-terminated C-string.
 /// - `key0`, `key1`, `key2` must point to writable `u32` variables.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zipcrypto_init_keys(
     password: *const libc::c_char,
     key0: *mut u32,
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_init_keys(
 /// - `key0`, `key1`, `key2` must point to readable/writable `u32` key variables.
 /// - `src` must point to at least `len` valid readable bytes.
 /// - `dst` must point to at least `len` valid writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zipcrypto_decrypt_stream(
     key0: *mut u32,
     key1: *mut u32,
@@ -262,7 +262,7 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_decrypt_stream(
 /// - `key0`, `key1`, `key2` must point to readable/writable `u32` key variables.
 /// - `src` must point to at least `len` valid readable bytes.
 /// - `dst` must point to at least `len` valid writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_zipcrypto_encrypt_stream(
     key0: *mut u32,
     key1: *mut u32,
@@ -308,7 +308,7 @@ pub unsafe extern "C" fn ttzip_rust_zipcrypto_encrypt_stream(
 /// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
 /// - `dst` must point to `len` writable bytes.
 /// - `out_tag` must point to 16 writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_chacha20_poly1305_encrypt(
     key: *const u8,
     nonce: *const u8,
@@ -360,7 +360,7 @@ pub unsafe extern "C" fn ttzip_rust_chacha20_poly1305_encrypt(
 /// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
 /// - `tag` must point to 16 readable bytes.
 /// - `dst` must point to `len` writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_chacha20_poly1305_decrypt(
     key: *const u8,
     nonce: *const u8,

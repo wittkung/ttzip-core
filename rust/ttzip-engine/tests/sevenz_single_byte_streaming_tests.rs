@@ -221,7 +221,7 @@ impl Default for RawLzmaStream {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     fn lzma_lzma_preset(options: *mut LzmaOptionsLzma, preset: u32) -> bool;
     fn lzma_alone_encoder(strm: *mut RawLzmaStream, options: *const LzmaOptionsLzma) -> libc::c_int;
     fn lzma_code(strm: *mut RawLzmaStream, action: libc::c_int) -> libc::c_int;

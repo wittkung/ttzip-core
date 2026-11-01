@@ -212,7 +212,7 @@ fn find_signature(data: &[u8], sig: &[u8]) -> Option<usize> {
 }
 
 /// C-ABI: Applies a deterministic mutation operator to an input buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_fuzz_mutate(
     data: *const u8,
     len: usize,
@@ -223,43 +223,45 @@ pub unsafe extern "C" fn ttzip_rust_fuzz_mutate(
     out_len: *mut usize,
     next_seed: *mut u64,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if data.is_null() && len > 0 {
-            return TTZipStatus::ErrInvalidParam;
-        }
-        if out_len.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-
-        let op = match MutationOperator::from_u32(op_index) {
-            Some(o) => o,
-            None => return TTZipStatus::ErrInvalidParam,
-        };
-
-        let mut prng = SplitMix64::new(seed);
-        let src = if len > 0 {
-            std::slice::from_raw_parts(data, len)
-        } else {
-            &[]
-        };
-
-        let mutated = mutate_stream(src, op, &mut prng);
-        *out_len = mutated.len();
-
-        if !next_seed.is_null() {
-            *next_seed = prng.state;
-        }
-
-        if !out_buf.is_null() && out_cap > 0 {
-            if mutated.len() > out_cap {
-                return TTZipStatus::ErrOutOfMemory;
+    unsafe {
+        let result = catch_unwind(|| {
+            if data.is_null() && len > 0 {
+                return TTZipStatus::ErrInvalidParam;
             }
-            if !mutated.is_empty() {
-                std::ptr::copy_nonoverlapping(mutated.as_ptr(), out_buf, mutated.len());
+            if out_len.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-        }
 
-        TTZipStatus::Ok
-    });
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let op = match MutationOperator::from_u32(op_index) {
+                Some(o) => o,
+                None => return TTZipStatus::ErrInvalidParam,
+            };
+
+            let mut prng = SplitMix64::new(seed);
+            let src = if len > 0 {
+                std::slice::from_raw_parts(data, len)
+            } else {
+                &[]
+            };
+
+            let mutated = mutate_stream(src, op, &mut prng);
+            *out_len = mutated.len();
+
+            if !next_seed.is_null() {
+                *next_seed = prng.state;
+            }
+
+            if !out_buf.is_null() && out_cap > 0 {
+                if mutated.len() > out_cap {
+                    return TTZipStatus::ErrOutOfMemory;
+                }
+                if !mutated.is_empty() {
+                    std::ptr::copy_nonoverlapping(mutated.as_ptr(), out_buf, mutated.len());
+                }
+            }
+
+            TTZipStatus::Ok
+        });
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }

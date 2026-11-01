@@ -7,7 +7,7 @@
 //! inhibition, and Darwin malloc zone dirty cache purging.
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn setiopolicy_np(iotype: libc::c_int, scope: libc::c_int, policy: libc::c_int) -> libc::c_int;
     fn malloc_zone_pressure_relief(zone: *mut libc::c_void, goal: libc::size_t) -> libc::size_t;
 }

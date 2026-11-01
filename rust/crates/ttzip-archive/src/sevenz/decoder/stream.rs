@@ -304,7 +304,7 @@ where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
     match decoder {
-        FolderStreamDecoder::Lzma2(ref mut dstream) => pump_lzma2_stream(
+        FolderStreamDecoder::Lzma2(dstream) => pump_lzma2_stream(
             dstream,
             plain_slice,
             out_chunk,
@@ -314,8 +314,8 @@ where
             sink,
         ),
         FolderStreamDecoder::Lzma1 {
-            ref mut decoder,
-            ref mut finished,
+            decoder,
+            finished,
         } => {
             if *finished {
                 return Ok(true);

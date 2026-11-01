@@ -14,7 +14,7 @@ pub type ArchiveWriteCallback = unsafe extern "C" fn(a: *mut c_void, client_data
 pub type ArchiveFreeCallback = unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void) -> c_int;
 
 #[allow(dead_code)]
-extern "C" {
+unsafe extern "C" {
     pub fn archive_read_new() -> *mut c_void;
     pub fn archive_read_support_format_all(a: *mut c_void) -> c_int;
     pub fn archive_read_support_format_raw(a: *mut c_void) -> c_int;
@@ -134,7 +134,9 @@ extern "C" {
     ) -> c_int;
     pub fn archive_write_set_passphrase(a: *mut c_void, passphrase: *const c_char) -> c_int;
     pub fn archive_write_set_options(a: *mut c_void, opts: *const c_char) -> c_int;
+    pub fn archive_write_set_bytes_in_last_block(a: *mut c_void, bytes: c_int) -> c_int;
     pub fn archive_write_open_filename(a: *mut c_void, filename: *const c_char) -> c_int;
+    pub fn archive_write_open_fd(a: *mut c_void, fd: c_int) -> c_int;
     pub fn archive_write_open2(
         a: *mut c_void,
         client_data: *mut c_void,
@@ -159,17 +161,19 @@ extern "C" {
 /// `a` must be a valid pointer to a libarchive struct or null.
 #[allow(dead_code)]
 pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
-    if a.is_null() {
-        return None;
+    unsafe {
+        if a.is_null() {
+            return None;
+        }
+        let err_ptr = archive_error_string(a);
+        if err_ptr.is_null() {
+            return None;
+        }
+        std::ffi::CStr::from_ptr(err_ptr)
+            .to_str()
+            .ok()
+            .map(|s| s.to_string())
     }
-    let err_ptr = archive_error_string(a);
-    if err_ptr.is_null() {
-        return None;
-    }
-    std::ffi::CStr::from_ptr(err_ptr)
-        .to_str()
-        .ok()
-        .map(|s| s.to_string())
 }
 
 /// Formats the libarchive error with errno and message into a readable string.
@@ -178,14 +182,16 @@ pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
 /// `a` must be a valid pointer to a libarchive struct or null.
 #[allow(dead_code)]
 pub unsafe fn format_archive_error(a: *mut c_void) -> String {
-    if a.is_null() {
-        return "libarchive handle is null".to_string();
-    }
-    let err_no = archive_errno(a);
-    let err_str = get_archive_error_string(a).unwrap_or_else(|| "unknown error".to_string());
-    if err_no != 0 {
-        format!("libarchive error (errno {}): {}", err_no, err_str)
-    } else {
-        format!("libarchive error: {}", err_str)
+    unsafe {
+        if a.is_null() {
+            return "libarchive handle is null".to_string();
+        }
+        let err_no = archive_errno(a);
+        let err_str = get_archive_error_string(a).unwrap_or_else(|| "unknown error".to_string());
+        if err_no != 0 {
+            format!("libarchive error (errno {}): {}", err_no, err_str)
+        } else {
+            format!("libarchive error: {}", err_str)
+        }
     }
 }

@@ -19,7 +19,7 @@ use crate::types::{ProgressAtomicSheet, TTZipExtractOptions, TTZipStatus};
 use libc::{c_int, c_void, mode_t};
 use std::sync::atomic::Ordering;
 
-extern "C" {
+unsafe extern "C" {
     fn archive_filter_bytes(a: *mut c_void, filter_num: c_int) -> i64;
 }
 
@@ -500,276 +500,278 @@ unsafe fn extract_from_archive_handle(
     options: &TTZipExtractOptions,
     sheet: Option<&ProgressAtomicSheet>,
 ) -> Result<u64, TTZipStatus> {
-    libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
+    unsafe {
+        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
 
-    let local_sheet = ProgressAtomicSheet::new();
-    let active_sheet = sheet.unwrap_or(&local_sheet);
+        let local_sheet = ProgressAtomicSheet::new();
+        let active_sheet = sheet.unwrap_or(&local_sheet);
 
-    if active_sheet.total_bytes.load(Ordering::Relaxed) == 0 {
-        let scanned = estimate_or_scan_total_uncompressed(archive_path, options.password);
-        if scanned > 0 {
-            active_sheet.set_total(scanned);
+        if active_sheet.total_bytes.load(Ordering::Relaxed) == 0 {
+            let scanned = estimate_or_scan_total_uncompressed(archive_path, options.password);
+            if scanned > 0 {
+                active_sheet.set_total(scanned);
+            }
         }
-    }
 
-    if active_sheet.is_cancelled() {
-        return Err(TTZipStatus::Cancelled);
-    }
-
-    let jail = DirJail::open(destination_path)?;
-    let mut engine = SafeExtractEngine::for_root(destination_path);
-    let mut entry: *mut c_void = std::ptr::null_mut();
-    let mut total_processed: u64 = 0;
-    let mut entries_seen: usize = 0;
-    let mut deferred_hardlinks = crate::fs::abort_guard::DeferredHardlinks::default();
-    let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
-
-    loop {
         if active_sheet.is_cancelled() {
             return Err(TTZipStatus::Cancelled);
         }
-        let hdr_rc = archive_read_next_header(a, &mut entry);
-        if hdr_rc == 1 {
-            break;
-        }
-        if hdr_rc == -10 {
-            continue;
-        }
-        if hdr_rc != 0 {
-            if let Some(err_str) = get_archive_error_string(a) {
-                let lower = err_str.to_lowercase();
-                if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
-                    return Err(TTZipStatus::ErrInvalidPassword);
+
+        let jail = DirJail::open(destination_path)?;
+        let mut engine = SafeExtractEngine::for_root(destination_path);
+        let mut entry: *mut c_void = std::ptr::null_mut();
+        let mut total_processed: u64 = 0;
+        let mut entries_seen: usize = 0;
+        let mut deferred_hardlinks = crate::fs::abort_guard::DeferredHardlinks::default();
+        let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
+
+        loop {
+            if active_sheet.is_cancelled() {
+                return Err(TTZipStatus::Cancelled);
+            }
+            let hdr_rc = archive_read_next_header(a, &mut entry);
+            if hdr_rc == 1 {
+                break;
+            }
+            if hdr_rc == -10 {
+                continue;
+            }
+            if hdr_rc != 0 {
+                if let Some(err_str) = get_archive_error_string(a) {
+                    let lower = err_str.to_lowercase();
+                    if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
+                        return Err(TTZipStatus::ErrInvalidPassword);
+                    }
                 }
+                return Err(TTZipStatus::ErrCorruptHeader);
             }
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        if entry.is_null() {
-            break;
-        }
-        let raw_path = archive_entry_pathname(entry);
-        if raw_path.is_null() {
-            archive_read_data_skip(a);
-            continue;
-        }
-
-        let entry_rel_str = match CStr::from_ptr(raw_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return Err(TTZipStatus::ErrSecurityViolation),
-        };
-
-        let mut clean_rel_str = entry_rel_str;
-        if clean_rel_str.ends_with(";1") {
-            clean_rel_str = &clean_rel_str[..clean_rel_str.len() - 2];
-        }
-        let root_check = clean_rel_str.trim_start_matches('/');
-        if root_check.is_empty() || root_check == "." || root_check == "./" {
-            if clean_rel_str.contains('\\') {
-                return Err(TTZipStatus::ErrSecurityViolation);
+            if entry.is_null() {
+                break;
             }
+            let raw_path = archive_entry_pathname(entry);
+            if raw_path.is_null() {
+                archive_read_data_skip(a);
+                continue;
+            }
+
+            let entry_rel_str = match CStr::from_ptr(raw_path).to_str() {
+                Ok(s) => s,
+                Err(_) => return Err(TTZipStatus::ErrSecurityViolation),
+            };
+
+            let mut clean_rel_str = entry_rel_str;
+            if clean_rel_str.ends_with(";1") {
+                clean_rel_str = &clean_rel_str[..clean_rel_str.len() - 2];
+            }
+            let root_check = clean_rel_str.trim_start_matches('/');
+            if root_check.is_empty() || root_check == "." || root_check == "./" {
+                if clean_rel_str.contains('\\') {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+                entries_seen += 1;
+                archive_read_data_skip(a);
+                continue;
+            }
+
+            // Invariant II: ZipSlip & Security Path Sanitization
+            let target_path = sanitize_and_validate_path(destination_path, clean_rel_str)?;
             entries_seen += 1;
-            archive_read_data_skip(a);
-            continue;
-        }
 
-        // Invariant II: ZipSlip & Security Path Sanitization
-        let target_path = sanitize_and_validate_path(destination_path, clean_rel_str)?;
-        entries_seen += 1;
+            let size = archive_entry_size(entry).max(0) as u64;
+            let mode = archive_entry_mode(entry) as u32;
+            let mtime = archive_entry_mtime(entry) as i64;
+            let filetype = archive_entry_filetype(entry);
+            let is_symlink = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFLNK as mode_t);
+            let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
+                || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
+                || entry_rel_str.ends_with('/');
 
-        let size = archive_entry_size(entry).max(0) as u64;
-        let mode = archive_entry_mode(entry) as u32;
-        let mtime = archive_entry_mtime(entry) as i64;
-        let filetype = archive_entry_filetype(entry);
-        let is_symlink = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFLNK as mode_t);
-        let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-            || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-            || entry_rel_str.ends_with('/');
+            let is_enc = archive_entry_is_data_encrypted(entry) != 0
+                || archive_entry_is_metadata_encrypted(entry) != 0;
+            if is_enc && options.password.is_null() {
+                return Err(TTZipStatus::ErrInvalidPassword);
+            }
 
-        let is_enc = archive_entry_is_data_encrypted(entry) != 0
-            || archive_entry_is_metadata_encrypted(entry) != 0;
-        if is_enc && options.password.is_null() {
-            return Err(TTZipStatus::ErrInvalidPassword);
-        }
+            if options.dry_run {
+                if !is_dir && !is_symlink && size > 0 {
+                    let mut block_ptr: *const c_void = std::ptr::null();
+                    let mut block_size: libc::size_t = 0;
+                    let mut block_offset: i64 = 0;
+                    let r = archive_read_data_block(
+                        a,
+                        &mut block_ptr,
+                        &mut block_size,
+                        &mut block_offset,
+                    );
+                    if r < 0 {
+                        return Err(TTZipStatus::ErrInvalidPassword);
+                    }
+                    archive_read_data_skip(a);
+                } else {
+                    archive_read_data_skip(a);
+                }
+                let total_done = active_sheet.add_processed(size);
+                total_processed = total_done;
+                if let Some(cb) = options.progress_callback {
+                    let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
+                    if !cb(total_done, total_target, raw_path, options.user_data) {
+                        active_sheet.cancel();
+                        return Err(TTZipStatus::Cancelled);
+                    }
+                }
+                continue;
+            }
 
-        if options.dry_run {
-            if !is_dir && !is_symlink && size > 0 {
+            let hardlink_rel: Option<String> = {
+                let hl_raw = archive_entry_hardlink(entry);
+                if !hl_raw.is_null() {
+                    let s = CStr::from_ptr(hl_raw)
+                        .to_str()
+                        .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+                    if !s.trim_start_matches('/').is_empty() && s.trim_start_matches('/') != "." {
+                        let _ = sanitize_and_validate_path(destination_path, s)?;
+                        Some(s.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            let entry_comps = DirJail::extract_clean_components(clean_rel_str)?;
+            deferred_hardlinks.invalidate_destination(&entry_comps);
+
+            if is_symlink {
+                let symlink_raw = archive_entry_symlink(entry);
+                if symlink_raw.is_null() {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+                let symlink_target = CStr::from_ptr(symlink_raw)
+                    .to_str()
+                    .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+                jail.create_symlink_components(&entry_comps, symlink_target)?;
+                engine.register_entry_typed(target_path, mode, mtime, 0, false, true);
+                archive_read_data_skip(a);
+            } else if let (Some(src_link_rel), 0) = (&hardlink_rel, size) {
+                deferred_hardlinks.record_or_apply(&jail, clean_rel_str, src_link_rel)?;
+                engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
+                archive_read_data_skip(a);
+            } else if is_dir {
+                jail.create_dir_all_components(&entry_comps)?;
+                engine.register_entry_typed(target_path, mode, mtime, 0, true, false);
+                archive_read_data_skip(a);
+            } else {
+                let mut inflight: Option<crate::fs::abort_guard::InFlightJailFile> =
+                    if !is_enc && size == 0 {
+                        Some(crate::fs::abort_guard::InFlightJailFile::open(
+                            &jail,
+                            clean_rel_str,
+                            true,
+                        )?)
+                    } else {
+                        None
+                    };
+
                 let mut block_ptr: *const c_void = std::ptr::null();
                 let mut block_size: libc::size_t = 0;
                 let mut block_offset: i64 = 0;
-                let r = archive_read_data_block(
-                    a,
-                    &mut block_ptr,
-                    &mut block_size,
-                    &mut block_offset,
-                );
-                if r < 0 {
-                    return Err(TTZipStatus::ErrInvalidPassword);
-                }
-                archive_read_data_skip(a);
-            } else {
-                archive_read_data_skip(a);
-            }
-            let total_done = active_sheet.add_processed(size);
-            total_processed = total_done;
-            if let Some(cb) = options.progress_callback {
-                let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
-                if !cb(total_done, total_target, raw_path, options.user_data) {
-                    active_sheet.cancel();
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
-            continue;
-        }
+                let mut entry_end_offset: u64 = 0;
 
-        let hardlink_rel: Option<String> = {
-            let hl_raw = archive_entry_hardlink(entry);
-            if !hl_raw.is_null() {
-                let s = CStr::from_ptr(hl_raw)
-                    .to_str()
-                    .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-                if !s.trim_start_matches('/').is_empty() && s.trim_start_matches('/') != "." {
-                    let _ = sanitize_and_validate_path(destination_path, s)?;
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
-
-        let entry_comps = DirJail::extract_clean_components(clean_rel_str)?;
-        deferred_hardlinks.invalidate_destination(&entry_comps);
-
-        if is_symlink {
-            let symlink_raw = archive_entry_symlink(entry);
-            if symlink_raw.is_null() {
-                return Err(TTZipStatus::ErrSecurityViolation);
-            }
-            let symlink_target = CStr::from_ptr(symlink_raw)
-                .to_str()
-                .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-            jail.create_symlink_components(&entry_comps, symlink_target)?;
-            engine.register_entry_typed(target_path, mode, mtime, 0, false, true);
-            archive_read_data_skip(a);
-        } else if let (Some(src_link_rel), 0) = (&hardlink_rel, size) {
-            deferred_hardlinks.record_or_apply(&jail, clean_rel_str, src_link_rel)?;
-            engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
-            archive_read_data_skip(a);
-        } else if is_dir {
-            jail.create_dir_all_components(&entry_comps)?;
-            engine.register_entry_typed(target_path, mode, mtime, 0, true, false);
-            archive_read_data_skip(a);
-        } else {
-            let mut inflight: Option<crate::fs::abort_guard::InFlightJailFile> =
-                if !is_enc && size == 0 {
-                    Some(crate::fs::abort_guard::InFlightJailFile::open(
-                        &jail,
-                        clean_rel_str,
-                        true,
-                    )?)
-                } else {
-                    None
-                };
-
-            let mut block_ptr: *const c_void = std::ptr::null();
-            let mut block_size: libc::size_t = 0;
-            let mut block_offset: i64 = 0;
-            let mut entry_end_offset: u64 = 0;
-
-            loop {
-                if active_sheet.is_cancelled() {
-                    return Err(TTZipStatus::Cancelled);
-                }
-                let rc = archive_read_data_block(
-                    a,
-                    &mut block_ptr,
-                    &mut block_size,
-                    &mut block_offset,
-                );
-                if rc == 1 {
-                    if size > 0 && entry_end_offset < size {
-                        return Err(TTZipStatus::ErrCorruptHeader);
+                loop {
+                    if active_sheet.is_cancelled() {
+                        return Err(TTZipStatus::Cancelled);
                     }
-                    break;
-                }
-                if rc != 0 {
-                    if is_enc {
-                        return Err(TTZipStatus::ErrInvalidPassword);
+                    let rc = archive_read_data_block(
+                        a,
+                        &mut block_ptr,
+                        &mut block_size,
+                        &mut block_offset,
+                    );
+                    if rc == 1 {
+                        if size > 0 && entry_end_offset < size {
+                            return Err(TTZipStatus::ErrCorruptHeader);
+                        }
+                        break;
                     }
-                    if let Some(err_str) = get_archive_error_string(a) {
-                        let lower = err_str.to_lowercase();
-                        if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
+                    if rc != 0 {
+                        if is_enc {
                             return Err(TTZipStatus::ErrInvalidPassword);
                         }
+                        if let Some(err_str) = get_archive_error_string(a) {
+                            let lower = err_str.to_lowercase();
+                            if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
+                                return Err(TTZipStatus::ErrInvalidPassword);
+                            }
+                        }
+                        return Err(TTZipStatus::ErrCorruptHeader);
                     }
-                    return Err(TTZipStatus::ErrCorruptHeader);
-                }
-                if inflight.is_none() {
-                    let mut f =
-                        crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?;
-                    if size > 0 {
-                        let _ = apfs_preallocate(f.file_mut().as_raw_fd(), size as i64);
+                    if inflight.is_none() {
+                        let mut f =
+                            crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?;
+                        if size > 0 {
+                            let _ = apfs_preallocate(f.file_mut().as_raw_fd(), size as i64);
+                        }
+                        inflight = Some(f);
                     }
-                    inflight = Some(f);
-                }
-                if block_size > 0 && !block_ptr.is_null() {
-                    let f = inflight.as_mut().unwrap().file_mut();
-                    if block_offset >= 0 && f.seek(SeekFrom::Start(block_offset as u64)).is_err() {
-                        return Err(TTZipStatus::ErrExtractionFailed);
-                    }
-                    let chunk = std::slice::from_raw_parts(block_ptr as *const u8, block_size);
-                    if f.write_all(chunk).is_err() {
-                        return Err(TTZipStatus::ErrExtractionFailed);
-                    }
-                    let cur_end = (block_offset.max(0) as u64).saturating_add(block_size as u64);
-                    if cur_end > entry_end_offset {
-                        entry_end_offset = cur_end;
-                    }
-                    let total_done = active_sheet.add_processed(block_size as u64);
-                    total_processed = total_done;
-                    let comp_bytes = archive_filter_bytes(a, -1).max(0) as u64;
-                    bomb_guard.check(total_processed, comp_bytes)?;
-                    if let Some(cb) = options.progress_callback {
-                        let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
-                        if !cb(total_done, total_target, raw_path, options.user_data) {
-                            active_sheet.cancel();
-                            return Err(TTZipStatus::Cancelled);
+                    if block_size > 0 && !block_ptr.is_null() {
+                        let f = inflight.as_mut().unwrap().file_mut();
+                        if block_offset >= 0 && f.seek(SeekFrom::Start(block_offset as u64)).is_err() {
+                            return Err(TTZipStatus::ErrExtractionFailed);
+                        }
+                        let chunk = std::slice::from_raw_parts(block_ptr as *const u8, block_size);
+                        if f.write_all(chunk).is_err() {
+                            return Err(TTZipStatus::ErrExtractionFailed);
+                        }
+                        let cur_end = (block_offset.max(0) as u64).saturating_add(block_size as u64);
+                        if cur_end > entry_end_offset {
+                            entry_end_offset = cur_end;
+                        }
+                        let total_done = active_sheet.add_processed(block_size as u64);
+                        total_processed = total_done;
+                        let comp_bytes = archive_filter_bytes(a, -1).max(0) as u64;
+                        bomb_guard.check(total_processed, comp_bytes)?;
+                        if let Some(cb) = options.progress_callback {
+                            let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
+                            if !cb(total_done, total_target, raw_path, options.user_data) {
+                                active_sheet.cancel();
+                                return Err(TTZipStatus::Cancelled);
+                            }
                         }
                     }
                 }
+
+                let inflight_file = match inflight {
+                    Some(f) => f,
+                    None => crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?,
+                };
+                inflight_file.commit(&jail)?;
+                engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
+                deferred_hardlinks.on_regular_committed(&jail, &entry_comps, hardlink_rel.as_deref())?;
             }
-
-            let inflight_file = match inflight {
-                Some(f) => f,
-                None => crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?,
-            };
-            inflight_file.commit(&jail)?;
-            engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
-            deferred_hardlinks.on_regular_committed(&jail, &entry_comps, hardlink_rel.as_deref())?;
         }
-    }
 
-    deferred_hardlinks.finalize(&jail)?;
+        deferred_hardlinks.finalize(&jail)?;
 
-    if !options.dry_run {
-        super::fallback_policy::verify_gzip_stream_if_applicable(archive_path)?;
-        jail.verify_all_jail_symlinks()?;
-    }
-
-    if entries_seen == 0 && total_processed == 0 && !options.dry_run {
-        if archive_path.metadata().map(|m| m.len() > 0).unwrap_or(false) {
-            return Err(TTZipStatus::ErrCorruptHeader);
+        if !options.dry_run {
+            super::fallback_policy::verify_gzip_stream_if_applicable(archive_path)?;
+            jail.verify_all_jail_symlinks()?;
         }
+
+        if entries_seen == 0 && total_processed == 0 && !options.dry_run {
+            if archive_path.metadata().map(|m| m.len() > 0).unwrap_or(false) {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+        }
+
+        active_sheet.mark_finished();
+
+        if !options.dry_run {
+            engine.apply_deferred_metadata(options.preserve_permissions)?;
+        }
+
+        Ok(total_processed)
     }
-
-    active_sheet.mark_finished();
-
-    if !options.dry_run {
-        engine.apply_deferred_metadata(options.preserve_permissions)?;
-    }
-
-    Ok(total_processed)
 }
 
 

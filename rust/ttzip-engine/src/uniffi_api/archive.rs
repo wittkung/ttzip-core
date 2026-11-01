@@ -288,6 +288,7 @@ pub fn create_archive_stream(
         handler: Option<Box<dyn ProgressHandler>>,
         token: Option<Arc<CancellationToken>>,
     }
+    let token_for_probe = token.clone();
     let progress_ctx = Arc::new(ProgressContext {
         handler: progress,
         token,
@@ -315,7 +316,7 @@ pub fn create_archive_stream(
         if user_data.is_null() {
             return true;
         }
-        let p = &*(user_data as *const ProgressContext);
+        let p = unsafe { &*(user_data as *const ProgressContext) };
         if let Some(ref t) = p.token {
             if t.is_cancelled() {
                 return false;
@@ -323,11 +324,18 @@ pub fn create_archive_stream(
         }
         if let Some(ref h) = p.handler {
             let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                Some(unsafe { std::ffi::CStr::from_ptr(entry_name) }.to_string_lossy().into_owned())
             } else {
                 None
             };
-            return h.on_progress(processed, total, name);
+            if !h.on_progress(processed, total, name) {
+                return false;
+            }
+        }
+        if let Some(ref t) = p.token {
+            if t.is_cancelled() {
+                return false;
+            }
         }
         true
     }
@@ -362,23 +370,19 @@ pub fn create_archive_stream(
         user_data: raw_ctx,
     };
 
-    crate::archive::unified::create::create_archive_detailed(&paths, out_p, &options, 0)
-        .map_err(|err| match err {
-            crate::archive::unified::create::CreateStageCommitError::Status(
-                crate::types::TTZipStatus::Cancelled,
-            ) => TTZipError::Cancelled,
-            crate::archive::unified::create::CreateStageCommitError::Status(
-                crate::types::TTZipStatus::ErrInvalidPassword,
-            ) => TTZipError::InvalidPassword,
-            crate::archive::unified::create::CreateStageCommitError::Status(s) => {
-                TTZipError::EngineError { code: s as i32 }
-            }
-            rollback_err @ crate::archive::unified::create::CreateStageCommitError::RollbackIncomplete { .. } => {
-                TTZipError::IoError {
-                    message: rollback_err.to_string(),
-                }
-            }
-        })?;
+    let commit_out = crate::archive::unified::create::create_archive_detailed_outcome_with_cancel(
+        &paths,
+        out_p,
+        &options,
+        0,
+        move || token_for_probe.as_ref().is_some_and(|t| t.is_cancelled()),
+    )
+    .map_err(map_create_stage_commit_error)?;
+    let created_files = commit_out.committed_files;
+    let outcome = build_post_commit_cleanup_outcome_from_issues(
+        created_files.len() as u64,
+        commit_out.post_commit_cleanup_issues,
+    );
 
     fn calculate_paths_uncompressed_bytes(paths: &[std::path::PathBuf]) -> u64 {
         fn calculate_single(path: &std::path::Path) -> u64 {
@@ -423,9 +427,13 @@ pub fn create_archive_stream(
         throughput_mbs,
         space_savings_pct,
         engine_provenance: "Mozilla UniFFI Native Create Pipeline".to_string(),
-        outcome: None,
+        outcome,
     })
 }
+
+use super::error_mapping::{
+    build_post_commit_cleanup_outcome_from_issues, map_create_stage_commit_error,
+};
 
 /// Advanced archive creation configuration parameters exposed via UniFFI.
 #[derive(Clone, Debug, uniffi::Record)]
@@ -457,7 +465,7 @@ std::thread_local! {
 /// C-ABI bridge allowing `ArchiveWriter.swift` to stage typed extra options for the next
 /// `create_archive_advanced` invocation on the calling thread without mutating frozen `repr(C)` layouts.
 /// `encrypt_file_names_mode`: `1` => `Some(true)`, `0` => `Some(false)`, `< 0` => `None`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_uniffi_stage_next_create_extra_options(encrypt_file_names_mode: i32) {
     let encrypt_file_names = match encrypt_file_names_mode {
         1 => Some(true),
@@ -591,6 +599,7 @@ pub fn create_archive_advanced(
         token: Option<Arc<CancellationToken>>,
         total_bytes: u64,
     }
+    let token_for_probe = token.clone();
     let progress_ctx = Arc::new(ProgressContextExplicit {
         handler: progress,
         token,
@@ -619,7 +628,7 @@ pub fn create_archive_advanced(
         if user_data.is_null() {
             return true;
         }
-        let p = &*(user_data as *const ProgressContextExplicit);
+        let p = unsafe { &*(user_data as *const ProgressContextExplicit) };
         if let Some(ref t) = p.token {
             if t.is_cancelled() {
                 return false;
@@ -627,11 +636,18 @@ pub fn create_archive_advanced(
         }
         if let Some(ref h) = p.handler {
             let name = if !entry_name.is_null() {
-                Some(std::ffi::CStr::from_ptr(entry_name).to_string_lossy().into_owned())
+                Some(unsafe { std::ffi::CStr::from_ptr(entry_name) }.to_string_lossy().into_owned())
             } else {
                 None
             };
-            return h.on_progress(processed, p.total_bytes, name);
+            if !h.on_progress(processed, p.total_bytes, name) {
+                return false;
+            }
+        }
+        if let Some(ref t) = p.token {
+            if t.is_cancelled() {
+                return false;
+            }
         }
         true
     }
@@ -667,30 +683,21 @@ pub fn create_archive_advanced(
     };
 
     let split_size = config.split_volume_size_bytes.unwrap_or(0);
-    let created_files =
-        crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts(
+    let commit_out =
+        crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts_outcome_with_cancel(
             &planned_entries,
             out_path,
             &options,
             split_size,
             extra_options.encrypt_file_names,
+            move || token_for_probe.as_ref().is_some_and(|t| t.is_cancelled()),
         )
-        .map_err(|err| match err {
-            crate::archive::unified::create::CreateStageCommitError::Status(
-                crate::types::TTZipStatus::Cancelled,
-            ) => TTZipError::Cancelled,
-            crate::archive::unified::create::CreateStageCommitError::Status(
-                crate::types::TTZipStatus::ErrInvalidPassword,
-            ) => TTZipError::InvalidPassword,
-            crate::archive::unified::create::CreateStageCommitError::Status(s) => {
-                TTZipError::EngineError { code: s as i32 }
-            }
-            rollback_err @ crate::archive::unified::create::CreateStageCommitError::RollbackIncomplete { .. } => {
-                TTZipError::IoError {
-                    message: rollback_err.to_string(),
-                }
-            }
-        })?;
+        .map_err(map_create_stage_commit_error)?;
+    let created_files = commit_out.committed_files;
+    let outcome = build_post_commit_cleanup_outcome_from_issues(
+        created_files.len() as u64,
+        commit_out.post_commit_cleanup_issues,
+    );
 
     let elapsed = start.elapsed();
     let elapsed_nanos = elapsed.as_nanos() as u64;
@@ -713,7 +720,7 @@ pub fn create_archive_advanced(
         throughput_mbs,
         space_savings_pct,
         engine_provenance: "Mozilla UniFFI Advanced Create Pipeline".to_string(),
-        outcome: None,
+        outcome,
     })
 }
 

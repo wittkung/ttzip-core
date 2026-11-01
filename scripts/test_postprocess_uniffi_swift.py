@@ -174,6 +174,8 @@ class TestPostprocessUniFFISwift(unittest.TestCase):
         self.assertIn("private let initializationResult:", patched)
         self.assertNotIn('print("Uniffi callback interface', patched)
         self.assertIn("extension UniFfiVfsTree: @unchecked Sendable {}", patched)
+        self.assertIn("extension UniFfiCreateTransactionFailureReport: Sendable {}", patched)
+        self.assertIn("extension UniFfiStageFileFinishDiagnostic: Sendable {}", patched)
         self.assertIn("defer { buf.deallocate() }", patched)
         self.assertIn("_ = try? rustCall { uniffi_ttzip_engine_fn_free_cancellationtoken", patched)
         self.assertIn("callStatus.errorBuf.deallocate()", patched)

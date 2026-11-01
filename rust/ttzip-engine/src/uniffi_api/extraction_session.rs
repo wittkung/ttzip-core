@@ -53,7 +53,9 @@ struct Preflight {
 }
 
 enum CommitPlan {
-    StopBeforeCommit,
+    StopBeforeCommit {
+        staging: StagingArea,
+    },
     Proceed {
         dest_root: PathBuf,
         table: ConflictTable,
@@ -197,7 +199,14 @@ impl ExtractionSession {
     pub fn commit(&self, resolutions: ResolutionSet) -> Result<CommitResult, TTZipError> {
         let resolutions: CoreResolutionSet = resolutions.into();
         let (dest_root, table, staging, effective_resolutions) = match self.begin_commit(&resolutions)? {
-            CommitPlan::StopBeforeCommit => {
+            CommitPlan::StopBeforeCommit { staging } => {
+                let staging_path = staging.staging_dir.clone();
+                staging.abort_checked().map_err(|e| TTZipError::IoError {
+                    message: format!(
+                        "Extraction stopped before commit, but staging cleanup failed for '{}': {e}",
+                        staging_path.display()
+                    ),
+                })?;
                 return Ok(CommitResult::Finished {
                     outcome: ExtractionOutcome::stopped(),
                 });
@@ -210,23 +219,44 @@ impl ExtractionSession {
             } => (dest_root, table, staging, effective_resolutions),
         };
         let result = commit_staged(&dest_root, &table, &staging, &effective_resolutions);
-        let mut slot = self.lock_slot();
         match result {
-            Ok(outcome) => {
+            Ok(mut outcome) => {
                 let has_placed_items = (outcome.extracted
                     + outcome.replaced
                     + outcome.kept_both
                     + outcome.merged_dirs)
                     > 0;
-                if outcome.status == CoreOutcomeStatus::Completed || has_placed_items {
-                    staging.commit();
+                let staging_path = staging.staging_dir.clone();
+                let cleanup_res = if outcome.status == CoreOutcomeStatus::Completed || has_placed_items {
+                    staging.commit_and_cleanup_checked()
+                } else {
+                    staging.abort_checked()
+                };
+                if let Err(cleanup_err) = cleanup_res {
+                    let errno = cleanup_err.raw_os_error().unwrap_or(libc::EIO);
+                    outcome.status = CoreOutcomeStatus::CompletedWithFailures;
+                    outcome.failed.push(ttzip_archive::fs::collision::FailedItem {
+                        relative_path: staging_path.display().to_string(),
+                        reason: ttzip_archive::fs::collision::fs_ops::map_errno(errno),
+                        errno,
+                    });
                 }
-                *slot = SessionSlot::Completed;
+                *self.lock_slot() = SessionSlot::Completed;
                 Ok(CommitResult::Finished { outcome: outcome.into() })
             }
-            Err(err) => {
-                *slot = SessionSlot::Failed;
-                Err(err)
+            Err(primary_err) => {
+                let staging_path = staging.staging_dir.clone();
+                let final_err = match staging.abort_checked() {
+                    Ok(()) => primary_err,
+                    Err(cleanup_err) => TTZipError::IoError {
+                        message: format!(
+                            "Extraction commit failed ({primary_err}) and staging cleanup failed for '{}': {cleanup_err}",
+                            staging_path.display()
+                        ),
+                    },
+                };
+                *self.lock_slot() = SessionSlot::Failed;
+                Err(final_err)
             }
         }
     }
@@ -235,17 +265,29 @@ impl ExtractionSession {
     /// created. Idempotent. A running `stage` is stopped through its cancellation
     /// token instead, and a running `commit` cannot be interrupted.
     pub fn abort(&self) -> Result<ExtractionOutcome, TTZipError> {
-        let mut slot = self.lock_slot();
-        match &*slot {
-            SessionSlot::Created { .. }
-            | SessionSlot::AwaitingPreflightDecision { .. }
-            | SessionSlot::AwaitingStageDecision { .. }
-            | SessionSlot::Staged { .. }
-            | SessionSlot::Aborted => {}
-            other => return Err(invalid_state(ABORT_STATES, other)),
+        let prev = {
+            let mut slot = self.lock_slot();
+            match &*slot {
+                SessionSlot::Created { .. }
+                | SessionSlot::AwaitingPreflightDecision { .. }
+                | SessionSlot::AwaitingStageDecision { .. }
+                | SessionSlot::Staged { .. }
+                | SessionSlot::Aborted => {}
+                other => return Err(invalid_state(ABORT_STATES, other)),
+            }
+            std::mem::replace(&mut *slot, SessionSlot::Aborted)
+        };
+        if let SessionSlot::Staged { staging, .. }
+        | SessionSlot::AwaitingStageDecision { staging, .. } = prev
+        {
+            let staging_path = staging.staging_dir.clone();
+            staging.abort_checked().map_err(|e| TTZipError::IoError {
+                message: format!(
+                    "Extraction abort failed to clean up staging directory '{}': {e}",
+                    staging_path.display()
+                ),
+            })?;
         }
-        // Dropping the previous slot drops its `StagingArea`, which removes the staging tree.
-        drop(std::mem::replace(&mut *slot, SessionSlot::Aborted));
         Ok(ExtractionOutcome::stopped())
     }
 
@@ -309,8 +351,27 @@ impl ExtractionSession {
             None => self.scan_entries()?.plan,
         };
         let staging = StagingArea::create(&dest_root).map_err(destination_error)?;
-        self.extract_into(&staging, observer)?;
+        let staging_path = staging.staging_dir.clone();
+        if let Err(primary_err) = self.extract_into(&staging, observer) {
+            if let Err(cleanup_err) = staging.abort_checked() {
+                return Err(TTZipError::IoError {
+                    message: format!(
+                        "Extraction staging failed ({primary_err}) and staging cleanup failed for '{}': {cleanup_err}",
+                        staging_path.display()
+                    ),
+                });
+            }
+            return Err(primary_err);
+        }
         if observer.is_cancelled() {
+            if let Err(cleanup_err) = staging.abort_checked() {
+                return Err(TTZipError::IoError {
+                    message: format!(
+                        "Extraction cancelled and staging cleanup failed for '{}': {cleanup_err}",
+                        staging_path.display()
+                    ),
+                });
+            }
             return Err(TTZipError::Cancelled);
         }
         let report = |post_stage_conflicts| StageReport {
@@ -321,7 +382,20 @@ impl ExtractionSession {
         if let Some(Preflight { table, .. }) = preflight {
             return Ok((report(None), SessionSlot::Staged { dest_root, table, staging }));
         }
-        let table = detect_post_stage(&dest_root, &staging)?;
+        let table = match detect_post_stage(&dest_root, &staging) {
+            Ok(t) => t,
+            Err(primary_err) => {
+                if let Err(cleanup_err) = staging.abort_checked() {
+                    return Err(TTZipError::IoError {
+                        message: format!(
+                            "Post-stage conflict detection failed ({primary_err}) and staging cleanup failed for '{}': {cleanup_err}",
+                            staging_path.display()
+                        ),
+                    });
+                }
+                return Err(primary_err);
+            }
+        };
         if table.is_empty() {
             return Ok((report(None), SessionSlot::Staged { dest_root, table, staging }));
         }
@@ -381,8 +455,17 @@ impl ExtractionSession {
         if !all_covered {
             match self.request.policy {
                 CollisionPolicy::Stop => {
-                    drop(std::mem::replace(&mut *slot, SessionSlot::Aborted));
-                    return Ok(CommitPlan::StopBeforeCommit);
+                    match std::mem::replace(&mut *slot, SessionSlot::Aborted) {
+                        SessionSlot::Staged { staging, .. }
+                        | SessionSlot::AwaitingStageDecision { staging, .. } => {
+                            return Ok(CommitPlan::StopBeforeCommit { staging });
+                        }
+                        other => {
+                            let err = invalid_state(COMMIT_STATES, &other);
+                            *slot = other;
+                            return Err(err);
+                        }
+                    }
                 }
                 CollisionPolicy::Ask => {
                     return Err(TTZipError::InvalidResolution {
@@ -588,9 +671,9 @@ pub(crate) fn status_error(status: TTZipStatus) -> TTZipError {
         TTZipStatus::ErrOutOfMemory => {
             TTZipError::out_of_memory("Extraction memory allocation limit exceeded")
         }
-        TTZipStatus::ErrSecurityViolation => TTZipError::decompression_bomb(
-            "Decompression ratio threshold exceeded or overlapping entry detected",
-        ),
+        TTZipStatus::ErrSecurityViolation => TTZipError::SecurityViolation {
+            reason: "Archive extraction rejected by a security boundary".to_string(),
+        },
         TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
             details: "Corrupted archive header or checksum mismatch".to_string(),
             offset: 0,
@@ -602,4 +685,21 @@ pub(crate) fn status_error(status: TTZipStatus) -> TTZipError {
 #[uniffi::export]
 pub fn sweep_stale_staging(destination_root: String) -> Result<u32, TTZipError> {
     Ok(sweep_stale(Path::new(&destination_root)))
+}
+
+#[cfg(test)]
+mod status_mapping_tests {
+    use super::*;
+
+    #[test]
+    fn security_status_does_not_claim_a_specific_bomb_cause() {
+        assert!(matches!(
+            status_error(TTZipStatus::ErrSecurityViolation),
+            TTZipError::SecurityViolation { .. }
+        ));
+        assert!(matches!(
+            status_error(TTZipStatus::ErrInvalidPassword),
+            TTZipError::InvalidPassword
+        ));
+    }
 }

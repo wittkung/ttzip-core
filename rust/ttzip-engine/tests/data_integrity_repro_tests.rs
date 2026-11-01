@@ -342,8 +342,10 @@ unsafe extern "C" fn cancel_after_first_ffi_cb(
     _entry: *const libc::c_char,
     user_data: *mut libc::c_void,
 ) -> bool {
-    let counter = &*(user_data as *const AtomicUsize);
-    counter.fetch_add(1, Ordering::SeqCst) == 0
+    unsafe {
+        let counter = &*(user_data as *const AtomicUsize);
+        counter.fetch_add(1, Ordering::SeqCst) == 0
+    }
 }
 
 #[test]

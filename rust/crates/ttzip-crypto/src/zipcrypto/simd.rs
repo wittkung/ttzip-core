@@ -33,8 +33,8 @@ pub fn update_keys_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, plain_by
 /// Decrypts a contiguous buffer in-place with loop unrolling.
 #[inline]
 pub fn decrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data: &mut [u8]) {
-    let mut chunks = data.chunks_exact_mut(8);
-    for chunk in chunks.by_ref() {
+    let (chunks, remainder) = data.as_chunks_mut::<8>();
+    for chunk in chunks.iter_mut() {
         for b in chunk.iter_mut() {
             let k = decrypt_byte_key(*key2);
             let p = *b ^ k;
@@ -42,7 +42,7 @@ pub fn decrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data:
             update_keys_fast(key0, key1, key2, p);
         }
     }
-    for b in chunks.into_remainder().iter_mut() {
+    for b in remainder.iter_mut() {
         let k = decrypt_byte_key(*key2);
         let p = *b ^ k;
         *b = p;
@@ -53,8 +53,8 @@ pub fn decrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data:
 /// Encrypts a contiguous buffer in-place with loop unrolling.
 #[inline]
 pub fn encrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data: &mut [u8]) {
-    let mut chunks = data.chunks_exact_mut(8);
-    for chunk in chunks.by_ref() {
+    let (chunks, remainder) = data.as_chunks_mut::<8>();
+    for chunk in chunks.iter_mut() {
         for b in chunk.iter_mut() {
             let p = *b;
             let k = decrypt_byte_key(*key2);
@@ -62,7 +62,7 @@ pub fn encrypt_stream_fast(key0: &mut u32, key1: &mut u32, key2: &mut u32, data:
             update_keys_fast(key0, key1, key2, p);
         }
     }
-    for b in chunks.into_remainder().iter_mut() {
+    for b in remainder.iter_mut() {
         let p = *b;
         let k = decrypt_byte_key(*key2);
         *b = p ^ k;
@@ -129,27 +129,29 @@ impl ZipCryptoBatch4 {
     #[cfg(target_arch = "aarch64")]
     #[inline(always)]
     pub unsafe fn update_keys_4way_neon(&mut self, plain: [u8; 4]) {
-        // 1. Parallel CRC32b updates for key0 across all 4 independent lanes
-        self.key0[0] = __crc32b(self.key0[0], plain[0]);
-        self.key0[1] = __crc32b(self.key0[1], plain[1]);
-        self.key0[2] = __crc32b(self.key0[2], plain[2]);
-        self.key0[3] = __crc32b(self.key0[3], plain[3]);
+        unsafe {
+            // 1. Parallel CRC32b updates for key0 across all 4 independent lanes
+            self.key0[0] = __crc32b(self.key0[0], plain[0]);
+            self.key0[1] = __crc32b(self.key0[1], plain[1]);
+            self.key0[2] = __crc32b(self.key0[2], plain[2]);
+            self.key0[3] = __crc32b(self.key0[3], plain[3]);
 
-        // 2. Vectorized 4-lane LCG update for key1:
-        // key1 = (key1 + (key0 & 0xFF)) * 134775813 + 1 (mod 2^32)
-        let v_key0 = vld1q_u32(self.key0.as_ptr());
-        let v_key1 = vld1q_u32(self.key1.as_ptr());
-        let v_k0_low = vandq_u32(v_key0, vdupq_n_u32(0xFF));
-        let sum = vaddq_u32(v_key1, v_k0_low);
-        let v_key1_new = vmlaq_u32(vdupq_n_u32(1), sum, vdupq_n_u32(134775813));
-        vst1q_u32(self.key1.as_mut_ptr(), v_key1_new);
+            // 2. Vectorized 4-lane LCG update for key1:
+            // key1 = (key1 + (key0 & 0xFF)) * 134775813 + 1 (mod 2^32)
+            let v_key0 = vld1q_u32(self.key0.as_ptr());
+            let v_key1 = vld1q_u32(self.key1.as_ptr());
+            let v_k0_low = vandq_u32(v_key0, vdupq_n_u32(0xFF));
+            let sum = vaddq_u32(v_key1, v_k0_low);
+            let v_key1_new = vmlaq_u32(vdupq_n_u32(1), sum, vdupq_n_u32(134775813));
+            vst1q_u32(self.key1.as_mut_ptr(), v_key1_new);
 
-        // 3. Extract high bytes (bits 24..31) from key1 via NEON shift and update key2 using __crc32b
-        let v_b2 = vshrq_n_u32(v_key1_new, 24);
-        self.key2[0] = __crc32b(self.key2[0], vgetq_lane_u32::<0>(v_b2) as u8);
-        self.key2[1] = __crc32b(self.key2[1], vgetq_lane_u32::<1>(v_b2) as u8);
-        self.key2[2] = __crc32b(self.key2[2], vgetq_lane_u32::<2>(v_b2) as u8);
-        self.key2[3] = __crc32b(self.key2[3], vgetq_lane_u32::<3>(v_b2) as u8);
+            // 3. Extract high bytes (bits 24..31) from key1 via NEON shift and update key2 using __crc32b
+            let v_b2 = vshrq_n_u32(v_key1_new, 24);
+            self.key2[0] = __crc32b(self.key2[0], vgetq_lane_u32::<0>(v_b2) as u8);
+            self.key2[1] = __crc32b(self.key2[1], vgetq_lane_u32::<1>(v_b2) as u8);
+            self.key2[2] = __crc32b(self.key2[2], vgetq_lane_u32::<2>(v_b2) as u8);
+            self.key2[3] = __crc32b(self.key2[3], vgetq_lane_u32::<3>(v_b2) as u8);
+        }
     }
 
     /// Scalar fallback 4-lane state update.

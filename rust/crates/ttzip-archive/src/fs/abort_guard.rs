@@ -3,40 +3,629 @@
 
 //! RAII file abort guard that deletes partially written, corrupted, or aborted output files upon drop unless committed.
 
+use std::cell::RefCell;
+use std::ffi::{CStr, CString};
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+#[path = "abort_quarantine.rs"]
+pub(crate) mod quarantine;
+
+pub use quarantine::set_abort_guard_after_quarantine_hook;
+pub(crate) use quarantine::{
+    FsAbortCleanupDisposition, FsAbortCleanupError, FsAbortObserver, quarantine_verify_and_unlink,
+};
+
+type AfterCheckHook = Box<dyn FnOnce(&Path) + Send + 'static>;
+type PostOpenHook = Box<dyn FnOnce() -> std::io::Result<()> + Send + 'static>;
+type VerifiedParentDir<'a> = (RawFd, (u64, u64), &'a Path);
+
+thread_local! {
+    static ABORT_GUARD_AFTER_CHECK_HOOK: RefCell<Option<AfterCheckHook>> =
+        const { RefCell::new(None) };
+    static ABORT_GUARD_FSTAT_HOOK: RefCell<Option<PostOpenHook>> =
+        const { RefCell::new(None) };
+    static ABORT_GUARD_DUP_FD_HOOK: RefCell<Option<PostOpenHook>> =
+        const { RefCell::new(None) };
+}
+
+/// Registers a one-shot hook on the current thread invoked during `fstat_dev_ino` after `openat`.
+pub fn set_abort_guard_fstat_hook<F>(hook: F)
+where
+    F: FnOnce() -> std::io::Result<()> + Send + 'static,
+{
+    ABORT_GUARD_FSTAT_HOOK.with(|slot| {
+        *slot.borrow_mut() = Some(Box::new(hook));
+    });
+}
+
+/// Registers a one-shot hook on the current thread invoked during `dup_fd_cloexec` after `openat`.
+pub fn set_abort_guard_dup_fd_hook<F>(hook: F)
+where
+    F: FnOnce() -> std::io::Result<()> + Send + 'static,
+{
+    ABORT_GUARD_DUP_FD_HOOK.with(|slot| {
+        *slot.borrow_mut() = Some(Box::new(hook));
+    });
+}
+
+/// Registers a one-shot hook on the current thread invoked after `FileAbortGuard` validates target identity and before unlinking.
+pub fn set_abort_guard_after_check_hook<F>(hook: F)
+where
+    F: FnOnce(&Path) + Send + 'static,
+{
+    ABORT_GUARD_AFTER_CHECK_HOOK.with(|slot| {
+        *slot.borrow_mut() = Some(Box::new(hook));
+    });
+}
+
+fn run_abort_guard_after_check_hook(path: &Path) {
+    let hook = ABORT_GUARD_AFTER_CHECK_HOOK.with(|slot| slot.borrow_mut().take());
+    if let Some(cb) = hook {
+        cb(path);
+    }
+}
+
+pub(crate) fn fd_stat_info(
+    fd: RawFd,
+) -> std::io::Result<(u64, u64, libc::mode_t, libc::nlink_t)> {
+    let mut st: libc::stat = unsafe { std::mem::zeroed() };
+    if unsafe { libc::fstat(fd, &mut st) } != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok((st.st_dev as u64, st.st_ino, st.st_mode, st.st_nlink))
+}
+
+pub(crate) fn fstat_dev_ino(fd: RawFd) -> std::io::Result<(u64, u64)> {
+    if let Some(hook) = ABORT_GUARD_FSTAT_HOOK.with(|slot| slot.borrow_mut().take()) {
+        hook()?;
+    }
+    let (dev, ino, _mode, _) = fd_stat_info(fd)?;
+    Ok((dev, ino))
+}
+
+pub(crate) fn dup_fd_cloexec(fd: RawFd) -> std::io::Result<OwnedFd> {
+    if let Some(hook) = ABORT_GUARD_DUP_FD_HOOK.with(|slot| slot.borrow_mut().take()) {
+        hook()?;
+    }
+    let dup_raw = unsafe { libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, 0) };
+    if dup_raw < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(unsafe { OwnedFd::from_raw_fd(dup_raw) })
+}
+
+pub(crate) fn fstatat_dev_ino_nofollow(
+    dir_fd: RawFd,
+    name: &CStr,
+) -> std::io::Result<(u64, u64, libc::mode_t)> {
+    let mut st: libc::stat = unsafe { std::mem::zeroed() };
+    let rc = unsafe { libc::fstatat(dir_fd, name.as_ptr(), &mut st, libc::AT_SYMLINK_NOFOLLOW) };
+    if rc != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok((st.st_dev as u64, st.st_ino, st.st_mode))
+}
+
+pub(crate) fn path_dev_ino_nofollow(path: &Path) -> std::io::Result<(u64, u64, libc::mode_t)> {
+    let c_path = CString::new(path.as_os_str().as_bytes()).map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "path contains NUL")
+    })?;
+    fstatat_dev_ino_nofollow(libc::AT_FDCWD, &c_path)
+}
+
+pub(crate) fn open_dir_nofollow(path: &Path) -> std::io::Result<(OwnedFd, (u64, u64))> {
+    let c_path = CString::new(path.as_os_str().as_bytes()).map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "path contains NUL")
+    })?;
+    let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    let raw = unsafe { libc::open(c_path.as_ptr(), flags) };
+    if raw < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let fd = unsafe { OwnedFd::from_raw_fd(raw) };
+    let (dev, ino, mode, _) = fd_stat_info(fd.as_raw_fd())?;
+    if (mode & libc::S_IFMT) != libc::S_IFDIR {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "opened handle is not a directory",
+        ));
+    }
+    Ok((fd, (dev, ino)))
+}
+
+fn open_file_identity_in_dir(parent_fd: RawFd, leaf: &CStr) -> Option<(OwnedFd, (u64, u64))> {
+    let flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    let raw = unsafe { libc::openat(parent_fd, leaf.as_ptr(), flags) };
+    if raw < 0 {
+        return None;
+    }
+    let fd = unsafe { OwnedFd::from_raw_fd(raw) };
+    let (dev, ino, mode, _) = fd_stat_info(fd.as_raw_fd()).ok()?;
+    if (mode & libc::S_IFMT) != libc::S_IFREG {
+        return None;
+    }
+    Some((fd, (dev, ino)))
+}
 
 /// RAII guard that automatically removes a target file from disk if dropped before being explicitly committed.
 ///
-/// Ensures strict cancellation consistency and prevents corrupted or partial archive files from lingering
-/// on disk when an operation is cancelled, fails with an I/O error, or panics.
+/// Ensures strict cancellation consistency and verifies parent directory and file `(st_dev, st_ino)` ownership
+/// before unlinking so path reuse or directory replacement never deletes unrelated files.
 #[derive(Debug)]
 pub struct FileAbortGuard {
     path: PathBuf,
+    parent_path: Option<PathBuf>,
+    parent_fd: Option<Arc<OwnedFd>>,
+    parent_id: Option<(u64, u64)>,
+    leaf_name: Option<CString>,
+    file_fd: Option<OwnedFd>,
+    file_id: Option<(u64, u64)>,
+    preexisting_id: Option<(u64, u64)>,
+    replaced_before_bind: bool,
     active: bool,
+    attempted_cleanup: bool,
+    observer: Option<Arc<dyn FsAbortObserver>>,
+}
+
+type ResolvedParentAndLeaf = (
+    Option<PathBuf>,
+    Option<CString>,
+    Option<Arc<OwnedFd>>,
+    Option<(u64, u64)>,
+);
+
+/// Components captured after exclusive creation and identity verification.
+pub(crate) struct VerifiedGuardParts {
+    pub path: PathBuf,
+    pub parent_path: PathBuf,
+    pub parent_fd: Arc<OwnedFd>,
+    pub parent_id: (u64, u64),
+    pub leaf_name: CString,
+    pub file_fd: Option<OwnedFd>,
+    pub file_id: (u64, u64),
+    pub observer: Option<Arc<dyn FsAbortObserver>>,
 }
 
 impl FileAbortGuard {
-    /// Creates a new abort guard for the specified file path.
-    /// The guard is initially active (armed).
+    pub(crate) fn from_exclusively_created_parts(parts: VerifiedGuardParts) -> Self {
+        let VerifiedGuardParts {
+            path, parent_path, parent_fd, parent_id, leaf_name, file_fd, file_id, observer,
+        } = parts;
+        Self {
+            path,
+            parent_path: Some(parent_path),
+            parent_fd: Some(parent_fd),
+            parent_id: Some(parent_id),
+            leaf_name: Some(leaf_name),
+            file_fd,
+            file_id: Some(file_id),
+            preexisting_id: None,
+            replaced_before_bind: false,
+            active: true,
+            attempted_cleanup: false,
+            observer,
+        }
+    }
+
     #[inline]
+    pub(crate) fn expected_file_id(&self) -> Option<(u64, u64)> {
+        self.file_id
+    }
+
+    #[inline]
+    pub(crate) fn observer(&self) -> Option<&Arc<dyn FsAbortObserver>> {
+        self.observer.as_ref()
+    }
+
+    pub(crate) fn abort_checked_fs_detailed(&mut self) -> Result<(), Box<FsAbortCleanupError>> {
+        let res = self.abort_checked_internal_detailed();
+        let _ = self.observer.take();
+        res
+    }
+
+    fn resolve_parent_and_leaf(path: &Path) -> ResolvedParentAndLeaf {
+        let parent_path = path.parent().map(|p| {
+            if p.as_os_str().is_empty() {
+                PathBuf::from(".")
+            } else {
+                p.to_path_buf()
+            }
+        });
+        let leaf_name = path
+            .file_name()
+            .and_then(|n| CString::new(n.as_bytes()).ok());
+        let (parent_fd, parent_id) = match parent_path.as_deref().map(open_dir_nofollow) {
+            Some(Ok((fd, id))) => (Some(Arc::new(fd)), Some(id)),
+            _ => (None, None),
+        };
+        (parent_path, leaf_name, parent_fd, parent_id)
+    }
+
+    /// Creates a new abort guard for the specified file path.
+    /// Captures parent directory handle/identity and, if the file already exists, its `(st_dev, st_ino)` identity.
     #[must_use]
     pub fn new(path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        let (parent_path, leaf_name, parent_fd, parent_id) = Self::resolve_parent_and_leaf(&path);
+        let (file_fd, file_id) = match (&parent_fd, &leaf_name) {
+            (Some(pfd), Some(leaf)) => match open_file_identity_in_dir(pfd.as_raw_fd(), leaf) {
+                Some((ffd, fid)) => (Some(ffd), Some(fid)),
+                None => (None, None),
+            },
+            _ => (None, None),
+        };
         Self {
-            path: path.into(),
+            path,
+            parent_path,
+            parent_fd,
+            parent_id,
+            leaf_name,
+            file_fd,
+            file_id,
+            preexisting_id: None,
+            replaced_before_bind: false,
             active: true,
+            attempted_cleanup: false,
+            observer: None,
         }
+    }
+
+    /// Creates a guard armed for a file that has NOT yet been created (such as before a C library opens `path`).
+    /// Any file already occupying `path` at construction time is recorded as `preexisting_id` and is NEVER adopted as owned.
+    #[must_use]
+    pub fn for_pending_creation(path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        let (parent_path, leaf_name, parent_fd, parent_id) = Self::resolve_parent_and_leaf(&path);
+        let preexisting_id = match (&parent_fd, &leaf_name) {
+            (Some(pfd), Some(leaf)) => fstatat_dev_ino_nofollow(pfd.as_raw_fd(), leaf)
+                .ok()
+                .map(|(d, i, _)| (d, i)),
+            _ => None,
+        };
+        Self {
+            path,
+            parent_path,
+            parent_fd,
+            parent_id,
+            leaf_name,
+            file_fd: None,
+            file_id: None,
+            preexisting_id,
+            replaced_before_bind: false,
+            active: true,
+            attempted_cleanup: false,
+            observer: None,
+        }
+    }
+
+    /// Creates a guard bound directly to the `std::fs::File` descriptor returned at creation time,
+    /// eliminating any re-open window between `File::create` / `OpenOptions::open` and guard construction.
+    #[must_use]
+    pub fn from_created_file(path: impl Into<PathBuf>, file: &std::fs::File) -> Self {
+        let path = path.into();
+        let (parent_path, leaf_name, parent_fd, parent_id) = Self::resolve_parent_and_leaf(&path);
+        let (file_fd, file_id) = match dup_fd_cloexec(file.as_raw_fd())
+            .and_then(|owned| fd_stat_info(owned.as_raw_fd()).map(|(dev, ino, mode, _)| (owned, dev, ino, mode)))
+        {
+            Ok((owned, dev, ino, mode)) if (mode & libc::S_IFMT) == libc::S_IFREG => {
+                (Some(owned), Some((dev, ino)))
+            }
+            _ => (None, None),
+        };
+        let replaced_before_bind = match (&parent_fd, &leaf_name, file_id) {
+            (Some(pfd), Some(leaf), Some(expected_id)) => {
+                match fstatat_dev_ino_nofollow(pfd.as_raw_fd(), leaf) {
+                    Ok((d, i, mode)) => (mode & libc::S_IFMT) != libc::S_IFREG || (d, i) != expected_id,
+                    Err(_) => true,
+                }
+            }
+            _ => true,
+        };
+        Self {
+            path,
+            parent_path,
+            parent_fd,
+            parent_id,
+            leaf_name,
+            file_fd,
+            file_id,
+            preexisting_id: None,
+            replaced_before_bind,
+            active: true,
+            attempted_cleanup: false,
+            observer: None,
+        }
+    }
+
+    /// Captures the `(st_dev, st_ino)` identity of the monitored file after creation,
+    /// refusing to adopt any inode that pre-existed before the pending creation began.
+    pub fn capture_created_identity(&mut self) -> std::io::Result<()> {
+        if self.parent_fd.is_none() {
+            if let Some(parent) = self.parent_path.as_deref() {
+                let (fd, id) = open_dir_nofollow(parent)?;
+                self.parent_fd = Some(Arc::new(fd));
+                self.parent_id = Some(id);
+            }
+        }
+        let (Some(pfd), Some(leaf)) = (&self.parent_fd, &self.leaf_name) else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "missing parent directory handle or file leaf name",
+            ));
+        };
+        let Some((ffd, fid)) = open_file_identity_in_dir(pfd.as_raw_fd(), leaf) else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "created file not found for identity capture",
+            ));
+        };
+        if self.preexisting_id.is_some() {
+            self.replaced_before_bind = true;
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "refusing to claim ownership of pre-existing path '{}' (preexisting_id={:?}, observed_id={:?})",
+                    self.path.display(),
+                    self.preexisting_id,
+                    fid
+                ),
+            ));
+        }
+        self.file_fd = Some(ffd);
+        self.file_id = Some(fid);
+        Ok(())
     }
 
     /// Disarms the guard, committing the file and preventing its deletion upon drop.
     #[inline]
     pub fn commit(mut self) {
         self.active = false;
+        self.attempted_cleanup = true;
+        let _ = self.observer.take();
+    }
+
+    fn verify_parent_unchanged(
+        &self,
+    ) -> Result<VerifiedParentDir<'_>, Box<FsAbortCleanupError>> {
+        let (Some(pfd), Some(expected_parent_id), Some(parent_path)) =
+            (&self.parent_fd, self.parent_id, self.parent_path.as_deref())
+        else {
+            return Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                original_path: self.path.clone(),
+                final_known_path: None,
+                expected_identity: self.file_id,
+                observed_identity: None,
+                os_error_code: None,
+                io_kind: std::io::ErrorKind::InvalidData,
+                detail: "parent directory identity unavailable; refusing cleanup".to_string(),
+            }));
+        };
+        let (cur_dev, cur_ino, cur_mode) =
+            path_dev_ino_nofollow(parent_path).map_err(|err| {
+                Box::new(FsAbortCleanupError {
+                    disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                    original_path: self.path.clone(),
+                    final_known_path: None,
+                    expected_identity: Some(expected_parent_id),
+                    observed_identity: None,
+                    os_error_code: err.raw_os_error(),
+                    io_kind: err.kind(),
+                    detail: err.to_string(),
+                })
+            })?;
+        if (cur_mode & libc::S_IFMT) != libc::S_IFDIR || (cur_dev, cur_ino) != expected_parent_id {
+            return Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                original_path: self.path.clone(),
+                final_known_path: None,
+                expected_identity: Some(expected_parent_id),
+                observed_identity: Some((cur_dev, cur_ino)),
+                os_error_code: None,
+                io_kind: std::io::ErrorKind::InvalidData,
+                detail: format!(
+                    "parent directory identity changed (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', expected_parent_id={:?}, observed_parent_id={:?}); refusing destructive cleanup",
+                    self.path.display(),
+                    expected_parent_id,
+                    (cur_dev, cur_ino)
+                ),
+            }));
+        }
+        Ok((pfd.as_raw_fd(), expected_parent_id, parent_path))
+    }
+
+    fn verify_owned_leaf_before_unlink(
+        &self,
+        parent_raw: RawFd,
+        leaf: &CStr,
+        expected_file_id: (u64, u64),
+    ) -> Result<bool, Box<FsAbortCleanupError>> {
+        if self.replaced_before_bind {
+            return Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::RefusedOwnershipMismatch,
+                original_path: self.path.clone(),
+                final_known_path: Some(self.path.clone()),
+                expected_identity: Some(expected_file_id),
+                observed_identity: self.preexisting_id,
+                os_error_code: None,
+                io_kind: std::io::ErrorKind::InvalidData,
+                detail: format!(
+                    "staged file path '{}' was pre-occupied or replaced before ownership bind; refusing destructive cleanup",
+                    self.path.display()
+                ),
+            }));
+        }
+        match fstatat_dev_ino_nofollow(parent_raw, leaf) {
+            Ok((dev, ino, mode)) => {
+                if (mode & libc::S_IFMT) != libc::S_IFREG || (dev, ino) != expected_file_id {
+                    return Err(Box::new(FsAbortCleanupError {
+                        disposition: FsAbortCleanupDisposition::RefusedOwnershipMismatch,
+                        original_path: self.path.clone(),
+                        final_known_path: Some(self.path.clone()),
+                        expected_identity: Some(expected_file_id),
+                        observed_identity: Some((dev, ino)),
+                        os_error_code: None,
+                        io_kind: std::io::ErrorKind::InvalidData,
+                        detail: format!(
+                            "staged file path '{}' replaced by another inode (expected={:?}, observed={:?}); refusing destructive cleanup",
+                            self.path.display(),
+                            expected_file_id,
+                            (dev, ino)
+                        ),
+                    }));
+                }
+                Ok(true)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                if let Some(ffd) = &self.file_fd {
+                    if let Ok((_, _, _, nlink)) = fd_stat_info(ffd.as_raw_fd()) {
+                        if nlink > 0 {
+                            return Err(Box::new(FsAbortCleanupError {
+                                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                                original_path: self.path.clone(),
+                                final_known_path: None,
+                                expected_identity: Some(expected_file_id),
+                                observed_identity: None,
+                                os_error_code: None,
+                                io_kind: std::io::ErrorKind::InvalidData,
+                                detail: "staged file moved away from original path and remains linked".to_string(),
+                            }));
+                        }
+                    }
+                }
+                Ok(false)
+            }
+            Err(e) => Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                original_path: self.path.clone(),
+                final_known_path: None,
+                expected_identity: Some(expected_file_id),
+                observed_identity: None,
+                os_error_code: e.raw_os_error(),
+                io_kind: e.kind(),
+                detail: e.to_string(),
+            })),
+        }
+    }
+
+    fn abort_without_captured_file_id(
+        &self,
+        parent_raw: RawFd,
+        leaf: &CStr,
+    ) -> Result<(), Box<FsAbortCleanupError>> {
+        match fstatat_dev_ino_nofollow(parent_raw, leaf) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Ok((dev, ino, _)) => Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::RefusedOwnershipMismatch,
+                original_path: self.path.clone(),
+                final_known_path: Some(self.path.clone()),
+                expected_identity: None,
+                observed_identity: Some((dev, ino)),
+                os_error_code: None,
+                io_kind: std::io::ErrorKind::InvalidData,
+                detail: format!(
+                    "untracked or pre-existing file occupies staged path '{}' (inode={:?}, preexisting_id={:?}); refusing destructive cleanup",
+                    self.path.display(),
+                    (dev, ino),
+                    self.preexisting_id
+                ),
+            })),
+            Err(e) => Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                original_path: self.path.clone(),
+                final_known_path: None,
+                expected_identity: None,
+                observed_identity: None,
+                os_error_code: e.raw_os_error(),
+                io_kind: e.kind(),
+                detail: e.to_string(),
+            })),
+        }
+    }
+
+    fn abort_checked_internal_detailed(&mut self) -> Result<(), Box<FsAbortCleanupError>> {
+        if !self.active {
+            return Ok(());
+        }
+        self.active = false;
+        self.attempted_cleanup = true;
+        if self.parent_fd.is_none() && self.file_id.is_none() {
+            return match path_dev_ino_nofollow(&self.path) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Ok((dev, ino, _)) => Err(Box::new(FsAbortCleanupError {
+                    disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                    original_path: self.path.clone(),
+                    final_known_path: None,
+                    expected_identity: None,
+                    observed_identity: Some((dev, ino)),
+                    os_error_code: None,
+                    io_kind: std::io::ErrorKind::InvalidData,
+                    detail: "parent directory identity unavailable for existing path; refusing cleanup".to_string(),
+                })),
+                Err(e) => Err(Box::new(FsAbortCleanupError {
+                    disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                    original_path: self.path.clone(),
+                    final_known_path: None,
+                    expected_identity: None,
+                    observed_identity: None,
+                    os_error_code: e.raw_os_error(),
+                    io_kind: e.kind(),
+                    detail: e.to_string(),
+                })),
+            };
+        }
+        let (parent_raw, expected_parent_id, parent_path) = self.verify_parent_unchanged()?;
+        let Some(leaf) = self.leaf_name.as_deref() else {
+            return Err(Box::new(FsAbortCleanupError {
+                disposition: FsAbortCleanupDisposition::OwnershipOrLocationUnconfirmed,
+                original_path: self.path.clone(),
+                final_known_path: None,
+                expected_identity: self.file_id,
+                observed_identity: None,
+                os_error_code: None,
+                io_kind: std::io::ErrorKind::InvalidInput,
+                detail: "missing leaf name".to_string(),
+            }));
+        };
+        let Some(expected_file_id) = self.file_id else {
+            return self.abort_without_captured_file_id(parent_raw, leaf);
+        };
+        if !self.verify_owned_leaf_before_unlink(parent_raw, leaf, expected_file_id)? {
+            return Ok(());
+        }
+        run_abort_guard_after_check_hook(&self.path);
+        quarantine_verify_and_unlink(
+            &self.path,
+            parent_path,
+            parent_raw,
+            expected_parent_id,
+            leaf,
+            expected_file_id,
+        )
+    }
+
+    fn abort_checked_internal(&mut self) -> std::io::Result<()> {
+        self.abort_checked_internal_detailed()
+            .map_err(|e| e.into_io_error())
+    }
+
+    /// Explicitly removes the monitored file after verifying parent directory and inode ownership.
+    #[inline]
+    pub fn abort_checked(mut self) -> std::io::Result<()> {
+        let res = self.abort_checked_internal();
+        let _ = self.observer.take();
+        res
     }
 
     /// Disarms the guard and returns the underlying path.
     #[inline]
     pub fn into_path(mut self) -> PathBuf {
         self.active = false;
+        self.attempted_cleanup = true;
+        let _ = self.observer.take();
         std::mem::take(&mut self.path)
     }
 
@@ -53,13 +642,27 @@ impl FileAbortGuard {
     pub fn is_active(&self) -> bool {
         self.active
     }
+
+    /// Returns true if a pre-existing object already occupied the path when `for_pending_creation` ran.
+    #[inline]
+    #[must_use]
+    pub fn has_preexisting(&self) -> bool {
+        self.preexisting_id.is_some()
+    }
 }
 
 impl Drop for FileAbortGuard {
     #[inline]
     fn drop(&mut self) {
-        if self.active && self.path.exists() {
-            let _ = std::fs::remove_file(&self.path);
+        if self.active && !self.attempted_cleanup {
+            let observer = self.observer.take();
+            if let Err(err) = self.abort_checked_internal_detailed() {
+                if let Some(obs) = observer {
+                    obs.on_abort_cleanup_error(*err);
+                }
+            }
+        } else {
+            let _ = self.observer.take();
         }
     }
 }
@@ -73,378 +676,8 @@ const _: () = {
     assert_unpin::<FileAbortGuard>();
 };
 
-static INFLIGHT_JAIL_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-
-/// Resolves `comps` step-by-step from `jail.root_fd()` using `O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`
-/// and returns an owned directory file descriptor.
-pub(crate) fn resolve_jail_parent_fd(
-    jail: &super::dir_jail::DirJail,
-    comps: &[String],
-    create_if_missing: bool,
-) -> Result<libc::c_int, crate::types::TTZipStatus> {
-    use crate::types::TTZipStatus;
-    if create_if_missing {
-        jail.create_dir_all_components(comps)?;
-    }
-    let mut cur_fd = unsafe { libc::fcntl(jail.root_fd(), libc::F_DUPFD_CLOEXEC, 0) };
-    if cur_fd < 0 {
-        return Err(TTZipStatus::ErrExtractionFailed);
-    }
-    let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-    for seg in comps {
-        let Ok(seg_c) = std::ffi::CString::new(seg.as_bytes()) else {
-            unsafe { libc::close(cur_fd) };
-            return Err(TTZipStatus::ErrSecurityViolation);
-        };
-        let next_fd = unsafe { libc::openat(cur_fd, seg_c.as_ptr(), flags) };
-        unsafe { libc::close(cur_fd) };
-        if next_fd < 0 {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-        cur_fd = next_fd;
-    }
-    Ok(cur_fd)
-}
-
-/// Verifies that `jail` path components `comps` still resolve (without symlinks) to the exact same
-/// directory inode `(st_dev, st_ino)` as `expected_fd`.
-pub(crate) fn verify_jail_parent_fd_unchanged(
-    jail: &super::dir_jail::DirJail,
-    comps: &[String],
-    expected_fd: libc::c_int,
-) -> Result<(), crate::types::TTZipStatus> {
-    use crate::types::TTZipStatus;
-    let reopened_fd = resolve_jail_parent_fd(jail, comps, false)?;
-    let (mut st_a, mut st_b): (libc::stat, libc::stat) =
-        unsafe { (std::mem::zeroed(), std::mem::zeroed()) };
-    let ok = unsafe {
-        libc::fstat(reopened_fd, &mut st_a) == 0 && libc::fstat(expected_fd, &mut st_b) == 0
-    } && (st_a.st_mode & libc::S_IFMT) == libc::S_IFDIR
-        && st_a.st_dev == st_b.st_dev
-        && st_a.st_ino == st_b.st_ino;
-    unsafe {
-        libc::close(reopened_fd);
-    }
-    if ok {
-        Ok(())
-    } else {
-        Err(TTZipStatus::ErrSecurityViolation)
-    }
-}
-
-/// Exclusively creates and opens a regular file leaf inside `parent_fd` with `O_CREAT | O_EXCL | O_NOFOLLOW`.
-pub(crate) fn open_exclusive_file_in_dir(
-    parent_fd: libc::c_int,
-    leaf_c: &std::ffi::CStr,
-) -> Result<std::fs::File, i32> {
-    use std::os::unix::io::FromRawFd;
-    let flags =
-        libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-    let fd = unsafe { libc::openat(parent_fd, leaf_c.as_ptr(), flags, 0o600 as libc::c_uint) };
-    if fd < 0 {
-        return Err(std::io::Error::last_os_error()
-            .raw_os_error()
-            .unwrap_or(libc::EIO));
-    }
-    Ok(unsafe { std::fs::File::from_raw_fd(fd) })
-}
-
-/// Checks `fstatat(parent_fd, leaf_c, AT_SYMLINK_NOFOLLOW)` and returns `Ok(true)` if an existing
-/// regular file is present, `Ok(false)` if missing (`ENOENT`), or `Err(ErrSecurityViolation)` if
-/// a symlink, directory, or other non-regular file occupies `leaf_c`.
-pub(crate) fn check_regular_or_missing_in_dir(
-    parent_fd: libc::c_int,
-    leaf_c: &std::ffi::CStr,
-) -> Result<bool, crate::types::TTZipStatus> {
-    use crate::types::TTZipStatus;
-    let mut st: libc::stat = unsafe { std::mem::zeroed() };
-    let rc =
-        unsafe { libc::fstatat(parent_fd, leaf_c.as_ptr(), &mut st, libc::AT_SYMLINK_NOFOLLOW) };
-    if rc == 0 {
-        if (st.st_mode & libc::S_IFMT) == libc::S_IFREG {
-            Ok(true)
-        } else {
-            Err(TTZipStatus::ErrSecurityViolation)
-        }
-    } else {
-        let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
-        if errno == libc::ENOENT {
-            Ok(false)
-        } else {
-            Err(TTZipStatus::ErrSecurityViolation)
-        }
-    }
-}
-
-/// Exclusively creates a sibling temporary file inside `parent_fd` with `O_CREAT | O_EXCL | O_NOFOLLOW`,
-/// retrying with a new candidate name on `EEXIST` so no existing file is ever truncated.
-pub(crate) fn open_exclusive_temp_in_dir(
-    parent_fd: libc::c_int,
-    leaf: &str,
-) -> Result<(std::fs::File, std::ffi::CString), crate::types::TTZipStatus> {
-    use crate::types::TTZipStatus;
-    use std::sync::atomic::Ordering;
-    let prefix: String = leaf.chars().take(48).collect();
-    for attempt in 0..64u32 {
-        let cand = if attempt == 0 {
-            format!(".ttzip_inflight_{prefix}_0")
-        } else {
-            let seq = INFLIGHT_JAIL_SEQ.fetch_add(1, Ordering::Relaxed);
-            format!(".ttzip_inflight_{prefix}_{seq:x}_{attempt}")
-        };
-        let cand_c =
-            std::ffi::CString::new(cand.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-        match open_exclusive_file_in_dir(parent_fd, &cand_c) {
-            Ok(file) => return Ok((file, cand_c)),
-            Err(libc::EEXIST) => continue,
-            Err(libc::ELOOP | libc::ENOTDIR | libc::EISDIR | libc::EPERM | libc::EACCES) => {
-                return Err(TTZipStatus::ErrSecurityViolation);
-            }
-            Err(_) => return Err(TTZipStatus::ErrExtractionFailed),
-        }
-    }
-    Err(TTZipStatus::ErrExtractionFailed)
-}
-
-pub(crate) type InFlightOpenParts = (
-    std::fs::File,
-    libc::c_int,
-    Vec<String>,
-    std::ffi::CString,
-    Option<std::ffi::CString>,
-);
-
-/// Opens an in-flight entry inside `jail` using an owned `parent_fd` and `O_CREAT | O_EXCL | O_NOFOLLOW`.
-/// When `overwrite` is true and a regular file already exists at `out_rel`, opens an exclusive sibling
-/// temporary file (retrying on `EEXIST`) to be atomically committed via `renameat(parent_fd, ...)`.
-pub(crate) fn open_inflight_jail_entry(
-    jail: &super::dir_jail::DirJail,
-    out_rel: &str,
-    overwrite: bool,
-) -> Result<InFlightOpenParts, crate::types::TTZipStatus> {
-    use crate::types::TTZipStatus;
-    let comps = super::dir_jail::DirJail::extract_clean_components(out_rel)?;
-    let (leaf, parent_comps) = comps.split_last().ok_or(TTZipStatus::ErrSecurityViolation)?;
-    let leaf_c =
-        std::ffi::CString::new(leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-    let parent_fd = resolve_jail_parent_fd(jail, parent_comps, true)?;
-    let res = match open_exclusive_file_in_dir(parent_fd, &leaf_c) {
-        Ok(file) => Ok((file, parent_fd, parent_comps.to_vec(), leaf_c, None)),
-        Err(libc::EEXIST) => (|| {
-            let is_reg = check_regular_or_missing_in_dir(parent_fd, &leaf_c)?;
-            if !is_reg || !overwrite {
-                return Err(TTZipStatus::ErrExtractionFailed);
-            }
-            let (file, tmp_c) = open_exclusive_temp_in_dir(parent_fd, leaf)?;
-            Ok((file, parent_fd, parent_comps.to_vec(), tmp_c, Some(leaf_c)))
-        })(),
-        Err(libc::ELOOP | libc::ENOTDIR | libc::EISDIR | libc::EPERM | libc::EACCES) => {
-            Err(TTZipStatus::ErrSecurityViolation)
-        }
-        Err(_) => Err(TTZipStatus::ErrExtractionFailed),
-    };
-    if res.is_err() {
-        unsafe {
-            libc::close(parent_fd);
-        }
-    }
-    res
-}
-
-/// RAII guard for an in-flight extracted regular file inside a [`super::dir_jail::DirJail`].
-///
-/// Holds an open directory descriptor (`parent_fd`) for the entry's parent directory:
-/// - New files are created exclusively (`O_CREAT | O_EXCL | O_NOFOLLOW`).
-/// - Overwrites (`overwrite == true` on `EEXIST`) open an exclusive sibling temporary file
-///   (`.ttzip_inflight_*`, retrying on `EEXIST`) without `O_TRUNC`, preserving existing formal
-///   files and shared hardlink inodes until [`Self::commit`] atomically installs the replacement
-///   via `renameat(parent_fd, ...)`.
-/// - Dropping before [`Self::commit`] removes the uncommitted file or sibling temporary file via
-///   `unlinkat(parent_fd, ...)`.
-pub struct InFlightJailFile {
-    file: Option<std::fs::File>,
-    parent_fd: libc::c_int,
-    parent_comps: Vec<String>,
-    cleanup_leaf: Option<std::ffi::CString>,
-    commit_leaf: Option<std::ffi::CString>,
-}
-
-impl InFlightJailFile {
-    /// Opens an in-flight regular file inside `jail` at `out_rel`.
-    pub fn open(
-        jail: &super::dir_jail::DirJail,
-        out_rel: &str,
-        overwrite: bool,
-    ) -> Result<Self, crate::types::TTZipStatus> {
-        let (file, parent_fd, parent_comps, cleanup_leaf, commit_leaf) =
-            open_inflight_jail_entry(jail, out_rel, overwrite)?;
-        Ok(Self {
-            file: Some(file),
-            parent_fd,
-            parent_comps,
-            cleanup_leaf: Some(cleanup_leaf),
-            commit_leaf,
-        })
-    }
-
-    /// Returns a mutable reference to the underlying open file handle.
-    #[inline]
-    pub fn file_mut(&mut self) -> &mut std::fs::File {
-        self.file.as_mut().expect("in-flight file handle is open")
-    }
-
-    /// Flushes the file, verifies that the parent directory path in `jail` still resolves to
-    /// `parent_fd`, atomically installs any sibling temporary file via `renameat(parent_fd, ...)`,
-    /// and disarms drop cleanup.
-    pub fn commit(mut self, jail: &super::dir_jail::DirJail) -> Result<(), crate::types::TTZipStatus> {
-        use crate::types::TTZipStatus;
-        if let Some(mut f) = self.file.take() {
-            use std::io::Write;
-            f.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-        }
-        verify_jail_parent_fd_unchanged(jail, &self.parent_comps, self.parent_fd)?;
-        if let (Some(cleanup_c), Some(target_c)) = (&self.cleanup_leaf, &self.commit_leaf) {
-            let _ = check_regular_or_missing_in_dir(self.parent_fd, target_c)?;
-            let rc = unsafe {
-                libc::renameat(
-                    self.parent_fd,
-                    cleanup_c.as_ptr(),
-                    self.parent_fd,
-                    target_c.as_ptr(),
-                )
-            };
-            if rc != 0 {
-                return Err(TTZipStatus::ErrExtractionFailed);
-            }
-        }
-        self.cleanup_leaf = None;
-        Ok(())
-    }
-}
-
-impl Drop for InFlightJailFile {
-    fn drop(&mut self) {
-        drop(self.file.take());
-        if self.parent_fd >= 0 {
-            if let Some(cleanup_c) = self.cleanup_leaf.take() {
-                unsafe {
-                    libc::unlinkat(self.parent_fd, cleanup_c.as_ptr(), 0);
-                }
-            }
-            unsafe {
-                libc::close(self.parent_fd);
-            }
-            self.parent_fd = -1;
-        }
-    }
-}
-
-/// Tracks forward hardlinks during sequential archive extraction and prevents stale deferred
-/// hardlinks from overwriting later archive entries with the same destination path.
-#[derive(Debug, Default)]
-pub struct DeferredHardlinks {
-    pending: Vec<(Vec<String>, Vec<String>)>,
-}
-
-impl DeferredHardlinks {
-    /// Invalidates any pending deferred hardlink whose destination matches `dst_comps`.
-    pub fn invalidate_destination(&mut self, dst_comps: &[String]) {
-        self.pending.retain(|(_, dst)| dst.as_slice() != dst_comps);
-    }
-
-    /// Attempts to create hardlink `dst_rel -> src_rel` immediately; queues it as pending only
-    /// if `src_rel` does not exist yet (`ErrFileNotFound`).
-    pub fn record_or_apply(
-        &mut self,
-        jail: &super::dir_jail::DirJail,
-        dst_rel: &str,
-        src_rel: &str,
-    ) -> Result<(), crate::types::TTZipStatus> {
-        use crate::types::TTZipStatus;
-        let dst_comps = super::dir_jail::DirJail::extract_clean_components(dst_rel)?;
-        let src_comps = super::dir_jail::DirJail::extract_clean_components(src_rel)?;
-        self.invalidate_destination(&dst_comps);
-        if dst_comps == src_comps {
-            return Ok(());
-        }
-        match jail.create_hardlink_components(&dst_comps, &src_comps) {
-            Ok(()) => self.resolve_ready(jail),
-            Err(TTZipStatus::ErrFileNotFound) => {
-                self.pending.push((src_comps, dst_comps));
-                Ok(())
-            }
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Notifies tracker that `entry_comps` has been committed on disk as a regular file,
-    /// handling optional payload-carrying hardlink target `hardlink_target_rel` and resolving
-    /// any pending forward hardlinks that were waiting on `entry_comps`.
-    pub fn on_regular_committed(
-        &mut self,
-        jail: &super::dir_jail::DirJail,
-        entry_comps: &[String],
-        hardlink_target_rel: Option<&str>,
-    ) -> Result<(), crate::types::TTZipStatus> {
-        self.invalidate_destination(entry_comps);
-        if let Some(src_rel) = hardlink_target_rel {
-            let src_comps = super::dir_jail::DirJail::extract_clean_components(src_rel)?;
-            if entry_comps != src_comps.as_slice() {
-                self.invalidate_destination(&src_comps);
-                jail.create_hardlink_components(&src_comps, entry_comps)?;
-            }
-        }
-        self.resolve_ready(jail)
-    }
-
-    /// Resolves any pending hardlinks whose source file now exists in `jail`.
-    pub fn resolve_ready(
-        &mut self,
-        jail: &super::dir_jail::DirJail,
-    ) -> Result<(), crate::types::TTZipStatus> {
-        use crate::types::TTZipStatus;
-        loop {
-            let mut progressed = false;
-            let mut still_pending = Vec::with_capacity(self.pending.len());
-            for (src_comps, dst_comps) in self.pending.drain(..) {
-                match jail.create_hardlink_components(&dst_comps, &src_comps) {
-                    Ok(()) => progressed = true,
-                    Err(TTZipStatus::ErrFileNotFound) => {
-                        still_pending.push((src_comps, dst_comps));
-                    }
-                    Err(err) => return Err(err),
-                }
-            }
-            self.pending = still_pending;
-            if !progressed || self.pending.is_empty() {
-                break;
-            }
-        }
-        Ok(())
-    }
-
-    /// Finalizes any remaining deferred hardlinks after all archive entries have been processed.
-    pub fn finalize(
-        mut self,
-        jail: &super::dir_jail::DirJail,
-    ) -> Result<(), crate::types::TTZipStatus> {
-        use crate::types::TTZipStatus;
-        self.resolve_ready(jail)?;
-        for (src_comps, dst_comps) in self.pending {
-            if src_comps == dst_comps {
-                continue;
-            }
-            match jail.create_hardlink_components(&dst_comps, &src_comps) {
-                Ok(()) => {}
-                Err(TTZipStatus::ErrFileNotFound) => {
-                    jail.create_hardlink_components(&src_comps, &dst_comps)?;
-                }
-                Err(err) => return Err(err),
-            }
-        }
-        Ok(())
-    }
-}
+pub use super::collision::staging::DeferredHardlinks;
+pub use super::transactional_writer::InFlightJailFile;
 
 #[cfg(test)]
 mod tests {
@@ -463,7 +696,6 @@ mod tests {
             let guard = FileAbortGuard::new(&test_file);
             assert!(guard.is_active());
             assert_eq!(guard.path(), test_file.as_path());
-            // Drops here without commit
         }
 
         assert!(!test_file.exists());

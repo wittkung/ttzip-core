@@ -299,7 +299,7 @@ pub fn query_current_rss() -> Option<u64> {
 
 #[cfg(target_vendor = "apple")]
 fn get_macos_rss() -> Option<u64> {
-    extern "C" {
+    unsafe extern "C" {
         fn mach_task_self() -> libc::mach_port_t;
     }
 
@@ -392,7 +392,7 @@ fn get_rusage_rss() -> Option<u64> {
 
 #[cfg(target_vendor = "apple")]
 fn get_macos_available_ram() -> Option<u64> {
-    extern "C" {
+    unsafe extern "C" {
         fn mach_host_self() -> libc::mach_port_t;
     }
     unsafe {

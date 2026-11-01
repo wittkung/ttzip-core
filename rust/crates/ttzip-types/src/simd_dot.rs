@@ -16,15 +16,17 @@ use core::arch::aarch64::*;
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn vdotq_s32_stable(acc: int32x4_t, a: int8x16_t, b: int8x16_t) -> int32x4_t {
-    let mut res = acc;
-    core::arch::asm!(
-        "sdot {res:v}.4s, {a:v}.16b, {b:v}.16b",
-        res = inout(vreg) res,
-        a = in(vreg) a,
-        b = in(vreg) b,
-        options(pure, nomem, nostack)
-    );
-    res
+    unsafe {
+        let mut res = acc;
+        core::arch::asm!(
+            "sdot {res:v}.4s, {a:v}.16b, {b:v}.16b",
+            res = inout(vreg) res,
+            a = in(vreg) a,
+            b = in(vreg) b,
+            options(pure, nomem, nostack)
+        );
+        res
+    }
 }
 
 /// Computes the dot product of two 128-dimensional INT8 vectors using ARM NEON SIMD intrinsics.
@@ -34,52 +36,54 @@ unsafe fn vdotq_s32_stable(acc: int32x4_t, a: int8x16_t, b: int8x16_t) -> int32x
 #[cfg(target_arch = "aarch64")]
 #[inline]
 pub unsafe fn neon_dot_product_128(a: &[i8; 128], b: &[i8; 128]) -> i32 {
-    let a_ptr = a.as_ptr();
-    let b_ptr = b.as_ptr();
+    unsafe {
+        let a_ptr = a.as_ptr();
+        let b_ptr = b.as_ptr();
 
-    // Dual accumulators to break dependency chains across execution ports
-    let mut acc0 = vdupq_n_s32(0);
-    let mut acc1 = vdupq_n_s32(0);
+        // Dual accumulators to break dependency chains across execution ports
+        let mut acc0 = vdupq_n_s32(0);
+        let mut acc1 = vdupq_n_s32(0);
 
-    // Iteration 0: bytes 0..32
-    let va0 = vld1q_s8(a_ptr);
-    let vb0 = vld1q_s8(b_ptr);
-    acc0 = vdotq_s32_stable(acc0, va0, vb0);
+        // Iteration 0: bytes 0..32
+        let va0 = vld1q_s8(a_ptr);
+        let vb0 = vld1q_s8(b_ptr);
+        acc0 = vdotq_s32_stable(acc0, va0, vb0);
 
-    let va1 = vld1q_s8(a_ptr.add(16));
-    let vb1 = vld1q_s8(b_ptr.add(16));
-    acc1 = vdotq_s32_stable(acc1, va1, vb1);
+        let va1 = vld1q_s8(a_ptr.add(16));
+        let vb1 = vld1q_s8(b_ptr.add(16));
+        acc1 = vdotq_s32_stable(acc1, va1, vb1);
 
-    // Iteration 1: bytes 32..64
-    let va2 = vld1q_s8(a_ptr.add(32));
-    let vb2 = vld1q_s8(b_ptr.add(32));
-    acc0 = vdotq_s32_stable(acc0, va2, vb2);
+        // Iteration 1: bytes 32..64
+        let va2 = vld1q_s8(a_ptr.add(32));
+        let vb2 = vld1q_s8(b_ptr.add(32));
+        acc0 = vdotq_s32_stable(acc0, va2, vb2);
 
-    let va3 = vld1q_s8(a_ptr.add(48));
-    let vb3 = vld1q_s8(b_ptr.add(48));
-    acc1 = vdotq_s32_stable(acc1, va3, vb3);
+        let va3 = vld1q_s8(a_ptr.add(48));
+        let vb3 = vld1q_s8(b_ptr.add(48));
+        acc1 = vdotq_s32_stable(acc1, va3, vb3);
 
-    // Iteration 2: bytes 64..96
-    let va4 = vld1q_s8(a_ptr.add(64));
-    let vb4 = vld1q_s8(b_ptr.add(64));
-    acc0 = vdotq_s32_stable(acc0, va4, vb4);
+        // Iteration 2: bytes 64..96
+        let va4 = vld1q_s8(a_ptr.add(64));
+        let vb4 = vld1q_s8(b_ptr.add(64));
+        acc0 = vdotq_s32_stable(acc0, va4, vb4);
 
-    let va5 = vld1q_s8(a_ptr.add(80));
-    let vb5 = vld1q_s8(b_ptr.add(80));
-    acc1 = vdotq_s32_stable(acc1, va5, vb5);
+        let va5 = vld1q_s8(a_ptr.add(80));
+        let vb5 = vld1q_s8(b_ptr.add(80));
+        acc1 = vdotq_s32_stable(acc1, va5, vb5);
 
-    // Iteration 3: bytes 96..128
-    let va6 = vld1q_s8(a_ptr.add(96));
-    let vb6 = vld1q_s8(b_ptr.add(96));
-    acc0 = vdotq_s32_stable(acc0, va6, vb6);
+        // Iteration 3: bytes 96..128
+        let va6 = vld1q_s8(a_ptr.add(96));
+        let vb6 = vld1q_s8(b_ptr.add(96));
+        acc0 = vdotq_s32_stable(acc0, va6, vb6);
 
-    let va7 = vld1q_s8(a_ptr.add(112));
-    let vb7 = vld1q_s8(b_ptr.add(112));
-    acc1 = vdotq_s32_stable(acc1, va7, vb7);
+        let va7 = vld1q_s8(a_ptr.add(112));
+        let vb7 = vld1q_s8(b_ptr.add(112));
+        acc1 = vdotq_s32_stable(acc1, va7, vb7);
 
-    // Combine accumulators and reduce vector sum to 32-bit scalar
-    let total_acc = vaddq_s32(acc0, acc1);
-    vaddvq_s32(total_acc)
+        // Combine accumulators and reduce vector sum to 32-bit scalar
+        let total_acc = vaddq_s32(acc0, acc1);
+        vaddvq_s32(total_acc)
+    }
 }
 
 /// Reference scalar dot product over 128 signed 8-bit integers.

@@ -79,7 +79,7 @@ fn copy_str_to_c_buffer(src: &str, dst: &mut [c_char]) {
 }
 
 /// Computes Shannon entropy ($0.0 \dots 8.0$) for a memory buffer.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_estimate_entropy(buf: *const u8, len: usize) -> f64 {
     if buf.is_null() || len == 0 {
         return 0.0;
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn ttzip_rust_estimate_entropy(buf: *const u8, len: usize)
 }
 
 /// Computes Shannon entropy ($0.0 \dots 8.0$) using strided sampling if buffer exceeds sample_limit.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_estimate_entropy_strided(
     buf: *const u8,
     len: usize,
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn ttzip_rust_estimate_entropy_strided(
 }
 
 /// Determines whether a buffer should bypass compression to Store mode based on entropy and size threshold.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_should_bypass_compression(
     buf: *const u8,
     len: usize,
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn ttzip_rust_should_bypass_compression(
 }
 
 /// Evaluates payload and generates intelligent codec & level recommendation in $<10\,\text{ms}$.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_recommend_codec(
     buf: *const u8,
     len: usize,

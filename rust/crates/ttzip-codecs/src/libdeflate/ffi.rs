@@ -15,7 +15,7 @@ pub enum LibdeflateResult {
 pub enum LibdeflateCompressorOpaque {}
 pub enum LibdeflateDecompressorOpaque {}
 
-extern "C" {
+unsafe extern "C" {
     pub fn libdeflate_alloc_compressor(compression_level: libc::c_int) -> *mut LibdeflateCompressorOpaque;
     pub fn libdeflate_deflate_compress(
         compressor: *mut LibdeflateCompressorOpaque,

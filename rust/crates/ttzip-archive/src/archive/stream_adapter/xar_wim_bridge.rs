@@ -474,8 +474,9 @@ fn parse_wim_direntry(meta: &[u8], pos: usize) -> Result<Option<ParsedWimDirEntr
     if 102 + fn_len > li_len || !fn_len.is_multiple_of(2) {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-    let u16_units: Vec<u16> = meta[pos + 102..pos + 102 + fn_len]
-        .chunks_exact(2)
+    let (u16_pairs, _) = meta[pos + 102..pos + 102 + fn_len].as_chunks::<2>();
+    let u16_units: Vec<u16> = u16_pairs
+        .iter()
         .map(|c| u16::from_le_bytes([c[0], c[1]]))
         .collect();
     let name = String::from_utf16(&u16_units).map_err(|_| TTZipStatus::ErrCorruptHeader)?;

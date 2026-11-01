@@ -9,18 +9,20 @@ use std::ffi::CStr;
 
 /// Safely extracts pathname from an archive entry, prioritizing UTF-8 and falling back to locale-encoded string.
 pub unsafe fn archive_entry_pathname_safe<'a>(e: *mut c_void) -> Option<&'a CStr> {
-    if e.is_null() {
-        return None;
+    unsafe {
+        if e.is_null() {
+            return None;
+        }
+        let p_utf8 = archive_entry_pathname_utf8(e);
+        if !p_utf8.is_null() {
+            return Some(CStr::from_ptr(p_utf8));
+        }
+        let p_loc = archive_entry_pathname(e);
+        if !p_loc.is_null() {
+            return Some(CStr::from_ptr(p_loc));
+        }
+        None
     }
-    let p_utf8 = archive_entry_pathname_utf8(e);
-    if !p_utf8.is_null() {
-        return Some(CStr::from_ptr(p_utf8));
-    }
-    let p_loc = archive_entry_pathname(e);
-    if !p_loc.is_null() {
-        return Some(CStr::from_ptr(p_loc));
-    }
-    None
 }
 
 pub struct ArchiveReadGuard(pub *mut c_void);
@@ -38,6 +40,29 @@ impl Drop for ArchiveReadGuard {
 }
 
 pub struct ArchiveWriteGuard(pub *mut c_void);
+
+impl ArchiveWriteGuard {
+    /// Explicitly closes and frees the underlying libarchive write handle,
+    /// returning `Err(rc)` if `archive_write_close` fails (`rc != 0`).
+    #[inline]
+    pub fn close_and_free(mut self) -> Result<(), libc::c_int> {
+        if self.0.is_null() {
+            return Ok(());
+        }
+        let ptr = self.0;
+        self.0 = std::ptr::null_mut();
+        let rc = unsafe {
+            let close_rc = archive_write_close(ptr);
+            archive_write_free(ptr);
+            close_rc
+        };
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(rc)
+        }
+    }
+}
 
 impl Drop for ArchiveWriteGuard {
     fn drop(&mut self) {

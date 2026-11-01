@@ -47,14 +47,16 @@ pub mod arm64 {
     /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256hq_u32(mut hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-        asm!(
-            "SHA256H {hash_abcd:q}, {hash_efgh:q}, {wk:v}.4S",
-            hash_abcd = inout(vreg) hash_abcd,
-            hash_efgh = in(vreg) hash_efgh,
-            wk = in(vreg) wk,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        hash_abcd
+        unsafe {
+            asm!(
+                "SHA256H {hash_abcd:q}, {hash_efgh:q}, {wk:v}.4S",
+                hash_abcd = inout(vreg) hash_abcd,
+                hash_efgh = in(vreg) hash_efgh,
+                wk = in(vreg) wk,
+                options(pure, nomem, nostack, preserves_flags)
+            );
+            hash_abcd
+        }
     }
 
     /// Executes ARMv8 SHA256H2 hardware instruction.
@@ -63,14 +65,16 @@ pub mod arm64 {
     /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256h2q_u32(mut hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t) -> uint32x4_t {
-        asm!(
-            "SHA256H2 {hash_efgh:q}, {hash_abcd:q}, {wk:v}.4S",
-            hash_efgh = inout(vreg) hash_efgh,
-            hash_abcd = in(vreg) hash_abcd,
-            wk = in(vreg) wk,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        hash_efgh
+        unsafe {
+            asm!(
+                "SHA256H2 {hash_efgh:q}, {hash_abcd:q}, {wk:v}.4S",
+                hash_efgh = inout(vreg) hash_efgh,
+                hash_abcd = in(vreg) hash_abcd,
+                wk = in(vreg) wk,
+                options(pure, nomem, nostack, preserves_flags)
+            );
+            hash_efgh
+        }
     }
 
     /// Executes ARMv8 SHA256SU0 hardware instruction.
@@ -79,13 +83,15 @@ pub mod arm64 {
     /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256su0q_u32(mut w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
-        asm!(
-            "SHA256SU0 {w0_3:v}.4S, {w4_7:v}.4S",
-            w0_3 = inout(vreg) w0_3,
-            w4_7 = in(vreg) w4_7,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        w0_3
+        unsafe {
+            asm!(
+                "SHA256SU0 {w0_3:v}.4S, {w4_7:v}.4S",
+                w0_3 = inout(vreg) w0_3,
+                w4_7 = in(vreg) w4_7,
+                options(pure, nomem, nostack, preserves_flags)
+            );
+            w0_3
+        }
     }
 
     /// Executes ARMv8 SHA256SU1 hardware instruction.
@@ -94,14 +100,16 @@ pub mod arm64 {
     /// Caller must ensure target architecture supports ARMv8 Cryptography Extensions (FEAT_SHA256).
     #[inline(always)]
     pub unsafe fn vsha256su1q_u32(mut tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
-        asm!(
-            "SHA256SU1 {tw0_3:v}.4S, {w8_11:v}.4S, {w12_15:v}.4S",
-            tw0_3 = inout(vreg) tw0_3,
-            w8_11 = in(vreg) w8_11,
-            w12_15 = in(vreg) w12_15,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        tw0_3
+        unsafe {
+            asm!(
+                "SHA256SU1 {tw0_3:v}.4S, {w8_11:v}.4S, {w12_15:v}.4S",
+                tw0_3 = inout(vreg) tw0_3,
+                w8_11 = in(vreg) w8_11,
+                w12_15 = in(vreg) w12_15,
+                options(pure, nomem, nostack, preserves_flags)
+            );
+            tw0_3
+        }
     }
 
     /// Compresses contiguous 64-byte blocks into state using ARMv8 SHA-256 crypto instructions.
@@ -110,53 +118,55 @@ pub mod arm64 {
     /// `data` must point to `blocks * 64` valid readable bytes.
     #[target_feature(enable = "sha2")]
     pub unsafe fn compress_blocks_arm64(state: &mut [u32; 8], mut data: *const u8, blocks: usize) {
-        let mut abcd = vld1q_u32(state.as_ptr());
-        let mut efgh = vld1q_u32(state.as_ptr().add(4));
+        unsafe {
+            let mut abcd = vld1q_u32(state.as_ptr());
+            let mut efgh = vld1q_u32(state.as_ptr().add(4));
 
-        for _ in 0..blocks {
-            let (abcd_orig, efgh_orig) = (abcd, efgh);
-            let mut s0 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data)));
-            let mut s1 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(16))));
-            let mut s2 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(32))));
-            let mut s3 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(48))));
+            for _ in 0..blocks {
+                let (abcd_orig, efgh_orig) = (abcd, efgh);
+                let mut s0 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data)));
+                let mut s1 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(16))));
+                let mut s2 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(32))));
+                let mut s3 = vreinterpretq_u32_u8(vrev32q_u8(vld1q_u8(data.add(48))));
 
-            macro_rules! round_quad {
-                ($s:expr, $k_idx:expr) => {{
-                    let tmp = vaddq_u32($s, vld1q_u32(&K256[$k_idx]));
-                    let abcd_prev = abcd;
-                    abcd = vsha256hq_u32(abcd_prev, efgh, tmp);
-                    efgh = vsha256h2q_u32(efgh, abcd_prev, tmp);
-                }};
+                macro_rules! round_quad {
+                    ($s:expr_2021, $k_idx:expr_2021) => {{
+                        let tmp = vaddq_u32($s, vld1q_u32(&K256[$k_idx]));
+                        let abcd_prev = abcd;
+                        abcd = vsha256hq_u32(abcd_prev, efgh, tmp);
+                        efgh = vsha256h2q_u32(efgh, abcd_prev, tmp);
+                    }};
+                }
+
+                // Rounds 0-15 (Initial schedule)
+                round_quad!(s0, 0);
+                round_quad!(s1, 4);
+                round_quad!(s2, 8);
+                round_quad!(s3, 12);
+
+                // Rounds 16-63 (Message schedule expansion + interleaved rounds)
+                for t in (16..64).step_by(16) {
+                    s0 = vsha256su1q_u32(vsha256su0q_u32(s0, s1), s2, s3);
+                    round_quad!(s0, t);
+
+                    s1 = vsha256su1q_u32(vsha256su0q_u32(s1, s2), s3, s0);
+                    round_quad!(s1, t + 4);
+
+                    s2 = vsha256su1q_u32(vsha256su0q_u32(s2, s3), s0, s1);
+                    round_quad!(s2, t + 8);
+
+                    s3 = vsha256su1q_u32(vsha256su0q_u32(s3, s0), s1, s2);
+                    round_quad!(s3, t + 12);
+                }
+
+                abcd = vaddq_u32(abcd, abcd_orig);
+                efgh = vaddq_u32(efgh, efgh_orig);
+                data = data.add(64);
             }
 
-            // Rounds 0-15 (Initial schedule)
-            round_quad!(s0, 0);
-            round_quad!(s1, 4);
-            round_quad!(s2, 8);
-            round_quad!(s3, 12);
-
-            // Rounds 16-63 (Message schedule expansion + interleaved rounds)
-            for t in (16..64).step_by(16) {
-                s0 = vsha256su1q_u32(vsha256su0q_u32(s0, s1), s2, s3);
-                round_quad!(s0, t);
-
-                s1 = vsha256su1q_u32(vsha256su0q_u32(s1, s2), s3, s0);
-                round_quad!(s1, t + 4);
-
-                s2 = vsha256su1q_u32(vsha256su0q_u32(s2, s3), s0, s1);
-                round_quad!(s2, t + 8);
-
-                s3 = vsha256su1q_u32(vsha256su0q_u32(s3, s0), s1, s2);
-                round_quad!(s3, t + 12);
-            }
-
-            abcd = vaddq_u32(abcd, abcd_orig);
-            efgh = vaddq_u32(efgh, efgh_orig);
-            data = data.add(64);
+            vst1q_u32(state.as_mut_ptr(), abcd);
+            vst1q_u32(state.as_mut_ptr().add(4), efgh);
         }
-
-        vst1q_u32(state.as_mut_ptr(), abcd);
-        vst1q_u32(state.as_mut_ptr().add(4), efgh);
     }
 }
 
@@ -168,7 +178,9 @@ pub mod arm64 {
 #[cfg(target_arch = "aarch64")]
 #[inline]
 pub unsafe fn sha256_compress_arm64_crypto(state: &mut [u32; 8], data: *const u8, blocks: usize) {
-    arm64::compress_blocks_arm64(state, data, blocks);
+    unsafe {
+        arm64::compress_blocks_arm64(state, data, blocks);
+    }
 }
 
 // ============================================================================

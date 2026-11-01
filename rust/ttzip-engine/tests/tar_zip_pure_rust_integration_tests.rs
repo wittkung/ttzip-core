@@ -21,26 +21,30 @@ unsafe extern "C" fn tar_scan_cb(
     entry: *const TTZipEntryMetadata,
     _user_data: *mut libc::c_void,
 ) -> bool {
-    if !entry.is_null() {
-        let meta = &*entry;
-        assert!(!meta.path.is_null());
-        let _name = CStr::from_ptr(meta.path).to_str().unwrap();
-        TAR_SCANNED_COUNT.fetch_add(1, Ordering::SeqCst);
+    unsafe {
+        if !entry.is_null() {
+            let meta = &*entry;
+            assert!(!meta.path.is_null());
+            let _name = CStr::from_ptr(meta.path).to_str().unwrap();
+            TAR_SCANNED_COUNT.fetch_add(1, Ordering::SeqCst);
+        }
+        true
     }
-    true
 }
 
 unsafe extern "C" fn zip_scan_cb(
     entry: *const TTZipEntryMetadata,
     _user_data: *mut libc::c_void,
 ) -> bool {
-    if !entry.is_null() {
-        let meta = &*entry;
-        assert!(!meta.path.is_null());
-        let _name = CStr::from_ptr(meta.path).to_str().unwrap();
-        ZIP_SCANNED_COUNT.fetch_add(1, Ordering::SeqCst);
+    unsafe {
+        if !entry.is_null() {
+            let meta = &*entry;
+            assert!(!meta.path.is_null());
+            let _name = CStr::from_ptr(meta.path).to_str().unwrap();
+            ZIP_SCANNED_COUNT.fetch_add(1, Ordering::SeqCst);
+        }
+        true
     }
-    true
 }
 
 #[test]

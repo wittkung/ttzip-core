@@ -18,7 +18,7 @@ use ttzip_engine::types::{
     TTZIP_COLLISION_POLICY_KEEP_BOTH,
 };
 
-extern "C" {
+unsafe extern "C" {
     fn ttzip_rust_extract_archive(
         archive_path: *const libc::c_char,
         destination_path: *const libc::c_char,

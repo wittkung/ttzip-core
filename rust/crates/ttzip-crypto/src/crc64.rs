@@ -43,8 +43,7 @@ static CRC64_TABLE8: [[u64; 256]; 8] = {
 #[inline]
 pub fn crc64(data: &[u8], seed: u64) -> u64 {
     let mut crc = !seed;
-    let chunks = data.chunks_exact(8);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = data.as_chunks::<8>();
 
     for chunk in chunks {
         let word = u64::from_le_bytes([

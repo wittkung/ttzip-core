@@ -43,10 +43,12 @@ impl TTZipBufferRef {
     /// Caller must guarantee `data` is non-null or length is 0, and points to `len` initialized, valid bytes.
     #[inline]
     pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
-        if self.data.is_null() || self.len == 0 {
-            &[]
-        } else {
-            std::slice::from_raw_parts(self.data, self.len)
+        unsafe {
+            if self.data.is_null() || self.len == 0 {
+                &[]
+            } else {
+                std::slice::from_raw_parts(self.data, self.len)
+            }
         }
     }
 }
@@ -85,10 +87,12 @@ impl TTZipBufferMut {
     /// Caller must guarantee `data` is non-null or length is 0, and points to `len` initialized, valid bytes.
     #[inline]
     pub unsafe fn as_slice<'a>(&self) -> &'a [u8] {
-        if self.data.is_null() || self.len == 0 {
-            &[]
-        } else {
-            std::slice::from_raw_parts(self.data, self.len)
+        unsafe {
+            if self.data.is_null() || self.len == 0 {
+                &[]
+            } else {
+                std::slice::from_raw_parts(self.data, self.len)
+            }
         }
     }
 
@@ -98,10 +102,12 @@ impl TTZipBufferMut {
     /// Caller must guarantee `data` is non-null or length is 0, points to `len` valid writable bytes, and no aliasing exists.
     #[inline]
     pub unsafe fn as_mut_slice<'a>(&mut self) -> &'a mut [u8] {
-        if self.data.is_null() || self.len == 0 {
-            &mut []
-        } else {
-            std::slice::from_raw_parts_mut(self.data, self.len)
+        unsafe {
+            if self.data.is_null() || self.len == 0 {
+                &mut []
+            } else {
+                std::slice::from_raw_parts_mut(self.data, self.len)
+            }
         }
     }
 }

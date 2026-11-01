@@ -81,7 +81,7 @@ impl TransactionalFileWriter {
                 .open(&tmp_path)
             {
                 Ok(file) => {
-                    let guard = FileAbortGuard::new(&tmp_path);
+                    let guard = FileAbortGuard::from_created_file(&tmp_path, &file);
                     return Ok(Self {
                         file: Some(file),
                         guard: Some(guard),
@@ -160,9 +160,7 @@ impl TransactionalFileWriter {
     pub fn abort(mut self) {
         drop(self.file.take());
         if let Some(guard) = self.guard.take() {
-            if guard.is_active() && guard.path().exists() {
-                let _ = std::fs::remove_file(guard.path());
-            }
+            let _ = guard.abort_checked();
         }
     }
 
@@ -252,9 +250,7 @@ impl Drop for TransactionalFileWriter {
 
         // Unlink remaining temporary file if transaction was not committed.
         if let Some(guard) = self.guard.take() {
-            if guard.is_active() && guard.path().exists() {
-                let _ = std::fs::remove_file(guard.path());
-            }
+            let _ = guard.abort_checked();
         }
     }
 }
@@ -267,6 +263,248 @@ const _: () = {
     assert_send_sync::<TransactionalFileWriter>();
     assert_unpin::<TransactionalFileWriter>();
 };
+
+static INFLIGHT_JAIL_SEQ: AtomicU64 = AtomicU64::new(1);
+
+pub(crate) fn resolve_jail_parent_fd(
+    jail: &super::dir_jail::DirJail,
+    comps: &[String],
+    create_if_missing: bool,
+) -> Result<libc::c_int, crate::types::TTZipStatus> {
+    use crate::types::TTZipStatus;
+    if create_if_missing {
+        jail.create_dir_all_components(comps)?;
+    }
+    let mut cur_fd = unsafe { libc::fcntl(jail.root_fd(), libc::F_DUPFD_CLOEXEC, 0) };
+    if cur_fd < 0 {
+        return Err(TTZipStatus::ErrExtractionFailed);
+    }
+    let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    for seg in comps {
+        let Ok(seg_c) = std::ffi::CString::new(seg.as_bytes()) else {
+            unsafe { libc::close(cur_fd) };
+            return Err(TTZipStatus::ErrSecurityViolation);
+        };
+        let next_fd = unsafe { libc::openat(cur_fd, seg_c.as_ptr(), flags) };
+        unsafe { libc::close(cur_fd) };
+        if next_fd < 0 {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        cur_fd = next_fd;
+    }
+    Ok(cur_fd)
+}
+
+pub(crate) fn verify_jail_parent_fd_unchanged(
+    jail: &super::dir_jail::DirJail,
+    comps: &[String],
+    expected_fd: libc::c_int,
+) -> Result<(), crate::types::TTZipStatus> {
+    use crate::types::TTZipStatus;
+    let reopened_fd = resolve_jail_parent_fd(jail, comps, false)?;
+    let (mut st_a, mut st_b): (libc::stat, libc::stat) =
+        unsafe { (std::mem::zeroed(), std::mem::zeroed()) };
+    let ok = unsafe {
+        libc::fstat(reopened_fd, &mut st_a) == 0 && libc::fstat(expected_fd, &mut st_b) == 0
+    } && (st_a.st_mode & libc::S_IFMT) == libc::S_IFDIR
+        && st_a.st_dev == st_b.st_dev
+        && st_a.st_ino == st_b.st_ino;
+    unsafe {
+        libc::close(reopened_fd);
+    }
+    if ok {
+        Ok(())
+    } else {
+        Err(TTZipStatus::ErrSecurityViolation)
+    }
+}
+
+pub(crate) fn open_exclusive_file_in_dir(
+    parent_fd: libc::c_int,
+    leaf_c: &std::ffi::CStr,
+) -> Result<std::fs::File, i32> {
+    use std::os::unix::io::FromRawFd;
+    let flags =
+        libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    let fd = unsafe { libc::openat(parent_fd, leaf_c.as_ptr(), flags, 0o600 as libc::c_uint) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error()
+            .raw_os_error()
+            .unwrap_or(libc::EIO));
+    }
+    Ok(unsafe { std::fs::File::from_raw_fd(fd) })
+}
+
+pub(crate) fn check_regular_or_missing_in_dir(
+    parent_fd: libc::c_int,
+    leaf_c: &std::ffi::CStr,
+) -> Result<bool, crate::types::TTZipStatus> {
+    use crate::types::TTZipStatus;
+    let mut st: libc::stat = unsafe { std::mem::zeroed() };
+    let rc =
+        unsafe { libc::fstatat(parent_fd, leaf_c.as_ptr(), &mut st, libc::AT_SYMLINK_NOFOLLOW) };
+    if rc == 0 {
+        if (st.st_mode & libc::S_IFMT) == libc::S_IFREG {
+            Ok(true)
+        } else {
+            Err(TTZipStatus::ErrSecurityViolation)
+        }
+    } else {
+        let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+        if errno == libc::ENOENT {
+            Ok(false)
+        } else {
+            Err(TTZipStatus::ErrSecurityViolation)
+        }
+    }
+}
+
+pub(crate) fn open_exclusive_temp_in_dir(
+    parent_fd: libc::c_int,
+    leaf: &str,
+) -> Result<(std::fs::File, std::ffi::CString), crate::types::TTZipStatus> {
+    use crate::types::TTZipStatus;
+    let prefix: String = leaf.chars().take(48).collect();
+    for attempt in 0..64u32 {
+        let cand = if attempt == 0 {
+            format!(".ttzip_inflight_{prefix}_0")
+        } else {
+            let seq = INFLIGHT_JAIL_SEQ.fetch_add(1, Ordering::Relaxed);
+            format!(".ttzip_inflight_{prefix}_{seq:x}_{attempt}")
+        };
+        let cand_c =
+            std::ffi::CString::new(cand.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+        match open_exclusive_file_in_dir(parent_fd, &cand_c) {
+            Ok(file) => return Ok((file, cand_c)),
+            Err(libc::EEXIST) => continue,
+            Err(libc::ELOOP | libc::ENOTDIR | libc::EISDIR | libc::EPERM | libc::EACCES) => {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+            Err(_) => return Err(TTZipStatus::ErrExtractionFailed),
+        }
+    }
+    Err(TTZipStatus::ErrExtractionFailed)
+}
+
+pub(crate) type InFlightOpenParts = (
+    std::fs::File,
+    libc::c_int,
+    Vec<String>,
+    std::ffi::CString,
+    Option<std::ffi::CString>,
+);
+
+pub(crate) fn open_inflight_jail_entry(
+    jail: &super::dir_jail::DirJail,
+    out_rel: &str,
+    overwrite: bool,
+) -> Result<InFlightOpenParts, crate::types::TTZipStatus> {
+    use crate::types::TTZipStatus;
+    let comps = super::dir_jail::DirJail::extract_clean_components(out_rel)?;
+    let (leaf, parent_comps) = comps.split_last().ok_or(TTZipStatus::ErrSecurityViolation)?;
+    let leaf_c =
+        std::ffi::CString::new(leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+    let parent_fd = resolve_jail_parent_fd(jail, parent_comps, true)?;
+    let res = match open_exclusive_file_in_dir(parent_fd, &leaf_c) {
+        Ok(file) => Ok((file, parent_fd, parent_comps.to_vec(), leaf_c, None)),
+        Err(libc::EEXIST) => (|| {
+            let is_reg = check_regular_or_missing_in_dir(parent_fd, &leaf_c)?;
+            if !is_reg || !overwrite {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+            let (file, tmp_c) = open_exclusive_temp_in_dir(parent_fd, leaf)?;
+            Ok((file, parent_fd, parent_comps.to_vec(), tmp_c, Some(leaf_c)))
+        })(),
+        Err(libc::ELOOP | libc::ENOTDIR | libc::EISDIR | libc::EPERM | libc::EACCES) => {
+            Err(TTZipStatus::ErrSecurityViolation)
+        }
+        Err(_) => Err(TTZipStatus::ErrExtractionFailed),
+    };
+    if res.is_err() {
+        unsafe {
+            libc::close(parent_fd);
+        }
+    }
+    res
+}
+
+/// RAII guard for an in-flight extracted regular file inside a [`super::dir_jail::DirJail`].
+pub struct InFlightJailFile {
+    file: Option<std::fs::File>,
+    parent_fd: libc::c_int,
+    parent_comps: Vec<String>,
+    cleanup_leaf: Option<std::ffi::CString>,
+    commit_leaf: Option<std::ffi::CString>,
+}
+
+impl InFlightJailFile {
+    /// Opens an in-flight regular file inside `jail` at `out_rel`.
+    pub fn open(
+        jail: &super::dir_jail::DirJail,
+        out_rel: &str,
+        overwrite: bool,
+    ) -> Result<Self, crate::types::TTZipStatus> {
+        let (file, parent_fd, parent_comps, cleanup_leaf, commit_leaf) =
+            open_inflight_jail_entry(jail, out_rel, overwrite)?;
+        Ok(Self {
+            file: Some(file),
+            parent_fd,
+            parent_comps,
+            cleanup_leaf: Some(cleanup_leaf),
+            commit_leaf,
+        })
+    }
+
+    /// Returns a mutable reference to the underlying open file handle.
+    #[inline]
+    pub fn file_mut(&mut self) -> &mut std::fs::File {
+        self.file.as_mut().expect("in-flight file handle is open")
+    }
+
+    /// Flushes the file, verifies that the parent directory path in `jail` still resolves to
+    /// `parent_fd`, atomically installs any sibling temporary file via `renameat(parent_fd, ...)`,
+    /// and disarms drop cleanup.
+    pub fn commit(mut self, jail: &super::dir_jail::DirJail) -> Result<(), crate::types::TTZipStatus> {
+        use crate::types::TTZipStatus;
+        if let Some(mut f) = self.file.take() {
+            f.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        }
+        verify_jail_parent_fd_unchanged(jail, &self.parent_comps, self.parent_fd)?;
+        if let (Some(cleanup_c), Some(target_c)) = (&self.cleanup_leaf, &self.commit_leaf) {
+            let _ = check_regular_or_missing_in_dir(self.parent_fd, target_c)?;
+            let rc = unsafe {
+                libc::renameat(
+                    self.parent_fd,
+                    cleanup_c.as_ptr(),
+                    self.parent_fd,
+                    target_c.as_ptr(),
+                )
+            };
+            if rc != 0 {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+        }
+        self.cleanup_leaf = None;
+        Ok(())
+    }
+}
+
+impl Drop for InFlightJailFile {
+    fn drop(&mut self) {
+        drop(self.file.take());
+        if self.parent_fd >= 0 {
+            if let Some(cleanup_c) = self.cleanup_leaf.take() {
+                unsafe {
+                    libc::unlinkat(self.parent_fd, cleanup_c.as_ptr(), 0);
+                }
+            }
+            unsafe {
+                libc::close(self.parent_fd);
+            }
+            self.parent_fd = -1;
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

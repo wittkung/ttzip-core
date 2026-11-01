@@ -17,7 +17,7 @@ use std::panic::catch_unwind;
 /// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
 /// - `out_cipher` must point to `src_len` writable bytes.
 /// - `out_tag` must point to 16 writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vault_encrypt_key(
     key: *const u8,
     iv: *const u8,
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn ttzip_rust_vault_encrypt_key(
 /// - If `aad_len > 0`, `aad` must point to `aad_len` readable bytes.
 /// - `tag` must point to 16 readable bytes.
 /// - `out_plain` must point to `cipher_len` writable bytes.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vault_decrypt_key(
     key: *const u8,
     iv: *const u8,
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn ttzip_rust_vault_decrypt_key(
 ///
 /// # Safety
 /// - `ptr` must be valid for writes of `len` bytes, or null if `len == 0`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_vault_wipe(ptr: *mut u8, len: usize) {
     let _ = catch_unwind(|| {
         vault::secure_wipe(ptr, len);

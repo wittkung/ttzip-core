@@ -146,31 +146,33 @@ where
 // =============================================================================
 
 /// Returns the active C-ABI version identifier.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_abi_version() -> u32 {
     TTZIP_ABI_VERSION_3
 }
 
 /// Validates whether a client requested ABI version is backwards-compatible.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_abi_is_compatible(requested_version: u32) -> bool {
     requested_version == TTZIP_ABI_VERSION_3
 }
 
 /// Returns the total count of officially registered public C-ABI exported symbols.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_abi_symbol_count() -> usize {
     TTZIP_EXPORTED_SYMBOLS.len()
 }
 
 /// Queries whether the given null-terminated C symbol name is in the export whitelist.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_symbol_is_whitelisted(symbol_name: *const c_char) -> bool {
-    if symbol_name.is_null() {
-        return false;
-    }
-    match CStr::from_ptr(symbol_name).to_str() {
-        Ok(name) => is_symbol_in_whitelist(name),
-        Err(_) => false,
+    unsafe {
+        if symbol_name.is_null() {
+            return false;
+        }
+        match CStr::from_ptr(symbol_name).to_str() {
+            Ok(name) => is_symbol_in_whitelist(name),
+            Err(_) => false,
+        }
     }
 }

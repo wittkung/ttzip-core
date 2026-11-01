@@ -22,7 +22,7 @@ use std::os::unix::fs::DirBuilderExt;
 use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn acl_from_text(buf_p: *const libc::c_char) -> *mut libc::c_void;
     fn acl_set_file(path_p: *const libc::c_char, type_: libc::c_int, acl: *mut libc::c_void) -> libc::c_int;
     fn acl_free(obj_p: *mut libc::c_void) -> libc::c_int;

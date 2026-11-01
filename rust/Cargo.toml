@@ -11,7 +11,7 @@ members = [
     "crates/ttzip-archive",
     "crates/ttzip-semantic",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
@@ -20,7 +20,7 @@ license = "BSD-3-Clause"
 repository = "https://github.com/wittkung/ttzip-core"
 homepage = "https://github.com/wittkung/ttzip-core"
 documentation = "https://github.com/wittkung/ttzip-core"
-edition = "2021"
+edition = "2024"
 keywords = ["compression", "zip", "7z", "simd", "archive"]
 categories = ["compression", "command-line-utilities", "filesystem"]
 

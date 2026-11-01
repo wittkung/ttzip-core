@@ -427,38 +427,40 @@ pub fn compare_manifests(
 // MARK: - C-ABI FFI Exports
 
 /// C-ABI: Scans directory recursively using Rayon and generates JSON FileTreeManifest.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_differential_scan_directory(
     path: *const c_char,
     out_manifest_json: *mut *mut c_char,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if path.is_null() || out_manifest_json.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-        *out_manifest_json = std::ptr::null_mut();
-        let path_str = match CStr::from_ptr(path).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        match scan_directory_tree(Path::new(path_str)) {
-            Ok(manifest) => {
-                let json = manifest.to_json();
-                if let Ok(c_json) = CString::new(json) {
-                    *out_manifest_json = c_json.into_raw();
-                    TTZipStatus::Ok
-                } else {
-                    TTZipStatus::ErrOutOfMemory
-                }
+    unsafe {
+        let result = catch_unwind(|| {
+            if path.is_null() || out_manifest_json.is_null() {
+                return TTZipStatus::ErrInvalidParam;
             }
-            Err(status) => status,
-        }
-    });
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            *out_manifest_json = std::ptr::null_mut();
+            let path_str = match CStr::from_ptr(path).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            match scan_directory_tree(Path::new(path_str)) {
+                Ok(manifest) => {
+                    let json = manifest.to_json();
+                    if let Ok(c_json) = CString::new(json) {
+                        *out_manifest_json = c_json.into_raw();
+                        TTZipStatus::Ok
+                    } else {
+                        TTZipStatus::ErrOutOfMemory
+                    }
+                }
+                Err(status) => status,
+            }
+        });
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI: Compares two FileTreeManifest JSON representations across 5 dimensions.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
     ttzip_json: *const c_char,
     oracle_json: *const c_char,
@@ -468,50 +470,54 @@ pub unsafe extern "C" fn ttzip_rust_differential_compare_manifests(
     out_report_json: *mut *mut c_char,
     out_is_passed: *mut bool,
 ) -> TTZipStatus {
-    let result = catch_unwind(|| {
-        if ttzip_json.is_null() || oracle_json.is_null() || out_report_json.is_null() {
-            return TTZipStatus::ErrInvalidParam;
-        }
-        *out_report_json = std::ptr::null_mut();
-        let ttzip_str = match CStr::from_ptr(ttzip_json).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let oracle_str = match CStr::from_ptr(oracle_json).to_str() {
-            Ok(s) => s,
-            Err(_) => return TTZipStatus::ErrInvalidParam,
-        };
-        let or_name = if !oracle_name.is_null() { CStr::from_ptr(oracle_name).to_str().unwrap_or("oracle") } else { "oracle" };
-        let fmt_name = if !format_name.is_null() { CStr::from_ptr(format_name).to_str().unwrap_or("zip") } else { "zip" };
+    unsafe {
+        let result = catch_unwind(|| {
+            if ttzip_json.is_null() || oracle_json.is_null() || out_report_json.is_null() {
+                return TTZipStatus::ErrInvalidParam;
+            }
+            *out_report_json = std::ptr::null_mut();
+            let ttzip_str = match CStr::from_ptr(ttzip_json).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let oracle_str = match CStr::from_ptr(oracle_json).to_str() {
+                Ok(s) => s,
+                Err(_) => return TTZipStatus::ErrInvalidParam,
+            };
+            let or_name = if !oracle_name.is_null() { CStr::from_ptr(oracle_name).to_str().unwrap_or("oracle") } else { "oracle" };
+            let fmt_name = if !format_name.is_null() { CStr::from_ptr(format_name).to_str().unwrap_or("zip") } else { "zip" };
 
-        let ttzip_manifest = match FileTreeManifest::from_json(ttzip_str) {
-            Some(m) => m,
-            None => return TTZipStatus::ErrCorruptHeader,
-        };
-        let oracle_manifest = match FileTreeManifest::from_json(oracle_str) {
-            Some(m) => m,
-            None => return TTZipStatus::ErrCorruptHeader,
-        };
+            let ttzip_manifest = match FileTreeManifest::from_json(ttzip_str) {
+                Some(m) => m,
+                None => return TTZipStatus::ErrCorruptHeader,
+            };
+            let oracle_manifest = match FileTreeManifest::from_json(oracle_str) {
+                Some(m) => m,
+                None => return TTZipStatus::ErrCorruptHeader,
+            };
 
-        let report = compare_manifests(&ttzip_manifest, &oracle_manifest, is_tar_format, or_name, fmt_name);
-        if !out_is_passed.is_null() {
-            *out_is_passed = report.is_passed;
-        }
-        if let Ok(c_json) = CString::new(report.to_json()) {
-            *out_report_json = c_json.into_raw();
-            TTZipStatus::Ok
-        } else {
-            TTZipStatus::ErrOutOfMemory
-        }
-    });
-    result.unwrap_or(TTZipStatus::ErrPanicCaught)
+            let report = compare_manifests(&ttzip_manifest, &oracle_manifest, is_tar_format, or_name, fmt_name);
+            if !out_is_passed.is_null() {
+                *out_is_passed = report.is_passed;
+            }
+            if let Ok(c_json) = CString::new(report.to_json()) {
+                *out_report_json = c_json.into_raw();
+                TTZipStatus::Ok
+            } else {
+                TTZipStatus::ErrOutOfMemory
+            }
+        });
+        result.unwrap_or(TTZipStatus::ErrPanicCaught)
+    }
 }
 
 /// C-ABI: Frees string memory allocated by differential scanner or verifier.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_free_differential_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
+    unsafe {
+        if !ptr.is_null() {
+            let _ = CString::from_raw(ptr);
+        }
     }
 }
 

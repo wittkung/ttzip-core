@@ -120,11 +120,9 @@ fn demonstrate_16_formats_matrix(tmp: &Path) -> Result<(), Box<dyn std::error::E
                 println!("{:<14?} | {:<16} | {:<10} | {:?}", fmt, filename, size, detected);
 
                 // If inspectable container, read metadata
-                if let Ok(reader) = ArchiveReader::open(&dest) {
-                    if let Ok(entries) = reader.entries() {
-                        for e in entries {
-                            assert!(e.uncompressed_size > 0);
-                        }
+                if let Ok(entries) = ArchiveReader::open(&dest).and_then(|r| r.entries()) {
+                    for e in entries {
+                        assert!(e.uncompressed_size > 0);
                     }
                 }
             }

@@ -16,7 +16,7 @@ use ttzip_engine::uniffi_api::preset::validate_archive_params;
 use ttzip_engine::uniffi_api::types::TTZipArchiveFormat;
 
 // UniFFI Scaffolding C-ABI declarations exported by ttzip_engine.
-extern "C" {
+unsafe extern "C" {
     fn ffi_ttzip_engine_uniffi_contract_version() -> u32;
 
     // Core facade functions
@@ -249,4 +249,56 @@ fn test_stateless_facade_functional_contracts() {
     // 4. Validate create archive params
     let validation = validate_archive_params(TTZipArchiveFormat::Zip, 6, true, true);
     assert!(validation.is_ok(), "Normal ZIP creation parameters must validate successfully");
+}
+
+#[test]
+fn test_u1_create_transaction_incomplete_uniffi_schema_surface() {
+    use ttzip_engine::uniffi_api::types::{
+        TTZipError, UniFFIArchiveCleanupDisposition, UniFFICreateBackupRecoveryState,
+        UniFFICreateTransactionFailureReport, UniFFIDescriptorReleaseStatus,
+        UniFFIResidualPathRole, UniFFIStageCleanupFailureItem, UniFFIStageFileFinishDiagnostic,
+    };
+
+    let report = UniFFICreateTransactionFailureReport {
+        primary_status_code: -23,
+        was_primary_cancelled: true,
+        is_cancellation_requested: true,
+        stage_dir: "/tmp/.ttzip_create_txn_1".to_string(),
+        stage_dir_preserved: true,
+        unconfirmed_release_count: 1,
+        cleanup_failures: vec![UniFFIStageCleanupFailureItem {
+            role: UniFFIResidualPathRole::StagedArtifact,
+            disposition: UniFFIArchiveCleanupDisposition::DescriptorReleaseUnconfirmed,
+            path: None,
+            original_staged_path: Some("/tmp/.ttzip_create_txn_1/out.zip".to_string()),
+            os_error_code: Some(4),
+            message: "close(2) returned EINTR".to_string(),
+        }],
+        finish_diagnostics: vec![UniFFIStageFileFinishDiagnostic {
+            role: UniFFIResidualPathRole::StagedArtifact,
+            diagnostic_path: "/tmp/.ttzip_create_txn_1/out.zip".to_string(),
+            expected_dev: 1,
+            expected_ino: 2,
+            primary_status_code: -15,
+            prior_write_or_encoder_error: None,
+            userspace_flush_os_error: None,
+            userspace_flush_detail: None,
+            sync_os_error: None,
+            sync_detail: None,
+            close_os_error: Some(4),
+            close_detail: Some("Interrupted system call".to_string()),
+            release_status: UniFFIDescriptorReleaseStatus::ReleaseUnconfirmed,
+        }],
+        recovery_state: UniFFICreateBackupRecoveryState::NotApplicable,
+        backup_dir: None,
+        restored_targets: vec![],
+        rollback_failed_entries: vec![],
+        backup_dir_cleanup_error: None,
+        summary_message: "incomplete".to_string(),
+    };
+    let err = TTZipError::CreateTransactionIncomplete {
+        report: Box::new(report),
+        summary_message: "incomplete".to_string(),
+    };
+    assert!(err.to_string().contains("incomplete"));
 }

@@ -6,16 +6,22 @@
 //! Features multi-threaded Fast-LZMA2 solid compression, Store mode, UTF-16LE metadata encoding,
 //! and accurate 7z SignatureHeader CRC calculations.
 
+use crate::archive::unified::create_transaction::CreateTransactionContext;
 use crate::codecs::lzma2::{Fl2CStream, Fl2InBuffer, Fl2OutBuffer};
 use crate::crypto::aes256::aes256_cbc_encrypt;
 use crate::crypto::crc32::crc32_fast;
 use crate::crypto::sha256::sha256_7z_kdf;
+pub use crate::sevenz::finish_contract::{
+    create_7z_archive_explicit_split_with_header_encryption_in_txn, create_7z_archive_split_in_txn,
+    create_7z_archive_split_with_header_encryption_in_txn,
+};
+use crate::sevenz::finish_contract::finalize_7z_header_and_signature;
 pub use crate::sevenz::format::SevenZAesWriterConfig;
 use crate::sevenz::format::*;
 use crate::types::{TTZipCompressionLevel, TTZipCreateOptions, TTZipStatus};
 use crate::zip::writer::{ZipCreateReport, ZipInputItem};
 use std::ffi::CString;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,16 +32,16 @@ const AES_STREAM_BUF_SIZE: usize = 64 * 1024;
 
 /// Metadata-only descriptor for a disk-backed 7z input entry.
 #[derive(Debug, Clone)]
-struct SevenZDiskEntry {
-    disk_path: Option<PathBuf>,
-    symlink_target: Option<Vec<u8>>,
-    rel_path: String,
-    is_directory: bool,
-    is_symlink: bool,
-    posix_mode: u32,
-    mtime: std::time::SystemTime,
-    size: u64,
-    is_empty_stream: bool,
+pub(crate) struct SevenZDiskEntry {
+    pub(crate) disk_path: Option<PathBuf>,
+    pub(crate) symlink_target: Option<Vec<u8>>,
+    pub(crate) rel_path: String,
+    pub(crate) is_directory: bool,
+    pub(crate) is_symlink: bool,
+    pub(crate) posix_mode: u32,
+    pub(crate) mtime: std::time::SystemTime,
+    pub(crate) size: u64,
+    pub(crate) is_empty_stream: bool,
 }
 
 /// Constructs 7z Metadata Header bytes for a solid block of items, supporting optional AES-256 coder.
@@ -84,7 +90,7 @@ pub fn build_7z_metadata_header(
     )
 }
 
-fn init_fl2_stream(level: i32, threads: u32) -> Result<Fl2CStream, TTZipStatus> {
+pub(crate) fn init_fl2_stream(level: i32, threads: u32) -> Result<Fl2CStream, TTZipStatus> {
     let mut cstream = if threads > 1 {
         Fl2CStream::new_mt(threads)?
     } else {
@@ -96,7 +102,7 @@ fn init_fl2_stream(level: i32, threads: u32) -> Result<Fl2CStream, TTZipStatus> 
     Ok(cstream)
 }
 
-fn feed_fl2_slice<F>(
+pub(crate) fn feed_fl2_slice<F>(
     cstream: &mut Fl2CStream,
     slice: &[u8],
     out_chunk: &mut [u8],
@@ -132,7 +138,7 @@ where
     Ok(())
 }
 
-fn finish_fl2_stream<F>(
+pub(crate) fn finish_fl2_stream<F>(
     cstream: &mut Fl2CStream,
     out_chunk: &mut [u8],
     mut on_out: F,
@@ -170,7 +176,7 @@ struct Aes256StreamState {
 }
 
 /// Bounded-memory payload sink that streams raw or AES-256-CBC encrypted bytes to any `Write` target.
-struct SevenZPayloadSink<'a, W: Write> {
+pub(crate) struct SevenZPayloadSink<'a, W: Write> {
     writer: &'a mut W,
     raw_comp_len: u64,
     compressed_len: u64,
@@ -178,7 +184,7 @@ struct SevenZPayloadSink<'a, W: Write> {
 }
 
 impl<'a, W: Write> SevenZPayloadSink<'a, W> {
-    fn new(writer: &'a mut W, password: Option<&str>) -> Self {
+    pub(crate) fn new(writer: &'a mut W, password: Option<&str>) -> Self {
         let aes = password.filter(|p| !p.is_empty()).map(|pass| {
             let mut salt = [0u8; 16];
             let mut iv = [0u8; 16];
@@ -202,7 +208,7 @@ impl<'a, W: Write> SevenZPayloadSink<'a, W> {
         Self { writer, raw_comp_len: 0, compressed_len: 0, aes }
     }
 
-    fn write_chunk(&mut self, mut data: &[u8]) -> Result<(), TTZipStatus> {
+    pub(crate) fn write_chunk(&mut self, mut data: &[u8]) -> Result<(), TTZipStatus> {
         if data.is_empty() {
             return Ok(());
         }
@@ -247,7 +253,7 @@ impl<'a, W: Write> SevenZPayloadSink<'a, W> {
         Ok(())
     }
 
-    fn finish(mut self) -> Result<(u64, Option<SevenZAesWriterConfig>), TTZipStatus> {
+    pub(crate) fn finish(mut self) -> Result<(u64, Option<SevenZAesWriterConfig>), TTZipStatus> {
         if let Some(ref mut aes) = self.aes {
             if self.raw_comp_len == 0 && self.compressed_len == 0 && aes.carry_len == 0 {
                 return Ok((0, None));
@@ -273,34 +279,6 @@ impl<'a, W: Write> SevenZPayloadSink<'a, W> {
             Ok((self.compressed_len, None))
         }
     }
-}
-
-fn encode_7z_header_with_aes(
-    plain_header: &[u8],
-    payload_compressed_len: u64,
-    password: &str,
-) -> Result<(Vec<u8>, Vec<u8>), TTZipStatus> {
-    if password.is_empty() {
-        return Err(TTZipStatus::ErrInvalidPassword);
-    }
-    let mut encrypted_header_payload = Vec::with_capacity(plain_header.len() + 64);
-    let mut hdr_sink = SevenZPayloadSink::new(&mut encrypted_header_payload, Some(password));
-    let mut cstream = init_fl2_stream(6, 1)?;
-    let mut out_chunk = vec![0u8; 64 * 1024];
-    feed_fl2_slice(&mut cstream, plain_header, &mut out_chunk, |comp| hdr_sink.write_chunk(comp))?;
-    let dict_prop = finish_fl2_stream(&mut cstream, &mut out_chunk, |comp| hdr_sink.write_chunk(comp))?;
-    let (enc_hdr_len, hdr_aes_cfg) = hdr_sink.finish()?;
-
-    let boot = build_7z_encoded_header_boot(
-        payload_compressed_len,
-        enc_hdr_len,
-        plain_header.len() as u64,
-        crc32_fast(0, plain_header),
-        METHOD_LZMA2,
-        &[dict_prop],
-        hdr_aes_cfg.as_ref(),
-    );
-    Ok((encrypted_header_payload, boot))
 }
 
 /// Creates a complete 7z Solid archive from in-memory input items with optional AES-256 encryption.
@@ -407,7 +385,7 @@ fn stream_single_disk_entry<W: Write>(
             return Ok(None);
         }
         let entry_crc = crc32_fast(0, target_bytes);
-        if let Some(ref mut fl2) = cstream {
+        if let Some(fl2) = cstream {
             feed_fl2_slice(fl2, target_bytes, out_chunk, |comp| sink.write_chunk(comp))?;
         } else {
             sink.write_chunk(target_bytes)?;
@@ -431,7 +409,7 @@ fn stream_single_disk_entry<W: Write>(
         }
         let chunk = &read_buf[..n];
         entry_crc = crc32_fast(entry_crc, chunk);
-        if let Some(ref mut fl2) = cstream {
+        if let Some(fl2) = cstream {
             feed_fl2_slice(fl2, chunk, out_chunk, |comp| sink.write_chunk(comp))?;
         } else {
             sink.write_chunk(chunk)?;
@@ -500,46 +478,11 @@ fn resolve_stream_encoder(
     Ok((cstream, password))
 }
 
-fn finalize_7z_header_and_signature(
-    mut writer: crate::archive::split::SevenZOutputTarget,
-    plain_header_bytes: &[u8],
-    compressed_len: u64,
-    use_encoded_header: bool,
-    password: Option<&str>,
-) -> Result<u64, TTZipStatus> {
-    if use_encoded_header {
-        let pass = password.unwrap_or_default();
-        let (enc_hdr_payload, boot_bytes) =
-            encode_7z_header_with_aes(plain_header_bytes, compressed_len, pass)?;
-        writer.write_all(&enc_hdr_payload).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        writer.write_all(&boot_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        let next_hdr_off = compressed_len + (enc_hdr_payload.len() as u64);
-        let sig_bytes = build_sig_header_bytes(next_hdr_off, &boot_bytes);
-        writer.finalize_signature(&sig_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        Ok(32 + next_hdr_off + (boot_bytes.len() as u64))
-    } else {
-        writer.write_all(plain_header_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        let sig_bytes = build_sig_header_bytes(compressed_len, plain_header_bytes);
-        writer.finalize_signature(&sig_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        Ok(32 + compressed_len + (plain_header_bytes.len() as u64))
-    }
-}
-
-fn write_7z_archive_streaming_from_disk(
-    dest_path: &Path,
-    mut entries: Vec<SevenZDiskEntry>,
+fn validate_7z_encryption_policy(
     options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
+    password: Option<&str>,
     encrypt_file_names: Option<bool>,
-    cancel_flag: Option<&AtomicBool>,
-    start_time: Instant,
-) -> Result<ZipCreateReport, TTZipStatus> {
-    if entries.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-
-    let total_expected: u64 = entries.iter().filter(|e| !e.is_directory).map(|e| e.size).sum();
-    let (cstream, password) = resolve_stream_encoder(options, total_expected)?;
+) -> Result<bool, TTZipStatus> {
     let has_non_empty_password = password.is_some_and(|p| !p.is_empty());
     let req_enc = encrypt_file_names == Some(true)
         || options.encryption != crate::types::TTZipEncryptionMethod::None
@@ -547,37 +490,75 @@ fn write_7z_archive_streaming_from_disk(
     if req_enc && !has_non_empty_password {
         return Err(TTZipStatus::ErrInvalidPassword);
     }
-    let use_encoded_header = encrypt_file_names.unwrap_or(has_non_empty_password) && has_non_empty_password;
+    Ok(encrypt_file_names.unwrap_or(has_non_empty_password) && has_non_empty_password)
+}
 
-    let first_name = entries[0].rel_path.clone();
-    let mut ctx = StreamDiskContext {
-        options,
-        cancel_flag,
-        total_expected,
-        processed_bytes: 0,
-        last_report: Instant::now(),
-    };
-    ctx.report(&first_name, true)?;
+struct StreamedSevenZDiskPayload {
+    stream_sizes: Vec<u64>,
+    stream_crcs: Vec<u32>,
+    uncompressed_len: u64,
+    compressed_len: u64,
+    method_id: u64,
+    coder_props: Vec<u8>,
+    aes_config: Option<SevenZAesWriterConfig>,
+}
 
-    let mut writer = crate::archive::split::SevenZOutputTarget::open(
-        dest_path,
-        split_volume_size_bytes,
-        STREAM_CHUNK_SIZE,
-    )
-    .map_err(|_| TTZipStatus::ErrOpenFailed)?;
-    writer.write_all(&[0u8; 32]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
+fn encode_and_stream_7z_disk_payload(
+    entries: &mut [SevenZDiskEntry],
+    cstream: Option<Fl2CStream>,
+    password: Option<&str>,
+    ctx: &mut StreamDiskContext<'_>,
+    first_name: &str,
+    writer: &mut crate::archive::split::SevenZOutputTarget,
+) -> Result<StreamedSevenZDiskPayload, TTZipStatus> {
     let mut stream_sizes = Vec::with_capacity(entries.len());
     let mut stream_crcs = Vec::with_capacity(entries.len());
-    let mut sink = SevenZPayloadSink::new(&mut writer, password);
+    let mut sink = SevenZPayloadSink::new(&mut *writer, password);
 
-    let (uncompressed_len, method_id, coder_props) = stream_disk_entries(
-        &mut entries, cstream, &mut sink, &mut ctx, &mut stream_sizes, &mut stream_crcs,
-    )?;
-    let (compressed_len, aes_config) = sink.finish()?;
+    let (uncompressed_len, method_id, coder_props) = match stream_disk_entries(
+        entries,
+        cstream,
+        &mut sink,
+        ctx,
+        &mut stream_sizes,
+        &mut stream_crcs,
+    ) {
+        Ok(v) => v,
+        Err(status) => {
+            writer.abort_in_txn(status);
+            return Err(status);
+        }
+    };
+    let (compressed_len, aes_config) = match sink.finish() {
+        Ok(v) => v,
+        Err(status) => {
+            writer.abort_in_txn(status);
+            return Err(status);
+        }
+    };
     ctx.processed_bytes = uncompressed_len;
-    ctx.report(&first_name, true)?;
+    if let Err(status) = ctx.report(first_name, true) {
+        writer.abort_in_txn(status);
+        return Err(status);
+    }
+    Ok(StreamedSevenZDiskPayload {
+        stream_sizes,
+        stream_crcs,
+        uncompressed_len,
+        compressed_len,
+        method_id,
+        coder_props,
+        aes_config,
+    })
+}
 
+fn build_and_finalize_7z_disk_header(
+    entries: &[SevenZDiskEntry],
+    payload: &StreamedSevenZDiskPayload,
+    writer: crate::archive::split::SevenZOutputTarget,
+    use_encoded_header: bool,
+    password: Option<&str>,
+) -> Result<u64, TTZipStatus> {
     let refs: Vec<HeaderEntryRef<'_>> = entries
         .iter()
         .map(|e| HeaderEntryRef {
@@ -590,107 +571,86 @@ fn write_7z_archive_streaming_from_disk(
         })
         .collect();
     let plain_header_bytes = build_7z_metadata_header_from_refs(
-        &refs, &stream_sizes, &stream_crcs, compressed_len, uncompressed_len, method_id, &coder_props, aes_config.as_ref(),
+        &refs,
+        &payload.stream_sizes,
+        &payload.stream_crcs,
+        payload.compressed_len,
+        payload.uncompressed_len,
+        payload.method_id,
+        &payload.coder_props,
+        payload.aes_config.as_ref(),
     );
-    let total_compressed_bytes = finalize_7z_header_and_signature(
-        writer, &plain_header_bytes, compressed_len, use_encoded_header, password,
+    finalize_7z_header_and_signature(
+        writer,
+        &plain_header_bytes,
+        payload.compressed_len,
+        use_encoded_header,
+        password,
+    )
+}
+
+pub(crate) fn write_7z_archive_streaming_from_disk_in_txn(
+    dest_path: &Path,
+    mut entries: Vec<SevenZDiskEntry>,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    encrypt_file_names: Option<bool>,
+    cancel_flag: Option<&AtomicBool>,
+    start_time: Instant,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Result<ZipCreateReport, TTZipStatus> {
+    if entries.is_empty() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+
+    let total_expected: u64 = entries.iter().filter(|e| !e.is_directory).map(|e| e.size).sum();
+    let (cstream, password) = resolve_stream_encoder(options, total_expected)?;
+    let use_encoded_header = validate_7z_encryption_policy(options, password, encrypt_file_names)?;
+
+    let first_name = entries[0].rel_path.clone();
+    let mut ctx = StreamDiskContext {
+        options,
+        cancel_flag,
+        total_expected,
+        processed_bytes: 0,
+        last_report: Instant::now(),
+    };
+    ctx.report(&first_name, true)?;
+
+    let mut writer = crate::archive::split::SevenZOutputTarget::open_in_txn(
+        dest_path,
+        split_volume_size_bytes,
+        STREAM_CHUNK_SIZE,
+        txn_ctx,
+    )
+    .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    if writer.write_all(&[0u8; 32]).is_err() {
+        writer.abort_in_txn(TTZipStatus::ErrCompressionFailed);
+        return Err(TTZipStatus::ErrCompressionFailed);
+    }
+
+    let payload = encode_and_stream_7z_disk_payload(
+        &mut entries,
+        cstream,
+        password,
+        &mut ctx,
+        &first_name,
+        &mut writer,
+    )?;
+    let total_compressed_bytes = build_and_finalize_7z_disk_header(
+        &entries,
+        &payload,
+        writer,
+        use_encoded_header,
+        password,
     )?;
 
     Ok(ZipCreateReport {
         total_entries: entries.len(),
-        total_uncompressed_bytes: uncompressed_len,
+        total_uncompressed_bytes: payload.uncompressed_len,
         total_compressed_bytes,
         duration_ms: start_time.elapsed().as_millis() as u64,
     })
-}
-
-fn stat_disk_entry(disk_path: &Path, rel_path: String) -> Result<SevenZDiskEntry, TTZipStatus> {
-    let meta = fs::symlink_metadata(disk_path)
-        .or_else(|_| fs::metadata(disk_path))
-        .map_err(|_| TTZipStatus::ErrFileNotFound)?;
-    let is_symlink = meta.file_type().is_symlink();
-    let is_dir = !is_symlink && meta.is_dir();
-    let mtime = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
-    #[cfg(unix)]
-    let posix_mode = {
-        use std::os::unix::fs::MetadataExt;
-        meta.mode()
-    };
-    #[cfg(not(unix))]
-    let posix_mode = if is_symlink {
-        0o120777
-    } else if is_dir {
-        0o040755
-    } else if meta.permissions().readonly() {
-        0o100444
-    } else {
-        0o100644
-    };
-
-    if is_symlink {
-        let target_path = fs::read_link(disk_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-        let target_bytes = target_path.to_string_lossy().as_bytes().to_vec();
-        let size = target_bytes.len() as u64;
-        return Ok(SevenZDiskEntry {
-            disk_path: None,
-            symlink_target: Some(target_bytes),
-            rel_path,
-            is_directory: false,
-            is_symlink: true,
-            posix_mode: (posix_mode & 0o7777) | 0o120000,
-            mtime,
-            size,
-            is_empty_stream: size == 0,
-        });
-    }
-
-    let size = if is_dir { 0 } else { meta.len() };
-    Ok(SevenZDiskEntry {
-        disk_path: if is_dir { None } else { Some(disk_path.to_path_buf()) },
-        symlink_target: None,
-        rel_path,
-        is_directory: is_dir,
-        is_symlink: false,
-        posix_mode,
-        mtime,
-        size,
-        is_empty_stream: is_dir || size == 0,
-    })
-}
-
-fn collect_7z_disk_entries(
-    base_src: &Path,
-    rel_prefix: &str,
-    out_entries: &mut Vec<SevenZDiskEntry>,
-) -> Result<(), TTZipStatus> {
-    let mut stack = vec![(base_src.to_path_buf(), rel_prefix.to_string())];
-    while let Some((curr_path, curr_rel)) = stack.pop() {
-        let mut entry = stat_disk_entry(&curr_path, curr_rel.clone())?;
-        if entry.is_directory && !entry.rel_path.is_empty() && !entry.rel_path.ends_with('/') {
-            entry.rel_path.push('/');
-        }
-        let is_dir = entry.is_directory;
-        if !entry.rel_path.is_empty() {
-            out_entries.push(entry);
-        }
-        if is_dir {
-            let dir_iter = fs::read_dir(&curr_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-            let mut children = Vec::new();
-            for item in dir_iter.flatten() {
-                let path = item.path();
-                let fname = path.file_name().unwrap_or_default().to_string_lossy();
-                let child_rel = if curr_rel.is_empty() {
-                    fname.to_string()
-                } else {
-                    format!("{}/{}", curr_rel.trim_end_matches('/'), fname)
-                };
-                children.push((path, child_rel));
-            }
-            children.reverse();
-            stack.extend(children);
-        }
-    }
-    Ok(())
 }
 
 /// Creates a 7z archive file (single or split-volume) directly from input source paths with explicit header-encryption control.
@@ -701,23 +661,13 @@ pub fn create_7z_archive_split_with_header_encryption(
     split_volume_size_bytes: u64,
     encrypt_file_names: Option<bool>,
 ) -> Result<ZipCreateReport, TTZipStatus> {
-    let start_time = Instant::now();
-    let mut disk_entries = Vec::new();
-    for src in source_paths {
-        if !src.exists() && fs::symlink_metadata(src).is_err() {
-            return Err(TTZipStatus::ErrFileNotFound);
-        }
-        let file_name = src.file_name().unwrap_or_default().to_string_lossy();
-        collect_7z_disk_entries(src, &file_name, &mut disk_entries)?;
-    }
-    write_7z_archive_streaming_from_disk(
+    create_7z_archive_split_with_header_encryption_in_txn(
         dest_path,
-        disk_entries,
+        source_paths,
         options,
         split_volume_size_bytes,
         encrypt_file_names,
         None,
-        start_time,
     )
 }
 
@@ -728,13 +678,7 @@ pub fn create_7z_archive_split(
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
 ) -> Result<ZipCreateReport, TTZipStatus> {
-    create_7z_archive_split_with_header_encryption(
-        dest_path,
-        source_paths,
-        options,
-        split_volume_size_bytes,
-        None,
-    )
+    create_7z_archive_split_in_txn(dest_path, source_paths, options, split_volume_size_bytes, None)
 }
 
 /// Creates a 7z archive file directly from input source paths using bounded-memory disk streaming.
@@ -754,19 +698,13 @@ pub fn create_7z_archive_explicit_split_with_header_encryption(
     split_volume_size_bytes: u64,
     encrypt_file_names: Option<bool>,
 ) -> Result<ZipCreateReport, TTZipStatus> {
-    let start_time = Instant::now();
-    let mut disk_entries = Vec::with_capacity(entries.len());
-    for (disk_path, rel_path) in entries {
-        disk_entries.push(stat_disk_entry(disk_path, rel_path.clone())?);
-    }
-    write_7z_archive_streaming_from_disk(
+    create_7z_archive_explicit_split_with_header_encryption_in_txn(
         dest_path,
-        disk_entries,
+        entries,
         options,
         split_volume_size_bytes,
         encrypt_file_names,
         None,
-        start_time,
     )
 }
 

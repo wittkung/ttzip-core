@@ -153,27 +153,29 @@ unsafe fn read_matched_libarchive_entry_bytes(
     a: *mut c_void,
     entry: *mut c_void,
 ) -> Result<Vec<u8>, TTZipStatus> {
-    const MAX_IN_MEMORY_DECOMPRESS_BYTES: usize = 64 * 1024 * 1024;
-    let size = archive_entry_size(entry).max(0) as usize;
-    if size > MAX_IN_MEMORY_DECOMPRESS_BYTES {
-        return Err(TTZipStatus::ErrOutOfMemory);
-    }
-    let mut payload = Vec::with_capacity(size.min(10 * 1024 * 1024));
-    let mut chunk = [0u8; 65536];
-    loop {
-        let r = archive_read_data(a, chunk.as_mut_ptr() as *mut c_void, chunk.len());
-        if r < 0 {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        if r == 0 {
-            break;
-        }
-        if payload.len() + (r as usize) > MAX_IN_MEMORY_DECOMPRESS_BYTES {
+    unsafe {
+        const MAX_IN_MEMORY_DECOMPRESS_BYTES: usize = 64 * 1024 * 1024;
+        let size = archive_entry_size(entry).max(0) as usize;
+        if size > MAX_IN_MEMORY_DECOMPRESS_BYTES {
             return Err(TTZipStatus::ErrOutOfMemory);
         }
-        payload.extend_from_slice(&chunk[..r as usize]);
+        let mut payload = Vec::with_capacity(size.min(10 * 1024 * 1024));
+        let mut chunk = [0u8; 65536];
+        loop {
+            let r = archive_read_data(a, chunk.as_mut_ptr() as *mut c_void, chunk.len());
+            if r < 0 {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+            if r == 0 {
+                break;
+            }
+            if payload.len() + (r as usize) > MAX_IN_MEMORY_DECOMPRESS_BYTES {
+                return Err(TTZipStatus::ErrOutOfMemory);
+            }
+            payload.extend_from_slice(&chunk[..r as usize]);
+        }
+        Ok(payload)
     }
-    Ok(payload)
 }
 
 unsafe fn extract_single_entry_from_libarchive_handle(
@@ -181,42 +183,44 @@ unsafe fn extract_single_entry_from_libarchive_handle(
     entry_path: Option<&str>,
     entry_index: i64,
 ) -> Result<Vec<u8>, TTZipStatus> {
-    let mut entry: *mut c_void = std::ptr::null_mut();
-    let mut curr_idx: i64 = 0;
+    unsafe {
+        let mut entry: *mut c_void = std::ptr::null_mut();
+        let mut curr_idx: i64 = 0;
 
-    loop {
-        let hdr_rc = archive_read_next_header(a, &mut entry);
-        if hdr_rc == 1 {
-            break;
-        }
-        if hdr_rc < -20 || (hdr_rc < 0 && entry.is_null()) {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        if entry.is_null() {
-            break;
-        }
-        let Some(path_c_str) = archive_entry_pathname_safe(entry) else {
+        loop {
+            let hdr_rc = archive_read_next_header(a, &mut entry);
+            if hdr_rc == 1 {
+                break;
+            }
+            if hdr_rc < -20 || (hdr_rc < 0 && entry.is_null()) {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+            if entry.is_null() {
+                break;
+            }
+            let Some(path_c_str) = archive_entry_pathname_safe(entry) else {
+                archive_read_data_skip(a);
+                curr_idx += 1;
+                continue;
+            };
+            let Ok(entry_rel_str) = path_c_str.to_str() else {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            };
+            let is_match = if entry_index >= 0 {
+                curr_idx == entry_index
+            } else if let Some(target_p) = entry_path {
+                entry_rel_str == target_p || entry_rel_str.trim_start_matches("./") == target_p
+            } else {
+                false
+            };
+            if is_match {
+                return read_matched_libarchive_entry_bytes(a, entry);
+            }
             archive_read_data_skip(a);
             curr_idx += 1;
-            continue;
-        };
-        let Ok(entry_rel_str) = path_c_str.to_str() else {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        };
-        let is_match = if entry_index >= 0 {
-            curr_idx == entry_index
-        } else if let Some(target_p) = entry_path {
-            entry_rel_str == target_p || entry_rel_str.trim_start_matches("./") == target_p
-        } else {
-            false
-        };
-        if is_match {
-            return read_matched_libarchive_entry_bytes(a, entry);
         }
-        archive_read_data_skip(a);
-        curr_idx += 1;
+        Err(TTZipStatus::ErrFileNotFound)
     }
-    Err(TTZipStatus::ErrFileNotFound)
 }
 
 /// Extracts a single entry directly into an in-memory buffer without full archive extraction.
@@ -461,48 +465,50 @@ unsafe fn extract_selected_regular_file_from_handle(
     total_processed: &mut u64,
     options: &crate::types::TTZipExtractOptions,
 ) -> Result<(), TTZipStatus> {
-    use std::io::Write;
-    use std::os::unix::io::AsRawFd;
-    use crate::fs::apfs::apfs_preallocate;
+    unsafe {
+        use std::io::Write;
+        use std::os::unix::io::AsRawFd;
+        use crate::fs::apfs::apfs_preallocate;
 
-    if options.dry_run {
-        archive_read_data_skip(a);
-        return Ok(());
-    }
-
-    let mut inflight = InFlightJailFile::open(jail, out_rel, overwrite)?;
-
-    let size = archive_entry_size(entry).max(0) as u64;
-    if size > 0 {
-        let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), size as i64);
-    }
-
-    let mut chunk = [0u8; 65536];
-    let mut entry_written = 0u64;
-    loop {
-        let r = archive_read_data(a, chunk.as_mut_ptr() as *mut c_void, chunk.len());
-        if r < 0 {
-            return Err(TTZipStatus::ErrCorruptHeader);
+        if options.dry_run {
+            archive_read_data_skip(a);
+            return Ok(());
         }
-        if r == 0 {
-            if size > 0 && entry_written < size {
+
+        let mut inflight = InFlightJailFile::open(jail, out_rel, overwrite)?;
+
+        let size = archive_entry_size(entry).max(0) as u64;
+        if size > 0 {
+            let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), size as i64);
+        }
+
+        let mut chunk = [0u8; 65536];
+        let mut entry_written = 0u64;
+        loop {
+            let r = archive_read_data(a, chunk.as_mut_ptr() as *mut c_void, chunk.len());
+            if r < 0 {
                 return Err(TTZipStatus::ErrCorruptHeader);
             }
-            break;
-        }
-        if inflight.file_mut().write_all(&chunk[..r as usize]).is_err() {
-            return Err(TTZipStatus::ErrExtractionFailed);
-        }
-        entry_written = entry_written.saturating_add(r as u64);
-        *total_processed = total_processed.saturating_add(r as u64);
+            if r == 0 {
+                if size > 0 && entry_written < size {
+                    return Err(TTZipStatus::ErrCorruptHeader);
+                }
+                break;
+            }
+            if inflight.file_mut().write_all(&chunk[..r as usize]).is_err() {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+            entry_written = entry_written.saturating_add(r as u64);
+            *total_processed = total_processed.saturating_add(r as u64);
 
-        if let Some(cb) = options.progress_callback {
-            if !cb(*total_processed, *total_processed, raw_path, options.user_data) {
-                return Err(TTZipStatus::Cancelled);
+            if let Some(cb) = options.progress_callback {
+                if !cb(*total_processed, *total_processed, raw_path, options.user_data) {
+                    return Err(TTZipStatus::Cancelled);
+                }
             }
         }
+        inflight.commit(jail)
     }
-    inflight.commit(jail)
 }
 
 unsafe fn resolve_selected_hardlink_target(
@@ -510,11 +516,11 @@ unsafe fn resolve_selected_hardlink_target(
     selection: &EntrySelection,
     staging_path: &Path,
 ) -> Result<Option<String>, TTZipStatus> {
-    let hl_raw = archive_entry_hardlink(entry);
+    let hl_raw = unsafe { archive_entry_hardlink(entry) };
     if hl_raw.is_null() {
         return Ok(None);
     }
-    let s = CStr::from_ptr(hl_raw)
+    let s = unsafe { CStr::from_ptr(hl_raw) }
         .to_str()
         .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
     let trimmed = s.trim_start_matches('/');
@@ -537,16 +543,18 @@ struct SelectedLibarchiveCtx<'a> {
 }
 
 unsafe fn classify_libarchive_entry_kind(entry: *mut c_void, entry_rel_str: &str) -> (bool, bool, u64) {
-    use libc::mode_t;
-    let file_type = archive_entry_filetype(entry);
-    let mode = archive_entry_mode(entry) as u32;
-    let size = archive_entry_size(entry).max(0) as u64;
-    let is_symlink = (file_type & (libc::S_IFMT as mode_t)) == (libc::S_IFLNK as mode_t)
-        || (mode & (libc::S_IFMT as u32)) == (libc::S_IFLNK as u32);
-    let is_dir = (file_type & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-        || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-        || entry_rel_str.ends_with('/');
-    (is_symlink, is_dir, size)
+    unsafe {
+        use libc::mode_t;
+        let file_type = archive_entry_filetype(entry);
+        let mode = archive_entry_mode(entry) as u32;
+        let size = archive_entry_size(entry).max(0) as u64;
+        let is_symlink = (file_type & (libc::S_IFMT as mode_t)) == (libc::S_IFLNK as mode_t)
+            || (mode & (libc::S_IFMT as u32)) == (libc::S_IFLNK as u32);
+        let is_dir = (file_type & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
+            || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
+            || entry_rel_str.ends_with('/');
+        (is_symlink, is_dir, size)
+    }
 }
 
 unsafe fn extract_selected_libarchive_symlink(
@@ -556,18 +564,20 @@ unsafe fn extract_selected_libarchive_symlink(
     jail: &DirJail,
     dry_run: bool,
 ) -> Result<(), TTZipStatus> {
-    let symlink_raw = archive_entry_symlink(entry);
-    if symlink_raw.is_null() {
-        return Err(TTZipStatus::ErrSecurityViolation);
+    unsafe {
+        let symlink_raw = archive_entry_symlink(entry);
+        if symlink_raw.is_null() {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        let symlink_target = CStr::from_ptr(symlink_raw)
+            .to_str()
+            .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+        if !dry_run {
+            jail.create_symlink_components(out_comps, symlink_target)?;
+        }
+        archive_read_data_skip(a);
+        Ok(())
     }
-    let symlink_target = CStr::from_ptr(symlink_raw)
-        .to_str()
-        .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-    if !dry_run {
-        jail.create_symlink_components(out_comps, symlink_target)?;
-    }
-    archive_read_data_skip(a);
-    Ok(())
 }
 
 unsafe fn dispatch_selected_libarchive_entry(
@@ -578,55 +588,59 @@ unsafe fn dispatch_selected_libarchive_entry(
     raw_path: *const libc::c_char,
     ctx: &mut SelectedLibarchiveCtx<'_>,
 ) -> Result<(), TTZipStatus> {
-    let (is_symlink, is_dir, size) = classify_libarchive_entry_kind(entry, entry_rel_str);
-    let sanitized = sanitize_and_validate_path(ctx.staging_path, out_rel)?;
-    let mode = (archive_entry_mode(entry) as u32) & 0o7777;
-    let mtime = archive_entry_mtime(entry);
-    ctx.engine
-        .register_entry_typed(sanitized, mode, mtime, 0, is_dir, is_symlink);
-    let out_comps = DirJail::extract_clean_components(out_rel)?;
-    ctx.deferred_hardlinks.invalidate_destination(&out_comps);
-    let hardlink_rel = resolve_selected_hardlink_target(entry, ctx.selection, ctx.staging_path)?;
+    unsafe {
+        let (is_symlink, is_dir, size) = classify_libarchive_entry_kind(entry, entry_rel_str);
+        let sanitized = sanitize_and_validate_path(ctx.staging_path, out_rel)?;
+        let mode = (archive_entry_mode(entry) as u32) & 0o7777;
+        let mtime = archive_entry_mtime(entry);
+        ctx.engine
+            .register_entry_typed(sanitized, mode, mtime, 0, is_dir, is_symlink);
+        let out_comps = DirJail::extract_clean_components(out_rel)?;
+        ctx.deferred_hardlinks.invalidate_destination(&out_comps);
+        let hardlink_rel = resolve_selected_hardlink_target(entry, ctx.selection, ctx.staging_path)?;
 
-    if is_symlink {
-        return extract_selected_libarchive_symlink(a, entry, &out_comps, ctx.jail, ctx.options.dry_run);
-    }
-    if let (Some(src_link_rel), 0) = (&hardlink_rel, size) {
-        if !ctx.options.dry_run {
-            ctx.deferred_hardlinks.record_or_apply(ctx.jail, out_rel, src_link_rel)?;
+        if is_symlink {
+            return extract_selected_libarchive_symlink(a, entry, &out_comps, ctx.jail, ctx.options.dry_run);
         }
-        archive_read_data_skip(a);
-        return Ok(());
-    }
-    if is_dir {
-        if !ctx.options.dry_run {
-            ctx.jail.create_dir_all_components(&out_comps)?;
+        if let (Some(src_link_rel), 0) = (&hardlink_rel, size) {
+            if !ctx.options.dry_run {
+                ctx.deferred_hardlinks.record_or_apply(ctx.jail, out_rel, src_link_rel)?;
+            }
+            archive_read_data_skip(a);
+            return Ok(());
         }
-        archive_read_data_skip(a);
-        return Ok(());
+        if is_dir {
+            if !ctx.options.dry_run {
+                ctx.jail.create_dir_all_components(&out_comps)?;
+            }
+            archive_read_data_skip(a);
+            return Ok(());
+        }
+        extract_selected_regular_file_from_handle(
+            a, entry, ctx.jail, out_rel, true, raw_path, ctx.total_processed, ctx.options,
+        )?;
+        if !ctx.options.dry_run {
+            ctx.deferred_hardlinks
+                .on_regular_committed(ctx.jail, &out_comps, hardlink_rel.as_deref())?;
+        }
+        Ok(())
     }
-    extract_selected_regular_file_from_handle(
-        a, entry, ctx.jail, out_rel, true, raw_path, ctx.total_processed, ctx.options,
-    )?;
-    if !ctx.options.dry_run {
-        ctx.deferred_hardlinks
-            .on_regular_committed(ctx.jail, &out_comps, hardlink_rel.as_deref())?;
-    }
-    Ok(())
 }
 
 unsafe fn read_next_libarchive_entry(
     a: *mut c_void,
     entry: &mut *mut c_void,
 ) -> Result<bool, TTZipStatus> {
-    let hdr_rc = archive_read_next_header(a, entry);
-    if hdr_rc == 1 {
-        return Ok(false);
+    unsafe {
+        let hdr_rc = archive_read_next_header(a, entry);
+        if hdr_rc == 1 {
+            return Ok(false);
+        }
+        if hdr_rc < -20 || (hdr_rc < 0 && entry.is_null()) {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        Ok(!entry.is_null())
     }
-    if hdr_rc < -20 || (hdr_rc < 0 && entry.is_null()) {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-    Ok(!entry.is_null())
 }
 
 unsafe fn extract_selected_from_libarchive_handle(
@@ -635,52 +649,54 @@ unsafe fn extract_selected_from_libarchive_handle(
     staging: &crate::fs::collision::staging::StagingRoot,
     options: &crate::types::TTZipExtractOptions,
 ) -> Result<usize, TTZipStatus> {
-    fs::create_dir_all(staging.path()).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-    let jail = DirJail::open(staging.path())?;
-    let mut engine = crate::fs::safe_extract::SafeExtractEngine::for_root(staging.path());
-    let mut extracted_count = 0;
-    let mut total_processed: u64 = 0;
-    let mut entry: *mut c_void = std::ptr::null_mut();
-    let mut deferred_hardlinks = DeferredHardlinks::default();
+    unsafe {
+        fs::create_dir_all(staging.path()).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        let jail = DirJail::open(staging.path())?;
+        let mut engine = crate::fs::safe_extract::SafeExtractEngine::for_root(staging.path());
+        let mut extracted_count = 0;
+        let mut total_processed: u64 = 0;
+        let mut entry: *mut c_void = std::ptr::null_mut();
+        let mut deferred_hardlinks = DeferredHardlinks::default();
 
-    while read_next_libarchive_entry(a, &mut entry)? {
-        let Some(path_c_str) = archive_entry_pathname_safe(entry) else {
-            archive_read_data_skip(a);
-            continue;
-        };
-        let raw_path = path_c_str.as_ptr();
-        if let Some(cb) = options.progress_callback {
-            if !cb(total_processed, total_processed, raw_path, options.user_data) {
-                return Err(TTZipStatus::Cancelled);
+        while read_next_libarchive_entry(a, &mut entry)? {
+            let Some(path_c_str) = archive_entry_pathname_safe(entry) else {
+                archive_read_data_skip(a);
+                continue;
+            };
+            let raw_path = path_c_str.as_ptr();
+            if let Some(cb) = options.progress_callback {
+                if !cb(total_processed, total_processed, raw_path, options.user_data) {
+                    return Err(TTZipStatus::Cancelled);
+                }
+            }
+            let entry_rel_str = path_c_str
+                .to_str()
+                .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+            if let Some(out_rel) = selection.output_path(entry_rel_str) {
+                let mut ctx = SelectedLibarchiveCtx {
+                    selection,
+                    jail: &jail,
+                    staging_path: staging.path(),
+                    engine: &mut engine,
+                    deferred_hardlinks: &mut deferred_hardlinks,
+                    total_processed: &mut total_processed,
+                    options,
+                };
+                dispatch_selected_libarchive_entry(
+                    a, entry, entry_rel_str, out_rel, raw_path, &mut ctx,
+                )?;
+                extracted_count += 1;
+            } else {
+                archive_read_data_skip(a);
             }
         }
-        let entry_rel_str = path_c_str
-            .to_str()
-            .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-        if let Some(out_rel) = selection.output_path(entry_rel_str) {
-            let mut ctx = SelectedLibarchiveCtx {
-                selection,
-                jail: &jail,
-                staging_path: staging.path(),
-                engine: &mut engine,
-                deferred_hardlinks: &mut deferred_hardlinks,
-                total_processed: &mut total_processed,
-                options,
-            };
-            dispatch_selected_libarchive_entry(
-                a, entry, entry_rel_str, out_rel, raw_path, &mut ctx,
-            )?;
-            extracted_count += 1;
-        } else {
-            archive_read_data_skip(a);
+        if !options.dry_run {
+            deferred_hardlinks.finalize(&jail)?;
+            jail.verify_all_jail_symlinks()?;
+            engine.apply_deferred_metadata(options.preserve_permissions)?;
         }
+        Ok(extracted_count)
     }
-    if !options.dry_run {
-        deferred_hardlinks.finalize(&jail)?;
-        jail.verify_all_jail_symlinks()?;
-        engine.apply_deferred_metadata(options.preserve_permissions)?;
-    }
-    Ok(extracted_count)
 }
 
 /// Selective extraction into a staging root.

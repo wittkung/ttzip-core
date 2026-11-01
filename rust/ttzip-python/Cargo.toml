@@ -13,11 +13,11 @@ test = false
 
 [dependencies]
 ttzip-engine = { path = "../ttzip-engine", version = "0.1.0" }
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+pyo3 = { version = "0.30.1", features = ["extension-module", "abi3-py310"] }
 libc = "0.2"
 
 [build-dependencies]
-pyo3-build-config = "0.22"
+pyo3-build-config = "0.30.1"
 
 [lints]
 workspace = true

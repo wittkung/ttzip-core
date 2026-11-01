@@ -51,6 +51,12 @@ pub enum TTZipError {
 
     #[error("Data checksum mismatch: expected {expected:#x}, got {actual:#x}")]
     ChecksumMismatch { expected: u32, actual: u32 },
+
+    #[error("{summary_message}")]
+    CreateTransactionIncomplete {
+        report: Box<UniFFICreateTransactionFailureReport>,
+        summary_message: String,
+    },
 }
 
 impl TTZipError {
@@ -343,6 +349,135 @@ pub struct UniFFIParentAndPrefix {
     pub parent_directory: String,
     pub prefix: String,
 }
+
+/// Structural role of a path involved in an incomplete creation transaction across FFI.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum UniFFIResidualPathRole {
+    StagedArtifact,
+    StagedTempFile,
+    UnownedPathOccupant,
+    TransactionStageDirectory,
+    PreexistingBackupDirectory,
+    FinalDestinationTarget,
+}
+
+/// Structural cleanup disposition for a failed creation transaction item across FFI.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum UniFFIArchiveCleanupDisposition {
+    RefusedOwnershipMismatch,
+    OwnershipOrLocationUnconfirmed,
+    RestoredDisplacedSentinel,
+    RestoreDisplacedSentinelFailed,
+    UnlinkOrRmdirIoError,
+    StageDirectoryPreservedDueToInnerFailure,
+    PostCommitCleanupFailed,
+    DescriptorReleaseUnconfirmed,
+}
+
+/// Process descriptor release status across FFI.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum UniFFIDescriptorReleaseStatus {
+    ConfirmedReleased,
+    ReleaseUnconfirmed,
+}
+
+/// Per-file finish diagnostic record across FFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIStageFileFinishDiagnostic {
+    pub role: UniFFIResidualPathRole,
+    pub diagnostic_path: String,
+    pub expected_dev: u64,
+    pub expected_ino: u64,
+    pub primary_status_code: i32,
+    pub prior_write_or_encoder_error: Option<String>,
+    pub userspace_flush_os_error: Option<i32>,
+    pub userspace_flush_detail: Option<String>,
+    pub sync_os_error: Option<i32>,
+    pub sync_detail: Option<String>,
+    pub close_os_error: Option<i32>,
+    pub close_detail: Option<String>,
+    pub release_status: UniFFIDescriptorReleaseStatus,
+}
+
+/// Per-item structured cleanup failure record across FFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIStageCleanupFailureItem {
+    pub role: UniFFIResidualPathRole,
+    pub disposition: UniFFIArchiveCleanupDisposition,
+    /// Confirmed current on-disk path (`Some` when known, `None` when location/ownership or descriptor release is unconfirmed).
+    pub path: Option<String>,
+    /// Historical/expected staged path at the start of the operation (diagnostic reference only).
+    pub original_staged_path: Option<String>,
+    pub os_error_code: Option<i32>,
+    pub message: String,
+}
+
+/// Backup recovery state across FFI.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum UniFFICreateBackupRecoveryState {
+    NotApplicable,
+    RestoredAndVerified,
+    RollbackIncompletePreservedInBackup,
+}
+
+/// Per-entry backup rollback failure across FFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFIBackupRecoveryEntryFailure {
+    pub backup_source_path: String,
+    pub target_path: String,
+    pub os_error_code: Option<i32>,
+    pub message: String,
+}
+
+/// Complete creation transaction failure report across FFI.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct UniFFICreateTransactionFailureReport {
+    /// Raw status code from `TTZipStatus::to_i32()` (`Cancelled = 2`, `ErrOpenFailed = -7`, etc.).
+    pub primary_status_code: i32,
+    /// True iff `primary_status == TTZipStatus::Cancelled` (`2`).
+    pub was_primary_cancelled: bool,
+    /// True if cancellation was requested at or before the transaction settlement linearization point `T_sample`.
+    pub is_cancellation_requested: bool,
+    pub stage_dir: String,
+    pub stage_dir_preserved: bool,
+    pub unconfirmed_release_count: u32,
+    pub cleanup_failures: Vec<UniFFIStageCleanupFailureItem>,
+    pub finish_diagnostics: Vec<UniFFIStageFileFinishDiagnostic>,
+    pub recovery_state: UniFFICreateBackupRecoveryState,
+    pub backup_dir: Option<String>,
+    pub restored_targets: Vec<String>,
+    pub rollback_failed_entries: Vec<UniFFIBackupRecoveryEntryFailure>,
+    pub backup_dir_cleanup_error: Option<String>,
+    pub summary_message: String,
+}
+
+// SAFETY: `Box<UniFFICreateTransactionFailureReport>` is strictly a Rust-side heap indirection
+// used to bound stack frame size for `Result<_, TTZipError>`. Across the FFI boundary it uses
+// the identical `RustBuffer` wire format, `TYPE_ID_META` schema metadata, and `write`/`try_read`
+// serialization by delegating directly to `<UniFFICreateTransactionFailureReport as FfiConverter>`.
+// No raw `Box` pointer address is ever exposed across FFI, and generated Swift/Python bindings
+// decode the value as the matching `UniFFICreateTransactionFailureReport` record.
+unsafe impl ::uniffi::FfiConverter<crate::UniFfiTag> for Box<UniFFICreateTransactionFailureReport> {
+    ::uniffi::ffi_converter_rust_buffer_lift_and_lower!(crate::UniFfiTag);
+
+    fn write(obj: Self, buf: &mut ::std::vec::Vec<u8>) {
+        <UniFFICreateTransactionFailureReport as ::uniffi::FfiConverter<crate::UniFfiTag>>::write(
+            *obj, buf,
+        );
+    }
+
+    fn try_read(buf: &mut &[u8]) -> ::uniffi::deps::anyhow::Result<Self> {
+        <UniFFICreateTransactionFailureReport as ::uniffi::FfiConverter<crate::UniFfiTag>>::try_read(
+            buf,
+        )
+        .map(Box::new)
+    }
+
+    const TYPE_ID_META: ::uniffi::MetadataBuffer =
+        <UniFFICreateTransactionFailureReport as ::uniffi::FfiConverter<crate::UniFfiTag>>::TYPE_ID_META;
+}
+
+::uniffi::derive_ffi_traits!(local Box<UniFFICreateTransactionFailureReport>);
 
 /// Callback interface protocol implemented in Swift.
 #[uniffi::export(callback_interface)]

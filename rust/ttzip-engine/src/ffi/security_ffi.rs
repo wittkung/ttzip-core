@@ -64,7 +64,7 @@ fn copy_str_to_c_buffer(src: &str, dest: &mut [c_char]) {
 
 /// Sanitizes, normalizes, and audits a path against ZipSlip traversal, Win32 reserved device names,
 /// NTFS Alternate Data Streams (ADS), and canonical NFC encoding.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_sanitize_path(
     raw_path: *const c_char,
     out_result: *mut TTZipPathSanitizationResult,

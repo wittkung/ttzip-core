@@ -31,7 +31,8 @@ impl XorShift64Star {
     }
 
     fn fill_i8_128(&mut self, buf: &mut [i8; 128]) {
-        for chunk in buf.chunks_exact_mut(8) {
+        let (chunks, _) = buf.as_chunks_mut::<8>();
+        for chunk in chunks.iter_mut() {
             let val = self.next_u64();
             let bytes = val.to_le_bytes();
             for i in 0..8 {

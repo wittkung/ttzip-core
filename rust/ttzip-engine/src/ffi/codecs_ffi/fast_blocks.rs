@@ -11,7 +11,7 @@ use std::panic::catch_unwind;
 
 // MARK: - Fast Blocks (LZ4) C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lz4_compress(
     src: *const u8,
     src_len: size_t,
@@ -43,7 +43,7 @@ pub extern "C" fn ttzip_rust_lz4_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lz4_decompress(
     src: *const u8,
     src_len: size_t,
@@ -75,7 +75,7 @@ pub extern "C" fn ttzip_rust_lz4_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lz4_compress_bound(src_len: size_t) -> size_t {
     catch_unwind(|| lz4_compress_bound(src_len)).unwrap_or(0)
 }

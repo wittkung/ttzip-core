@@ -43,7 +43,7 @@ pub struct Fl2OutBuffer {
 pub enum Fl2CCtxOpaque {}
 pub enum Fl2DCtxOpaque {}
 
-extern "C" {
+unsafe extern "C" {
     pub fn FL2_createCCtx() -> *mut Fl2CCtxOpaque;
     pub fn FL2_createCCtxMt(nb_threads: libc::c_uint) -> *mut Fl2CCtxOpaque;
     pub fn FL2_freeCCtx(cctx: *mut Fl2CCtxOpaque);

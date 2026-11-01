@@ -5,7 +5,9 @@
 
 use pyo3::exceptions::{PyException, PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
+use pyo3::sync::critical_section::with_critical_section;
 use pyo3::types::{PyByteArray, PyBytes};
+use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::io::Cursor;
 use std::sync::Mutex;
@@ -29,26 +31,25 @@ pyo3::create_exception!(_ttzip, AuthenticationError, TTZipError);
 pyo3::create_exception!(_ttzip, CorruptArchiveError, TTZipError);
 pyo3::create_exception!(_ttzip, SecurityError, TTZipError);
 
-/// Safely extract immutable byte slice from any Python buffer object (bytes, bytearray, memoryview).
-fn extract_input_bytes<'a, 'py>(_py: Python<'py>, obj: &'a Bound<'py, PyAny>) -> PyResult<&'a [u8]> {
-    if let Ok(bytes) = obj.downcast::<PyBytes>() {
-        return Ok(bytes.as_bytes());
+/// Safely extract input bytes from any Python buffer object (bytes, bytearray, memoryview).
+///
+/// Immutable `PyBytes` are borrowed directly without copying, while mutable buffers (`PyByteArray`
+/// or buffer-protocol objects) are copied under a critical section so that subsequent `py.detach`
+/// blocks never hold raw slices into mutable Python memory.
+fn extract_input_bytes<'a, 'py>(
+    _py: Python<'py>,
+    obj: &'a Bound<'py, PyAny>,
+) -> PyResult<Cow<'a, [u8]>> {
+    if let Ok(bytes) = obj.cast::<PyBytes>() {
+        return Ok(Cow::Borrowed(bytes.as_bytes()));
     }
-    if let Ok(byte_array) = obj.downcast::<PyByteArray>() {
-        return Ok(unsafe { byte_array.as_bytes() });
+    if let Ok(byte_array) = obj.cast::<PyByteArray>() {
+        return Ok(Cow::Owned(byte_array.to_vec()));
     }
-    obj.extract::<&'a [u8]>()
-}
-
-/// Safely extract mutable byte slice from a mutable Python buffer (bytearray).
-#[allow(clippy::mut_from_ref)]
-fn extract_mut_bytes<'a, 'py>(_py: Python<'py>, obj: &'a Bound<'py, PyAny>) -> PyResult<&'a mut [u8]> {
-    if let Ok(byte_array) = obj.downcast::<PyByteArray>() {
-        return Ok(unsafe { byte_array.as_bytes_mut() });
+    if let Ok(byte_array) = PyByteArray::from(obj) {
+        return Ok(Cow::Owned(byte_array.to_vec()));
     }
-    Err(PyValueError::new_err(
-        "Destination buffer must be a mutable bytearray (e.g. bytearray(size))",
-    ))
+    obj.extract::<Cow<'a, [u8]>>()
 }
 
 #[pyclass(get_all, set_all, module = "ttzip._ttzip")]
@@ -170,7 +171,7 @@ fn compress(
         _ => TTZipCompressionLevel::Ultra,
     };
 
-    let (status, msg) = py.allow_threads(move || {
+    let (status, msg) = py.detach(move || {
         let c_sources: Vec<CString> = sources
             .iter()
             .map(|s| CString::new(s.as_str()).unwrap_or_default())
@@ -234,7 +235,7 @@ fn extract(
     password: Option<String>,
     threads: u32,
 ) -> PyResult<()> {
-    let (status, msg) = py.allow_threads(move || {
+    let (status, msg) = py.detach(move || {
         let c_archive = match CString::new(archive.as_str()) {
             Ok(c) => c,
             Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid archive path: {}", e)),
@@ -282,7 +283,7 @@ fn extract(
 #[pyfunction]
 #[pyo3(signature = (archive, password=None))]
 fn inspect(py: Python<'_>, archive: String, password: Option<String>) -> PyResult<Vec<PyEntryMetadata>> {
-    let (status, msg, entries) = py.allow_threads(move || {
+    let (status, msg, entries) = py.detach(move || {
         let c_archive = match CString::new(archive.as_str()) {
             Ok(c) => c,
             Err(e) => return (TTZipStatus::ErrInvalidParam, format!("Invalid archive path: {}", e), Vec::new()),
@@ -349,10 +350,11 @@ fn inspect(py: Python<'_>, archive: String, password: Option<String>) -> PyResul
 #[pyfunction]
 #[pyo3(signature = (data, format="deflate"))]
 fn decompress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &str) -> PyResult<Bound<'py, PyBytes>> {
-    let input_bytes = extract_input_bytes(py, data)?;
+    let input_cow = extract_input_bytes(py, data)?;
+    let input_bytes = input_cow.as_ref();
     let fmt = format.to_lowercase();
 
-    let decompressed: Vec<u8> = py.allow_threads(|| -> Result<Vec<u8>, String> {
+    let decompressed: Vec<u8> = py.detach(|| -> Result<Vec<u8>, String> {
         match fmt.as_str() {
             "deflate" | "zip" => {
                 let mut dst = vec![0u8; (input_bytes.len() * 4 + 4096).max(65536)];
@@ -433,17 +435,18 @@ fn decompress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &st
         }
     }).map_err(TTZipError::new_err)?;
 
-    Ok(PyBytes::new_bound(py, &decompressed))
+    Ok(PyBytes::new(py, &decompressed))
 }
 
 /// Compress raw in-memory buffer with GIL released.
 #[pyfunction]
 #[pyo3(signature = (data, format="deflate", level=6))]
 fn compress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &str, level: i32) -> PyResult<Bound<'py, PyBytes>> {
-    let input_bytes = extract_input_bytes(py, data)?;
+    let input_cow = extract_input_bytes(py, data)?;
+    let input_bytes = input_cow.as_ref();
     let fmt = format.to_lowercase();
 
-    let compressed: Vec<u8> = py.allow_threads(|| -> Result<Vec<u8>, String> {
+    let compressed: Vec<u8> = py.detach(|| -> Result<Vec<u8>, String> {
         match fmt.as_str() {
             "deflate" | "zip" => {
                 let cl = level.clamp(0, 12);
@@ -506,48 +509,63 @@ fn compress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &str,
         }
     }).map_err(TTZipError::new_err)?;
 
-    Ok(PyBytes::new_bound(py, &compressed))
+    Ok(PyBytes::new(py, &compressed))
 }
 
-/// Zero-copy decompression directly into a pre-allocated mutable buffer with GIL released.
+/// Decompress directly into a pre-allocated mutable buffer (`bytearray`) with GIL released.
 #[pyfunction]
 #[pyo3(signature = (data, dst_buffer, format="deflate"))]
 fn decompress_into(py: Python<'_>, data: &Bound<'_, PyAny>, dst_buffer: &Bound<'_, PyAny>, format: &str) -> PyResult<usize> {
-    let input_bytes = extract_input_bytes(py, data)?;
-    let dst_slice = extract_mut_bytes(py, dst_buffer)?;
-    let dst_ptr = dst_slice.as_mut_ptr() as usize;
-    let dst_len = dst_slice.len();
+    let dst_byte_array = dst_buffer.cast::<PyByteArray>().map_err(|_| {
+        PyValueError::new_err("Destination buffer must be a mutable bytearray (e.g. bytearray(size))")
+    })?;
+    let input_cow = extract_input_bytes(py, data)?;
+    let input_bytes = input_cow.as_ref();
+    let dst_len = dst_byte_array.len();
     let fmt = format.to_lowercase();
 
-    let written = py.allow_threads(move || -> Result<usize, String> {
-        let out_slice = unsafe { std::slice::from_raw_parts_mut(dst_ptr as *mut u8, dst_len) };
-        match fmt.as_str() {
+    let (written, out_buf) = py.detach(|| -> Result<(usize, Vec<u8>), String> {
+        let mut out_slice = vec![0u8; dst_len];
+        let written = match fmt.as_str() {
             "deflate" | "zip" => {
-                deflate_decompress(input_bytes, out_slice)
+                deflate_decompress(input_bytes, &mut out_slice)
                     .map_err(|st| format!("Deflate direct decompression failed: code {}", st as i32))
             }
             "zstd" => {
-                zstd_decompress(input_bytes, out_slice)
+                zstd_decompress(input_bytes, &mut out_slice)
                     .map_err(|st| format!("Zstandard direct decompression failed: code {}", st as i32))
             }
             "lz4" => {
                 let src_data = if input_bytes.len() >= 4 { &input_bytes[4..] } else { input_bytes };
-                lz4_decompress(src_data, out_slice)
+                lz4_decompress(src_data, &mut out_slice)
                     .map_err(|st| format!("LZ4 direct decompression failed: code {}", st as i32))
             }
             "snappy" | "sz" => {
-                snappy_decompress(input_bytes, out_slice)
+                snappy_decompress(input_bytes, &mut out_slice)
                     .map_err(|st| format!("Snappy direct decompression failed: code {}", st as i32))
             }
             "lzfse" => {
-                lzfse_decompress(input_bytes, out_slice)
+                lzfse_decompress(input_bytes, &mut out_slice)
                     .map_err(|st| format!("LZFSE direct decompression failed: code {}", st as i32))
             }
             _ => Err(format!("Unsupported format: {}", fmt)),
-        }
+        }?;
+        Ok((written, out_slice))
     }).map_err(TTZipError::new_err)?;
 
-    Ok(written)
+    with_critical_section(dst_byte_array, || {
+        // SAFETY:
+        // * `dst_byte_array` is a `Bound<'_, PyByteArray>` and the critical section is held.
+        // * No Python API or drop hook is invoked while `dst_slice` is live.
+        let dst_slice = unsafe { dst_byte_array.as_bytes_mut() };
+        if dst_slice.len() < written {
+            return Err(TTZipError::new_err(
+                "Destination bytearray was resized smaller than decompressed output",
+            ));
+        }
+        dst_slice[..written].copy_from_slice(&out_buf[..written]);
+        Ok(written)
+    })
 }
 
 /// Hardware SIMD accelerated CRC32 (>40 GB/s on Apple Silicon / AVX-512).
@@ -599,7 +617,7 @@ fn benchmark_matrix(
         _ => BenchmarkCorpusType::Silesia,
     };
 
-    let res = py.allow_threads(move || {
+    let res = py.detach(move || {
         BenchmarkMatrixRunner::run_matrix(c_type, corpus_size, iterations)
     });
 
@@ -636,15 +654,15 @@ fn benchmark_matrix(
 }
 
 /// Native Python C-Extension module declaration for `ttzip._ttzip`.
-#[pymodule]
+#[pymodule(gil_used = true)]
 fn _ttzip(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyEntryMetadata>()?;
     m.add_class::<PyBenchmarkPointResult>()?;
     m.add_class::<PyBenchmarkMatrixReport>()?;
-    m.add("TTZipError", m.py().get_type_bound::<TTZipError>())?;
-    m.add("AuthenticationError", m.py().get_type_bound::<AuthenticationError>())?;
-    m.add("CorruptArchiveError", m.py().get_type_bound::<CorruptArchiveError>())?;
-    m.add("SecurityError", m.py().get_type_bound::<SecurityError>())?;
+    m.add("TTZipError", m.py().get_type::<TTZipError>())?;
+    m.add("AuthenticationError", m.py().get_type::<AuthenticationError>())?;
+    m.add("CorruptArchiveError", m.py().get_type::<CorruptArchiveError>())?;
+    m.add("SecurityError", m.py().get_type::<SecurityError>())?;
 
     m.add_function(wrap_pyfunction!(compress, m)?)?;
     m.add_function(wrap_pyfunction!(extract, m)?)?;

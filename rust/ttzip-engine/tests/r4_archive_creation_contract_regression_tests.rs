@@ -535,11 +535,14 @@ fn test_r4_bounded_xar_streaming_extraction_cancellation_and_failure_cleanup() {
     // Generate 2.5 MiB incompressible payload via deterministic xorshift64 + second file
     let mut state = 0x9E37_79B9_7F4A_7C15u64;
     let mut big_payload = vec![0u8; 2_621_440];
-    for chunk in big_payload.chunks_exact_mut(8) {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        chunk.copy_from_slice(&state.to_le_bytes());
+    {
+        let (chunks, _) = big_payload.as_chunks_mut::<8>();
+        for chunk in chunks.iter_mut() {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            chunk.copy_from_slice(&state.to_le_bytes());
+        }
     }
     let expected_big_sha256 = Sha256::digest(&big_payload);
     let big_file = src_root.join("nested/incompressible.bin");
@@ -645,7 +648,7 @@ fn test_r4_bounded_xar_streaming_extraction_cancellation_and_failure_cleanup() {
 #[test]
 fn test_r4_7z_split_volumes_and_c_ffi_creation_contracts() {
     use ttzip_engine::ffi::archive_ffi::ttzip_rust_create_archive;
-    extern "C" {
+    unsafe extern "C" {
         fn ttzip_rust_create_archive_v2(
             source_paths: *const *const libc::c_char,
             source_count: usize,
@@ -732,4 +735,51 @@ fn test_r4_7z_split_volumes_and_c_ffi_creation_contracts() {
     assert_eq!(&fs::read(&aar_dest).unwrap()[..4], b"pbze");
 }
 
+#[test]
+fn test_u1_engine_uniffi_create_transaction_incomplete_and_finish_diagnostics() {
+    use std::os::fd::AsRawFd;
+    use ttzip_engine::archive::unified::create_transaction::{
+        DescriptorReleaseStatus, set_create_txn_close_fault_hook,
+    };
+    use ttzip_engine::uniffi_api::types::{
+        UniFFIArchiveCleanupDisposition, UniFFIDescriptorReleaseStatus,
+    };
 
+    let dir = tempdir().expect("tempdir");
+    let src_file = dir.path().join("u1_src.txt");
+    fs::write(&src_file, vec![b'U'; 16384]).unwrap();
+
+    // AC-U1-04 & AC-U1-14a: close(2) EINTR -> TTZipError::CreateTransactionIncomplete over UniFFI
+    let out_eintr = dir.path().join("u1_eintr.7z");
+    let cfg_eintr = make_7z_cfg(&src_file, &out_eintr, None, None);
+    set_create_txn_close_fault_hook(|owned_fd, _scope| {
+        let raw = owned_fd.as_raw_fd();
+        drop(owned_fd);
+        (
+            raw,
+            Err(std::io::Error::from_raw_os_error(libc::EINTR)),
+            DescriptorReleaseStatus::ReleaseUnconfirmed,
+        )
+    });
+    let res = create_archive_advanced_with_options(
+        cfg_eintr,
+        UniFFICreateArchiveExtraOptions { encrypt_file_names: None },
+        None,
+        None,
+    );
+    match res {
+        Err(TTZipError::CreateTransactionIncomplete { report, summary_message }) => {
+            assert_eq!(report.unconfirmed_release_count, 1);
+            assert!(report.stage_dir_preserved);
+            assert!(summary_message.contains("unconfirmed_release_count=1"));
+            assert!(report.cleanup_failures.iter().any(|f| {
+                f.disposition == UniFFIArchiveCleanupDisposition::DescriptorReleaseUnconfirmed
+            }));
+            assert!(report.finish_diagnostics.iter().any(|d| {
+                d.release_status == UniFFIDescriptorReleaseStatus::ReleaseUnconfirmed
+                    && d.close_os_error == Some(libc::EINTR)
+            }));
+        }
+        other => panic!("Expected TTZipError::CreateTransactionIncomplete, got: {other:?}"),
+    }
+}

@@ -11,7 +11,7 @@ use std::panic::catch_unwind;
 
 // MARK: - Bzip2 C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bzip2_compress(
     src: *const u8,
     src_len: size_t,
@@ -44,7 +44,7 @@ pub extern "C" fn ttzip_rust_bzip2_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bzip2_decompress(
     src: *const u8,
     src_len: size_t,
@@ -76,7 +76,7 @@ pub extern "C" fn ttzip_rust_bzip2_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_bzip2_compress_bound(src_len: size_t) -> size_t {
     bzip2_compress_bound(src_len)
 }

@@ -138,42 +138,44 @@ pub(crate) unsafe fn write_libarchive_file(
     rel_path: &str,
     src_path: &Path,
 ) -> Result<(), TTZipStatus> {
-    let meta = fs::symlink_metadata(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-    let is_dir = meta.is_dir();
-    let mode = meta.permissions().mode();
-    let mtime = meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as time_t)
-        .unwrap_or(0);
+    unsafe {
+        let meta = fs::symlink_metadata(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        let is_dir = meta.is_dir();
+        let mode = meta.permissions().mode();
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as time_t)
+            .unwrap_or(0);
 
-    let entry = archive_entry_new();
-    if entry.is_null() {
-        return Err(TTZipStatus::ErrOutOfMemory);
-    }
-    let _e_guard = ArchiveEntryGuard(entry);
-
-    let rel_c = CString::new(rel_path).map_err(|_| TTZipStatus::ErrInvalidParam)?;
-    archive_entry_set_pathname(entry, rel_c.as_ptr());
-    archive_entry_set_mtime(entry, mtime, 0);
-
-    if is_dir {
-        archive_entry_set_filetype(entry, libc::S_IFDIR as u32);
-        archive_entry_set_perm(entry, (if mode != 0 { mode } else { 0o755 } & 0o777) as mode_t);
-        archive_entry_set_size(entry, 0);
-        archive_write_header(writer, entry);
-        archive_write_finish_entry(writer);
-    } else {
-        let data = fs::read(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-        archive_entry_set_filetype(entry, libc::S_IFREG as u32);
-        archive_entry_set_perm(entry, (if mode != 0 { mode } else { 0o644 } & 0o777) as mode_t);
-        archive_entry_set_size(entry, data.len() as i64);
-        archive_write_header(writer, entry);
-        if !data.is_empty() {
-            archive_write_data(writer, data.as_ptr() as *const libc::c_void, data.len());
+        let entry = archive_entry_new();
+        if entry.is_null() {
+            return Err(TTZipStatus::ErrOutOfMemory);
         }
-        archive_write_finish_entry(writer);
+        let _e_guard = ArchiveEntryGuard(entry);
+
+        let rel_c = CString::new(rel_path).map_err(|_| TTZipStatus::ErrInvalidParam)?;
+        archive_entry_set_pathname(entry, rel_c.as_ptr());
+        archive_entry_set_mtime(entry, mtime, 0);
+
+        if is_dir {
+            archive_entry_set_filetype(entry, libc::S_IFDIR as u32);
+            archive_entry_set_perm(entry, (if mode != 0 { mode } else { 0o755 } & 0o777) as mode_t);
+            archive_entry_set_size(entry, 0);
+            archive_write_header(writer, entry);
+            archive_write_finish_entry(writer);
+        } else {
+            let data = fs::read(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+            archive_entry_set_filetype(entry, libc::S_IFREG as u32);
+            archive_entry_set_perm(entry, (if mode != 0 { mode } else { 0o644 } & 0o777) as mode_t);
+            archive_entry_set_size(entry, data.len() as i64);
+            archive_write_header(writer, entry);
+            if !data.is_empty() {
+                archive_write_data(writer, data.as_ptr() as *const libc::c_void, data.len());
+            }
+            archive_write_finish_entry(writer);
+        }
+        Ok(())
     }
-    Ok(())
 }

@@ -10,7 +10,7 @@ macro_rules! to_and_from_le {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident {
-            magic: $magic:expr,
+            magic: $magic:expr_2021,
             options: $options:ident,
             $(
                 $(#[$field_meta:meta])*
@@ -117,7 +117,7 @@ macro_rules! to_and_from_le {
     (
         $(#[$meta:meta])*
         $vis:vis struct $name:ident {
-            magic: $magic:expr,
+            magic: $magic:expr_2021,
             $(
                 $(#[$field_meta:meta])*
                 $fvis:vis $field:ident : $type:ident

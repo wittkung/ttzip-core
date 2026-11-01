@@ -11,6 +11,7 @@ pub mod dag;
 pub mod decoder;
 pub mod encrypted_header;
 pub mod error;
+pub mod finish_contract;
 pub mod format;
 pub mod header;
 pub mod mt_writer;
@@ -58,6 +59,10 @@ pub use varint::{
     K_MAIN_STREAMS_INFO, K_MTIME, K_NAME, K_NUM_UNPACK_STREAM, K_PACK_INFO, K_SIZE,
     K_START_EDIT_HEADER, K_SUB_STREAMS_INFO, K_UNPACK_INFO, K_WIN_ATTRIBUTES,
     MAX_VARINT_LEN_7Z,
+};
+pub use finish_contract::{
+    create_7z_archive_explicit_split_with_header_encryption_in_txn, create_7z_archive_split_in_txn,
+    create_7z_archive_split_with_header_encryption_in_txn,
 };
 pub use writer::{
     build_7z_metadata_header, build_7z_metadata_header_full, create_7z_archive,

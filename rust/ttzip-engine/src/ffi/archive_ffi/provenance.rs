@@ -4,14 +4,16 @@
 use std::os::raw::c_char;
 use crate::types::{get_execution_provenance, TTZipEngineTag, TTZipExecutionProvenance};
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_get_last_execution_provenance(
     out_provenance: *mut TTZipExecutionProvenance,
 ) -> bool {
-    get_execution_provenance(out_provenance)
+    unsafe {
+        get_execution_provenance(out_provenance)
+    }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_engine_tag_name(tag: TTZipEngineTag) -> *const c_char {
     match tag {
         TTZipEngineTag::RustRayonParallelZip => c"RustRayonParallelZip".as_ptr(),

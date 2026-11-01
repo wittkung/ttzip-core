@@ -546,7 +546,7 @@ fn pump_single_stream_to_inflight(
             Ok(n) => {
                 total_written = total_written.saturating_add(n as u64);
                 bomb_guard.check(total_written, compressed_size)?;
-                if let Some(ref mut f) = inflight {
+                if let Some(f) = inflight {
                     f.file_mut()
                         .write_all(&buf[..n])
                         .map_err(|_| TTZipStatus::ErrExtractionFailed)?;

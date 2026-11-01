@@ -11,7 +11,7 @@ use crate::types::TTZipStatus;
 // MARK: - Native C LZ4 Bindings
 
 #[allow(dead_code)]
-extern "C" {
+unsafe extern "C" {
 
     fn LZ4_compress_default(
         src: *const libc::c_char,

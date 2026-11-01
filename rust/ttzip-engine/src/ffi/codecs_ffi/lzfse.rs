@@ -15,7 +15,7 @@ use std::panic::catch_unwind;
 
 // MARK: - LZFSE Compression & Decompression C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_compress(
     src: *const u8,
     src_len: size_t,
@@ -47,7 +47,7 @@ pub extern "C" fn ttzip_rust_lzfse_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_decompress(
     src: *const u8,
     src_len: size_t,
@@ -79,7 +79,7 @@ pub extern "C" fn ttzip_rust_lzfse_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_compress_raw(
     src: *const u8,
     src_len: size_t,
@@ -90,7 +90,7 @@ pub extern "C" fn ttzip_rust_lzfse_compress_raw(
     ttzip_rust_lzfse_compress(src, src_len, dst, dst_capacity, out_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_decompress_raw(
     src: *const u8,
     src_len: size_t,
@@ -128,7 +128,7 @@ pub extern "C" fn ttzip_rust_lzfse_decompress_raw(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_compress_stream(
     src: *const u8,
     src_len: size_t,
@@ -164,7 +164,7 @@ pub extern "C" fn ttzip_rust_lzfse_compress_stream(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_decompress_stream(
     src: *const u8,
     src_len: size_t,
@@ -200,12 +200,12 @@ pub extern "C" fn ttzip_rust_lzfse_decompress_stream(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_compress_bound(src_len: size_t) -> size_t {
     catch_unwind(|| lzfse_compress_bound(src_len)).unwrap_or(0)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzfse_validate(src: *const u8, src_len: size_t) -> bool {
     catch_unwind(|| match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => lzfse_validate(slice),
@@ -216,7 +216,7 @@ pub extern "C" fn ttzip_rust_lzfse_validate(src: *const u8, src_len: size_t) -> 
 
 // MARK: - Apple LZVN Compression & Decompression C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_compress(
     src: *const u8,
     src_len: size_t,
@@ -248,7 +248,7 @@ pub extern "C" fn ttzip_rust_lzvn_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_decompress(
     src: *const u8,
     src_len: size_t,
@@ -280,7 +280,7 @@ pub extern "C" fn ttzip_rust_lzvn_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_compress_raw(
     src: *const u8,
     src_len: size_t,
@@ -291,7 +291,7 @@ pub extern "C" fn ttzip_rust_lzvn_compress_raw(
     ttzip_rust_lzvn_compress(src, src_len, dst, dst_capacity, out_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_decompress_raw(
     src: *const u8,
     src_len: size_t,
@@ -329,12 +329,12 @@ pub extern "C" fn ttzip_rust_lzvn_decompress_raw(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_compress_bound(src_len: size_t) -> size_t {
     catch_unwind(|| lzvn_compress_bound(src_len)).unwrap_or(0)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_lzvn_validate(src: *const u8, src_len: size_t) -> bool {
     catch_unwind(|| match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => lzvn_validate(slice),

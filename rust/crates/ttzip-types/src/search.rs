@@ -211,52 +211,56 @@ impl LazyTopKSelector {
 #[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn neon_ascii_to_lower_16(v: core::arch::aarch64::uint8x16_t) -> core::arch::aarch64::uint8x16_t {
-    use core::arch::aarch64::*;
-    let a = vdupq_n_u8(b'A');
-    let z = vdupq_n_u8(b'Z');
-    let bit5 = vdupq_n_u8(0x20);
-    let ge_a = vcgeq_u8(v, a);
-    let le_z = vcleq_u8(v, z);
-    let is_upper = vandq_u8(ge_a, le_z);
-    vorrq_u8(v, vandq_u8(is_upper, bit5))
+    unsafe {
+        use core::arch::aarch64::*;
+        let a = vdupq_n_u8(b'A');
+        let z = vdupq_n_u8(b'Z');
+        let bit5 = vdupq_n_u8(0x20);
+        let ge_a = vcgeq_u8(v, a);
+        let le_z = vcleq_u8(v, z);
+        let is_upper = vandq_u8(ge_a, le_z);
+        vorrq_u8(v, vandq_u8(is_upper, bit5))
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn neon_contains_ascii(haystack: &[u8], needle: &[u8]) -> bool {
-    use core::arch::aarch64::*;
-    if needle.is_empty() {
-        return true;
-    }
-    if haystack.len() < needle.len() {
-        return false;
-    }
-    let first_needle = needle[0].to_ascii_lowercase();
-    let v_needle_first = vdupq_n_u8(first_needle);
-
-    let mut i = 0;
-    while i + 16 <= haystack.len() {
-        let raw = vld1q_u8(haystack.as_ptr().add(i));
-        let lower = neon_ascii_to_lower_16(raw);
-        let cmp = vceqq_u8(lower, v_needle_first);
-        let max_val = vmaxvq_u8(cmp);
-        if max_val != 0 {
-            let end = (i + 16).min(haystack.len() - needle.len() + 1);
-            for j in i..end {
-                if haystack[j..j + needle.len()].eq_ignore_ascii_case(needle) {
-                    return true;
-                }
-            }
-        }
-        i += 16;
-    }
-    while i + needle.len() <= haystack.len() {
-        if haystack[i..i + needle.len()].eq_ignore_ascii_case(needle) {
+    unsafe {
+        use core::arch::aarch64::*;
+        if needle.is_empty() {
             return true;
         }
-        i += 1;
+        if haystack.len() < needle.len() {
+            return false;
+        }
+        let first_needle = needle[0].to_ascii_lowercase();
+        let v_needle_first = vdupq_n_u8(first_needle);
+
+        let mut i = 0;
+        while i + 16 <= haystack.len() {
+            let raw = vld1q_u8(haystack.as_ptr().add(i));
+            let lower = neon_ascii_to_lower_16(raw);
+            let cmp = vceqq_u8(lower, v_needle_first);
+            let max_val = vmaxvq_u8(cmp);
+            if max_val != 0 {
+                let end = (i + 16).min(haystack.len() - needle.len() + 1);
+                for j in i..end {
+                    if haystack[j..j + needle.len()].eq_ignore_ascii_case(needle) {
+                        return true;
+                    }
+                }
+            }
+            i += 16;
+        }
+        while i + needle.len() <= haystack.len() {
+            if haystack[i..i + needle.len()].eq_ignore_ascii_case(needle) {
+                return true;
+            }
+            i += 1;
+        }
+        false
     }
-    false
 }
 
 #[inline]

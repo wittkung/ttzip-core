@@ -131,7 +131,7 @@ impl Drop for AlignedBuffer {
 unsafe impl Send for AlignedBuffer {}
 unsafe impl Sync for AlignedBuffer {}
 
-extern "C" {
+unsafe extern "C" {
     #[cfg(target_os = "macos")]
     fn clonefile(src: *const libc::c_char, dst: *const libc::c_char, flags: u32) -> libc::c_int;
     #[cfg(target_os = "macos")]

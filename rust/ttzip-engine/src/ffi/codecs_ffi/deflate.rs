@@ -14,7 +14,7 @@ use std::panic::catch_unwind;
 
 // MARK: - DEFLATE / zlib / gzip C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_deflate_compress(
     src: *const u8,
     src_len: size_t,
@@ -47,7 +47,7 @@ pub extern "C" fn ttzip_rust_deflate_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_deflate_decompress(
     src: *const u8,
     src_len: size_t,
@@ -79,7 +79,7 @@ pub extern "C" fn ttzip_rust_deflate_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zlib_compress(
     src: *const u8,
     src_len: size_t,
@@ -112,7 +112,7 @@ pub extern "C" fn ttzip_rust_zlib_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_zlib_decompress(
     src: *const u8,
     src_len: size_t,
@@ -144,7 +144,7 @@ pub extern "C" fn ttzip_rust_zlib_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_gzip_compress(
     src: *const u8,
     src_len: size_t,
@@ -177,7 +177,7 @@ pub extern "C" fn ttzip_rust_gzip_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_gzip_decompress(
     src: *const u8,
     src_len: size_t,
@@ -209,7 +209,7 @@ pub extern "C" fn ttzip_rust_gzip_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_deflate_compress_bound(src_len: size_t, level: i32) -> size_t {
     deflate_compress_bound(src_len, level)
 }

@@ -380,4 +380,392 @@ fn test_replace_via_swap_post_swap_staging_cleanup_failure_is_not_item_commit_fa
     assert_eq!(fs::read_to_string(dest_dir.join("entry")).unwrap(), "new_file_content");
 }
 
+#[test]
+fn test_u1_ac01_ac02_ac03_ac04_sevenz_close_eio_and_eintr_unconfirmed_release() {
+    use std::os::fd::AsRawFd;
+    use ttzip_archive::archive::unified::create::create_archive_detailed_outcome_with_cancel;
+    use ttzip_archive::archive::unified::create_staging::CreateStageCommitError;
+    use ttzip_archive::archive::unified::create_transaction::{
+        ArchiveCleanupDisposition, DescriptorReleaseStatus, ResidualPathRole,
+        set_create_txn_close_fault_hook,
+    };
+    use ttzip_archive::types::{
+        TTZIP_ABI_VERSION_3, TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions,
+        TTZipEncryptionMethod, TTZipStatus,
+    };
 
+    let tmp = tempdir().expect("tempdir");
+    let src_file = tmp.path().join("input.txt");
+    fs::write(&src_file, vec![b'7'; 8192]).unwrap();
+    let base_opts = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: TTZIP_ABI_VERSION_3,
+        format: TTZipArchiveFormat::SevenZip,
+        level: TTZipCompressionLevel::Fast,
+        encryption: TTZipEncryptionMethod::None,
+        password: std::ptr::null(),
+        thread_budget: 1,
+        solid_block_size_mb: 16,
+        progress_callback: None,
+        user_data: std::ptr::null_mut(),
+    };
+
+    // Case 1 (AC-U1-01): encoder succeeds, close(2) returns EIO (ConfirmedReleased), unlink succeeds -> StatusWithFinishDiagnostics(ErrCompressionFailed)
+    let out_eio = tmp.path().join("close_eio.7z");
+    set_create_txn_close_fault_hook(|owned_fd, _scope| {
+        let raw = owned_fd.as_raw_fd();
+        drop(owned_fd);
+        (
+            raw,
+            Err(std::io::Error::from_raw_os_error(libc::EIO)),
+            DescriptorReleaseStatus::ConfirmedReleased,
+        )
+    });
+    let res_eio = create_archive_detailed_outcome_with_cancel(
+        std::slice::from_ref(&src_file),
+        &out_eio,
+        &base_opts,
+        0,
+        || false,
+    );
+    match res_eio {
+        Err(CreateStageCommitError::StatusWithFinishDiagnostics {
+            status,
+            finish_diagnostics,
+        }) => {
+            assert_eq!(status, TTZipStatus::ErrCompressionFailed);
+            assert_eq!(finish_diagnostics.len(), 1);
+            assert_eq!(finish_diagnostics[0].close_os_error, Some(libc::EIO));
+            assert_eq!(
+                finish_diagnostics[0].release_status,
+                DescriptorReleaseStatus::ConfirmedReleased
+            );
+        }
+        other => panic!("Expected StatusWithFinishDiagnostics on close EIO, got: {other:?}"),
+    }
+    assert!(!out_eio.exists(), "Close EIO must never commit destination archive");
+
+    // Case 2 (AC-U1-02 / AC-U1-03): primary cancel + secondary close EIO (ConfirmedReleased), clean unlink -> StatusWithFinishDiagnostics(Cancelled)
+    unsafe extern "C" fn cancel_after_open_cb(
+        processed: u64,
+        _total: u64,
+        _entry: *const libc::c_char,
+        _user_data: *mut libc::c_void,
+    ) -> bool {
+        processed == 0
+    }
+    let mut cancel_opts = base_opts;
+    cancel_opts.progress_callback = Some(cancel_after_open_cb);
+    let out_cancel_eio = tmp.path().join("cancel_close_eio.7z");
+    set_create_txn_close_fault_hook(|owned_fd, _scope| {
+        let raw = owned_fd.as_raw_fd();
+        drop(owned_fd);
+        (
+            raw,
+            Err(std::io::Error::from_raw_os_error(libc::EIO)),
+            DescriptorReleaseStatus::ConfirmedReleased,
+        )
+    });
+    let res_cancel_eio = create_archive_detailed_outcome_with_cancel(
+        std::slice::from_ref(&src_file),
+        &out_cancel_eio,
+        &cancel_opts,
+        0,
+        || true,
+    );
+    match res_cancel_eio {
+        Err(CreateStageCommitError::StatusWithFinishDiagnostics {
+            status,
+            finish_diagnostics,
+        }) => {
+            assert_eq!(status, TTZipStatus::Cancelled);
+            assert_eq!(finish_diagnostics.len(), 1);
+            assert_eq!(finish_diagnostics[0].close_os_error, Some(libc::EIO));
+        }
+        other => panic!("Expected StatusWithFinishDiagnostics(Cancelled), got: {other:?}"),
+    }
+
+    // Case 3 (AC-U1-04): close(2) returns EINTR (ReleaseUnconfirmed) -> TransactionIncomplete with stage_dir_preserved = true
+    let out_eintr = tmp.path().join("close_eintr.7z");
+    set_create_txn_close_fault_hook(|owned_fd, _scope| {
+        let raw = owned_fd.as_raw_fd();
+        drop(owned_fd);
+        (
+            raw,
+            Err(std::io::Error::from_raw_os_error(libc::EINTR)),
+            DescriptorReleaseStatus::ReleaseUnconfirmed,
+        )
+    });
+    let res_eintr = create_archive_detailed_outcome_with_cancel(
+        std::slice::from_ref(&src_file),
+        &out_eintr,
+        &base_opts,
+        0,
+        || false,
+    );
+    match res_eintr {
+        Err(CreateStageCommitError::TransactionIncomplete(report)) => {
+            assert_eq!(report.primary_status, TTZipStatus::ErrCompressionFailed);
+            assert_eq!(report.unconfirmed_release_count, 1);
+            assert!(report.stage_dir_preserved);
+            assert!(report.stage_dir.exists());
+            assert!(report.cleanup_failures.iter().any(|f| {
+                f.role == ResidualPathRole::StagedArtifact
+                    && f.disposition == ArchiveCleanupDisposition::DescriptorReleaseUnconfirmed
+                    && f.os_error_code == Some(libc::EINTR)
+            }));
+            assert!(report.finish_diagnostics.iter().any(|d| {
+                d.release_status == DescriptorReleaseStatus::ReleaseUnconfirmed
+                    && d.close_os_error == Some(libc::EINTR)
+            }));
+        }
+        other => panic!("Expected TransactionIncomplete on EINTR close, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_u1_ac06_ac07_split_volume_backup_rollback_and_partial_recovery() {
+    use ttzip_archive::archive::split::VolumeNamingScheme;
+    use ttzip_archive::archive::unified::create_staging::{
+        CreateCommitMode, CreateStageCommitError,
+        with_staged_archive_destination_detailed_using_outcome,
+    };
+    use ttzip_archive::archive::unified::create_transaction::CreateBackupRecoveryState;
+    use ttzip_archive::types::TTZipStatus;
+
+    let tmp = tempdir().expect("tempdir");
+
+    // Part A (AC-U1-06): split commit fails on 2nd staged volume move, backup restoration succeeds cleanly -> Status(ErrOpenFailed)
+    let dir_a = tmp.path().join("split_a");
+    fs::create_dir_all(&dir_a).unwrap();
+    let target_a = dir_a.join("vol.7z.001");
+    fs::write(dir_a.join("vol.7z.001"), b"OLD_PART_1").unwrap();
+    fs::write(dir_a.join("vol.7z.002"), b"OLD_PART_2").unwrap();
+
+    let mut stage_moves = 0usize;
+    let res_a = with_staged_archive_destination_detailed_using_outcome(
+        &target_a,
+        CreateCommitMode::SplitVolume(VolumeNamingScheme::NumberedExtension),
+        |staged_dest, _txn_ctx| {
+            let sdir = staged_dest.parent().unwrap();
+            fs::write(sdir.join("vol.7z.001"), b"NEW_PART_1").unwrap();
+            fs::write(sdir.join("vol.7z.002"), b"NEW_PART_2").unwrap();
+            Ok(())
+        },
+        move |src, dst| {
+            stage_moves += 1;
+            if stage_moves == 2 {
+                return Err(std::io::Error::from_raw_os_error(libc::EIO));
+            }
+            fs::rename(src, dst)
+        },
+        |src, dst| fs::rename(src, dst),
+        || false,
+    );
+    assert!(
+        matches!(res_a, Err(CreateStageCommitError::Status(TTZipStatus::ErrOpenFailed))),
+        "Clean rollback of all split volumes must return clean Status(ErrOpenFailed), got: {res_a:?}"
+    );
+    assert_eq!(fs::read(dir_a.join("vol.7z.001")).unwrap(), b"OLD_PART_1");
+    assert_eq!(fs::read(dir_a.join("vol.7z.002")).unwrap(), b"OLD_PART_2");
+
+    // Part B (AC-U1-07): split commit fails on 2nd staged move AND 2nd backup restore fails -> RollbackIncompletePreservedInBackup
+    let dir_b = tmp.path().join("split_b");
+    fs::create_dir_all(&dir_b).unwrap();
+    let target_b = dir_b.join("volb.7z.001");
+    fs::write(dir_b.join("volb.7z.001"), b"OLD_B_1").unwrap();
+    fs::write(dir_b.join("volb.7z.002"), b"OLD_B_2").unwrap();
+
+    let mut stage_moves_b = 0usize;
+    let mut restore_moves_b = 0usize;
+    let res_b = with_staged_archive_destination_detailed_using_outcome(
+        &target_b,
+        CreateCommitMode::SplitVolume(VolumeNamingScheme::NumberedExtension),
+        |staged_dest, _txn_ctx| {
+            let sdir = staged_dest.parent().unwrap();
+            fs::write(sdir.join("volb.7z.001"), b"NEW_B_1").unwrap();
+            fs::write(sdir.join("volb.7z.002"), b"NEW_B_2").unwrap();
+            Ok(())
+        },
+        move |src, dst| {
+            stage_moves_b += 1;
+            if stage_moves_b == 2 {
+                return Err(std::io::Error::from_raw_os_error(libc::EIO));
+            }
+            fs::rename(src, dst)
+        },
+        move |src, dst| {
+            restore_moves_b += 1;
+            if restore_moves_b == 2 {
+                return Err(std::io::Error::from_raw_os_error(libc::EACCES));
+            }
+            fs::rename(src, dst)
+        },
+        || false,
+    );
+    match res_b {
+        Err(CreateStageCommitError::TransactionIncomplete(report)) => {
+            let rec = report.recovery_attempt.expect("recovery_attempt must be present");
+            assert_eq!(
+                rec.state,
+                CreateBackupRecoveryState::RollbackIncompletePreservedInBackup
+            );
+            assert_eq!(rec.restored_targets.len(), 1);
+            assert_eq!(rec.failed_entries.len(), 1);
+            assert!(rec.backup_dir.expect("backup_dir must be Some").exists());
+        }
+        other => panic!("Expected TransactionIncomplete with RollbackIncompletePreservedInBackup, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_u1_ac08_ac10_ac11_ac12_ac13_fstat_dup_temp_readback_barrier_and_t_sample() {
+    use std::os::fd::AsRawFd;
+    use std::os::unix::fs::PermissionsExt;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use ttzip_archive::archive::unified::create::create_archive_detailed_outcome_with_cancel;
+    use ttzip_archive::archive::unified::create_staging::{
+        CreateCommitMode, CreateStageCommitError, with_staged_archive_destination_detailed_outcome,
+    };
+    use ttzip_archive::archive::unified::create_transaction::{
+        ArchiveCleanupDisposition, CreateFileAccessMode, CreateTransactionContext,
+        DescriptorReleaseStatus, ResidualPathRole, set_abort_guard_dup_fd_hook,
+        set_abort_guard_fstat_hook, set_create_txn_close_fault_hook,
+    };
+    use ttzip_archive::fs::FileAbortGuard;
+    use ttzip_archive::types::{
+        TTZIP_ABI_VERSION_3, TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions,
+        TTZipEncryptionMethod, TTZipStatus,
+    };
+
+    let tmp = tempdir().expect("tempdir");
+
+    // 1. AC-U1-08 (F2.1): post-openat fstat failure closes fd and records OwnershipOrLocationUnconfirmed
+    let stage_root = tmp.path().join("f21_stage");
+    fs::create_dir_all(&stage_root).unwrap();
+    let ctx_f21 = CreateTransactionContext::new(stage_root.clone());
+    set_abort_guard_fstat_hook(|| Err(std::io::Error::from_raw_os_error(libc::EIO)));
+    let fstat_res = FileAbortGuard::create_staged_file_in_txn(
+        &stage_root.join("fstat_fail.bin"),
+        CreateFileAccessMode::WriteOnly,
+        Some(&ctx_f21),
+        ResidualPathRole::StagedArtifact,
+    );
+    assert!(fstat_res.is_err());
+    assert!(ctx_f21.should_preserve_outer_stage_dir());
+
+    // 2. AC-U1-08 (F2.1): dup_fd_cloexec failure unlinks created file via quarantine_verify_and_unlink
+    let dup_stage = tmp.path().join("dup_stage");
+    let (pfd, pid) = {
+        fs::create_dir_all(&dup_stage).unwrap();
+        let df = fs::File::open(&dup_stage).unwrap();
+        let mut st: libc::stat = unsafe { std::mem::zeroed() };
+        unsafe { libc::fstat(df.as_raw_fd(), &mut st) };
+        (df, (st.st_dev as u64, st.st_ino))
+    };
+    let ctx_dup = CreateTransactionContext::with_captured_parent(
+        dup_stage.clone(),
+        pfd.as_raw_fd(),
+        pid,
+    );
+    set_abort_guard_dup_fd_hook(|| Err(std::io::Error::from_raw_os_error(libc::EMFILE)));
+    let dup_target = dup_stage.join("dup_fail.bin");
+    let dup_res = FileAbortGuard::create_staged_file_in_txn(
+        &dup_target,
+        CreateFileAccessMode::WriteOnly,
+        Some(&ctx_dup),
+        ResidualPathRole::StagedArtifact,
+    );
+    assert!(dup_res.is_err());
+    assert!(!dup_target.exists(), "dup_fd failure must unlink newly created file");
+
+    // 3. AC-U1-10: ScopedTempFile readback close fault (EINTR / ReleaseUnconfirmed) on XAR creation
+    let src_file = tmp.path().join("xar_src.txt");
+    fs::write(&src_file, b"XAR_TEMP_READBACK_TEST").unwrap();
+    let xar_out = tmp.path().join("out.xar");
+    let xar_opts = TTZipCreateOptions {
+        struct_size: std::mem::size_of::<TTZipCreateOptions>() as u32,
+        abi_version: TTZIP_ABI_VERSION_3,
+        format: TTZipArchiveFormat::Xar,
+        level: TTZipCompressionLevel::Normal,
+        encryption: TTZipEncryptionMethod::None,
+        password: std::ptr::null(),
+        thread_budget: 1,
+        solid_block_size_mb: 16,
+        progress_callback: None,
+        user_data: std::ptr::null_mut(),
+    };
+    set_create_txn_close_fault_hook(|owned_fd, _scope| {
+        let raw = owned_fd.as_raw_fd();
+        drop(owned_fd);
+        (
+            raw,
+            Err(std::io::Error::from_raw_os_error(libc::EINTR)),
+            DescriptorReleaseStatus::ReleaseUnconfirmed,
+        )
+    });
+    let xar_res = create_archive_detailed_outcome_with_cancel(
+        std::slice::from_ref(&src_file),
+        &xar_out,
+        &xar_opts,
+        0,
+        || false,
+    );
+    match xar_res {
+        Err(CreateStageCommitError::TransactionIncomplete(report)) => {
+            assert_eq!(report.unconfirmed_release_count, 1);
+            assert!(report.stage_dir_preserved);
+            assert!(report.cleanup_failures.iter().any(|f| {
+                f.role == ResidualPathRole::StagedTempFile
+                    && f.disposition == ArchiveCleanupDisposition::DescriptorReleaseUnconfirmed
+            }));
+        }
+        other => panic!("Expected TransactionIncomplete on XAR temp readback EINTR, got: {other:?}"),
+    }
+
+    // 4. AC-U1-11 & AC-U1-12 & AC-U1-13: Drop fallback observer, active producer barrier, and T_sample linearization
+    let barrier_root = tmp.path().join("barrier_root");
+    fs::create_dir_all(&barrier_root).unwrap();
+    let late_cancel_flag = Arc::new(AtomicBool::new(false));
+    let late_flag_hook = Arc::clone(&late_cancel_flag);
+    let fin_err = with_staged_archive_destination_detailed_outcome(
+        &barrier_root.join("barrier.zip"),
+        CreateCommitMode::SingleFile,
+        |staged_dest, ctx_bar| {
+            let stage_dir_path = staged_dest.parent().unwrap().to_path_buf();
+            let (_f_drop, guard_drop) = FileAbortGuard::create_staged_file_in_txn(
+                &stage_dir_path.join("drop_fallback.bin"),
+                CreateFileAccessMode::WriteOnly,
+                Some(ctx_bar),
+                ResidualPathRole::StagedArtifact,
+            )
+            .unwrap();
+            fs::set_permissions(&stage_dir_path, fs::Permissions::from_mode(0o500)).unwrap();
+            drop(_f_drop);
+            drop(guard_drop);
+            fs::set_permissions(&stage_dir_path, fs::Permissions::from_mode(0o700)).unwrap();
+            assert!(
+                ctx_bar.should_preserve_outer_stage_dir(),
+                "Drop fallback observer must record cleanup failure into ctx"
+            );
+            ctx_bar.set_after_final_cancel_sample_before_unlock_hook(move || {
+                late_flag_hook.store(true, Ordering::SeqCst);
+            });
+            Err(TTZipStatus::ErrOpenFailed)
+        },
+        || late_cancel_flag.load(Ordering::SeqCst),
+    );
+    match fin_err {
+        Err(CreateStageCommitError::TransactionIncomplete(report)) => {
+            assert_eq!(report.primary_status, TTZipStatus::ErrOpenFailed);
+            assert!(!report.was_primary_cancelled);
+            assert!(
+                !report.is_cancellation_requested,
+                "Cancel flipped after T_sample must not retroactively set is_cancellation_requested"
+            );
+            assert!(report.stage_dir_preserved);
+        }
+        other => panic!("Expected TransactionIncomplete, got: {other:?}"),
+    }
+}

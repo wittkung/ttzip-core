@@ -8,6 +8,7 @@ pub mod apfs;
 pub mod deferred_fixup;
 pub mod dir_jail;
 pub mod filter;
+pub mod finish_io;
 pub mod natural_sort;
 pub mod safe_extract;
 pub mod scanner;

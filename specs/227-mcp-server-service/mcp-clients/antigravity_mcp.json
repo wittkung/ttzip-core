@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "ttzip": {
-      "command": "ttzip",
-      "args": ["mcp"],
-      "description": "High-performance native macOS compression and archive management engine (ZIP, 7z, TAR, Snappy, Brotli)"
-    }
-  }
-}

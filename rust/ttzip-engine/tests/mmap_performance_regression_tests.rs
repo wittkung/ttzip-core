@@ -130,8 +130,9 @@ fn test_mmap_sequential_scan_throughput_and_regression_gate() {
     let (throughput_mb_s, avg_latency_ns) = measure_adaptive_mmap_throughput(
         || {
             let mut acc = 0u64;
-            for chunk in slice.chunks_exact(8) {
-                let val = u64::from_le_bytes(chunk.try_into().unwrap());
+            let (chunks, _) = slice.as_chunks::<8>();
+            for chunk in chunks {
+                let val = u64::from_le_bytes(*chunk);
                 acc = acc.wrapping_add(val);
             }
             black_box(acc);

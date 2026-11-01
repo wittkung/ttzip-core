@@ -14,7 +14,7 @@ use std::path::Path;
 ///
 /// Iterates over all headers in `archive_path` and delivers `TTZipEntryMetadata`
 /// to the caller callback. Returning `false` from `callback` halts traversal.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_inspect_archive(
     archive_path: *const c_char,
     password: *const c_char,

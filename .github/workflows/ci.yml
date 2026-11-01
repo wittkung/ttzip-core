@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_BACKTRACE: "1"
+
+jobs:
+  loc-gate:
+    name: LOC gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Enforce the single-file LOC gate
+        run: ./scripts/lint_loc_gate.sh
+
+  rust-test:
+    name: Rust workspace tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+      - name: Run the Rust workspace test suite
+        run: cd rust && cargo test --workspace
+
+  swift-test:
+    name: Swift package tests
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Install the documented system libraries
+        run: brew install libarchive libdeflate lz4 zstd xz
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+      - name: Build TTZipVendor.xcframework and UniFFI bindings
+        run: ./scripts/build_rust.sh --debug
+      - name: Build the ttzip CLI required by CLICommandE2ETests
+        run: cargo build --manifest-path rust/Cargo.toml -p ttzip-tui --bin ttzip
+      - name: Run the Swift package test suite
+        env:
+          TTZIP_BIN_PATH: ${{ github.workspace }}/rust/target/debug/ttzip
+        run: swift test

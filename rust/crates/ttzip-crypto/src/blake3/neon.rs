@@ -25,38 +25,50 @@ use super::tree::parent_cv;
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn loadu_128(src: *const u8) -> uint32x4_t {
-    vreinterpretq_u32_u8(vld1q_u8(src))
+    unsafe {
+        vreinterpretq_u32_u8(vld1q_u8(src))
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn storeu_128(src: uint32x4_t, dest: *mut u8) {
-    vst1q_u8(dest, vreinterpretq_u8_u32(src));
+    unsafe {
+        vst1q_u8(dest, vreinterpretq_u8_u32(src));
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn add_128(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    vaddq_u32(a, b)
+    unsafe {
+        vaddq_u32(a, b)
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn xor_128(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    veorq_u32(a, b)
+    unsafe {
+        veorq_u32(a, b)
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn set1_128(x: u32) -> uint32x4_t {
-    vdupq_n_u32(x)
+    unsafe {
+        vdupq_n_u32(x)
+    }
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn set4(a: u32, b: u32, c: u32, d: u32) -> uint32x4_t {
-    let array = [a, b, c, d];
-    vld1q_u32(array.as_ptr())
+    unsafe {
+        let array = [a, b, c, d];
+        vld1q_u32(array.as_ptr())
+    }
 }
 
 /// Rotates each 32-bit lane right by 16 bits using 16-bit lane reversal (`vrev32q_u16`).
@@ -66,7 +78,9 @@ unsafe fn set4(a: u32, b: u32, c: u32, d: u32) -> uint32x4_t {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot16_128(x: uint32x4_t) -> uint32x4_t {
-    vreinterpretq_u32_u16(vrev32q_u16(vreinterpretq_u16_u32(x)))
+    unsafe {
+        vreinterpretq_u32_u16(vrev32q_u16(vreinterpretq_u16_u32(x)))
+    }
 }
 
 /// Rotates each 32-bit lane right by 12 bits using shift-right-and-insert (`vsriq_n_u32`).
@@ -76,7 +90,9 @@ pub unsafe fn rot16_128(x: uint32x4_t) -> uint32x4_t {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot12_128(x: uint32x4_t) -> uint32x4_t {
-    vsriq_n_u32(vshlq_n_u32(x, 20), x, 12)
+    unsafe {
+        vsriq_n_u32(vshlq_n_u32(x, 20), x, 12)
+    }
 }
 
 /// Rotates each 32-bit lane right by 8 bits using shift-right-and-insert (`vsriq_n_u32`).
@@ -86,7 +102,9 @@ pub unsafe fn rot12_128(x: uint32x4_t) -> uint32x4_t {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot8_128(x: uint32x4_t) -> uint32x4_t {
-    vsriq_n_u32(vshlq_n_u32(x, 24), x, 8)
+    unsafe {
+        vsriq_n_u32(vshlq_n_u32(x, 24), x, 8)
+    }
 }
 
 /// Rotates each 32-bit lane right by 7 bits using shift-right-and-insert (`vsriq_n_u32`).
@@ -96,7 +114,9 @@ pub unsafe fn rot8_128(x: uint32x4_t) -> uint32x4_t {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
-    vsriq_n_u32(vshlq_n_u32(x, 25), x, 7)
+    unsafe {
+        vsriq_n_u32(vshlq_n_u32(x, 25), x, 7)
+    }
 }
 
 /// Executes one round of 4-way parallel BLAKE3 permutation across 16 NEON vector registers.
@@ -106,123 +126,125 @@ pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn round_fn4(v: &mut [uint32x4_t; 16], m: &[uint32x4_t; 16], r: usize) {
-    let schedule = &MSG_SCHEDULE[r];
+    unsafe {
+        let schedule = &MSG_SCHEDULE[r];
 
-    // Column mixing step
-    v[0] = add_128(v[0], m[schedule[0]]);
-    v[1] = add_128(v[1], m[schedule[2]]);
-    v[2] = add_128(v[2], m[schedule[4]]);
-    v[3] = add_128(v[3], m[schedule[6]]);
-    v[0] = add_128(v[0], v[4]);
-    v[1] = add_128(v[1], v[5]);
-    v[2] = add_128(v[2], v[6]);
-    v[3] = add_128(v[3], v[7]);
-    v[12] = xor_128(v[12], v[0]);
-    v[13] = xor_128(v[13], v[1]);
-    v[14] = xor_128(v[14], v[2]);
-    v[15] = xor_128(v[15], v[3]);
-    v[12] = rot16_128(v[12]);
-    v[13] = rot16_128(v[13]);
-    v[14] = rot16_128(v[14]);
-    v[15] = rot16_128(v[15]);
-    v[8] = add_128(v[8], v[12]);
-    v[9] = add_128(v[9], v[13]);
-    v[10] = add_128(v[10], v[14]);
-    v[11] = add_128(v[11], v[15]);
-    v[4] = xor_128(v[4], v[8]);
-    v[5] = xor_128(v[5], v[9]);
-    v[6] = xor_128(v[6], v[10]);
-    v[7] = xor_128(v[7], v[11]);
-    v[4] = rot12_128(v[4]);
-    v[5] = rot12_128(v[5]);
-    v[6] = rot12_128(v[6]);
-    v[7] = rot12_128(v[7]);
-    v[0] = add_128(v[0], m[schedule[1]]);
-    v[1] = add_128(v[1], m[schedule[3]]);
-    v[2] = add_128(v[2], m[schedule[5]]);
-    v[3] = add_128(v[3], m[schedule[7]]);
-    v[0] = add_128(v[0], v[4]);
-    v[1] = add_128(v[1], v[5]);
-    v[2] = add_128(v[2], v[6]);
-    v[3] = add_128(v[3], v[7]);
-    v[12] = xor_128(v[12], v[0]);
-    v[13] = xor_128(v[13], v[1]);
-    v[14] = xor_128(v[14], v[2]);
-    v[15] = xor_128(v[15], v[3]);
-    v[12] = rot8_128(v[12]);
-    v[13] = rot8_128(v[13]);
-    v[14] = rot8_128(v[14]);
-    v[15] = rot8_128(v[15]);
-    v[8] = add_128(v[8], v[12]);
-    v[9] = add_128(v[9], v[13]);
-    v[10] = add_128(v[10], v[14]);
-    v[11] = add_128(v[11], v[15]);
-    v[4] = xor_128(v[4], v[8]);
-    v[5] = xor_128(v[5], v[9]);
-    v[6] = xor_128(v[6], v[10]);
-    v[7] = xor_128(v[7], v[11]);
-    v[4] = rot7_128(v[4]);
-    v[5] = rot7_128(v[5]);
-    v[6] = rot7_128(v[6]);
-    v[7] = rot7_128(v[7]);
+        // Column mixing step
+        v[0] = add_128(v[0], m[schedule[0]]);
+        v[1] = add_128(v[1], m[schedule[2]]);
+        v[2] = add_128(v[2], m[schedule[4]]);
+        v[3] = add_128(v[3], m[schedule[6]]);
+        v[0] = add_128(v[0], v[4]);
+        v[1] = add_128(v[1], v[5]);
+        v[2] = add_128(v[2], v[6]);
+        v[3] = add_128(v[3], v[7]);
+        v[12] = xor_128(v[12], v[0]);
+        v[13] = xor_128(v[13], v[1]);
+        v[14] = xor_128(v[14], v[2]);
+        v[15] = xor_128(v[15], v[3]);
+        v[12] = rot16_128(v[12]);
+        v[13] = rot16_128(v[13]);
+        v[14] = rot16_128(v[14]);
+        v[15] = rot16_128(v[15]);
+        v[8] = add_128(v[8], v[12]);
+        v[9] = add_128(v[9], v[13]);
+        v[10] = add_128(v[10], v[14]);
+        v[11] = add_128(v[11], v[15]);
+        v[4] = xor_128(v[4], v[8]);
+        v[5] = xor_128(v[5], v[9]);
+        v[6] = xor_128(v[6], v[10]);
+        v[7] = xor_128(v[7], v[11]);
+        v[4] = rot12_128(v[4]);
+        v[5] = rot12_128(v[5]);
+        v[6] = rot12_128(v[6]);
+        v[7] = rot12_128(v[7]);
+        v[0] = add_128(v[0], m[schedule[1]]);
+        v[1] = add_128(v[1], m[schedule[3]]);
+        v[2] = add_128(v[2], m[schedule[5]]);
+        v[3] = add_128(v[3], m[schedule[7]]);
+        v[0] = add_128(v[0], v[4]);
+        v[1] = add_128(v[1], v[5]);
+        v[2] = add_128(v[2], v[6]);
+        v[3] = add_128(v[3], v[7]);
+        v[12] = xor_128(v[12], v[0]);
+        v[13] = xor_128(v[13], v[1]);
+        v[14] = xor_128(v[14], v[2]);
+        v[15] = xor_128(v[15], v[3]);
+        v[12] = rot8_128(v[12]);
+        v[13] = rot8_128(v[13]);
+        v[14] = rot8_128(v[14]);
+        v[15] = rot8_128(v[15]);
+        v[8] = add_128(v[8], v[12]);
+        v[9] = add_128(v[9], v[13]);
+        v[10] = add_128(v[10], v[14]);
+        v[11] = add_128(v[11], v[15]);
+        v[4] = xor_128(v[4], v[8]);
+        v[5] = xor_128(v[5], v[9]);
+        v[6] = xor_128(v[6], v[10]);
+        v[7] = xor_128(v[7], v[11]);
+        v[4] = rot7_128(v[4]);
+        v[5] = rot7_128(v[5]);
+        v[6] = rot7_128(v[6]);
+        v[7] = rot7_128(v[7]);
 
-    // Diagonal mixing step
-    v[0] = add_128(v[0], m[schedule[8]]);
-    v[1] = add_128(v[1], m[schedule[10]]);
-    v[2] = add_128(v[2], m[schedule[12]]);
-    v[3] = add_128(v[3], m[schedule[14]]);
-    v[0] = add_128(v[0], v[5]);
-    v[1] = add_128(v[1], v[6]);
-    v[2] = add_128(v[2], v[7]);
-    v[3] = add_128(v[3], v[4]);
-    v[15] = xor_128(v[15], v[0]);
-    v[12] = xor_128(v[12], v[1]);
-    v[13] = xor_128(v[13], v[2]);
-    v[14] = xor_128(v[14], v[3]);
-    v[15] = rot16_128(v[15]);
-    v[12] = rot16_128(v[12]);
-    v[13] = rot16_128(v[13]);
-    v[14] = rot16_128(v[14]);
-    v[10] = add_128(v[10], v[15]);
-    v[11] = add_128(v[11], v[12]);
-    v[8] = add_128(v[8], v[13]);
-    v[9] = add_128(v[9], v[14]);
-    v[5] = xor_128(v[5], v[10]);
-    v[6] = xor_128(v[6], v[11]);
-    v[7] = xor_128(v[7], v[8]);
-    v[4] = xor_128(v[4], v[9]);
-    v[5] = rot12_128(v[5]);
-    v[6] = rot12_128(v[6]);
-    v[7] = rot12_128(v[7]);
-    v[4] = rot12_128(v[4]);
-    v[0] = add_128(v[0], m[schedule[9]]);
-    v[1] = add_128(v[1], m[schedule[11]]);
-    v[2] = add_128(v[2], m[schedule[13]]);
-    v[3] = add_128(v[3], m[schedule[15]]);
-    v[0] = add_128(v[0], v[5]);
-    v[1] = add_128(v[1], v[6]);
-    v[2] = add_128(v[2], v[7]);
-    v[3] = add_128(v[3], v[4]);
-    v[15] = xor_128(v[15], v[0]);
-    v[12] = xor_128(v[12], v[1]);
-    v[13] = xor_128(v[13], v[2]);
-    v[14] = xor_128(v[14], v[3]);
-    v[15] = rot8_128(v[15]);
-    v[12] = rot8_128(v[12]);
-    v[13] = rot8_128(v[13]);
-    v[14] = rot8_128(v[14]);
-    v[10] = add_128(v[10], v[15]);
-    v[11] = add_128(v[11], v[12]);
-    v[8] = add_128(v[8], v[13]);
-    v[9] = add_128(v[9], v[14]);
-    v[5] = xor_128(v[5], v[10]);
-    v[6] = xor_128(v[6], v[11]);
-    v[7] = xor_128(v[7], v[8]);
-    v[4] = xor_128(v[4], v[9]);
-    v[5] = rot7_128(v[5]);
-    v[6] = rot7_128(v[6]);
-    v[7] = rot7_128(v[7]);
-    v[4] = rot7_128(v[4]);
+        // Diagonal mixing step
+        v[0] = add_128(v[0], m[schedule[8]]);
+        v[1] = add_128(v[1], m[schedule[10]]);
+        v[2] = add_128(v[2], m[schedule[12]]);
+        v[3] = add_128(v[3], m[schedule[14]]);
+        v[0] = add_128(v[0], v[5]);
+        v[1] = add_128(v[1], v[6]);
+        v[2] = add_128(v[2], v[7]);
+        v[3] = add_128(v[3], v[4]);
+        v[15] = xor_128(v[15], v[0]);
+        v[12] = xor_128(v[12], v[1]);
+        v[13] = xor_128(v[13], v[2]);
+        v[14] = xor_128(v[14], v[3]);
+        v[15] = rot16_128(v[15]);
+        v[12] = rot16_128(v[12]);
+        v[13] = rot16_128(v[13]);
+        v[14] = rot16_128(v[14]);
+        v[10] = add_128(v[10], v[15]);
+        v[11] = add_128(v[11], v[12]);
+        v[8] = add_128(v[8], v[13]);
+        v[9] = add_128(v[9], v[14]);
+        v[5] = xor_128(v[5], v[10]);
+        v[6] = xor_128(v[6], v[11]);
+        v[7] = xor_128(v[7], v[8]);
+        v[4] = xor_128(v[4], v[9]);
+        v[5] = rot12_128(v[5]);
+        v[6] = rot12_128(v[6]);
+        v[7] = rot12_128(v[7]);
+        v[4] = rot12_128(v[4]);
+        v[0] = add_128(v[0], m[schedule[9]]);
+        v[1] = add_128(v[1], m[schedule[11]]);
+        v[2] = add_128(v[2], m[schedule[13]]);
+        v[3] = add_128(v[3], m[schedule[15]]);
+        v[0] = add_128(v[0], v[5]);
+        v[1] = add_128(v[1], v[6]);
+        v[2] = add_128(v[2], v[7]);
+        v[3] = add_128(v[3], v[4]);
+        v[15] = xor_128(v[15], v[0]);
+        v[12] = xor_128(v[12], v[1]);
+        v[13] = xor_128(v[13], v[2]);
+        v[14] = xor_128(v[14], v[3]);
+        v[15] = rot8_128(v[15]);
+        v[12] = rot8_128(v[12]);
+        v[13] = rot8_128(v[13]);
+        v[14] = rot8_128(v[14]);
+        v[10] = add_128(v[10], v[15]);
+        v[11] = add_128(v[11], v[12]);
+        v[8] = add_128(v[8], v[13]);
+        v[9] = add_128(v[9], v[14]);
+        v[5] = xor_128(v[5], v[10]);
+        v[6] = xor_128(v[6], v[11]);
+        v[7] = xor_128(v[7], v[8]);
+        v[4] = xor_128(v[4], v[9]);
+        v[5] = rot7_128(v[5]);
+        v[6] = rot7_128(v[6]);
+        v[7] = rot7_128(v[7]);
+        v[4] = rot7_128(v[4]);
+    }
 }
 
 /// 2-level 4x4 32-bit butterfly network matrix transposition (`vtrnq_u32` + `vcombine_u32`).
@@ -232,33 +254,37 @@ pub unsafe fn round_fn4(v: &mut [uint32x4_t; 16], m: &[uint32x4_t; 16], r: usize
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 pub unsafe fn transpose_vecs_128(vecs: &mut [uint32x4_t; 4]) {
-    let rows01 = vtrnq_u32(vecs[0], vecs[1]);
-    let rows23 = vtrnq_u32(vecs[2], vecs[3]);
+    unsafe {
+        let rows01 = vtrnq_u32(vecs[0], vecs[1]);
+        let rows23 = vtrnq_u32(vecs[2], vecs[3]);
 
-    vecs[0] = vcombine_u32(vget_low_u32(rows01.0), vget_low_u32(rows23.0));
-    vecs[1] = vcombine_u32(vget_low_u32(rows01.1), vget_low_u32(rows23.1));
-    vecs[2] = vcombine_u32(vget_high_u32(rows01.0), vget_high_u32(rows23.0));
-    vecs[3] = vcombine_u32(vget_high_u32(rows01.1), vget_high_u32(rows23.1));
+        vecs[0] = vcombine_u32(vget_low_u32(rows01.0), vget_low_u32(rows23.0));
+        vecs[1] = vcombine_u32(vget_low_u32(rows01.1), vget_low_u32(rows23.1));
+        vecs[2] = vcombine_u32(vget_high_u32(rows01.0), vget_high_u32(rows23.0));
+        vecs[3] = vcombine_u32(vget_high_u32(rows01.1), vget_high_u32(rows23.1));
+    }
 }
 
 /// Transposes 4 64-byte input blocks into 16 `uint32x4_t` message vector registers.
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn transpose_msg_vecs4(inputs: [&[u8]; 4], block_offset: usize, out: &mut [uint32x4_t; 16]) {
-    for i in 0..4 {
-        let base_idx = i * 4;
-        let offset = block_offset + i * 16;
-        for lane in 0..4 {
-            out[base_idx + lane] = loadu_128(inputs[lane].as_ptr().add(offset));
+    unsafe {
+        for i in 0..4 {
+            let base_idx = i * 4;
+            let offset = block_offset + i * 16;
+            for lane in 0..4 {
+                out[base_idx + lane] = loadu_128(inputs[lane].as_ptr().add(offset));
+            }
+            let mut group = [
+                out[base_idx],
+                out[base_idx + 1],
+                out[base_idx + 2],
+                out[base_idx + 3],
+            ];
+            transpose_vecs_128(&mut group);
+            out[base_idx..base_idx + 4].copy_from_slice(&group);
         }
-        let mut group = [
-            out[base_idx],
-            out[base_idx + 1],
-            out[base_idx + 2],
-            out[base_idx + 3],
-        ];
-        transpose_vecs_128(&mut group);
-        out[base_idx..base_idx + 4].copy_from_slice(&group);
     }
 }
 
@@ -266,25 +292,27 @@ unsafe fn transpose_msg_vecs4(inputs: [&[u8]; 4], block_offset: usize, out: &mut
 #[cfg(target_arch = "aarch64")]
 #[inline(always)]
 unsafe fn load_counters4(counter: u64, increment_counter: bool) -> (uint32x4_t, uint32x4_t) {
-    let inc = if increment_counter { 1 } else { 0 };
-    let c0 = counter;
-    let c1 = counter.wrapping_add(inc);
-    let c2 = counter.wrapping_add(inc * 2);
-    let c3 = counter.wrapping_add(inc * 3);
+    unsafe {
+        let inc = if increment_counter { 1 } else { 0 };
+        let c0 = counter;
+        let c1 = counter.wrapping_add(inc);
+        let c2 = counter.wrapping_add(inc * 2);
+        let c3 = counter.wrapping_add(inc * 3);
 
-    let out_low = set4(
-        counter_low(c0),
-        counter_low(c1),
-        counter_low(c2),
-        counter_low(c3),
-    );
-    let out_high = set4(
-        counter_high(c0),
-        counter_high(c1),
-        counter_high(c2),
-        counter_high(c3),
-    );
-    (out_low, out_high)
+        let out_low = set4(
+            counter_low(c0),
+            counter_low(c1),
+            counter_low(c2),
+            counter_low(c3),
+        );
+        let out_high = set4(
+            counter_high(c0),
+            counter_high(c1),
+            counter_high(c2),
+            counter_high(c3),
+        );
+        (out_low, out_high)
+    }
 }
 
 /// Configuration and input parameters for 4-way parallel BLAKE3 NEON chunk hashing.

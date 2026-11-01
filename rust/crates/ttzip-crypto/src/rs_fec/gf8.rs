@@ -154,104 +154,106 @@ pub fn scalar_gf8_mul_add_raw(coeff: u8, src: &[u8], dst: &mut [u8], len: usize)
 #[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn neon_gf8_mul_add_raw(coeff: u8, mut src: *const u8, mut dst: *mut u8, mut len: usize) {
-    if coeff == 1 {
+    unsafe {
+        if coeff == 1 {
+            while len >= 64 {
+                let s0 = vld1q_u8(src);
+                let s1 = vld1q_u8(src.add(16));
+                let s2 = vld1q_u8(src.add(32));
+                let s3 = vld1q_u8(src.add(48));
+
+                let d0 = vld1q_u8(dst);
+                let d1 = vld1q_u8(dst.add(16));
+                let d2 = vld1q_u8(dst.add(32));
+                let d3 = vld1q_u8(dst.add(48));
+
+                vst1q_u8(dst, veorq_u8(d0, s0));
+                vst1q_u8(dst.add(16), veorq_u8(d1, s1));
+                vst1q_u8(dst.add(32), veorq_u8(d2, s2));
+                vst1q_u8(dst.add(48), veorq_u8(d3, s3));
+
+                src = src.add(64);
+                dst = dst.add(64);
+                len -= 64;
+            }
+            while len >= 16 {
+                let s = vld1q_u8(src);
+                let d = vld1q_u8(dst);
+                vst1q_u8(dst, veorq_u8(d, s));
+                src = src.add(16);
+                dst = dst.add(16);
+                len -= 16;
+            }
+            while len > 0 {
+                *dst ^= *src;
+                src = src.add(1);
+                dst = dst.add(1);
+                len -= 1;
+            }
+            return;
+        }
+
+        let (tbl_l, tbl_h) = compute_nibble_tables(coeff);
+        let t_low = vld1q_u8(tbl_l.as_ptr());
+        let t_high = vld1q_u8(tbl_h.as_ptr());
+        let mask_low = vdupq_n_u8(0x0F);
+
+        // 64-byte unrolled loop
         while len >= 64 {
-            let s0 = vld1q_u8(src);
-            let s1 = vld1q_u8(src.add(16));
-            let s2 = vld1q_u8(src.add(32));
-            let s3 = vld1q_u8(src.add(48));
+            let v0 = vld1q_u8(src);
+            let v1 = vld1q_u8(src.add(16));
+            let v2 = vld1q_u8(src.add(32));
+            let v3 = vld1q_u8(src.add(48));
+
+            let l0 = vandq_u8(v0, mask_low);
+            let h0 = vshrq_n_u8(v0, 4);
+            let l1 = vandq_u8(v1, mask_low);
+            let h1 = vshrq_n_u8(v1, 4);
+            let l2 = vandq_u8(v2, mask_low);
+            let h2 = vshrq_n_u8(v2, 4);
+            let l3 = vandq_u8(v3, mask_low);
+            let h3 = vshrq_n_u8(v3, 4);
+
+            let p0 = veorq_u8(vqtbl1q_u8(t_low, l0), vqtbl1q_u8(t_high, h0));
+            let p1 = veorq_u8(vqtbl1q_u8(t_low, l1), vqtbl1q_u8(t_high, h1));
+            let p2 = veorq_u8(vqtbl1q_u8(t_low, l2), vqtbl1q_u8(t_high, h2));
+            let p3 = veorq_u8(vqtbl1q_u8(t_low, l3), vqtbl1q_u8(t_high, h3));
 
             let d0 = vld1q_u8(dst);
             let d1 = vld1q_u8(dst.add(16));
             let d2 = vld1q_u8(dst.add(32));
             let d3 = vld1q_u8(dst.add(48));
 
-            vst1q_u8(dst, veorq_u8(d0, s0));
-            vst1q_u8(dst.add(16), veorq_u8(d1, s1));
-            vst1q_u8(dst.add(32), veorq_u8(d2, s2));
-            vst1q_u8(dst.add(48), veorq_u8(d3, s3));
+            vst1q_u8(dst, veorq_u8(d0, p0));
+            vst1q_u8(dst.add(16), veorq_u8(d1, p1));
+            vst1q_u8(dst.add(32), veorq_u8(d2, p2));
+            vst1q_u8(dst.add(48), veorq_u8(d3, p3));
 
             src = src.add(64);
             dst = dst.add(64);
             len -= 64;
         }
+
         while len >= 16 {
-            let s = vld1q_u8(src);
-            let d = vld1q_u8(dst);
-            vst1q_u8(dst, veorq_u8(d, s));
+            let v = vld1q_u8(src);
+            let l = vandq_u8(v, mask_low);
+            let h = vshrq_n_u8(v, 4);
+            let prod = veorq_u8(vqtbl1q_u8(t_low, l), vqtbl1q_u8(t_high, h));
+            let cur = vld1q_u8(dst);
+            vst1q_u8(dst, veorq_u8(cur, prod));
+
             src = src.add(16);
             dst = dst.add(16);
             len -= 16;
         }
+
         while len > 0 {
-            *dst ^= *src;
+            let b = *src;
+            let p = tbl_l[(b & 0x0F) as usize] ^ tbl_h[(b >> 4) as usize];
+            *dst ^= p;
             src = src.add(1);
             dst = dst.add(1);
             len -= 1;
         }
-        return;
-    }
-
-    let (tbl_l, tbl_h) = compute_nibble_tables(coeff);
-    let t_low = vld1q_u8(tbl_l.as_ptr());
-    let t_high = vld1q_u8(tbl_h.as_ptr());
-    let mask_low = vdupq_n_u8(0x0F);
-
-    // 64-byte unrolled loop
-    while len >= 64 {
-        let v0 = vld1q_u8(src);
-        let v1 = vld1q_u8(src.add(16));
-        let v2 = vld1q_u8(src.add(32));
-        let v3 = vld1q_u8(src.add(48));
-
-        let l0 = vandq_u8(v0, mask_low);
-        let h0 = vshrq_n_u8(v0, 4);
-        let l1 = vandq_u8(v1, mask_low);
-        let h1 = vshrq_n_u8(v1, 4);
-        let l2 = vandq_u8(v2, mask_low);
-        let h2 = vshrq_n_u8(v2, 4);
-        let l3 = vandq_u8(v3, mask_low);
-        let h3 = vshrq_n_u8(v3, 4);
-
-        let p0 = veorq_u8(vqtbl1q_u8(t_low, l0), vqtbl1q_u8(t_high, h0));
-        let p1 = veorq_u8(vqtbl1q_u8(t_low, l1), vqtbl1q_u8(t_high, h1));
-        let p2 = veorq_u8(vqtbl1q_u8(t_low, l2), vqtbl1q_u8(t_high, h2));
-        let p3 = veorq_u8(vqtbl1q_u8(t_low, l3), vqtbl1q_u8(t_high, h3));
-
-        let d0 = vld1q_u8(dst);
-        let d1 = vld1q_u8(dst.add(16));
-        let d2 = vld1q_u8(dst.add(32));
-        let d3 = vld1q_u8(dst.add(48));
-
-        vst1q_u8(dst, veorq_u8(d0, p0));
-        vst1q_u8(dst.add(16), veorq_u8(d1, p1));
-        vst1q_u8(dst.add(32), veorq_u8(d2, p2));
-        vst1q_u8(dst.add(48), veorq_u8(d3, p3));
-
-        src = src.add(64);
-        dst = dst.add(64);
-        len -= 64;
-    }
-
-    while len >= 16 {
-        let v = vld1q_u8(src);
-        let l = vandq_u8(v, mask_low);
-        let h = vshrq_n_u8(v, 4);
-        let prod = veorq_u8(vqtbl1q_u8(t_low, l), vqtbl1q_u8(t_high, h));
-        let cur = vld1q_u8(dst);
-        vst1q_u8(dst, veorq_u8(cur, prod));
-
-        src = src.add(16);
-        dst = dst.add(16);
-        len -= 16;
-    }
-
-    while len > 0 {
-        let b = *src;
-        let p = tbl_l[(b & 0x0F) as usize] ^ tbl_h[(b >> 4) as usize];
-        *dst ^= p;
-        src = src.add(1);
-        dst = dst.add(1);
-        len -= 1;
     }
 }

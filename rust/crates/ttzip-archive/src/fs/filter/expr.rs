@@ -108,7 +108,7 @@ impl<'a> FilterExpr<'a> {
             FilterExpr::MatchAll => true,
             FilterExpr::MatchNone => false,
             FilterExpr::FilenameGlob { pattern, matcher } => {
-                if let Some(ref m) = matcher {
+                if let Some(m) = matcher {
                     m.is_match(target.name) || m.is_match(target.path)
                 } else {
                     contains_case_insensitive(target.name, pattern)

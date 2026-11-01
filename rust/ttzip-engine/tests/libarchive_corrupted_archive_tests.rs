@@ -107,7 +107,7 @@ fn test_required_corrupted_archive_corpus_sweep() {
             fixture
         );
 
-        // Invariant 3: Extraction terminates with zero deadlock (< 2000ms)
+        // Invariant 3: Extraction terminates within the corrupted-input safety deadline.
         let extract_start = Instant::now();
         let extract_res = catch_unwind(AssertUnwindSafe(|| {
             let _ = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);

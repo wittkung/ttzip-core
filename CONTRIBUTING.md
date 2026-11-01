@@ -69,7 +69,7 @@ type(scope): subject description
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/wittkung/ttzip.git
+git clone https://github.com/wittkung/ttzip-core.git
 cd ttzip/core
 
 # 2. Build Rust Microkernel & Generate UniFFI Bindings

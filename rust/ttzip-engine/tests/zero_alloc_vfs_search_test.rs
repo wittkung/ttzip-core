@@ -36,25 +36,31 @@ thread_local! {
 
 unsafe impl GlobalAlloc for TrackingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if IS_TRACKING_THREAD.with(|t| t.get()) {
-            THREAD_ALLOC_COUNT.with(|c| c.set(c.get() + 1));
-            self.total_alloc_count.fetch_add(1, Ordering::Relaxed);
-            self.total_alloc_bytes.fetch_add(layout.size(), Ordering::Relaxed);
+        unsafe {
+            if IS_TRACKING_THREAD.with(|t| t.get()) {
+                THREAD_ALLOC_COUNT.with(|c| c.set(c.get() + 1));
+                self.total_alloc_count.fetch_add(1, Ordering::Relaxed);
+                self.total_alloc_bytes.fetch_add(layout.size(), Ordering::Relaxed);
+            }
+            self.underlying.alloc(layout)
         }
-        self.underlying.alloc(layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.underlying.dealloc(ptr, layout);
+        unsafe {
+            self.underlying.dealloc(ptr, layout);
+        }
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        if IS_TRACKING_THREAD.with(|t| t.get()) {
-            THREAD_ALLOC_COUNT.with(|c| c.set(c.get() + 1));
-            self.total_alloc_count.fetch_add(1, Ordering::Relaxed);
-            self.total_alloc_bytes.fetch_add(new_size, Ordering::Relaxed);
+        unsafe {
+            if IS_TRACKING_THREAD.with(|t| t.get()) {
+                THREAD_ALLOC_COUNT.with(|c| c.set(c.get() + 1));
+                self.total_alloc_count.fetch_add(1, Ordering::Relaxed);
+                self.total_alloc_bytes.fetch_add(new_size, Ordering::Relaxed);
+            }
+            self.underlying.realloc(ptr, layout, new_size)
         }
-        self.underlying.realloc(ptr, layout, new_size)
     }
 }
 

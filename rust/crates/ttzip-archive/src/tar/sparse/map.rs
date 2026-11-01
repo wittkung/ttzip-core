@@ -350,7 +350,8 @@ pub fn parse_pax_sparse_0_1(
 
     let mut extents = Vec::with_capacity(tokens.len() / 2);
 
-    for chunk in tokens.chunks_exact(2) {
+    let (token_pairs, _) = tokens.as_chunks::<2>();
+    for chunk in token_pairs {
         let offset = chunk[0].parse::<u64>().map_err(|e| {
             TarSparseError::InvalidPaxMap(format!("invalid offset '{}': {}", chunk[0], e))
         })?;

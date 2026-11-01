@@ -60,6 +60,7 @@ extension ResolutionOverride: Sendable {}
 extension OutcomeStatus: Sendable {}
 extension FailedItem: Sendable {}
 extension FailureReason: Sendable {}
+extension CompressionReport: Sendable {}
 extension ItemKind: Sendable {}
 extension ItemMeta: Sendable {}
 extension ConflictKind: Sendable {}
@@ -91,6 +92,14 @@ extension UniFfiSemanticIngestPhase: Sendable {}
 extension UniFfiSemanticMatchKind: Sendable {}
 extension UniFfiSemanticModelState: Sendable {}
 extension UniFfiSemanticScopeKind: Sendable {}
+extension UniFfiResidualPathRole: Sendable {}
+extension UniFfiArchiveCleanupDisposition: Sendable {}
+extension UniFfiDescriptorReleaseStatus: Sendable {}
+extension UniFfiStageFileFinishDiagnostic: Sendable {}
+extension UniFfiStageCleanupFailureItem: Sendable {}
+extension UniFfiCreateBackupRecoveryState: Sendable {}
+extension UniFfiBackupRecoveryEntryFailure: Sendable {}
+extension UniFfiCreateTransactionFailureReport: Sendable {}
 public typealias UniFFISemanticSearchEngineProtocol = UniFfiSemanticSearchEngineProtocol
 public typealias UniFFISemanticSearchEngine = UniFfiSemanticSearchEngine
 public typealias UniFFISemanticArchiveEntryInput = UniFfiSemanticArchiveEntryInput
@@ -328,7 +337,7 @@ def apply_sendable_extensions(content: str) -> Tuple[str, bool]:
     """
     Appends required @unchecked Sendable conformance extensions to UniFFI reference types.
     """
-    if "extension UniFfiSemanticScopeKind: Sendable" not in content:
+    if "extension UniFfiCreateTransactionFailureReport: Sendable" not in content:
         marker = "// MARK: - Swift 6 Strict Concurrency Conformances"
         if marker in content:
             content = content[:content.find(marker)].rstrip()
@@ -493,7 +502,7 @@ def verify_invariants(content: str, verbose: bool = False) -> Tuple[bool, List[s
         violations.append("Missing proprietary copyright header at file start.")
         
     # Check Sendable extensions
-    if "extension UniFfiSemanticScopeKind: Sendable" not in content:
+    if "extension UniFfiCreateTransactionFailureReport: Sendable" not in content:
         violations.append("Missing Sendable extensions for UniFFI classes.")
         
     for desc in PATCH_DESCRIPTORS:

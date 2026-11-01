@@ -3636,6 +3636,11 @@ public protocol UniFfiSemanticSearchEngineProtocol : AnyObject {
     
     func modelState()  -> UniFfiSemanticModelState
     
+    /**
+     * Explicit native runtime preparation, separate from the non-loading state getter.
+     */
+    func prepareModelRuntime()  -> UniFfiSemanticModelState
+    
     func registerScope(descriptor: UniFfiSemanticScopeDescriptor)  -> Bool
     
     func removeIndexedFile(scopeId: String, relativePath: String)  -> Bool
@@ -3751,6 +3756,16 @@ open func cancelSearch(requestId: UInt64) {try! rustCall() {
 open func modelState() -> UniFfiSemanticModelState {
     return try!  FfiConverterTypeUniFFISemanticModelState.lift(try! rustCall() {
     uniffi_ttzip_engine_fn_method_uniffisemanticsearchengine_model_state(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Explicit native runtime preparation, separate from the non-loading state getter.
+     */
+open func prepareModelRuntime() -> UniFfiSemanticModelState {
+    return try!  FfiConverterTypeUniFFISemanticModelState.lift(try! rustCall() {
+    uniffi_ttzip_engine_fn_method_uniffisemanticsearchengine_prepare_model_runtime(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -7386,6 +7401,91 @@ public func FfiConverterTypeUniFFIAppcastMetadata_lower(_ value: UniFfiAppcastMe
 
 
 /**
+ * Per-entry backup rollback failure across FFI.
+ */
+public struct UniFfiBackupRecoveryEntryFailure {
+    public var backupSourcePath: String
+    public var targetPath: String
+    public var osErrorCode: Int32?
+    public var message: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(backupSourcePath: String, targetPath: String, osErrorCode: Int32?, message: String) {
+        self.backupSourcePath = backupSourcePath
+        self.targetPath = targetPath
+        self.osErrorCode = osErrorCode
+        self.message = message
+    }
+}
+
+
+
+extension UniFfiBackupRecoveryEntryFailure: Equatable, Hashable {
+    public static func ==(lhs: UniFfiBackupRecoveryEntryFailure, rhs: UniFfiBackupRecoveryEntryFailure) -> Bool {
+        if lhs.backupSourcePath != rhs.backupSourcePath {
+            return false
+        }
+        if lhs.targetPath != rhs.targetPath {
+            return false
+        }
+        if lhs.osErrorCode != rhs.osErrorCode {
+            return false
+        }
+        if lhs.message != rhs.message {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(backupSourcePath)
+        hasher.combine(targetPath)
+        hasher.combine(osErrorCode)
+        hasher.combine(message)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIBackupRecoveryEntryFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiBackupRecoveryEntryFailure {
+        return
+            try UniFfiBackupRecoveryEntryFailure(
+                backupSourcePath: FfiConverterString.read(from: &buf), 
+                targetPath: FfiConverterString.read(from: &buf), 
+                osErrorCode: FfiConverterOptionInt32.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiBackupRecoveryEntryFailure, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.backupSourcePath, into: &buf)
+        FfiConverterString.write(value.targetPath, into: &buf)
+        FfiConverterOptionInt32.write(value.osErrorCode, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBackupRecoveryEntryFailure_lift(_ buf: RustBuffer) throws -> UniFfiBackupRecoveryEntryFailure {
+    return try FfiConverterTypeUniFFIBackupRecoveryEntryFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIBackupRecoveryEntryFailure_lower(_ value: UniFfiBackupRecoveryEntryFailure) -> RustBuffer {
+    return FfiConverterTypeUniFFIBackupRecoveryEntryFailure.lower(value)
+}
+
+
+/**
  * Comprehensive benchmark matrix report across all evaluated codecs.
  */
 public struct UniFfiBenchmarkMatrixReport {
@@ -8068,6 +8168,189 @@ public func FfiConverterTypeUniFFICreateArchiveExtraOptions_lift(_ buf: RustBuff
 #endif
 public func FfiConverterTypeUniFFICreateArchiveExtraOptions_lower(_ value: UniFfiCreateArchiveExtraOptions) -> RustBuffer {
     return FfiConverterTypeUniFFICreateArchiveExtraOptions.lower(value)
+}
+
+
+/**
+ * Complete creation transaction failure report across FFI.
+ */
+public struct UniFfiCreateTransactionFailureReport {
+    /**
+     * Raw status code from `TTZipStatus::to_i32()` (`Cancelled = 2`, `ErrOpenFailed = -7`, etc.).
+     */
+    public var primaryStatusCode: Int32
+    /**
+     * True iff `primary_status == TTZipStatus::Cancelled` (`2`).
+     */
+    public var wasPrimaryCancelled: Bool
+    /**
+     * True if cancellation was requested at or before the transaction settlement linearization point `T_sample`.
+     */
+    public var isCancellationRequested: Bool
+    public var stageDir: String
+    public var stageDirPreserved: Bool
+    public var unconfirmedReleaseCount: UInt32
+    public var cleanupFailures: [UniFfiStageCleanupFailureItem]
+    public var finishDiagnostics: [UniFfiStageFileFinishDiagnostic]
+    public var recoveryState: UniFfiCreateBackupRecoveryState
+    public var backupDir: String?
+    public var restoredTargets: [String]
+    public var rollbackFailedEntries: [UniFfiBackupRecoveryEntryFailure]
+    public var backupDirCleanupError: String?
+    public var summaryMessage: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Raw status code from `TTZipStatus::to_i32()` (`Cancelled = 2`, `ErrOpenFailed = -7`, etc.).
+         */primaryStatusCode: Int32, 
+        /**
+         * True iff `primary_status == TTZipStatus::Cancelled` (`2`).
+         */wasPrimaryCancelled: Bool, 
+        /**
+         * True if cancellation was requested at or before the transaction settlement linearization point `T_sample`.
+         */isCancellationRequested: Bool, stageDir: String, stageDirPreserved: Bool, unconfirmedReleaseCount: UInt32, cleanupFailures: [UniFfiStageCleanupFailureItem], finishDiagnostics: [UniFfiStageFileFinishDiagnostic], recoveryState: UniFfiCreateBackupRecoveryState, backupDir: String?, restoredTargets: [String], rollbackFailedEntries: [UniFfiBackupRecoveryEntryFailure], backupDirCleanupError: String?, summaryMessage: String) {
+        self.primaryStatusCode = primaryStatusCode
+        self.wasPrimaryCancelled = wasPrimaryCancelled
+        self.isCancellationRequested = isCancellationRequested
+        self.stageDir = stageDir
+        self.stageDirPreserved = stageDirPreserved
+        self.unconfirmedReleaseCount = unconfirmedReleaseCount
+        self.cleanupFailures = cleanupFailures
+        self.finishDiagnostics = finishDiagnostics
+        self.recoveryState = recoveryState
+        self.backupDir = backupDir
+        self.restoredTargets = restoredTargets
+        self.rollbackFailedEntries = rollbackFailedEntries
+        self.backupDirCleanupError = backupDirCleanupError
+        self.summaryMessage = summaryMessage
+    }
+}
+
+
+
+extension UniFfiCreateTransactionFailureReport: Equatable, Hashable {
+    public static func ==(lhs: UniFfiCreateTransactionFailureReport, rhs: UniFfiCreateTransactionFailureReport) -> Bool {
+        if lhs.primaryStatusCode != rhs.primaryStatusCode {
+            return false
+        }
+        if lhs.wasPrimaryCancelled != rhs.wasPrimaryCancelled {
+            return false
+        }
+        if lhs.isCancellationRequested != rhs.isCancellationRequested {
+            return false
+        }
+        if lhs.stageDir != rhs.stageDir {
+            return false
+        }
+        if lhs.stageDirPreserved != rhs.stageDirPreserved {
+            return false
+        }
+        if lhs.unconfirmedReleaseCount != rhs.unconfirmedReleaseCount {
+            return false
+        }
+        if lhs.cleanupFailures != rhs.cleanupFailures {
+            return false
+        }
+        if lhs.finishDiagnostics != rhs.finishDiagnostics {
+            return false
+        }
+        if lhs.recoveryState != rhs.recoveryState {
+            return false
+        }
+        if lhs.backupDir != rhs.backupDir {
+            return false
+        }
+        if lhs.restoredTargets != rhs.restoredTargets {
+            return false
+        }
+        if lhs.rollbackFailedEntries != rhs.rollbackFailedEntries {
+            return false
+        }
+        if lhs.backupDirCleanupError != rhs.backupDirCleanupError {
+            return false
+        }
+        if lhs.summaryMessage != rhs.summaryMessage {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(primaryStatusCode)
+        hasher.combine(wasPrimaryCancelled)
+        hasher.combine(isCancellationRequested)
+        hasher.combine(stageDir)
+        hasher.combine(stageDirPreserved)
+        hasher.combine(unconfirmedReleaseCount)
+        hasher.combine(cleanupFailures)
+        hasher.combine(finishDiagnostics)
+        hasher.combine(recoveryState)
+        hasher.combine(backupDir)
+        hasher.combine(restoredTargets)
+        hasher.combine(rollbackFailedEntries)
+        hasher.combine(backupDirCleanupError)
+        hasher.combine(summaryMessage)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICreateTransactionFailureReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCreateTransactionFailureReport {
+        return
+            try UniFfiCreateTransactionFailureReport(
+                primaryStatusCode: FfiConverterInt32.read(from: &buf), 
+                wasPrimaryCancelled: FfiConverterBool.read(from: &buf), 
+                isCancellationRequested: FfiConverterBool.read(from: &buf), 
+                stageDir: FfiConverterString.read(from: &buf), 
+                stageDirPreserved: FfiConverterBool.read(from: &buf), 
+                unconfirmedReleaseCount: FfiConverterUInt32.read(from: &buf), 
+                cleanupFailures: FfiConverterSequenceTypeUniFFIStageCleanupFailureItem.read(from: &buf), 
+                finishDiagnostics: FfiConverterSequenceTypeUniFFIStageFileFinishDiagnostic.read(from: &buf), 
+                recoveryState: FfiConverterTypeUniFFICreateBackupRecoveryState.read(from: &buf), 
+                backupDir: FfiConverterOptionString.read(from: &buf), 
+                restoredTargets: FfiConverterSequenceString.read(from: &buf), 
+                rollbackFailedEntries: FfiConverterSequenceTypeUniFFIBackupRecoveryEntryFailure.read(from: &buf), 
+                backupDirCleanupError: FfiConverterOptionString.read(from: &buf), 
+                summaryMessage: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiCreateTransactionFailureReport, into buf: inout [UInt8]) {
+        FfiConverterInt32.write(value.primaryStatusCode, into: &buf)
+        FfiConverterBool.write(value.wasPrimaryCancelled, into: &buf)
+        FfiConverterBool.write(value.isCancellationRequested, into: &buf)
+        FfiConverterString.write(value.stageDir, into: &buf)
+        FfiConverterBool.write(value.stageDirPreserved, into: &buf)
+        FfiConverterUInt32.write(value.unconfirmedReleaseCount, into: &buf)
+        FfiConverterSequenceTypeUniFFIStageCleanupFailureItem.write(value.cleanupFailures, into: &buf)
+        FfiConverterSequenceTypeUniFFIStageFileFinishDiagnostic.write(value.finishDiagnostics, into: &buf)
+        FfiConverterTypeUniFFICreateBackupRecoveryState.write(value.recoveryState, into: &buf)
+        FfiConverterOptionString.write(value.backupDir, into: &buf)
+        FfiConverterSequenceString.write(value.restoredTargets, into: &buf)
+        FfiConverterSequenceTypeUniFFIBackupRecoveryEntryFailure.write(value.rollbackFailedEntries, into: &buf)
+        FfiConverterOptionString.write(value.backupDirCleanupError, into: &buf)
+        FfiConverterString.write(value.summaryMessage, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICreateTransactionFailureReport_lift(_ buf: RustBuffer) throws -> UniFfiCreateTransactionFailureReport {
+    return try FfiConverterTypeUniFFICreateTransactionFailureReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICreateTransactionFailureReport_lower(_ value: UniFfiCreateTransactionFailureReport) -> RustBuffer {
+    return FfiConverterTypeUniFFICreateTransactionFailureReport.lower(value)
 }
 
 
@@ -13914,6 +14197,276 @@ public func FfiConverterTypeUniFFISmartExtractDecision_lower(_ value: UniFfiSmar
 
 
 /**
+ * Per-item structured cleanup failure record across FFI.
+ */
+public struct UniFfiStageCleanupFailureItem {
+    public var role: UniFfiResidualPathRole
+    public var disposition: UniFfiArchiveCleanupDisposition
+    /**
+     * Confirmed current on-disk path (`Some` when known, `None` when location/ownership or descriptor release is unconfirmed).
+     */
+    public var path: String?
+    /**
+     * Historical/expected staged path at the start of the operation (diagnostic reference only).
+     */
+    public var originalStagedPath: String?
+    public var osErrorCode: Int32?
+    public var message: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(role: UniFfiResidualPathRole, disposition: UniFfiArchiveCleanupDisposition, 
+        /**
+         * Confirmed current on-disk path (`Some` when known, `None` when location/ownership or descriptor release is unconfirmed).
+         */path: String?, 
+        /**
+         * Historical/expected staged path at the start of the operation (diagnostic reference only).
+         */originalStagedPath: String?, osErrorCode: Int32?, message: String) {
+        self.role = role
+        self.disposition = disposition
+        self.path = path
+        self.originalStagedPath = originalStagedPath
+        self.osErrorCode = osErrorCode
+        self.message = message
+    }
+}
+
+
+
+extension UniFfiStageCleanupFailureItem: Equatable, Hashable {
+    public static func ==(lhs: UniFfiStageCleanupFailureItem, rhs: UniFfiStageCleanupFailureItem) -> Bool {
+        if lhs.role != rhs.role {
+            return false
+        }
+        if lhs.disposition != rhs.disposition {
+            return false
+        }
+        if lhs.path != rhs.path {
+            return false
+        }
+        if lhs.originalStagedPath != rhs.originalStagedPath {
+            return false
+        }
+        if lhs.osErrorCode != rhs.osErrorCode {
+            return false
+        }
+        if lhs.message != rhs.message {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(role)
+        hasher.combine(disposition)
+        hasher.combine(path)
+        hasher.combine(originalStagedPath)
+        hasher.combine(osErrorCode)
+        hasher.combine(message)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIStageCleanupFailureItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiStageCleanupFailureItem {
+        return
+            try UniFfiStageCleanupFailureItem(
+                role: FfiConverterTypeUniFFIResidualPathRole.read(from: &buf), 
+                disposition: FfiConverterTypeUniFFIArchiveCleanupDisposition.read(from: &buf), 
+                path: FfiConverterOptionString.read(from: &buf), 
+                originalStagedPath: FfiConverterOptionString.read(from: &buf), 
+                osErrorCode: FfiConverterOptionInt32.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiStageCleanupFailureItem, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFIResidualPathRole.write(value.role, into: &buf)
+        FfiConverterTypeUniFFIArchiveCleanupDisposition.write(value.disposition, into: &buf)
+        FfiConverterOptionString.write(value.path, into: &buf)
+        FfiConverterOptionString.write(value.originalStagedPath, into: &buf)
+        FfiConverterOptionInt32.write(value.osErrorCode, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStageCleanupFailureItem_lift(_ buf: RustBuffer) throws -> UniFfiStageCleanupFailureItem {
+    return try FfiConverterTypeUniFFIStageCleanupFailureItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStageCleanupFailureItem_lower(_ value: UniFfiStageCleanupFailureItem) -> RustBuffer {
+    return FfiConverterTypeUniFFIStageCleanupFailureItem.lower(value)
+}
+
+
+/**
+ * Per-file finish diagnostic record across FFI.
+ */
+public struct UniFfiStageFileFinishDiagnostic {
+    public var role: UniFfiResidualPathRole
+    public var diagnosticPath: String
+    public var expectedDev: UInt64
+    public var expectedIno: UInt64
+    public var primaryStatusCode: Int32
+    public var priorWriteOrEncoderError: String?
+    public var userspaceFlushOsError: Int32?
+    public var userspaceFlushDetail: String?
+    public var syncOsError: Int32?
+    public var syncDetail: String?
+    public var closeOsError: Int32?
+    public var closeDetail: String?
+    public var releaseStatus: UniFfiDescriptorReleaseStatus
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(role: UniFfiResidualPathRole, diagnosticPath: String, expectedDev: UInt64, expectedIno: UInt64, primaryStatusCode: Int32, priorWriteOrEncoderError: String?, userspaceFlushOsError: Int32?, userspaceFlushDetail: String?, syncOsError: Int32?, syncDetail: String?, closeOsError: Int32?, closeDetail: String?, releaseStatus: UniFfiDescriptorReleaseStatus) {
+        self.role = role
+        self.diagnosticPath = diagnosticPath
+        self.expectedDev = expectedDev
+        self.expectedIno = expectedIno
+        self.primaryStatusCode = primaryStatusCode
+        self.priorWriteOrEncoderError = priorWriteOrEncoderError
+        self.userspaceFlushOsError = userspaceFlushOsError
+        self.userspaceFlushDetail = userspaceFlushDetail
+        self.syncOsError = syncOsError
+        self.syncDetail = syncDetail
+        self.closeOsError = closeOsError
+        self.closeDetail = closeDetail
+        self.releaseStatus = releaseStatus
+    }
+}
+
+
+
+extension UniFfiStageFileFinishDiagnostic: Equatable, Hashable {
+    public static func ==(lhs: UniFfiStageFileFinishDiagnostic, rhs: UniFfiStageFileFinishDiagnostic) -> Bool {
+        if lhs.role != rhs.role {
+            return false
+        }
+        if lhs.diagnosticPath != rhs.diagnosticPath {
+            return false
+        }
+        if lhs.expectedDev != rhs.expectedDev {
+            return false
+        }
+        if lhs.expectedIno != rhs.expectedIno {
+            return false
+        }
+        if lhs.primaryStatusCode != rhs.primaryStatusCode {
+            return false
+        }
+        if lhs.priorWriteOrEncoderError != rhs.priorWriteOrEncoderError {
+            return false
+        }
+        if lhs.userspaceFlushOsError != rhs.userspaceFlushOsError {
+            return false
+        }
+        if lhs.userspaceFlushDetail != rhs.userspaceFlushDetail {
+            return false
+        }
+        if lhs.syncOsError != rhs.syncOsError {
+            return false
+        }
+        if lhs.syncDetail != rhs.syncDetail {
+            return false
+        }
+        if lhs.closeOsError != rhs.closeOsError {
+            return false
+        }
+        if lhs.closeDetail != rhs.closeDetail {
+            return false
+        }
+        if lhs.releaseStatus != rhs.releaseStatus {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(role)
+        hasher.combine(diagnosticPath)
+        hasher.combine(expectedDev)
+        hasher.combine(expectedIno)
+        hasher.combine(primaryStatusCode)
+        hasher.combine(priorWriteOrEncoderError)
+        hasher.combine(userspaceFlushOsError)
+        hasher.combine(userspaceFlushDetail)
+        hasher.combine(syncOsError)
+        hasher.combine(syncDetail)
+        hasher.combine(closeOsError)
+        hasher.combine(closeDetail)
+        hasher.combine(releaseStatus)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIStageFileFinishDiagnostic: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiStageFileFinishDiagnostic {
+        return
+            try UniFfiStageFileFinishDiagnostic(
+                role: FfiConverterTypeUniFFIResidualPathRole.read(from: &buf), 
+                diagnosticPath: FfiConverterString.read(from: &buf), 
+                expectedDev: FfiConverterUInt64.read(from: &buf), 
+                expectedIno: FfiConverterUInt64.read(from: &buf), 
+                primaryStatusCode: FfiConverterInt32.read(from: &buf), 
+                priorWriteOrEncoderError: FfiConverterOptionString.read(from: &buf), 
+                userspaceFlushOsError: FfiConverterOptionInt32.read(from: &buf), 
+                userspaceFlushDetail: FfiConverterOptionString.read(from: &buf), 
+                syncOsError: FfiConverterOptionInt32.read(from: &buf), 
+                syncDetail: FfiConverterOptionString.read(from: &buf), 
+                closeOsError: FfiConverterOptionInt32.read(from: &buf), 
+                closeDetail: FfiConverterOptionString.read(from: &buf), 
+                releaseStatus: FfiConverterTypeUniFFIDescriptorReleaseStatus.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UniFfiStageFileFinishDiagnostic, into buf: inout [UInt8]) {
+        FfiConverterTypeUniFFIResidualPathRole.write(value.role, into: &buf)
+        FfiConverterString.write(value.diagnosticPath, into: &buf)
+        FfiConverterUInt64.write(value.expectedDev, into: &buf)
+        FfiConverterUInt64.write(value.expectedIno, into: &buf)
+        FfiConverterInt32.write(value.primaryStatusCode, into: &buf)
+        FfiConverterOptionString.write(value.priorWriteOrEncoderError, into: &buf)
+        FfiConverterOptionInt32.write(value.userspaceFlushOsError, into: &buf)
+        FfiConverterOptionString.write(value.userspaceFlushDetail, into: &buf)
+        FfiConverterOptionInt32.write(value.syncOsError, into: &buf)
+        FfiConverterOptionString.write(value.syncDetail, into: &buf)
+        FfiConverterOptionInt32.write(value.closeOsError, into: &buf)
+        FfiConverterOptionString.write(value.closeDetail, into: &buf)
+        FfiConverterTypeUniFFIDescriptorReleaseStatus.write(value.releaseStatus, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStageFileFinishDiagnostic_lift(_ buf: RustBuffer) throws -> UniFfiStageFileFinishDiagnostic {
+    return try FfiConverterTypeUniFFIStageFileFinishDiagnostic.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIStageFileFinishDiagnostic_lower(_ value: UniFfiStageFileFinishDiagnostic) -> RustBuffer {
+    return FfiConverterTypeUniFFIStageFileFinishDiagnostic.lower(value)
+}
+
+
+/**
  * Structured compliance audit report exposed via Mozilla UniFFI.
  */
 public struct UniFfiStandardsComplianceReport {
@@ -17271,6 +17824,8 @@ public enum TtZipError {
     )
     case ChecksumMismatch(expected: UInt32, actual: UInt32
     )
+    case CreateTransactionIncomplete(report: UniFfiCreateTransactionFailureReport, summaryMessage: String
+    )
 }
 
 
@@ -17327,6 +17882,10 @@ public struct FfiConverterTypeTTZipError: FfiConverterRustBuffer {
         case 14: return .ChecksumMismatch(
             expected: try FfiConverterUInt32.read(from: &buf), 
             actual: try FfiConverterUInt32.read(from: &buf)
+            )
+        case 15: return .CreateTransactionIncomplete(
+            report: try FfiConverterTypeUniFFICreateTransactionFailureReport.read(from: &buf), 
+            summaryMessage: try FfiConverterString.read(from: &buf)
             )
 
          default: throw UniffiInternalError.unexpectedEnumCase
@@ -17409,6 +17968,12 @@ public struct FfiConverterTypeTTZipError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(14))
             FfiConverterUInt32.write(expected, into: &buf)
             FfiConverterUInt32.write(actual, into: &buf)
+            
+        
+        case let .CreateTransactionIncomplete(report,summaryMessage):
+            writeInt(&buf, Int32(15))
+            FfiConverterTypeUniFFICreateTransactionFailureReport.write(report, into: &buf)
+            FfiConverterString.write(summaryMessage, into: &buf)
             
         }
     }
@@ -17494,6 +18059,115 @@ public func FfiConverterTypeThumbnailSamplingFilter_lower(_ value: ThumbnailSamp
 
 
 extension ThumbnailSamplingFilter: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Structural cleanup disposition for a failed creation transaction item across FFI.
+ */
+
+public enum UniFfiArchiveCleanupDisposition {
+    
+    case refusedOwnershipMismatch
+    case ownershipOrLocationUnconfirmed
+    case restoredDisplacedSentinel
+    case restoreDisplacedSentinelFailed
+    case unlinkOrRmdirIoError
+    case stageDirectoryPreservedDueToInnerFailure
+    case postCommitCleanupFailed
+    case descriptorReleaseUnconfirmed
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIArchiveCleanupDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiArchiveCleanupDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiArchiveCleanupDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .refusedOwnershipMismatch
+        
+        case 2: return .ownershipOrLocationUnconfirmed
+        
+        case 3: return .restoredDisplacedSentinel
+        
+        case 4: return .restoreDisplacedSentinelFailed
+        
+        case 5: return .unlinkOrRmdirIoError
+        
+        case 6: return .stageDirectoryPreservedDueToInnerFailure
+        
+        case 7: return .postCommitCleanupFailed
+        
+        case 8: return .descriptorReleaseUnconfirmed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiArchiveCleanupDisposition, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .refusedOwnershipMismatch:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .ownershipOrLocationUnconfirmed:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .restoredDisplacedSentinel:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .restoreDisplacedSentinelFailed:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .unlinkOrRmdirIoError:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .stageDirectoryPreservedDueToInnerFailure:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .postCommitCleanupFailed:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .descriptorReleaseUnconfirmed:
+            writeInt(&buf, Int32(8))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIArchiveCleanupDisposition_lift(_ buf: RustBuffer) throws -> UniFfiArchiveCleanupDisposition {
+    return try FfiConverterTypeUniFFIArchiveCleanupDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIArchiveCleanupDisposition_lower(_ value: UniFfiArchiveCleanupDisposition) -> RustBuffer {
+    return FfiConverterTypeUniFFIArchiveCleanupDisposition.lower(value)
+}
+
+
+
+extension UniFfiArchiveCleanupDisposition: Equatable, Hashable {}
 
 
 
@@ -17905,6 +18579,80 @@ extension UniFfiCorpusType: Equatable, Hashable {}
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Backup recovery state across FFI.
+ */
+
+public enum UniFfiCreateBackupRecoveryState {
+    
+    case notApplicable
+    case restoredAndVerified
+    case rollbackIncompletePreservedInBackup
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFICreateBackupRecoveryState: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiCreateBackupRecoveryState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiCreateBackupRecoveryState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .notApplicable
+        
+        case 2: return .restoredAndVerified
+        
+        case 3: return .rollbackIncompletePreservedInBackup
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiCreateBackupRecoveryState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .notApplicable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .restoredAndVerified:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .rollbackIncompletePreservedInBackup:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICreateBackupRecoveryState_lift(_ buf: RustBuffer) throws -> UniFfiCreateBackupRecoveryState {
+    return try FfiConverterTypeUniFFICreateBackupRecoveryState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFICreateBackupRecoveryState_lower(_ value: UniFfiCreateBackupRecoveryState) -> RustBuffer {
+    return FfiConverterTypeUniFFICreateBackupRecoveryState.lower(value)
+}
+
+
+
+extension UniFfiCreateBackupRecoveryState: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * Supported binary serialization and compression formats for delta patches.
  */
 
@@ -17982,6 +18730,73 @@ public func FfiConverterTypeUniFFIDeltaFormat_lower(_ value: UniFfiDeltaFormat) 
 
 
 extension UniFfiDeltaFormat: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Process descriptor release status across FFI.
+ */
+
+public enum UniFfiDescriptorReleaseStatus {
+    
+    case confirmedReleased
+    case releaseUnconfirmed
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIDescriptorReleaseStatus: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiDescriptorReleaseStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiDescriptorReleaseStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .confirmedReleased
+        
+        case 2: return .releaseUnconfirmed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiDescriptorReleaseStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .confirmedReleased:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .releaseUnconfirmed:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDescriptorReleaseStatus_lift(_ buf: RustBuffer) throws -> UniFfiDescriptorReleaseStatus {
+    return try FfiConverterTypeUniFFIDescriptorReleaseStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIDescriptorReleaseStatus_lower(_ value: UniFfiDescriptorReleaseStatus) -> RustBuffer {
+    return FfiConverterTypeUniFFIDescriptorReleaseStatus.lower(value)
+}
+
+
+
+extension UniFfiDescriptorReleaseStatus: Equatable, Hashable {}
 
 
 
@@ -18504,6 +19319,101 @@ public func FfiConverterTypeUniFFIMmapAdvice_lower(_ value: UniFfiMmapAdvice) ->
 
 
 extension UniFfiMmapAdvice: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Structural role of a path involved in an incomplete creation transaction across FFI.
+ */
+
+public enum UniFfiResidualPathRole {
+    
+    case stagedArtifact
+    case stagedTempFile
+    case unownedPathOccupant
+    case transactionStageDirectory
+    case preexistingBackupDirectory
+    case finalDestinationTarget
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUniFFIResidualPathRole: FfiConverterRustBuffer {
+    typealias SwiftType = UniFfiResidualPathRole
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UniFfiResidualPathRole {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .stagedArtifact
+        
+        case 2: return .stagedTempFile
+        
+        case 3: return .unownedPathOccupant
+        
+        case 4: return .transactionStageDirectory
+        
+        case 5: return .preexistingBackupDirectory
+        
+        case 6: return .finalDestinationTarget
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UniFfiResidualPathRole, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .stagedArtifact:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .stagedTempFile:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .unownedPathOccupant:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .transactionStageDirectory:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .preexistingBackupDirectory:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .finalDestinationTarget:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIResidualPathRole_lift(_ buf: RustBuffer) throws -> UniFfiResidualPathRole {
+    return try FfiConverterTypeUniFFIResidualPathRole.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUniFFIResidualPathRole_lower(_ value: UniFfiResidualPathRole) -> RustBuffer {
+    return FfiConverterTypeUniFFIResidualPathRole.lower(value)
+}
+
+
+
+extension UniFfiResidualPathRole: Equatable, Hashable {}
 
 
 
@@ -20659,6 +21569,31 @@ fileprivate struct FfiConverterSequenceTypeUniFFIAppcastItem: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeUniFFIBackupRecoveryEntryFailure: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiBackupRecoveryEntryFailure]
+
+    public static func write(_ value: [UniFfiBackupRecoveryEntryFailure], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIBackupRecoveryEntryFailure.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiBackupRecoveryEntryFailure] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiBackupRecoveryEntryFailure]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIBackupRecoveryEntryFailure.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeUniFFIBenchmarkPointResult: FfiConverterRustBuffer {
     typealias SwiftType = [UniFfiBenchmarkPointResult]
 
@@ -21026,6 +21961,56 @@ fileprivate struct FfiConverterSequenceTypeUniFFISemanticSearchHit: FfiConverter
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeUniFFISemanticSearchHit.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUniFFIStageCleanupFailureItem: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiStageCleanupFailureItem]
+
+    public static func write(_ value: [UniFfiStageCleanupFailureItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIStageCleanupFailureItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiStageCleanupFailureItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiStageCleanupFailureItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIStageCleanupFailureItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUniFFIStageFileFinishDiagnostic: FfiConverterRustBuffer {
+    typealias SwiftType = [UniFfiStageFileFinishDiagnostic]
+
+    public static func write(_ value: [UniFfiStageFileFinishDiagnostic], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUniFFIStageFileFinishDiagnostic.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UniFfiStageFileFinishDiagnostic] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UniFfiStageFileFinishDiagnostic]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUniFFIStageFileFinishDiagnostic.read(from: &buf))
         }
         return seq
     }
@@ -24096,6 +25081,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_method_uniffisemanticsearchengine_model_state() != 27466) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_ttzip_engine_checksum_method_uniffisemanticsearchengine_prepare_model_runtime() != 60568) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_ttzip_engine_checksum_method_uniffisemanticsearchengine_register_scope() != 61336) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -24395,6 +25383,7 @@ extension ResolutionOverride: Sendable {}
 extension OutcomeStatus: Sendable {}
 extension FailedItem: Sendable {}
 extension FailureReason: Sendable {}
+extension CompressionReport: Sendable {}
 extension ItemKind: Sendable {}
 extension ItemMeta: Sendable {}
 extension ConflictKind: Sendable {}
@@ -24426,6 +25415,14 @@ extension UniFfiSemanticIngestPhase: Sendable {}
 extension UniFfiSemanticMatchKind: Sendable {}
 extension UniFfiSemanticModelState: Sendable {}
 extension UniFfiSemanticScopeKind: Sendable {}
+extension UniFfiResidualPathRole: Sendable {}
+extension UniFfiArchiveCleanupDisposition: Sendable {}
+extension UniFfiDescriptorReleaseStatus: Sendable {}
+extension UniFfiStageFileFinishDiagnostic: Sendable {}
+extension UniFfiStageCleanupFailureItem: Sendable {}
+extension UniFfiCreateBackupRecoveryState: Sendable {}
+extension UniFfiBackupRecoveryEntryFailure: Sendable {}
+extension UniFfiCreateTransactionFailureReport: Sendable {}
 public typealias UniFFISemanticSearchEngineProtocol = UniFfiSemanticSearchEngineProtocol
 public typealias UniFFISemanticSearchEngine = UniFfiSemanticSearchEngine
 public typealias UniFFISemanticArchiveEntryInput = UniFfiSemanticArchiveEntryInput

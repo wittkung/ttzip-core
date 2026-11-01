@@ -155,6 +155,7 @@ impl Drop for LlamaSession {
 pub struct LlamaRuntimeEngine {
     config: LlamaRuntimeConfig,
     session: Mutex<LlamaSession>,
+    published_state: Mutex<SemanticModelState>,
 }
 
 unsafe impl Send for LlamaRuntimeEngine {}
@@ -165,14 +166,14 @@ impl LlamaRuntimeEngine {
         Self {
             config,
             session: Mutex::new(LlamaSession::new()),
+            published_state: Mutex::new(SemanticModelState::NotInstalled),
         }
     }
 
     pub fn state(&self) -> SemanticModelState {
-        self.session
+        self.published_state
             .lock()
-            .expect("llama session lock poisoned")
-            .state
+            .expect("llama published state lock poisoned")
             .clone()
     }
 
@@ -184,7 +185,30 @@ impl LlamaRuntimeEngine {
     /// runtime via `csrc/ttzip_llama_bridge.c`, probes real backend devices, and loads the model + context.
     pub fn verify_and_prepare(&self) -> Result<SemanticModelInfo, SemanticModelError> {
         let mut guard = self.session.lock().expect("llama session lock poisoned");
-        Self::ensure_loaded_locked(&self.config, &mut guard)
+        self.prepare_session_locked(&mut guard)
+    }
+
+    // State readers never acquire the session mutex held during native initialization/inference.
+    fn publish_state(&self, state: SemanticModelState) {
+        *self
+            .published_state
+            .lock()
+            .expect("llama published state lock poisoned") = state;
+    }
+
+    fn prepare_session_locked(
+        &self,
+        session: &mut LlamaSession,
+    ) -> Result<SemanticModelInfo, SemanticModelError> {
+        if let SemanticModelState::Ready(ref info) = session.state {
+            if !session.bridge_ptr.is_null() {
+                return Ok(info.clone());
+            }
+        }
+        self.publish_state(SemanticModelState::Verifying);
+        let result = Self::ensure_loaded_locked(&self.config, session);
+        self.publish_state(session.state.clone());
+        result
     }
 
     fn ensure_loaded_locked(
@@ -258,7 +282,7 @@ impl LlamaRuntimeEngine {
         max_tokens: usize,
     ) -> Result<(Vec<f32>, Vec<i32>), SemanticModelError> {
         let mut guard = self.session.lock().expect("llama session lock poisoned");
-        Self::ensure_loaded_locked(&self.config, &mut guard)?;
+        self.prepare_session_locked(&mut guard)?;
         Self::encode_raw_f32_locked(&mut guard, formatted_prompt, max_tokens)
     }
 
@@ -330,7 +354,7 @@ impl LlamaRuntimeEngine {
         let path_str = self.config.model_path.to_string_lossy().into_owned();
         let mut guard = self.session.lock().expect("llama session lock poisoned");
 
-        let info = match Self::ensure_loaded_locked(&self.config, &mut guard) {
+        let info = match self.prepare_session_locked(&mut guard) {
             Ok(info) => info,
             Err(err) => {
                 return Self::build_load_error_report(&guard, path_str, started, err);
@@ -518,18 +542,18 @@ impl LlamaRuntimeEngine {
     pub fn unload(&self) {
         let mut guard = self.session.lock().expect("llama session lock poisoned");
         guard.unload();
+        self.publish_state(guard.state.clone());
     }
 }
 
 impl EmbeddingProvider for LlamaRuntimeEngine {
     fn model_state(&self) -> SemanticModelState {
-        let mut guard = self.session.lock().expect("llama session lock poisoned");
-        if matches!(guard.state, SemanticModelState::NotInstalled)
-            && self.config.model_path.exists()
-        {
-            let _ = Self::ensure_loaded_locked(&self.config, &mut guard);
-        }
-        guard.state.clone()
+        self.state()
+    }
+
+    fn prepare(&self) -> SemanticModelState {
+        let _ = self.verify_and_prepare();
+        self.state()
     }
 
     fn model_fingerprint(&self) -> u64 {
@@ -584,3 +608,7 @@ pub fn is_gguf_file(path: &Path) -> bool {
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("gguf"))
 }
+
+#[cfg(test)]
+#[path = "llama_runtime_tests.rs"]
+mod runtime_state_tests;

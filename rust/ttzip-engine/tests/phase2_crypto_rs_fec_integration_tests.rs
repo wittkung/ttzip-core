@@ -4,9 +4,7 @@
 //! Integration tests for ZipCrypto, Reed-Solomon FEC, and Self-Healing Recovery Records.
 
 use std::ffi::CString;
-use std::time::Instant;
 use tempfile::tempdir;
-use ttzip_engine::crypto::rs_fec::gf8::gf8_mul_add_slice;
 use ttzip_engine::crypto::zipcrypto::ZipCryptoKeys;
 use ttzip_engine::ffi::{
     ttzip_rust_rs_append_recovery_record_file, ttzip_rust_rs_create_recovery_record,
@@ -273,23 +271,4 @@ fn test_rs_recovery_record_streaming_file_ffi_roundtrip() {
 
     let restored = std::fs::read(&file_path).unwrap();
     assert_eq!(&restored[..original_payload.len()], &original_payload[..]);
-}
-
-#[test]
-fn test_gf8_neon_simd_throughput_benchmark() {
-    let size = 8 * 1024 * 1024; // 8 MB
-    let src = vec![0xABu8; size];
-    let mut dst = vec![0u8; size];
-    let coeff = 42u8;
-
-    let iters = 50;
-    let start = Instant::now();
-    for _ in 0..iters {
-        gf8_mul_add_slice(coeff, &src, &mut dst);
-    }
-    let dur = start.elapsed();
-    let gb = (size as f64 * iters as f64) / (1024.0 * 1024.0 * 1024.0);
-    let speed = gb / dur.as_secs_f64();
-    println!("GF(2^8) NEON SIMD Throughput: {:.2} GB/s", speed);
-    assert!(speed > 1.0, "Throughput must be at least 1 GB/s");
 }

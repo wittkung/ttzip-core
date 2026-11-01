@@ -391,110 +391,112 @@ unsafe fn inspect_from_handle<F>(
 where
     F: FnMut(&ArchiveEntryRef<'_>) -> bool,
 {
-    let mut entry: *mut c_void = std::ptr::null_mut();
-    let mut count = 0;
+    unsafe {
+        let mut entry: *mut c_void = std::ptr::null_mut();
+        let mut count = 0;
 
-    loop {
-        let rc = archive_read_next_header(a, &mut entry);
-        if rc == 1 {
-            // ARCHIVE_EOF
-            break;
-        } else if rc == -10 {
-            // ARCHIVE_RETRY
-            continue;
-        } else if rc != 0 {
-            if let Some(err_str) = crate::sys::libarchive::sys::get_archive_error_string(a) {
-                let lower = err_str.to_lowercase();
-                if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypted") {
-                    return Err(TTZipStatus::ErrInvalidPassword);
+        loop {
+            let rc = archive_read_next_header(a, &mut entry);
+            if rc == 1 {
+                // ARCHIVE_EOF
+                break;
+            } else if rc == -10 {
+                // ARCHIVE_RETRY
+                continue;
+            } else if rc != 0 {
+                if let Some(err_str) = crate::sys::libarchive::sys::get_archive_error_string(a) {
+                    let lower = err_str.to_lowercase();
+                    if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypted") {
+                        return Err(TTZipStatus::ErrInvalidPassword);
+                    }
                 }
+                return Err(TTZipStatus::ErrCorruptHeader);
             }
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
 
-        if entry.is_null() {
-            break;
-        }
-        let path_c_str = match archive_entry_pathname_safe(entry) {
-            Some(p) => p,
-            None => {
+            if entry.is_null() {
+                break;
+            }
+            let path_c_str = match archive_entry_pathname_safe(entry) {
+                Some(p) => p,
+                None => {
+                    archive_read_data_skip(a);
+                    continue;
+                }
+            };
+            let path_bytes = path_c_str.to_bytes();
+            if path_bytes.is_empty() {
                 archive_read_data_skip(a);
                 continue;
             }
-        };
-        let path_bytes = path_c_str.to_bytes();
-        if path_bytes.is_empty() {
-            archive_read_data_skip(a);
-            continue;
-        }
 
-        let detected_charset_opt = if detect_encoding && !path_bytes.is_ascii() {
-            crate::codecs::chardet::detect_charset(path_bytes)
-        } else {
-            None
-        };
-        let detected_encoding = detected_charset_opt.as_deref();
-
-        let uncompressed_size = archive_entry_size(entry).max(0) as u64;
-        let mode = archive_entry_mode(entry) as u32;
-        let filetype = archive_entry_filetype(entry);
-        let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-            || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-            || path_bytes.ends_with(b"/");
-        let mtime = archive_entry_mtime(entry) as i64;
-        let is_data_enc = archive_entry_is_data_encrypted(entry) != 0;
-        let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
-
-        // Lossless path resolution:
-        // Do NOT call `to_string_lossy()`, as that irreversibly destroys non-UTF-8
-        // codepages (e.g. GBK, Big5, Shift-JIS, EUC-KR) by replacing bytes with `\u{FFFD}`.
-        // 1. If valid UTF-8, borrow the slice directly with zero allocations.
-        // 2. If non-UTF-8, transcode using the detected charset or filename remediation.
-        // 3. Keep pristine raw binary bytes accessible in `entry_ref.raw_path`.
-        let decoded_storage = if std::str::from_utf8(path_bytes).is_err() {
-            let transcoded = if let Some(charset) = detected_encoding {
-                crate::charset::transcode_to_utf8(path_bytes, charset)
-                    .unwrap_or_else(|_| crate::charset::sanitize_filename(path_bytes))
+            let detected_charset_opt = if detect_encoding && !path_bytes.is_ascii() {
+                crate::codecs::chardet::detect_charset(path_bytes)
             } else {
-                crate::charset::sanitize_filename(path_bytes)
+                None
             };
-            Some(transcoded)
-        } else {
-            None
-        };
+            let detected_encoding = detected_charset_opt.as_deref();
 
-        let path_str: &str = match &decoded_storage {
-            Some(s) => s.as_str(),
-            None => std::str::from_utf8(path_bytes).unwrap_or_default(),
-        };
+            let uncompressed_size = archive_entry_size(entry).max(0) as u64;
+            let mode = archive_entry_mode(entry) as u32;
+            let filetype = archive_entry_filetype(entry);
+            let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
+                || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
+                || path_bytes.ends_with(b"/");
+            let mtime = archive_entry_mtime(entry) as i64;
+            let is_data_enc = archive_entry_is_data_encrypted(entry) != 0;
+            let is_meta_enc = archive_entry_is_metadata_encrypted(entry) != 0;
 
-        let entry_ref = ArchiveEntryRef {
-            path: path_str,
-            raw_path: path_bytes,
-            uncompressed_size,
-            compressed_size: 0,
-            crc32: 0,
-            mtime_epoch_secs: mtime,
-            mode,
-            is_directory: is_dir,
-            is_encrypted: is_data_enc || is_meta_enc,
-            compression_method: 0,
-            detected_encoding,
-        };
+            // Lossless path resolution:
+            // Do NOT call `to_string_lossy()`, as that irreversibly destroys non-UTF-8
+            // codepages (e.g. GBK, Big5, Shift-JIS, EUC-KR) by replacing bytes with `\u{FFFD}`.
+            // 1. If valid UTF-8, borrow the slice directly with zero allocations.
+            // 2. If non-UTF-8, transcode using the detected charset or filename remediation.
+            // 3. Keep pristine raw binary bytes accessible in `entry_ref.raw_path`.
+            let decoded_storage = if std::str::from_utf8(path_bytes).is_err() {
+                let transcoded = if let Some(charset) = detected_encoding {
+                    crate::charset::transcode_to_utf8(path_bytes, charset)
+                        .unwrap_or_else(|_| crate::charset::sanitize_filename(path_bytes))
+                } else {
+                    crate::charset::sanitize_filename(path_bytes)
+                };
+                Some(transcoded)
+            } else {
+                None
+            };
 
-        count += 1;
-        let should_continue = cb(&entry_ref);
-        let skip_rc = archive_read_data_skip(a);
-        if skip_rc < 0 && skip_rc != -10 {
-            return Err(TTZipStatus::ErrCorruptHeader);
+            let path_str: &str = match &decoded_storage {
+                Some(s) => s.as_str(),
+                None => std::str::from_utf8(path_bytes).unwrap_or_default(),
+            };
+
+            let entry_ref = ArchiveEntryRef {
+                path: path_str,
+                raw_path: path_bytes,
+                uncompressed_size,
+                compressed_size: 0,
+                crc32: 0,
+                mtime_epoch_secs: mtime,
+                mode,
+                is_directory: is_dir,
+                is_encrypted: is_data_enc || is_meta_enc,
+                compression_method: 0,
+                detected_encoding,
+            };
+
+            count += 1;
+            let should_continue = cb(&entry_ref);
+            let skip_rc = archive_read_data_skip(a);
+            if skip_rc < 0 && skip_rc != -10 {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
+
+            if !should_continue {
+                break;
+            }
         }
 
-        if !should_continue {
-            break;
-        }
+        Ok(count)
     }
-
-    Ok(count)
 }
 
 /// Compatibility wrapper bridging the Safe Rust closure-based `inspect_archive`

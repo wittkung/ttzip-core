@@ -22,7 +22,7 @@ use std::io::{self, Read};
 
 // MARK: - Native C LZ4 Dictionary Decompression Binding
 
-extern "C" {
+unsafe extern "C" {
     fn LZ4_decompress_safe_usingDict(
         src: *const libc::c_char,
         dst: *mut libc::c_char,

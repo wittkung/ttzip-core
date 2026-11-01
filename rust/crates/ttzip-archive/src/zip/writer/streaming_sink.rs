@@ -4,6 +4,9 @@
 //! Bounded-memory streaming sinks, spilled payload management, and Central Directory serialization.
 
 use super::types::unix_to_dos_time;
+use crate::archive::unified::create_transaction::{
+    CreateFileAccessMode, CreateTransactionContext, FileFinishSyncPolicy, ResidualPathRole,
+};
 use crate::types::TTZipStatus;
 use crate::zip::extra::ZipExtraFields;
 use crate::zip::parser::{
@@ -303,13 +306,15 @@ pub fn build_eocd(entries_count: u16, cd_size: u32, cd_offset: u32) -> Vec<u8> {
 /// Unified output sink for single-file (`pwrite`) or single-pass split-volume (`SplitVolumeWriter`) ZIP streams.
 pub enum ZipOutputSink {
     Single {
-        file: File,
+        file: Option<File>,
         current_offset: u64,
         abort_guard: Option<crate::fs::FileAbortGuard>,
+        primary_status: TTZipStatus,
     },
     Split {
         writer: crate::archive::split::SplitVolumeWriter,
         committed: bool,
+        primary_status: TTZipStatus,
     },
 }
 
@@ -319,6 +324,16 @@ impl ZipOutputSink {
         dest_path: &Path,
         split_volume_size_bytes: u64,
         prealloc_hint: u64,
+    ) -> Result<Self, TTZipStatus> {
+        Self::open_in_txn(dest_path, split_volume_size_bytes, prealloc_hint, None)
+    }
+
+    /// Opens a single-file or split-volume ZIP output sink bound to `CreateTransactionContext`.
+    pub fn open_in_txn(
+        dest_path: &Path,
+        split_volume_size_bytes: u64,
+        prealloc_hint: u64,
+        txn_ctx: Option<&CreateTransactionContext>,
     ) -> Result<Self, TTZipStatus> {
         if let Some(parent) = dest_path.parent().filter(|p| !p.as_os_str().is_empty()) {
             let _ = fs::create_dir_all(parent);
@@ -336,32 +351,35 @@ impl ZipOutputSink {
                         crate::archive::split::VolumeNamingScheme::PkzipSpanned,
                     )
                 };
-            let writer = crate::archive::split::SplitVolumeWriter::new(
+            let writer = crate::archive::split::SplitVolumeWriter::new_in_txn(
                 &base_path,
                 split_volume_size_bytes,
                 scheme,
+                txn_ctx,
             )
             .map_err(|_| TTZipStatus::ErrOpenFailed)?;
             Ok(Self::Split {
                 writer,
                 committed: false,
+                primary_status: TTZipStatus::ErrCompressionFailed,
             })
         } else {
-            let abort_guard = crate::fs::FileAbortGuard::new(dest_path);
-            let file = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(dest_path)
-                .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+            let (file, abort_guard) = crate::fs::FileAbortGuard::create_staged_file_in_txn(
+                dest_path,
+                CreateFileAccessMode::WriteOnly,
+                txn_ctx,
+                ResidualPathRole::StagedArtifact,
+            )
+            .map_err(|_| TTZipStatus::ErrOpenFailed)?;
             if prealloc_hint > 0 {
                 use std::os::unix::io::AsRawFd;
                 let _ = crate::fs::apfs::apfs_preallocate(file.as_raw_fd(), prealloc_hint as i64);
             }
             Ok(Self::Single {
-                file,
+                file: Some(file),
                 current_offset: 0,
                 abort_guard: Some(abort_guard),
+                primary_status: TTZipStatus::ErrCompressionFailed,
             })
         }
     }
@@ -386,7 +404,9 @@ impl ZipOutputSink {
                 current_offset,
                 ..
             } => {
-                file.write_all_at(buf, *current_offset)
+                let raw_file = file.as_ref().ok_or(TTZipStatus::ErrCompressionFailed)?;
+                raw_file
+                    .write_all_at(buf, *current_offset)
                     .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
                 *current_offset += buf.len() as u64;
                 Ok(())
@@ -406,7 +426,8 @@ impl ZipOutputSink {
                 ..
             } => {
                 if !payload.is_empty() {
-                    payload.write_to_file_at(file, *current_offset)?;
+                    let raw_file = file.as_ref().ok_or(TTZipStatus::ErrCompressionFailed)?;
+                    payload.write_to_file_at(raw_file, *current_offset)?;
                     *current_offset += payload.len();
                 }
                 Ok(())
@@ -421,36 +442,128 @@ impl ZipOutputSink {
         }
     }
 
-    /// Commits the output sink and returns the final total compressed byte count.
-    pub fn commit(mut self) -> Result<u64, TTZipStatus> {
+    /// Finishes and settles the output sink with B1 release verification, returning final compressed byte count.
+    pub fn finish_and_settle_in_txn(
+        mut self,
+        prior_write_res: Result<(), (TTZipStatus, String)>,
+    ) -> Result<u64, TTZipStatus> {
         match &mut self {
             Self::Single {
+                file,
                 current_offset,
                 abort_guard,
                 ..
             } => {
-                if let Some(guard) = abort_guard.take() {
-                    guard.commit();
-                }
-                Ok(*current_offset)
+                let raw_file = file.take().ok_or(TTZipStatus::ErrCompressionFailed)?;
+                let guard = abort_guard.take().ok_or(TTZipStatus::ErrCompressionFailed)?;
+                guard
+                    .finish_file_and_settle_in_txn(
+                        raw_file,
+                        prior_write_res,
+                        None,
+                        FileFinishSyncPolicy::None,
+                    )
+                    .map(|_| *current_offset)
+                    .map_err(|e| e.primary_status)
             }
-            Self::Split { writer, committed } => {
+            Self::Split {
+                writer, committed, ..
+            } => {
+                *committed = true;
+                if let Err((status, _)) = prior_write_res {
+                    let _ = writer.cancel_and_cleanup_in_txn(status);
+                    return Err(status);
+                }
                 let total = writer.total_bytes();
                 writer
-                    .close()
-                    .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                *committed = true;
-                Ok(total)
+                    .close_in_txn()
+                    .map(|_| total)
+                    .map_err(|_| TTZipStatus::ErrCompressionFailed)
             }
         }
+    }
+
+    /// Commits the output sink and returns the final total compressed byte count.
+    pub fn commit(self) -> Result<u64, TTZipStatus> {
+        self.finish_and_settle_in_txn(Ok(()))
+    }
+
+    /// Explicitly aborts the output sink in a transaction, closing its descriptor once before unlinking.
+    pub fn abort_in_txn(mut self, primary_status: TTZipStatus) -> std::io::Result<()> {
+        match &mut self {
+            Self::Single {
+                file, abort_guard, ..
+            } => {
+                if let (Some(raw_file), Some(guard)) = (file.take(), abort_guard.take()) {
+                    let has_ctx = guard.txn_ctx().is_some();
+                    let _ = guard.finish_file_and_settle_in_txn(
+                        raw_file,
+                        Err((
+                            primary_status,
+                            format!("zip sink aborted with {:?}", primary_status),
+                        )),
+                        None,
+                        FileFinishSyncPolicy::None,
+                    );
+                    if !has_ctx {
+                        if let Some((_, msg)) =
+                            crate::archive::unified::create_staging::take_last_inner_stage_cleanup_error()
+                        {
+                            return Err(std::io::Error::other(msg));
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Self::Split {
+                writer, committed, ..
+            } => {
+                if !*committed {
+                    *committed = true;
+                    writer.cancel_and_cleanup_in_txn(primary_status)
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    /// Explicitly aborts the output sink and checks cleanup of partial files or volumes.
+    pub fn abort_checked(self) -> std::io::Result<()> {
+        self.abort_in_txn(TTZipStatus::ErrCompressionFailed)
     }
 }
 
 impl Drop for ZipOutputSink {
     fn drop(&mut self) {
-        if let Self::Split { writer, committed } = self {
-            if !*committed {
-                writer.cancel_and_cleanup();
+        match self {
+            Self::Single {
+                file,
+                abort_guard,
+                primary_status,
+                ..
+            } => {
+                if let (Some(raw_file), Some(guard)) = (file.take(), abort_guard.take()) {
+                    let _ = guard.finish_file_and_settle_in_txn(
+                        raw_file,
+                        Err((
+                            *primary_status,
+                            "zip sink dropped before commit".to_string(),
+                        )),
+                        None,
+                        FileFinishSyncPolicy::None,
+                    );
+                }
+            }
+            Self::Split {
+                writer,
+                committed,
+                primary_status,
+            } => {
+                if !*committed {
+                    *committed = true;
+                    let _ = writer.cancel_and_cleanup_in_txn(*primary_status);
+                }
             }
         }
     }

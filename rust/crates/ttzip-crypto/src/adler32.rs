@@ -101,14 +101,16 @@ pub mod arm64 {
 
     #[inline(always)]
     unsafe fn udot_u32(mut acc: uint32x4_t, a: uint8x16_t, b: uint8x16_t) -> uint32x4_t {
-        asm!(
-            "udot {acc:v}.4s, {a:v}.16b, {b:v}.16b",
-            acc = inout(vreg) acc,
-            a = in(vreg) a,
-            b = in(vreg) b,
-            options(pure, nomem, nostack)
-        );
-        acc
+        unsafe {
+            asm!(
+                "udot {acc:v}.4s, {a:v}.16b, {b:v}.16b",
+                acc = inout(vreg) acc,
+                a = in(vreg) a,
+                b = in(vreg) b,
+                options(pure, nomem, nostack)
+            );
+            acc
+        }
     }
 
     /// Computes Adler-32 checksum using ARM NEON dot-product vector instructions.
@@ -117,91 +119,93 @@ pub mod arm64 {
     /// Caller must ensure `p` points to `len` readable bytes and the CPU supports ARM dotprod instructions.
     #[target_feature(enable = "dotprod")]
     pub unsafe fn adler32_neon_dotprod(adler: u32, mut p: *const u8, mut len: usize) -> u32 {
-        let mults_a = vld1q_u8(MULTS_ARRAY.as_ptr());
-        let mults_b = vld1q_u8(MULTS_ARRAY.as_ptr().add(16));
-        let mults_c = vld1q_u8(MULTS_ARRAY.as_ptr().add(32));
-        let mults_d = vld1q_u8(MULTS_ARRAY.as_ptr().add(48));
-        let ones = vdupq_n_u8(1);
+        unsafe {
+            let mults_a = vld1q_u8(MULTS_ARRAY.as_ptr());
+            let mults_b = vld1q_u8(MULTS_ARRAY.as_ptr().add(16));
+            let mults_c = vld1q_u8(MULTS_ARRAY.as_ptr().add(32));
+            let mults_d = vld1q_u8(MULTS_ARRAY.as_ptr().add(48));
+            let ones = vdupq_n_u8(1);
 
-        let mut s1 = adler & 0xFFFF;
-        let mut s2 = adler >> 16;
+            let mut s1 = adler & 0xFFFF;
+            let mut s2 = adler >> 16;
 
-        if len > 32768 && ((p as usize) & 15) != 0 {
-            while ((p as usize) & 15) != 0 {
-                s1 = s1.wrapping_add(*p as u32);
-                s2 = s2.wrapping_add(s1);
-                p = p.add(1);
-                len -= 1;
+            if len > 32768 && ((p as usize) & 15) != 0 {
+                while ((p as usize) & 15) != 0 {
+                    s1 = s1.wrapping_add(*p as u32);
+                    s2 = s2.wrapping_add(s1);
+                    p = p.add(1);
+                    len -= 1;
+                }
+                s1 %= TTZIP_ADLER32_DIVISOR;
+                s2 %= TTZIP_ADLER32_DIVISOR;
             }
-            s1 %= TTZIP_ADLER32_DIVISOR;
-            s2 %= TTZIP_ADLER32_DIVISOR;
-        }
 
-        while len > 0 {
-            let mut n = len.min(TTZIP_ADLER32_MAX_CHUNK & !63);
-            len -= n;
+            while len > 0 {
+                let mut n = len.min(TTZIP_ADLER32_MAX_CHUNK & !63);
+                len -= n;
 
-            if n >= 64 {
-                let mut v_s1_a = vdupq_n_u32(0);
-                let mut v_s1_b = vdupq_n_u32(0);
-                let mut v_s1_c = vdupq_n_u32(0);
-                let mut v_s1_d = vdupq_n_u32(0);
+                if n >= 64 {
+                    let mut v_s1_a = vdupq_n_u32(0);
+                    let mut v_s1_b = vdupq_n_u32(0);
+                    let mut v_s1_c = vdupq_n_u32(0);
+                    let mut v_s1_d = vdupq_n_u32(0);
 
-                let mut v_s2_a = vdupq_n_u32(0);
-                let mut v_s2_b = vdupq_n_u32(0);
-                let mut v_s2_c = vdupq_n_u32(0);
-                let mut v_s2_d = vdupq_n_u32(0);
+                    let mut v_s2_a = vdupq_n_u32(0);
+                    let mut v_s2_b = vdupq_n_u32(0);
+                    let mut v_s2_c = vdupq_n_u32(0);
+                    let mut v_s2_d = vdupq_n_u32(0);
 
-                let mut v_s1_sums_a = vdupq_n_u32(0);
-                let mut v_s1_sums_b = vdupq_n_u32(0);
-                let mut v_s1_sums_c = vdupq_n_u32(0);
-                let mut v_s1_sums_d = vdupq_n_u32(0);
+                    let mut v_s1_sums_a = vdupq_n_u32(0);
+                    let mut v_s1_sums_b = vdupq_n_u32(0);
+                    let mut v_s1_sums_c = vdupq_n_u32(0);
+                    let mut v_s1_sums_d = vdupq_n_u32(0);
 
-                s2 = s2.wrapping_add(s1.wrapping_mul((n & !63) as u32));
+                    s2 = s2.wrapping_add(s1.wrapping_mul((n & !63) as u32));
 
-                while n >= 64 {
-                    let data_a = vld1q_u8(p);
-                    let data_b = vld1q_u8(p.add(16));
-                    let data_c = vld1q_u8(p.add(32));
-                    let data_d = vld1q_u8(p.add(48));
+                    while n >= 64 {
+                        let data_a = vld1q_u8(p);
+                        let data_b = vld1q_u8(p.add(16));
+                        let data_c = vld1q_u8(p.add(32));
+                        let data_d = vld1q_u8(p.add(48));
 
-                    v_s1_sums_a = vaddq_u32(v_s1_sums_a, v_s1_a);
-                    v_s1_a = udot_u32(v_s1_a, data_a, ones);
-                    v_s2_a = udot_u32(v_s2_a, data_a, mults_a);
+                        v_s1_sums_a = vaddq_u32(v_s1_sums_a, v_s1_a);
+                        v_s1_a = udot_u32(v_s1_a, data_a, ones);
+                        v_s2_a = udot_u32(v_s2_a, data_a, mults_a);
 
-                    v_s1_sums_b = vaddq_u32(v_s1_sums_b, v_s1_b);
-                    v_s1_b = udot_u32(v_s1_b, data_b, ones);
-                    v_s2_b = udot_u32(v_s2_b, data_b, mults_b);
+                        v_s1_sums_b = vaddq_u32(v_s1_sums_b, v_s1_b);
+                        v_s1_b = udot_u32(v_s1_b, data_b, ones);
+                        v_s2_b = udot_u32(v_s2_b, data_b, mults_b);
 
-                    v_s1_sums_c = vaddq_u32(v_s1_sums_c, v_s1_c);
-                    v_s1_c = udot_u32(v_s1_c, data_c, ones);
-                    v_s2_c = udot_u32(v_s2_c, data_c, mults_c);
+                        v_s1_sums_c = vaddq_u32(v_s1_sums_c, v_s1_c);
+                        v_s1_c = udot_u32(v_s1_c, data_c, ones);
+                        v_s2_c = udot_u32(v_s2_c, data_c, mults_c);
 
-                    v_s1_sums_d = vaddq_u32(v_s1_sums_d, v_s1_d);
-                    v_s1_d = udot_u32(v_s1_d, data_d, ones);
-                    v_s2_d = udot_u32(v_s2_d, data_d, mults_d);
+                        v_s1_sums_d = vaddq_u32(v_s1_sums_d, v_s1_d);
+                        v_s1_d = udot_u32(v_s1_d, data_d, ones);
+                        v_s2_d = udot_u32(v_s2_d, data_d, mults_d);
 
-                    p = p.add(64);
-                    n -= 64;
+                        p = p.add(64);
+                        n -= 64;
+                    }
+
+                    let v_s1 = vaddq_u32(vaddq_u32(v_s1_a, v_s1_b), vaddq_u32(v_s1_c, v_s1_d));
+                    let mut v_s2 = vaddq_u32(vaddq_u32(v_s2_a, v_s2_b), vaddq_u32(v_s2_c, v_s2_d));
+                    let v_s1_sums = vaddq_u32(vaddq_u32(v_s1_sums_a, v_s1_sums_b), vaddq_u32(v_s1_sums_c, v_s1_sums_d));
+
+                    v_s2 = vaddq_u32(v_s2, vqshlq_n_u32::<6>(v_s1_sums));
+
+                    s1 = s1.wrapping_add(vaddvq_u32(v_s1));
+                    s2 = s2.wrapping_add(vaddvq_u32(v_s2));
                 }
 
-                let v_s1 = vaddq_u32(vaddq_u32(v_s1_a, v_s1_b), vaddq_u32(v_s1_c, v_s1_d));
-                let mut v_s2 = vaddq_u32(vaddq_u32(v_s2_a, v_s2_b), vaddq_u32(v_s2_c, v_s2_d));
-                let v_s1_sums = vaddq_u32(vaddq_u32(v_s1_sums_a, v_s1_sums_b), vaddq_u32(v_s1_sums_c, v_s1_sums_d));
-
-                v_s2 = vaddq_u32(v_s2, vqshlq_n_u32::<6>(v_s1_sums));
-
-                s1 = s1.wrapping_add(vaddvq_u32(v_s1));
-                s2 = s2.wrapping_add(vaddvq_u32(v_s2));
+                let (new_s1, new_s2) = scalar::adler32_scalar_chunk(s1, s2, p, n);
+                s1 = new_s1;
+                s2 = new_s2;
+                p = p.add(n);
             }
 
-            let (new_s1, new_s2) = scalar::adler32_scalar_chunk(s1, s2, p, n);
-            s1 = new_s1;
-            s2 = new_s2;
-            p = p.add(n);
+            (s2 << 16) | s1
         }
-
-        (s2 << 16) | s1
     }
 
     /// Computes Adler-32 checksum using standard ARMv8.0 NEON vector instructions (no dotprod requirement).
@@ -210,118 +214,120 @@ pub mod arm64 {
     /// Caller must ensure `p` points to `len` readable bytes.
     #[target_feature(enable = "neon")]
     pub unsafe fn adler32_neon_baseline(adler: u32, mut p: *const u8, mut len: usize) -> u32 {
-        let mults_a = vld1q_u8(MULTS_ARRAY.as_ptr());
-        let mults_b = vld1q_u8(MULTS_ARRAY.as_ptr().add(16));
-        let mults_c = vld1q_u8(MULTS_ARRAY.as_ptr().add(32));
-        let mults_d = vld1q_u8(MULTS_ARRAY.as_ptr().add(48));
+        unsafe {
+            let mults_a = vld1q_u8(MULTS_ARRAY.as_ptr());
+            let mults_b = vld1q_u8(MULTS_ARRAY.as_ptr().add(16));
+            let mults_c = vld1q_u8(MULTS_ARRAY.as_ptr().add(32));
+            let mults_d = vld1q_u8(MULTS_ARRAY.as_ptr().add(48));
 
-        let mut s1 = adler & 0xFFFF;
-        let mut s2 = adler >> 16;
+            let mut s1 = adler & 0xFFFF;
+            let mut s2 = adler >> 16;
 
-        if len > 32768 && ((p as usize) & 15) != 0 {
-            while ((p as usize) & 15) != 0 {
-                s1 = s1.wrapping_add(*p as u32);
-                s2 = s2.wrapping_add(s1);
-                p = p.add(1);
-                len -= 1;
+            if len > 32768 && ((p as usize) & 15) != 0 {
+                while ((p as usize) & 15) != 0 {
+                    s1 = s1.wrapping_add(*p as u32);
+                    s2 = s2.wrapping_add(s1);
+                    p = p.add(1);
+                    len -= 1;
+                }
+                s1 %= TTZIP_ADLER32_DIVISOR;
+                s2 %= TTZIP_ADLER32_DIVISOR;
             }
-            s1 %= TTZIP_ADLER32_DIVISOR;
-            s2 %= TTZIP_ADLER32_DIVISOR;
-        }
 
-        while len > 0 {
-            let mut n = len.min(TTZIP_ADLER32_MAX_CHUNK & !63);
-            len -= n;
+            while len > 0 {
+                let mut n = len.min(TTZIP_ADLER32_MAX_CHUNK & !63);
+                len -= n;
 
-            if n >= 64 {
-                s2 = s2.wrapping_add(s1.wrapping_mul((n & !63) as u32));
+                if n >= 64 {
+                    s2 = s2.wrapping_add(s1.wrapping_mul((n & !63) as u32));
 
-                let mut v_s1_low = vdupq_n_u32(0);
-                let mut v_s1_high = vdupq_n_u32(0);
-                let mut v_s2_low = vdupq_n_u32(0);
-                let mut v_s2_high = vdupq_n_u32(0);
-                let mut v_s1_sums_low = vdupq_n_u32(0);
-                let mut v_s1_sums_high = vdupq_n_u32(0);
+                    let mut v_s1_low = vdupq_n_u32(0);
+                    let mut v_s1_high = vdupq_n_u32(0);
+                    let mut v_s2_low = vdupq_n_u32(0);
+                    let mut v_s2_high = vdupq_n_u32(0);
+                    let mut v_s1_sums_low = vdupq_n_u32(0);
+                    let mut v_s1_sums_high = vdupq_n_u32(0);
 
-                while n >= 64 {
-                    // Accumulate running sum of previous block sums for s2
-                    v_s1_sums_low = vaddq_u32(v_s1_sums_low, v_s1_low);
-                    v_s1_sums_high = vaddq_u32(v_s1_sums_high, v_s1_high);
+                    while n >= 64 {
+                        // Accumulate running sum of previous block sums for s2
+                        v_s1_sums_low = vaddq_u32(v_s1_sums_low, v_s1_low);
+                        v_s1_sums_high = vaddq_u32(v_s1_sums_high, v_s1_high);
 
-                    let data_a = vld1q_u8(p);
-                    let data_b = vld1q_u8(p.add(16));
-                    let data_c = vld1q_u8(p.add(32));
-                    let data_d = vld1q_u8(p.add(48));
+                        let data_a = vld1q_u8(p);
+                        let data_b = vld1q_u8(p.add(16));
+                        let data_c = vld1q_u8(p.add(32));
+                        let data_d = vld1q_u8(p.add(48));
 
-                    // Multiply-accumulate 8-bit to 16-bit
-                    let prod_a = vmlal_u8(
-                        vmull_u8(vget_low_u8(data_a), vget_low_u8(mults_a)),
-                        vget_high_u8(data_a),
-                        vget_high_u8(mults_a),
-                    );
-                    let prod_b = vmlal_u8(
-                        vmull_u8(vget_low_u8(data_b), vget_low_u8(mults_b)),
-                        vget_high_u8(data_b),
-                        vget_high_u8(mults_b),
-                    );
-                    let prod_c = vmlal_u8(
-                        vmull_u8(vget_low_u8(data_c), vget_low_u8(mults_c)),
-                        vget_high_u8(data_c),
-                        vget_high_u8(mults_c),
-                    );
-                    let prod_d = vmlal_u8(
-                        vmull_u8(vget_low_u8(data_d), vget_low_u8(mults_d)),
-                        vget_high_u8(data_d),
-                        vget_high_u8(mults_d),
-                    );
+                        // Multiply-accumulate 8-bit to 16-bit
+                        let prod_a = vmlal_u8(
+                            vmull_u8(vget_low_u8(data_a), vget_low_u8(mults_a)),
+                            vget_high_u8(data_a),
+                            vget_high_u8(mults_a),
+                        );
+                        let prod_b = vmlal_u8(
+                            vmull_u8(vget_low_u8(data_b), vget_low_u8(mults_b)),
+                            vget_high_u8(data_b),
+                            vget_high_u8(mults_b),
+                        );
+                        let prod_c = vmlal_u8(
+                            vmull_u8(vget_low_u8(data_c), vget_low_u8(mults_c)),
+                            vget_high_u8(data_c),
+                            vget_high_u8(mults_c),
+                        );
+                        let prod_d = vmlal_u8(
+                            vmull_u8(vget_low_u8(data_d), vget_low_u8(mults_d)),
+                            vget_high_u8(data_d),
+                            vget_high_u8(mults_d),
+                        );
 
-                    let prod_ab = vaddq_u16(prod_a, prod_b);
-                    let prod_cd = vaddq_u16(prod_c, prod_d);
+                        let prod_ab = vaddq_u16(prod_a, prod_b);
+                        let prod_cd = vaddq_u16(prod_c, prod_d);
 
-                    // Vertical 32-bit vector accumulation via vaddw_u16
-                    v_s2_low = vaddw_u16(v_s2_low, vget_low_u16(prod_ab));
-                    v_s2_high = vaddw_u16(v_s2_high, vget_high_u16(prod_ab));
-                    v_s2_low = vaddw_u16(v_s2_low, vget_low_u16(prod_cd));
-                    v_s2_high = vaddw_u16(v_s2_high, vget_high_u16(prod_cd));
+                        // Vertical 32-bit vector accumulation via vaddw_u16
+                        v_s2_low = vaddw_u16(v_s2_low, vget_low_u16(prod_ab));
+                        v_s2_high = vaddw_u16(v_s2_high, vget_high_u16(prod_ab));
+                        v_s2_low = vaddw_u16(v_s2_low, vget_low_u16(prod_cd));
+                        v_s2_high = vaddw_u16(v_s2_high, vget_high_u16(prod_cd));
 
-                    // Vertical pairwise byte sums (16 bytes -> 8 u16s)
-                    let sum_bytes_a = vpaddlq_u8(data_a);
-                    let sum_bytes_b = vpaddlq_u8(data_b);
-                    let sum_bytes_c = vpaddlq_u8(data_c);
-                    let sum_bytes_d = vpaddlq_u8(data_d);
+                        // Vertical pairwise byte sums (16 bytes -> 8 u16s)
+                        let sum_bytes_a = vpaddlq_u8(data_a);
+                        let sum_bytes_b = vpaddlq_u8(data_b);
+                        let sum_bytes_c = vpaddlq_u8(data_c);
+                        let sum_bytes_d = vpaddlq_u8(data_d);
 
-                    let sum_bytes_16 = vaddq_u16(
-                        vaddq_u16(sum_bytes_a, sum_bytes_b),
-                        vaddq_u16(sum_bytes_c, sum_bytes_d),
-                    );
+                        let sum_bytes_16 = vaddq_u16(
+                            vaddq_u16(sum_bytes_a, sum_bytes_b),
+                            vaddq_u16(sum_bytes_c, sum_bytes_d),
+                        );
 
-                    // Accumulate current block bytes into v_s1_low and v_s1_high
-                    v_s1_low = vaddw_u16(v_s1_low, vget_low_u16(sum_bytes_16));
-                    v_s1_high = vaddw_u16(v_s1_high, vget_high_u16(sum_bytes_16));
+                        // Accumulate current block bytes into v_s1_low and v_s1_high
+                        v_s1_low = vaddw_u16(v_s1_low, vget_low_u16(sum_bytes_16));
+                        v_s1_high = vaddw_u16(v_s1_high, vget_high_u16(sum_bytes_16));
 
-                    p = p.add(64);
-                    n -= 64;
+                        p = p.add(64);
+                        n -= 64;
+                    }
+
+                    let v_s1 = vaddq_u32(v_s1_low, v_s1_high);
+                    let mut v_s2 = vaddq_u32(v_s2_low, v_s2_high);
+                    let v_s1_sums = vaddq_u32(v_s1_sums_low, v_s1_sums_high);
+
+                    // Multiply running block sums by 64 (shl by 6) and add to v_s2
+                    v_s2 = vaddq_u32(v_s2, vshlq_n_u32::<6>(v_s1_sums));
+
+                    // Single horizontal reductions outside the 5552-byte chunk boundary
+                    s1 = s1.wrapping_add(vaddvq_u32(v_s1));
+                    s2 = s2.wrapping_add(vaddvq_u32(v_s2));
                 }
 
-                let v_s1 = vaddq_u32(v_s1_low, v_s1_high);
-                let mut v_s2 = vaddq_u32(v_s2_low, v_s2_high);
-                let v_s1_sums = vaddq_u32(v_s1_sums_low, v_s1_sums_high);
-
-                // Multiply running block sums by 64 (shl by 6) and add to v_s2
-                v_s2 = vaddq_u32(v_s2, vshlq_n_u32::<6>(v_s1_sums));
-
-                // Single horizontal reductions outside the 5552-byte chunk boundary
-                s1 = s1.wrapping_add(vaddvq_u32(v_s1));
-                s2 = s2.wrapping_add(vaddvq_u32(v_s2));
+                let (new_s1, new_s2) = scalar::adler32_scalar_chunk(s1, s2, p, n);
+                s1 = new_s1;
+                s2 = new_s2;
+                p = p.add(n);
             }
 
-            let (new_s1, new_s2) = scalar::adler32_scalar_chunk(s1, s2, p, n);
-            s1 = new_s1;
-            s2 = new_s2;
-            p = p.add(n);
+            (s2 << 16) | s1
         }
-
-        (s2 << 16) | s1
     }
 }
 

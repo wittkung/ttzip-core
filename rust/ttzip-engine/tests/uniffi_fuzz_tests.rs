@@ -512,27 +512,48 @@ fn test_target_12_vfs_deep_hierarchy_and_fanout_stress() {
 // ============================================================================
 #[test]
 fn test_target_13_cancellation_token_polling_storm() {
+    const WORKERS: usize = 8;
     let token = CancellationToken::new();
     let cancel_flag = Arc::new(AtomicBool::new(false));
+    let (finished_tx, finished_rx) = std::sync::mpsc::channel();
+    let mut starts = Vec::with_capacity(WORKERS);
 
-    let t1 = token.clone();
-    let flag1 = cancel_flag.clone();
-    let handles: Vec<_> = (0..8).map(|_| {
-        let t = t1.clone();
-        let f = flag1.clone();
+    let handles: Vec<_> = (0..WORKERS).map(|_| {
+        let (start_tx, start_rx) = std::sync::mpsc::channel();
+        starts.push(start_tx);
+        let t = Arc::clone(&token);
+        let f = Arc::clone(&cancel_flag);
+        let finished = finished_tx.clone();
         std::thread::spawn(move || {
-            for _ in 0..10_000 {
-                let _ = t.is_cancelled();
-                if f.load(Ordering::Relaxed) {
-                    t.cancel();
+            let started = start_rx.recv_timeout(std::time::Duration::from_secs(10));
+            let mut observed = false;
+            if started.is_ok() {
+                for _ in 0..10_000 {
+                    let _ = t.is_cancelled();
+                    if f.load(Ordering::Acquire) {
+                        t.cancel();
+                        observed = true;
+                    }
                 }
             }
+            let _ = finished.send(observed);
         })
     }).collect();
+    drop(finished_tx);
 
     cancel_flag.store(true, Ordering::Release);
+    let starts: Vec<_> = starts.into_iter().map(|start| start.send(())).collect();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let finished: Vec<_> = (0..WORKERS).map(|_| {
+        finished_rx.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now()))
+    }).collect();
     for h in handles {
-        h.join().unwrap();
+        h.join().expect("Cancellation worker panicked");
+    }
+    assert!(starts.iter().all(Result::is_ok), "Cancellation worker did not await the request");
+    for observed in finished {
+        assert!(observed.expect("Cancellation worker did not finish"),
+                "Cancellation worker did not observe the request");
     }
     assert!(token.is_cancelled());
 }

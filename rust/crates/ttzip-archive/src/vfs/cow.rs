@@ -19,7 +19,7 @@ use std::path::Path;
 use std::os::unix::io::RawFd;
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn fclonefileat(
         src_fd: libc::c_int,
         dst_dirfd: libc::c_int,

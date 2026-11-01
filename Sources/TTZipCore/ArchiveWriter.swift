@@ -2,13 +2,195 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+import os
 
 public typealias UniFFICreateArchiveConfig = UniFfiCreateArchiveConfig
 
+/// Keyed mutual exclusion lock pool for target archive paths to serialize concurrent writes and mutations.
+/// Enforces deterministic FIFO ordering via continuation queues and guarantees that a path lock
+/// remains held until the underlying worker and its cleanup finish.
+public actor ArchiveTargetPathLockPool {
+    public static let shared = ArchiveTargetPathLockPool()
+
+    @TaskLocal
+    private static var heldLocks: Set<String> = []
+
+    private static let waiterEnqueuedHookStorage = OSAllocatedUnfairLock<(@Sendable (_ normalizedPath: String, _ waiterCount: Int) -> Void)?>(initialState: nil)
+    private static let lockReleasedHookStorage = OSAllocatedUnfairLock<(@Sendable (_ normalizedPath: String) -> Void)?>(initialState: nil)
+
+    package nonisolated static var _onWaiterEnqueuedHook: (@Sendable (_ normalizedPath: String, _ waiterCount: Int) -> Void)? {
+        get { waiterEnqueuedHookStorage.withLock { $0 } }
+        set { waiterEnqueuedHookStorage.withLock { $0 = newValue } }
+    }
+
+    package nonisolated static var _onLockReleasedHook: (@Sendable (_ normalizedPath: String) -> Void)? {
+        get { lockReleasedHookStorage.withLock { $0 } }
+        set { lockReleasedHookStorage.withLock { $0 = newValue } }
+    }
+
+    private final class Waiter: Sendable {
+        let id: UUID
+        let continuation: CheckedContinuation<Void, Error>
+        private let isResumed = OSAllocatedUnfairLock(initialState: false)
+
+        init(id: UUID, continuation: CheckedContinuation<Void, Error>) {
+            self.id = id
+            self.continuation = continuation
+        }
+
+        func resumeOnce(returning value: Void) {
+            let shouldResume = isResumed.withLock { resumed in
+                guard !resumed else { return false }
+                resumed = true
+                return true
+            }
+            if shouldResume {
+                continuation.resume(returning: value)
+            }
+        }
+
+        func resumeOnce(throwing error: Error) {
+            let shouldResume = isResumed.withLock { resumed in
+                guard !resumed else { return false }
+                resumed = true
+                return true
+            }
+            if shouldResume {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    private struct WaiterQueue {
+        var waiters: [Waiter] = []
+    }
+
+    private var queues: [String: WaiterQueue] = [:]
+
+    public init() {}
+
+    public func withLock<T: Sendable>(_ path: String, operation: @Sendable () async throws -> T) async throws -> T {
+        let normalizedKey = URL(fileURLWithPath: path).standardizedFileURL.path
+        if Self.heldLocks.contains(normalizedKey) {
+            return try await operation()
+        }
+
+        try await acquire(path: normalizedKey)
+        defer {
+            release(path: normalizedKey)
+        }
+        try Task.checkCancellation()
+        return try await Self.$heldLocks.withValue(Self.heldLocks.union([normalizedKey])) {
+            try await operation()
+        }
+    }
+
+    private func acquire(path: String) async throws {
+        try Task.checkCancellation()
+
+        if queues[path] == nil {
+            queues[path] = WaiterQueue(waiters: [])
+            return
+        }
+
+        let waiterID = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                enqueueWaiter(path: path, id: waiterID, continuation: continuation)
+            }
+        } onCancel: {
+            Task { [weak self] in
+                await self?.cancelWaiter(path: path, id: waiterID)
+            }
+        }
+    }
+
+    private func enqueueWaiter(path: String, id: UUID, continuation: CheckedContinuation<Void, Error>) {
+        if queues[path] == nil {
+            queues[path] = WaiterQueue(waiters: [])
+            continuation.resume(returning: ())
+            return
+        }
+        queues[path]?.waiters.append(Waiter(id: id, continuation: continuation))
+        let count = queues[path]?.waiters.count ?? 0
+        Self._onWaiterEnqueuedHook?(path, count)
+    }
+
+    private func cancelWaiter(path: String, id: UUID) {
+        guard var queue = queues[path] else { return }
+        if let index = queue.waiters.firstIndex(where: { $0.id == id }) {
+            let waiter = queue.waiters.remove(at: index)
+            queues[path] = queue
+            waiter.resumeOnce(throwing: CancellationError())
+        }
+    }
+
+    private func release(path: String) {
+        guard var queue = queues[path] else { return }
+        Self._onLockReleasedHook?(path)
+        if !queue.waiters.isEmpty {
+            let next = queue.waiters.removeFirst()
+            queues[path] = queue
+            next.resumeOnce(returning: ())
+        } else {
+            queues.removeValue(forKey: path)
+        }
+    }
+}
+
 /// High-performance multi-format archive compression engine (100% Pure Mozilla UniFFI Engine).
 public final class ArchiveWriter: ArchiveWriting, Sendable {
+    public typealias CreateArchiveExecutorOverride = @Sendable (
+        _ config: UniFfiCreateArchiveConfig,
+        _ extraOptions: UniFfiCreateArchiveExtraOptions,
+        _ progress: ProgressHandler?,
+        _ token: CancellationToken?
+    ) throws -> CompressionReport
+
     internal let hardwareTuner: HardwareTunerProtocol
     public let targetFormat: ArchiveCompressionFormat?
+    private let executorOverrideStorage = OSAllocatedUnfairLock<CreateArchiveExecutorOverride?>(initialState: nil)
+    private let postFfiCommitBeforeDeliveryHookStorage = OSAllocatedUnfairLock<(@Sendable () -> Void)?>(initialState: nil)
+    private let afterWorkerCleanupBeforeLockReleaseHookStorage = OSAllocatedUnfairLock<(@Sendable (_ outputPath: String) -> Void)?>(initialState: nil)
+    private let onCancellationHandleCreatedHookStorage = OSAllocatedUnfairLock<(@Sendable (_ handle: TaskExecutionHandle) -> Void)?>(initialState: nil)
+    private let lastCompressionReportStorage = OSAllocatedUnfairLock<CompressionReport?>(initialState: nil)
+
+    package var _createArchiveExecutorOverride: CreateArchiveExecutorOverride? {
+        get { executorOverrideStorage.withLock { $0 } }
+        set { executorOverrideStorage.withLock { $0 = newValue } }
+    }
+
+    /// Optional test hook invoked on the worker thread immediately after the UniFFI `createArchiveAdvancedWithOptions`
+    /// call has committed the target archive on disk and before the worker returns to `NativeComputeDispatcher`.
+    package var _postFfiCommitBeforeDeliveryHook: (@Sendable () -> Void)? {
+        get { postFfiCommitBeforeDeliveryHookStorage.withLock { $0 } }
+        set { postFfiCommitBeforeDeliveryHookStorage.withLock { $0 = newValue } }
+    }
+
+    /// Optional test hook invoked on the worker thread after the synchronous worker body and its staging
+    /// cleanup have completed, immediately before `ArchiveTargetPathLockPool` releases the path lock.
+    package var _afterWorkerCleanupBeforeLockReleaseHook: (@Sendable (_ outputPath: String) -> Void)? {
+        get { afterWorkerCleanupBeforeLockReleaseHookStorage.withLock { $0 } }
+        set { afterWorkerCleanupBeforeLockReleaseHookStorage.withLock { $0 = newValue } }
+    }
+
+    /// Optional test hook invoked when `createArchiveWithOutcome` creates its internal `TaskExecutionHandle`.
+    package var _onCancellationHandleCreatedHook: (@Sendable (_ handle: TaskExecutionHandle) -> Void)? {
+        get { onCancellationHandleCreatedHookStorage.withLock { $0 } }
+        set { onCancellationHandleCreatedHookStorage.withLock { $0 = newValue } }
+    }
+
+    /// Diagnostic snapshot of the most recently finished `CompressionReport` on this writer instance.
+    /// Production callers must consume the per-operation `CompressionReport` returned by `createArchiveWithOutcome`.
+    public var lastCompressionReport: CompressionReport? {
+        lastCompressionReportStorage.withLock { $0 }
+    }
+
+    /// Diagnostic snapshot of the most recently finished `ExtractionOutcome` on this writer instance.
+    /// Production callers must consume the per-operation outcome returned by `createArchiveWithOutcome`.
+    public var lastCompressionOutcome: ExtractionOutcome? {
+        lastCompressionReportStorage.withLock { $0?.outcome }
+    }
 
     public init(
         hardwareTuner: HardwareTunerProtocol = AppleSiliconTuner.shared,
@@ -31,7 +213,16 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
     /// Asynchronously creates an archive using a structured `ArchiveWriteRequest`.
     public func createArchive(_ request: ArchiveWriteRequest) async throws {
-        try await createArchive(
+        _ = try await createArchiveWithOutcome(request)
+    }
+
+    /// Asynchronously creates an archive using a structured `ArchiveWriteRequest` and returns its per-operation `CompressionReport`.
+    @discardableResult
+    public func createArchiveWithOutcome(
+        _ request: ArchiveWriteRequest,
+        token: CancellationToken? = nil
+    ) async throws -> CompressionReport {
+        try await createArchiveWithOutcome(
             outputPath: request.outputPath,
             format: request.format,
             level: request.level,
@@ -40,13 +231,23 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
             splitVolumeSizeBytes: request.splitVolumeSizeBytes,
             password: request.password,
             advancedOptions: request.advancedOptions,
-            progressHandler: request.progressHandler
+            progressHandler: request.progressHandler,
+            token: token
         )
     }
 
     /// Synchronously creates an archive using a structured `ArchiveWriteRequest`.
     public func createArchiveSync(_ request: ArchiveWriteRequest) throws {
-        try createArchiveSync(
+        _ = try createArchiveSyncWithOutcome(request)
+    }
+
+    /// Synchronously creates an archive using a structured `ArchiveWriteRequest` and returns its per-operation `CompressionReport`.
+    @discardableResult
+    public func createArchiveSyncWithOutcome(
+        _ request: ArchiveWriteRequest,
+        token: CancellationToken? = nil
+    ) throws -> CompressionReport {
+        try createArchiveSyncWithOutcome(
             outputPath: request.outputPath,
             format: request.format,
             level: request.level,
@@ -55,7 +256,8 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
             password: request.password,
             splitVolumeSizeBytes: request.splitVolumeSizeBytes,
             advancedOptions: request.advancedOptions,
-            progressHandler: request.progressHandler
+            progressHandler: request.progressHandler,
+            token: token
         )
     }
 
@@ -72,6 +274,35 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
         token: CancellationToken? = nil
     ) async throws {
+        _ = try await createArchiveWithOutcome(
+            outputPath: outputPath,
+            format: format,
+            level: level,
+            inputPaths: inputPaths,
+            options: options,
+            splitVolumeSizeBytes: splitVolumeSizeBytes,
+            password: password,
+            advancedOptions: advancedOptions,
+            progressHandler: progressHandler,
+            token: token
+        )
+    }
+
+    /// Asynchronously compresses files and directories into an archive and returns its per-operation `CompressionReport`
+    /// (including `outcome` when post-commit `.ttzip_create_txn_*` or `.ttzip_create_bak_*` cleanup reports warnings).
+    @discardableResult
+    public func createArchiveWithOutcome(
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        inputPaths: [String],
+        options: ArchiveFilterOptions = .defaultClean,
+        splitVolumeSizeBytes: Int64? = nil,
+        password: String? = nil,
+        advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
+    ) async throws -> CompressionReport {
         guard !inputPaths.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
         }
@@ -84,26 +315,37 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
         let boundToken = token ?? CancellationToken()
         let handle = TaskExecutionHandle(token: boundToken)
+        self._onCancellationHandleCreatedHook?(handle)
 
         do {
-            try await NativeComputeDispatcher.shared.dispatchCompute(
-                qos: .userInitiated,
-                cancellationHandle: handle
-            ) { [weak self] (_: CancellationToken) in
-                guard let self = self else { return }
-                try self.createArchiveSync(
-                    outputPath: outputPath,
-                    format: format,
-                    level: level,
-                    inputPaths: inputPaths,
-                    options: options,
-                    password: password,
-                    splitVolumeSizeBytes: splitVolumeSizeBytes,
-                    advancedOptions: advancedOptions,
-                    progressHandler: progressHandler,
-                    token: boundToken
-                )
+            return try await ArchiveTargetPathLockPool.shared.withLock(outputPath) {
+                try await NativeComputeDispatcher.shared.dispatchCompute(
+                    qos: .userInitiated,
+                    cancellationHandle: handle,
+                    cancellationPolicy: .waitForWorkerCompletion
+                ) { [weak self] (_: CancellationToken) -> CompressionReport in
+                    guard let self = self else {
+                        throw ArchiveError.cancelled
+                    }
+                    defer {
+                        self._afterWorkerCleanupBeforeLockReleaseHook?(outputPath)
+                    }
+                    return try self.createArchiveSyncWithOutcome(
+                        outputPath: outputPath,
+                        format: format,
+                        level: level,
+                        inputPaths: inputPaths,
+                        options: options,
+                        password: password,
+                        splitVolumeSizeBytes: splitVolumeSizeBytes,
+                        advancedOptions: advancedOptions,
+                        progressHandler: progressHandler,
+                        token: boundToken
+                    )
+                }
             }
+        } catch let archiveError as ArchiveError {
+            throw archiveError
         } catch is CancellationError {
             throw ArchiveError.cancelled
         }
@@ -123,13 +365,41 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
         progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
         token: CancellationToken? = nil
     ) throws {
+        _ = try createArchiveSyncWithOutcome(
+            outputPath: outputPath,
+            format: format,
+            level: level,
+            inputPaths: inputPaths,
+            options: options,
+            password: password,
+            splitVolumeSizeBytes: splitVolumeSizeBytes,
+            advancedOptions: advancedOptions,
+            progressHandler: progressHandler,
+            token: token
+        )
+    }
+
+    /// Synchronously creates an archive and returns its per-operation `CompressionReport`.
+    @discardableResult
+    public func createArchiveSyncWithOutcome(
+        outputPath: String,
+        format: ArchiveCompressionFormat = .zip,
+        level: ArchiveCompressionLevel = .normal,
+        inputPaths: [String],
+        options: ArchiveFilterOptions = .defaultClean,
+        password: String? = nil,
+        splitVolumeSizeBytes: Int64? = nil,
+        advancedOptions: ArchiveAdvancedOptions = .defaultOptions,
+        progressHandler: (@Sendable (ArchiveProgress) -> Void)? = nil,
+        token: CancellationToken? = nil
+    ) throws -> CompressionReport {
         guard !inputPaths.isEmpty else {
             throw ArchiveError.readFailed(code: -10)
         }
 
         let startTime = Date()
 
-        _ = try createArchiveInternal(
+        return try createArchiveInternal(
             outputPath: outputPath,
             format: format,
             level: level,
@@ -343,12 +613,22 @@ extension ArchiveWriter {
         }
 
         do {
-            let report = try createArchiveAdvancedWithOptions(
-                config: config,
-                extraOptions: extraOptions,
-                progress: relay,
-                token: token
-            )
+            lastCompressionReportStorage.withLock { $0 = nil }
+            let report: CompressionReport
+            if let override = self._createArchiveExecutorOverride {
+                report = try override(config, extraOptions, relay, token)
+            } else {
+                report = try createArchiveAdvancedWithOptions(
+                    config: config,
+                    extraOptions: extraOptions,
+                    progress: relay,
+                    token: token
+                )
+            }
+            lastCompressionReportStorage.withLock { $0 = report }
+            if let postCommitHook = self._postFfiCommitBeforeDeliveryHook {
+                postCommitHook()
+            }
 
             let duration = max(0.001, Date().timeIntervalSince(startTime))
             let throughput = report.throughputMbs > 0
@@ -365,9 +645,6 @@ extension ArchiveWriter {
 
             return report
         } catch {
-            if token?.isCancelled() == true || Task.isCancelled {
-                throw ArchiveError.cancelled
-            }
             throw ArchiveError.from(error: error)
         }
     }

@@ -13,7 +13,7 @@ use std::panic::catch_unwind;
 
 // MARK: - Fast-LZMA2 C-ABI
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_fl2_compress(
     src: *const u8,
     src_len: size_t,
@@ -47,7 +47,7 @@ pub extern "C" fn ttzip_rust_fl2_compress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_fl2_decompress(
     src: *const u8,
     src_len: size_t,
@@ -80,12 +80,12 @@ pub extern "C" fn ttzip_rust_fl2_decompress(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_fl2_compress_bound(src_len: size_t) -> size_t {
     fl2_compress_bound(src_len)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_fl2_find_decompressed_size(src: *const u8, src_len: size_t) -> u64 {
     match unsafe { safe_slice(src, src_len) } {
         Ok(slice) => fl2_find_decompressed_size(slice).unwrap_or(0),

@@ -271,7 +271,7 @@ mod tests {
     use super::*;
 
     #[allow(dead_code)]
-    extern "C" {
+    unsafe extern "C" {
         fn XXH32(input: *const libc::c_void, len: usize, seed: libc::c_uint) -> libc::c_uint;
     }
 

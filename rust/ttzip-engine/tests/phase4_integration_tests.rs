@@ -195,12 +195,14 @@ unsafe extern "C" fn phase4_test_logger_callback(
     _line: i32,
     _user_data: *mut libc::c_void,
 ) {
-    RECEIVED_LOG_COUNT.fetch_add(1, Ordering::SeqCst);
-    assert_eq!(level, TTZipLogLevel::Info);
-    let target_str = CStr::from_ptr(target).to_str().unwrap();
-    let msg_str = CStr::from_ptr(message).to_str().unwrap();
-    assert_eq!(target_str, "TTZipCore::Streaming");
-    assert_eq!(msg_str, "Micro-buffer stream initialized with 64KB");
+    unsafe {
+        RECEIVED_LOG_COUNT.fetch_add(1, Ordering::SeqCst);
+        assert_eq!(level, TTZipLogLevel::Info);
+        let target_str = CStr::from_ptr(target).to_str().unwrap();
+        let msg_str = CStr::from_ptr(message).to_str().unwrap();
+        assert_eq!(target_str, "TTZipCore::Streaming");
+        assert_eq!(msg_str, "Micro-buffer stream initialized with 64KB");
+    }
 }
 
 #[test]

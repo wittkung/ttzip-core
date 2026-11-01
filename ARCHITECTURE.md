@@ -12,7 +12,7 @@
 
 ---
 
-> **Historical document / scope**: This document retains the August 2026 v2 architecture background, including historical descriptions of the app and shared infrastructure. It is not the current product-wide specification. Use the [product doc-twin index](../docs/twin/SPEC_INDEX.md) for current process boundaries and VFS implementation status. Claims here about all-Safe-Rust execution, all-UniFFI bridging, or performance are not evidence of current production wiring or acceptance.
+> **Historical document / scope**: This document retains the August 2026 v2 architecture background, including historical descriptions of the app and shared infrastructure. It is not the current product-wide specification. Current process boundaries and VFS implementation status are described in [System Overview](docs/architecture/system-overview.md) and the guides under `docs/`. Claims here about all-Safe-Rust execution, all-UniFFI bridging, or performance are not evidence of current production wiring or acceptance.
 
 ## 1. System Overview & Dual-Core Philosophy
 
@@ -274,6 +274,6 @@ swift test
 
 ## 7. License & Ecosystem Governance
 
-- **TTZip Core (`core/`)**: Dual-licensed under the **BSD 3-Clause License** ([LICENSE-BSD](LICENSE-BSD)) and the **Apache License 2.0** ([LICENSE-APACHE](LICENSE-APACHE)).
-- **TTZip Apple Client (`apple/`)**: Licensed under the **GNU General Public License v3.0 or later** ([apple/LICENSE](../apple/LICENSE)).
+- **TTZip Core**: Licensed under the **BSD 3-Clause License** ([LICENSE](LICENSE)).
+- **TTZip Apple Client**: Shipped as [`wittkung/ttzip-apple`](https://github.com/wittkung/ttzip-apple) under the **MIT OR Apache-2.0** dual license.
 - **SPDX Standard**: All source files must include standard SPDX header identifiers and author attribution: `Witt Kung <witt.w.kung@gmail.com>`.

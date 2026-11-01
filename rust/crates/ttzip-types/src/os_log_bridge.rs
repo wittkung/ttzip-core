@@ -37,7 +37,7 @@ mod sys {
         pub ptr: *const c_char,
     }
 
-    extern "C" {
+    unsafe extern "C" {
         pub static __dso_handle: c_void;
 
         pub fn os_log_create(subsystem: *const c_char, category: *const c_char) -> *mut c_void;

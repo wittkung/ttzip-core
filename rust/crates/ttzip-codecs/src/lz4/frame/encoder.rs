@@ -14,7 +14,7 @@ use std::io::{self, Write};
 
 // MARK: - Native C LZ4 Stream Compression Bindings
 
-extern "C" {
+unsafe extern "C" {
     fn LZ4_createStream() -> *mut libc::c_void;
     fn LZ4_freeStream(stream_ptr: *mut libc::c_void) -> libc::c_int;
     fn LZ4_loadDict(

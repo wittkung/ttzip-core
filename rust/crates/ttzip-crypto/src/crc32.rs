@@ -43,32 +43,42 @@ mod arm64 {
 
     #[inline(always)]
     unsafe fn u32_to_bytevec(a: u32) -> uint8x16_t {
-        vreinterpretq_u8_u32(vsetq_lane_u32(a, vdupq_n_u32(0), 0))
+        unsafe {
+            vreinterpretq_u8_u32(vsetq_lane_u32(a, vdupq_n_u32(0), 0))
+        }
     }
 
     #[inline(always)]
     unsafe fn load_multipliers(p: &[u64; 2]) -> poly64x2_t {
-        vreinterpretq_p64_u64(vld1q_u64(p.as_ptr()))
+        unsafe {
+            vreinterpretq_p64_u64(vld1q_u64(p.as_ptr()))
+        }
     }
 
     #[inline(always)]
     unsafe fn clmul_low(a: uint8x16_t, b: poly64x2_t) -> uint8x16_t {
-        vreinterpretq_u8_p128(vmull_p64(
-            vget_lane_p64::<0>(vget_low_p64(vreinterpretq_p64_u8(a))),
-            vget_lane_p64::<0>(vget_low_p64(b)),
-        ))
+        unsafe {
+            vreinterpretq_u8_p128(vmull_p64(
+                vget_lane_p64::<0>(vget_low_p64(vreinterpretq_p64_u8(a))),
+                vget_lane_p64::<0>(vget_low_p64(b)),
+            ))
+        }
     }
 
     #[inline(always)]
     unsafe fn clmul_high(a: uint8x16_t, b: poly64x2_t) -> uint8x16_t {
-        vreinterpretq_u8_p128(vmull_high_p64(vreinterpretq_p64_u8(a), b))
+        unsafe {
+            vreinterpretq_u8_p128(vmull_high_p64(vreinterpretq_p64_u8(a), b))
+        }
     }
 
     #[inline(always)]
     unsafe fn fold_vec(cur: uint8x16_t, next: uint8x16_t, mult: poly64x2_t) -> uint8x16_t {
-        let low = clmul_low(cur, mult);
-        let high = clmul_high(cur, mult);
-        veorq_u8(next, veorq_u8(low, high))
+        unsafe {
+            let low = clmul_low(cur, mult);
+            let high = clmul_high(cur, mult);
+            veorq_u8(next, veorq_u8(low, high))
+        }
     }
 
     /// Computes CRC-32 using ARMv8 CRC and PMULL vector instructions.
@@ -76,49 +86,53 @@ mod arm64 {
     #[inline]
     #[target_feature(enable = "crc")]
     unsafe fn align_step_16(mut crc: u32, mut p: *const u8, mut len: usize) -> (u32, *const u8, usize) {
-        let align = ((p as usize).wrapping_neg()) & 15;
-        if align != 0 && len >= align {
-            if align & 1 != 0 {
-                crc = __crc32b(crc, *p);
-                p = p.add(1);
+        unsafe {
+            let align = ((p as usize).wrapping_neg()) & 15;
+            if align != 0 && len >= align {
+                if align & 1 != 0 {
+                    crc = __crc32b(crc, *p);
+                    p = p.add(1);
+                }
+                if align & 2 != 0 {
+                    crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                    p = p.add(2);
+                }
+                if align & 4 != 0 {
+                    crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                    p = p.add(4);
+                }
+                if align & 8 != 0 {
+                    crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                    p = p.add(8);
+                }
+                len -= align;
             }
-            if align & 2 != 0 {
-                crc = __crc32h(crc, (p as *const u16).read_unaligned());
-                p = p.add(2);
-            }
-            if align & 4 != 0 {
-                crc = __crc32w(crc, (p as *const u32).read_unaligned());
-                p = p.add(4);
-            }
-            if align & 8 != 0 {
-                crc = __crc32d(crc, (p as *const u64).read_unaligned());
-                p = p.add(8);
-            }
-            len -= align;
+            (crc, p, len)
         }
-        (crc, p, len)
     }
 
     #[inline]
     #[target_feature(enable = "crc")]
     unsafe fn align_step_8(mut crc: u32, mut p: *const u8, mut len: usize) -> (u32, *const u8, usize) {
-        let align = ((p as usize).wrapping_neg()) & 7;
-        if align != 0 && len >= align {
-            if align & 1 != 0 {
-                crc = __crc32b(crc, *p);
-                p = p.add(1);
+        unsafe {
+            let align = ((p as usize).wrapping_neg()) & 7;
+            if align != 0 && len >= align {
+                if align & 1 != 0 {
+                    crc = __crc32b(crc, *p);
+                    p = p.add(1);
+                }
+                if align & 2 != 0 {
+                    crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                    p = p.add(2);
+                }
+                if align & 4 != 0 {
+                    crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                    p = p.add(4);
+                }
+                len -= align;
             }
-            if align & 2 != 0 {
-                crc = __crc32h(crc, (p as *const u16).read_unaligned());
-                p = p.add(2);
-            }
-            if align & 4 != 0 {
-                crc = __crc32w(crc, (p as *const u32).read_unaligned());
-                p = p.add(4);
-            }
-            len -= align;
+            (crc, p, len)
         }
-        (crc, p, len)
     }
 
     /// Computes CRC-32 using ARM PMULL vector folding.
@@ -127,263 +141,269 @@ mod arm64 {
     /// Caller must ensure `p` points to `len` readable bytes and the CPU supports ARM CRC and PMULL instructions.
     #[target_feature(enable = "crc")]
     pub unsafe fn crc32_arm_pmull_raw(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
-        let (aligned_crc, aligned_p, aligned_len) = align_step_16(crc, p, len);
-        crc = aligned_crc;
-        p = aligned_p;
-        len = aligned_len;
+        unsafe {
+            let (aligned_crc, aligned_p, aligned_len) = align_step_16(crc, p, len);
+            crc = aligned_crc;
+            p = aligned_p;
+            len = aligned_len;
 
-        let mut v0: uint8x16_t;
-        let mut v1: uint8x16_t;
-        let mut v2: uint8x16_t;
-        let mut v3: uint8x16_t;
-        let mut v4: uint8x16_t;
-        let mut v5: uint8x16_t;
-        let mut v6: uint8x16_t;
-        let mut v7: uint8x16_t;
-        let mut v8: uint8x16_t;
-        let mut v9: uint8x16_t;
-        let mut v10: uint8x16_t;
-        let mut v11: uint8x16_t;
+            let mut v0: uint8x16_t;
+            let mut v1: uint8x16_t;
+            let mut v2: uint8x16_t;
+            let mut v3: uint8x16_t;
+            let mut v4: uint8x16_t;
+            let mut v5: uint8x16_t;
+            let mut v6: uint8x16_t;
+            let mut v7: uint8x16_t;
+            let mut v8: uint8x16_t;
+            let mut v9: uint8x16_t;
+            let mut v10: uint8x16_t;
+            let mut v11: uint8x16_t;
 
-        if len < 3 * 192 {
-            static MULTS: [[u64; 2]; 3] = [
-                [CRC32_X543_MODG, CRC32_X479_MODG],
-                [CRC32_X287_MODG, CRC32_X223_MODG],
-                [CRC32_X159_MODG, CRC32_X95_MODG],
-            ];
+            if len < 3 * 192 {
+                static MULTS: [[u64; 2]; 3] = [
+                    [CRC32_X543_MODG, CRC32_X479_MODG],
+                    [CRC32_X287_MODG, CRC32_X223_MODG],
+                    [CRC32_X159_MODG, CRC32_X95_MODG],
+                ];
 
-            if len < 128 {
-                return crc32_arm64_direct_hw(crc, p, len);
-            }
+                if len < 128 {
+                    return crc32_arm64_direct_hw(crc, p, len);
+                }
 
-            let mult_4 = load_multipliers(&MULTS[0]);
-            let mult_2 = load_multipliers(&MULTS[1]);
-            let mult_1 = load_multipliers(&MULTS[2]);
+                let mult_4 = load_multipliers(&MULTS[0]);
+                let mult_2 = load_multipliers(&MULTS[1]);
+                let mult_1 = load_multipliers(&MULTS[2]);
 
-            v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
-            v1 = vld1q_u8(p.add(16));
-            v2 = vld1q_u8(p.add(32));
-            v3 = vld1q_u8(p.add(48));
-            p = p.add(64);
-            len -= 64;
-
-            while len >= 64 {
-                v0 = fold_vec(v0, vld1q_u8(p), mult_4);
-                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_4);
-                v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_4);
-                v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_4);
+                v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
+                v1 = vld1q_u8(p.add(16));
+                v2 = vld1q_u8(p.add(32));
+                v3 = vld1q_u8(p.add(48));
                 p = p.add(64);
                 len -= 64;
-            }
 
-            v0 = fold_vec(v0, v2, mult_2);
-            v1 = fold_vec(v1, v3, mult_2);
-            if len >= 32 {
-                v0 = fold_vec(v0, vld1q_u8(p), mult_2);
-                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_2);
-                p = p.add(32);
-                len -= 32;
-            }
-            v0 = fold_vec(v0, v1, mult_1);
-        } else {
-            static MULTS: [[u64; 2]; 4] = [
-                [CRC32_X1567_MODG, CRC32_X1503_MODG],
-                [CRC32_X799_MODG, CRC32_X735_MODG],
-                [CRC32_X415_MODG, CRC32_X351_MODG],
-                [CRC32_X159_MODG, CRC32_X95_MODG],
-            ];
-            let mult_12 = load_multipliers(&MULTS[0]);
-            let mult_6 = load_multipliers(&MULTS[1]);
-            let mult_3 = load_multipliers(&MULTS[2]);
-            let mult_1 = load_multipliers(&MULTS[3]);
+                while len >= 64 {
+                    v0 = fold_vec(v0, vld1q_u8(p), mult_4);
+                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_4);
+                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_4);
+                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_4);
+                    p = p.add(64);
+                    len -= 64;
+                }
 
-            v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
-            v1 = vld1q_u8(p.add(16));
-            v2 = vld1q_u8(p.add(32));
-            v3 = vld1q_u8(p.add(48));
-            v4 = vld1q_u8(p.add(64));
-            v5 = vld1q_u8(p.add(80));
-            v6 = vld1q_u8(p.add(96));
-            v7 = vld1q_u8(p.add(112));
-            v8 = vld1q_u8(p.add(128));
-            v9 = vld1q_u8(p.add(144));
-            v10 = vld1q_u8(p.add(160));
-            v11 = vld1q_u8(p.add(176));
-            p = p.add(192);
-            len -= 192;
+                v0 = fold_vec(v0, v2, mult_2);
+                v1 = fold_vec(v1, v3, mult_2);
+                if len >= 32 {
+                    v0 = fold_vec(v0, vld1q_u8(p), mult_2);
+                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_2);
+                    p = p.add(32);
+                    len -= 32;
+                }
+                v0 = fold_vec(v0, v1, mult_1);
+            } else {
+                static MULTS: [[u64; 2]; 4] = [
+                    [CRC32_X1567_MODG, CRC32_X1503_MODG],
+                    [CRC32_X799_MODG, CRC32_X735_MODG],
+                    [CRC32_X415_MODG, CRC32_X351_MODG],
+                    [CRC32_X159_MODG, CRC32_X95_MODG],
+                ];
+                let mult_12 = load_multipliers(&MULTS[0]);
+                let mult_6 = load_multipliers(&MULTS[1]);
+                let mult_3 = load_multipliers(&MULTS[2]);
+                let mult_1 = load_multipliers(&MULTS[3]);
 
-            while len >= 192 {
-                v0 = fold_vec(v0, vld1q_u8(p), mult_12);
-                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_12);
-                v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_12);
-                v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_12);
-                v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_12);
-                v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_12);
-                v6 = fold_vec(v6, vld1q_u8(p.add(96)), mult_12);
-                v7 = fold_vec(v7, vld1q_u8(p.add(112)), mult_12);
-                v8 = fold_vec(v8, vld1q_u8(p.add(128)), mult_12);
-                v9 = fold_vec(v9, vld1q_u8(p.add(144)), mult_12);
-                v10 = fold_vec(v10, vld1q_u8(p.add(160)), mult_12);
-                v11 = fold_vec(v11, vld1q_u8(p.add(176)), mult_12);
+                v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
+                v1 = vld1q_u8(p.add(16));
+                v2 = vld1q_u8(p.add(32));
+                v3 = vld1q_u8(p.add(48));
+                v4 = vld1q_u8(p.add(64));
+                v5 = vld1q_u8(p.add(80));
+                v6 = vld1q_u8(p.add(96));
+                v7 = vld1q_u8(p.add(112));
+                v8 = vld1q_u8(p.add(128));
+                v9 = vld1q_u8(p.add(144));
+                v10 = vld1q_u8(p.add(160));
+                v11 = vld1q_u8(p.add(176));
                 p = p.add(192);
                 len -= 192;
+
+                while len >= 192 {
+                    v0 = fold_vec(v0, vld1q_u8(p), mult_12);
+                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_12);
+                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_12);
+                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_12);
+                    v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_12);
+                    v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_12);
+                    v6 = fold_vec(v6, vld1q_u8(p.add(96)), mult_12);
+                    v7 = fold_vec(v7, vld1q_u8(p.add(112)), mult_12);
+                    v8 = fold_vec(v8, vld1q_u8(p.add(128)), mult_12);
+                    v9 = fold_vec(v9, vld1q_u8(p.add(144)), mult_12);
+                    v10 = fold_vec(v10, vld1q_u8(p.add(160)), mult_12);
+                    v11 = fold_vec(v11, vld1q_u8(p.add(176)), mult_12);
+                    p = p.add(192);
+                    len -= 192;
+                }
+
+                v0 = fold_vec(v0, v6, mult_6);
+                v1 = fold_vec(v1, v7, mult_6);
+                v2 = fold_vec(v2, v8, mult_6);
+                v3 = fold_vec(v3, v9, mult_6);
+                v4 = fold_vec(v4, v10, mult_6);
+                v5 = fold_vec(v5, v11, mult_6);
+
+                if len >= 96 {
+                    v0 = fold_vec(v0, vld1q_u8(p), mult_6);
+                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_6);
+                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_6);
+                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_6);
+                    v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_6);
+                    v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_6);
+                    p = p.add(96);
+                    len -= 96;
+                }
+
+                v0 = fold_vec(v0, v3, mult_3);
+                v1 = fold_vec(v1, v4, mult_3);
+                v2 = fold_vec(v2, v5, mult_3);
+
+                if len >= 48 {
+                    v0 = fold_vec(v0, vld1q_u8(p), mult_3);
+                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_3);
+                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_3);
+                    p = p.add(48);
+                    len -= 48;
+                }
+
+                v0 = fold_vec(v0, v1, mult_1);
+                v0 = fold_vec(v0, v2, mult_1);
             }
 
-            v0 = fold_vec(v0, v6, mult_6);
-            v1 = fold_vec(v1, v7, mult_6);
-            v2 = fold_vec(v2, v8, mult_6);
-            v3 = fold_vec(v3, v9, mult_6);
-            v4 = fold_vec(v4, v10, mult_6);
-            v5 = fold_vec(v5, v11, mult_6);
+            crc = __crc32d(0, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 0));
+            crc = __crc32d(crc, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 1));
 
-            if len >= 96 {
-                v0 = fold_vec(v0, vld1q_u8(p), mult_6);
-                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_6);
-                v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_6);
-                v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_6);
-                v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_6);
-                v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_6);
-                p = p.add(96);
-                len -= 96;
-            }
-
-            v0 = fold_vec(v0, v3, mult_3);
-            v1 = fold_vec(v1, v4, mult_3);
-            v2 = fold_vec(v2, v5, mult_3);
-
-            if len >= 48 {
-                v0 = fold_vec(v0, vld1q_u8(p), mult_3);
-                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_3);
-                v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_3);
-                p = p.add(48);
-                len -= 48;
-            }
-
-            v0 = fold_vec(v0, v1, mult_1);
-            v0 = fold_vec(v0, v2, mult_1);
+            crc32_arm64_direct_hw(crc, p, len)
         }
-
-        crc = __crc32d(0, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 0));
-        crc = __crc32d(crc, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 1));
-
-        crc32_arm64_direct_hw(crc, p, len)
     }
 
     #[inline]
     #[target_feature(enable = "crc")]
     pub(crate) unsafe fn crc32_arm64_small_fast(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
-        if len == 64 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(32) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(40) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(48) as *const u64).read_unaligned());
-            return __crc32d(crc, (p.add(56) as *const u64).read_unaligned());
-        }
+        unsafe {
+            if len == 64 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(32) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(40) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(48) as *const u64).read_unaligned());
+                return __crc32d(crc, (p.add(56) as *const u64).read_unaligned());
+            }
 
-        if len >= 32 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
-            p = p.add(32);
-            len -= 32;
-        }
+            if len >= 32 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+                p = p.add(32);
+                len -= 32;
+            }
 
-        if len >= 16 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            p = p.add(16);
-            len -= 16;
-        }
+            if len >= 16 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                p = p.add(16);
+                len -= 16;
+            }
 
-        if len >= 8 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            p = p.add(8);
-            len -= 8;
-        }
+            if len >= 8 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                p = p.add(8);
+                len -= 8;
+            }
 
-        if len >= 4 {
-            crc = __crc32w(crc, (p as *const u32).read_unaligned());
-            p = p.add(4);
-            len -= 4;
-        }
+            if len >= 4 {
+                crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                p = p.add(4);
+                len -= 4;
+            }
 
-        if len >= 2 {
-            crc = __crc32h(crc, (p as *const u16).read_unaligned());
-            p = p.add(2);
-            len -= 2;
-        }
+            if len >= 2 {
+                crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                p = p.add(2);
+                len -= 2;
+            }
 
-        if len == 1 {
-            crc = __crc32b(crc, *p);
-        }
+            if len == 1 {
+                crc = __crc32b(crc, *p);
+            }
 
-        crc
+            crc
+        }
     }
 
     #[inline]
     #[target_feature(enable = "crc")]
     pub(crate) unsafe fn crc32_arm64_direct_hw(mut crc: u32, mut p: *const u8, mut len: usize) -> u32 {
-        let (aligned_crc, aligned_p, aligned_len) = align_step_8(crc, p, len);
-        crc = aligned_crc;
-        p = aligned_p;
-        len = aligned_len;
+        unsafe {
+            let (aligned_crc, aligned_p, aligned_len) = align_step_8(crc, p, len);
+            crc = aligned_crc;
+            p = aligned_p;
+            len = aligned_len;
 
-        while len >= 64 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(32) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(40) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(48) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(56) as *const u64).read_unaligned());
-            p = p.add(64);
-            len -= 64;
+            while len >= 64 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(32) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(40) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(48) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(56) as *const u64).read_unaligned());
+                p = p.add(64);
+                len -= 64;
+            }
+
+            if len >= 32 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
+                p = p.add(32);
+                len -= 32;
+            }
+
+            if len >= 16 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
+                p = p.add(16);
+                len -= 16;
+            }
+
+            if len >= 8 {
+                crc = __crc32d(crc, (p as *const u64).read_unaligned());
+                p = p.add(8);
+                len -= 8;
+            }
+
+            if len >= 4 {
+                crc = __crc32w(crc, (p as *const u32).read_unaligned());
+                p = p.add(4);
+                len -= 4;
+            }
+
+            if len >= 2 {
+                crc = __crc32h(crc, (p as *const u16).read_unaligned());
+                p = p.add(2);
+                len -= 2;
+            }
+
+            if len == 1 {
+                crc = __crc32b(crc, *p);
+            }
+
+            crc
         }
-
-        if len >= 32 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(16) as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(24) as *const u64).read_unaligned());
-            p = p.add(32);
-            len -= 32;
-        }
-
-        if len >= 16 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            crc = __crc32d(crc, (p.add(8) as *const u64).read_unaligned());
-            p = p.add(16);
-            len -= 16;
-        }
-
-        if len >= 8 {
-            crc = __crc32d(crc, (p as *const u64).read_unaligned());
-            p = p.add(8);
-            len -= 8;
-        }
-
-        if len >= 4 {
-            crc = __crc32w(crc, (p as *const u32).read_unaligned());
-            p = p.add(4);
-            len -= 4;
-        }
-
-        if len >= 2 {
-            crc = __crc32h(crc, (p as *const u16).read_unaligned());
-            p = p.add(2);
-            len -= 2;
-        }
-
-        if len == 1 {
-            crc = __crc32b(crc, *p);
-        }
-
-        crc
     }
 }
 

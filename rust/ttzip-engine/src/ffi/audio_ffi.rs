@@ -9,7 +9,7 @@ use libc::{c_char, size_t};
 use std::ffi::CStr;
 use std::panic::catch_unwind;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_extract_audio_waveform(
     file_path: *const c_char,
     bucket_count: size_t,
@@ -46,7 +46,7 @@ pub extern "C" fn ttzip_extract_audio_waveform(
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn ttzip_extract_audio_waveform_from_memory(
     data: *const u8,
     data_len: size_t,

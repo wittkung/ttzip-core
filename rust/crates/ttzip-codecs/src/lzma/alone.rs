@@ -67,7 +67,7 @@ pub const LZMA_PROG_ERROR: libc::c_int = 11;
 /// Maximum allowable dictionary size for single-pass LZMA1 extraction (64 MiB).
 pub const MAX_LZMA_DICT_SIZE: u32 = 64 * 1024 * 1024;
 
-extern "C" {
+unsafe extern "C" {
     fn lzma_alone_decoder(strm: *mut LzmaStream, memlimit: u64) -> libc::c_int;
     fn lzma_code(strm: *mut LzmaStream, action: libc::c_int) -> libc::c_int;
     fn lzma_end(strm: *mut LzmaStream);
@@ -230,7 +230,7 @@ mod tests {
         reserved_ptr2: *mut libc::c_void,
     }
 
-    extern "C" {
+    unsafe extern "C" {
         fn lzma_lzma_preset(options: *mut LzmaOptionsLzma, preset: u32) -> bool;
         fn lzma_alone_encoder(strm: *mut LzmaStream, options: *const LzmaOptionsLzma) -> libc::c_int;
     }

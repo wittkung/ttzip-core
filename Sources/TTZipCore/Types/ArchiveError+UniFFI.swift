@@ -64,7 +64,129 @@ extension ArchiveError {
                 archivePath: "checksum",
                 entryPath: String(format: "Expected 0x%08x, got 0x%08x", expected, actual)
             )
+        case let .CreateTransactionIncomplete(report, summaryMessage):
+            return .createTransactionIncomplete(
+                Self.mapTransactionFailureReport(report, fallbackSummary: summaryMessage)
+            )
         }
+    }
+
+    private static func mapResidualPathRole(_ role: UniFfiResidualPathRole) -> ArchiveResidualPathRole {
+        switch role {
+        case .stagedArtifact:
+            return .stagedArtifact
+        case .stagedTempFile:
+            return .stagedTempFile
+        case .unownedPathOccupant:
+            return .unownedPathOccupant
+        case .transactionStageDirectory:
+            return .transactionStageDirectory
+        case .preexistingBackupDirectory:
+            return .preexistingBackupDirectory
+        case .finalDestinationTarget:
+            return .finalDestinationTarget
+        }
+    }
+
+    private static func mapCleanupDisposition(_ disposition: UniFfiArchiveCleanupDisposition) -> ArchiveCleanupDisposition {
+        switch disposition {
+        case .refusedOwnershipMismatch:
+            return .refusedOwnershipMismatch
+        case .ownershipOrLocationUnconfirmed:
+            return .ownershipOrLocationUnconfirmed
+        case .restoredDisplacedSentinel:
+            return .restoredDisplacedSentinel
+        case .restoreDisplacedSentinelFailed:
+            return .restoreDisplacedSentinelFailed
+        case .unlinkOrRmdirIoError:
+            return .unlinkOrRmdirIoError
+        case .stageDirectoryPreservedDueToInnerFailure:
+            return .stageDirectoryPreservedDueToInnerFailure
+        case .postCommitCleanupFailed:
+            return .postCommitCleanupFailed
+        case .descriptorReleaseUnconfirmed:
+            return .descriptorReleaseUnconfirmed
+        }
+    }
+
+    private static func mapDescriptorReleaseStatus(_ status: UniFfiDescriptorReleaseStatus) -> ArchiveDescriptorReleaseStatus {
+        switch status {
+        case .confirmedReleased:
+            return .confirmedReleased
+        case .releaseUnconfirmed:
+            return .releaseUnconfirmed
+        }
+    }
+
+    private static func mapBackupRecoveryState(_ state: UniFfiCreateBackupRecoveryState) -> ArchiveCreateBackupRecoveryState {
+        switch state {
+        case .notApplicable:
+            return .notApplicable
+        case .restoredAndVerified:
+            return .restoredAndVerified
+        case .rollbackIncompletePreservedInBackup:
+            return .rollbackIncompletePreservedInBackup
+        }
+    }
+
+    private static func mapTransactionFailureReport(
+        _ report: UniFfiCreateTransactionFailureReport,
+        fallbackSummary: String
+    ) -> ArchiveCreateTransactionFailureReport {
+        let verifiedPrimaryCancelled = report.wasPrimaryCancelled
+            && (RustTTZipStatusCode(rawValue: report.primaryStatusCode) == .cancelled)
+        let cleanupFailures = report.cleanupFailures.map { item in
+            ArchiveStageCleanupFailureItem(
+                role: mapResidualPathRole(item.role),
+                disposition: mapCleanupDisposition(item.disposition),
+                path: item.path,
+                originalStagedPath: item.originalStagedPath,
+                osErrorCode: item.osErrorCode,
+                message: item.message
+            )
+        }
+        let finishDiagnostics = report.finishDiagnostics.map { diag in
+            ArchiveStageFileFinishDiagnostic(
+                role: mapResidualPathRole(diag.role),
+                diagnosticPath: diag.diagnosticPath,
+                expectedDev: diag.expectedDev,
+                expectedIno: diag.expectedIno,
+                primaryStatusCode: diag.primaryStatusCode,
+                priorWriteOrEncoderError: diag.priorWriteOrEncoderError,
+                userspaceFlushOsError: diag.userspaceFlushOsError,
+                userspaceFlushDetail: diag.userspaceFlushDetail,
+                syncOsError: diag.syncOsError,
+                syncDetail: diag.syncDetail,
+                closeOsError: diag.closeOsError,
+                closeDetail: diag.closeDetail,
+                releaseStatus: mapDescriptorReleaseStatus(diag.releaseStatus)
+            )
+        }
+        let rollbackFailedEntries = report.rollbackFailedEntries.map { entry in
+            ArchiveBackupRecoveryEntryFailure(
+                backupSourcePath: entry.backupSourcePath,
+                targetPath: entry.targetPath,
+                osErrorCode: entry.osErrorCode,
+                message: entry.message
+            )
+        }
+        let resolvedSummary = report.summaryMessage.isEmpty ? fallbackSummary : report.summaryMessage
+        return ArchiveCreateTransactionFailureReport(
+            primaryStatusCode: report.primaryStatusCode,
+            wasPrimaryCancelled: verifiedPrimaryCancelled,
+            isCancellationRequested: report.isCancellationRequested || verifiedPrimaryCancelled,
+            stageDir: report.stageDir,
+            stageDirPreserved: report.stageDirPreserved,
+            unconfirmedReleaseCount: report.unconfirmedReleaseCount,
+            cleanupFailures: cleanupFailures,
+            finishDiagnostics: finishDiagnostics,
+            recoveryState: mapBackupRecoveryState(report.recoveryState),
+            backupDir: report.backupDir,
+            restoredTargets: report.restoredTargets,
+            rollbackFailedEntries: rollbackFailedEntries,
+            backupDirCleanupError: report.backupDirCleanupError,
+            summaryMessage: resolvedSummary
+        )
     }
 }
 

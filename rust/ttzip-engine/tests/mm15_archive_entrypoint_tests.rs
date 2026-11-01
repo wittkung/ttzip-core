@@ -14,7 +14,7 @@
 //! 6. RAR only via the repository's existing fixtures; the fixtures are **required**, so a
 //!    missing fixture fails loudly instead of reporting a pass.
 //!
-//! Fixture budget (serialised by `HEAVY_FIXTURE_LOCK`; run this file exclusively): 3 x 33 MiB
+//! Fixture budget (serialised by `HEAVY_FIXTURE_LOCK` within this test process): 3 x 33 MiB
 //! solid, 64 MiB + (64 MiB + 1) solid, 3 x 2 MiB split volumes, 2 x 256 KiB encrypted.
 //! Peak temporary disk <= 300 MiB, peak RSS per fixture build <= 200 MiB.
 
@@ -64,8 +64,8 @@ const RAR_A_TXT_LEN: u64 = 18;
 const RAR4_FIXTURE: &str = "test_read_format_rar4_encrypted.rar";
 const RAR5_FIXTURE: &str = "test_read_format_rar5_encrypted.rar";
 
-/// Serialises the heavy fixture scenarios inside this binary. The Bazel target still has to
-/// be scheduled exclusively because the fixtures are shared with other integration binaries.
+/// Limits concurrent heavy fixture allocations inside this test process. Generated archives
+/// and extraction destinations use unique temporary directories; checked-in RAR inputs are read-only.
 static HEAVY_FIXTURE_LOCK: Mutex<()> = Mutex::new(());
 
 /// Acquires the heavy-fixture lock, recovering from a poisoned mutex so that one failing

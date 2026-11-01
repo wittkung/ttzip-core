@@ -280,3 +280,342 @@ fn test_control_flow_with_test_double_and_unseen_vocabulary_boundary() {
         Some("internal/docs/audit_2026.txt")
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn test_partial_directory_read_error_with_non_empty_root_preserves_old_index_and_fails() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let workspace_root = temp_dir.path().join("workspace_partial_err");
+    let subdir = workspace_root.join("sub");
+    let index_dir = temp_dir.path().join("index_partial_err");
+    fs::create_dir_all(&subdir).expect("mkdir subdir");
+    fs::create_dir_all(&index_dir).expect("mkdir index");
+
+    fs::write(workspace_root.join("keep.md"), "root_keep_token_101").expect("write keep.md");
+    fs::write(subdir.join("nested.md"), "nested_preserve_token_202").expect("write nested.md");
+
+    let coordinator = SemanticSearchCoordinator::new_for_testing_with_test_double(index_dir);
+    coordinator.register_scope(SemanticScopeDescriptor {
+        scope_id: "dir:partial".to_string(),
+        kind: SemanticScopeKind::AuthorizedDirectory,
+        root_path: workspace_root.to_string_lossy().into_owned(),
+        display_name: "workspace_partial".to_string(),
+        is_authorized: true,
+    });
+
+    let initial = coordinator
+        .index_directory_scope("dir:partial")
+        .expect("initial full scan must succeed");
+    assert_eq!(initial.phase, SemanticIngestPhase::Completed);
+
+    fs::write(
+        workspace_root.join("uncommitted_new.md"),
+        "partial_new_token_303",
+    )
+    .expect("write uncommitted_new.md");
+    fs::set_permissions(&subdir, fs::Permissions::from_mode(0o000)).expect("chmod 000 subdir");
+
+    let rescan_err = coordinator
+        .index_directory_scope("dir:partial")
+        .expect_err("unreadable subdirectory must fail scan even when root has readable files");
+    fs::set_permissions(&subdir, fs::Permissions::from_mode(0o755)).expect("restore chmod 755");
+    assert!(rescan_err.to_string().contains("Failed to read"));
+
+    let failed_prog = coordinator
+        .scope_progress("dir:partial")
+        .expect("scope progress");
+    assert_eq!(failed_prog.phase, SemanticIngestPhase::Failed);
+    assert_eq!(failed_prog.indexed_segments, initial.indexed_segments);
+
+    let nested_hits = coordinator.search(&SemanticSearchRequest {
+        request_id: 10,
+        window_id: "win".to_string(),
+        query: "nested_preserve_token_202".to_string(),
+        scope_ids: vec!["dir:partial".to_string()],
+        top_k: 5,
+        lexical_weight: 0.30,
+        semantic_weight: 0.70,
+    });
+    assert!(
+        nested_hits
+            .hits
+            .iter()
+            .any(|h| h.display_path == "sub/nested.md"),
+        "Existing indexed entries inside unreadable subdirectory must not be deleted"
+    );
+
+    let uncommitted_hits = coordinator.search(&SemanticSearchRequest {
+        request_id: 11,
+        window_id: "win".to_string(),
+        query: "partial_new_token_303".to_string(),
+        scope_ids: vec!["dir:partial".to_string()],
+        top_k: 5,
+        lexical_weight: 0.30,
+        semantic_weight: 0.70,
+    });
+    assert!(
+        uncommitted_hits
+            .hits
+            .iter()
+            .all(|h| h.display_path != "uncommitted_new.md"),
+        "Partial scan must never commit newly discovered root files when a subdirectory fails"
+    );
+}
+
+#[test]
+fn test_pure_delete_events_never_prepare_model_and_remove_indexed_file() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use ttzip_semantic::{
+        DeterministicEmbeddingProvider, EmbeddingProvider, SemanticModelError, SemanticModelState,
+    };
+
+    struct CountingPrepareProvider {
+        inner: DeterministicEmbeddingProvider,
+        prepare_calls: AtomicUsize,
+    }
+    impl EmbeddingProvider for CountingPrepareProvider {
+        fn model_state(&self) -> SemanticModelState {
+            self.inner.model_state()
+        }
+        fn model_fingerprint(&self) -> u64 {
+            self.inner.model_fingerprint()
+        }
+        fn prepare(&self) -> SemanticModelState {
+            self.prepare_calls.fetch_add(1, Ordering::SeqCst);
+            self.inner.prepare()
+        }
+        fn encode_query(
+            &self,
+            query: &str,
+            is_code_query: bool,
+        ) -> Result<[i8; 128], SemanticModelError> {
+            self.inner.encode_query(query, is_code_query)
+        }
+        fn encode_document(
+            &self,
+            relative_path: Option<&str>,
+            chunk_text: &str,
+        ) -> Result<[i8; 128], SemanticModelError> {
+            self.inner.encode_document(relative_path, chunk_text)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let provider = Arc::new(CountingPrepareProvider {
+        inner: DeterministicEmbeddingProvider::ready(),
+        prepare_calls: AtomicUsize::new(0),
+    });
+    let coordinator = SemanticSearchCoordinator::new(
+        Arc::clone(&provider) as Arc<dyn EmbeddingProvider>,
+        temp_dir.path().to_path_buf(),
+    );
+    coordinator.register_scope(SemanticScopeDescriptor {
+        scope_id: "dir:pure_del".to_string(),
+        kind: SemanticScopeKind::AuthorizedDirectory,
+        root_path: temp_dir.path().to_string_lossy().into_owned(),
+        display_name: "pure_del".to_string(),
+        is_authorized: true,
+    });
+
+    coordinator
+        .apply_file_events(
+            "dir:pure_del",
+            &[
+                SemanticFileEvent::CreatedOrModified {
+                    relative_path: "remove_me.md".to_string(),
+                    archive_entry_path: None,
+                    bytes: b"delete_target_token_501".to_vec(),
+                    mtime_ns: 1,
+                },
+                SemanticFileEvent::CreatedOrModified {
+                    relative_path: "keep_me.md".to_string(),
+                    archive_entry_path: None,
+                    bytes: b"keep_target_token_502".to_vec(),
+                    mtime_ns: 1,
+                },
+            ],
+        )
+        .expect("seed index");
+    assert_eq!(provider.prepare_calls.load(Ordering::SeqCst), 1);
+
+    provider.prepare_calls.store(0, Ordering::SeqCst);
+    let del_prog = coordinator
+        .apply_file_events(
+            "dir:pure_del",
+            &[SemanticFileEvent::Removed {
+                relative_path: "remove_me.md".to_string(),
+            }],
+        )
+        .expect("pure delete must succeed without preparing model");
+    assert_eq!(del_prog.phase, SemanticIngestPhase::Completed);
+    assert_eq!(
+        provider.prepare_calls.load(Ordering::SeqCst),
+        0,
+        "Pure deletion event batch must never call provider.prepare()"
+    );
+
+    let removed_hits = coordinator.search(&SemanticSearchRequest {
+        request_id: 20,
+        window_id: "win".to_string(),
+        query: "delete_target_token_501".to_string(),
+        scope_ids: vec!["dir:pure_del".to_string()],
+        top_k: 5,
+        lexical_weight: 0.30,
+        semantic_weight: 0.70,
+    });
+    assert!(
+        removed_hits
+            .hits
+            .iter()
+            .all(|h| h.display_path != "remove_me.md"),
+        "Deleted file must be removed from search index without model preparation"
+    );
+}
+
+#[test]
+fn test_post_scan_body_read_failure_discards_consumed_work_and_preserves_old_index() {
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use ttzip_semantic::{
+        DeterministicEmbeddingProvider, EmbeddingProvider, SemanticModelError, SemanticModelState,
+    };
+
+    struct InvalidateSecondFileDuringFirstEmbedProvider {
+        inner: DeterministicEmbeddingProvider,
+        arm_invalidation: AtomicBool,
+        first_file_encode_calls: AtomicUsize,
+        second_file_path: PathBuf,
+    }
+    impl EmbeddingProvider for InvalidateSecondFileDuringFirstEmbedProvider {
+        fn model_state(&self) -> SemanticModelState {
+            self.inner.model_state()
+        }
+        fn model_fingerprint(&self) -> u64 {
+            self.inner.model_fingerprint()
+        }
+        fn prepare(&self) -> SemanticModelState {
+            self.inner.prepare()
+        }
+        fn encode_query(
+            &self,
+            query: &str,
+            is_code_query: bool,
+        ) -> Result<[i8; 128], SemanticModelError> {
+            self.inner.encode_query(query, is_code_query)
+        }
+        fn encode_document(
+            &self,
+            relative_path: Option<&str>,
+            chunk_text: &str,
+        ) -> Result<[i8; 128], SemanticModelError> {
+            if self.arm_invalidation.load(Ordering::SeqCst)
+                && relative_path == Some("a_first.md")
+            {
+                self.first_file_encode_calls.fetch_add(1, Ordering::SeqCst);
+                let _ = fs::remove_file(&self.second_file_path);
+            }
+            self.inner.encode_document(relative_path, chunk_text)
+        }
+    }
+
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let ws = temp_dir.path().join("ws_body_fail");
+    let store = temp_dir.path().join("store_body_fail");
+    fs::create_dir_all(&ws).expect("mkdir ws");
+    fs::create_dir_all(&store).expect("mkdir store");
+
+    let first_path = ws.join("a_first.md");
+    let second_path = ws.join("z_second.md");
+    fs::write(&first_path, "preserved_first_token_601").expect("write a_first");
+    fs::write(&second_path, "preserved_second_token_602").expect("write z_second");
+
+    let provider = Arc::new(InvalidateSecondFileDuringFirstEmbedProvider {
+        inner: DeterministicEmbeddingProvider::ready(),
+        arm_invalidation: AtomicBool::new(false),
+        first_file_encode_calls: AtomicUsize::new(0),
+        second_file_path: second_path.clone(),
+    });
+    let coordinator = SemanticSearchCoordinator::new(
+        Arc::clone(&provider) as Arc<dyn EmbeddingProvider>,
+        store,
+    );
+    coordinator.register_scope(SemanticScopeDescriptor {
+        scope_id: "dir:body_fail".to_string(),
+        kind: SemanticScopeKind::AuthorizedDirectory,
+        root_path: ws.to_string_lossy().into_owned(),
+        display_name: "ws_body_fail".to_string(),
+        is_authorized: true,
+    });
+
+    let initial = coordinator
+        .index_directory_scope("dir:body_fail")
+        .expect("initial scan must succeed");
+    assert_eq!(initial.phase, SemanticIngestPhase::Completed);
+
+    // Modify both files so neither is skipped by mtime+size freshness check;
+    // when a_first.md is consumed and embedded, z_second.md is invalidated before its body read.
+    fs::write(&first_path, "uncommitted_consumed_work_token_603_extra_len")
+        .expect("modify a_first");
+    fs::write(&second_path, "transient_second_body_token_604_extra_len")
+        .expect("modify z_second");
+    provider.arm_invalidation.store(true, Ordering::SeqCst);
+
+    let err = coordinator
+        .index_directory_scope("dir:body_fail")
+        .expect_err("body read failure on z_second.md after a_first.md was consumed must fail scan");
+    assert!(err.to_string().contains("Failed to read"));
+    assert!(
+        provider.first_file_encode_calls.load(Ordering::SeqCst) >= 1,
+        "a_first.md must have been consumed and embedded into working_index before z_second.md failed"
+    );
+
+    let failed_prog = coordinator
+        .scope_progress("dir:body_fail")
+        .expect("progress after body fail");
+    assert_eq!(failed_prog.phase, SemanticIngestPhase::Failed);
+    assert_eq!(failed_prog.indexed_segments, initial.indexed_segments);
+
+    let first_hits = coordinator.search(&SemanticSearchRequest {
+        request_id: 30,
+        window_id: "win".to_string(),
+        query: "preserved_first_token_601".to_string(),
+        scope_ids: vec!["dir:body_fail".to_string()],
+        top_k: 5,
+        lexical_weight: 0.30,
+        semantic_weight: 0.70,
+    });
+    assert!(
+        first_hits
+            .hits
+            .iter()
+            .any(|h| h.display_path == "a_first.md"
+                && h.snippet
+                    .as_deref()
+                    .is_some_and(|s| s.contains("preserved_first_token_601"))),
+        "Consumed work on a_first.md must be discarded and old a_first.md index preserved"
+    );
+
+    let second_hits = coordinator.search(&SemanticSearchRequest {
+        request_id: 31,
+        window_id: "win".to_string(),
+        query: "preserved_second_token_602".to_string(),
+        scope_ids: vec!["dir:body_fail".to_string()],
+        top_k: 5,
+        lexical_weight: 0.30,
+        semantic_weight: 0.70,
+    });
+    assert!(
+        second_hits
+            .hits
+            .iter()
+            .any(|h| h.display_path == "z_second.md"
+                && h.snippet
+                    .as_deref()
+                    .is_some_and(|s| s.contains("preserved_second_token_602"))),
+        "Old z_second.md index entry must remain intact when its rescan body read fails"
+    );
+}

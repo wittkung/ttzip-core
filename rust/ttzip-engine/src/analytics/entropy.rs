@@ -74,8 +74,7 @@ pub fn compute_histogram_256(data: &[u8]) -> [u32; HISTOGRAM_BUCKETS] {
     let mut h2 = [0u32; HISTOGRAM_BUCKETS];
     let mut h3 = [0u32; HISTOGRAM_BUCKETS];
 
-    let chunks = data.chunks_exact(16);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = data.as_chunks::<16>();
 
     for chunk in chunks {
         // Interleave across 4 independent histogram tables to maximize ILP

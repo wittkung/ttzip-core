@@ -82,9 +82,9 @@ impl XzCrc64 {
     #[inline]
     pub fn update(&mut self, data: &[u8]) {
         let mut crc = self.state;
-        let mut chunks = data.chunks_exact(8);
+        let (chunks, remainder) = data.as_chunks::<8>();
 
-        for chunk in &mut chunks {
+        for chunk in chunks {
             let val = u64::from_le_bytes([
                 chunk[0], chunk[1], chunk[2], chunk[3],
                 chunk[4], chunk[5], chunk[6], chunk[7],
@@ -100,7 +100,7 @@ impl XzCrc64 {
                 ^ CRC64_TABLE[0][((term >> 56) & 0xFF) as usize];
         }
 
-        for &b in chunks.remainder() {
+        for &b in remainder {
             let idx = ((crc as u8) ^ b) as usize;
             crc = CRC64_TABLE[0][idx] ^ (crc >> 8);
         }

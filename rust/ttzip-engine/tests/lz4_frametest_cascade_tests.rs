@@ -131,7 +131,7 @@ pub struct LZ4FDecompressOptions {
 enum LZ4FCompressCtxOpaque {}
 enum LZ4FDecompressCtxOpaque {}
 
-extern "C" {
+unsafe extern "C" {
     fn LZ4F_isError(code: usize) -> libc::c_uint;
     fn LZ4F_getErrorName(code: usize) -> *const libc::c_char;
 

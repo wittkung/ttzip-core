@@ -17,7 +17,7 @@ pub const WAL_RECORD_MUTATION: u8 = 1;
 pub const WAL_RECORD_COMMIT: u8 = 2;
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn clonefile(src: *const libc::c_char, dst: *const libc::c_char, flags: libc::c_uint) -> libc::c_int;
     fn renamex_np(old: *const libc::c_char, new: *const libc::c_char, flags: libc::c_uint) -> libc::c_int;
 }

@@ -339,18 +339,20 @@ mod tests {
         _entry: *const libc::c_char,
         user_data: *mut c_void,
     ) -> bool {
-        if proc == 0 || user_data.is_null() {
-            return true;
+        unsafe {
+            if proc == 0 || user_data.is_null() {
+                return true;
+            }
+            let ctx = &mut *(user_data as *mut SwapParentCtx);
+            if !ctx.swapped {
+                ctx.swapped = true;
+                let sub = ctx.root.join("sub");
+                let detached = ctx.root.join("sub_detached");
+                let _ = fs::rename(&sub, &detached);
+                let _ = std::os::unix::fs::symlink(&ctx.outside, &sub);
+            }
+            !ctx.cancel
         }
-        let ctx = &mut *(user_data as *mut SwapParentCtx);
-        if !ctx.swapped {
-            ctx.swapped = true;
-            let sub = ctx.root.join("sub");
-            let detached = ctx.root.join("sub_detached");
-            let _ = fs::rename(&sub, &detached);
-            let _ = std::os::unix::fs::symlink(&ctx.outside, &sub);
-        }
-        !ctx.cancel
     }
 
     #[test]

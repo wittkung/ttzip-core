@@ -153,6 +153,11 @@ impl From<ApiTTZipError> for UniFFIError {
                 message: format!("Checksum mismatch: expected {expected:#x}, got {actual:#x}"),
                 offset: 0,
             },
+            ApiTTZipError::CreateTransactionIncomplete {
+                summary_message, ..
+            } => Self::IoError {
+                message: summary_message,
+            },
         }
     }
 }
@@ -237,6 +242,426 @@ where
     fn into_uniffi(self) -> Result<T, UniFFIError> {
         self.map_err(Into::into)
     }
+}
+
+/// Synchronously consumes secondary file-finish diagnostics carried by a clean
+/// primary failure (`ConfirmedReleased` descriptors and zero on-disk/producer residuals)
+/// BEFORE `map_create_stage_commit_error` returns `TTZipError`.
+pub(crate) fn emit_clean_primary_failure_finish_diagnostics(
+    status: crate::types::TTZipStatus,
+    finish_diagnostics: &[ttzip_archive::archive::unified::create_transaction::StageFileFinishDiagnostic],
+) {
+    for diag in finish_diagnostics {
+        log::warn!(
+            target: "ttzip_engine::create_transaction",
+            "clean_create_failure_finish_diagnostic primary_status={:?} diag_primary_status={:?} role={:?} path='{}' expected_identity={:?} prior_err={:?} flush_os_err={:?} flush_detail={:?} sync_os_err={:?} sync_detail={:?} close_os_err={:?} close_detail={:?} release_status={:?}",
+            status,
+            diag.primary_status,
+            diag.role,
+            diag.diagnostic_path.display(),
+            diag.expected_identity,
+            diag.prior_write_or_encoder_error,
+            diag.userspace_flush_os_error,
+            diag.userspace_flush_detail,
+            diag.sync_os_error,
+            diag.sync_detail,
+            diag.close_os_error,
+            diag.close_detail,
+            diag.release_status,
+        );
+    }
+}
+
+#[inline]
+fn map_clean_primary_status_to_uniffi(
+    status: crate::types::TTZipStatus,
+) -> super::types::TTZipError {
+    use super::types::TTZipError;
+    match status {
+        crate::types::TTZipStatus::Cancelled => TTZipError::Cancelled,
+        crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+        s => TTZipError::EngineError { code: s.to_i32() },
+    }
+}
+
+fn map_role_to_uniffi(
+    role: ttzip_archive::archive::unified::create_transaction::ResidualPathRole,
+) -> super::types::UniFFIResidualPathRole {
+    use super::types::UniFFIResidualPathRole;
+    use ttzip_archive::archive::unified::create_transaction::ResidualPathRole;
+    match role {
+        ResidualPathRole::StagedArtifact => UniFFIResidualPathRole::StagedArtifact,
+        ResidualPathRole::StagedTempFile => UniFFIResidualPathRole::StagedTempFile,
+        ResidualPathRole::UnownedPathOccupant => UniFFIResidualPathRole::UnownedPathOccupant,
+        ResidualPathRole::TransactionStageDirectory => {
+            UniFFIResidualPathRole::TransactionStageDirectory
+        }
+        ResidualPathRole::PreexistingBackupDirectory => {
+            UniFFIResidualPathRole::PreexistingBackupDirectory
+        }
+        ResidualPathRole::FinalDestinationTarget => UniFFIResidualPathRole::FinalDestinationTarget,
+    }
+}
+
+fn map_disposition_to_uniffi(
+    disposition: ttzip_archive::archive::unified::create_transaction::ArchiveCleanupDisposition,
+) -> super::types::UniFFIArchiveCleanupDisposition {
+    use super::types::UniFFIArchiveCleanupDisposition;
+    use ttzip_archive::archive::unified::create_transaction::ArchiveCleanupDisposition;
+    match disposition {
+        ArchiveCleanupDisposition::RefusedOwnershipMismatch => {
+            UniFFIArchiveCleanupDisposition::RefusedOwnershipMismatch
+        }
+        ArchiveCleanupDisposition::OwnershipOrLocationUnconfirmed => {
+            UniFFIArchiveCleanupDisposition::OwnershipOrLocationUnconfirmed
+        }
+        ArchiveCleanupDisposition::RestoredDisplacedSentinel => {
+            UniFFIArchiveCleanupDisposition::RestoredDisplacedSentinel
+        }
+        ArchiveCleanupDisposition::RestoreDisplacedSentinelFailed => {
+            UniFFIArchiveCleanupDisposition::RestoreDisplacedSentinelFailed
+        }
+        ArchiveCleanupDisposition::UnlinkOrRmdirIoError => {
+            UniFFIArchiveCleanupDisposition::UnlinkOrRmdirIoError
+        }
+        ArchiveCleanupDisposition::StageDirectoryPreservedDueToInnerFailure => {
+            UniFFIArchiveCleanupDisposition::StageDirectoryPreservedDueToInnerFailure
+        }
+        ArchiveCleanupDisposition::PostCommitCleanupFailed => {
+            UniFFIArchiveCleanupDisposition::PostCommitCleanupFailed
+        }
+        ArchiveCleanupDisposition::DescriptorReleaseUnconfirmed => {
+            UniFFIArchiveCleanupDisposition::DescriptorReleaseUnconfirmed
+        }
+    }
+}
+
+fn map_release_status_to_uniffi(
+    status: ttzip_archive::archive::unified::create_transaction::DescriptorReleaseStatus,
+) -> super::types::UniFFIDescriptorReleaseStatus {
+    use super::types::UniFFIDescriptorReleaseStatus;
+    use ttzip_archive::archive::unified::create_transaction::DescriptorReleaseStatus;
+    match status {
+        DescriptorReleaseStatus::ConfirmedReleased => {
+            UniFFIDescriptorReleaseStatus::ConfirmedReleased
+        }
+        DescriptorReleaseStatus::ReleaseUnconfirmed => {
+            UniFFIDescriptorReleaseStatus::ReleaseUnconfirmed
+        }
+    }
+}
+
+fn map_recovery_state_to_uniffi(
+    state: ttzip_archive::archive::unified::create_transaction::CreateBackupRecoveryState,
+) -> super::types::UniFFICreateBackupRecoveryState {
+    use super::types::UniFFICreateBackupRecoveryState;
+    use ttzip_archive::archive::unified::create_transaction::CreateBackupRecoveryState;
+    match state {
+        CreateBackupRecoveryState::NotApplicable => UniFFICreateBackupRecoveryState::NotApplicable,
+        CreateBackupRecoveryState::RestoredAndVerified => {
+            UniFFICreateBackupRecoveryState::RestoredAndVerified
+        }
+        CreateBackupRecoveryState::RollbackIncompletePreservedInBackup => {
+            UniFFICreateBackupRecoveryState::RollbackIncompletePreservedInBackup
+        }
+    }
+}
+
+pub(crate) fn map_failure_report_to_uniffi(
+    report: &ttzip_archive::archive::unified::create_transaction::CreateTransactionFailureReport,
+) -> super::types::UniFFICreateTransactionFailureReport {
+    use super::types::{
+        UniFFIStageCleanupFailureItem, UniFFIStageFileFinishDiagnostic,
+    };
+    let cleanup_failures = report
+        .cleanup_failures
+        .iter()
+        .map(|item| UniFFIStageCleanupFailureItem {
+            role: map_role_to_uniffi(item.role),
+            disposition: map_disposition_to_uniffi(item.disposition),
+            path: item.final_known_path.as_ref().map(|p| p.display().to_string()),
+            original_staged_path: Some(item.original_path.display().to_string()),
+            os_error_code: item.os_error_code,
+            message: item.detail.clone(),
+        })
+        .collect();
+    let finish_diagnostics = report
+        .finish_diagnostics
+        .iter()
+        .map(|diag| UniFFIStageFileFinishDiagnostic {
+            role: map_role_to_uniffi(diag.role),
+            diagnostic_path: diag.diagnostic_path.display().to_string(),
+            expected_dev: diag.expected_identity.0,
+            expected_ino: diag.expected_identity.1,
+            primary_status_code: diag.primary_status.to_i32(),
+            prior_write_or_encoder_error: diag.prior_write_or_encoder_error.clone(),
+            userspace_flush_os_error: diag.userspace_flush_os_error,
+            userspace_flush_detail: diag.userspace_flush_detail.clone(),
+            sync_os_error: diag.sync_os_error,
+            sync_detail: diag.sync_detail.clone(),
+            close_os_error: diag.close_os_error,
+            close_detail: diag.close_detail.clone(),
+            release_status: map_release_status_to_uniffi(diag.release_status),
+        })
+        .collect();
+    build_uniffi_report_with_recovery(report, cleanup_failures, finish_diagnostics)
+}
+
+fn build_uniffi_report_with_recovery(
+    report: &ttzip_archive::archive::unified::create_transaction::CreateTransactionFailureReport,
+    cleanup_failures: Vec<super::types::UniFFIStageCleanupFailureItem>,
+    finish_diagnostics: Vec<super::types::UniFFIStageFileFinishDiagnostic>,
+) -> super::types::UniFFICreateTransactionFailureReport {
+    use super::types::{
+        UniFFIBackupRecoveryEntryFailure, UniFFICreateBackupRecoveryState,
+        UniFFICreateTransactionFailureReport,
+    };
+    let (
+        recovery_state,
+        backup_dir,
+        restored_targets,
+        rollback_failed_entries,
+        backup_dir_cleanup_error,
+    ) = match report.recovery_attempt.as_ref() {
+        Some(attempt) => (
+            map_recovery_state_to_uniffi(attempt.state),
+            attempt.backup_dir.as_ref().map(|p| p.display().to_string()),
+            attempt
+                .restored_targets
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect(),
+            attempt
+                .failed_entries
+                .iter()
+                .map(|e| UniFFIBackupRecoveryEntryFailure {
+                    backup_source_path: e.backup_source_path.display().to_string(),
+                    target_path: e.target_path.display().to_string(),
+                    os_error_code: e.os_error_code,
+                    message: e.detail.clone(),
+                })
+                .collect(),
+            attempt.backup_dir_cleanup_error.clone(),
+        ),
+        None => (
+            UniFFICreateBackupRecoveryState::NotApplicable,
+            None,
+            Vec::new(),
+            Vec::new(),
+            None,
+        ),
+    };
+    UniFFICreateTransactionFailureReport {
+        primary_status_code: report.primary_status.to_i32(),
+        was_primary_cancelled: report.was_primary_cancelled,
+        is_cancellation_requested: report.is_cancellation_requested,
+        stage_dir: report.stage_dir.display().to_string(),
+        stage_dir_preserved: report.stage_dir_preserved,
+        unconfirmed_release_count: report.unconfirmed_release_count,
+        cleanup_failures,
+        finish_diagnostics,
+        recovery_state,
+        backup_dir,
+        restored_targets,
+        rollback_failed_entries,
+        backup_dir_cleanup_error,
+        summary_message: report.summary_message(),
+    }
+}
+
+fn map_legacy_stage_cleanup_incomplete_to_uniffi(
+    status: crate::types::TTZipStatus,
+    was_primary_cancelled: bool,
+    uncommitted_stage_dir: &std::path::Path,
+    lingering_staged_files: &[std::path::PathBuf],
+    inner_cleanup_error: Option<&String>,
+    outer_cleanup_error: Option<&String>,
+    summary: String,
+) -> super::types::UniFFICreateTransactionFailureReport {
+    use super::types::{
+        UniFFIArchiveCleanupDisposition, UniFFIResidualPathRole, UniFFIStageCleanupFailureItem,
+    };
+    let mut cleanup_failures: Vec<UniFFIStageCleanupFailureItem> = lingering_staged_files
+        .iter()
+        .map(|p| {
+            let s = p.display().to_string();
+            UniFFIStageCleanupFailureItem {
+                role: UniFFIResidualPathRole::StagedArtifact,
+                disposition: UniFFIArchiveCleanupDisposition::UnlinkOrRmdirIoError,
+                path: Some(s.clone()),
+                original_staged_path: Some(s),
+                os_error_code: None,
+                message: inner_cleanup_error.cloned().unwrap_or_default(),
+            }
+        })
+        .collect();
+    let dir_str = uncommitted_stage_dir.display().to_string();
+    cleanup_failures.push(UniFFIStageCleanupFailureItem {
+        role: UniFFIResidualPathRole::TransactionStageDirectory,
+        disposition: UniFFIArchiveCleanupDisposition::StageDirectoryPreservedDueToInnerFailure,
+        path: Some(dir_str.clone()),
+        original_staged_path: Some(dir_str.clone()),
+        os_error_code: None,
+        message: outer_cleanup_error.cloned().unwrap_or_default(),
+    });
+    empty_legacy_report(
+        status,
+        was_primary_cancelled,
+        dir_str,
+        uncommitted_stage_dir.exists(),
+        cleanup_failures,
+        summary,
+    )
+}
+
+fn map_legacy_stage_commit_error_to_uniffi(
+    err: &crate::archive::unified::create::CreateStageCommitError,
+) -> super::types::UniFFICreateTransactionFailureReport {
+    use super::types::{
+        UniFFIBackupRecoveryEntryFailure, UniFFICreateBackupRecoveryState,
+        UniFFICreateTransactionFailureReport,
+    };
+    let status = err.status();
+    let was_primary_cancelled = status == crate::types::TTZipStatus::Cancelled;
+    match err {
+        crate::archive::unified::create::CreateStageCommitError::StageCleanupIncomplete {
+            uncommitted_stage_dir,
+            lingering_staged_files,
+            inner_cleanup_error,
+            outer_cleanup_error,
+            ..
+        } => map_legacy_stage_cleanup_incomplete_to_uniffi(
+            status,
+            was_primary_cancelled,
+            uncommitted_stage_dir,
+            lingering_staged_files,
+            inner_cleanup_error.as_ref(),
+            outer_cleanup_error.as_ref(),
+            err.to_string(),
+        ),
+        crate::archive::unified::create::CreateStageCommitError::RollbackIncomplete {
+            backup_dir,
+            unrestored_origins,
+            ..
+        } => {
+            let rollback_failed_entries = unrestored_origins
+                .iter()
+                .map(|target| UniFFIBackupRecoveryEntryFailure {
+                    backup_source_path: backup_dir
+                        .join(target.file_name().unwrap_or_default())
+                        .display()
+                        .to_string(),
+                    target_path: target.display().to_string(),
+                    os_error_code: None,
+                    message: err.to_string(),
+                })
+                .collect();
+            UniFFICreateTransactionFailureReport {
+                primary_status_code: status.to_i32(),
+                was_primary_cancelled,
+                is_cancellation_requested: was_primary_cancelled,
+                stage_dir: String::new(),
+                stage_dir_preserved: false,
+                unconfirmed_release_count: 0,
+                cleanup_failures: Vec::new(),
+                finish_diagnostics: Vec::new(),
+                recovery_state:
+                    UniFFICreateBackupRecoveryState::RollbackIncompletePreservedInBackup,
+                backup_dir: Some(backup_dir.display().to_string()),
+                restored_targets: Vec::new(),
+                rollback_failed_entries,
+                backup_dir_cleanup_error: None,
+                summary_message: err.to_string(),
+            }
+        }
+        _ => empty_legacy_report(status, was_primary_cancelled, String::new(), false, Vec::new(), err.to_string()),
+    }
+}
+
+fn empty_legacy_report(
+    status: crate::types::TTZipStatus,
+    was_primary_cancelled: bool,
+    stage_dir: String,
+    stage_dir_preserved: bool,
+    cleanup_failures: Vec<super::types::UniFFIStageCleanupFailureItem>,
+    summary_message: String,
+) -> super::types::UniFFICreateTransactionFailureReport {
+    use super::types::{UniFFICreateBackupRecoveryState, UniFFICreateTransactionFailureReport};
+    UniFFICreateTransactionFailureReport {
+        primary_status_code: status.to_i32(),
+        was_primary_cancelled,
+        is_cancellation_requested: was_primary_cancelled,
+        stage_dir,
+        stage_dir_preserved,
+        unconfirmed_release_count: 0,
+        cleanup_failures,
+        finish_diagnostics: Vec::new(),
+        recovery_state: UniFFICreateBackupRecoveryState::NotApplicable,
+        backup_dir: None,
+        restored_targets: Vec::new(),
+        rollback_failed_entries: Vec::new(),
+        backup_dir_cleanup_error: None,
+        summary_message,
+    }
+}
+
+pub(crate) fn map_create_stage_commit_error(
+    err: crate::archive::unified::create::CreateStageCommitError,
+) -> super::types::TTZipError {
+    use super::types::TTZipError;
+    use crate::archive::unified::create::CreateStageCommitError;
+    match err {
+        CreateStageCommitError::Status(status) => map_clean_primary_status_to_uniffi(status),
+        CreateStageCommitError::StatusWithFinishDiagnostics {
+            status,
+            finish_diagnostics,
+        } => {
+            emit_clean_primary_failure_finish_diagnostics(status, &finish_diagnostics);
+            map_clean_primary_status_to_uniffi(status)
+        }
+        CreateStageCommitError::TransactionIncomplete(report) => {
+            let uniffi_report = map_failure_report_to_uniffi(&report);
+            let summary_message = uniffi_report.summary_message.clone();
+            TTZipError::CreateTransactionIncomplete {
+                report: Box::new(uniffi_report),
+                summary_message,
+            }
+        }
+        other => {
+            let uniffi_report = map_legacy_stage_commit_error_to_uniffi(&other);
+            let summary_message = uniffi_report.summary_message.clone();
+            TTZipError::CreateTransactionIncomplete {
+                report: Box::new(uniffi_report),
+                summary_message,
+            }
+        }
+    }
+}
+
+pub(crate) fn build_post_commit_cleanup_outcome_from_issues(
+    created_count: u64,
+    issues: Vec<crate::archive::unified::create_staging::PostCommitCleanupIssue>,
+) -> Option<super::extraction_session::ExtractionOutcome> {
+    use super::extraction_session::{ExtractionOutcome, FailedItem, OutcomeStatus};
+    if issues.is_empty() {
+        return None;
+    }
+    let failed = issues
+        .into_iter()
+        .map(|issue| FailedItem {
+            relative_path: issue.path.display().to_string(),
+            reason: ttzip_archive::fs::collision::fs_ops::map_errno(issue.errno).into(),
+            errno: issue.errno,
+        })
+        .collect();
+    Some(ExtractionOutcome {
+        status: OutcomeStatus::CompletedWithFailures,
+        extracted: created_count,
+        replaced: 0,
+        kept_both: 0,
+        skipped: 0,
+        failed,
+    })
 }
 
 #[cfg(test)]

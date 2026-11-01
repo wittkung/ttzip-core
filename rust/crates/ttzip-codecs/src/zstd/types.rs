@@ -62,7 +62,7 @@ pub enum ZstdCDictOpaque {}
 pub enum ZstdDDictOpaque {}
 
 #[allow(dead_code)]
-extern "C" {
+unsafe extern "C" {
     pub fn ZSTD_createCCtx() -> *mut ZstdCCtxOpaque;
     pub fn ZSTD_freeCCtx(cctx: *mut ZstdCCtxOpaque) -> libc::size_t;
     pub fn ZSTD_createDCtx() -> *mut ZstdDCtxOpaque;

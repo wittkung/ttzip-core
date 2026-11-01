@@ -75,12 +75,10 @@ pub const fn aligned_size_512(size: u64) -> u64 {
 #[inline]
 pub fn is_all_zeros(block: &[u8; TAR_SECTOR_SIZE]) -> bool {
     let mut acc: u64 = 0;
-    for chunk in block.chunks_exact(8) {
+    let (chunks, _) = block.as_chunks::<8>();
+    for chunk in chunks {
         // Guaranteed to be exact 8-byte chunk; optimized away by compiler
-        let word = u64::from_ne_bytes(match chunk.try_into() {
-            Ok(arr) => arr,
-            Err(_) => return false,
-        });
+        let word = u64::from_ne_bytes(*chunk);
         acc |= word;
     }
     acc == 0
@@ -91,19 +89,16 @@ pub fn is_all_zeros(block: &[u8; TAR_SECTOR_SIZE]) -> bool {
 /// Processes 8-byte aligned words followed by trailing single-byte checks.
 #[inline]
 pub fn is_slice_all_zeros(slice: &[u8]) -> bool {
-    let mut chunks = slice.chunks_exact(8);
+    let (chunks, remainder) = slice.as_chunks::<8>();
     let mut acc: u64 = 0;
-    for chunk in &mut chunks {
-        let word = u64::from_ne_bytes(match chunk.try_into() {
-            Ok(arr) => arr,
-            Err(_) => return false,
-        });
+    for chunk in chunks {
+        let word = u64::from_ne_bytes(*chunk);
         acc |= word;
     }
     if acc != 0 {
         return false;
     }
-    for &b in chunks.remainder() {
+    for &b in remainder {
         if b != 0 {
             return false;
         }

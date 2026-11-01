@@ -295,19 +295,26 @@ public struct ArchiveOperationResult: Sendable {
     public let compressedBytes: Int64
     public let durationSeconds: Double
     public let throughputMBs: Double
+    public let outcome: ExtractionOutcome?
+
+    public var status: OutcomeStatus {
+        outcome?.status ?? .completed
+    }
 
     public init(
         outputPath: String,
         originalBytes: Int64,
         compressedBytes: Int64,
         durationSeconds: Double,
-        throughputMBs: Double
+        throughputMBs: Double,
+        outcome: ExtractionOutcome? = nil
     ) {
         self.outputPath = outputPath
         self.originalBytes = originalBytes
         self.compressedBytes = compressedBytes
         self.durationSeconds = durationSeconds
         self.throughputMBs = throughputMBs
+        self.outcome = outcome
     }
 }
 
@@ -338,9 +345,10 @@ public final class ArchiveOperationPipeline: Sendable {
         token: CancellationToken? = nil
     ) async throws -> ArchiveOperationResult {
         let startTime = Date()
+        let operationOutcome: ExtractionOutcome?
 
         if let defaultWriter = writer as? ArchiveWriter {
-            try await defaultWriter.createArchive(
+            let report = try await defaultWriter.createArchiveWithOutcome(
                 outputPath: outputPath,
                 format: format,
                 level: level,
@@ -352,6 +360,7 @@ public final class ArchiveOperationPipeline: Sendable {
                 progressHandler: progress,
                 token: token
             )
+            operationOutcome = report.outcome
         } else {
             try await writer.createArchive(
                 outputPath: outputPath,
@@ -364,6 +373,7 @@ public final class ArchiveOperationPipeline: Sendable {
                 advancedOptions: advancedOptions ?? ArchiveAdvancedOptions(),
                 progressHandler: progress
             )
+            operationOutcome = nil
         }
 
         let duration = max(0.001, Date().timeIntervalSince(startTime))
@@ -376,7 +386,8 @@ public final class ArchiveOperationPipeline: Sendable {
             originalBytes: totalOriginalBytes,
             compressedBytes: writtenBytes,
             durationSeconds: duration,
-            throughputMBs: throughput
+            throughputMBs: throughput,
+            outcome: operationOutcome
         )
     }
 

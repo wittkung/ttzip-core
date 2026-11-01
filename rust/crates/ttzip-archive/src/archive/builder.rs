@@ -148,16 +148,18 @@ unsafe extern "C" fn progress_shim(
     current_entry: *const libc::c_char,
     user_data: *mut libc::c_void,
 ) -> bool {
-    if user_data.is_null() {
-        return true;
+    unsafe {
+        if user_data.is_null() {
+            return true;
+        }
+        let bridge = &mut *(user_data as *mut ProgressBridge);
+        let entry_name = if current_entry.is_null() {
+            ""
+        } else {
+            CStr::from_ptr(current_entry).to_str().unwrap_or("")
+        };
+        (bridge.callback)(processed, total, entry_name)
     }
-    let bridge = &mut *(user_data as *mut ProgressBridge);
-    let entry_name = if current_entry.is_null() {
-        ""
-    } else {
-        CStr::from_ptr(current_entry).to_str().unwrap_or("")
-    };
-    (bridge.callback)(processed, total, entry_name)
 }
 
 impl ArchiveBuilder {
@@ -441,16 +443,18 @@ impl ExtractBuilder {
             current_entry: *const libc::c_char,
             user_data: *mut libc::c_void,
         ) -> bool {
-            if user_data.is_null() {
-                return true;
+            unsafe {
+                if user_data.is_null() {
+                    return true;
+                }
+                let cb = &mut *(user_data as *mut ProgressClosure);
+                let entry_name = if current_entry.is_null() {
+                    ""
+                } else {
+                    CStr::from_ptr(current_entry).to_str().unwrap_or("")
+                };
+                cb(processed, total, entry_name)
             }
-            let cb = &mut *(user_data as *mut ProgressClosure);
-            let entry_name = if current_entry.is_null() {
-                ""
-            } else {
-                CStr::from_ptr(current_entry).to_str().unwrap_or("")
-            };
-            cb(processed, total, entry_name)
         }
 
         let has_cb = cb_ptr.is_some();

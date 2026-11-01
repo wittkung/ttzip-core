@@ -9,7 +9,7 @@
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
-extern "C" {
+unsafe extern "C" {
     fn clock_gettime_nsec_np(clock_id: libc::clockid_t) -> u64;
 }
 

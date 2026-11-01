@@ -204,7 +204,7 @@ impl Default for XzLzmaStream {
 
 unsafe impl Send for XzLzmaStream {}
 
-extern "C" {
+unsafe extern "C" {
     fn lzma_stream_decoder(strm: *mut XzLzmaStream, memlimit: u64, flags: u32) -> libc::c_int;
     fn lzma_code(strm: *mut XzLzmaStream, action: libc::c_int) -> libc::c_int;
     fn lzma_end(strm: *mut XzLzmaStream);

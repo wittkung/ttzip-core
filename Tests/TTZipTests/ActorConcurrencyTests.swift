@@ -3,7 +3,64 @@
 
 import XCTest
 import Foundation
+import os
 @testable import TTZipCore
+
+private struct DispatcherBeforeEnqueueFailure: Error {}
+
+private final class DispatcherBlockingGate: @unchecked Sendable {
+    private let semaphore = DispatchSemaphore(value: 0)
+    private let state = OSAllocatedUnfairLock(initialState: false)
+
+    func wait() {
+        if !state.withLock({ $0 }) { semaphore.wait() }
+    }
+
+    func open() {
+        let signal = state.withLock { open -> Bool in
+            guard !open else { return false }
+            open = true
+            return true
+        }
+        if signal { for _ in 0..<16 { semaphore.signal() } }
+    }
+}
+
+private final class BoundedDispatcherTask<Value: Sendable>: @unchecked Sendable {
+    private let completion = XCTestExpectation(description: "Dispatcher caller completed")
+    private let task: Task<Value, Error>
+
+    init(_ operation: @escaping @Sendable () async throws -> Value) {
+        let completed = completion
+        task = Task {
+            defer { completed.fulfill() }
+            return try await operation()
+        }
+    }
+
+    func cancel() { task.cancel() }
+
+    func result(timeout: Double = 2.0) async -> Result<Value, Error>? {
+        guard await XCTWaiter().fulfillment(of: [completion], timeout: timeout) == .completed else {
+            return nil
+        }
+        do { return .success(try await task.value) }
+        catch { return .failure(error) }
+    }
+}
+
+
+private final class EventTimeline: @unchecked Sendable {
+    private let lock = OSAllocatedUnfairLock(initialState: [String]())
+
+    func record(_ event: String) {
+        lock.withLock { $0.append(event) }
+    }
+
+    var events: [String] {
+        lock.withLock { $0 }
+    }
+}
 
 final class ActorConcurrencyTests: XCTestCase {
     private var sandbox: IsolatedTempSandbox!
@@ -287,5 +344,416 @@ final class ActorConcurrencyTests: XCTestCase {
             maxBytes: 1024 * 1024 * 1024
         )
         XCTAssertEqual(clamped, 1024 * 1024)
+    }
+
+    func testSemaphoreCancellationBeforeRegistrationDoesNotLoseCancellation() async throws {
+        let entered = expectation(description: "Before waiter registration")
+        let cancelled = expectation(description: "Cancellation handler completed")
+        let gate = DispatcherBlockingGate()
+        defer { gate.open() }
+        let semaphore = AsyncSemaphore(value: 1, waiterHooks: .init(
+            beforeRegistration: { entered.fulfill(); gate.wait() },
+            didCancel: { cancelled.fulfill() }
+        ))
+        try await semaphore.wait()
+        defer { semaphore.signal() }
+        let waiter = BoundedDispatcherTask<Int> { try await semaphore.wait(); return 1 }
+        guard await XCTWaiter().fulfillment(of: [entered], timeout: 2.0) == .completed else {
+            waiter.cancel()
+            XCTFail("Waiter did not reach the controlled pre-registration boundary")
+            return
+        }
+        waiter.cancel()
+        guard await XCTWaiter().fulfillment(of: [cancelled], timeout: 2.0) == .completed else {
+            XCTFail("Cancellation was not observed before registration")
+            return
+        }
+        gate.open()
+        let result = await waiter.result()
+        guard case .failure(let error)? = result else {
+            XCTFail("Cancelled unregistered waiter must terminate before the owner releases its permit")
+            return
+        }
+        XCTAssertTrue(error is CancellationError)
+        XCTAssertEqual(semaphore.pendingWaiterCount, 0)
+        XCTAssertEqual(semaphore.currentAvailablePermits, 0)
+    }
+
+    func testSemaphoreRegisteredWaiterCancellationRemovesItWithoutConsumingPermit() async throws {
+        let registered = expectation(description: "Waiter actually registered")
+        let semaphore = AsyncSemaphore(value: 1, waiterHooks: .init(didRegister: { registered.fulfill() }))
+        try await semaphore.wait()
+        defer { semaphore.signal() }
+        let waiter = BoundedDispatcherTask<Int> { try await semaphore.wait(); return 1 }
+        guard await XCTWaiter().fulfillment(of: [registered], timeout: 2.0) == .completed else {
+            waiter.cancel()
+            XCTFail("Waiter registration was not observed")
+            return
+        }
+        XCTAssertEqual(semaphore.pendingWaiterCount, 1)
+        waiter.cancel()
+        let result = await waiter.result()
+        guard case .failure(let error)? = result else {
+            XCTFail("Registered cancelled waiter must terminate without an owner signal")
+            return
+        }
+        XCTAssertTrue(error is CancellationError)
+        XCTAssertEqual(semaphore.pendingWaiterCount, 0)
+        XCTAssertEqual(semaphore.currentAvailablePermits, 0)
+    }
+
+    func testDispatcherPreEnqueueFailureReleasesResourcesExactlyOnce() async throws {
+        let released = expectation(description: "Pre-enqueue resources released")
+        let dispatcher = NativeComputeDispatcher(
+            maxConcurrency: 2, waiterHooks: .init(), onResourcesReleased: { released.fulfill() },
+            beforeEnqueue: { throw DispatcherBeforeEnqueueFailure() }
+        )
+        let task = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute {
+                (_: OSAllocatedUnfairLock<Bool>) in
+                XCTFail("Failed admission must not invoke the worker")
+                return 1
+            }
+        }
+        let result = await task.result()
+        guard case .failure(let error)? = result else { return XCTFail("Expected bounded pre-enqueue failure") }
+        XCTAssertTrue(error is DispatcherBeforeEnqueueFailure)
+        let resourceReceipt = await XCTWaiter().fulfillment(of: [released], timeout: 2.0)
+        XCTAssertEqual(resourceReceipt, .completed)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 2)
+        XCTAssertEqual(dispatcher.currentActiveLoads, [0, 0])
+    }
+
+    func testDispatcherSaturatedRegisteredWaiterCancellationKeepsRunningResources() async throws {
+        let registered = expectation(description: "Third caller actually registered")
+        let started = expectation(description: "Both workers entered")
+        started.expectedFulfillmentCount = 2
+        let released = expectation(description: "Both worker resources released")
+        released.expectedFulfillmentCount = 2
+        let gate = DispatcherBlockingGate()
+        defer { gate.open() }
+        let dispatcher = NativeComputeDispatcher(
+            maxConcurrency: 2, waiterHooks: .init(didRegister: { registered.fulfill() }),
+            onResourcesReleased: { released.fulfill() }
+        )
+        let first = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute { (_: OSAllocatedUnfairLock<Bool>) in
+                started.fulfill(); gate.wait(); return 1
+            }
+        }
+        let second = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute { (_: OSAllocatedUnfairLock<Bool>) in
+                started.fulfill(); gate.wait(); return 2
+            }
+        }
+        guard await XCTWaiter().fulfillment(of: [started], timeout: 2.0) == .completed else {
+            first.cancel(); second.cancel(); return XCTFail("Workers did not enter")
+        }
+        let third = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute { (_: OSAllocatedUnfairLock<Bool>) in
+                XCTFail("Cancelled registered caller must not invoke worker"); return 3
+            }
+        }
+        guard await XCTWaiter().fulfillment(of: [registered], timeout: 2.0) == .completed else {
+            third.cancel(); return XCTFail("Third caller never registered")
+        }
+        third.cancel()
+        let thirdResult = await third.result()
+        guard case .failure(let error)? = thirdResult else { return XCTFail("Third caller did not terminate") }
+        XCTAssertTrue(error is CancellationError)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 0)
+        XCTAssertEqual(dispatcher.currentActiveLoads.reduce(0, +), 2)
+        gate.open()
+        let firstResult = await first.result()
+        let secondResult = await second.result()
+        XCTAssertNotNil(firstResult)
+        XCTAssertNotNil(secondResult)
+        let resourceReceipt = await XCTWaiter().fulfillment(of: [released], timeout: 2.0)
+        XCTAssertEqual(resourceReceipt, .completed)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 2)
+        XCTAssertEqual(dispatcher.currentActiveLoads, [0, 0])
+    }
+
+    func testExplicitWaitCancellationDoesNotDeliverCallerBeforeWorkerCleanup() async throws {
+        let started = expectation(description: "Wait worker entered")
+        let cancelled = expectation(description: "Wait cancellation arbitration completed")
+        let released = expectation(description: "Wait worker resources released")
+        let delivered = OSAllocatedUnfairLock<Bool?>(initialState: nil)
+        let gate = DispatcherBlockingGate()
+        defer { gate.open() }
+        let dispatcher = NativeComputeDispatcher(
+            maxConcurrency: 2, waiterHooks: .init(),
+            onResourcesReleased: { released.fulfill() },
+            onCancellationHandled: { value in delivered.withLock { $0 = value }; cancelled.fulfill() }
+        )
+        let task = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute(cancellationPolicy: .waitForWorkerCompletion) {
+                (_: OSAllocatedUnfairLock<Bool>) in
+                started.fulfill(); gate.wait(); throw CancellationError()
+            }
+        }
+        guard await XCTWaiter().fulfillment(of: [started], timeout: 2.0) == .completed else {
+            task.cancel(); return XCTFail("Worker did not enter")
+        }
+        task.cancel()
+        let cancellationReceipt = await XCTWaiter().fulfillment(of: [cancelled], timeout: 2.0)
+        XCTAssertEqual(cancellationReceipt, .completed)
+        XCTAssertEqual(delivered.withLock { $0 }, false)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 1)
+        XCTAssertEqual(dispatcher.currentActiveLoads.reduce(0, +), 1)
+        gate.open()
+        let result = await task.result()
+        guard case .failure(let error)? = result else { return XCTFail("Expected bounded cancellation") }
+        XCTAssertTrue(error is CancellationError)
+        let resourceReceipt = await XCTWaiter().fulfillment(of: [released], timeout: 2.0)
+        XCTAssertEqual(resourceReceipt, .completed)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 2)
+        XCTAssertEqual(dispatcher.currentActiveLoads, [0, 0])
+    }
+
+    func testDefaultCancellationDetachesCallerAndRetainsWorkerResources() async throws {
+        let started = expectation(description: "Default worker entered")
+        let released = expectation(description: "Default worker resources released")
+        let gate = DispatcherBlockingGate()
+        defer { gate.open() }
+        let dispatcher = NativeComputeDispatcher(
+            maxConcurrency: 2, waiterHooks: .init(), onResourcesReleased: { released.fulfill() }
+        )
+        let task = BoundedDispatcherTask<Int> {
+            try await dispatcher.dispatchCompute { (_: OSAllocatedUnfairLock<Bool>) in
+                started.fulfill(); gate.wait(); return 42
+            }
+        }
+        guard await XCTWaiter().fulfillment(of: [started], timeout: 2.0) == .completed else {
+            task.cancel(); return XCTFail("Worker did not enter")
+        }
+        task.cancel()
+        let result = await task.result()
+        guard case .failure(let error)? = result else { return XCTFail("Default caller did not detach") }
+        XCTAssertTrue(error is CancellationError)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 1)
+        XCTAssertEqual(dispatcher.currentActiveLoads.reduce(0, +), 1)
+        gate.open()
+        let resourceReceipt = await XCTWaiter().fulfillment(of: [released], timeout: 2.0)
+        XCTAssertEqual(resourceReceipt, .completed)
+        XCTAssertEqual(dispatcher.currentAvailablePermits, 2)
+        XCTAssertEqual(dispatcher.currentActiveLoads, [0, 0])
+    }
+
+    // MARK: - R4 / C4: Real Swift Task Cancellation, Post-Commit Delivery Race & Deterministic Same-Target Exclusion Over Real FFI
+
+    private func installPathLockTimelineHooks(
+        writer: ArchiveWriter,
+        normalizedTarget: String,
+        timeline: EventTimeline,
+        task2WaiterEnqueued: XCTestExpectation
+    ) {
+        let didEnqueueOnce = OSAllocatedUnfairLock(initialState: false)
+        let didReleaseOnce = OSAllocatedUnfairLock(initialState: false)
+        ArchiveTargetPathLockPool._onWaiterEnqueuedHook = { path, count in
+            guard path == normalizedTarget, count >= 1 else { return }
+            if didEnqueueOnce.withLock({ done -> Bool in guard !done else { return false }; done = true; return true }) {
+                timeline.record("task2WaiterEnqueuedOnPathLock")
+                task2WaiterEnqueued.fulfill()
+            }
+        }
+        ArchiveTargetPathLockPool._onLockReleasedHook = { path in
+            guard path == normalizedTarget else { return }
+            if didReleaseOnce.withLock({ done -> Bool in guard !done else { return false }; done = true; return true }) {
+                timeline.record("task1PathLockReleased")
+            }
+        }
+        writer._afterWorkerCleanupBeforeLockReleaseHook = { path in
+            if URL(fileURLWithPath: path).standardizedFileURL.path == normalizedTarget {
+                timeline.record("task1WorkerAndCleanupCompleted")
+            }
+        }
+    }
+
+    func test_r4_real_ffi_task_cancellation_waits_for_worker_and_serializes_same_target() async throws {
+        let writer = ArchiveWriter()
+        let srcDir = try sandbox.createSubdirectory("r4_real_ffi_src")
+        for i in 0..<6 {
+            let fileURL = srcDir.appendingPathComponent("chunk_\(i).txt")
+            try String(repeating: "R4_Payload_\(i)_", count: 4096).write(to: fileURL, atomically: true, encoding: .utf8)
+        }
+        let outDir = try sandbox.createSubdirectory("r4_real_ffi_out")
+        let targetZip = outDir.appendingPathComponent("r4_target.zip")
+        try Data("ORIGINAL_COMMITTED_BYTES".utf8).write(to: targetZip)
+
+        let timeline = EventTimeline()
+        let workerBlockedInProgress = expectation(description: "real FFI worker reached progress callback")
+        let task2WaiterEnqueued = expectation(description: "task2 enqueued on ArchiveTargetPathLockPool")
+        let releaseWorkerGate = DispatcherBlockingGate()
+        let didEnterOnce = OSAllocatedUnfairLock(initialState: false)
+        let didEnterTask2Once = OSAllocatedUnfairLock(initialState: false)
+        let observedStagingDirs = OSAllocatedUnfairLock(initialState: [String]())
+        let task2EnteredProgress = OSAllocatedUnfairLock(initialState: false)
+        let normalizedTarget = targetZip.standardizedFileURL.path
+
+        defer {
+            ArchiveTargetPathLockPool._onWaiterEnqueuedHook = nil
+            ArchiveTargetPathLockPool._onLockReleasedHook = nil
+            writer._afterWorkerCleanupBeforeLockReleaseHook = nil
+            releaseWorkerGate.open()
+        }
+        installPathLockTimelineHooks(
+            writer: writer, normalizedTarget: normalizedTarget, timeline: timeline, task2WaiterEnqueued: task2WaiterEnqueued
+        )
+
+        let task1 = Task {
+            try await writer.createArchive(
+                outputPath: targetZip.path, format: .zip, inputPaths: [srcDir.path],
+                progressHandler: { _ in
+                    guard didEnterOnce.withLock({ done -> Bool in guard !done else { return false }; done = true; return true }) else { return }
+                    let entries = (try? FileManager.default.contentsOfDirectory(atPath: outDir.path)) ?? []
+                    observedStagingDirs.withLock { $0 = entries.filter { $0.hasPrefix(".ttzip_create_txn_") } }
+                    timeline.record("task1InFlightWithStaging")
+                    workerBlockedInProgress.fulfill()
+                    releaseWorkerGate.wait()
+                    timeline.record("task1ProgressGateReleased")
+                }
+            )
+        }
+
+        await fulfillment(of: [workerBlockedInProgress], timeout: 5.0)
+        XCTAssertEqual(observedStagingDirs.withLock { $0.count }, 1, "Staging dir must exist while worker is in-flight")
+        task1.cancel()
+
+        let task2 = Task {
+            try await writer.createArchive(
+                outputPath: targetZip.path, format: .zip, inputPaths: [srcDir.path],
+                progressHandler: { _ in
+                    if didEnterTask2Once.withLock({ done -> Bool in guard !done else { return false }; done = true; return true }) {
+                        task2EnteredProgress.withLock { $0 = true }
+                        timeline.record("task2ProgressEntered")
+                    }
+                }
+            )
+            timeline.record("task2Finished")
+        }
+
+        await fulfillment(of: [task2WaiterEnqueued], timeout: 5.0)
+        XCTAssertFalse(task2EnteredProgress.withLock { $0 })
+        XCTAssertGreaterThanOrEqual(NativeComputeDispatcher.shared.currentActiveLoads.reduce(0, +), 1)
+
+        releaseWorkerGate.open()
+        do {
+            try await task1.value
+            XCTFail("Expected task1 to throw ArchiveError.cancelled after real FFI cancellation")
+        } catch let error as ArchiveError {
+            XCTAssertEqual(error, .cancelled)
+            timeline.record("task1CallerReturnedCancelled")
+        }
+
+        try await task2.value
+        let events = timeline.events
+        let idxInFlight = try XCTUnwrap(events.firstIndex(of: "task1InFlightWithStaging"))
+        let idxEnqueued = try XCTUnwrap(events.firstIndex(of: "task2WaiterEnqueuedOnPathLock"))
+        let idxCleanupDone = try XCTUnwrap(events.firstIndex(of: "task1WorkerAndCleanupCompleted"))
+        let idxLockReleased = try XCTUnwrap(events.firstIndex(of: "task1PathLockReleased"))
+        let idxTask2Entered = try XCTUnwrap(events.firstIndex(of: "task2ProgressEntered"))
+        let idxTask1Returned = try XCTUnwrap(events.firstIndex(of: "task1CallerReturnedCancelled"))
+        XCTAssertLessThan(idxInFlight, idxEnqueued)
+        XCTAssertLessThan(idxEnqueued, idxCleanupDone)
+        XCTAssertLessThan(idxCleanupDone, idxLockReleased)
+        XCTAssertLessThan(idxLockReleased, idxTask2Entered)
+        XCTAssertLessThan(idxCleanupDone, idxTask1Returned)
+
+        let finalEntries = try FileManager.default.contentsOfDirectory(atPath: outDir.path)
+        XCTAssertFalse(finalEntries.contains(where: { $0.hasPrefix(".ttzip_create_txn_") }))
+        let inspected = try await TTZipEngine.shared.inspect(archivePath: targetZip.path)
+        XCTAssertEqual(inspected.filter { !$0.isDirectory }.count, 6)
+    }
+
+    func test_r4_real_ffi_post_commit_task_cancellation_and_cleanup_error_propagation() async throws {
+        let writer = ArchiveWriter()
+        let srcDir = try sandbox.createSubdirectory("r4_post_commit_src")
+        let srcFile = srcDir.appendingPathComponent("doc.txt")
+        try String(repeating: "PostCommitPayload_", count: 2048).write(to: srcFile, atomically: true, encoding: .utf8)
+        let committedZip = try sandbox.createSubdirectory("r4_post_commit_out").appendingPathComponent("post_commit_race.zip")
+
+        let committedReachedHook = expectation(description: "real FFI committed archive on disk before delivery")
+        let releasePostCommitHook = DispatcherBlockingGate()
+        writer._postFfiCommitBeforeDeliveryHook = {
+            committedReachedHook.fulfill()
+            releasePostCommitHook.wait()
+        }
+
+        let postCommitTask = Task {
+            try await writer.createArchiveWithOutcome(outputPath: committedZip.path, format: .zip, inputPaths: [srcFile.path])
+        }
+        await fulfillment(of: [committedReachedHook], timeout: 5.0)
+        let diskBytesAtHook = try Data(contentsOf: committedZip)
+
+        postCommitTask.cancel()
+        releasePostCommitHook.open()
+        writer._postFfiCommitBeforeDeliveryHook = nil
+
+        let report = try await postCommitTask.value
+        XCTAssertEqual(try Data(contentsOf: committedZip), diskBytesAtHook)
+        XCTAssertNil(report.outcome)
+
+        let cleanupFailDir = try sandbox.createSubdirectory("r4_cleanup_fail_out")
+        let cleanupFailZip = cleanupFailDir.appendingPathComponent("cleanup_fail.zip")
+        let lockedTxnDirs = OSAllocatedUnfairLock(initialState: [URL]())
+        let lockedInProgress = expectation(description: "locked staging dir during real FFI progress")
+        let cancelPropagated = expectation(description: "cancellation propagated to TaskExecutionHandle")
+        let releaseLockedProgress = DispatcherBlockingGate()
+        let didLockOnce = OSAllocatedUnfairLock(initialState: false)
+        defer {
+            writer._onCancellationHandleCreatedHook = nil
+            for dirURL in lockedTxnDirs.withLock({ $0 }) {
+                chmod(dirURL.path, 0o700)
+                try? FileManager.default.removeItem(at: dirURL)
+            }
+        }
+        writer._onCancellationHandleCreatedHook = { handle in
+            handle.onCancel { cancelPropagated.fulfill() }
+        }
+
+        let failTask = Task {
+            try await writer.createArchive(
+                outputPath: cleanupFailZip.path, format: .zip, inputPaths: [srcFile.path],
+                progressHandler: { _ in
+                    let shouldLock = didLockOnce.withLock { done -> Bool in
+                        guard !done else { return false }
+                        done = true
+                        return true
+                    }
+                    guard shouldLock else { return }
+                    let items = (try? FileManager.default.contentsOfDirectory(
+                        at: cleanupFailDir, includingPropertiesForKeys: nil
+                    )) ?? []
+                    for item in items where item.lastPathComponent.hasPrefix(".ttzip_create_txn_") {
+                        chmod(item.path, 0o500)
+                        lockedTxnDirs.withLock { $0.append(item) }
+                    }
+                    lockedInProgress.fulfill()
+                    releaseLockedProgress.wait()
+                }
+            )
+        }
+
+        await fulfillment(of: [lockedInProgress], timeout: 5.0)
+        failTask.cancel()
+        await fulfillment(of: [cancelPropagated], timeout: 5.0)
+        releaseLockedProgress.open()
+
+        do {
+            try await failTask.value
+            XCTFail("Expected CreateTransactionIncomplete when cancelled staging cleanup fails")
+        } catch let error as ArchiveError {
+            guard case let .createTransactionIncomplete(report) = error else {
+                XCTFail("Expected .createTransactionIncomplete instead of .cancelled, got \(error)")
+                return
+            }
+            XCTAssertEqual(report.primaryStatusCode, 2)
+            XCTAssertTrue(report.wasPrimaryCancelled)
+            XCTAssertTrue(report.isCancellationRequested)
+            XCTAssertTrue(report.stageDirPreserved)
+            XCTAssertFalse(report.cleanupFailures.isEmpty)
+            XCTAssertTrue(report.stageDir.contains(".ttzip_create_txn_"))
+        }
     }
 }

@@ -114,27 +114,31 @@ pub fn ttzip_vfs_table_create(table: UnifiedVfsTable) -> *mut VfsTableHandle {
 ///
 /// # Safety
 /// `handle` must be a valid pointer to a `VfsTableHandle`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_vfs_table_retain(handle: *const VfsTableHandle) -> *mut VfsTableHandle {
-    if handle.is_null() {
-        return std::ptr::null_mut();
+    unsafe {
+        if handle.is_null() {
+            return std::ptr::null_mut();
+        }
+        let original = &*handle;
+        let cloned = Box::new(VfsTableHandle {
+            table: Arc::clone(&original.table),
+            generation: original.generation,
+        });
+        Box::into_raw(cloned)
     }
-    let original = &*handle;
-    let cloned = Box::new(VfsTableHandle {
-        table: Arc::clone(&original.table),
-        generation: original.generation,
-    });
-    Box::into_raw(cloned)
 }
 
 /// Releases an immutable VFS table handle, decrementing the atomic reference count.
 ///
 /// # Safety
 /// `handle` must be a pointer returned by `ttzip_vfs_table_create` or `ttzip_vfs_table_retain`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_vfs_table_release(handle: *mut VfsTableHandle) {
-    if !handle.is_null() {
-        drop(Box::from_raw(handle));
+    unsafe {
+        if !handle.is_null() {
+            drop(Box::from_raw(handle));
+        }
     }
 }
 
@@ -142,21 +146,23 @@ pub unsafe extern "C" fn ttzip_vfs_table_release(handle: *mut VfsTableHandle) {
 ///
 /// # Safety
 /// `handle` and `out_view` must be non-null and valid.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_vfs_table_get_view(
     handle: *const VfsTableHandle,
     out_view: *mut TTZipMetadataPayloadView,
     out_generation: *mut u64,
 ) -> i32 {
-    if handle.is_null() || out_view.is_null() {
-        return -1;
+    unsafe {
+        if handle.is_null() || out_view.is_null() {
+            return -1;
+        }
+        let handle_ref = &*handle;
+        *out_view = handle_ref.as_payload_view();
+        if !out_generation.is_null() {
+            *out_generation = handle_ref.generation;
+        }
+        0
     }
-    let handle_ref = &*handle;
-    *out_view = handle_ref.as_payload_view();
-    if !out_generation.is_null() {
-        *out_generation = handle_ref.generation;
-    }
-    0
 }
 
 // ==============================================================================
@@ -226,27 +232,31 @@ pub fn ttzip_vfs_lease_create(allocation: Arc<MachVmAllocation>) -> *mut TTVfsLe
 ///
 /// # Safety
 /// `lease` must be a valid pointer to a `TTVfsLease`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_vfs_lease_retain(lease: *const TTVfsLease) -> *mut TTVfsLease {
-    if lease.is_null() {
-        return std::ptr::null_mut();
+    unsafe {
+        if lease.is_null() {
+            return std::ptr::null_mut();
+        }
+        let original = &*lease;
+        let cloned = Box::new(TTVfsLease {
+            allocation: Arc::clone(&original.allocation),
+            generation: original.generation,
+        });
+        Box::into_raw(cloned)
     }
-    let original = &*lease;
-    let cloned = Box::new(TTVfsLease {
-        allocation: Arc::clone(&original.allocation),
-        generation: original.generation,
-    });
-    Box::into_raw(cloned)
 }
 
 /// Releases an immutable VFS lease, decrementing the atomic reference count.
 ///
 /// # Safety
 /// `lease` must be a pointer returned by `ttzip_vfs_lease_create` or `ttzip_vfs_lease_retain`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_vfs_lease_release(lease: *mut TTVfsLease) {
-    if !lease.is_null() {
-        drop(Box::from_raw(lease));
+    unsafe {
+        if !lease.is_null() {
+            drop(Box::from_raw(lease));
+        }
     }
 }
 
@@ -275,11 +285,11 @@ mod tests {
             string_arena_len: 0,
             root_entry_id: 0,
         };
-        let mut gen = 0u64;
-        let res = unsafe { ttzip_vfs_table_get_view(retained_ptr, &mut view, &mut gen) };
+        let mut r#gen = 0u64;
+        let res = unsafe { ttzip_vfs_table_get_view(retained_ptr, &mut view, &mut r#gen) };
         assert_eq!(res, 0);
         assert_eq!(view.entry_count, 1);
-        assert_eq!(gen, gen1);
+        assert_eq!(r#gen, gen1);
 
         // Mutate and create second generation
         table.add_entry(UnifiedEntryNode::empty(), "file2.txt");
