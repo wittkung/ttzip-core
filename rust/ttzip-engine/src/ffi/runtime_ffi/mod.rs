@@ -51,6 +51,7 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
         TTZipStatus::ErrSecurityViolation => c"Security Violation".as_ptr(),
         TTZipStatus::ErrUnsupportedFeature => c"Unsupported Feature".as_ptr(),
         TTZipStatus::ErrBufferTooSmall => c"Buffer Too Small".as_ptr(),
+        TTZipStatus::ErrIo => c"I/O Error".as_ptr(),
         TTZipStatus::ErrPanicCaught => c"Panic Caught".as_ptr(),
         TTZipStatus::ErrAbiMismatch => c"ABI Mismatch".as_ptr(),
     }

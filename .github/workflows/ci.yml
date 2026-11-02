@@ -30,7 +30,9 @@ jobs:
 
   rust-test:
     name: Rust workspace tests
-    runs-on: ubuntu-latest
+    # The engine relies on Darwin filesystem primitives (renameatx_np, getattrlist)
+    # for its exclusive-commit path, so the workspace only builds on macOS.
+    runs-on: macos-latest
     timeout-minutes: 45
     steps:
       - name: Check out repository

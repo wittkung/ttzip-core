@@ -1,6 +1,6 @@
 [project]
 name = "ttzip-core"
-description = "Cross-platform archiving & compression micro-kernel"
+description = "Archiving & compression micro-kernel for macOS and Apple silicon"
 
 [project.min_tools]
 rustc = "1.85"
