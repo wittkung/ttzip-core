@@ -1,23 +1,21 @@
 # Copyright 2026 MetastudyLine. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 
-[source.crates-io]
-replace-with = 'rsproxy-sparse'
-
-[source.rsproxy]
-registry = "https://rsproxy.cn/index/"
-
-[source.rsproxy-sparse]
-registry = "sparse+https://rsproxy.cn/index/"
-
-[registries.rsproxy]
-index = "https://rsproxy.cn/index/"
+# Cargo configuration for the standalone ttzip-core repository.
+#
+# Dependencies resolve from crates.io. The internal monorepo pins a regional
+# mirror and a macOS-only CA bundle; neither applies to a public build, and
+# the CA bundle breaks the Linux CI runner.
+#
+# On a network where crates.io is slow or unreachable, uncomment the block
+# below to use a regional mirror.
+#
+# [source.crates-io]
+# replace-with = "rsproxy-sparse"
+#
+# [source.rsproxy-sparse]
+# registry = "sparse+https://rsproxy.cn/index/"
 
 [net]
 git-fetch-with-cli = true
 retry = 3
-
-[http]
-cainfo = "/etc/ssl/cert.pem"
-check-revoke = false
-
