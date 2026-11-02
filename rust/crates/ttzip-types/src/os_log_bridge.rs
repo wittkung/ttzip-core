@@ -10,6 +10,7 @@
 //! - Thread-safe `Send + Sync` handles with zero mutex contention across worker threads.
 
 use core::ffi::c_void;
+#[cfg(target_os = "macos")]
 use std::ffi::CString;
 use std::fmt;
 

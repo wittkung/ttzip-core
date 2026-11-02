@@ -251,6 +251,12 @@ impl MachVmAllocation {
 
         Ok(MachPortGuard::new(handle))
     }
+
+    /// Portable fallback: a Mach memory entry needs the Darwin kernel API.
+    #[cfg(not(target_os = "macos"))]
+    pub fn make_memory_entry(&self, _read_only: bool) -> Result<MachPortGuard, MachVmError> {
+        Err(MachVmError::MemoryEntryFailed { kern_return: -1 })
+    }
 }
 
 impl Drop for MachVmAllocation {
