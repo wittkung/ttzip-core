@@ -3,6 +3,7 @@
 
 //! AES-256-CBC encryption and decryption routines.
 
+#[cfg(target_arch = "aarch64")]
 use super::Aes256Context;
 
 /// Performs AES-256-CBC decryption. Length must be a multiple of 16.

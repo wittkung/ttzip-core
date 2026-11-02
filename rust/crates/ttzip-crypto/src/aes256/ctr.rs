@@ -3,6 +3,7 @@
 
 //! AES-256-CTR encryption and decryption pipeline.
 
+#[cfg(target_arch = "aarch64")]
 use super::Aes256Context;
 
 /// Performs AES-256-CTR encryption or decryption (CTR mode is symmetric).

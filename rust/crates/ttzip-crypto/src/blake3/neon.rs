@@ -14,8 +14,11 @@ use core::arch::aarch64::*;
 use super::chunk::ChunkState;
 #[cfg(not(target_arch = "aarch64"))]
 use super::compress::compress_in_place_mut;
+#[cfg(target_arch = "aarch64")]
 use super::compress::{counter_high, counter_low};
-use super::constants::{BLOCK_LEN, CHUNK_END, CHUNK_LEN, CHUNK_START, IV, MSG_SCHEDULE, PARENT};
+use super::constants::{BLOCK_LEN, CHUNK_END, CHUNK_LEN, CHUNK_START, PARENT};
+#[cfg(target_arch = "aarch64")]
+use super::constants::{IV, MSG_SCHEDULE};
 use super::tree::parent_cv;
 
 // ============================================================================

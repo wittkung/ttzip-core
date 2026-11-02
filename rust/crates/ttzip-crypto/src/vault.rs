@@ -96,14 +96,18 @@ unsafe fn aes256_encrypt_block_aarch64(ctx: &Aes256Context, input: &[u8; 16], ou
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "aes")]
 unsafe fn aes256_encrypt_block_aesni(ctx: &Aes256Context, input: &[u8; 16], output: &mut [u8; 16]) {
-    use core::arch::x86_64::*;
-    let in_vec = _mm_loadu_si128(input.as_ptr() as *const __m128i);
-    let mut b = _mm_xor_si128(in_vec, _mm_loadu_si128(ctx.round_keys_enc[0].as_ptr() as *const __m128i));
-    for r in 1..14 {
-        b = _mm_aesenc_si128(b, _mm_loadu_si128(ctx.round_keys_enc[r].as_ptr() as *const __m128i));
+    // SAFETY: input and output are valid 16-byte arrays; round_keys_enc contains 15 valid round keys.
+    // The caller guarantees the `aes` target feature is available.
+    unsafe {
+        use core::arch::x86_64::*;
+        let in_vec = _mm_loadu_si128(input.as_ptr() as *const __m128i);
+        let mut b = _mm_xor_si128(in_vec, _mm_loadu_si128(ctx.round_keys_enc[0].as_ptr() as *const __m128i));
+        for r in 1..14 {
+            b = _mm_aesenc_si128(b, _mm_loadu_si128(ctx.round_keys_enc[r].as_ptr() as *const __m128i));
+        }
+        b = _mm_aesenclast_si128(b, _mm_loadu_si128(ctx.round_keys_enc[14].as_ptr() as *const __m128i));
+        _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, b);
     }
-    b = _mm_aesenclast_si128(b, _mm_loadu_si128(ctx.round_keys_enc[14].as_ptr() as *const __m128i));
-    _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, b);
 }
 
 /// Encrypts a single 16-byte block with AES-256 in constant time.
