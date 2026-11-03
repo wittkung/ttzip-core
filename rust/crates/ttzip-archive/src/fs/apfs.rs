@@ -33,6 +33,14 @@ pub struct fstore_t {
     pub fst_bytesalloc: i64,
 }
 
+/// Maximum number of bytes that may be physically preallocated for a single archive entry.
+///
+/// Entry sizes read from an archive header are attacker-controlled: a corrupted archive can
+/// declare a multi-terabyte entry and force the extractor to reserve that much disk before a
+/// single byte of payload is validated. Preallocation is only a write-amplification
+/// optimization, so it is capped at a fixed budget and the file grows incrementally beyond it.
+pub const MAX_ENTRY_PREALLOCATE_BYTES: u64 = 64 * 1024 * 1024;
+
 /// Aligns a byte size up to the next 16KB boundary.
 #[inline]
 pub fn align_up_16k(size: usize) -> usize {
@@ -146,8 +154,7 @@ unsafe extern "C" {
 /// Preallocates contiguous physical extent space on APFS filesystems.
 ///
 /// Reduces SSD write amplification and fragmentation during high-throughput uncompressed decompression.
-pub fn apfs_preallocate(fd: RawFd, target_size: i64) -> std::io::Result<()> {
-    if fd < 0 || target_size <= 0 {
+pub fn apfs_preallocate(fd: RawFd, target_size: i64) -> std::io::Result<()> {    if fd < 0 || target_size <= 0 {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "Invalid file descriptor or target size",
@@ -183,6 +190,15 @@ pub fn apfs_preallocate(fd: RawFd, target_size: i64) -> std::io::Result<()> {
     } else {
         Err(std::io::Error::last_os_error())
     }
+}
+
+/// Preallocates space for a single archive entry whose declared size comes from an archive header.
+///
+/// The declared size is untrusted, so the reservation is clamped to
+/// [`MAX_ENTRY_PREALLOCATE_BYTES`]. A corrupted archive that declares a multi-gigabyte entry
+/// must not be able to force an equally large physical allocation.
+pub fn apfs_preallocate_entry(fd: RawFd, declared_size: u64) -> std::io::Result<()> {
+    apfs_preallocate(fd, declared_size.min(MAX_ENTRY_PREALLOCATE_BYTES) as i64)
 }
 
 /// Clones a file using APFS Copy-on-Write (CoW) zero-copy metadata clone.
@@ -311,5 +327,39 @@ mod tests {
 
         let res = apfs_preallocate(fd, 65536);
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_entry_preallocation_never_reserves_the_declared_size() {
+        use std::os::unix::fs::MetadataExt;
+
+        let temp_file = tempfile::NamedTempFile::new().expect("create temp file");
+        let fd = temp_file.as_file().as_raw_fd();
+
+        // A corrupted archive may declare a 10 GiB entry. The reservation must stay inside
+        // the bounded budget instead of allocating what the header asked for.
+        let declared = 10 * 1024 * 1024 * 1024u64;
+        apfs_preallocate_entry(fd, declared).expect("bounded preallocation succeeds");
+
+        // `F_ALLOCATEALL` reserves physical extents without extending the file length, so the
+        // reserved space is only visible through the block count.
+        let allocated = temp_file.as_file().metadata().expect("stat").blocks() * 512;
+        assert!(
+            allocated <= MAX_ENTRY_PREALLOCATE_BYTES,
+            "preallocation must not exceed the budget (reserved {allocated} bytes)"
+        );
+    }
+
+    #[test]
+    fn test_entry_preallocation_keeps_small_entries_intact() {
+        use std::os::unix::fs::MetadataExt;
+
+        let temp_file = tempfile::NamedTempFile::new().expect("create temp file");
+        let fd = temp_file.as_file().as_raw_fd();
+
+        apfs_preallocate_entry(fd, 4096).expect("small preallocation succeeds");
+        // APFS does not necessarily extend the file length when it reserves the extents, so the
+        // contract is an upper bound: a small entry never reserves more than it declared.
+        assert!(temp_file.as_file().metadata().expect("stat").blocks() * 512 <= 4096);
     }
 }

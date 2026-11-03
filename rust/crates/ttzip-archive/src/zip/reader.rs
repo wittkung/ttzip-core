@@ -7,7 +7,7 @@
 //! WinZip AES-256 hardware decryption, Direct I/O + APFS extent preallocation, and ZipSlip-immune safe landing.
 
 use crate::crypto::crc32::crc32_fast;
-use crate::fs::apfs::apfs_preallocate;
+use crate::fs::apfs::apfs_preallocate_entry;
 use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::security::zip_defense::{detect_overlapping_entries, ExtractionQuotaGuard};
 use crate::types::{TTZipExtractOptions, TTZipStatus};
@@ -448,7 +448,7 @@ impl<'a> ZipArchive<'a> {
             crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.rel_path, true)?;
         if entry.uncompressed_size > 0 {
             let fd = inflight.file_mut().as_raw_fd();
-            let _ = apfs_preallocate(fd, entry.uncompressed_size as i64);
+            let _ = apfs_preallocate_entry(fd, entry.uncompressed_size);
 
             #[cfg(target_os = "macos")]
             if entry.uncompressed_size >= DIRECT_IO_THRESHOLD {

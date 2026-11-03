@@ -13,7 +13,7 @@ use super::fallback_policy::{has_7z_signature, has_zip_signature, should_abort_w
 use crate::archive::split::{detect_volume_chain, VirtualMultiVolumeReader};
 use crate::ffi::archive_ffi::guards::ArchiveReadGuard;
 use crate::ffi::archive_ffi::sys::*;
-use crate::fs::apfs::apfs_preallocate;
+use crate::fs::apfs::apfs_preallocate_entry;
 use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::types::{ProgressAtomicSheet, TTZipExtractOptions, TTZipStatus};
 use libc::{c_int, c_void, mode_t};
@@ -710,7 +710,7 @@ unsafe fn extract_from_archive_handle(
                         let mut f =
                             crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?;
                         if size > 0 {
-                            let _ = apfs_preallocate(f.file_mut().as_raw_fd(), size as i64);
+                            let _ = apfs_preallocate_entry(f.file_mut().as_raw_fd(), size);
                         }
                         inflight = Some(f);
                     }

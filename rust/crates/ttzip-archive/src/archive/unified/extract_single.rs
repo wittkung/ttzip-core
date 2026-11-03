@@ -468,7 +468,7 @@ unsafe fn extract_selected_regular_file_from_handle(
     unsafe {
         use std::io::Write;
         use std::os::unix::io::AsRawFd;
-        use crate::fs::apfs::apfs_preallocate;
+        use crate::fs::apfs::apfs_preallocate_entry;
 
         if options.dry_run {
             archive_read_data_skip(a);
@@ -479,7 +479,7 @@ unsafe fn extract_selected_regular_file_from_handle(
 
         let size = archive_entry_size(entry).max(0) as u64;
         if size > 0 {
-            let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), size as i64);
+            let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), size);
         }
 
         let mut chunk = [0u8; 65536];

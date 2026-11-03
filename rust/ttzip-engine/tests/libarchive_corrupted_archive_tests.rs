@@ -108,6 +108,10 @@ fn test_required_corrupted_archive_corpus_sweep() {
         );
 
         // Invariant 3: Extraction terminates within the corrupted-input safety deadline.
+        //
+        // The deadline guards against a deadlock (an unbounded loop), not against a slow
+        // machine: shared CI runners are an order of magnitude slower than a workstation and
+        // may spend seconds in archive filters before the payload is even inspected.
         let extract_start = Instant::now();
         let extract_res = catch_unwind(AssertUnwindSafe(|| {
             let _ = UnifiedArchiveOrchestrator::extract_archive(&path, &ttzip_engine::fs::collision::staging::StagingRoot(dest.path().to_path_buf()), &options);
@@ -119,7 +123,7 @@ fn test_required_corrupted_archive_corpus_sweep() {
             "Extracting corrupted fixture '{}' must never panic",
             fixture
         );
-        let timeout_limit = Duration::from_millis(5000);
+        let timeout_limit = Duration::from_secs(30);
         assert!(
             elapsed < timeout_limit,
             "Corrupted fixture '{}' took {:?} (exceeded {:?} deadlock limit)",

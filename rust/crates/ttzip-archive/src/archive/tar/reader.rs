@@ -7,7 +7,7 @@
 //! ZipSlip-immune path validation, APFS extent preallocation, and two-stage bottom-up metadata restoration.
 
 use super::scanner::{TarEntry, TarSeekScanner};
-use crate::fs::apfs::apfs_preallocate;
+use crate::fs::apfs::apfs_preallocate_entry;
 use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::types::{TTZipExtractOptions, TTZipStatus};
 use std::ffi::CString;
@@ -245,7 +245,7 @@ impl<'a> TarArchive<'a> {
         let mut inflight =
             crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.path, true)?;
         if entry.size > 0 {
-            let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), entry.size as i64);
+            let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.size);
             inflight
                 .file_mut()
                 .write_all(payload)

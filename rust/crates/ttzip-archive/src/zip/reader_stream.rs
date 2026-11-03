@@ -7,7 +7,7 @@ use crate::archive::unified::selection::{normalize_entry_path, EntrySelection};
 use crate::archive::unified::zip_central_directory::locate_zip_central_directory_reader;
 use crate::crypto::crc32::crc32_fast;
 use crate::crypto::sha1::winzip_aes256_decrypt_and_verify;
-use crate::fs::apfs::apfs_preallocate;
+use crate::fs::apfs::apfs_preallocate_entry;
 use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::security::zip_defense::{detect_overlapping_entries, ExtractionQuotaGuard};
 use crate::types::{TTZipExtractOptions, TTZipStatus};
@@ -484,7 +484,7 @@ fn extract_reader_entry_to_disk<R: Read + Seek>(
 
     let mut inflight = crate::fs::abort_guard::InFlightJailFile::open(jail, out_rel, overwrite)?;
     if entry.uncompressed_size > 0 {
-        let _ = apfs_preallocate(inflight.file_mut().as_raw_fd(), entry.uncompressed_size as i64);
+        let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.uncompressed_size);
         extract_zip_entry_to_sink_from_reader(
             reader,
             total_len,
